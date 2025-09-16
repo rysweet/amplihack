@@ -9,6 +9,7 @@ The Knowledge Module is responsible for synthesizing, storing, and querying know
 This module addresses the following requirements:
 - **SYN-*** : Synthesis pipeline requirements
 - **KGO-*** : Knowledge graph operations requirements
+- **MKS-*** : Multi-knowledge store requirements
 
 ## Module Structure
 
@@ -17,7 +18,10 @@ knowledge/
 ├── __init__.py           # Public API exports
 ├── synthesizer.py        # Document processing pipeline
 ├── graph.py             # Graph operations and queries
-├── store.py             # Persistence layer
+├── store.py             # Persistence layer (updated for multi-store)
+├── registry.py          # Multi-store registry management
+├── config.py            # Store configurations and mappings
+├── agent_connector.py   # Agent-specific knowledge access
 ├── triage.py            # Document filtering and relevance
 ├── exporters/           # Export format handlers
 │   ├── __init__.py
@@ -27,7 +31,9 @@ knowledge/
 └── tests/               # Module tests
     ├── test_synthesizer.py
     ├── test_graph.py
-    └── test_store.py
+    ├── test_store.py
+    ├── test_registry.py
+    └── test_multi_store.py
 ```
 
 ## Component Specifications
@@ -505,3 +511,304 @@ class QueryException(KnowledgeException):
 - Atomic graph updates
 - Consistent persistence
 - Graceful degradation on errors
+
+## Multi-Store Capabilities (Enhanced)
+
+### Overview
+
+The Knowledge Module now supports multiple independent knowledge stores, enabling agents to maintain specialized domain expertise while sharing common knowledge. This enhancement maintains backward compatibility while adding powerful specialization capabilities.
+
+### Store Registry Component
+
+**Purpose**: Manage multiple knowledge stores and their lifecycle
+
+**Class Design**:
+```python
+class KnowledgeStoreRegistry:
+    """Central registry for all knowledge stores"""
+
+    def __init__(self, config: RegistryConfig):
+        self.stores: Dict[str, KnowledgeStore] = {}
+        self.config = config
+        self.default_store = "shared"
+        self._initialize_default_stores()
+
+    def get_store(self, name: str) -> KnowledgeStore:
+        """Get or create a knowledge store"""
+        if name not in self.stores:
+            self.stores[name] = self._create_store(name)
+        return self.stores[name]
+
+    def create_store(
+        self,
+        name: str,
+        config: StoreConfig
+    ) -> KnowledgeStore:
+        """Create a new specialized store"""
+
+    def get_stores_for_agent(
+        self,
+        agent_name: str
+    ) -> List[KnowledgeStore]:
+        """Get all stores accessible to an agent"""
+
+    def list_stores(self) -> List[str]:
+        """List all available store names"""
+```
+
+### Agent Connector Component
+
+**Purpose**: Simplify agent access to their knowledge domains
+
+**Class Design**:
+```python
+class AgentKnowledgeConnector:
+    """Agent-specific knowledge interface"""
+
+    def __init__(
+        self,
+        agent_name: str,
+        registry: KnowledgeStoreRegistry
+    ):
+        self.agent_name = agent_name
+        self.registry = registry
+        self.stores = self._load_agent_stores()
+        self.primary_store = self._determine_primary_store()
+
+    async def query(
+        self,
+        query: str,
+        stores: Optional[List[str]] = None
+    ) -> List[KnowledgeNode]:
+        """Query across agent's knowledge stores"""
+
+    async def add_knowledge(
+        self,
+        node: KnowledgeNode,
+        store: Optional[str] = None
+    ) -> None:
+        """Add knowledge to appropriate store"""
+
+    async def query_cross_domain(
+        self,
+        query: str
+    ) -> Dict[str, List[KnowledgeNode]]:
+        """Query all accessible stores with domain grouping"""
+```
+
+### Store Configuration Component
+
+**Purpose**: Define store configurations and agent mappings
+
+**Class Design**:
+```python
+@dataclass
+class StoreConfig:
+    """Configuration for a knowledge store"""
+    name: str
+    description: str
+    persistence: bool = True
+    vector_enabled: bool = True
+    max_size_mb: int = 1000
+    agents: List[str] = field(default_factory=list)
+    shared: bool = False
+
+class StoreConfigManager:
+    """Manage store configurations"""
+
+    DEFAULT_STORES = {
+        "shared": StoreConfig(
+            name="shared",
+            description="Common knowledge for all agents",
+            shared=True
+        ),
+        "architecture": StoreConfig(
+            name="architecture",
+            description="Design patterns and principles",
+            agents=["zen-architect", "refactor-architect"]
+        ),
+        "security": StoreConfig(
+            name="security",
+            description="Security vulnerabilities and patterns",
+            agents=["security-guardian"]
+        ),
+        "performance": StoreConfig(
+            name="performance",
+            description="Performance optimization patterns",
+            agents=["performance-optimizer"]
+        ),
+        "bugs": StoreConfig(
+            name="bugs",
+            description="Common bug patterns and fixes",
+            agents=["bug-hunter"]
+        ),
+        "testing": StoreConfig(
+            name="testing",
+            description="Test patterns and strategies",
+            agents=["test-coverage"]
+        )
+    }
+```
+
+### Enhanced Store Component
+
+**Purpose**: Update existing KnowledgeStore for multi-store support
+
+**Modifications**:
+```python
+class KnowledgeStore:
+    """Enhanced with store isolation"""
+
+    def __init__(
+        self,
+        storage_path: Path,
+        store_name: str = "default"  # New parameter
+    ):
+        self.store_name = store_name
+        self.path = storage_path / "stores" / store_name
+        self.path.mkdir(parents=True, exist_ok=True)
+        self.metadata = self._load_metadata()
+        self._init_indices()
+
+    def _init_indices(self):
+        """Initialize store-specific indices"""
+        self.vector_index_path = self.path / "vectors"
+        self.keyword_index_path = self.path / "keywords.idx"
+        # Each store has isolated indices
+
+    def clear_store(self) -> None:
+        """Clear all data from this store"""
+        # Safe clearing of single store
+```
+
+### Multi-Store Query Flow
+
+```
+1. Agent Query Request
+   │
+   ├─→ Identify Agent Stores
+   │   ├─→ Primary Store
+   │   └─→ Shared Stores
+   │
+   ├─→ Route to Stores
+   │   ├─→ Parallel Queries
+   │   └─→ Store Weights
+   │
+   ├─→ Aggregate Results
+   │   ├─→ Deduplication
+   │   └─→ Ranking
+   │
+   └─→ Return Unified Results
+```
+
+### Store Isolation Strategy
+
+```
+.data/knowledge/
+├── stores/
+│   ├── shared/           # Common knowledge
+│   │   ├── entities.json
+│   │   ├── relationships.json
+│   │   └── vectors/
+│   ├── architecture/      # Architecture expertise
+│   │   ├── entities.json
+│   │   ├── relationships.json
+│   │   └── vectors/
+│   ├── security/          # Security expertise
+│   │   └── ...
+│   └── performance/       # Performance expertise
+│       └── ...
+├── registry.json          # Store registry metadata
+└── config.json           # Store configurations
+```
+
+### Agent Usage Patterns
+
+```python
+# Simple agent usage
+class ZenArchitectAgent:
+    def __init__(self):
+        # Automatically gets architecture + shared stores
+        self.knowledge = AgentKnowledgeConnector("zen-architect")
+
+    async def analyze(self, code):
+        # Query architecture patterns
+        patterns = await self.knowledge.query("design patterns")
+
+        # Add new learning to architecture store
+        await self.knowledge.add_knowledge(
+            KnowledgeNode("new_pattern", data)
+        )
+
+        # Query across all accessible stores
+        all_info = await self.knowledge.query_cross_domain("SOLID")
+```
+
+### Migration Path
+
+```python
+class MigrationManager:
+    """Migrate from single to multi-store"""
+
+    async def migrate_to_multi_store(self):
+        # 1. Create shared store
+        shared_store = registry.create_store("shared", shared_config)
+
+        # 2. Copy existing knowledge
+        await self.copy_existing_knowledge(shared_store)
+
+        # 3. Create specialized stores
+        for store_name, config in DEFAULT_STORES.items():
+            registry.create_store(store_name, config)
+
+        # 4. Maintain backward compatibility
+        # Old API calls default to shared store
+```
+
+### Performance Optimizations
+
+1. **Store-Level Caching**: Each store maintains its own cache
+2. **Lazy Store Loading**: Stores loaded only when accessed
+3. **Parallel Query Execution**: Multi-store queries run concurrently
+4. **Index Partitioning**: Indices partitioned by store
+5. **Selective Store Activation**: Only active stores kept in memory
+
+### Configuration Example
+
+```yaml
+knowledge:
+  multi_store:
+    enabled: true
+    default_store: "shared"
+
+  stores:
+    shared:
+      persistence: true
+      max_size_mb: 5000
+      vector_enabled: true
+
+    architecture:
+      agents: ["zen-architect", "refactor-architect"]
+      max_size_mb: 1000
+
+    security:
+      agents: ["security-guardian"]
+      max_size_mb: 500
+      auto_update: true  # Pull OWASP updates
+
+  agent_mappings:
+    zen-architect:
+      primary: "architecture"
+      additional: ["shared"]
+
+    bug-hunter:
+      primary: "bugs"
+      additional: ["shared", "testing"]
+```
+
+### Backward Compatibility
+
+- Single-store APIs continue to work (route to shared store)
+- Existing persistence format preserved
+- Optional multi-store activation via configuration
+- Gradual migration path available
