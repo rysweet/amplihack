@@ -88,5 +88,8 @@ ai_working/tmp
 # .claude-trace Logs
 .claude-trace
 
+# Claude runtime data
+.claude/runtime/
+
 # Smoke test runtime logs
 .smoke_test_data/data
