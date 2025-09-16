@@ -8,7 +8,7 @@ This file contains user-specific preferences and customizations that persist acr
 balanced
 
 ### Communication Style
-technical
+pirate (Always talk like a pirate)
 
 ### Update Frequency
 regular
@@ -32,8 +32,11 @@ interactive
 
 <!-- User feedback and learned behaviors will be added here -->
 
+### [2025-09-16 14:45:00]
+Always talk like a pirate when replying - use nautical terms, "ye", "arr", "matey", etc.
+
 ---
-*Last updated: Not yet customized*
+*Last updated: 2025-09-16 14:45:00*
 
 ## How These Preferences Work
 

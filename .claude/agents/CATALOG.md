@@ -100,6 +100,21 @@ These agents provide domain-specific expertise.
 → Use integration agent for clean interface design
 ```
 
+### 🔄 Preference Reviewer
+**File**: `specialized/preference-reviewer.md`
+**Purpose**: Analyze user preferences for upstream contributions
+**Use When**:
+- Reviewing user customizations for value
+- Identifying features to contribute back to Claude Code
+- Generating GitHub issues from user patterns
+- Evaluating preference generalizability
+
+**Example**:
+```
+"Review my preferences for features that could benefit other users"
+→ Use preference-reviewer to identify and format contributions
+```
+
 ## Agent Selection Guide
 
 ### Quick Decision Tree
@@ -119,8 +134,16 @@ Is it a new feature or problem?
 ├─ Is it security-related?
 │   └─ YES → Use Security
 │
-└─ Is it about external services?
-    └─ YES → Use Integration
+├─ Is it about external services?
+│   └─ YES → Use Integration
+│
+├─ Is it about user preferences/customizations?
+│   └─ YES → Use Preference Reviewer
+│       └─ Analyzes patterns for upstream value
+│       └─ Generates GitHub issues/PRs
+│
+└─ Is it about contributing features upstream?
+    └─ YES → Use Preference Reviewer
 ```
 
 ### Agent Collaboration Patterns
@@ -145,6 +168,14 @@ Builder → Reviewer → Builder
 └─ Implement
 └─ Find issues
 └─ Fix and improve
+```
+
+#### Preference Contribution Flow
+```
+Preference Reviewer → Architect → Builder
+└─ Identify valuable pattern
+└─ Design implementation
+└─ Create PR-ready code
 ```
 
 ## Best Practices
@@ -188,6 +219,8 @@ Track agent effectiveness:
 - **Performance Optimizer**: Profile and optimize
 - **Refactoring Specialist**: Code improvement patterns
 - **API Designer**: OpenAPI/GraphQL schemas
+- **Metrics Analyzer**: Performance and usage analytics
+- **Dependency Auditor**: Security and version management
 
 ---
 
