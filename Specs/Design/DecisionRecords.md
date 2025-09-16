@@ -1,4 +1,4 @@
-# These are decision records regarding the deisgn of the project I want to follow for the whole project
+# These are decision records regarding the design of the project I want to follow for the whole project
 
 ## Python Project Management and Structure
 
