@@ -16,6 +16,7 @@ When starting a session, import these files for context:
 @.claude/context/PHILOSOPHY.md
 @.claude/context/PROJECT.md
 @.claude/context/PATTERNS.md
+@.claude/context/USER_PREFERENCES.md
 @.claude/agents/CATALOG.md
 @DISCOVERIES.md
 ```
@@ -28,6 +29,8 @@ When starting a session, import these files for context:
 - **Use specialized agents**: Check `.claude/agents/CATALOG.md` for available agents and use them proactively
 - **Ask for clarity**: If requirements are unclear, ask questions before proceeding
 - **Document learnings**: Update DISCOVERIES.md with new insights
+- **Session Logs**: All interactions MUST be logged in .claude/runtime/logs/<session_id> where <session_id> is a unique identifier for the session based on the timestamp. 
+- **Decision records**: All Agents MUST log their decisions and reasoning in .claude/runtime/logs/<session_id>/DECISIONS.md
 
 ### Agent Delegation Strategy
 
