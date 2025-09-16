@@ -37,4 +37,10 @@ dist/
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.db.claude
+.ai
+.mcp.json
+
+# Amplifier bridge
+.claude.backup
+.claude 
