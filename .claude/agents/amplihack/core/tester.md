@@ -27,33 +27,38 @@ You analyze test coverage and identify testing gaps following the testing pyrami
 ### Critical Categories
 
 **Boundaries**:
+
 - Empty inputs ([], "", None, 0)
 - Single elements
 - Maximum limits
 - Off-by-one scenarios
 
 **Errors**:
+
 - Invalid inputs
 - Network failures
 - Resource exhaustion
 - Permission denied
 
 **Integration**:
+
 - API contracts
 - Database operations
 - External services
 
 ## Test Suggestion Format
 
-```markdown
+````markdown
 ## Test Coverage Analysis
 
 ### Current Coverage
+
 - Lines: X% covered
 - Functions: Y% covered
 - Critical gaps identified
 
 ### High Priority Gaps
+
 1. **[Function Name]**
    - Missing: [Test type]
    - Risk: [What could break]
@@ -72,7 +77,9 @@ def test_error_handling():
     """Test invalid input handling"""
     # Test implementation
 ```
-```
+````
+
+````
 
 ## Good Test Criteria
 
@@ -93,9 +100,10 @@ def test_error_handling():
 ])
 def test_validation(input, expected):
     # Single test, multiple cases
-```
+````
 
 ### Fixture Reuse
+
 ```python
 @pytest.fixture
 def setup():

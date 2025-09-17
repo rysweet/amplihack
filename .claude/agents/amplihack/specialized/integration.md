@@ -18,6 +18,7 @@ You are an integration specialist who connects systems with minimal coupling and
 ## Integration Patterns
 
 ### API Client Pattern
+
 ```python
 class APIClient:
     def __init__(self, base_url: str, timeout: int = 30):
@@ -42,6 +43,7 @@ class APIClient:
 ```
 
 ### Message Queue Pattern
+
 ```python
 class SimpleQueue:
     def __init__(self, queue_file="queue.json"):
@@ -71,6 +73,7 @@ class SimpleQueue:
 ## Service Integration
 
 ### REST API Design
+
 ```python
 # Simple, predictable endpoints
 @app.post("/api/v1/process")
@@ -84,6 +87,7 @@ async def process(request: ProcessRequest) -> ProcessResponse:
 ```
 
 ### Event Streaming (SSE)
+
 ```python
 async def event_stream(resource_id: str):
     """Simple Server-Sent Events"""
@@ -97,6 +101,7 @@ async def event_stream(resource_id: str):
 ## Error Handling
 
 ### Retry with Backoff
+
 ```python
 async def call_with_retry(func, max_attempts=3):
     delay = 1
@@ -111,6 +116,7 @@ async def call_with_retry(func, max_attempts=3):
 ```
 
 ### Circuit Breaker Pattern
+
 ```python
 class CircuitBreaker:
     def __init__(self, failure_threshold=5, timeout=60):
@@ -143,6 +149,7 @@ class CircuitBreaker:
 ## Configuration
 
 ### Service Discovery
+
 ```python
 # Simple configuration-based discovery
 SERVICES = {
@@ -157,6 +164,7 @@ def get_service_url(service: str) -> str:
 ## Best Practices
 
 ### Do
+
 - Use standard protocols (HTTP, JSON)
 - Implement timeouts everywhere
 - Log integration points
@@ -165,6 +173,7 @@ def get_service_url(service: str) -> str:
 - Cache when appropriate
 
 ### Don't
+
 - Create custom protocols
 - Assume services are always available
 - Ignore error responses
@@ -175,6 +184,7 @@ def get_service_url(service: str) -> str:
 ## Testing
 
 ### Mock External Services
+
 ```python
 @pytest.fixture
 def mock_api():

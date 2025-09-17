@@ -9,7 +9,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-
 # Add project to path if needed
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
