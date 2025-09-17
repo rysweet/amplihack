@@ -1,38 +1,49 @@
 # Improve Command
 
+## Input Validation
+
+@.claude/context/AGENT_INPUT_VALIDATION.md
+
 ## Usage
+
 `/improve [target]`
 
 Target can be:
+
 - `self` - Improve the AI system itself
 - `agents` - Enhance agent definitions
 - `patterns` - Update pattern library
 - `<path>` - Improve specific code
 
 ## Purpose
+
 Continuous self-improvement and learning from experience.
 
 ## Self-Improvement Process
 
 ### 1. Analyze Current State
+
 - Review `.claude/runtime/metrics/`
 - Check `.claude/runtime/logs/`
 - Examine DISCOVERIES.md
 - Assess agent effectiveness
 
 ### 2. Identify Improvements
+
 - Performance bottlenecks
 - Repeated failures
 - Missing capabilities
 - Inefficient patterns
 
 ### 3. Generate Updates
+
 - New agent definitions
 - Updated patterns
 - Enhanced commands
 - Improved workflows
 
 ### 4. Document Learning
+
 - Update DISCOVERIES.md
 - Add to PATTERNS.md
 - Enhance agent descriptions
@@ -41,54 +52,65 @@ Continuous self-improvement and learning from experience.
 ## Improvement Areas
 
 ### Agent Enhancement
+
 ```markdown
 ## Agent Analysis
+
 - Usage frequency
 - Success rates
 - Common failures
 - Missing capabilities
 
 ## Proposed Changes
+
 - New agent: [purpose]
 - Enhanced: [agent] with [capability]
 - Deprecated: [agent] because [reason]
 ```
 
 ### Pattern Evolution
+
 ```markdown
 ## Pattern Review
+
 - Applied successfully: X times
 - Failed applications: Y times
 - Variations discovered
 
 ## Pattern Update
+
 - Original: [old pattern]
 - Improved: [new pattern]
 - Reason: [why better]
 ```
 
 ### Workflow Optimization
+
 ```markdown
 ## Current Workflow
+
 1. Step A (30s avg)
 2. Step B (45s avg)
 3. Step C (15s avg)
 
 ## Optimized Workflow
+
 1. Step B+C parallel (45s total)
 2. Step A (30s avg)
-Total: 75s → 45s improvement
+   Total: 75s → 45s improvement
 ```
 
 ## Metrics to Track
 
 ### Effectiveness
+
 - Task completion rate
 - Error frequency
 - Time to solution
 - Code quality scores
 
 ### Learning
+
 - Patterns discovered
 - Agents created/modified
 - Discoveries documented
@@ -105,6 +127,7 @@ Total: 75s → 45s improvement
 ## Example Improvements
 
 ### New Agent Creation
+
 ```yaml
 name: test-generator
 purpose: Automatically generate comprehensive tests
@@ -113,21 +136,26 @@ capability: Analyze code and create test cases
 ```
 
 ### Pattern Addition
+
 ```markdown
 ## Pattern: Parallel Agent Execution
+
 When: Multiple independent analyses needed
 How: Use Task tool with multiple agents
 Benefit: 3x faster analysis
 ```
 
 ### Workflow Enhancement
+
 ```markdown
 ## Old: Sequential Review
+
 1. Architect analyzes
 2. Builder implements
 3. Reviewer checks
 
 ## New: Parallel Review
+
 1. Architect + Reviewer analyze together
 2. Builder implements with both inputs
 3. Final quick review
