@@ -11,10 +11,10 @@ Tests the ci_status module functionality including:
 
 import json
 import subprocess
-import unittest
-from unittest.mock import patch, MagicMock
 import sys
+import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -27,12 +27,9 @@ class TestCIStatus(unittest.TestCase):
 
     def test_get_current_branch(self):
         """Test getting current git branch."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # Successful case
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="main\n"
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="main\n")
             branch = ci_status.get_current_branch()
             self.assertEqual(branch, "main")
 
@@ -43,19 +40,19 @@ class TestCIStatus(unittest.TestCase):
 
     def test_get_pr_for_branch(self):
         """Test getting PR number for a branch."""
-        with patch('ci_status.run_gh_command') as mock_gh:
+        with patch("ci_status.run_gh_command") as mock_gh:
             # PR exists
-            mock_gh.return_value = (0, '[{"number": 123}]', '')
+            mock_gh.return_value = (0, '[{"number": 123}]', "")
             pr = ci_status.get_pr_for_branch("feature/test")
             self.assertEqual(pr, 123)
 
             # No PR
-            mock_gh.return_value = (0, '[]', '')
+            mock_gh.return_value = (0, "[]", "")
             pr = ci_status.get_pr_for_branch("feature/test")
             self.assertIsNone(pr)
 
             # Command fails
-            mock_gh.return_value = (1, '', 'error')
+            mock_gh.return_value = (1, "", "error")
             pr = ci_status.get_pr_for_branch("feature/test")
             self.assertIsNone(pr)
 
@@ -68,7 +65,7 @@ class TestCIStatus(unittest.TestCase):
                 "bucket": "pass",
                 "startedAt": "2025-01-17T10:00:00Z",
                 "completedAt": "2025-01-17T10:05:00Z",
-                "link": "https://example.com"
+                "link": "https://example.com",
             },
             {
                 "name": "Linting",
@@ -76,12 +73,12 @@ class TestCIStatus(unittest.TestCase):
                 "bucket": "pass",
                 "startedAt": "2025-01-17T10:00:00Z",
                 "completedAt": "2025-01-17T10:02:00Z",
-                "link": "https://example.com"
-            }
+                "link": "https://example.com",
+            },
         ]
 
-        with patch('ci_status.run_gh_command') as mock_gh:
-            mock_gh.return_value = (0, json.dumps(mock_checks), '')
+        with patch("ci_status.run_gh_command") as mock_gh:
+            mock_gh.return_value = (0, json.dumps(mock_checks), "")
             result = ci_status.check_pr_checks(123)
 
             self.assertTrue(result["success"])
@@ -101,19 +98,19 @@ class TestCIStatus(unittest.TestCase):
                 "state": "COMPLETED",
                 "bucket": "fail",
                 "startedAt": "2025-01-17T10:00:00Z",
-                "completedAt": "2025-01-17T10:05:00Z"
+                "completedAt": "2025-01-17T10:05:00Z",
             },
             {
                 "name": "Linting",
                 "state": "COMPLETED",
                 "bucket": "pass",
                 "startedAt": "2025-01-17T10:00:00Z",
-                "completedAt": "2025-01-17T10:02:00Z"
-            }
+                "completedAt": "2025-01-17T10:02:00Z",
+            },
         ]
 
-        with patch('ci_status.run_gh_command') as mock_gh:
-            mock_gh.return_value = (0, json.dumps(mock_checks), '')
+        with patch("ci_status.run_gh_command") as mock_gh:
+            mock_gh.return_value = (0, json.dumps(mock_checks), "")
             result = ci_status.check_pr_checks(123)
 
             self.assertTrue(result["success"])
@@ -128,17 +125,13 @@ class TestCIStatus(unittest.TestCase):
                 "name": "Test Suite",
                 "state": "IN_PROGRESS",
                 "bucket": "pending",
-                "startedAt": "2025-01-17T10:00:00Z"
+                "startedAt": "2025-01-17T10:00:00Z",
             },
-            {
-                "name": "Linting",
-                "state": "QUEUED",
-                "bucket": "pending"
-            }
+            {"name": "Linting", "state": "QUEUED", "bucket": "pending"},
         ]
 
-        with patch('ci_status.run_gh_command') as mock_gh:
-            mock_gh.return_value = (0, json.dumps(mock_checks), '')
+        with patch("ci_status.run_gh_command") as mock_gh:
+            mock_gh.return_value = (0, json.dumps(mock_checks), "")
             result = ci_status.check_pr_checks(123)
 
             self.assertTrue(result["success"])
@@ -154,7 +147,7 @@ class TestCIStatus(unittest.TestCase):
                 "name": "CI",
                 "headBranch": "main",
                 "createdAt": "2025-01-17T10:00:00Z",
-                "url": "https://example.com"
+                "url": "https://example.com",
             },
             {
                 "status": "completed",
@@ -162,12 +155,12 @@ class TestCIStatus(unittest.TestCase):
                 "name": "Deploy",
                 "headBranch": "main",
                 "createdAt": "2025-01-17T09:00:00Z",
-                "url": "https://example.com"
-            }
+                "url": "https://example.com",
+            },
         ]
 
-        with patch('ci_status.run_gh_command') as mock_gh:
-            mock_gh.return_value = (0, json.dumps(mock_runs), '')
+        with patch("ci_status.run_gh_command") as mock_gh:
+            mock_gh.return_value = (0, json.dumps(mock_runs), "")
             result = ci_status.check_workflow_runs("main")
 
             self.assertTrue(result["success"])
@@ -182,18 +175,18 @@ class TestCIStatus(unittest.TestCase):
                 "status": "in_progress",
                 "conclusion": None,
                 "name": "CI",
-                "headBranch": "feature/test"
+                "headBranch": "feature/test",
             },
             {
                 "status": "completed",
                 "conclusion": "success",
                 "name": "Lint",
-                "headBranch": "feature/test"
-            }
+                "headBranch": "feature/test",
+            },
         ]
 
-        with patch('ci_status.run_gh_command') as mock_gh:
-            mock_gh.return_value = (0, json.dumps(mock_runs), '')
+        with patch("ci_status.run_gh_command") as mock_gh:
+            mock_gh.return_value = (0, json.dumps(mock_runs), "")
             result = ci_status.check_workflow_runs("feature/test")
 
             self.assertTrue(result["success"])
@@ -202,12 +195,12 @@ class TestCIStatus(unittest.TestCase):
 
     def test_check_ci_status_with_pr_number(self):
         """Test main function with PR number."""
-        with patch('ci_status.check_pr_checks') as mock_check:
+        with patch("ci_status.check_pr_checks") as mock_check:
             mock_check.return_value = {
                 "success": True,
                 "status": "PASSING",
                 "checks": [],
-                "summary": {"total": 1, "passed": 1, "failed": 0, "pending": 0}
+                "summary": {"total": 1, "passed": 1, "failed": 0, "pending": 0},
             }
 
             result = ci_status.check_ci_status("123")
@@ -217,14 +210,14 @@ class TestCIStatus(unittest.TestCase):
 
     def test_check_ci_status_with_branch(self):
         """Test main function with branch name."""
-        with patch('ci_status.get_pr_for_branch') as mock_get_pr:
-            with patch('ci_status.check_workflow_runs') as mock_runs:
+        with patch("ci_status.get_pr_for_branch") as mock_get_pr:
+            with patch("ci_status.check_workflow_runs") as mock_runs:
                 mock_get_pr.return_value = None
                 mock_runs.return_value = {
                     "success": True,
                     "status": "PASSING",
                     "runs": [],
-                    "summary": {"total": 1}
+                    "summary": {"total": 1},
                 }
 
                 result = ci_status.check_ci_status("feature/test")
@@ -234,16 +227,16 @@ class TestCIStatus(unittest.TestCase):
 
     def test_check_ci_status_current_branch(self):
         """Test main function with current branch."""
-        with patch('ci_status.get_current_branch') as mock_branch:
-            with patch('ci_status.get_pr_for_branch') as mock_get_pr:
-                with patch('ci_status.check_pr_checks') as mock_check:
+        with patch("ci_status.get_current_branch") as mock_branch:
+            with patch("ci_status.get_pr_for_branch") as mock_get_pr:
+                with patch("ci_status.check_pr_checks") as mock_check:
                     mock_branch.return_value = "main"
                     mock_get_pr.return_value = 456
                     mock_check.return_value = {
                         "success": True,
                         "status": "PASSING",
                         "checks": [],
-                        "summary": {"total": 1, "passed": 1, "failed": 0, "pending": 0}
+                        "summary": {"total": 1, "passed": 1, "failed": 0, "pending": 0},
                     }
 
                     result = ci_status.check_ci_status()
@@ -257,12 +250,7 @@ class TestCIStatus(unittest.TestCase):
             "status": "PASSING",
             "reference_type": "pr",
             "pr_number": 123,
-            "summary": {
-                "total": 3,
-                "passed": 3,
-                "failed": 0,
-                "pending": 0
-            }
+            "summary": {"total": 3, "passed": 3, "failed": 0, "pending": 0},
         }
 
         summary = ci_status.format_summary(result)
@@ -278,17 +266,11 @@ class TestCIStatus(unittest.TestCase):
             "status": "FAILING",
             "reference_type": "branch",
             "branch": "main",
-            "summary": {
-                "total": 3,
-                "successful": 1,
-                "failed": 2,
-                "in_progress": 0,
-                "completed": 3
-            },
+            "summary": {"total": 3, "successful": 1, "failed": 2, "in_progress": 0, "completed": 3},
             "runs": [
                 {"conclusion": "failure", "name": "Test"},
-                {"conclusion": "failure", "name": "Build"}
-            ]
+                {"conclusion": "failure", "name": "Build"},
+            ],
         }
 
         summary = ci_status.format_summary(result)
@@ -299,10 +281,7 @@ class TestCIStatus(unittest.TestCase):
 
     def test_format_summary_error(self):
         """Test formatting summary for error."""
-        result = {
-            "success": False,
-            "error": "gh CLI not found"
-        }
+        result = {"success": False, "error": "gh CLI not found"}
 
         summary = ci_status.format_summary(result)
         self.assertIn("Error:", summary)
@@ -310,7 +289,7 @@ class TestCIStatus(unittest.TestCase):
 
     def test_run_gh_command_timeout(self):
         """Test command timeout handling."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(cmd="gh", timeout=30)
             code, stdout, stderr = ci_status.run_gh_command(["pr", "list"])
 
@@ -319,7 +298,7 @@ class TestCIStatus(unittest.TestCase):
 
     def test_run_gh_command_not_found(self):
         """Test gh CLI not found handling."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError()
             code, stdout, stderr = ci_status.run_gh_command(["pr", "list"])
 
@@ -330,8 +309,8 @@ class TestCIStatus(unittest.TestCase):
 class TestCLIInterface(unittest.TestCase):
     """Test CLI interface functionality."""
 
-    @patch('ci_status.check_ci_status')
-    @patch('sys.argv', ['ci_status.py'])
+    @patch("ci_status.check_ci_status")
+    @patch("sys.argv", ["ci_status.py"])
     def test_cli_no_args(self, mock_check):
         """Test CLI with no arguments."""
         mock_check.return_value = {
@@ -339,18 +318,18 @@ class TestCLIInterface(unittest.TestCase):
             "status": "PASSING",
             "reference_type": "branch",
             "branch": "main",
-            "summary": {"total": 1}
+            "summary": {"total": 1},
         }
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print"):
             with self.assertRaises(SystemExit) as cm:
                 ci_status.main()
 
             self.assertEqual(cm.exception.code, 0)
             mock_check.assert_called_once_with(None)
 
-    @patch('ci_status.check_ci_status')
-    @patch('sys.argv', ['ci_status.py', '123'])
+    @patch("ci_status.check_ci_status")
+    @patch("sys.argv", ["ci_status.py", "123"])
     def test_cli_with_pr_number(self, mock_check):
         """Test CLI with PR number."""
         mock_check.return_value = {
@@ -358,18 +337,18 @@ class TestCLIInterface(unittest.TestCase):
             "status": "FAILING",
             "reference_type": "pr",
             "pr_number": 123,
-            "summary": {"total": 1}
+            "summary": {"total": 1},
         }
 
-        with patch('builtins.print'):
+        with patch("builtins.print"):
             with self.assertRaises(SystemExit) as cm:
                 ci_status.main()
 
             self.assertEqual(cm.exception.code, 1)  # Failing status
             mock_check.assert_called_once_with("123")
 
-    @patch('ci_status.check_ci_status')
-    @patch('sys.argv', ['ci_status.py', 'main', '--json'])
+    @patch("ci_status.check_ci_status")
+    @patch("sys.argv", ["ci_status.py", "main", "--json"])
     def test_cli_json_output(self, mock_check):
         """Test CLI with JSON output."""
         mock_check.return_value = {
@@ -377,10 +356,10 @@ class TestCLIInterface(unittest.TestCase):
             "status": "PASSING",
             "reference_type": "branch",
             "branch": "main",
-            "summary": {"total": 1}
+            "summary": {"total": 1},
         }
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             with self.assertRaises(SystemExit) as cm:
                 ci_status.main()
 
