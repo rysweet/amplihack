@@ -7,14 +7,13 @@ Returns structured data about CI checks for branches, PRs, or commits.
 """
 
 import json
+import re
 import subprocess
 import sys
-from typing import Dict, List, Optional, Union
-from datetime import datetime
-import re
+from typing import Dict, List, Optional
 
 
-def run_gh_command(args: List[str], timeout: int = 30) -> tuple[int, str, str]:
+def run_gh_command(args: List[str], timeout: int = 30) -> "tuple[int, str, str]":
     """
     Run a gh CLI command with timeout.
 
@@ -26,12 +25,7 @@ def run_gh_command(args: List[str], timeout: int = 30) -> tuple[int, str, str]:
         Tuple of (return_code, stdout, stderr)
     """
     try:
-        result = subprocess.run(
-            ["gh"] + args,
-            capture_output=True,
-            text=True,
-            timeout=timeout
-        )
+        result = subprocess.run(["gh"] + args, capture_output=True, text=True, timeout=timeout)
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return 1, "", "Command timed out after 30 seconds"
@@ -45,10 +39,7 @@ def get_current_branch() -> Optional[str]:
     """Get the current git branch name."""
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, timeout=5
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -59,16 +50,13 @@ def get_current_branch() -> Optional[str]:
 
 def get_pr_for_branch(branch: str) -> Optional[int]:
     """Get PR number for the given branch if it exists."""
-    code, stdout, stderr = run_gh_command([
-        "pr", "list",
-        "--head", branch,
-        "--json", "number",
-        "--limit", "1"
-    ])
+    code, stdout, stderr = run_gh_command(
+        ["pr", "list", "--head", branch, "--json", "number", "--limit", "1"]
+    )
 
     if code == 0 and stdout:
         try:
-            data = json.loads(stdout)
+            data = json.loads(str(stdout))
             if data and len(data) > 0:
                 return data[0].get("number")
         except json.JSONDecodeError:
@@ -78,24 +66,23 @@ def get_pr_for_branch(branch: str) -> Optional[int]:
 
 def check_pr_checks(pr_number: int) -> Dict:
     """Check CI status for a specific PR."""
-    code, stdout, stderr = run_gh_command([
-        "pr", "checks", str(pr_number),
-        "--json", "name,state,bucket,startedAt,completedAt,link,description"
-    ])
+    code, stdout, stderr = run_gh_command(
+        [
+            "pr",
+            "checks",
+            str(pr_number),
+            "--json",
+            "name,state,bucket,startedAt,completedAt,link,description",
+        ]
+    )
 
     if code != 0:
-        return {
-            "success": False,
-            "error": f"Failed to get PR checks: {stderr}"
-        }
+        return {"success": False, "error": f"Failed to get PR checks: {stderr}"}
 
     try:
-        checks = json.loads(stdout) if stdout else []
+        checks = json.loads(str(stdout)) if stdout else []
     except json.JSONDecodeError:
-        return {
-            "success": False,
-            "error": "Failed to parse PR checks output"
-        }
+        return {"success": False, "error": "Failed to parse PR checks output"}
 
     # Analyze check statuses using bucket field
     # bucket field categorizes state into: pass, fail, pending, skipping, or cancel
@@ -130,14 +117,21 @@ def check_pr_checks(pr_number: int) -> Dict:
             "failed": failed,
             "pending": pending,
             "skipped": skipped,
-            "cancelled": cancelled
-        }
+            "cancelled": cancelled,
+        },
     }
 
 
 def check_workflow_runs(branch: Optional[str] = None, limit: int = 10) -> Dict:
     """Check recent workflow runs for a branch or repo."""
-    args = ["run", "list", "--json", "status,conclusion,name,headBranch,createdAt,url", "--limit", str(limit)]
+    args = [
+        "run",
+        "list",
+        "--json",
+        "status,conclusion,name,headBranch,createdAt,url",
+        "--limit",
+        str(limit),
+    ]
 
     if branch:
         args.extend(["--branch", branch])
@@ -145,18 +139,12 @@ def check_workflow_runs(branch: Optional[str] = None, limit: int = 10) -> Dict:
     code, stdout, stderr = run_gh_command(args)
 
     if code != 0:
-        return {
-            "success": False,
-            "error": f"Failed to get workflow runs: {stderr}"
-        }
+        return {"success": False, "error": f"Failed to get workflow runs: {stderr}"}
 
     try:
-        runs = json.loads(stdout) if stdout else []
+        runs = json.loads(str(stdout)) if stdout else []
     except json.JSONDecodeError:
-        return {
-            "success": False,
-            "error": "Failed to parse workflow runs output"
-        }
+        return {"success": False, "error": "Failed to parse workflow runs output"}
 
     # Analyze run statuses
     total = len(runs)
@@ -186,8 +174,8 @@ def check_workflow_runs(branch: Optional[str] = None, limit: int = 10) -> Dict:
             "completed": completed,
             "successful": successful,
             "failed": failed,
-            "in_progress": in_progress
-        }
+            "in_progress": in_progress,
+        },
     }
 
 
@@ -227,10 +215,7 @@ def check_ci_status(reference: Optional[str] = None) -> Dict:
         # Use current branch
         branch = get_current_branch()
         if not branch:
-            return {
-                "success": False,
-                "error": "Could not determine current git branch"
-            }
+            return {"success": False, "error": "Could not determine current git branch"}
 
     # If we have a branch, check if there's an associated PR
     if branch and not pr_number:
@@ -277,9 +262,9 @@ def format_summary(result: Dict) -> str:
             lines.append(f"  Passed: {summary.get('passed', 0)}")
             lines.append(f"  Failed: {summary.get('failed', 0)}")
             lines.append(f"  Pending: {summary.get('pending', 0)}")
-            if summary.get('skipped', 0) > 0:
+            if summary.get("skipped", 0) > 0:
                 lines.append(f"  Skipped: {summary.get('skipped', 0)}")
-            if summary.get('cancelled', 0) > 0:
+            if summary.get("cancelled", 0) > 0:
                 lines.append(f"  Cancelled: {summary.get('cancelled', 0)}")
         else:
             lines.append(f"  Successful: {summary.get('successful', 0)}")
@@ -309,19 +294,13 @@ def main():
     """CLI interface for the CI status checker."""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Check CI status for GitHub branches and PRs"
-    )
+    parser = argparse.ArgumentParser(description="Check CI status for GitHub branches and PRs")
     parser.add_argument(
         "reference",
         nargs="?",
-        help="PR number (e.g., 123), branch name, or empty for current branch"
+        help="PR number (e.g., 123), branch name, or empty for current branch",
     )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output raw JSON instead of summary"
-    )
+    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of summary")
 
     args = parser.parse_args()
 
