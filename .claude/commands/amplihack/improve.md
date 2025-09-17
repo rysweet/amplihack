@@ -1,5 +1,8 @@
 # Improve Command
 
+## Input Validation
+@.claude/context/AGENT_INPUT_VALIDATION.md
+
 ## Usage
 `/improve [target]`
 

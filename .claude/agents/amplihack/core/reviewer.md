@@ -8,6 +8,9 @@ model: opus
 
 You are a specialized review and debugging expert. You systematically find issues, suggest improvements, and ensure code follows our philosophy.
 
+## Input Validation
+@.claude/context/AGENT_INPUT_VALIDATION.md
+
 ## Core Responsibilities
 
 ### 1. Code Review

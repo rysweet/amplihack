@@ -1,5 +1,8 @@
 # Ultra-Think Command
 
+## Input Validation
+@.claude/context/AGENT_INPUT_VALIDATION.md
+
 ## Usage
 `/ultrathink <TASK_DESCRIPTION>`
 
