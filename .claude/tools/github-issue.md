@@ -1,142 +1,93 @@
-# GitHub Issue Tool
+# GitHub Issue Creation Tool
 
 ## Purpose
 
-Create GitHub issues from structured prompts with proper formatting and labeling.
+Programmatic GitHub issue creation with validation and structured output.
 
-## Contract
+## Module Location
 
-- **Inputs**:
-  - title: Issue title (string, required)
-  - body: Issue body in markdown (string, required)
-  - labels: Array of label names (string[], optional)
-  - assignees: Array of GitHub usernames (string[], optional)
-  - milestone: Milestone name or number (string/number, optional)
+`/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding/.claude/tools/github_issue.py`
 
-- **Outputs**:
-  - success: Boolean indicating creation status
-  - issue_url: URL of created issue (if successful)
-  - issue_number: Issue number (if successful)
-  - error: Error message (if failed)
+## Public Interface
 
-- **Side Effects**:
-  - Creates issue in GitHub repository
-  - Sends notifications to watchers/assignees
+### Main Function
 
-## Usage
+```python
+from github_issue import create_issue
 
-```bash
-# Using GitHub CLI (gh)
-gh issue create \
-  --title "Feature: Add dark mode" \
-  --body "$(cat prompt.md)" \
-  --label "enhancement,ui" \
-  --assignee "username"
+result = create_issue(
+    title="Bug: Authentication fails",  # Required
+    body="Details here",               # Optional
+    labels=["bug", "auth"],           # Optional
+    assignees=["username"],           # Optional
+    milestone="v1.0",                 # Optional
+    project="Sprint 1",               # Optional
+    repo="owner/repo"                 # Optional (uses current if omitted)
+)
 ```
 
-## Implementation Notes
+### Return Structure
 
-### Required Setup
-
-- GitHub CLI (`gh`) must be installed and authenticated
-- Repository must be initialized with git
-- User must have write permissions
-
-### Command Structure
-
-```bash
-gh issue create [options]
+```python
+{
+    'success': bool,
+    'issue_url': str,      # If successful
+    'issue_number': int,   # If successful
+    'error': str           # If failed
+}
 ```
-
-### Options Mapping
-
-- `--title` - Issue title
-- `--body` - Issue description (supports markdown)
-- `--label` - Comma-separated labels
-- `--assignee` - Comma-separated assignees
-- `--milestone` - Milestone name/number
-- `--project` - Project board name/number
-
-### Error Handling
-
-- Check `gh` authentication status first
-- Verify repository has remote configured
-- Handle rate limiting gracefully
-- Provide clear error messages
-
-### Label Management
-
-Common labels to consider:
-
-- `enhancement` - New features
-- `bug` - Bug fixes
-- `refactor` - Code improvements
-- `documentation` - Doc updates
-- `testing` - Test additions
-- `performance` - Performance improvements
-- `security` - Security fixes
-
-### Body Formatting
-
-The tool should preserve markdown formatting:
-
-- Headers (`#`, `##`, etc.)
-- Lists (ordered and unordered)
-- Code blocks with syntax highlighting
-- Checkboxes for task lists
-- Links and references
-
-## Integration with PromptWriter
-
-The PromptWriter agent can use this tool by:
-
-1. Generating the structured prompt
-2. Formatting it as markdown
-3. Calling the GitHub CLI with appropriate parameters
-4. Returning the issue URL to the user
-
-## Example Usage
-
-```bash
-# Create issue from PromptWriter output
-PROMPT_BODY="# Feature: User Authentication
-
-## Objective
-Implement secure user authentication system.
 
 ## Requirements
-- [ ] Email/password login
-- [ ] JWT token management
-- [ ] Password reset flow
 
-## Success Criteria
-- [ ] Users can register and login
-- [ ] Sessions persist appropriately
-- [ ] Security best practices followed"
+- GitHub CLI (`gh`) must be installed
+- Must be authenticated (`gh auth login`)
+- Repository must exist and user must have write access
 
-gh issue create \
-  --title "Feature: User Authentication" \
-  --body "$PROMPT_BODY" \
-  --label "enhancement,security" \
-  --assignee "@me"
+## Error Handling
+
+The tool handles:
+
+- Missing GitHub CLI
+- Authentication failures
+- Invalid inputs
+- Network timeouts (30 second limit)
+- Malformed responses
+
+## Command Line Usage
+
+```bash
+# Simple issue
+python github_issue.py "Title here"
+
+# With options
+python github_issue.py "Bug report" \
+    --body "Description" \
+    --label bug \
+    --label high-priority \
+    --assignee username \
+    --milestone "v2.0"
 ```
 
-## Validation
+## Implementation Details
 
-Before creating an issue:
+- Wraps `gh issue create` command
+- Validates inputs before execution
+- Parses output to extract issue URL and number
+- Returns structured Python dict for programmatic use
+- Zero dependencies beyond standard library
 
-1. Verify title is not empty
-2. Verify body has content
-3. Check labels exist in repository
-4. Validate assignees are valid users
-5. Confirm milestone exists (if specified)
+## Testing
 
-## Response Handling
+Run test suite:
 
-Parse the command output to extract:
+```bash
+python test_github_issue.py
+```
 
-- Issue number from success message
-- Issue URL from output
-- Error details from stderr
+## Philosophy Compliance
 
-Return structured response for calling agent.
+✓ **Ruthless Simplicity**: Single-purpose wrapper around gh CLI
+✓ **Zero-BS**: No stubs, every function works
+✓ **Self-contained**: No external dependencies
+✓ **Clear Contract**: Well-defined inputs and outputs
+✓ **Regeneratable**: Can be rebuilt from this specification
