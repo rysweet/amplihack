@@ -1,9 +1,9 @@
-import os
-import sys
 import json
+import os
 import shutil
-import tempfile
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 HOME = str(Path.home())
@@ -12,10 +12,13 @@ CLI_NAME = "amplihack_cli.py"
 CLI_SRC = os.path.abspath(__file__)
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 
+
 def ensure_dirs():
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
-MANIFEST_JSON = os.path.join(CLAUDE_DIR, 'install', 'amplihack-manifest.json')
+
+MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
+
 
 def copytree_manifest(src, dst, rel_top=".claude"):
     search_dirs = ["agents", "commands", "tools"]
@@ -32,18 +35,21 @@ def copytree_manifest(src, dst, rel_top=".claude"):
         copied.append(dname)
     return copied
 
+
 def write_manifest(files, dirs):
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
-    with open(MANIFEST_JSON, 'w', encoding='utf-8') as f:
+    with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
         json.dump({"files": files, "dirs": dirs}, f, indent=2)
+
 
 def read_manifest():
     try:
-        with open(MANIFEST_JSON, encoding='utf-8') as f:
+        with open(MANIFEST_JSON, encoding="utf-8") as f:
             mf = json.load(f)
             return mf.get("files", []), mf.get("dirs", [])
     except Exception:
         return [], []
+
 
 def get_all_files_and_dirs(root_dirs):
     all_files = []
@@ -59,6 +65,7 @@ def get_all_files_and_dirs(root_dirs):
                 all_files.append(rel_path)
     return sorted(all_files), sorted(all_dirs)
 
+
 def all_rel_dirs(base):
     # Returns all directories under base as relative paths (including base='.')
     result = set()
@@ -66,6 +73,7 @@ def all_rel_dirs(base):
         rel = os.path.relpath(r, CLAUDE_DIR)
         result.add(rel)
     return result
+
 
 def install():
     ensure_dirs()
@@ -77,7 +85,9 @@ def install():
     # Only keep created dirs
     new_dirs = sorted(set(post_dirs) - pre_dirs)
     write_manifest(files, new_dirs)
-    print(f"Installed .claude/agents, .claude/commands, .claude/tools to {CLAUDE_DIR}. Manifest with files and newly created dirs written to {MANIFEST_JSON}.")
+    print(
+        f"Installed .claude/agents, .claude/commands, .claude/tools to {CLAUDE_DIR}. Manifest with files and newly created dirs written to {MANIFEST_JSON}."
+    )
 
 
 def uninstall():
@@ -109,10 +119,11 @@ def filecmp(f1, f2):
     try:
         if os.path.getsize(f1) != os.path.getsize(f2):
             return False
-        with open(f1, 'rb') as file1, open(f2, 'rb') as file2:
+        with open(f1, "rb") as file1, open(f2, "rb") as file2:
             return file1.read() == file2.read()
     except Exception:
         return False
+
 
 def main():
     if len(sys.argv) < 2:
@@ -126,7 +137,9 @@ def main():
             subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
             # When debugging locally, if the repo does not contain the latest version of this file, uncomment the line below
             # subprocess.check_call(["cp", "amplihack_cli.py", tmp])
-            subprocess.check_call([sys.executable, os.path.join(tmp, "amplihack_cli.py"), "_local_install"])
+            subprocess.check_call(
+                [sys.executable, os.path.join(tmp, "amplihack_cli.py"), "_local_install"]
+            )
     elif cmd == "uninstall":
         uninstall()
     elif cmd == "_local_install":
