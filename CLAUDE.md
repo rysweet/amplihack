@@ -77,6 +77,8 @@ For repeated specialized tasks:
 
 Remember: Your value is in orchestration and coordination, not in doing everything yourself.
 
+When faced with a new novel task, it is also OK to create a new specialized agent to handle that task as an experiment. Use agents to manage context for granularity of tasks (eg when going off to do something specific where context from the whole conversation is not necessary, such as managing a git worktree or cleaning some data).
+
 ### Parallel Execution
 
 **CRITICAL**: Always consider what can be done in parallel. Use a single call to the Task tool with multiple requests.
