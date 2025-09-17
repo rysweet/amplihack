@@ -294,7 +294,7 @@ class TestCIStatus(unittest.TestCase):
             code, stdout, stderr = ci_status.run_gh_command(["pr", "list"])
 
             self.assertEqual(code, 1)
-            self.assertIn("timed out", stderr)
+            self.assertIn("timed out", str(stderr))
 
     def test_run_gh_command_not_found(self):
         """Test gh CLI not found handling."""
@@ -303,7 +303,7 @@ class TestCIStatus(unittest.TestCase):
             code, stdout, stderr = ci_status.run_gh_command(["pr", "list"])
 
             self.assertEqual(code, 1)
-            self.assertIn("gh CLI not found", stderr)
+            self.assertIn("gh CLI not found", str(stderr))
 
 
 class TestCLIInterface(unittest.TestCase):
