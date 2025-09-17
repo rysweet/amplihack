@@ -1,4 +1,5 @@
 #!/bin/bash
+# Enhanced install script for dual-mode hook path management
 # if the AMPLIHACK_INSTALL_LOCATION variable is not set, default to https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
 AMPLIHACK_INSTALL_LOCATION=${AMPLIHACK_INSTALL_LOCATION:-https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding}
 
@@ -11,6 +12,11 @@ fi
 
 echo "Cloning amplihack from $AMPLIHACK_INSTALL_LOCATION..."
 git clone $AMPLIHACK_INSTALL_LOCATION ./tmpamplihack
+
+if [ $? -ne 0 ]; then
+  echo "Error: Failed to clone repository"
+  exit 1
+fi
 
 # Backup existing settings.json if it exists
 if [ -f "$HOME/.claude/settings.json" ]; then
