@@ -181,18 +181,22 @@ Preference Reviewer → Architect → Builder
 ## Best Practices
 
 ### Do's
+- ✅ **ALWAYS record decisions** when calling agents
 - ✅ Use agents proactively for their expertise
 - ✅ Provide full context to each agent
 - ✅ Chain agents for complex tasks
 - ✅ Let specialized agents handle their domains
-- ✅ Document agent decisions in DISCOVERIES.md
+- ✅ Document agent decisions in session logs
+- ✅ Capture learnings in DISCOVERIES.md
 
 ### Don'ts
+- ❌ Call agents without recording the decision
 - ❌ Try to do everything yourself
 - ❌ Skip the architect for complex features
 - ❌ Ignore reviewer feedback
 - ❌ Use general approach for specialized needs
 - ❌ Forget to capture learnings
+- ❌ Skip decision documentation
 
 ## Creating New Agents
 

@@ -8,7 +8,15 @@ Deep analysis mode for complex tasks. Orchestrates multiple agents to break down
 
 ## Process
 
+**FIRST**: Create session and record initial decision
+```
+Session: YYYY-MM-DD-HHMMSS
+Location: .claude/runtime/logs/{session}/DECISIONS.md
+Record: Task received, approach selection
+```
+
 ### Phase 1: Analysis
+**RECORD DECISION**: Why architect, what to analyze
 Use the architect agent to:
 - Decompose the problem
 - Identify components
@@ -16,12 +24,14 @@ Use the architect agent to:
 - Create specifications
 
 ### Phase 2: Implementation
+**RECORD DECISION**: Implementation approach, module choices
 Use the builder agent to:
 - Implement modules from specifications
 - Create self-contained components
 - Write tests and documentation
 
 ### Phase 3: Review
+**RECORD DECISION**: Review findings, improvements needed
 Use the reviewer agent to:
 - Check philosophy compliance
 - Verify correctness
