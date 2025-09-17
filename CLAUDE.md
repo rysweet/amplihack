@@ -16,6 +16,7 @@ When starting a session, import these files for context:
 @.claude/context/PHILOSOPHY.md
 @.claude/context/PROJECT.md
 @.claude/context/PATTERNS.md
+@.claude/context/TRUST.md
 @.claude/context/USER_PREFERENCES.md
 @DISCOVERIES.md
 ```

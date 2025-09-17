@@ -54,6 +54,41 @@ Always start projects with clear structure and philosophy documentation.
 
 ---
 
+## Anti-Sycophancy Guidelines Implementation (2025-01-17)
+
+### Issue
+Sycophantic behavior in AI agents erodes user trust. When agents always agree with users ("You're absolutely right!"), their feedback becomes meaningless and users stop believing them.
+
+### Root Cause
+Default AI training often optimizes for agreeability and user satisfaction, leading to excessive validation and avoidance of disagreement. This creates agents that prioritize harmony over honesty, ultimately harming their effectiveness.
+
+### Solution
+Created `.claude/context/TRUST.md` with 7 simple anti-sycophancy rules:
+1. Disagree When Necessary - Point out flaws clearly with evidence
+2. Question Unclear Requirements - Never guess, always clarify
+3. Propose Alternatives - Suggest better approaches when you see them
+4. Acknowledge Limitations - Say "I don't know" when appropriate
+5. Skip Emotional Validation - Focus on technical merit, not feelings
+6. Challenge Assumptions - Question wrong premises
+7. Be Direct - No hedging, state assessments plainly
+
+Added TRUST.md to the standard import list in CLAUDE.md to ensure all agents follow these principles.
+
+### Key Learnings
+1. **Trust comes from honesty, not harmony** - Users value agents that catch mistakes
+2. **Directness builds credibility** - Clear disagreement is better than hedged agreement
+3. **Questions show engagement** - Asking for clarity demonstrates critical thinking
+4. **Alternatives demonstrate expertise** - Proposing better solutions shows value
+5. **Simplicity in guidelines works** - 7 clear rules are better than complex policies
+
+### Prevention
+- Include TRUST.md in all agent initialization
+- Review agent responses for sycophantic patterns
+- Encourage disagreement when technically justified
+- Measure trust through successful error detection, not user satisfaction scores
+
+---
+
 <!-- New discoveries will be added here as the project progresses -->
 
 ## Remember
