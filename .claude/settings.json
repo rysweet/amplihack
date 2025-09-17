@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/hooks/session_start.py",
+            "command": "$HOME/.claude/tools/amplihack/hooks/session_start.py",
             "timeout": 10000
           }
         ]
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/hooks/stop.py"
+            "command": "$HOME/.claude/tools/amplihack/hooks/stop.py"
           }
         ]
       }
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/hooks/post_tool_use.py"
+            "command": "$HOME/.claude/tools/amplihack/hooks/post_tool_use.py"
           }
         ]
       }
