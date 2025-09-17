@@ -56,8 +56,8 @@ def main():
         tool_use = input_data.get("toolUse", {})
         tool_name = tool_use.get("name", "unknown")
 
-        # Extract result if available
-        result = input_data.get("result", {})
+        # Extract result if needed
+        # result = input_data.get("result", {})
 
         log(f"Tool used: {tool_name}")
 
