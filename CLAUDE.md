@@ -168,14 +168,18 @@ Self-improvement and learning capture
 ## Available Tools
 
 ### GitHub Issue Creation
+
 Create GitHub issues programmatically:
+
 ```python
 from .claude.tools.github_issue import create_issue
 result = create_issue(title="Bug report", body="Details here")
 ```
 
 ### CI Status Checker
+
 Check GitHub Actions CI status:
+
 ```python
 from .claude.tools.ci_status import check_ci_status
 status = check_ci_status()  # Check current branch
