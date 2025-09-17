@@ -6,8 +6,9 @@ Reads JSON from stdin, processes, writes JSON to stdout.
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 
 # Add project to path if needed
 project_root = Path(__file__).parent.parent.parent.parent
@@ -60,10 +61,7 @@ def main():
             context = "\n".join(context_parts)
             output = {
                 "additionalContext": context,
-                "metadata": {
-                    "source": "project_context",
-                    "timestamp": datetime.now().isoformat()
-                }
+                "metadata": {"source": "project_context", "timestamp": datetime.now().isoformat()},
             }
 
         # Write output
