@@ -1,20 +1,9 @@
 {
   "permissions": {
-    "allow": [
-      "Bash",
-      "TodoWrite",
-      "WebSearch",
-      "WebFetch"
-    ],
+    "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
     "deny": [],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": [
-      ".data",
-      ".vscode",
-      ".claude",
-      ".ai",
-      "Specs"
-    ]
+    "additionalDirectories": [".data", ".vscode", ".claude", ".ai", "Specs"]
   },
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": [],

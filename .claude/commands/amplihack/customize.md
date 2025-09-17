@@ -6,58 +6,71 @@ argument-hint: <action> [preference] [value]
 # User Customization Command
 
 ## Input Validation
+
 @.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Usage
+
 `/customize <action> [preference] [value]`
 
 ## Actions
 
 ### set - Set a preference
+
 `/customize set <preference> <value>`
 
 Sets or updates a user preference. Examples:
+
 - `/customize set verbosity concise`
 - `/customize set communication_style technical`
 - `/customize set priority_type bugs`
 
 ### show - Display current preferences
+
 `/customize show`
 
 Shows all current user preferences and their values.
 
 ### reset - Reset preferences
+
 `/customize reset [preference]`
 
 Resets a specific preference or all preferences to defaults.
+
 - `/customize reset verbosity` - resets verbosity to default
 - `/customize reset` - resets all preferences
 
 ### learn - Learn from feedback
+
 `/customize learn <feedback>`
 
 Captures user feedback to improve future interactions.
+
 - `/customize learn "Always include unit tests when creating new functions"`
 - `/customize learn "Prefer async/await over callbacks"`
 
 ## Available Preferences
 
 ### verbosity
+
 - **concise**: Brief, to-the-point responses
 - **balanced**: Standard level of detail (default)
 - **detailed**: Comprehensive explanations
 
 ### communication_style
+
 - **formal**: Professional, structured communication
 - **casual**: Conversational, friendly tone
 - **technical**: Direct, code-focused responses (default)
 
 ### update_frequency
+
 - **minimal**: Only essential updates
 - **regular**: Standard progress updates (default)
 - **frequent**: Detailed step-by-step updates
 
 ### priority_type
+
 - **features**: Focus on new functionality
 - **bugs**: Prioritize bug fixes
 - **performance**: Emphasize optimization
@@ -65,18 +78,22 @@ Captures user feedback to improve future interactions.
 - **balanced**: No specific priority (default)
 
 ### collaboration_style
+
 - **independent**: Work autonomously, minimal interaction
 - **interactive**: Regular check-ins and confirmations (default)
 - **guided**: Step-by-step with user approval
 
 ### preferred_languages
+
 Comma-separated list of preferred programming languages/frameworks
 Example: `python,typescript,react`
 
 ### coding_standards
+
 Custom coding standards or guidelines (can be multi-line)
 
 ### workflow_preferences
+
 Custom workflow requirements or gates
 
 ## Implementation
@@ -315,6 +332,7 @@ esac
 ## Integration
 
 This command integrates with the project by:
+
 1. Storing preferences in `.claude/context/USER_PREFERENCES.md`
 2. Preferences are loaded via CLAUDE.md imports
 3. Agents and workflows reference these preferences

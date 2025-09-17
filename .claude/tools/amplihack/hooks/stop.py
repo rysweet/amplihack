@@ -6,8 +6,8 @@ Captures learnings and updates discoveries.
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Add project to path if needed
 project_root = Path(__file__).parent.parent.parent.parent
@@ -34,7 +34,15 @@ def extract_learnings(messages: list) -> list:
     learnings = []
 
     # Look for patterns indicating discoveries
-    keywords = ["discovered", "learned", "found that", "turns out", "issue was", "solution was", "pattern"]
+    keywords = [
+        "discovered",
+        "learned",
+        "found that",
+        "turns out",
+        "issue was",
+        "solution was",
+        "pattern",
+    ]
 
     for message in messages:
         content = message.get("content", "")
@@ -42,10 +50,7 @@ def extract_learnings(messages: list) -> list:
             for keyword in keywords:
                 if keyword.lower() in content.lower():
                     # Could use more sophisticated extraction here
-                    learnings.append({
-                        "keyword": keyword,
-                        "preview": content[:200]
-                    })
+                    learnings.append({"keyword": keyword, "preview": content[:200]})
                     break
 
     return learnings
@@ -60,7 +65,7 @@ def save_session_analysis(messages: list):
         "timestamp": datetime.now().isoformat(),
         "message_count": len(messages),
         "tool_uses": 0,
-        "errors": 0
+        "errors": 0,
     }
 
     # Count tool uses and errors
@@ -78,10 +83,7 @@ def save_session_analysis(messages: list):
         stats["potential_learnings"] = len(learnings)
 
     # Save analysis
-    analysis = {
-        "stats": stats,
-        "learnings": learnings
-    }
+    analysis = {"stats": stats, "learnings": learnings}
 
     with open(analysis_file, "w") as f:
         json.dump(analysis, f, indent=2)
@@ -116,7 +118,7 @@ def main():
                 "metadata": {
                     "learningsFound": len(learnings),
                     "source": "session_analysis",
-                    "reminder": "Check .claude/runtime/analysis/ for session details"
+                    "reminder": "Check .claude/runtime/analysis/ for session details",
                 }
             }
             log(f"Found {len(learnings)} potential learnings")

@@ -6,8 +6,9 @@ Tracks tool usage and performance metrics.
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Optional
 
 # Add project to path if needed
 project_root = Path(__file__).parent.parent.parent.parent
@@ -29,14 +30,14 @@ def log(message: str, level: str = "INFO"):
         f.write(f"[{timestamp}] {level}: {message}\n")
 
 
-def save_metric(tool_name: str, duration_ms: int = None):
+def save_metric(tool_name: str, duration_ms: Optional[int] = None):
     """Save tool usage metrics"""
     metrics_file = METRICS_DIR / "tool_usage.jsonl"
 
     metric = {
         "timestamp": datetime.now().isoformat(),
         "tool": tool_name,
-        "duration_ms": duration_ms
+        "duration_ms": duration_ms,
     }
 
     with open(metrics_file, "a") as f:
@@ -56,8 +57,8 @@ def main():
         tool_use = input_data.get("toolUse", {})
         tool_name = tool_use.get("name", "unknown")
 
-        # Extract result if available
-        result = input_data.get("result", {})
+        # Extract result if available (not currently used)
+        # result = input_data.get("result", {})
 
         log(f"Tool used: {tool_name}")
 

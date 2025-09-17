@@ -13,5 +13,3 @@ Goal: a system for agentic autonomous coding that has a built-in self-improvemen
 - Continual emphasis on ruthless simplicty
 - Use the claude-code sdk to initiate sub orchestration
 - When we find that a task has multiple stages, repetition, and lots of tool calling - turn it into a new tool or comand that can be called by other agents
-
-
