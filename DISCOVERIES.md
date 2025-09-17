@@ -89,6 +89,37 @@ Added TRUST.md to the standard import list in CLAUDE.md to ensure all agents fol
 
 ---
 
+## Enhanced Agent Delegation Instructions (2025-01-17)
+
+### Issue
+The current CLAUDE.md had minimal guidance on when to use specialized agents, leading to underutilization of available agent capabilities.
+
+### Root Cause
+Initial CLAUDE.md focused on basic delegation ("What agents can help?") without specific triggers or scenarios, missing the orchestration-first philosophy from the amplifier project.
+
+### Solution
+Updated CLAUDE.md with comprehensive agent delegation instructions:
+1. Added "GOLDEN RULE" emphasizing orchestration over implementation
+2. Created specific delegation triggers mapping tasks to all 13 available agents
+3. Included parallel execution examples for complex tasks
+4. Added guidance for creating custom agents
+5. Emphasized "ALWAYS IF POSSIBLE" for agent delegation
+
+### Key Learnings
+1. **Explicit triggers drive usage** - Listing specific scenarios for each agent increases delegation
+2. **Orchestration mindset matters** - Positioning as orchestrator changes approach fundamentally
+3. **Parallel patterns accelerate** - Showing concrete parallel examples encourages better execution
+4. **Agent inventory awareness** - Must explicitly list all available agents to ensure usage
+5. **Documentation drives behavior** - Clear instructions in CLAUDE.md shape AI behavior patterns
+
+### Prevention
+- Always compare CLAUDE.md files when porting functionality between projects
+- Include specific usage examples for every agent created
+- Regularly audit if available agents are being utilized
+- Update delegation triggers when new agents are added
+
+---
+
 <!-- New discoveries will be added here as the project progresses -->
 
 ## Remember
