@@ -146,19 +146,3 @@ jobs:
             echo "💔 Some checks failed. Please fix the issues and push again."
             exit 1
           fi
-
-  # Optional: Add a separate job for security scanning
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run security checks
-        run: |
-          echo "Security scanning can be added here"
-          echo "For example: bandit for Python, npm audit for Node.js"
-        continue-on-error: true  # Non-blocking initially

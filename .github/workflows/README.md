@@ -18,37 +18,12 @@ Runs all code quality checks:
 - **Python tests**: pytest suite
 - **JavaScript/TypeScript tests**: npm test (if applicable)
 
-#### 2. Security Scan (Optional)
-Placeholder for security scanning tools (non-blocking)
 
 ### Features
 - **Fast execution**: Aggressive caching, parallel setup
 - **Smart concurrency**: Cancels outdated runs automatically
 - **Clear feedback**: Detailed status reporting
 - **Graceful degradation**: Continues even if some tools missing
-
-## Setup Instructions
-
-### 1. Enable GitHub Actions
-The workflow will automatically run once merged to main.
-
-### 2. Configure Branch Protection (Recommended)
-
-1. Go to Settings → Branches
-2. Add rule for `main` branch
-3. Enable these options:
-   - ✅ Require status checks to pass before merging
-   - ✅ Require branches to be up to date before merging
-   - Select "CI / Validate Code" as required status check
-   - ✅ Include administrators (optional but recommended)
-
-### 3. Add Status Badge to README
-
-Add this line to your main README.md:
-
-```markdown
-![CI](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/workflows/CI/badge.svg)
-```
 
 ## Local Testing
 
