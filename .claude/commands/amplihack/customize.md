@@ -5,6 +5,9 @@ argument-hint: <action> [preference] [value]
 
 # User Customization Command
 
+## Input Validation
+@.claude/context/AGENT_INPUT_VALIDATION.md
+
 ## Usage
 `/customize <action> [preference] [value]`
 
