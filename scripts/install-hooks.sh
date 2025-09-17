@@ -34,10 +34,28 @@ else
     echo "✓ Pre-commit already installed ($(pre-commit --version))"
 fi
 
+# Install detect-secrets for security scanning
+if ! command -v detect-secrets &> /dev/null; then
+    echo "Installing detect-secrets for security scanning..."
+    pip3 install --user detect-secrets
+    echo "✓ detect-secrets installed"
+else
+    echo "✓ detect-secrets already installed ($(detect-secrets --version 2>&1 | head -1))"
+fi
+
 # Install the git hook scripts
 echo "Installing git hooks..."
 pre-commit install
 echo "✓ Git hooks installed"
+
+# Create detect-secrets baseline if it doesn't exist
+if [ ! -f .secrets.baseline ]; then
+    echo "Creating detect-secrets baseline..."
+    detect-secrets scan --baseline .secrets.baseline
+    echo "✓ Secrets baseline created"
+else
+    echo "✓ Secrets baseline already exists"
+fi
 
 # Install commit-msg hook for conventional commits (optional)
 # pre-commit install --hook-type commit-msg
