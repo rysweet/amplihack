@@ -166,6 +166,61 @@ Updated CLAUDE.md with comprehensive agent delegation instructions:
 
 ---
 
+## Pre-commit Hooks Over-Engineering (2025-09-17)
+
+### Issue
+
+Initial pre-commit hooks implementation had 11+ hooks and 5 configuration files,
+violating the project's ruthless simplicity principle.
+
+### Root Cause
+
+Common developer tendency to add "all the good tools" upfront rather than
+starting minimal and adding complexity only when justified. The initial
+implementation tried to solve problems that didn't exist yet.
+
+### Solution
+
+Simplified to only essential hooks:
+
+```yaml
+# From 11+ hooks down to 7 essential ones
+repos:
+  - pre-commit-hooks:
+      check-merge-conflict, trailing-whitespace, end-of-file-fixer
+  - ruff: format and basic linting
+  - pyright: type checking
+  - prettier: JS/TS/Markdown formatting
+```
+
+Deleted:
+
+- Custom philosophy checker (arbitrary limits, no tests)
+- detect-secrets (premature optimization)
+- Complex pytest hook (fragile bash)
+- Unused markdownlint config
+
+### Key Learnings
+
+1. **Start minimal, grow as needed** - Begin with 2-3 hooks, add others when
+   problems arise
+2. **Philosophy enforcement belongs in review** - Human judgment beats arbitrary
+   metrics
+3. **Dead code spreads quickly** - Commented configs and unused files multiply
+4. **Automation can overcomplicate** - Sometimes IDE formatting is simpler than
+   hooks
+5. **Test your testing tools** - Custom hooks need tests too
+
+### Prevention
+
+- Always question: "What problem does this solve TODAY?"
+- Count configuration files - more than 2-3 suggests over-engineering
+- If a tool needs extensive configuration, it might be the wrong tool
+- Prefer human review for subjective quality measures
+- Remember: you can always add complexity, but removing it is harder
+
+---
+
 <!-- New discoveries will be added here as the project progresses -->
 
 ## Remember
