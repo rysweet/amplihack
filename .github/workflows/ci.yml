@@ -25,13 +25,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for better git operations
+          fetch-depth: 0 # Full history for better git operations
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
           cache-dependency-path: |
             pyproject.toml
             requirements*.txt
@@ -39,9 +39,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
 
       - name: Cache pre-commit environments
         uses: actions/cache@v4
@@ -71,7 +71,7 @@ jobs:
           elif [ -f package.json ]; then
             npm install
           fi
-        continue-on-error: true  # Don't fail if no Node project
+        continue-on-error: true # Don't fail if no Node project
 
       - name: Run pre-commit hooks
         id: pre-commit
