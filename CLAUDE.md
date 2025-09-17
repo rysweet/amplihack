@@ -17,7 +17,6 @@ When starting a session, import these files for context:
 @.claude/context/PROJECT.md
 @.claude/context/PATTERNS.md
 @.claude/context/USER_PREFERENCES.md
-@.claude/agents/CATALOG.md
 @DISCOVERIES.md
 ```
 
@@ -26,7 +25,7 @@ When starting a session, import these files for context:
 ### Critical Operating Principles
 
 - **Always think through a plan**: For any non-trivial task, break it down and use TodoWrite tool to manage a todo list
-- **Use specialized agents**: Check `.claude/agents/CATALOG.md` for available agents and use them proactively
+- **Use specialized agents**: Check `.claude/agents/amplihack/*.md` for available agents and use them proactively
 - **Ask for clarity**: If requirements are unclear, ask questions before proceeding
 - **Document learnings**: Update DISCOVERIES.md with new insights
 - **Session Logs**: All interactions MUST be logged in .claude/runtime/logs/<session_id> where <session_id> is a unique identifier for the session based on the timestamp. 
@@ -35,17 +34,12 @@ When starting a session, import these files for context:
 ### Agent Delegation Strategy
 
 **Always ask**: "What agents can help with this task?"
-
-- **Architecture tasks** → Use architect agent
-- **Implementation** → Use builder agent
-- **Debugging/Review** → Use reviewer agent
-- **Database work** → Use database agent
-- **Security concerns** → Use security agent
-- **External APIs** → Use integration agent
+- look amongst the agents available and select the best fit
+- you can also decide to create new agents and customize them for a specific task - agents do not share context and so this is useful for granular tasks that don't require the full context of the project
 
 ### Parallel Execution
 
-**CRITICAL**: Always consider what can be done in parallel. Send ONE message with MULTIPLE tool calls.
+**CRITICAL**: Always consider what can be done in parallel. Use a single call to the Task tool with multiple requests.
 
 Good:
 ```
@@ -74,9 +68,9 @@ Bad:
 - **Regeneratable** = Can be rebuilt from specification
 
 ### Zero-BS Implementation
-- No stubs or placeholders
+- No stubs or placeholders - no fake implementations or unimplemented functions
+- No dead code - remove unused code
 - Every function must work or not exist
-- Use files instead of external services initially
 
 ## Project Structure
 
