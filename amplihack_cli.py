@@ -11,8 +11,6 @@ CLAUDE_DIR = os.path.join(HOME, ".claude")
 CLI_NAME = "amplihack_cli.py"
 CLI_SRC = os.path.abspath(__file__)
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
-# output directory to the console
-print(f"REPO_ROOT: {REPO_ROOT}")
 
 def ensure_dirs():
     os.makedirs(CLAUDE_DIR, exist_ok=True)
@@ -109,7 +107,10 @@ def uninstall():
 
 def filecmp(f1, f2):
     try:
-        return (os.path.getsize(f1) == os.path.getsize(f2) and open(f1, 'rb').read() == open(f2, 'rb').read())
+        if os.path.getsize(f1) != os.path.getsize(f2):
+            return False
+        with open(f1, 'rb') as file1, open(f2, 'rb') as file2:
+            return file1.read() == file2.read()
     except Exception:
         return False
 
@@ -123,7 +124,7 @@ def main():
         with tempfile.TemporaryDirectory() as tmp:
             repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
             subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-            # When debugging locally,if the repo does not contain the latest version of this file, uncomment the line below
+            # When debugging locally, if the repo does not contain the latest version of this file, uncomment the line below
             # subprocess.check_call(["cp", "amplihack_cli.py", tmp])
             subprocess.check_call([sys.executable, os.path.join(tmp, "amplihack_cli.py"), "_local_install"])
     elif cmd == "uninstall":

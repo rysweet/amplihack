@@ -11,9 +11,9 @@ This project accelerates software development through AI-powered agents for auto
 **Download**
 If you are not in the project directory, download the CLI script directly with:
 ```sh
-curl -O https://raw.githubusercontent.com/MicrosoftHackathon2025/AgenticCoding/main/amplihack_cli.py
+curl -O https://raw.githubusercontent.com/MicrosoftHackathon2025-AgenticCoding/main/amplihack_cli.py
 ```
-Or get it from the [project repository](https://github.com/MicrosoftHackathon2025/AgenticCoding).
+Or get it from the [project repository](https://github.com/MicrosoftHackathon2025-AgenticCoding).
 
 **Install:**
 ```sh
