@@ -1,0 +1,32 @@
+{
+  "name": "@agentic/claude-launcher",
+  "version": "1.0.0",
+  "description": "Launch Claude Code with the Agentic Coding Framework for any project",
+  "bin": {
+    "agentic-claude": "./bin/launch.js"
+  },
+  "files": [
+    "bin/",
+    ".claude/",
+    "README.md",
+    "CLAUDE.md",
+    "DISCOVERIES.md"
+  ],
+  "keywords": [
+    "claude",
+    "ai",
+    "development",
+    "agentic",
+    "coding",
+    "framework"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+  }
+}
