@@ -10,7 +10,7 @@ if [ -d "./tmpamplihack" ]; then
   exit 1
 fi
 
-echo "Downloading amplihack from $AMPLIHACK_INSTALL_LOCATION..."
+echo "Cloning amplihack from $AMPLIHACK_INSTALL_LOCATION..."
 git clone $AMPLIHACK_INSTALL_LOCATION ./tmpamplihack
 
 if [ $? -ne 0 ]; then
@@ -19,49 +19,58 @@ if [ $? -ne 0 ]; then
 fi
 
 # Backup existing settings.json if it exists
-if [ -f ~/.claude/settings.json ]; then
-  BACKUP_FILE=~/.claude/settings.json.backup.$(date +%Y%m%d_%H%M%S)
-  echo "Backing up existing settings.json to $BACKUP_FILE"
-  cp ~/.claude/settings.json "$BACKUP_FILE"
-
+if [ -f "$HOME/.claude/settings.json" ]; then
+  echo "Backing up existing settings.json..."
+  cp "$HOME/.claude/settings.json" "$HOME/.claude/settings.json.backup.$(date +%Y%m%d_%H%M%S)"
   if [ $? -ne 0 ]; then
     echo "Error: Failed to backup existing settings.json"
     rm -rf ./tmpamplihack
     exit 1
   fi
+  echo "Backup created successfully"
 fi
 
 # copy the contents of the tmp local directory to the ~/.claude directory
 echo "Installing amplihack to ~/.claude..."
 cp -r ./tmpamplihack/.claude ~/
-
 if [ $? -ne 0 ]; then
   echo "Error: Failed to copy files to ~/.claude"
   rm -rf ./tmpamplihack
   exit 1
 fi
 
-# Update hook paths in settings.json for global installation
-echo "Updating hook paths for global installation..."
-if [ -f ~/.claude/settings.json ]; then
-  # Use sed to replace project-relative paths with global $HOME paths
-  sed -i.tmp 's|"\.claude/tools/amplihack/hooks/session_start\.py"|"$HOME/.claude/tools/amplihack/hooks/session_start.py"|g' ~/.claude/settings.json
-  sed -i.tmp 's|"\.claude/tools/amplihack/hooks/stop\.py"|"$HOME/.claude/tools/amplihack/hooks/stop.py"|g' ~/.claude/settings.json
-  sed -i.tmp 's|"\.claude/tools/amplihack/hooks/post_tool_use\.py"|"$HOME/.claude/tools/amplihack/hooks/post_tool_use.py"|g' ~/.claude/settings.json
+# Update hook paths in settings.json from project-relative to global paths
+if [ -f "$HOME/.claude/settings.json" ]; then
+  echo "Updating hook paths in settings.json for global installation..."
 
-  # Remove temporary files created by sed
-  rm -f ~/.claude/settings.json.tmp
+  # Use sed to replace project-relative paths with global paths
+  sed -i.tmp \
+    -e 's|"\.claude/tools/amplihack/hooks/session_start\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/session_start.py"|g' \
+    -e 's|"\.claude/tools/amplihack/hooks/stop\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/stop.py"|g' \
+    -e 's|"\.claude/tools/amplihack/hooks/post_tool_use\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/post_tool_use.py"|g' \
+    "$HOME/.claude/settings.json"
 
-  if [ $? -ne 0 ]; then
-    echo "Warning: Failed to update hook paths in settings.json"
+  if [ $? -eq 0 ]; then
+    rm "$HOME/.claude/settings.json.tmp"
+    echo "Hook paths updated successfully"
   else
-    echo "Successfully updated hook paths for global installation"
+    echo "Error: Failed to update hook paths in settings.json"
+    # Restore from temp file if sed failed
+    if [ -f "$HOME/.claude/settings.json.tmp" ]; then
+      mv "$HOME/.claude/settings.json.tmp" "$HOME/.claude/settings.json"
+    fi
+    rm -rf ./tmpamplihack
+    exit 1
   fi
 else
-  echo "Warning: settings.json not found after installation"
+  echo "Warning: No settings.json found after installation"
 fi
 
 # remove the tmp local directory
 rm -rf ./tmpamplihack
 
-echo "Installation complete! Amplihack hooks are now available globally."
+echo "Amplihack installation completed successfully!"
+echo "Hook paths have been updated for global operation."
+if [ -f "$HOME/.claude/settings.json.backup."* ]; then
+  echo "Your previous settings.json has been backed up."
+fi

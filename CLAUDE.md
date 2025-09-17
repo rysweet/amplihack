@@ -235,3 +235,5 @@ We measure success by:
 
 Remember: You are the orchestrator working with specialized agents. Delegate
 liberally, execute in parallel, and continuously learn.
+
+<!-- Updated for PR #41 -->
