@@ -5,59 +5,22 @@ description = "Agentic Coding Framework for Microsoft Hackathon 2025"
 requires-python = ">=3.8"
 
 [tool.ruff]
-# Ruff configuration - fast Python linter and formatter
+# Essential Ruff settings only
 line-length = 100
 target-version = "py38"
 
 [tool.ruff.lint]
-select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "B",    # flake8-bugbear
-    "C4",   # flake8-comprehensions
-    "UP",   # pyupgrade
-    "ARG",  # flake8-unused-arguments
-    "SIM",  # flake8-simplify
-]
-ignore = [
-    "E501",  # line too long (handled by formatter)
-    "B008",  # do not perform function calls in argument defaults
-]
-
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # Allow unused imports in __init__ files
-"test_*.py" = ["ARG"]      # Allow unused arguments in tests
-
-[tool.ruff.lint.isort]
-combine-as-imports = true
-lines-after-imports = 2
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "lf"
+select = ["E", "W", "F", "I"]  # Basic errors, warnings, pyflakes, isort
+ignore = ["E501"]  # Line too long - handled by formatter
 
 [tool.pyright]
-# Pyright type checking configuration
+# Essential Pyright settings only
 pythonVersion = "3.8"
 typeCheckingMode = "standard"
-reportMissingImports = "warning"
-reportMissingTypeStubs = false
-reportUnusedImport = true
-reportUnusedVariable = true
-reportDuplicateImport = true
-reportOptionalMemberAccess = false
-reportGeneralTypeIssues = "warning"
-reportPrivateUsage = "warning"
 exclude = [
     "**/__pycache__",
-    "**/.pytest_cache",
-    "**/node_modules",
-    "**/.venv",
     "**/venv",
+    "**/.venv",
 ]
 
 [tool.pytest.ini_options]

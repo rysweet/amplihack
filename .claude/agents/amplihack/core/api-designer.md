@@ -18,6 +18,7 @@ You create minimal, clear API contracts as connection points between system modu
 ## Design Approach
 
 ### Module Structure
+
 ```
 api_module/
 ├── openapi.yaml      # Complete contract
@@ -30,6 +31,7 @@ api_module/
 ### RESTful Pragmatism
 
 **Follow REST when it adds clarity**:
+
 - Resource URLs: `/users/{id}`, `/products/{id}/reviews`
 - Standard HTTP methods appropriately used
 - Action endpoints when clearer: `POST /users/{id}/reset-password`
@@ -38,6 +40,7 @@ api_module/
 ### Versioning Strategy
 
 **Keep it simple**:
+
 - Start with v1 and stay there as long as possible
 - Add optional fields rather than new versions
 - Version entire modules, not endpoints
@@ -75,19 +78,20 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: User found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '404':
+                $ref: "#/components/schemas/User"
+        "404":
           description: User not found
 ```
 
 ## GraphQL Decisions
 
 **Use GraphQL only when flexibility helps**:
+
 - Complex nested relationships
 - Mobile apps needing flexible queries
 - Multiple frontends with different needs
@@ -125,6 +129,7 @@ Otherwise, stick with REST for simplicity.
 ## Review Checklist
 
 When reviewing APIs:
+
 - Inconsistent patterns needing standardization
 - Unnecessary complexity to remove
 - Missing error handling

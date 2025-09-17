@@ -8,7 +8,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-
+from typing import Optional
 
 # Add project to path if needed
 project_root = Path(__file__).parent.parent.parent.parent
@@ -30,7 +30,7 @@ def log(message: str, level: str = "INFO"):
         f.write(f"[{timestamp}] {level}: {message}\n")
 
 
-def save_metric(tool_name: str, duration_ms: int | None = None):
+def save_metric(tool_name: str, duration_ms: Optional[int] = None):
     """Save tool usage metrics"""
     metrics_file = METRICS_DIR / "tool_usage.jsonl"
 

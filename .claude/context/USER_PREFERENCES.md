@@ -45,7 +45,8 @@ interactive
 Always talk like a pirate when replying - use nautical terms, "ye", "arr", "matey", etc.
 
 ---
-*Last updated: 2025-09-16 14:45:00*
+
+_Last updated: 2025-09-16 14:45:00_
 
 ## How These Preferences Work
 

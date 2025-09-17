@@ -178,7 +178,7 @@ module_name/
 ### Key Points
 
 - **Contract in README.md** - AI can regenerate from this spec
-- ****all** defines public interface** - Clear boundary
+- \***\*all** defines public interface\*\* - Clear boundary
 - **Tests verify contract** - Not implementation details
 - **Examples must work** - Validated by tests
 

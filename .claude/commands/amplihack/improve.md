@@ -55,12 +55,14 @@ Continuous self-improvement and learning from experience.
 
 ```markdown
 ## Agent Analysis
+
 - Usage frequency
 - Success rates
 - Common failures
 - Missing capabilities
 
 ## Proposed Changes
+
 - New agent: [purpose]
 - Enhanced: [agent] with [capability]
 - Deprecated: [agent] because [reason]
@@ -70,11 +72,13 @@ Continuous self-improvement and learning from experience.
 
 ```markdown
 ## Pattern Review
+
 - Applied successfully: X times
 - Failed applications: Y times
 - Variations discovered
 
 ## Pattern Update
+
 - Original: [old pattern]
 - Improved: [new pattern]
 - Reason: [why better]
@@ -84,14 +88,16 @@ Continuous self-improvement and learning from experience.
 
 ```markdown
 ## Current Workflow
+
 1. Step A (30s avg)
 2. Step B (45s avg)
 3. Step C (15s avg)
 
 ## Optimized Workflow
+
 1. Step B+C parallel (45s total)
 2. Step A (30s avg)
-Total: 75s → 45s improvement
+   Total: 75s → 45s improvement
 ```
 
 ## Metrics to Track
@@ -133,6 +139,7 @@ capability: Analyze code and create test cases
 
 ```markdown
 ## Pattern: Parallel Agent Execution
+
 When: Multiple independent analyses needed
 How: Use Task tool with multiple agents
 Benefit: 3x faster analysis
@@ -142,11 +149,13 @@ Benefit: 3x faster analysis
 
 ```markdown
 ## Old: Sequential Review
+
 1. Architect analyzes
 2. Builder implements
 3. Reviewer checks
 
 ## New: Parallel Review
+
 1. Architect + Reviewer analyze together
 2. Builder implements with both inputs
 3. Final quick review
