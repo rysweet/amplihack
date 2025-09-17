@@ -34,9 +34,48 @@ When starting a session, import these files for context:
 
 ### Agent Delegation Strategy
 
-**Always ask**: "What agents can help with this task?"
-- look amongst the agents available and select the best fit
-- you can also decide to create new agents and customize them for a specific task - agents do not share context and so this is useful for granular tasks that don't require the full context of the project
+**GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to specialized agents when possible.
+
+#### When to Use Agents (ALWAYS IF POSSIBLE)
+
+**Immediate Delegation Triggers:**
+- **System Design**: Use `architect.md` for specifications and problem decomposition
+- **Implementation**: Use `builder.md` for code generation from specs
+- **Code Review**: Use `reviewer.md` for philosophy compliance checks
+- **Testing**: Use `tester.md` for test generation and validation
+- **API Design**: Use `api-designer.md` for contract definitions
+- **Performance**: Use `optimizer.md` for bottleneck analysis
+- **Security**: Use `security.md` for vulnerability assessment
+- **Database**: Use `database.md` for schema and query optimization
+- **Integration**: Use `integration.md` for external service connections
+- **Cleanup**: Use `cleanup.md` for code simplification
+- **Pattern Recognition**: Use `patterns.md` to identify reusable solutions
+- **Analysis**: Use `analyzer.md` for deep code understanding
+- **Ambiguity**: Use `ambiguity.md` when requirements are unclear
+
+#### Parallel Agent Execution
+
+When facing complex tasks, deploy multiple agents in parallel:
+
+```
+Example - Building a new feature:
+"I'll coordinate multiple agents to design and implement this feature"
+[Single message with multiple Task tool calls]:
+- architect: Design the module specification
+- security: Identify security requirements
+- database: Design data schema if needed
+- api-designer: Define API contracts
+```
+
+#### Creating Custom Agents
+
+For repeated specialized tasks:
+1. Identify pattern after 2-3 similar requests
+2. Create agent in `.claude/agents/amplihack/specialized/`
+3. Define clear role and boundaries
+4. Add to delegation triggers above
+
+Remember: Your value is in orchestration and coordination, not in doing everything yourself.
 
 ### Parallel Execution
 
