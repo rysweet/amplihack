@@ -40,8 +40,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+        continue-on-error: true # Node.js is optional, no package.json in repo
 
       - name: Cache pre-commit environments
         uses: actions/cache@v4
