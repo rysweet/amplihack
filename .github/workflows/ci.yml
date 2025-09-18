@@ -63,6 +63,16 @@ jobs:
             pip install -r requirements.txt
           fi
 
+      - name: Run pyright strict type checks
+        run: |
+          if command -v pyright &> /dev/null; then
+            echo "Running pyright in strict mode..."
+            pyright --strict .
+          else
+            echo "pyright not found, skipping type checks."
+            exit 1
+          fi
+
       - name: Install Node dependencies
         run: |
           if [ -f package-lock.json ]; then
