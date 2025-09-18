@@ -41,36 +41,38 @@ uvx amplihack install
 
 ## Development Setup
 
-### Pre-commit Hooks
+### Pre-commit Hooks (REQUIRED)
 
-This project uses pre-commit hooks to ensure code quality and consistency. The
-hooks run automatically on every commit to:
+**⚠️ Important: Pre-commit hooks must be installed manually after cloning!**
 
-- Check for merge conflicts
-- Fix trailing whitespace and end-of-file issues
-- Format Python code with ruff
-- Run type checking with pyright
-- Format other files with prettier
-- Detect secrets to prevent accidental commits
+This project uses pre-commit hooks to ensure code quality. They are NOT
+automatically active after cloning - each developer must install them.
 
-**Setup pre-commit hooks:**
+**First-time setup (required for all developers):**
 
 ```sh
-# Install pre-commit (if not already installed)
+# After cloning the repo, install pre-commit hooks
 pip install pre-commit
-
-# Install the git hooks
 pre-commit install
-pre-commit install --hook-type pre-push  # Optional: also run on push
 
-# Run hooks manually on all files (useful for testing)
+# Verify hooks are working
 pre-commit run --all-files
 ```
 
-After installation, the hooks will run automatically on `git commit`. If any
-issues are found:
+**What the hooks do:**
 
-1. The hooks will attempt to auto-fix formatting issues
-2. If fixes are made, you'll need to stage the changes and commit again
-3. For issues that can't be auto-fixed, you'll see error messages to resolve
-   manually
+- Auto-fix formatting issues (spaces, line endings)
+- Format Python code with ruff
+- Run type checking with pyright
+- Format Markdown/JSON with prettier
+- Detect accidental secrets
+
+**If a commit fails:**
+
+1. The hooks will auto-fix what they can
+2. Review the changes: `git diff`
+3. Stage the fixes: `git add .`
+4. Commit again
+
+**Note:** Without running `pre-commit install`, commits will NOT be checked
+locally and may fail CI checks
