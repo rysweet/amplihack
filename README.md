@@ -15,7 +15,7 @@ automation, code generation, and collaborative problem-solving.
 **Quick run from GitHub (no local clone needed):**
 
 ```sh
-uvx --from git+https://github.com/MicrosoftHackathon2025-AgenticCoding amplihack install
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack install
 ```
 
 This runs the `amplihack` CLI directly from the latest code.
@@ -23,13 +23,13 @@ This runs the `amplihack` CLI directly from the latest code.
 **Uninstall:**
 
 ```sh
-uvx --from git+https://github.com/MicrosoftHackathon2025-AgenticCoding amplihack uninstall
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack uninstall
 ```
 
 **Developer mode (editable):**
 
 ```sh
-git clone https://github.com/MicrosoftHackathon2025-AgenticCoding.git
+git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git
 cd MicrosoftHackathon2025-AgenticCoding
 uv pip install -e .
 uvx amplihack install
