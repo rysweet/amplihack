@@ -3,31 +3,38 @@
 This project accelerates software development through AI-powered agents for
 automation, code generation, and collaborative problem-solving.
 
-## Installation
+## Installation & Usage
 
-**Prerequisites**
+**Requirements:**
 
 - Python 3.x
 - git
+- [uvx](https://github.com/astral-sh/uv) (recommended for running CLI tools from
+  git repos)
 
-**Download** If you are not in the project directory, download the CLI script
-directly with:
-
-```sh
-curl -O https://raw.githubusercontent.com/MicrosoftHackathon2025-AgenticCoding/main/amplihack_cli.py
-```
-
-Or get it from the
-[project repository](https://github.com/MicrosoftHackathon2025-AgenticCoding).
-
-**Install:**
+**Quick run from GitHub (no local clone needed):**
 
 ```sh
-python amplihack_cli.py install
+uvx --from git+https://github.com/MicrosoftHackathon2025-AgenticCoding amplihack install
 ```
+
+This runs the `amplihack` CLI directly from the latest code.
 
 **Uninstall:**
 
 ```sh
-python amplihack_cli.py uninstall
+uvx --from git+https://github.com/MicrosoftHackathon2025-AgenticCoding amplihack uninstall
 ```
+
+**Developer mode (editable):**
+
+```sh
+git clone https://github.com/MicrosoftHackathon2025-AgenticCoding.git
+cd MicrosoftHackathon2025-AgenticCoding
+uv pip install -e .
+uvx amplihack install
+```
+
+- The CLI lives in the `src/amplihack/` directory (src layout).
+- Use only the `amplihack` CLI as above—no legacy scripts or entrypoints.
+- The CLI might be installed under `.venv/bin`

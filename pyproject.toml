@@ -4,6 +4,13 @@ version = "0.1.0"
 description = "Agentic Coding Framework for Microsoft Hackathon 2025"
 requires-python = ">=3.8"
 
+[project.scripts]
+amplihack = "amplihack:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["amplihack"]
+
 [tool.ruff]
 # Essential Ruff settings only
 line-length = 100
