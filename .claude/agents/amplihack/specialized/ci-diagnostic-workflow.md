@@ -110,16 +110,16 @@ Do NOT merge automatically - wait for:
 
 ### Essential Tools
 
-- **check_ci_status**: Monitor CI state (from .claude.tools.ci_status)
+- **ci_workflow.py**: CI workflow automation (diagnose, iterate-fixes, poll-status)
+- **ci_status.py**: Monitor CI state
 - **Bash**: Git operations and fixes
 - **MultiEdit**: Fix code issues
 - **Task**: Coordinate diagnostic agents
 
 ### Orchestrated Agents
 
-- **ci-diagnostics**: Environment comparison
-- **pattern-matcher**: Historical failure patterns
-- **silent-failure-detector**: Hidden CI issues
+- **analyzer**: Multi-mode analysis for complex CI issues
+- **reviewer**: Code review for fixes before pushing
 
 ## Workflow States
 

@@ -79,6 +79,38 @@ Example - Building a new feature:
 - api-designer: Define API contracts
 ```
 
+### Development Workflow Agents
+
+**Two-Stage Diagnostic Workflow:**
+
+#### Stage 1: Pre-Commit Issues (Before Push)
+
+- **Pre-Commit Workflow**: Use `pre-commit-diagnostic.md` when pre-commit hooks
+  fail locally. Handles formatting, linting, type checking, and ensures code is
+  committable BEFORE pushing.
+- **Trigger**: "Pre-commit failed", "Can't commit", "Hooks failing"
+
+#### Stage 2: CI Issues (After Push)
+
+- **CI Workflow**: Use `ci-diagnostic-workflow.md` after pushing when CI checks
+  fail. Monitors CI status, diagnoses failures, fixes issues, and iterates until
+  PR is mergeable (but never auto-merges).
+- **Trigger**: "CI failing", "Fix CI", "Make PR mergeable"
+
+```
+Example - Pre-commit failure:
+"My pre-commit hooks are failing"
+→ Use pre-commit-diagnostic agent
+→ Automatically fixes all issues
+→ Ready to commit
+
+Example - CI failure after push:
+"CI is failing on my PR"
+→ Use ci-diagnostic-workflow agent
+→ Iterates until PR is mergeable
+→ Never auto-merges without permission
+```
+
 #### Creating Custom Agents
 
 For repeated specialized tasks:

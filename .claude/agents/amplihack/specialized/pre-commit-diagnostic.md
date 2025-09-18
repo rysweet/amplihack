@@ -128,16 +128,16 @@ pip list | grep -E "ruff|black|mypy"
 Let tools fix what they can:
 
 ```bash
-# Format code automatically
-prettier --write .
-black .
-isort .
+# Auto-fix all formatting issues
+python .claude/tools/precommit_workflow.py auto-fix
 
-# Auto-fix safe linting issues
-ruff check --fix .
+# Or fix with specific tools only:
+python .claude/tools/precommit_workflow.py auto-fix --tools prettier,black,ruff
 
-# Stage formatting changes
-git add -u
+# This automatically:
+# - Runs all configured formatters
+# - Applies safe fixes
+# - Stages the changes
 ```
 
 ### 3. Manual Fixes
@@ -154,14 +154,14 @@ For issues requiring code changes:
 Confirm all issues resolved:
 
 ```bash
-# Run all hooks again
-pre-commit run --all-files
+# Verify all pre-commit checks pass
+python .claude/tools/precommit_workflow.py verify-success
 
-# Check what will be committed
-git diff --staged
-
-# Verify no unstaged changes
-git diff
+# This checks:
+# - All hooks pass
+# - Staged changes are valid
+# - No unstaged formatting changes
+# - Ready to commit status
 ```
 
 ## Common Failure Patterns
