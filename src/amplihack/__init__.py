@@ -133,8 +133,6 @@ def main():
         with tempfile.TemporaryDirectory() as tmp:
             repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
             subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-            # When debugging locally, if the repo does not contain the latest version of this file, uncomment the line below
-            subprocess.check_call(["cp", "-r", "src/", tmp])
             subprocess.check_call([sys.executable, "-m", "amplihack", "_local_install", tmp])
     elif cmd == "uninstall":
         uninstall()
