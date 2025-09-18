@@ -24,6 +24,16 @@ When starting a session, import these files for context:
 @DISCOVERIES.md
 ```
 
+## Permissions
+
+You have permissions to run the following commands:
+- git
+- python
+- uv
+- ls
+
+If you have permissions you can run commands automatically without being told.
+
 ## Working Philosophy
 
 ### Critical Operating Principles
@@ -44,7 +54,8 @@ When starting a session, import these files for context:
 ### Agent Delegation Strategy
 
 **GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to
-specialized agents when possible.
+specialized agents when possible. 
+**FINISHING TASKS**: Make sure that any task delegated to an agent is completed. This may mean telling the agent specifically to implement processes. For example, if the architect gives a plan make sure the plan is executed by the relevant agents.
 
 #### When to Use Agents (ALWAYS IF POSSIBLE)
 

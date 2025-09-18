@@ -13,11 +13,10 @@ CLI_SRC = os.path.abspath(__file__)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
-
+PREFERENCES_PATH = os.path.join(REPO_ROOT, ".claude", "context", "USER_PREFERENCES.md")
 
 def ensure_dirs():
     os.makedirs(CLAUDE_DIR, exist_ok=True)
-
 
 def copytree_manifest(src, dst, rel_top=".claude"):
     search_dirs = ["agents", "commands", "tools"]
@@ -36,12 +35,10 @@ def copytree_manifest(src, dst, rel_top=".claude"):
         copied.append(os.path.join(dname, amplihack_name))
     return copied
 
-
 def write_manifest(files, dirs):
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
     with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
         json.dump({"files": files, "dirs": dirs}, f, indent=2)
-
 
 def read_manifest():
     try:
@@ -50,7 +47,6 @@ def read_manifest():
             return mf.get("files", []), mf.get("dirs", [])
     except Exception:
         return [], []
-
 
 def get_all_files_and_dirs(root_dirs):
     all_files = []
@@ -66,14 +62,12 @@ def get_all_files_and_dirs(root_dirs):
                 all_files.append(rel_path)
     return sorted(all_files), sorted(all_dirs)
 
-
 def all_rel_dirs(base):
     result = set()
     for r, dirs, _files in os.walk(base):
         rel = os.path.relpath(r, CLAUDE_DIR)
         result.add(rel)
     return result
-
 
 def install():
     ensure_dirs()
@@ -86,7 +80,6 @@ def install():
     print(
         f"Installed .claude/agents, .claude/commands, .claude/tools to {CLAUDE_DIR}. Manifest with files and newly created dirs written to {MANIFEST_JSON}."
     )
-
 
 def uninstall():
     removed_any = False
@@ -110,7 +103,6 @@ def uninstall():
     else:
         print("Nothing to uninstall.")
 
-
 def filecmp(f1, f2):
     try:
         if os.path.getsize(f1) != os.path.getsize(f2):
@@ -120,6 +112,45 @@ def filecmp(f1, f2):
     except Exception:
         return False
 
+class Agent:
+    def __init__(self):
+        self.userPreferences = self.load_preferences()
+
+    def load_preferences(self):
+        if not os.path.isfile(PREFERENCES_PATH):
+            return {"communication_style": "balanced", "verbosity": "standard"}  # fallback defaults
+        try:
+            with open(PREFERENCES_PATH, "r", encoding="utf-8") as pf:
+                raw = pf.read()
+                # Try to parse as JSON; fallback to key:value lines
+                try:
+                    return json.loads(raw)
+                except Exception:
+                    # Simple parse for key: value
+                    prefs = {}
+                    for line in raw.splitlines():
+                        if ':' in line:
+                            k, v = line.split(':', 1)
+                            prefs[k.strip()] = v.strip()
+                    if not prefs:
+                        return {"communication_style": "balanced", "verbosity": "standard"}
+                    return prefs
+        except Exception:
+            return {"communication_style": "balanced", "verbosity": "standard"}
+
+    def format_output(self, response):
+        style = self.userPreferences.get("communication_style", "balanced")
+        verbosity = self.userPreferences.get("verbosity", "standard")
+        out = response
+        if style == "pirate":
+            out = f"Arrr matey! {out}"
+        if verbosity == "concise":
+            out = out.split('.')[0] if '.' in out else out
+        return out
+
+    def respond(self, request):
+        response = f"Processing: {request}"  # placeholder
+        return self.format_output(response)
 
 def main():
     if len(sys.argv) < 2:
@@ -137,6 +168,13 @@ def main():
         uninstall()
     elif cmd == "_local_install":
         install()
+    elif cmd == "test-agent-preferences":
+        agent = Agent()
+        print("Preferences loaded:", agent.userPreferences)
+        print("Agent output (balanced):", agent.respond("Say hello"))
+        agent.userPreferences["communication_style"] = "pirate"
+        agent.userPreferences["verbosity"] = "concise"
+        print("Agent output (pirate/concise):", agent.respond("This is a longer message. Make it short."))
     else:
         print(f"Invalid command: {cmd}. Use install or uninstall.")
         sys.exit(1)
