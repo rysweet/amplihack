@@ -3,6 +3,9 @@ name = "microsofthackathon2025-agenticcoding"
 version = "0.1.0"
 description = "Agentic Coding Framework for Microsoft Hackathon 2025"
 requires-python = ">=3.8"
+dependencies = [
+    "pyright"
+]
 
 [tool.ruff]
 # Essential Ruff settings only
