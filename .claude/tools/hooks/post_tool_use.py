@@ -64,13 +64,22 @@ def main():
         # Save metrics
         save_metric(tool_name)
 
-        # Check for errors or warnings
+        # Simple decision reminders for specific tools
         output = {}
-        if tool_name in ["Write", "Edit", "MultiEdit"]:
-            # Could add validation or checks here
-            pass
+        
+        # Decision triggers - gentle reminders only
+        DECISION_TRIGGERS = {
+            "TodoWrite": "Consider recording your task breakdown reasoning",
+            "Task": "Consider documenting why you're using this agent",
+            "MultiEdit": "If making significant refactoring, consider noting the approach"
+        }
+        
+        if tool_name in DECISION_TRIGGERS:
+            # Add gentle reminder as additional context
+            output["additionalContext"] = DECISION_TRIGGERS[tool_name]
+            log(f"Added decision reminder for {tool_name}")
 
-        # Return empty for now (no blocking)
+        # Return output
         json.dump(output, sys.stdout)
 
     except Exception as e:

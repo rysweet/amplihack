@@ -8,69 +8,10 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 We are building an advanced agentic coding framework that leverages AI agents to accelerate software development through intelligent automation, code generation, and collaborative problem-solving.
 
-## 🔴 CRITICAL: Decision Recording Requirements
+## Decision Recording
 
-**EVERY SESSION MUST MAINTAIN DECISION RECORDS**
-
-### When to Record Decisions
-
-Record a decision IMMEDIATELY when you:
-- **Start any task** (using TodoWrite or otherwise)
-- **Call any agent** (architect, builder, reviewer, etc.)
-- **Make architectural choices** (approach, design, tools)
-- **Encounter blockers** (errors, missing files, unclear requirements)
-- **Complete major steps** (implementation done, tests passing)
-- **Use /ultrathink** (record each phase)
-
-### Session ID Generation
-
-Generate session ID on FIRST action:
-```
-Format: YYYY-MM-DD-HHMMSS
-Example: 2025-01-16-143022
-```
-
-### Decision Record Template
-
-**Location**: `.claude/runtime/logs/{session_id}/DECISIONS.md`
-
-```markdown
-## [Timestamp] - [Component/Agent/Command]
-**Decision**: What was decided
-**Reasoning**: Why this approach
-**Alternatives**: What else was considered
-**Impact**: What this changes/affects
-**Next Steps**: What happens next
----
-```
-
-### Example Decision Record
-
-```markdown
-## 2025-01-16 14:30:22 - /ultrathink
-**Decision**: Use architect agent to analyze caching requirements
-**Reasoning**: Complex architectural decision needs proper analysis
-**Alternatives**: Direct implementation, use builder agent
-**Impact**: Will create specifications before implementation
-**Next Steps**: Call architect with problem context
----
-
-## 2025-01-16 14:31:45 - Architect Agent
-**Decision**: Implement file-based cache with TTL
-**Reasoning**: Simplest solution, no external dependencies
-**Alternatives**: Redis, in-memory cache, database cache
-**Impact**: Creates new cache module in /modules/cache
-**Next Steps**: Builder agent to implement specification
----
-```
-
-### Enforcement Checklist
-
-- [ ] Session directory created on first action?
-- [ ] Decision recorded for task start?
-- [ ] Decision recorded for each agent call?
-- [ ] Decision recorded for approach selection?
-- [ ] Decision recorded for completion?
+Record significant decisions in `.claude/runtime/logs/{session_id}/DECISIONS.md`
+Format: Decision | Reasoning | Alternatives | Impact | Next Steps
 
 ## Important Files to Import
 
@@ -89,28 +30,34 @@ When starting a session, import these files for context:
 
 ### Critical Operating Principles
 
-- **RECORD DECISIONS FIRST**: Before ANY action, record what you're about to do and why
 - **Always think through a plan**: For any non-trivial task, break it down and use TodoWrite tool to manage a todo list
-- **Use specialized agents**: Check `.claude/agents/CATALOG.md` for available agents and use them proactively
+- **Use specialized agents**: Check `.claude/agents/amplihack/*.md` for available agents and use them proactively
 - **Ask for clarity**: If requirements are unclear, ask questions before proceeding
 - **Document learnings**: Update DISCOVERIES.md with new insights
-
-**Decision Recording Triggers**:
-- TodoWrite usage → Record task breakdown decision
-- Agent delegation → Record why this agent
-- Error/blocker → Record pivot decision
-- Completion → Record outcome and learnings
+- **Session Logs**: All interactions MUST be logged in .claude/runtime/logs/<session_id> where <session_id> is a unique identifier for the session based on the timestamp.
+- **Decision records**: All Agents MUST log their decisions and reasoning in .claude/runtime/logs/<session_id>/DECISIONS.md
 
 ### Agent Delegation Strategy
 
-**Always ask**: "What agents can help with this task?"
+**GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to specialized agents when possible.
 
-- **Architecture tasks** → Use architect agent
-- **Implementation** → Use builder agent
-- **Debugging/Review** → Use reviewer agent
-- **Database work** → Use database agent
-- **Security concerns** → Use security agent
-- **External APIs** → Use integration agent
+#### When to Use Agents (ALWAYS IF POSSIBLE)
+
+**Immediate Delegation Triggers:**
+
+- **System Design**: Use `architect.md` for specifications and problem decomposition
+- **Implementation**: Use `builder.md` for code generation from specs
+- **Code Review**: Use `reviewer.md` for philosophy compliance checks
+- **Testing**: Use `tester.md` for test generation and validation
+- **API Design**: Use `api-designer.md` for contract definitions
+- **Performance**: Use `optimizer.md` for bottleneck analysis
+- **Security**: Use `security.md` for vulnerability assessment
+- **Database**: Use `database.md` for schema and query optimization
+- **Integration**: Use `integration.md` for external service connections
+- **Cleanup**: Use `cleanup.md` for code simplification
+- **Pattern Recognition**: Use `patterns.md` to identify reusable solutions
+- **Analysis**: Use `analyzer.md` for deep code understanding
+- **Ambiguity**: Use `ambiguity.md` when requirements are unclear
 
 ### Parallel Execution
 
@@ -164,7 +111,6 @@ Specs/               # Module specifications
 
 ### /ultrathink <task>
 Deep analysis mode using multiple agents
-**AUTO-RECORDS**: Creates session and records phase decisions
 
 ### /analyze <path>
 Comprehensive code review for philosophy compliance
@@ -179,7 +125,6 @@ After code changes:
 2. Check philosophy compliance
 3. Verify module boundaries
 4. Update DISCOVERIES.md with learnings
-5. **Record completion decision** in session log
 
 ## Common Patterns
 
