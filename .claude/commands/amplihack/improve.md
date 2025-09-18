@@ -17,37 +17,57 @@ Target can be:
 
 ## Purpose
 
-Continuous self-improvement and learning from experience.
+Continuous self-improvement with built-in validation to prevent complexity creep.
+
+## New Improvement Workflow (v2)
+
+**ALWAYS use the improvement-workflow agent for improvements:**
+
+```markdown
+Task("improvement-workflow", {
+"target": "[what to improve]",
+"problem": "[specific issue]",
+"constraints": "[must remain simple]"
+})
+```
+
+The workflow enforces:
+
+1. **Simplicity-first validation** before any code
+2. **Progressive review** at each stage
+3. **Security checks** built-in
+4. **Redundancy prevention** automatic
+5. **Philosophy compliance** continuous
 
 ## Self-Improvement Process
 
-### 1. Analyze Current State
+### Stage 1: Problem Validation ✓
 
-- Review `.claude/runtime/metrics/`
-- Check `.claude/runtime/logs/`
-- Examine DISCOVERIES.md
-- Assess agent effectiveness
+- Validate simplest approach first
+- Check for existing solutions
+- Max 3 components rule
+- Security pre-check
 
-### 2. Identify Improvements
+### Stage 2: Minimal Implementation ✓
 
-- Performance bottlenecks
-- Repeated failures
-- Missing capabilities
-- Inefficient patterns
+- Start with < 200 LOC
+- No more than 3 files
+- Review at natural boundaries (module completion, security code)
+- Automatic simplicity check
 
-### 3. Generate Updates
+### Stage 3: Progressive Enhancement ✓
 
-- New agent definitions
-- Updated patterns
-- Enhanced commands
-- Improved workflows
+- Justify each addition
+- Parallel review (reviewer + security)
+- Continuous validation
+- Stop at "good enough"
 
-### 4. Document Learning
+### Stage 4: Final Validation ✓
 
-- Update DISCOVERIES.md
-- Add to PATTERNS.md
-- Enhance agent descriptions
-- Create new tools
+- Philosophy compliance check
+- Security audit
+- Redundancy scan
+- Simplicity score
 
 ## Improvement Areas
 
@@ -124,15 +144,34 @@ Continuous self-improvement and learning from experience.
 4. What tools are missing?
 5. What knowledge gaps exist?
 
-## Example Improvements
+## Example Using New Workflow
 
-### New Agent Creation
+### Creating New Agent (OLD WAY - Don't Do)
 
 ```yaml
 name: test-generator
-purpose: Automatically generate comprehensive tests
-trigger: After builder creates new module
-capability: Analyze code and create test cases
+purpose: Generate tests
+# Problem: No validation, could be redundant
+```
+
+### Creating New Agent (NEW WAY - Do This)
+
+```markdown
+Task("improvement-workflow", {
+"target": "agents",
+"problem": "Need automated test generation",
+"constraints": "Check if tester.md already does this"
+})
+
+# Workflow will:
+
+# 1. Check for existing test capabilities
+
+# 2. Validate if new agent is needed
+
+# 3. Enforce minimal implementation
+
+# 4. Review at each stage
 ```
 
 ### Pattern Addition
@@ -161,12 +200,28 @@ Benefit: 3x faster analysis
 3. Final quick review
 ```
 
+## Key Lessons from PR #44
+
+**What went wrong:**
+
+- Created 7 agents when 2 sufficed
+- 915-line test file (violated Zero-BS)
+- Security issues found late
+- 2000+ lines removed in review
+
+**Why the new workflow prevents this:**
+
+- Stage 1 would reject 7-agent design
+- Stage 2 would stop at line 200 of tests
+- Security check happens BEFORE code
+- Continuous validation prevents accumulation
+
 ## Remember
 
-- Every failure is a learning opportunity
-- Document what works and what doesn't
-- Small improvements compound over time
-- The system should get smarter with use
-- Share learnings through documentation
+- **Simplicity is enforced, not suggested**
+- **Review early and often, not just at end**
+- **Validate at 50 LOC increments**
+- **Stop when it works, not when it's perfect**
+- **Built-in checks prevent human oversight**
 
-Self-improvement is not a task, it's a continuous process.
+The improvement-workflow agent ensures improvements actually improve.
