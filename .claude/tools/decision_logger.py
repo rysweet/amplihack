@@ -8,8 +8,9 @@ Following ruthless simplicity:
 - Works or doesn't exist
 """
 
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Optional
 
 
 def get_session_id() -> str:
@@ -17,21 +18,21 @@ def get_session_id() -> str:
     return datetime.now().strftime("%Y-%m-%d-%H%M%S")
 
 
-def ensure_decision_log(session_id: str = None) -> Path:
+def ensure_decision_log(session_id: Optional[str] = None) -> Path:
     """Create decision log file if it doesn't exist."""
     if not session_id:
         session_id = get_session_id()
-    
+
     log_dir = Path(f".claude/runtime/logs/{session_id}")
     log_dir.mkdir(parents=True, exist_ok=True)
-    
+
     log_path = log_dir / "DECISIONS.md"
     if not log_path.exists():
         log_path.write_text(
             f"# Decision Log - Session {session_id}\n\n"
             f"Started: {datetime.now().isoformat()}\n\n---\n\n"
         )
-    
+
     return log_path
 
 
@@ -41,11 +42,11 @@ def log_decision(
     alternatives: str = "None considered",
     impact: str = "TBD",
     next_steps: str = "Continue implementation",
-    session_id: str = None
+    session_id: Optional[str] = None,
 ) -> None:
     """
     Log a decision to the session file.
-    
+
     Args:
         decision: What was decided
         reasoning: Why this approach
@@ -55,9 +56,9 @@ def log_decision(
         session_id: Session to log to (default: current time)
     """
     log_path = ensure_decision_log(session_id)
-    
+
     timestamp = datetime.now().strftime("%H:%M:%S")
-    
+
     entry = f"""## [{timestamp}] Decision
 **What**: {decision}
 **Why**: {reasoning}
@@ -68,7 +69,7 @@ def log_decision(
 ---
 
 """
-    
+
     with open(log_path, "a") as f:
         f.write(entry)
 
@@ -76,14 +77,10 @@ def log_decision(
 if __name__ == "__main__":
     # Simple CLI usage
     import sys
-    
+
     if len(sys.argv) > 1:
         decision = " ".join(sys.argv[1:])
-        log_decision(
-            decision=decision,
-            reasoning="CLI invocation",
-            session_id=get_session_id()
-        )
+        log_decision(decision=decision, reasoning="CLI invocation", session_id=get_session_id())
         print(f"Decision logged: {decision}")
     else:
         print("Usage: decision_logger.py <decision text>")

@@ -67,14 +67,14 @@ def main():
 
         # Simple decision reminders for specific tools
         output = {}
-        
+
         # Decision triggers - gentle reminders only
         DECISION_TRIGGERS = {
             "TodoWrite": "Consider recording your task breakdown reasoning",
             "Task": "Consider documenting why you're using this agent",
-            "MultiEdit": "If making significant refactoring, consider noting the approach"
+            "MultiEdit": "If making significant refactoring, consider noting the approach",
         }
-        
+
         if tool_name in DECISION_TRIGGERS:
             # Add gentle reminder as additional context
             output["additionalContext"] = DECISION_TRIGGERS[tool_name]
