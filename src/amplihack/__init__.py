@@ -10,7 +10,6 @@ HOME = str(Path.home())
 CLAUDE_DIR = os.path.join(HOME, ".claude")
 CLI_NAME = "amplihack_cli.py"
 CLI_SRC = os.path.abspath(__file__)
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
 
@@ -19,10 +18,10 @@ def ensure_dirs():
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 
-def copytree_manifest(src, dst, rel_top=".claude"):
+def copytree_manifest(repo_root, dst, rel_top=".claude"):
     search_dirs = ["agents", "commands", "tools"]
     amplihack_name = "amplihack"
-    base = os.path.join(src, rel_top)
+    base = os.path.join(repo_root, rel_top)
     copied = []
     for dname in search_dirs:
         subdir = os.path.join(base, dname, amplihack_name)
@@ -75,10 +74,14 @@ def all_rel_dirs(base):
     return result
 
 
-def install():
+def _local_install(repo_root):
+    """
+    Install amplihack files from the given repo_root directory.
+    This function is for internal use only and is not exposed on the CLI.
+    """
     ensure_dirs()
     pre_dirs = all_rel_dirs(CLAUDE_DIR)
-    copytree_manifest(REPO_ROOT, CLAUDE_DIR)
+    copytree_manifest(repo_root, CLAUDE_DIR)
     root_dirs = [os.path.join(CLAUDE_DIR, d) for d in ["agents", "commands", "tools"]]
     files, post_dirs = get_all_files_and_dirs(root_dirs)
     new_dirs = sorted(set(post_dirs) - pre_dirs)
@@ -130,13 +133,15 @@ def main():
         with tempfile.TemporaryDirectory() as tmp:
             repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
             subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-            # When debugging locally, if the repo does not contain the latest version of this file, uncomment the line below
-            # subprocess.check_call(["cp", "-r", "src/", tmp])
-            subprocess.check_call([sys.executable, "-m", "amplihack", "_local_install"])
+            subprocess.check_call([sys.executable, "-m", "amplihack", "_local_install", tmp])
     elif cmd == "uninstall":
         uninstall()
     elif cmd == "_local_install":
-        install()
+        if len(sys.argv) < 3:
+            print("_local_install requires repo_root as an argument")
+            sys.exit(1)
+        repo_root = sys.argv[2]
+        _local_install(repo_root)
     else:
         print(f"Invalid command: {cmd}. Use install or uninstall.")
         sys.exit(1)
