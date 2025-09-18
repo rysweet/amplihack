@@ -41,23 +41,26 @@ uvx amplihack install
 
 ## Development Setup
 
-### Pre-commit Hooks (REQUIRED)
+### Quick Start for Developers
 
-**⚠️ Important: Pre-commit hooks must be installed manually after cloning!**
-
-This project uses pre-commit hooks to ensure code quality. They are NOT
-automatically active after cloning - each developer must install them.
-
-**First-time setup (required for all developers):**
+**⚠️ REQUIRED: Run setup after cloning!**
 
 ```sh
-# After cloning the repo, install pre-commit hooks
-pip install pre-commit
-pre-commit install
-
-# Verify hooks are working
-pre-commit run --all-files
+# After cloning, run ONE of these:
+make setup           # Easiest - uses Makefile
+# OR
+python3 setup_dev.py # Direct Python script
+# OR
+pip install pre-commit && pre-commit install  # Manual setup
 ```
+
+This installs pre-commit hooks that will:
+
+- Prevent commits with formatting issues
+- Auto-fix what can be fixed
+- Ensure your code will pass CI checks
+
+**Without this setup, your commits may fail CI!**
 
 **What the hooks do:**
 
