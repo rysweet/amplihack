@@ -10,12 +10,14 @@ HOME = str(Path.home())
 CLAUDE_DIR = os.path.join(HOME, ".claude")
 CLI_NAME = "amplihack_cli.py"
 CLI_SRC = os.path.abspath(__file__)
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
 
+
 def ensure_dirs():
     os.makedirs(CLAUDE_DIR, exist_ok=True)
+
 
 def copytree_manifest(src, dst, rel_top=".claude"):
     search_dirs = ["agents", "commands", "tools"]
@@ -34,10 +36,12 @@ def copytree_manifest(src, dst, rel_top=".claude"):
         copied.append(os.path.join(dname, amplihack_name))
     return copied
 
+
 def write_manifest(files, dirs):
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
     with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
         json.dump({"files": files, "dirs": dirs}, f, indent=2)
+
 
 def read_manifest():
     try:
@@ -46,6 +50,7 @@ def read_manifest():
             return mf.get("files", []), mf.get("dirs", [])
     except Exception:
         return [], []
+
 
 def get_all_files_and_dirs(root_dirs):
     all_files = []
@@ -61,12 +66,14 @@ def get_all_files_and_dirs(root_dirs):
                 all_files.append(rel_path)
     return sorted(all_files), sorted(all_dirs)
 
+
 def all_rel_dirs(base):
     result = set()
     for r, dirs, _files in os.walk(base):
         rel = os.path.relpath(r, CLAUDE_DIR)
         result.add(rel)
     return result
+
 
 def install():
     ensure_dirs()
@@ -79,6 +86,7 @@ def install():
     print(
         f"Installed .claude/agents, .claude/commands, .claude/tools to {CLAUDE_DIR}. Manifest with files and newly created dirs written to {MANIFEST_JSON}."
     )
+
 
 def uninstall():
     removed_any = False
@@ -102,6 +110,7 @@ def uninstall():
     else:
         print("Nothing to uninstall.")
 
+
 def filecmp(f1, f2):
     try:
         if os.path.getsize(f1) != os.path.getsize(f2):
@@ -110,6 +119,7 @@ def filecmp(f1, f2):
             return file1.read() == file2.read()
     except Exception:
         return False
+
 
 def main():
     if len(sys.argv) < 2:
