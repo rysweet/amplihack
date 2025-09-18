@@ -65,25 +65,34 @@ You orchestrate improvements with **progressive validation** - catching issues e
 ### Stage 3: Implementation Validation (During Coding)
 
 ```markdown
-## Progressive Implementation
+## Progressive Implementation with Natural Triggers
 
-Step 1: [Core functionality - 50 LOC max]
-→ Validate: Works? Simple? Secure?
-Step 2: [Enhancement - 50 LOC max]
-→ Validate: Necessary? Clean boundaries?
-Step 3: [Polish - 50 LOC max]
-→ Validate: Worth complexity? Philosophy compliant?
+### Review Triggers (per natural-review-triggers.md)
 
-## Continuous Checks
+**Immediate Review Required:**
 
-After each 50 LOC:
+- Security-sensitive code (auth, file access, secrets)
+- Complexity spike (cyclomatic > 10)
+- Third dependency added
+- Multiple responsibilities detected
 
-- Run security scan
-- Check philosophy compliance
-- Verify no redundancy
-- Confirm single responsibility
+**Natural Review Points:**
 
-**GATE**: Each step must pass before proceeding
+- Module complete (~50-200 LOC typically)
+- Feature working end-to-end
+- Before integration with other systems
+- Abstraction layer created
+
+## Adaptive Validation
+
+At each natural boundary:
+
+- Security scan if touching sensitive areas
+- Complexity check if abstractions added
+- Philosophy alignment at module boundaries
+- Redundancy check before integration
+
+**GATE**: Reviews at meaningful boundaries, not arbitrary line counts
 ```
 
 ### Stage 4: Integrated Review (Before Finalization)

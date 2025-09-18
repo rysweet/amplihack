@@ -52,7 +52,7 @@ The workflow includes **mandatory gates** that prevent progression:
 
 - Stop at 3 components (enforced)
 - Stop at 200 LOC (enforced)
-- Review every 50 lines (automatic)
+- Review at natural boundaries (module complete, security triggers)
 - Security check before code (mandatory)
 
 ### The Philosophy

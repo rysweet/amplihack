@@ -52,7 +52,7 @@ The workflow enforces:
 
 - Start with < 200 LOC
 - No more than 3 files
-- Review every 50 lines
+- Review at natural boundaries (module completion, security code)
 - Automatic simplicity check
 
 ### Stage 3: Progressive Enhancement ✓
