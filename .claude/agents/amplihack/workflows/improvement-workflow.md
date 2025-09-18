@@ -247,18 +247,16 @@ Cannot continue until resolved."
 
 ### Parallel Validation Pattern
 
-```python
+```bash
 # Execute these simultaneously at Stage 4
-validation_tasks = [
-    ("reviewer", "Check philosophy and simplicity"),
-    ("security", "Scan for vulnerabilities"),
-    ("analyzer", "Detect redundancy and patterns"),
-    ("tester", "Verify test coverage")
-]
+# Using Task tool for parallel agent execution:
 
-results = parallel_execute(validation_tasks)
-if not all(r.passed for r in results):
-    return_to_design()
+Task("reviewer", "Check philosophy and simplicity")
+Task("security", "Scan for vulnerabilities")
+Task("analyzer", "Detect redundancy and patterns")
+Task("tester", "Verify test coverage")
+
+# If any validation fails, return to Stage 2 for redesign
 ```
 
 ### Agent Collaboration
