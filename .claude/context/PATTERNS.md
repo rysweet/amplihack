@@ -342,6 +342,188 @@ results = await asyncio.gather(*tasks)
 - **Consider semaphores for rate limiting** - Control concurrency
 - **Return errors as values** - Don't let exceptions propagate
 
+## Pattern: CI Failure Rapid Diagnosis
+
+### Challenge
+
+CI failures require systematic investigation across multiple dimensions (environment, syntax, logic, dependencies) while minimizing time to resolution. Traditional sequential debugging can take 45+ minutes.
+
+### Solution
+
+Deploy specialized agents in parallel for comprehensive diagnosis, targeting 20-25 minute resolution:
+
+```python
+# Parallel Agent Orchestration for CI Debugging
+async def diagnose_ci_failure(pr_number: str, failure_logs: str):
+    """Rapid CI failure diagnosis using parallel agent deployment"""
+
+    # Phase 1: Environment Quick Check (2-3 minutes)
+    basic_checks = await asyncio.gather(
+        check_environment_setup(),
+        validate_dependencies(),
+        verify_branch_status()
+    )
+
+    if basic_checks_pass(basic_checks):
+        # Phase 2: Parallel Specialized Diagnosis (8-12 minutes)
+        diagnostic_tasks = [
+            # Core diagnostic agents
+            Task("ci-diagnostics", f"Analyze CI logs for {pr_number}"),
+            Task("silent-failure-detector", "Identify silent test failures"),
+            Task("pattern-matcher", "Match against known failure patterns")
+        ]
+
+        # Deploy all agents simultaneously
+        results = await asyncio.gather(*[
+            agent.execute(task) for agent, task in zip(
+                [ci_diagnostics_agent, silent_failure_agent, pattern_agent],
+                diagnostic_tasks
+            )
+        ])
+
+        # Phase 3: Synthesis and Action (5-8 minutes)
+        diagnosis = synthesize_findings(results)
+        action_plan = create_fix_strategy(diagnosis)
+
+        return {
+            "root_cause": diagnosis.primary_issue,
+            "fix_strategy": action_plan,
+            "confidence": diagnosis.confidence_score,
+            "estimated_fix_time": action_plan.time_estimate
+        }
+
+    return {"requires_escalation": True, "basic_check_failures": basic_checks}
+```
+
+### Agent Coordination Workflow
+
+```
+┌─── Environment Check (2-3 min) ───┐
+│   ├── Dependencies valid?          │
+│   ├── Branch conflicts?            │
+│   └── Basic setup correct?         │
+└─────────────┬───────────────────────┘
+              │
+              ▼ (if environment OK)
+┌─── Parallel Diagnosis (8-12 min) ──┐
+│   ├── ci-diagnostics.md            │
+│   │   └── Parse logs, find errors  │
+│   ├── silent-failure-detector.md   │
+│   │   └── Find hidden failures     │
+│   └── pattern-matcher.md           │
+│       └── Match known patterns     │
+└─────────────┬───────────────────────┘
+              │
+              ▼
+┌─── Synthesis & Action (5-8 min) ───┐
+│   ├── Combine findings             │
+│   ├── Identify root cause          │
+│   ├── Generate fix strategy        │
+│   └── Execute solution             │
+└─────────────────────────────────────┘
+```
+
+### Decision Points
+
+```python
+def should_escalate(diagnosis_results):
+    """Decide whether to escalate or continue automated fixing"""
+    escalate_triggers = [
+        diagnosis_results.confidence < 0.7,
+        diagnosis_results.estimated_fix_time > 30,  # minutes
+        diagnosis_results.requires_infrastructure_change,
+        diagnosis_results.affects_multiple_systems
+    ]
+    return any(escalate_triggers)
+
+def should_parallel_debug(initial_scan):
+    """Determine if parallel agent deployment is worth it"""
+    return (
+        initial_scan.environment_healthy and
+        initial_scan.failure_complexity > "simple" and
+        initial_scan.logs_available
+    )
+```
+
+### Tool Integration
+
+```bash
+# Environment checks (use built-in tools)
+gh pr view ${PR_NUMBER} --json statusCheckRollup
+git status --porcelain
+npm test --dry-run  # or equivalent
+
+# Agent delegation (use Task tool)
+Task("ci-diagnostics", {
+    "pr_number": pr_number,
+    "logs": failure_logs,
+    "focus": "error_identification"
+})
+
+# Pattern capture (update DISCOVERIES.md)
+echo "## CI Pattern: ${failure_type}
+- Root cause: ${root_cause}
+- Solution: ${solution}
+- Time to resolve: ${resolution_time}
+- Confidence: ${confidence_score}" >> DISCOVERIES.md
+```
+
+### Specialized Agents Used
+
+1. **ci-diagnostics.md**: Parse CI logs, identify error patterns, suggest fixes
+2. **silent-failure-detector.md**: Find tests that pass but shouldn't, timeout issues
+3. **pattern-matcher.md**: Match against historical failures, suggest proven solutions
+
+### Time Optimization Strategies
+
+- **Environment First**: Eliminate basic issues before deep diagnosis (saves 10-15 min)
+- **Parallel Deployment**: Run all diagnostic agents simultaneously (saves 15-20 min)
+- **Pattern Matching**: Use historical data to shortcut common issues (saves 5-10 min)
+- **Confidence Thresholds**: Escalate low-confidence diagnoses early (prevents wasted time)
+
+### Learning Loop Integration
+
+```python
+def capture_ci_pattern(failure_type, solution, resolution_time):
+    """Capture successful patterns for future use"""
+    pattern_entry = {
+        "failure_signature": extract_signature(failure_type),
+        "solution_steps": solution.steps,
+        "resolution_time": resolution_time,
+        "confidence_score": solution.confidence,
+        "timestamp": datetime.now().isoformat()
+    }
+
+    # Add to DISCOVERIES.md for pattern recognition
+    append_to_discoveries(pattern_entry)
+
+    # Update pattern-matcher agent with new pattern
+    update_pattern_database(pattern_entry)
+```
+
+### Success Metrics
+
+- **Target Resolution Time**: 20-25 minutes (down from 45+ minutes)
+- **Confidence Threshold**: >0.7 for automated fixes
+- **Escalation Rate**: <20% of CI failures
+- **Pattern Recognition Hit Rate**: >60% for repeat issues
+
+### Key Points
+
+- **Environment checks prevent wasted effort** - Always validate basics first
+- **Parallel agent deployment is crucial** - Don't debug sequentially
+- **Capture patterns immediately** - Update DISCOVERIES.md after every resolution
+- **Use confidence scores for escalation** - Don't waste time on uncertain diagnoses
+- **Historical patterns accelerate resolution** - Build and use pattern database
+- **Specialized agents handle complexity** - Each agent has focused expertise
+
+### Integration with Existing Patterns
+
+- **Combines with Parallel Task Execution** - Uses asyncio.gather() for agent coordination
+- **Follows Zero-BS Implementation** - All diagnostic code must work, no stubs
+- **Uses Configuration Single Source** - CI settings centralized in pyproject.toml
+- **Implements Incremental Processing** - Builds pattern database over time
+
 ## Remember
 
 These patterns represent hard-won knowledge from real development challenges. When facing similar problems:
