@@ -1,0 +1,45 @@
+# Pre-commit hooks configuration
+# https://pre-commit.com/
+
+# Skip hooks: SKIP=hook_id git commit
+# Bypass all: git commit --no-verify
+
+default_language_version:
+  python: python3
+
+repos:
+  # Essential quick checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+
+  # Python - Ruff (fast formatter and linter)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # Python - Type checking with pyright
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.405
+    hooks:
+      - id: pyright
+
+  # JavaScript/TypeScript/Markdown formatting
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, json, yaml, markdown]
+
+  # Secret detection - CRITICAL for security
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        exclude: .*\.lock$|package-lock\.json$

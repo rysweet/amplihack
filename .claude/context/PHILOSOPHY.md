@@ -21,6 +21,7 @@ _"We provide the blueprint, and AI builds the product, one modular piece at a ti
 Like a brick model, our software is built from small, clear modules. Each module is a self-contained "brick" of functionality with defined connectors (interfaces) to the rest of the system. Because these connection points are standard and stable, we can generate or regenerate any single module independently without breaking the whole.
 
 **Key concepts:**
+
 - **A brick** = Self-contained module with ONE clear responsibility
 - **A stud** = Public contract (functions, API, data model) others connect to
 - **Regeneratable** = Can be rebuilt from spec without breaking connections
@@ -49,6 +50,7 @@ Like a brick model, our software is built from small, clear modules. Each module
 Choosing between custom code and external libraries is a judgment call that evolves with requirements:
 
 #### When Custom Code Makes Sense
+
 - The need is simple and well-understood
 - You want code perfectly tuned to your exact requirements
 - Libraries would require significant "hacking" or workarounds
@@ -56,6 +58,7 @@ Choosing between custom code and external libraries is a judgment call that evol
 - You need full control over the implementation
 
 #### When Libraries Make Sense
+
 - They solve complex problems you'd rather not tackle (auth, crypto, video encoding)
 - They align well with your needs without major modifications
 - The problem is well-solved with mature, battle-tested solutions
@@ -63,6 +66,7 @@ Choosing between custom code and external libraries is a judgment call that evol
 - The complexity they handle far exceeds the integration cost
 
 #### Stay Flexible
+
 Keep library integration points minimal and isolated so you can switch approaches when needed. There's no shame in moving from custom to library or library to custom. Requirements change, understanding deepens, and the right answer today might not be the right answer tomorrow.
 
 ## The Human-AI Partnership
@@ -79,6 +83,7 @@ In this approach, humans step back from being code mechanics and instead take on
 ### Building in Parallel
 
 Our AI builders can spawn multiple versions of software in parallel:
+
 - Generate and test multiple variants of a feature simultaneously
 - Try different algorithms or approaches side by side
 - Build for multiple platforms from the same specifications
@@ -87,18 +92,21 @@ Our AI builders can spawn multiple versions of software in parallel:
 ## Development Approach
 
 ### Vertical Slices
+
 - Implement complete end-to-end functionality slices
 - Start with core user journeys
 - Get data flowing through all layers early
 - Add features horizontally only after core flows work
 
 ### Iterative Implementation
+
 - 80/20 principle: Focus on high-value, low-effort features first
 - One working feature > multiple partial features
 - Validate with real usage before enhancing
 - Be willing to refactor early work as patterns emerge
 
 ### Testing Strategy
+
 - Emphasis on behavior testing at module boundaries
 - Manual testability as a design goal
 - Focus on critical path testing initially
@@ -106,6 +114,7 @@ Our AI builders can spawn multiple versions of software in parallel:
 - Testing pyramid: 60% unit, 30% integration, 10% end-to-end
 
 ### Error Handling
+
 - Handle common errors robustly
 - Log detailed information for debugging
 - Provide clear error messages to users
@@ -125,6 +134,7 @@ When faced with implementation decisions, ask:
 ## Areas to Embrace Complexity
 
 Some areas justify additional complexity:
+
 - **Security**: Never compromise on security fundamentals
 - **Data integrity**: Ensure data consistency and reliability
 - **Core user experience**: Make the primary user flows smooth and reliable
@@ -133,6 +143,7 @@ Some areas justify additional complexity:
 ## Areas to Aggressively Simplify
 
 Push for extreme simplicity in:
+
 - **Internal abstractions**: Minimize layers between components
 - **Generic "future-proof" code**: Resist solving non-existent problems
 - **Edge case handling**: Handle the common cases well first
