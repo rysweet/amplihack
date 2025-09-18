@@ -1,0 +1,1 @@
+Microsoft Hackathon 2025 - Agentic Coding Framework is an advanced system leveraging AI agents for automated, collaborative software development. The project includes agent orchestration, modular design principles, and tools for code generation, analysis, and knowledge capture.
