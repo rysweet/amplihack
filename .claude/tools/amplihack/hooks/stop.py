@@ -10,10 +10,11 @@ from datetime import datetime
 from pathlib import Path
 
 # Add project to path if needed
-project_root = Path(__file__).parent.parent.parent.parent
+# Go up 5 levels: hooks -> amplihack -> tools -> .claude -> project_root
+project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-# Directories
+# Directories - use .claude at project root (not nested)
 LOG_DIR = project_root / ".claude" / "runtime" / "logs"
 ANALYSIS_DIR = project_root / ".claude" / "runtime" / "analysis"
 LOG_DIR.mkdir(parents=True, exist_ok=True)

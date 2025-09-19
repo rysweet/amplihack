@@ -9,7 +9,13 @@ amplihack = "amplihack:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["amplihack"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["amplihack*"]
+
+[tool.setuptools.package-data]
+amplihack = ["prompts/*.md"]
 
 [tool.ruff]
 # Essential Ruff settings only

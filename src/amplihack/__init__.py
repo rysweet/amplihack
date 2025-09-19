@@ -1,9 +1,6 @@
 import json
 import os
 import shutil
-import subprocess
-import sys
-import tempfile
 from pathlib import Path
 
 HOME = str(Path.home())
@@ -125,23 +122,7 @@ def filecmp(f1, f2):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: amplihack install | uninstall")
-        sys.exit(1)
-    cmd = sys.argv[1]
-    if cmd == "install":
-        with tempfile.TemporaryDirectory() as tmp:
-            repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
-            subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-            subprocess.check_call([sys.executable, "-m", "amplihack", "_local_install", tmp])
-    elif cmd == "uninstall":
-        uninstall()
-    elif cmd == "_local_install":
-        if len(sys.argv) < 3:
-            print("_local_install requires repo_root as an argument")
-            sys.exit(1)
-        repo_root = sys.argv[2]
-        _local_install(repo_root)
-    else:
-        print(f"Invalid command: {cmd}. Use install or uninstall.")
-        sys.exit(1)
+    # Import and use the enhanced CLI
+    from .cli import main as cli_main
+
+    return cli_main()

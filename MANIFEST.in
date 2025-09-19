@@ -1,0 +1,2 @@
+include src/amplihack/prompts/*.md
+recursive-include src/amplihack *.py
