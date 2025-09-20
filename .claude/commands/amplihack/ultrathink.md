@@ -12,33 +12,25 @@
 
 Deep analysis mode for complex tasks. Orchestrates multiple agents to break down, analyze, and solve challenging problems.
 
+## Integration with Default Workflow
+
+UltraThink dynamically follows the workflow defined in `.claude/workflow/DEFAULT_WORKFLOW.md`:
+
+- Reads and follows whatever workflow steps are defined
+- Adapts automatically when users customize the workflow
+- Provides deep multi-agent analysis within the workflow structure
+- No need to update UltraThink when workflow changes
+
 ## Process
 
-### Phase 1: Analysis
+For non-trivial code changes, UltraThink:
 
-Use the architect agent to:
+1. **Reads the current workflow** from `.claude/workflow/DEFAULT_WORKFLOW.md`
+2. **Provides deep analysis** using multiple agents where complexity requires it
+3. **Follows each workflow step** as defined by the user
+4. **Orchestrates agents** according to workflow requirements
 
-- Decompose the problem
-- Identify components
-- Design solution architecture
-- Create specifications
-
-### Phase 2: Implementation
-
-Use the builder agent to:
-
-- Implement modules from specifications
-- Create self-contained components
-- Write tests and documentation
-
-### Phase 3: Review
-
-Use the reviewer agent to:
-
-- Check philosophy compliance
-- Verify correctness
-- Suggest improvements
-- Ensure quality
+The workflow is the single source of truth - UltraThink adapts to it automatically.
 
 ## Agent Orchestration
 
@@ -54,6 +46,23 @@ Use the reviewer agent to:
 - Different perspectives needed
 - Gathering diverse solutions
 
+## When to Use UltraThink
+
+### Use UltraThink When:
+
+- Task complexity requires deep multi-agent analysis
+- Architecture decisions need careful decomposition
+- Requirements are vague and need exploration
+- Multiple solution paths need evaluation
+- Cross-cutting concerns need coordination
+
+### Follow Workflow Directly When:
+
+- Requirements are clear and straightforward
+- Solution approach is well-defined
+- Standard implementation patterns apply
+- Single agent can handle the task
+
 ## Task Management
 
 Always use TodoWrite to:
@@ -62,15 +71,18 @@ Always use TodoWrite to:
 - Track progress
 - Coordinate agents
 - Document decisions
+- Track workflow checklist completion
 
 ## Example Flow
 
 ```
-1. Analyze problem with architect
-2. Create specifications
-3. Build with builder agent
-4. Review with reviewer agent
-5. Iterate if needed
+1. Read workflow from DEFAULT_WORKFLOW.md
+2. Begin executing workflow steps with deep analysis
+3. Orchestrate multiple agents where complexity requires
+4. Follow all workflow steps as defined
+5. Adapt to any user customizations automatically
 ```
+
+UltraThink enhances the workflow with deep multi-agent analysis while respecting user customizations.
 
 Remember: Ultra-thinking means thorough analysis before action.

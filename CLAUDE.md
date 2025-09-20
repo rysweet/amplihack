@@ -30,8 +30,13 @@ When starting a session, import these files for context:
 
 - **Always think through a plan**: For any non-trivial task, break it down and
   use TodoWrite tool to manage a todo list
-- **Use specialized agents**: Check `.claude/agents/amplihack/*.md` for
-  available agents and use them proactively
+- **The workflow is authoritative**: The 13-step workflow in
+  `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
+  workflow, and CI/CD process (users can customize this file)
+- **Use UltraThink by default**: For non-trivial tasks, start with `/ultrathink`
+  which reads the workflow and orchestrates agents to execute it
+- **Maximize agent usage**: Every workflow step should leverage specialized
+  agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Ask for clarity**: If requirements are unclear, ask questions before
   proceeding
 - **Document learnings**: Update DISCOVERIES.md with new insights
@@ -129,6 +134,35 @@ granularity of tasks (eg when going off to do something specific where context
 from the whole conversation is not necessary, such as managing a git worktree or
 cleaning some data).
 
+### Workflow and UltraThink Integration
+
+**The workflow defines WHAT to do, UltraThink orchestrates HOW to do it:**
+
+```
+Example - Any Non-Trivial Task:
+
+User: "Add authentication to the API"
+
+1. Invoke /ultrathink with the task
+   → UltraThink reads DEFAULT_WORKFLOW.md
+   → Follows all 13 steps in order
+   → Orchestrates multiple agents at each step
+
+2. Workflow provides the authoritative process:
+   → Step order (1-13) must be followed
+   → Git operations (branch, commit, push)
+   → CI/CD integration points
+   → Review and merge requirements
+
+3. Agents execute the actual work:
+   → prompt-writer clarifies requirements
+   → architect designs the solution
+   → builder implements the code
+   → reviewer ensures quality
+```
+
+The workflow file is the single source of truth - edit it to change the process.
+
 ### Parallel Execution
 
 **CRITICAL**: Always consider what can be done in parallel. Use a single call to
@@ -178,6 +212,8 @@ Bad:
 ├── agents/           # Specialized AI agents
 ├── commands/         # Slash commands (/ultrathink, /analyze, /improve)
 ├── tools/            # Hooks and utilities
+├── workflow/         # Default workflow definition
+│   └── DEFAULT_WORKFLOW.md  # Customizable 13-step workflow
 └── runtime/          # Logs, metrics, analysis
 
 Specs/               # Module specifications
@@ -187,7 +223,12 @@ Specs/               # Module specifications
 
 ### /ultrathink <task>
 
-Deep analysis mode using multiple agents
+Default execution mode for non-trivial tasks. UltraThink:
+
+- Reads the workflow from `.claude/workflow/DEFAULT_WORKFLOW.md`
+- Follows all steps in the exact order defined
+- Orchestrates multiple agents at each step for maximum effectiveness
+- Adapts automatically when you customize the workflow file
 
 ### /analyze <path>
 

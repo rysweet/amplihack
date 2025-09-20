@@ -72,3 +72,69 @@ uvx amplihack install
 - The CLI lives in the `src/amplihack/` directory (src layout).
 - Use only the `amplihack` CLI as above—no legacy scripts or entrypoints.
 - The CLI might be installed under `.venv/bin`
+
+## Default Coding Workflow
+
+This project includes a standardized 13-step workflow for all non-trivial code
+changes. The workflow ensures consistency, quality, and philosophy compliance
+across all development.
+
+### Using the Workflow
+
+The workflow is automatically followed by Claude Code for:
+
+- New features
+- Bug fixes
+- Refactoring
+- Any non-trivial code changes
+
+The workflow steps include:
+
+1. Requirements clarification
+2. Issue creation
+3. Branch setup
+4. TDD design
+5. Implementation
+6. Simplification
+7. Testing
+8. Committing
+9. PR creation
+10. Review
+11. Feedback implementation
+12. Philosophy check
+13. Merge readiness
+
+### Customizing the Workflow
+
+The workflow is defined in `.claude/workflow/DEFAULT_WORKFLOW.md` and can be
+customized to fit your team's needs:
+
+1. **Edit the workflow file:**
+
+   ```sh
+   # Open the workflow file in your editor
+   $EDITOR .claude/workflow/DEFAULT_WORKFLOW.md
+   ```
+
+2. **Modify steps as needed:**
+   - Add new steps or remove unnecessary ones
+   - Change the order of operations
+   - Adjust the level of detail in checklists
+   - Customize agent usage for each step
+
+3. **Save your changes:**
+   - Changes take effect immediately
+   - No restart or compilation needed
+   - The updated workflow will be used for all future tasks
+
+### Workflow Philosophy
+
+The workflow enforces key development principles:
+
+- **Ruthless Simplicity**: Each step has one clear purpose
+- **Test-Driven Development**: Tests before implementation
+- **Quality Gates**: Multiple review and validation steps
+- **Documentation**: Clear commits and PR descriptions
+
+See `.claude/workflow/DEFAULT_WORKFLOW.md` for the complete workflow with
+detailed checklists for each step
