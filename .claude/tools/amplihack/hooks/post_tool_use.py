@@ -1,83 +1,91 @@
 #!/usr/bin/env python3
 """
 Claude Code hook for post tool use events.
-Tracks tool usage and performance metrics.
+Uses unified HookProcessor for common functionality.
 """
 
-import json
+# Import the base processor
 import sys
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
-# Add project to path if needed
-# Go up 5 levels: hooks -> amplihack -> tools -> .claude -> project_root
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-# Directories - use .claude at project root (not nested)
-LOG_DIR = project_root / ".claude" / "runtime" / "logs"
-METRICS_DIR = project_root / ".claude" / "runtime" / "metrics"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-METRICS_DIR.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(Path(__file__).parent))
+from hook_processor import HookProcessor
 
 
-def log(message: str, level: str = "INFO"):
-    """Simple logging to file"""
-    timestamp = datetime.now().isoformat()
-    log_file = LOG_DIR / "post_tool_use.log"
+class PostToolUseHook(HookProcessor):
+    """Hook processor for post tool use events."""
 
-    with open(log_file, "a") as f:
-        f.write(f"[{timestamp}] {level}: {message}\n")
+    def __init__(self):
+        super().__init__("post_tool_use")
 
+    def save_tool_metric(self, tool_name: str, duration_ms: Optional[int] = None):
+        """Save tool usage metric with structured data.
 
-def save_metric(tool_name: str, duration_ms: Optional[int] = None):
-    """Save tool usage metrics"""
-    metrics_file = METRICS_DIR / "tool_usage.jsonl"
+        Args:
+            tool_name: Name of the tool used
+            duration_ms: Duration in milliseconds (if available)
+        """
+        metadata = {}
+        if duration_ms is not None:
+            metadata["duration_ms"] = duration_ms
 
-    metric = {
-        "timestamp": datetime.now().isoformat(),
-        "tool": tool_name,
-        "duration_ms": duration_ms,
-    }
+        self.save_metric("tool_usage", tool_name, metadata)
 
-    with open(metrics_file, "a") as f:
-        f.write(json.dumps(metric) + "\n")
+    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process post tool use event.
 
+        Args:
+            input_data: Input from Claude Code
 
-def main():
-    """Process post tool use event"""
-    try:
-        log("Processing post tool use")
-
-        # Read input
-        raw_input = sys.stdin.read()
-        input_data = json.loads(raw_input)
-
+        Returns:
+            Empty dict or validation messages
+        """
         # Extract tool information
         tool_use = input_data.get("toolUse", {})
         tool_name = tool_use.get("name", "unknown")
 
-        # Extract result if available (not currently used)
-        # result = input_data.get("result", {})
+        # Extract result if available (not currently used but could be useful)
+        result = input_data.get("result", {})
 
-        log(f"Tool used: {tool_name}")
+        self.log(f"Tool used: {tool_name}")
 
-        # Save metrics
-        save_metric(tool_name)
+        # Save metrics - could extract duration from result if available
+        duration_ms = None
+        if isinstance(result, dict):
+            # Some tools might include timing information
+            duration_ms = result.get("duration_ms")
 
-        # Check for errors or warnings
+        self.save_tool_metric(tool_name, duration_ms)
+
+        # Check for specific tool types that might need validation
         output = {}
         if tool_name in ["Write", "Edit", "MultiEdit"]:
             # Could add validation or checks here
-            pass
+            # For example, check if edits were successful
+            if isinstance(result, dict) and result.get("error"):
+                self.log(f"Tool {tool_name} reported error: {result.get('error')}", "WARNING")
+                # Could return a suggestion or alert
+                output["metadata"] = {
+                    "warning": f"Tool {tool_name} encountered an error",
+                    "tool": tool_name,
+                }
 
-        # Return empty for now (no blocking)
-        json.dump(output, sys.stdout)
+        # Track high-level metrics
+        if tool_name == "Bash":
+            self.save_metric("bash_commands", 1)
+        elif tool_name in ["Read", "Write", "Edit", "MultiEdit"]:
+            self.save_metric("file_operations", 1)
+        elif tool_name in ["Grep", "Glob"]:
+            self.save_metric("search_operations", 1)
 
-    except Exception as e:
-        log(f"Error: {e}", "ERROR")
-        json.dump({}, sys.stdout)
+        return output
+
+
+def main():
+    """Entry point for the post tool use hook."""
+    hook = PostToolUseHook()
+    hook.run()
 
 
 if __name__ == "__main__":

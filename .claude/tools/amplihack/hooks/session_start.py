@@ -1,45 +1,40 @@
 #!/usr/bin/env python3
 """
 Claude Code hook for session start.
-Reads JSON from stdin, processes, writes JSON to stdout.
+Uses unified HookProcessor for common functionality.
 """
 
-import json
+# Import the base processor
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict
 
-# Add project to path if needed
-# Go up 5 levels: hooks -> amplihack -> tools -> .claude -> project_root
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-# Logs directory - use .claude at project root (not nested)
-LOG_DIR = project_root / ".claude" / "runtime" / "logs"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(Path(__file__).parent))
+from hook_processor import HookProcessor
 
 
-def log(message: str, level: str = "INFO"):
-    """Simple logging to file"""
-    timestamp = datetime.now().isoformat()
-    log_file = LOG_DIR / "session_start.log"
+class SessionStartHook(HookProcessor):
+    """Hook processor for session start events."""
 
-    with open(log_file, "a") as f:
-        f.write(f"[{timestamp}] {level}: {message}\n")
+    def __init__(self):
+        super().__init__("session_start")
 
+    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process session start event.
 
-def main():
-    """Process session start event"""
-    try:
-        log("Session starting")
+        Args:
+            input_data: Input from Claude Code
 
-        # Read input
-        raw_input = sys.stdin.read()
-        input_data = json.loads(raw_input)
-
+        Returns:
+            Additional context to add to the session
+        """
         # Extract prompt
         prompt = input_data.get("prompt", "")
-        log(f"Prompt length: {len(prompt)}")
+        self.log(f"Prompt length: {len(prompt)}")
+
+        # Save metric
+        self.save_metric("prompt_length", len(prompt))
 
         # Build context if needed
         context_parts = []
@@ -50,7 +45,7 @@ def main():
         context_parts.append("Focus on building AI-powered development tools.")
 
         # Check for recent discoveries
-        discoveries_file = project_root / "DISCOVERIES.md"
+        discoveries_file = self.project_root / "DISCOVERIES.md"
         if discoveries_file.exists():
             context_parts.append("\n## Recent Learnings")
             context_parts.append("Check DISCOVERIES.md for recent insights.")
@@ -61,17 +56,20 @@ def main():
             context = "\n".join(context_parts)
             output = {
                 "additionalContext": context,
-                "metadata": {"source": "project_context", "timestamp": datetime.now().isoformat()},
+                "metadata": {
+                    "source": "project_context",
+                    "timestamp": datetime.now().isoformat(),
+                },
             }
+            self.log(f"Returned context with {len(context_parts)} parts")
 
-        # Write output
-        json.dump(output, sys.stdout)
-        log(f"Returned context with {len(context_parts)} parts")
+        return output
 
-    except Exception as e:
-        log(f"Error: {e}", "ERROR")
-        # Return empty on error to not break the chain
-        json.dump({}, sys.stdout)
+
+def main():
+    """Entry point for the session start hook."""
+    hook = SessionStartHook()
+    hook.run()
 
 
 if __name__ == "__main__":
