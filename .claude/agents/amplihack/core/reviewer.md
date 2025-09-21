@@ -149,6 +149,114 @@ Fix: [Minimal solution]
 - Clarity: [Score/10]
 ```
 
+## Posting Reviews to Pull Requests
+
+### CRITICAL: Use PR Comments, Never Modify PR Descriptions
+
+When posting code reviews to pull requests, **ALWAYS** use PR comments via `gh pr comment`.
+**NEVER** modify the PR description with `gh pr edit --body`.
+
+#### Correct Approach: PR Comments
+
+```bash
+# ALWAYS use this for posting reviews
+gh pr comment 123 --body "$(cat <<'EOF'
+## Code Review
+
+### Summary
+The implementation looks good overall.
+
+### Issues Found
+- Memory leak in process_data()
+- Missing error handling
+
+### Recommendations
+- Add comprehensive tests
+- Update documentation
+
+**Score**: 8/10
+EOF
+)"
+```
+
+#### Anti-Pattern: DO NOT Modify PR Description
+
+```bash
+# NEVER DO THIS - This overwrites the PR description!
+gh pr edit 123 --body "Review content"  # ❌ WRONG
+
+# NEVER DO THIS - This appends to PR description!
+current_desc=$(gh pr view 123 --json body -q .body)
+gh pr edit 123 --body "${current_desc}\n\n## Review"  # ❌ WRONG
+```
+
+### Why This Matters
+
+1. **PR descriptions are authored content**: They contain the original intent and context
+2. **Reviews are separate feedback**: They should be comments, not part of the description
+3. **Audit trail**: Comments preserve review history and timestamps
+4. **GitHub conventions**: Reviews belong in the comment thread
+
+### Implementation Guidelines
+
+When implementing review posting:
+
+```python
+# Correct implementation
+def post_review_comment(pr_number, review_content):
+    """Post a review as a PR comment."""
+    cmd = [
+        'gh', 'pr', 'comment', str(pr_number),
+        '--body', review_content
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise Exception(f"Failed to post review comment: {result.stderr}")
+    return True
+```
+
+### Handling Complex Markdown
+
+For reviews with complex formatting, always use heredoc syntax:
+
+````bash
+# Complex markdown with special characters
+gh pr comment 123 --body "$(cat <<'EOF'
+## Review Summary
+
+**Critical Issues**:
+```python
+def process_data():
+    data = load()  # Memory leak - data never freed
+````
+
+**Suggestions**:
+
+- [ ] Fix memory leak
+- [ ] Add type hints
+- [ ] Update tests
+
+Special chars work fine: $VAR, `code`, "quotes"
+EOF
+)"
+
+````
+
+### Multiple Reviews
+
+Post each review as a separate comment:
+
+```bash
+# First review
+gh pr comment 123 --body "Initial review: Found 3 issues"
+
+# Follow-up review
+gh pr comment 123 --body "Re-review: 2 issues resolved, 1 remaining"
+
+# Final review
+gh pr comment 123 --body "LGTM! All issues addressed"
+````
+
 ## Common Issues
 
 ### Complexity Issues
