@@ -33,10 +33,20 @@ The hook system uses a **unified HookProcessor** base class that provides common
   - Validates tool execution results
   - Categorizes tool types for analytics
 
+- **`stop_azure_continuation.py`** - Stop hook with DecisionControl for Azure OpenAI
+  - Prevents premature stopping when using Azure OpenAI models through the proxy
+  - Auto-activates when Azure OpenAI proxy is detected (via environment variables)
+  - Decision Logic:
+    - Continues if uncompleted TODO items exist
+    - Continues if continuation phrases are detected
+    - Continues if multi-part user request appears unfulfilled
+    - Otherwise allows normal stop
+
 ### Testing
 
 - **`test_hook_processor.py`** - Unit tests for the HookProcessor base class
 - **`test_integration.py`** - Integration tests for the complete hook system
+- **`test_stop_azure_continuation.py`** - Tests the Azure continuation hook
 
 ### Backup Files
 
@@ -144,6 +154,9 @@ python -m pytest test_hook_processor.py -v
 # Integration tests for all hooks
 python test_integration.py
 
+# Test Azure continuation hook
+python test_stop_azure_continuation.py
+
 # Test individual hooks manually
 echo '{"prompt": "test"}' | python session_start.py
 ```
@@ -178,6 +191,17 @@ All hooks implement graceful error handling:
 4. **Missing fields** - Uses defaults, continues processing
 
 This ensures that hook failures never break the Claude Code chain.
+
+## Environment Variables
+
+### Azure OpenAI Integration
+
+The Azure continuation hook (`stop_azure_continuation.py`) checks for these environment variables:
+
+- `ANTHROPIC_BASE_URL` - Set to localhost when proxy is active
+- `CLAUDE_CODE_PROXY_LAUNCHER` - Indicates proxy launcher usage
+- `AZURE_OPENAI_KEY` - Azure OpenAI credentials
+- `OPENAI_BASE_URL` - Azure OpenAI endpoint
 
 ## Benefits of Unified Processor
 
