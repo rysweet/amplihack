@@ -69,6 +69,7 @@ def test_proxy_config():
     # Create a test .env file
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("ANTHROPIC_API_KEY=test-key-123\n")  # pragma: allowlist secret
+        f.write("OPENAI_API_KEY=test-openai-key\n")  # pragma: allowlist secret
         f.write("AZURE_ENDPOINT=https://test.azure.com\n")
         f.write("# Comment line\n")
         f.write("LOG_LEVEL=debug\n")
@@ -77,6 +78,7 @@ def test_proxy_config():
     try:
         config = ProxyConfig(Path(temp_path))
         assert config.get("ANTHROPIC_API_KEY") == "test-key-123"
+        assert config.get("OPENAI_API_KEY") == "test-openai-key"
         assert config.get("AZURE_ENDPOINT") == "https://test.azure.com"
         assert config.get("LOG_LEVEL") == "debug"
         assert config.validate()

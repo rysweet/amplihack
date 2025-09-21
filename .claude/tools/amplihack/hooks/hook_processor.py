@@ -38,7 +38,6 @@ class HookProcessor(ABC):
         expected_marker = self.project_root / ".claude"
         if not expected_marker.exists():
             raise ValueError("Invalid project structure - security check failed")
-
         self._setup_paths()
 
         # Setup directories

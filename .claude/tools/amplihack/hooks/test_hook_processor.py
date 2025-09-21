@@ -186,10 +186,11 @@ class TestHookProcessor(TestCase):
         # Run should handle error gracefully
         hook.run()
 
-        # Should output empty dict
+        # Should output error response with details
         sys.stdout.seek(0)
         output = json.loads(sys.stdout.read())
-        self.assertEqual(output, {})
+        self.assertIn("error", output)
+        self.assertIn("details", output)
 
     def test_save_session_data(self):
         """Test saving session-specific data."""
