@@ -1,18 +1,181 @@
 #!/usr/bin/env python3
 """
 Integration tests for the unified hook processor system.
-Tests all hooks working together to ensure backward compatibility.
+Includes specific tests for the post_edit_format hook and general hook system tests.
 """
 
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Dict
 
 # Add project to path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
+
+
+# ======================= POST-EDIT FORMAT SPECIFIC TESTS =======================
+
+
+def test_python_formatting():
+    """Test Python file formatting with black"""
+    print("Testing Python file formatting...")
+
+    # Create a poorly formatted Python file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        f.write("""def  hello(  name,  age  ):
+    print(  "Hello "  + name  )
+    if   age  >  18:
+        return   True
+    else:
+        return  False
+
+
+class   Person:
+    def   __init__(self,name):
+        self.name=name
+""")
+        temp_file = Path(f.name)
+
+    print(f"Created test file: {temp_file}")
+    print("\nOriginal content:")
+    print(temp_file.read_text())
+
+    # Simulate Edit tool usage
+    hook_path = Path(__file__).parent / "post_edit_format.py"
+    tool_use = {
+        "toolUse": {
+            "name": "Edit",
+            "parameters": {"file_path": str(temp_file)},
+        }
+    }
+
+    # Run the hook
+    result = subprocess.run(
+        [sys.executable, str(hook_path)],
+        input=json.dumps(tool_use),
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode == 0 and result.stdout:
+        output = json.loads(result.stdout)
+        if output.get("message"):
+            print(f"\n{output['message']}")
+
+    print("\nFormatted content:")
+    print(temp_file.read_text())
+
+    # Clean up
+    temp_file.unlink()
+
+
+def test_json_formatting():
+    """Test JSON file formatting with prettier"""
+    print("\n" + "=" * 50)
+    print("Testing JSON file formatting...")
+
+    # Create a poorly formatted JSON file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        f.write('{"name":"test","nested":{"key1":"value1","key2":"value2"},"array":[1,2,3,4,5]}')
+        temp_file = Path(f.name)
+
+    print(f"Created test file: {temp_file}")
+    print("\nOriginal content:")
+    print(temp_file.read_text())
+
+    # Simulate Edit tool usage
+    hook_path = Path(__file__).parent / "post_edit_format.py"
+    tool_use = {
+        "toolUse": {
+            "name": "Edit",
+            "parameters": {"file_path": str(temp_file)},
+        }
+    }
+
+    # Run the hook
+    result = subprocess.run(
+        [sys.executable, str(hook_path)],
+        input=json.dumps(tool_use),
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode == 0 and result.stdout:
+        output = json.loads(result.stdout)
+        if output.get("message"):
+            print(f"\n{output['message']}")
+
+    print("\nFormatted content:")
+    print(temp_file.read_text())
+
+    # Clean up
+    temp_file.unlink()
+
+
+def test_environment_control():
+    """Test enabling/disabling formatting via environment"""
+    print("\n" + "=" * 50)
+    print("Testing environment control...")
+
+    import os
+
+    # Test with formatting disabled
+    os.environ["CLAUDE_AUTO_FORMAT"] = "false"
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        f.write("def  test( ): pass")
+        temp_file = Path(f.name)
+
+    print("\n1. With CLAUDE_AUTO_FORMAT=false:")
+    print(f"   Original: {temp_file.read_text()}")
+
+    hook_path = Path(__file__).parent / "post_edit_format.py"
+    tool_use = {
+        "toolUse": {
+            "name": "Edit",
+            "parameters": {"file_path": str(temp_file)},
+        }
+    }
+
+    result = subprocess.run(
+        [sys.executable, str(hook_path)],
+        input=json.dumps(tool_use),
+        capture_output=True,
+        text=True,
+    )
+
+    output = json.loads(result.stdout) if result.stdout else {}
+    print(f"   Result: {output or 'No formatting (disabled)'}")
+    print(f"   After: {temp_file.read_text()}")
+
+    # Test with formatting enabled
+    os.environ["CLAUDE_AUTO_FORMAT"] = "true"
+
+    print("\n2. With CLAUDE_AUTO_FORMAT=true:")
+    temp_file.write_text("def  test( ): pass")
+    print(f"   Original: {temp_file.read_text()}")
+
+    result = subprocess.run(
+        [sys.executable, str(hook_path)],
+        input=json.dumps(tool_use),
+        capture_output=True,
+        text=True,
+    )
+
+    output = json.loads(result.stdout) if result.stdout else {}
+    if output.get("message"):
+        print("   Result: Formatted successfully")
+    print(f"   After: {temp_file.read_text()}")
+
+    # Clean up
+    temp_file.unlink()
+    os.environ.pop("CLAUDE_AUTO_FORMAT", None)
+
+
+# ======================= GENERAL HOOK SYSTEM TESTS =======================
 
 
 def run_hook(hook_script: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -224,11 +387,19 @@ def test_metrics_and_logs():
 
 def main():
     """Run all integration tests."""
-    print("=" * 60)
-    print("Running Hook Integration Tests")
-    print("=" * 60)
+    print("=" * 80)
+    print("POST-EDIT FORMATTING + UNIFIED HOOK INTEGRATION TESTS")
+    print("=" * 80)
 
     try:
+        # Run post-edit format specific tests
+        print("\n=== POST-EDIT FORMAT SPECIFIC TESTS ===")
+        test_python_formatting()
+        test_json_formatting()
+        test_environment_control()
+
+        # Run general hook system tests
+        print("\n=== UNIFIED HOOK SYSTEM TESTS ===")
         test_session_start()
         test_stop()
         test_post_tool_use()
@@ -236,9 +407,9 @@ def main():
         test_error_handling()
         test_metrics_and_logs()
 
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 80)
         print("All integration tests passed! ✓")
-        print("=" * 60)
+        print("=" * 80)
         return 0
 
     except AssertionError as e:
