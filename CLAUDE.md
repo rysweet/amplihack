@@ -45,6 +45,9 @@ When starting a session, import these files for context:
   for the session based on the timestamp.
 - **Decision records**: All Agents MUST log their decisions and reasoning in
   .claude/runtime/logs/<session_id>/DECISIONS.md
+- **When to record decisions**: Document significant architectural choices,
+  trade-offs between approaches, or decisions that affect system design
+- **Simple format**: What was decided | Why | Alternatives considered
 
 ### Agent Delegation Strategy
 
