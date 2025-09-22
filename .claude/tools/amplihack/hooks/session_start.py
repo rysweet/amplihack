@@ -13,6 +13,16 @@ from typing import Any, Dict
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
 
+# Add project src to path for FrameworkPathResolver
+project_root = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(project_root / "src"))
+
+try:
+    from amplihack.utils.paths import FrameworkPathResolver
+except ImportError:
+    # Fallback if import fails
+    FrameworkPathResolver = None
+
 
 class SessionStartHook(HookProcessor):
     """Hook processor for session start events."""
@@ -36,6 +46,21 @@ class SessionStartHook(HookProcessor):
         # Save metric
         self.save_metric("prompt_length", len(prompt))
 
+        # Early UVX staging attempt if needed
+        try:
+            from amplihack.utils.uvx_staging import is_uvx_deployment, stage_uvx_framework
+
+            if is_uvx_deployment():
+                self.log("UVX deployment detected - attempting framework staging")
+                staged = stage_uvx_framework()
+                self.log(f"UVX staging result: {staged}")
+                if staged:
+                    self.save_metric("uvx_staging_success", True)
+                else:
+                    self.save_metric("uvx_staging_success", False)
+        except ImportError:
+            self.log("UVX staging not available - continuing with normal path resolution")
+
         # Build context if needed
         context_parts = []
         preference_enforcement = []
@@ -51,12 +76,27 @@ class SessionStartHook(HookProcessor):
             context_parts.append("\n## Recent Learnings")
             context_parts.append("Check DISCOVERIES.md for recent insights.")
 
-        # Enhanced preference reading and summarization
-        preferences_file = self.project_root / ".claude" / "context" / "USER_PREFERENCES.md"
-        if preferences_file.exists():
+        # Enhanced preference reading and summarization with UVX support
+        preferences_file = None
+        if FrameworkPathResolver:
+            # Use new resolver for UVX compatibility
+            preferences_file = FrameworkPathResolver.resolve_preferences_file()
+            self.log(
+                f"Using FrameworkPathResolver - found preferences: {preferences_file is not None}"
+            )
+            if FrameworkPathResolver.is_uvx_deployment():
+                self.log("Running in UVX deployment mode")
+
+        # Fallback to original logic
+        if not preferences_file:
+            preferences_file = self.project_root / ".claude" / "context" / "USER_PREFERENCES.md"
+            self.log(f"Using fallback path: {preferences_file}")
+
+        if preferences_file and preferences_file.exists():
             try:
                 with open(preferences_file, "r") as f:
                     prefs_content = f.read()
+                self.log(f"Successfully read preferences from: {preferences_file}")
 
                 import re
 

@@ -79,6 +79,10 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
     )
 
+    # UVX helper command
+    uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
+    uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
+
     # Hidden local install command
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
@@ -130,6 +134,21 @@ def main(argv: Optional[list] = None) -> int:
 
     elif args.command == "launch":
         return launch_command(args)
+
+    elif args.command == "uvx-help":
+        from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
+
+        if args.find_path:
+            path = find_uvx_installation_path()
+            if path:
+                print(str(path))
+                return 0
+            else:
+                print("UVX installation path not found", file=sys.stderr)
+                return 1
+        else:
+            print_uvx_usage_instructions()
+            return 0
 
     else:
         parser.print_help()

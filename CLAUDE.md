@@ -450,12 +450,18 @@ We measure success by:
 
 ## User Preferences
 
-### Simple Preference Integration
+### User Preference Application
+
+Apply user preferences from USER_PREFERENCES.md consistently. These preferences
+override default behavior for communication style, verbosity, and collaboration
+approach.
+
+#### Simple Preference Integration
 
 **Ruthlessly Simple Approach:**
 
 1. **Session Start**: USER_PREFERENCES.md is automatically imported at session
-   start
+   start with MANDATORY enforcement instructions
 2. **Agent Usage**: When invoking agents, include preference context in prompts
    manually as needed
 3. **No Complex Systems**: No hooks, validators, or injection frameworks needed
@@ -476,6 +482,12 @@ We measure success by:
 
 **Philosophy**: Simple prompting with preference context is sufficient. Complex
 systems add unnecessary overhead for marginal benefit.
+
+#### Preference Override Priority
+
+1. **USER_PREFERENCES.md** (HIGHEST PRIORITY - MANDATORY)
+2. Task-specific instructions from user
+3. Default Claude Code behavior (LOWEST PRIORITY)
 
 ## Getting Help
 
