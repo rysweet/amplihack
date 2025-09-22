@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/tools/amplihack/hooks/stop_unified.py",
+            "command": ".claude/tools/amplihack/hooks/stop.py",
             "timeout": 30000
           }
         ]

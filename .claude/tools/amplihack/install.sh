@@ -39,31 +39,142 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Update hook paths in settings.json from project-relative to global paths
+# Update hook paths in settings.json with comprehensive path handling
 if [ -f "$HOME/.claude/settings.json" ]; then
   echo "Updating hook paths in settings.json for global installation..."
 
-  # Use sed to replace project-relative paths with global paths
+  # Check current path format and report status
+  if grep -q '"\.claude/tools/amplihack/hooks/' "$HOME/.claude/settings.json"; then
+    echo "  → Found relative paths, converting to absolute paths..."
+    PATH_FORMAT="relative"
+  elif grep -q '"~/.claude/tools/amplihack/hooks/' "$HOME/.claude/settings.json"; then
+    echo "  → Found tilde paths, converting to absolute paths..."
+    PATH_FORMAT="tilde"
+  elif grep -q "\"$HOME/.claude/tools/amplihack/hooks/" "$HOME/.claude/settings.json"; then
+    echo "  → Paths already absolute, checking consistency..."
+    PATH_FORMAT="absolute"
+  else
+    echo "  → No amplihack hook paths found, this may be a new installation"
+    PATH_FORMAT="unknown"
+  fi
+
+  # Comprehensive sed replacement handling all path formats
   sed -i.tmp \
     -e 's|"\.claude/tools/amplihack/hooks/session_start\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/session_start.py"|g' \
+    -e 's|"~/.claude/tools/amplihack/hooks/session_start\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/session_start.py"|g' \
+    -e 's|"'"$HOME"'/.claude/tools/amplihack/hooks/session_start\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/session_start.py"|g' \
     -e 's|"\.claude/tools/amplihack/hooks/stop\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/stop.py"|g' \
+    -e 's|"~/.claude/tools/amplihack/hooks/stop\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/stop.py"|g' \
+    -e 's|"'"$HOME"'/.claude/tools/amplihack/hooks/stop\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/stop.py"|g' \
     -e 's|"\.claude/tools/amplihack/hooks/post_tool_use\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/post_tool_use.py"|g' \
+    -e 's|"~/.claude/tools/amplihack/hooks/post_tool_use\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/post_tool_use.py"|g' \
+    -e 's|"'"$HOME"'/.claude/tools/amplihack/hooks/post_tool_use\.py"|"'"$HOME"'/.claude/tools/amplihack/hooks/post_tool_use.py"|g' \
     "$HOME/.claude/settings.json"
 
   if [ $? -eq 0 ]; then
-    rm "$HOME/.claude/settings.json.tmp"
-    echo "Hook paths updated successfully"
+    # Verify the changes were applied correctly
+    UPDATED_PATHS=$(grep -c "\"$HOME/.claude/tools/amplihack/hooks/" "$HOME/.claude/settings.json")
+
+    if [ "$UPDATED_PATHS" -eq 3 ]; then
+      rm "$HOME/.claude/settings.json.tmp"
+      echo "  ✅ Hook paths updated successfully (found $UPDATED_PATHS hook entries)"
+      echo "  → Session start, stop, and post-tool-use hooks configured"
+    elif [ "$UPDATED_PATHS" -gt 0 ]; then
+      rm "$HOME/.claude/settings.json.tmp"
+      echo "  ⚠️  Partial update: $UPDATED_PATHS of 3 hook paths updated"
+      echo "  → Some hook paths may already be correct or have different names"
+    else
+      echo "  ⚠️  Warning: No hook paths were updated"
+      echo "  → This might indicate the settings.json format has changed"
+      echo "  → Hooks may still work if paths are already correct"
+      rm "$HOME/.claude/settings.json.tmp"
+    fi
+
+    # Verify hook files exist
+    echo "Verifying hook files exist..."
+    MISSING_HOOKS=0
+    for hook in "session_start.py" "stop.py" "post_tool_use.py"; do
+      if [ -f "$HOME/.claude/tools/amplihack/hooks/$hook" ]; then
+        echo "  ✅ $hook found"
+      else
+        echo "  ❌ $hook missing"
+        MISSING_HOOKS=$((MISSING_HOOKS + 1))
+      fi
+    done
+
+    if [ $MISSING_HOOKS -eq 0 ]; then
+      echo "  ✅ All hook files verified"
+    else
+      echo "  ⚠️  Warning: $MISSING_HOOKS hook files missing"
+    fi
+
   else
     echo "Error: Failed to update hook paths in settings.json"
     # Restore from temp file if sed failed
     if [ -f "$HOME/.claude/settings.json.tmp" ]; then
       mv "$HOME/.claude/settings.json.tmp" "$HOME/.claude/settings.json"
+      echo "  → Restored original settings.json"
     fi
     rm -rf ./tmpamplihack
     exit 1
   fi
 else
   echo "Warning: No settings.json found after installation"
+  echo "  → Creating basic settings.json with hook configuration..."
+
+  # Create a basic settings.json if none exists
+  cat > "$HOME/.claude/settings.json" << 'EOF'
+{
+  "permissions": {
+    "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
+    "deny": [],
+    "defaultMode": "bypassPermissions",
+    "additionalDirectories": [".data", ".vscode", ".claude", ".ai", "Specs"]
+  },
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOME_PLACEHOLDER/.claude/tools/amplihack/hooks/session_start.py",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOME_PLACEHOLDER/.claude/tools/amplihack/hooks/stop.py",
+            "timeout": 30000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "HOME_PLACEHOLDER/.claude/tools/amplihack/hooks/post_tool_use.py"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+
+  # Replace HOME_PLACEHOLDER with actual home directory
+  sed -i.tmp "s|HOME_PLACEHOLDER|$HOME|g" "$HOME/.claude/settings.json"
+  rm "$HOME/.claude/settings.json.tmp"
+  echo "  ✅ Created new settings.json with amplihack hooks"
 fi
 
 # remove the tmp local directory
