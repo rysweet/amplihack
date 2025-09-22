@@ -49,7 +49,8 @@ When starting a session, import these files for context:
 ### Agent Delegation Strategy
 
 **GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to
-specialized agents when possible.
+specialized agents when possible. **DEFAULT TO PARALLEL EXECUTION** unless
+dependencies require sequential order.
 
 #### When to Use Agents (ALWAYS IF POSSIBLE)
 
@@ -70,18 +71,102 @@ specialized agents when possible.
 - **Analysis**: Use `analyzer.md` for deep code understanding
 - **Ambiguity**: Use `ambiguity.md` when requirements are unclear
 
-#### Parallel Agent Execution
+#### Parallel Execution Decision Engine
 
-When facing complex tasks, deploy multiple agents in parallel:
+**AUTOMATIC PARALLEL TRIGGERS** - Always deploy parallel execution for:
+
+**1. Multi-File Operations**
 
 ```
-Example - Building a new feature:
-"I'll coordinate multiple agents to design and implement this feature"
-[Single message with multiple Task tool calls]:
-- architect: Design the module specification
-- security: Identify security requirements
-- database: Design data schema if needed
-- api-designer: Define API contracts
+TRIGGER: Reading, analyzing, or editing multiple files
+ACTION: Batch all file operations in single tool call
+EXAMPLE: [Read file1.py, Read file2.py, Read file3.py]
+```
+
+**2. Multi-Agent Coordination**
+
+```
+TRIGGER: Multiple specialized perspectives needed
+ACTION: Deploy all relevant agents simultaneously
+EXAMPLE: [architect, security, database, api-designer] for new feature
+```
+
+**3. Independent Analysis Tasks**
+
+```
+TRIGGER: Multiple components requiring separate analysis
+ACTION: Parallel analysis with different agents
+EXAMPLE: [patterns analysis, security audit, performance review]
+```
+
+**4. Research and Information Gathering**
+
+```
+TRIGGER: Multiple data sources or perspectives needed
+ACTION: Parallel research with specialized agents
+EXAMPLE: [codebase analysis, requirement clarification, dependency check]
+```
+
+**5. Diagnostic Workflows**
+
+```
+TRIGGER: System state analysis from multiple angles
+ACTION: Parallel diagnostic agents
+EXAMPLE: [environment check, log analysis, pattern detection]
+```
+
+#### Parallel Execution Templates
+
+**Template 1: Feature Development**
+
+```
+"I'll coordinate multiple agents for comprehensive feature development"
+[Single message with parallel Task calls]:
+- architect: Design system architecture and module boundaries
+- security: Identify security requirements and threat vectors
+- database: Design data schema and migration strategy
+- api-designer: Define API contracts and integration points
+- tester: Design test strategy and acceptance criteria
+```
+
+**Template 2: Code Analysis**
+
+```
+"I'll analyze this codebase from multiple perspectives"
+[Single message with parallel analysis]:
+- analyzer: Deep code structure and pattern analysis
+- security: Security vulnerability assessment
+- optimizer: Performance bottleneck identification
+- patterns: Reusable pattern detection
+- reviewer: Philosophy compliance check
+```
+
+**Template 3: Problem Diagnosis**
+
+```
+"I'll diagnose this issue comprehensively"
+[Single message with parallel diagnosis]:
+- analyzer: Root cause analysis
+- environment: System and dependency analysis
+- patterns: Similar issue pattern matching
+- logs: Error and warning pattern analysis
+```
+
+#### Sequential Execution (Exception Cases)
+
+**Only use sequential when:**
+
+- **Hard Dependencies**: Output of A required as input for B
+- **State Mutations**: Agent A changes state that B depends on
+- **Progressive Context**: Each step builds knowledge for next
+- **Resource Conflicts**: Agents would conflict on same resources
+
+**Examples of Required Sequential:**
+
+```
+architect → builder → reviewer  (specification → implementation → review)
+git operations with dependencies (checkout → modify → commit)
+test-driven development (write test → implement → validate)
 ```
 
 ### Development Workflow Agents
@@ -163,26 +248,84 @@ User: "Add authentication to the API"
 
 The workflow file is the single source of truth - edit it to change the process.
 
-### Parallel Execution
+### Parallel Execution Engine
 
-**CRITICAL**: Always consider what can be done in parallel. Use a single call to
-the Task tool with multiple requests.
+**PARALLEL BY DEFAULT**: Always execute operations in parallel unless
+dependencies require sequential order.
 
-Good:
+#### Automatic Parallel Detection Rules
 
-```
-"I'll analyze these files in parallel"
-[Single message: Read file1.py, Read file2.py, Read file3.py]
-```
-
-Bad:
+**RULE 1: File Operations**
 
 ```
-"Let me read the first file"
-[Read file1.py]
-"Now let me read the second file"
-[Read file2.py]
+IF: Multiple files mentioned OR file patterns detected
+THEN: Batch all file operations in single tool call
+EXAMPLE: "analyze these Python files" → [Read *.py files in parallel]
 ```
+
+**RULE 2: Multi-Perspective Analysis**
+
+```
+IF: Task requires multiple viewpoints OR "comprehensive" mentioned
+THEN: Deploy relevant agents in parallel
+EXAMPLE: "review this code" → [security, patterns, optimizer, reviewer]
+```
+
+**RULE 3: Independent Components**
+
+```
+IF: Task involves separate modules OR multiple systems
+THEN: Analyze each component in parallel
+EXAMPLE: "check frontend and backend" → [frontend analysis, backend analysis]
+```
+
+**RULE 4: Information Gathering**
+
+```
+IF: Research phase OR multiple data sources needed
+THEN: Parallel information collection
+EXAMPLE: "understand this system" → [code analysis, docs review, pattern detection]
+```
+
+#### Execution Patterns
+
+**Optimal (Parallel by Default):**
+
+```
+"I'll analyze these components comprehensively"
+[Single message: analyzer(component1), security(component1), optimizer(component1),
+                analyzer(component2), security(component2), optimizer(component2)]
+```
+
+**Sub-optimal (Sequential without justification):**
+
+```
+"Let me analyze the first component"
+[analyzer(component1)]
+"Now the second component"
+[analyzer(component2)]
+```
+
+#### Parallel Coordination Protocols
+
+**Agent Coordination Guidelines:**
+
+- **Context Sharing**: Each agent receives full task context
+- **Output Integration**: Orchestrator synthesizes parallel results
+- **Conflict Resolution**: Sequential fallback for resource conflicts
+- **Progress Tracking**: TodoWrite manages parallel task completion
+
+**PARALLEL-READY Agents** (can work simultaneously):
+
+- `analyzer`, `security`, `optimizer`, `patterns`, `reviewer`
+- `architect`, `api-designer`, `database`, `tester`
+- `integration`, `cleanup`, `ambiguity`
+
+**SEQUENTIAL-REQUIRED Agents** (state dependencies):
+
+- `builder` (after `architect`)
+- `ci-diagnostic-workflow` (after push)
+- `pre-commit-diagnostic` (during commit process)
 
 ## Development Principles
 
@@ -296,6 +439,35 @@ We measure success by:
 - Agent effectiveness
 - Knowledge capture rate
 - Development velocity
+
+## User Preferences
+
+### Simple Preference Integration
+
+**Ruthlessly Simple Approach:**
+
+1. **Session Start**: USER_PREFERENCES.md is automatically imported at session
+   start
+2. **Agent Usage**: When invoking agents, include preference context in prompts
+   manually as needed
+3. **No Complex Systems**: No hooks, validators, or injection frameworks needed
+
+**Example Usage:**
+
+```
+"Design an API using pirate communication style"
+→ Pass USER_PREFERENCES.md context to architect agent
+```
+
+**What We DON'T Do:**
+
+- Complex preference injection hooks
+- Automated validation systems
+- Multi-file preference architectures
+- Over-engineered preference frameworks
+
+**Philosophy**: Simple prompting with preference context is sufficient. Complex
+systems add unnecessary overhead for marginal benefit.
 
 ## Getting Help
 

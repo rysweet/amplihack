@@ -81,8 +81,27 @@ Always use TodoWrite to:
 3. Orchestrate multiple agents where complexity requires
 4. Follow all workflow steps as defined
 5. Adapt to any user customizations automatically
+6. MANDATORY: Invoke cleanup agent at task completion
 ```
+
+## Mandatory Cleanup Phase
+
+**CRITICAL**: Every ultrathink task MUST end with cleanup agent invocation.
+
+The cleanup agent:
+
+- Reviews git status and file changes
+- Removes temporary artifacts and planning documents
+- Ensures philosophy compliance (ruthless simplicity)
+- Provides final report on codebase state
+- Guards against technical debt accumulation
+
+**Cleanup Trigger**: Automatically invoke cleanup agent when:
+
+- All todo items are completed
+- Main task objectives are achieved
+- Before reporting task completion to user
 
 UltraThink enhances the workflow with deep multi-agent analysis while respecting user customizations.
 
-Remember: Ultra-thinking means thorough analysis before action.
+Remember: Ultra-thinking means thorough analysis before action, followed by ruthless cleanup.
