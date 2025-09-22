@@ -49,6 +49,11 @@ When starting a session, import these files for context:
   trade-offs between approaches, or decisions that affect system design
 - **Simple format**: What was decided | Why | Alternatives considered
 
+### Decision Recording
+
+**IMPORTANT**: Record significant decisions in session logs as: What was decided
+| Why | Alternatives considered
+
 ### Agent Delegation Strategy
 
 **GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to

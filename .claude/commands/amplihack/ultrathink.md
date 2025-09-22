@@ -10,27 +10,59 @@
 
 ## Purpose
 
-Deep analysis mode for complex tasks. Orchestrates multiple agents to break down, analyze, and solve challenging problems.
+Deep analysis mode for complex tasks. Orchestrates multiple agents to break down, analyze, and solve challenging problems by following the default workflow.
 
-## Integration with Default Workflow
+## EXECUTION INSTRUCTIONS FOR CLAUDE
 
-UltraThink dynamically follows the workflow defined in `.claude/workflow/DEFAULT_WORKFLOW.md`:
+When this command is invoked, you MUST:
 
-- Reads and follows whatever workflow steps are defined
-- Adapts automatically when users customize the workflow
-- Provides deep multi-agent analysis within the workflow structure
-- No need to update UltraThink when workflow changes
+1. **First, read the workflow file** using the Read tool on `.claude/workflow/DEFAULT_WORKFLOW.md`
+2. **Create a comprehensive todo list** using TodoWrite that includes all 13 workflow steps
+3. **Execute each step systematically**, marking todos as in_progress and completed
+4. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
+5. **Track decisions** by creating `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
+6. **End with cleanup agent** to ensure code quality
 
-## Process
+## PROMPT-BASED WORKFLOW EXECUTION
 
-For non-trivial code changes, UltraThink:
+Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
 
-1. **Reads the current workflow** from `.claude/workflow/DEFAULT_WORKFLOW.md`
-2. **Provides deep analysis** using multiple agents where complexity requires it
-3. **Follows each workflow step** as defined by the user
-4. **Orchestrates agents** according to workflow requirements
+### Step-by-Step Execution:
 
-The workflow is the single source of truth - UltraThink adapts to it automatically.
+1. **Initialize**:
+   - Read DEFAULT_WORKFLOW.md to get the current 13-step process
+   - Create TodoWrite list with all workflow steps
+   - Create session directory for decision logging
+
+2. **For Each Workflow Step**:
+   - Mark step as in_progress in TodoWrite
+   - Read the step requirements from workflow
+   - Invoke specified agents via Task tool
+   - Log decisions made
+   - Mark step as completed
+
+3. **Agent Invocation Pattern**:
+
+   ```
+   For step requiring "**Use** architect agent":
+   → Invoke Task(subagent_type="architect", prompt="[step requirements + task context]")
+
+   For step requiring multiple agents:
+   → Invoke multiple Task calls in parallel
+   ```
+
+4. **Decision Logging**:
+   After each major decision, append to DECISIONS.md:
+   - What was decided
+   - Why this approach
+   - Alternatives considered
+
+5. **Mandatory Cleanup**:
+   Always end with Task(subagent_type="cleanup")
+
+## ACTUAL IMPLEMENTATION PROMPT
+
+When `/ultrathink` is called, execute this:
 
 ## Agent Orchestration
 

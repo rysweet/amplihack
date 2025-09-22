@@ -19,6 +19,10 @@ Target can be:
 
 Continuous self-improvement with built-in validation to prevent complexity creep.
 
+## Stage 2: Reflection and Improvement
+
+When high-priority improvements are detected in reflection analysis, create PRs using `gh pr create` and document in DISCOVERIES.md.
+
 ## New Improvement Workflow (v2)
 
 **ALWAYS use the improvement-workflow agent for improvements:**
