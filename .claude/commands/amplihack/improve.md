@@ -21,7 +21,13 @@ Continuous self-improvement with built-in validation to prevent complexity creep
 
 ## Stage 2: Reflection and Improvement
 
-When high-priority improvements are detected in reflection analysis, create PRs using `gh pr create` and document in DISCOVERIES.md.
+Use `/reflect` to analyze sessions for improvement opportunities. When high-priority patterns are detected:
+
+1. GitHub issues are created automatically with context
+2. UltraThink is delegated to create PRs
+3. Links to issues and PRs are provided
+
+See `/reflect` command for AI-powered session analysis.
 
 ## New Improvement Workflow (v2)
 
