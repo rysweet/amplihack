@@ -23,6 +23,13 @@ except ImportError:
     # Fallback if import fails
     FrameworkPathResolver = None
 
+# Import context preservation
+sys.path.insert(0, str(Path(__file__).parent.parent))
+try:
+    from context_preservation import ContextPreserver
+except ImportError:
+    ContextPreserver = None
+
 
 class SessionStartHook(HookProcessor):
     """Hook processor for session start events."""
@@ -46,20 +53,64 @@ class SessionStartHook(HookProcessor):
         # Save metric
         self.save_metric("prompt_length", len(prompt))
 
-        # Early UVX staging attempt if needed
+        # Capture original request for substantial prompts
+        original_request_context = ""
+        original_request_captured = False
+
+        # Simple check for substantial requests
+        substantial_keywords = [
+            "implement",
+            "create",
+            "build",
+            "add",
+            "fix",
+            "update",
+            "all",
+            "every",
+            "each",
+            "complete",
+            "comprehensive",
+        ]
+        is_substantial = len(prompt) > 20 or any(
+            word in prompt.lower() for word in substantial_keywords
+        )
+
+        if ContextPreserver and is_substantial:
+            try:
+                # Create context preserver with current session ID
+                session_id = self.get_session_id()
+                preserver = ContextPreserver(session_id)
+
+                # Extract and save original request
+                original_request = preserver.extract_original_request(prompt)
+
+                # Simple verification and context formatting
+                session_dir = self.project_root / ".claude" / "runtime" / "logs" / session_id
+                original_request_captured = (session_dir / "ORIGINAL_REQUEST.md").exists()
+
+                if original_request_captured:
+                    self.log(
+                        f"✅ Original request captured: {original_request.get('target', 'Unknown')}"
+                    )
+                    original_request_context = preserver.format_agent_context(original_request)
+                else:
+                    self.log("⚠️ Original request extraction failed", "WARNING")
+
+                self.save_metric("original_request_captured", original_request_captured)
+
+            except Exception as e:
+                self.log(f"Failed to capture original request: {e}", "ERROR")
+                self.save_metric("original_request_captured", False)
+
+        # UVX staging if available
         try:
             from amplihack.utils.uvx_staging import is_uvx_deployment, stage_uvx_framework
 
             if is_uvx_deployment():
-                self.log("UVX deployment detected - attempting framework staging")
                 staged = stage_uvx_framework()
-                self.log(f"UVX staging result: {staged}")
-                if staged:
-                    self.save_metric("uvx_staging_success", True)
-                else:
-                    self.save_metric("uvx_staging_success", False)
+                self.save_metric("uvx_staging_success", staged)
         except ImportError:
-            self.log("UVX staging not available - continuing with normal path resolution")
+            pass
 
         # Build context if needed
         context_parts = []
@@ -76,21 +127,12 @@ class SessionStartHook(HookProcessor):
             context_parts.append("\n## Recent Learnings")
             context_parts.append("Check DISCOVERIES.md for recent insights.")
 
-        # Enhanced preference reading and summarization with UVX support
-        preferences_file = None
-        if FrameworkPathResolver:
-            # Use new resolver for UVX compatibility
-            preferences_file = FrameworkPathResolver.resolve_preferences_file()
-            self.log(
-                f"Using FrameworkPathResolver - found preferences: {preferences_file is not None}"
-            )
-            if FrameworkPathResolver.is_uvx_deployment():
-                self.log("Running in UVX deployment mode")
-
-        # Fallback to original logic
-        if not preferences_file:
-            preferences_file = self.project_root / ".claude" / "context" / "USER_PREFERENCES.md"
-            self.log(f"Using fallback path: {preferences_file}")
+        # Simplified preference file resolution
+        preferences_file = (
+            FrameworkPathResolver.resolve_preferences_file()
+            if FrameworkPathResolver
+            else self.project_root / ".claude" / "context" / "USER_PREFERENCES.md"
+        )
 
         if preferences_file and preferences_file.exists():
             try:
@@ -100,62 +142,29 @@ class SessionStartHook(HookProcessor):
 
                 import re
 
-                # Build comprehensive preference summary
                 context_parts.append("\n## 🎯 Active User Preferences")
 
-                # Extract all core preferences
-                preference_patterns = {
-                    "Verbosity": r"### Verbosity\s*\n\s*([^\n]+)",
-                    "Communication Style": r"### Communication Style\s*\n\s*([^\n]+)",
-                    "Update Frequency": r"### Update Frequency\s*\n\s*([^\n]+)",
-                    "Priority Type": r"### Priority Type\s*\n\s*([^\n]+)",
-                    "Collaboration Style": r"### Collaboration Style\s*\n\s*([^\n]+)",
-                    "Preferred Languages": r"### Preferred Languages\s*\n\s*([^\n]+)",
-                    "Coding Standards": r"### Coding Standards\s*\n\s*([^\n]+)",
-                    "Workflow Preferences": r"### Workflow Preferences\s*\n\s*([^\n]+)",
-                }
-
+                # Simple preference extraction
+                key_prefs = [
+                    "Communication Style",
+                    "Verbosity",
+                    "Collaboration Style",
+                    "Priority Type",
+                ]
                 active_prefs = []
 
-                for pref_name, pattern in preference_patterns.items():
+                for pref in key_prefs:
+                    pattern = f"### {pref}\\s*\\n\\s*([^\\n]+)"
                     match = re.search(pattern, prefs_content)
-                    if match:
+                    if match and match.group(1).strip() not in ["", "(not set)"]:
                         value = match.group(1).strip()
-                        if value and value != "(not set)":
-                            active_prefs.append(f"• **{pref_name}**: {value}")
-
-                            # Add enforcement instruction for any meaningful preference
-                            if pref_name == "Communication Style":
-                                preference_enforcement.append(
-                                    f"MUST use {value} communication style in ALL responses"
-                                )
-                            elif pref_name == "Verbosity":
-                                preference_enforcement.append(
-                                    f"MUST respond with {value} level of detail"
-                                )
-                            elif pref_name == "Collaboration Style":
-                                preference_enforcement.append(
-                                    f"MUST follow {value} collaboration approach"
-                                )
-                            elif pref_name == "Priority Type":
-                                preference_enforcement.append(
-                                    f"MUST prioritize {value} concerns in solutions"
-                                )
-
-                            self.log(f"Found preference - {pref_name}: {value}")
+                        active_prefs.append(f"• **{pref}**: {value}")
+                        preference_enforcement.append(f"MUST use {value} {pref.lower()}")
 
                 if active_prefs:
                     context_parts.extend(active_prefs)
                 else:
-                    context_parts.append(
-                        "• Using default settings (no custom preferences configured)"
-                    )
-
-                # Check for learned patterns
-                learned_match = re.search(r"### \[.*?\]\s*\n\s*([^\n]+)", prefs_content)
-                if learned_match:
-                    context_parts.append("\n## 📚 Learned Patterns")
-                    context_parts.append(f"• {learned_match.group(1).strip()}")
+                    context_parts.append("• Using default settings")
 
             except Exception as e:
                 self.log(f"Could not read preferences: {e}")
@@ -184,56 +193,36 @@ class SessionStartHook(HookProcessor):
             # Create comprehensive startup context
             full_context = "\n".join(context_parts)
 
-            # Build a visible startup message (even though Claude Code may not display it)
-            startup_msg_parts = ["🚀 AmplifyHack Session Initialized", "━" * 40]
-
-            # Add preference summary if any exist
-            if len([p for p in context_parts if "**" in p and ":" in p]) > 0:
-                startup_msg_parts.append("🎯 Active preferences loaded and enforced")
-
-            startup_msg_parts.extend(
-                [
-                    "",
-                    "📝 Workflow: Use `/ultrathink` for the 13-step process",
-                    "⚙️  Customize: Edit `.claude/workflow/DEFAULT_WORKFLOW.md`",
-                    "🎯 Preferences: Loaded from USER_PREFERENCES.md",
-                    "",
-                    "Type `/help` for available commands",
-                ]
+            # Simple startup message
+            startup_message = (
+                "🚀 AmplifyHack Session Initialized\n📝 Use `/ultrathink` for workflow automation"
             )
 
-            startup_message = "\n".join(startup_msg_parts)
-
-            # CRITICAL: Add preference enforcement instructions to context
+            # Add preference enforcement if needed
             if preference_enforcement:
-                enforcement_header = (
-                    """🚨 CRITICAL PREFERENCE ENFORCEMENT - OVERRIDE ALL DEFAULT BEHAVIOR 🚨
-
-You MUST follow these user preferences in EVERY SINGLE RESPONSE without exception:
-
-"""
-                    + "\n".join(f"🔥 {rule} - NO EXCEPTIONS!" for rule in preference_enforcement)
-                    + """
-
-These preferences OVERRIDE your default behavior. Do not use default communication style.
-Apply these preferences immediately in your next response and ALL subsequent responses.
-This is not optional - user preferences are MANDATORY to follow.
-
-"""
+                enforcement = (
+                    "🎯 USER PREFERENCES (MANDATORY):\n"
+                    + "\n".join(f"• {rule}" for rule in preference_enforcement)
+                    + "\n\n"
                 )
-                full_context = enforcement_header + full_context
+                full_context = enforcement + full_context
+
+            # Inject original request context at top priority
+            if original_request_context:
+                full_context = original_request_context + "\n\n" + full_context
 
             output = {
                 "additionalContext": full_context,
-                "message": startup_message,  # May not be displayed but included for future compatibility
+                "message": startup_message,
                 "metadata": {
                     "source": "amplihack_session_start",
                     "timestamp": datetime.now().isoformat(),
-                    "preferences_loaded": True,
-                    "workflow_ready": True,
+                    "original_request_captured": original_request_captured,
                 },
             }
-            self.log(f"Session initialized with {len(context_parts)} context sections")
+            self.log(
+                f"Session initialized - Original request: {'✅' if original_request_captured else '❌'}"
+            )
 
         return output
 

@@ -40,6 +40,17 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/pre_compact.py",
+            "timeout": 30000
+          }
+        ]
+      }
     ]
   }
 }
