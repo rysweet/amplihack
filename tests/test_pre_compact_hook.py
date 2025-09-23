@@ -31,14 +31,27 @@ class TestPreCompactHook(unittest.TestCase):
         logs_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs"
         logs_dir.mkdir(parents=True)
 
-        # Patch the project root
-        self.patcher = patch.object(PreCompactHook, "project_root", Path(self.temp_dir))
-        self.patcher.start()
-
     def tearDown(self):
         """Clean up test environment."""
-        self.patcher.stop()
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _create_hook_with_mocked_paths(self):
+        """Helper to create a hook instance with mocked paths."""
+        hook = PreCompactHook()
+        # Override the paths after instantiation
+        hook.project_root = Path(self.temp_dir)
+        hook.log_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs"
+        hook.metrics_dir = Path(self.temp_dir) / ".claude" / "runtime" / "metrics"
+        hook.analysis_dir = Path(self.temp_dir) / ".claude" / "runtime" / "analysis"
+        # Ensure directories exist
+        hook.log_dir.mkdir(parents=True, exist_ok=True)
+        hook.metrics_dir.mkdir(parents=True, exist_ok=True)
+        hook.analysis_dir.mkdir(parents=True, exist_ok=True)
+        # Re-initialize session directory with new paths
+        hook.session_id = hook.get_session_id()
+        hook.session_dir = hook.log_dir / hook.session_id
+        hook.session_dir.mkdir(parents=True, exist_ok=True)
+        return hook
 
     @patch("pre_compact.datetime")
     def test_process_conversation_export(self, mock_datetime):
@@ -47,8 +60,8 @@ class TestPreCompactHook(unittest.TestCase):
         mock_datetime.now.return_value.isoformat.return_value = "2025-09-23T12:00:00"
         mock_datetime.now.return_value.strftime.return_value = "20250923_120000"
 
-        # Create hook
-        hook = PreCompactHook()
+        # Create hook with mocked paths
+        hook = self._create_hook_with_mocked_paths()
 
         # Prepare input data
         input_data = {
@@ -94,7 +107,7 @@ class TestPreCompactHook(unittest.TestCase):
 
     def test_process_with_original_request_extraction(self):
         """Test that original request is extracted from conversation."""
-        hook = PreCompactHook()
+        hook = self._create_hook_with_mocked_paths()
 
         input_data = {
             "messages": [
@@ -125,7 +138,7 @@ class TestPreCompactHook(unittest.TestCase):
 
     def test_compaction_event_tracking(self):
         """Test that compaction events are tracked."""
-        hook = PreCompactHook()
+        hook = self._create_hook_with_mocked_paths()
 
         input_data = {
             "conversation": [
@@ -151,7 +164,7 @@ class TestPreCompactHook(unittest.TestCase):
 
     def test_transcript_copy_creation(self):
         """Test that transcript copies are created in subdirectory."""
-        hook = PreCompactHook()
+        hook = self._create_hook_with_mocked_paths()
 
         input_data = {
             "conversation": [
@@ -170,7 +183,7 @@ class TestPreCompactHook(unittest.TestCase):
 
     def test_empty_conversation_handling(self):
         """Test handling of empty conversation data."""
-        hook = PreCompactHook()
+        hook = self._create_hook_with_mocked_paths()
 
         input_data = {"conversation": [], "trigger": "manual"}
 
@@ -181,7 +194,7 @@ class TestPreCompactHook(unittest.TestCase):
 
     def test_error_handling(self):
         """Test error handling during export."""
-        hook = PreCompactHook()
+        hook = self._create_hook_with_mocked_paths()
 
         # Provide invalid data that will cause an error
         input_data = None
@@ -201,7 +214,7 @@ class TestPreCompactHook(unittest.TestCase):
         transcript_file = session_dir / "CONVERSATION_TRANSCRIPT.md"
         transcript_file.write_text("# Test Transcript\nTest content")
 
-        hook = PreCompactHook()
+        hook = self._create_hook_with_mocked_paths()
         result = hook.restore_conversation_from_latest()
 
         self.assertEqual(len(result), 1)
@@ -211,7 +224,7 @@ class TestPreCompactHook(unittest.TestCase):
 
     def test_metrics_saving(self):
         """Test that metrics are saved correctly."""
-        hook = PreCompactHook()
+        hook = self._create_hook_with_mocked_paths()
 
         input_data = {
             "conversation": [
@@ -223,16 +236,21 @@ class TestPreCompactHook(unittest.TestCase):
 
         hook.process(input_data)
 
-        # Check metrics file
-        metrics_file = hook.session_dir / "hook_metrics.json"
+        # Check metrics file (metrics are saved as JSONL in metrics_dir, not session_dir)
+        metrics_file = hook.metrics_dir / "pre_compact_metrics.jsonl"
         self.assertTrue(metrics_file.exists())
 
+        # Read all metrics from JSONL file and verify content
+        saved_metrics = {}
         with open(metrics_file, "r") as f:
-            metrics = json.load(f)
+            for line in f:
+                metric = json.loads(line.strip())
+                saved_metrics[metric["metric"]] = metric["value"]
 
-        self.assertEqual(metrics.get("messages_exported"), 3)
-        self.assertEqual(metrics.get("transcript_exported"), True)
-        self.assertEqual(metrics.get("compaction_events"), 1)
+        # Verify the metrics that should be saved
+        self.assertEqual(saved_metrics.get("messages_exported"), 3)
+        self.assertEqual(saved_metrics.get("transcript_exported"), True)
+        self.assertEqual(saved_metrics.get("compaction_events"), 1)
 
     @patch("pre_compact.ContextPreserver")
     def test_context_preserver_integration(self, mock_preserver_class):
@@ -247,7 +265,7 @@ class TestPreCompactHook(unittest.TestCase):
         }
         mock_preserver.export_conversation_transcript.return_value = "/path/to/transcript.md"
 
-        hook = PreCompactHook()
+        hook = self._create_hook_with_mocked_paths()
 
         input_data = {
             "conversation": [
