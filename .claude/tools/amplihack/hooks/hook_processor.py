@@ -20,7 +20,7 @@ class HookProcessor(ABC):
     - JSON input/output from stdin/stdout
     - Logging to runtime directory
     - Error handling and graceful fallback
-    - Path setup and project structure
+    - Clean import structure
     """
 
     def __init__(self, hook_name: str):
@@ -31,14 +31,19 @@ class HookProcessor(ABC):
         """
         self.hook_name = hook_name
 
-        # Setup paths - use resolve() for security and handle symlinks
-        self.project_root = Path(__file__).resolve().parents[4]
+        # Use clean import path resolution
+        try:
+            # Import after ensuring path is set up
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from paths import get_project_root
 
-        # Validate project structure for security
-        expected_marker = self.project_root / ".claude"
-        if not expected_marker.exists():
-            raise ValueError("Invalid project structure - security check failed")
-        self._setup_paths()
+            self.project_root = get_project_root()
+        except ImportError:
+            # Fallback for standalone execution
+            self.project_root = Path(__file__).resolve().parents[4]
+            expected_marker = self.project_root / ".claude"
+            if not expected_marker.exists():
+                raise ValueError("Invalid project structure - security check failed")
 
         # Setup directories
         self.log_dir = self.project_root / ".claude" / "runtime" / "logs"
@@ -52,12 +57,6 @@ class HookProcessor(ABC):
 
         # Setup log file
         self.log_file = self.log_dir / f"{hook_name}.log"
-
-    def _setup_paths(self):
-        """Add project root to Python path if needed."""
-        sys_path = str(self.project_root)
-        if sys_path not in sys.path:
-            sys.path.insert(0, sys_path)
 
     def validate_path_containment(self, path: Path) -> Path:
         """Validate that path stays within project boundaries.

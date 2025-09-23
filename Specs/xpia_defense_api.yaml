@@ -1,0 +1,551 @@
+openapi: 3.0.0
+info:
+  title: XPIA Defense Agent API
+  description: Simple, clean interface for threat validation and security integration within amplihack framework
+  version: 1.0.0
+
+servers:
+  - url: /api/v1/xpia
+    description: XPIA Defense API endpoint
+
+paths:
+  /validate/content:
+    post:
+      summary: Validate content for security threats
+      description: Primary validation endpoint for screening any content type
+      operationId: validateContent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentValidationRequest"
+      responses:
+        "200":
+          description: Validation completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResult"
+        "400":
+          description: Invalid request format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /validate/bash:
+    post:
+      summary: Validate bash commands for security threats
+      description: Specialized validation for bash tool integration
+      operationId: validateBashCommand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BashValidationRequest"
+      responses:
+        "200":
+          description: Bash command validation completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResult"
+        "400":
+          description: Invalid bash command format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /validate/agent-communication:
+    post:
+      summary: Validate agent-to-agent communication
+      description: Validates inter-agent messages for security compliance
+      operationId: validateAgentCommunication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentCommunicationRequest"
+      responses:
+        "200":
+          description: Agent communication validation completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationResult"
+
+  /hooks/register:
+    post:
+      summary: Register security hook
+      description: Register a security validation hook for system integration
+      operationId: registerHook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HookRegistration"
+      responses:
+        "201":
+          description: Hook registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HookResponse"
+        "400":
+          description: Invalid hook configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /hooks/{hookId}:
+    delete:
+      summary: Unregister security hook
+      description: Remove a previously registered security hook
+      operationId: unregisterHook
+      parameters:
+        - name: hookId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Hook unregistered successfully
+        "404":
+          description: Hook not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /config:
+    get:
+      summary: Get current security configuration
+      description: Retrieve current XPIA Defense configuration settings
+      operationId: getConfiguration
+      responses:
+        "200":
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SecurityConfiguration"
+
+    put:
+      summary: Update security configuration
+      description: Update XPIA Defense security level and settings
+      operationId: updateConfiguration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SecurityConfiguration"
+      responses:
+        "200":
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SecurityConfiguration"
+        "400":
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Verify XPIA Defense service status
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+        "503":
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    ContentValidationRequest:
+      type: object
+      required:
+        - content
+        - contentType
+      properties:
+        content:
+          type: string
+          description: Content to validate
+          maxLength: 1048576 # 1MB limit
+        contentType:
+          type: string
+          enum: ["text", "code", "command", "data", "user_input"]
+          description: Type of content being validated
+        context:
+          type: object
+          description: Additional context for validation
+          properties:
+            source:
+              type: string
+              description: Source of the content (e.g., "user", "agent", "system")
+            sessionId:
+              type: string
+              description: Current session identifier
+            agentId:
+              type: string
+              description: Requesting agent identifier
+        securityLevel:
+          type: string
+          enum: ["low", "medium", "high", "strict"]
+          default: "medium"
+          description: Security validation level
+
+    BashValidationRequest:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          description: Bash command to validate
+          maxLength: 4096
+        arguments:
+          type: array
+          items:
+            type: string
+          description: Command arguments
+        workingDirectory:
+          type: string
+          description: Working directory context
+        environment:
+          type: object
+          additionalProperties:
+            type: string
+          description: Environment variables
+        timeout:
+          type: integer
+          description: Command timeout in milliseconds
+          minimum: 1000
+          maximum: 600000
+
+    AgentCommunicationRequest:
+      type: object
+      required:
+        - sourceAgent
+        - targetAgent
+        - message
+      properties:
+        sourceAgent:
+          type: string
+          description: Source agent identifier
+        targetAgent:
+          type: string
+          description: Target agent identifier
+        message:
+          type: object
+          description: Message payload
+        messageType:
+          type: string
+          enum: ["task", "result", "query", "notification"]
+          description: Type of inter-agent message
+
+    ValidationResult:
+      type: object
+      required:
+        - isValid
+        - riskLevel
+        - timestamp
+      properties:
+        isValid:
+          type: boolean
+          description: Whether content passed validation
+        riskLevel:
+          type: string
+          enum: ["none", "low", "medium", "high", "critical"]
+          description: Assessed risk level
+        threats:
+          type: array
+          items:
+            $ref: "#/components/schemas/ThreatDetection"
+          description: Detected threats
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Security recommendations
+        metadata:
+          type: object
+          description: Additional validation metadata
+          properties:
+            scanDuration:
+              type: integer
+              description: Validation time in milliseconds
+            rulesApplied:
+              type: array
+              items:
+                type: string
+              description: Security rules that were applied
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+              description: Confidence level of the assessment
+        timestamp:
+          type: string
+          format: date-time
+          description: Validation timestamp
+
+    ThreatDetection:
+      type: object
+      required:
+        - type
+        - severity
+        - description
+      properties:
+        type:
+          type: string
+          enum:
+            [
+              "injection",
+              "privilege_escalation",
+              "data_exfiltration",
+              "malicious_code",
+              "social_engineering",
+              "resource_abuse",
+            ]
+          description: Type of threat detected
+        severity:
+          type: string
+          enum: ["low", "medium", "high", "critical"]
+          description: Threat severity level
+        description:
+          type: string
+          description: Human-readable threat description
+        location:
+          type: object
+          description: Location of threat in content
+          properties:
+            line:
+              type: integer
+            column:
+              type: integer
+            offset:
+              type: integer
+        mitigation:
+          type: string
+          description: Suggested mitigation strategy
+
+    HookRegistration:
+      type: object
+      required:
+        - name
+        - hookType
+        - endpoint
+      properties:
+        name:
+          type: string
+          description: Human-readable hook name
+          maxLength: 100
+        hookType:
+          type: string
+          enum: ["pre_validation", "post_validation", "threat_detected", "config_changed"]
+          description: Type of hook to register
+        endpoint:
+          type: string
+          format: uri
+          description: Callback endpoint URL
+        conditions:
+          type: object
+          description: Conditions for hook activation
+          properties:
+            riskLevels:
+              type: array
+              items:
+                type: string
+                enum: ["none", "low", "medium", "high", "critical"]
+            contentTypes:
+              type: array
+              items:
+                type: string
+            threatTypes:
+              type: array
+              items:
+                type: string
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+          description: Hook execution priority
+
+    HookResponse:
+      type: object
+      required:
+        - hookId
+        - status
+      properties:
+        hookId:
+          type: string
+          format: uuid
+          description: Unique hook identifier
+        status:
+          type: string
+          enum: ["registered", "active", "inactive", "error"]
+          description: Hook registration status
+        message:
+          type: string
+          description: Registration result message
+
+    SecurityConfiguration:
+      type: object
+      required:
+        - securityLevel
+        - enabled
+      properties:
+        securityLevel:
+          type: string
+          enum: ["low", "medium", "high", "strict"]
+          default: "medium"
+          description: Global security validation level
+        enabled:
+          type: boolean
+          default: true
+          description: Whether XPIA Defense is enabled
+        rules:
+          type: object
+          description: Security rule configurations
+          properties:
+            bashValidation:
+              type: boolean
+              default: true
+            agentCommunication:
+              type: boolean
+              default: true
+            contentScanning:
+              type: boolean
+              default: true
+            realTimeMonitoring:
+              type: boolean
+              default: false
+        thresholds:
+          type: object
+          description: Risk threshold configurations
+          properties:
+            blockThreshold:
+              type: string
+              enum: ["medium", "high", "critical"]
+              default: "high"
+              description: Minimum risk level to block content
+            alertThreshold:
+              type: string
+              enum: ["low", "medium", "high"]
+              default: "medium"
+              description: Minimum risk level to generate alerts
+        integrations:
+          type: object
+          description: Integration settings
+          properties:
+            bashTool:
+              type: boolean
+              default: true
+            agentFramework:
+              type: boolean
+              default: true
+            logging:
+              type: boolean
+              default: true
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: ["healthy", "degraded", "unhealthy"]
+          description: Service health status
+        version:
+          type: string
+          description: XPIA Defense version
+        uptime:
+          type: integer
+          description: Service uptime in seconds
+        lastValidation:
+          type: string
+          format: date-time
+          description: Timestamp of last validation performed
+        systemInfo:
+          type: object
+          description: System information
+          properties:
+            memoryUsage:
+              type: number
+              description: Memory usage percentage
+            cpuUsage:
+              type: number
+              description: CPU usage percentage
+            activeHooks:
+              type: integer
+              description: Number of active hooks
+        timestamp:
+          type: string
+          format: date-time
+          description: Health check timestamp
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Error code identifier
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              description: Additional error details
+            timestamp:
+              type: string
+              format: date-time
+              description: Error timestamp
+
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication
+
+security:
+  - ApiKey: []

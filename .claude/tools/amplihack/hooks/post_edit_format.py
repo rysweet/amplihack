@@ -12,9 +12,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-# Add project to path if needed
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
+# Clean import setup
+sys.path.insert(0, str(Path(__file__).parent.parent))
+try:
+    from paths import get_project_root
+
+    project_root = get_project_root()
+except ImportError:
+    # Fallback for standalone execution
+    project_root = Path(__file__).parent.parent.parent.parent.parent
 
 # Configuration
 AUTO_FORMAT_ENV = "CLAUDE_AUTO_FORMAT"

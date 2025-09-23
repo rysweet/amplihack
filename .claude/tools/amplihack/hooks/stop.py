@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
 

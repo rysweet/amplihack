@@ -11,23 +11,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
+# Clean import setup
+sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Setup path modifications
-def _setup_paths():
-    """Setup import paths for hook dependencies."""
-    sys.path.insert(0, str(Path(__file__).parent))
-    project_root = Path(__file__).resolve().parents[4]
-    sys.path.insert(0, str(project_root / "src"))
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-    return project_root
-
-
-# Initialize paths
-project_root = _setup_paths()
-
-# Import dependencies after path setup
-from context_preservation import ContextPreserver  # noqa: E402
-from hook_processor import HookProcessor  # noqa: E402
+# Import dependencies with clean structure
+from context_preservation import ContextPreserver
+from hook_processor import HookProcessor
 
 
 class PreCompactHook(HookProcessor):

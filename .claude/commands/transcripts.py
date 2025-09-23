@@ -10,11 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
-# Add project root to path
+# Clean import setup
 project_root = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(project_root))
-
-# Import context preservation
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
 
 

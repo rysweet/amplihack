@@ -6,18 +6,11 @@ Preserves original user requests and conversation context to prevent loss during
 
 import json
 import re
-import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Add project src to path
-try:
-    project_root = Path(__file__).resolve().parents[3]
-    if project_root and project_root.exists():
-        sys.path.insert(0, str(project_root / "src"))
-except (IndexError, AttributeError):
-    project_root = None
+# Use clean import through dedicated paths module
+from paths import get_project_root
 
 try:
     from amplihack.utils.paths import FrameworkPathResolver
@@ -35,22 +28,7 @@ class ContextPreserver:
             session_id: Optional session ID. If not provided, generates one from timestamp.
         """
         self.session_id = session_id or datetime.now().strftime("%Y%m%d_%H%M%S")
-        # Get project root, fallback to parents if global is None
-        if project_root is not None:
-            self.project_root = project_root
-        else:
-            try:
-                self.project_root = Path(__file__).resolve().parents[3]
-                if not self.project_root or not self.project_root.exists():
-                    self.project_root = Path.cwd()
-            except (IndexError, AttributeError):
-                # Use current directory as fallback
-                self.project_root = Path.cwd()
-
-        # Ensure project_root is not None before using it
-        if self.project_root is None:
-            self.project_root = Path.cwd()
-
+        self.project_root = get_project_root()
         self.session_dir = self.project_root / ".claude" / "runtime" / "logs" / self.session_id
         self.session_dir.mkdir(parents=True, exist_ok=True)
 

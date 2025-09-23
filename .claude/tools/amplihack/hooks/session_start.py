@@ -10,25 +10,22 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
+# Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
 
-# Add project src to path for FrameworkPathResolver
-project_root = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(project_root / "src"))
-
-try:
-    from amplihack.utils.paths import FrameworkPathResolver
-except ImportError:
-    # Fallback if import fails
-    FrameworkPathResolver = None
-
-# Import context preservation
+# Clean imports through package structure
 sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from context_preservation import ContextPreserver
+    from paths import get_project_root
+
+    from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
+    # Fallback imports for standalone execution
+    get_project_root = None
     ContextPreserver = None
+    FrameworkPathResolver = None
 
 
 class SessionStartHook(HookProcessor):
