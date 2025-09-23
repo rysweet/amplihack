@@ -102,7 +102,7 @@ class TestPreCompactHook(unittest.TestCase):
         with open(transcript_file, "r") as f:
             content = f.read()
         self.assertIn("Conversation Transcript", content)
-        self.assertIn("Messages: 3", content)
+        self.assertIn("**Messages**: 3", content)  # Fixed: Markdown bold format
         self.assertIn("ALL requirements", content)
 
     def test_process_with_original_request_extraction(self):
@@ -206,15 +206,18 @@ class TestPreCompactHook(unittest.TestCase):
 
     def test_restore_conversation_from_latest(self):
         """Test restoring conversation from latest transcript."""
-        # Create a session with transcript
-        session_id = "20250923_100000"
+        # Create hook first, so we know its session_id
+        hook = self._create_hook_with_mocked_paths()
+
+        # Create a session with transcript that's newer than the hook's session
+        # Use a timestamp that's guaranteed to be later
+        session_id = "20250923_200000"  # Later time ensures it's the "latest"
         session_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs" / session_id
         session_dir.mkdir(parents=True)
 
         transcript_file = session_dir / "CONVERSATION_TRANSCRIPT.md"
         transcript_file.write_text("# Test Transcript\nTest content")
 
-        hook = self._create_hook_with_mocked_paths()
         result = hook.restore_conversation_from_latest()
 
         self.assertEqual(len(result), 1)

@@ -63,6 +63,9 @@ class PreCompactHook(HookProcessor):
 
             # Create context preserver
             preserver = ContextPreserver(self.session_id)
+            # Override the session_dir to use the hook's session directory
+            # This ensures all files are saved in the correct location
+            preserver.session_dir = self.session_dir
 
             # Extract original request if it exists in the conversation
             original_request = None
@@ -147,22 +150,32 @@ class PreCompactHook(HookProcessor):
             List of conversation messages or empty list if not found
         """
         try:
-            # Find latest session
-            preserver = ContextPreserver()
-            latest_session = preserver.get_latest_session_id()
+            # Find latest session using the log directory
+            logs_dir = (
+                self.log_dir
+                if hasattr(self, "log_dir")
+                else (self.project_root / ".claude" / "runtime" / "logs")
+            )
 
-            if not latest_session:
+            if not logs_dir.exists():
+                self.log("No logs directory found")
+                return []
+
+            # Find session directories (format: YYYYMMDD_HHMMSS)
+            import re
+
+            session_dirs = [
+                d for d in logs_dir.iterdir() if d.is_dir() and re.match(r"\d{8}_\d{6}", d.name)
+            ]
+
+            if not session_dirs:
                 self.log("No session logs found")
                 return []
 
-            transcript_file = (
-                self.project_root
-                / ".claude"
-                / "runtime"
-                / "logs"
-                / latest_session
-                / "CONVERSATION_TRANSCRIPT.md"
-            )
+            # Get the latest session
+            latest_session = sorted(session_dirs)[-1].name
+
+            transcript_file = logs_dir / latest_session / "CONVERSATION_TRANSCRIPT.md"
 
             if not transcript_file.exists():
                 self.log(f"No transcript found for session: {latest_session}")
