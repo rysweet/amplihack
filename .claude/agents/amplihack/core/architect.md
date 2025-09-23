@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Primary architecture and design agent. Use for analysis, system design, and code review. Embodies ruthless simplicity and creates specifications for implementation.
-model: opus
+model: inherit
 ---
 
 # Architect Agent

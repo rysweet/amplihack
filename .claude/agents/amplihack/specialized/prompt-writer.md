@@ -1,7 +1,7 @@
 ---
 name: prompt-writer
 description: Generates high-quality, structured prompts from requirements with complexity assessment and quality validation
-model: haiku
+model: inherit
 ---
 
 # PromptWriter Agent
