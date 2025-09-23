@@ -1,7 +1,29 @@
+# MANIFEST.in - Include ALL framework files for UVX package as explicitly requested
+# This ensures all framework files are available in the packaged distribution
+
+# Core package files
 include src/amplihack/prompts/*.md
 recursive-include src/amplihack *.py
-# Include .claude directory and all framework files for UVX deployment
-recursive-include .claude *
+
+# Core framework documentation
 include CLAUDE.md
 include DISCOVERIES.md
 include README.md
+include *.md
+
+# Claude framework structure (ALL files as requested)
+recursive-include .claude *
+
+# Documentation, examples, and specifications
+recursive-include docs *
+recursive-include examples *
+recursive-include Specs *
+
+# Exclude unnecessary files but keep everything else
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *~
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude *.swp
+global-exclude *.swo

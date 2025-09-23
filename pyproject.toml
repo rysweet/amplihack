@@ -15,19 +15,8 @@ where = ["src"]
 include = ["amplihack*"]
 
 [tool.setuptools.package-data]
+# Include prompts and other package-internal files
 amplihack = ["prompts/*.md"]
-
-[tool.setuptools.data-files]
-# Include ALL framework files for UVX package as explicitly requested
-"amplihack/.claude" = [".claude/**/*"]
-"amplihack/" = [
-    "CLAUDE.md",
-    "DISCOVERIES.md",
-    "*.md",
-    "docs/**/*",
-    "examples/**/*",
-    "Specs/**/*"
-]
 
 [tool.ruff]
 # Essential Ruff settings only
