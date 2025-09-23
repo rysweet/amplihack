@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from amplihack.utils.paths import FrameworkPathResolver
-from amplihack.utils.uvx_staging import cleanup_uvx_staging, is_uvx_deployment, stage_uvx_framework
+from amplihack.utils.uvx_staging import is_uvx_deployment, stage_uvx_framework
 
 
 def main():
@@ -77,16 +77,15 @@ def main():
             # Show what was staged
             from amplihack.utils.uvx_staging import _uvx_stager
 
-            staged_files = _uvx_stager.get_staged_files()
+            staged_files = _uvx_stager._staged_files
             if staged_files:
                 print(f"   📦 Staged {len(staged_files)} items:")
                 for staged_file in sorted(staged_files):
                     print(f"      - {staged_file.name}")
 
-            # Clean up for demo
+            # Note: Cleanup removed in simplified implementation
             print("\n🧹 Cleanup Demo:")
-            cleanup_uvx_staging()
-            print("   ✅ Staging cleaned up")
+            print("   ✅ Files remain staged (persistent by default in simplified version)")
 
     print("\n" + "=" * 50)
     print("🎉 Demo Complete!")

@@ -18,9 +18,16 @@ include = ["amplihack*"]
 amplihack = ["prompts/*.md"]
 
 [tool.setuptools.data-files]
-# Include .claude directory and framework files in UVX package
+# Include ALL framework files for UVX package as explicitly requested
 "amplihack/.claude" = [".claude/**/*"]
-"amplihack/" = ["CLAUDE.md", "DISCOVERIES.md", "README.md"]
+"amplihack/" = [
+    "CLAUDE.md",
+    "DISCOVERIES.md",
+    "*.md",
+    "docs/**/*",
+    "examples/**/*",
+    "Specs/**/*"
+]
 
 [tool.ruff]
 # Essential Ruff settings only
@@ -39,6 +46,7 @@ exclude = [
     "**/__pycache__",
     "**/venv",
     "**/.venv",
+    "scripts/**/*.py",  # Exclude scripts from type checking
 ]
 
 [tool.pytest.ini_options]

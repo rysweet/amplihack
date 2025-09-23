@@ -17,6 +17,28 @@ Review all changes after tasks complete to:
 - Ensure philosophy adherence
 - Maintain codebase pristine state
 
+## CRITICAL: User Requirement Priority
+
+**BEFORE ANY CLEANUP ACTION**, check the original user request for explicit requirements:
+
+@.claude/context/USER_REQUIREMENT_PRIORITY.md
+
+**NEVER REMOVE OR SIMPLIFY anything that was explicitly requested by the user.**
+
+### Priority Hierarchy (MANDATORY)
+
+1. **EXPLICIT USER REQUIREMENTS** (HIGHEST - NEVER OVERRIDE)
+2. **IMPLICIT USER PREFERENCES**
+3. **PROJECT PHILOSOPHY** (Simplicity, etc.)
+4. **DEFAULT BEHAVIORS** (LOWEST)
+
+### Examples of What NOT to Clean Up
+
+- If user requested "ALL files" → Don't reduce to "essential files only"
+- If user said "include everything" → Don't optimize for minimalism
+- If user specified "keep component X" → Don't remove even if redundant
+- Any quoted requirements or numbered lists from user
+
 ## Cleanup Process
 
 ### 1. Git Status Analysis
@@ -82,6 +104,8 @@ Check remaining files for:
 - No mock data in production
 - All files end with newline
 
+**BUT FIRST**: Verify nothing being removed was explicitly requested by user.
+
 ## Action Protocol
 
 **You CAN directly**:
@@ -145,13 +169,19 @@ Check remaining files for:
 
 For every file ask:
 
+**FIRST (MANDATORY):** 0. Was this explicitly requested by the user?
+
+- If YES → **DO NOT REMOVE** regardless of other answers
+
+**THEN:**
+
 1. Is this essential to the feature?
 2. Does this serve production?
 3. Will this be needed tomorrow?
 4. Does this follow simplicity principles?
 5. Is this the simplest solution?
 
-If any answer is "no" → Remove or flag
+If any answer is "no" AND it wasn't explicitly requested → Remove or flag
 
 ## Key Principles
 

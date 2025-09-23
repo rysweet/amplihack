@@ -21,6 +21,7 @@ When starting a session, import these files for context:
 @.claude/context/PATTERNS.md
 @.claude/context/TRUST.md
 @.claude/context/USER_PREFERENCES.md
+@.claude/context/USER_REQUIREMENT_PRIORITY.md
 @DISCOVERIES.md
 ```
 
@@ -53,6 +54,21 @@ When starting a session, import these files for context:
 
 **IMPORTANT**: Record significant decisions in session logs as: What was decided
 | Why | Alternatives considered
+
+### CRITICAL: User Requirement Priority
+
+**MANDATORY BEHAVIOR**: All agents must follow the priority hierarchy:
+
+1. **EXPLICIT USER REQUIREMENTS** (HIGHEST PRIORITY - NEVER OVERRIDE)
+2. **IMPLICIT USER PREFERENCES**
+3. **PROJECT PHILOSOPHY**
+4. **DEFAULT BEHAVIORS** (LOWEST PRIORITY)
+
+**When user says "ALL files", "include everything", or provides specific
+requirements in quotes, these CANNOT be optimized away by simplification
+agents.**
+
+See `@.claude/context/USER_REQUIREMENT_PRIORITY.md` for complete guidelines.
 
 ### Agent Delegation Strategy
 

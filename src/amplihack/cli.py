@@ -1,12 +1,14 @@
 """Enhanced CLI for amplihack with proxy and launcher support."""
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Optional
 
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
+from .utils import is_uvx_deployment, stage_uvx_framework
 
 
 def launch_command(args: argparse.Namespace) -> int:
@@ -82,6 +84,7 @@ def create_parser() -> argparse.ArgumentParser:
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
     uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
+    uvx_parser.add_argument("--info", action="store_true", help="Show UVX staging information")
 
     # Hidden local install command
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
@@ -99,6 +102,12 @@ def main(argv: Optional[list] = None) -> int:
     Returns:
         Exit code.
     """
+    # Initialize UVX staging if needed (before parsing args)
+    if is_uvx_deployment():
+        if stage_uvx_framework():
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print("UVX staging completed")
+
     parser = create_parser()
     args = parser.parse_args(argv)
 
@@ -146,6 +155,13 @@ def main(argv: Optional[list] = None) -> int:
             else:
                 print("UVX installation path not found", file=sys.stderr)
                 return 1
+        elif args.info:
+            # Show UVX staging information
+            print("\nUVX Information:")
+            print(f"  Is UVX: {is_uvx_deployment()}")
+            print("\nEnvironment Variables:")
+            print(f"  AMPLIHACK_ROOT={os.environ.get('AMPLIHACK_ROOT', '(not set)')}")
+            return 0
         else:
             print_uvx_usage_instructions()
             return 0
