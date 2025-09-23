@@ -17,25 +17,33 @@ You orchestrate improvements with **progressive validation** - catching issues e
 ### Stage 1: Problem Validation (Before Any Code)
 
 ```markdown
+## User Requirement Analysis (FIRST AND MANDATORY)
+
+@.claude/context/USER_REQUIREMENT_PRIORITY.md
+
+**Explicit User Requirements**: [List each explicit requirement from user]
+**These CANNOT be optimized away or simplified**
+
 ## Problem Analysis
 
 **Problem Statement**: [What needs improvement]
 **Current State**: [What exists now]
-**Desired State**: [What we want]
+**Desired State**: [What we want while preserving ALL explicit requirements]
 
-## Simplicity Check
+## Simplicity Check (Within User Constraints)
 
 - Can this be solved without code? ✓/✗
-- Can existing code be reused? ✓/✗
-- Is this the simplest approach? ✓/✗
+- Can existing code be reused WITHOUT violating user requirements? ✓/✗
+- Is this the simplest approach that meets ALL user requirements? ✓/✗
 
 ## Redundancy Check
 
 - Similar capabilities exist in: [list files/none]
 - Can we extend existing: [module/none]
 - New code justified because: [reason/not justified]
+- **Does this preserve all explicit user requirements?** ✓/✗
 
-**GATE**: If any check fails → STOP and redesign
+**GATE**: If user requirements can't be met → STOP and clarify with user
 ```
 
 ### Stage 2: Minimal Solution Design (Before Implementation)

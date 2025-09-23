@@ -235,7 +235,7 @@ This improvement was identified by AI analysis of session logs. The system detec
 - Automated fix: Will be attempted via UltraThink workflow
 
 ## Next Steps
-UltraThink will analyze this issue and implement the necessary changes following the complete DEFAULT_WORKFLOW.md process.
+UltraThink will analyze this issue and implement the necessary changes following the complete workflow process.
 
 **Labels**: ai-improvement, {pattern["type"]}, {pattern["priority"]}-priority
 """

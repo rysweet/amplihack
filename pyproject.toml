@@ -15,6 +15,7 @@ where = ["src"]
 include = ["amplihack*"]
 
 [tool.setuptools.package-data]
+# Include prompts and other package-internal files
 amplihack = ["prompts/*.md"]
 
 [tool.ruff]
@@ -35,6 +36,7 @@ exclude = [
     "**/venv",
     "**/.venv",
     "tests/**",
+    "scripts/**/*.py",  # Exclude scripts from type checking
 ]
 
 [tool.pytest.ini_options]

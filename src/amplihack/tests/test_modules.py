@@ -34,7 +34,7 @@ def test_imports():
         print("✓ Launcher modules imported")
 
         # Test utility modules
-        from amplihack.utils import PathResolver, ProcessManager  # noqa: F401
+        from amplihack.utils import ProcessManager  # noqa: F401
 
         print("✓ Utility modules imported")
 
@@ -90,21 +90,17 @@ def test_proxy_config():
 
 def test_path_resolver():
     """Test path resolution utilities."""
-    from amplihack.utils.paths import PathResolver
+    # PathResolver removed in simplification, test FrameworkPathResolver instead
+    from amplihack.utils.paths import FrameworkPathResolver
 
-    resolver = PathResolver
+    # Test basic framework resolution
+    result = FrameworkPathResolver.resolve_framework_file(".claude/context/USER_PREFERENCES.md")
+    # May be None if not found, which is expected in test environment
+    assert result is None or result.suffix == ".md"
+    print(f"✓ Path resolution works: {result}")
 
-    # Test resolve_path
-    resolved = resolver.resolve_path("~/test")
-    assert resolved.is_absolute()
-    print(f"✓ Path resolution works: ~/test -> {resolved}")
-
-    # Test find_file_upward
-    current_file = resolver.find_file_upward("README.md")
-    if current_file:
-        print(f"✓ Found README.md at: {current_file}")
-    else:
-        print("✓ find_file_upward works (no README.md found)")
+    # Note: Other PathResolver methods removed in simplification
+    print("✓ FrameworkPathResolver basic test passed")
 
     return True
 

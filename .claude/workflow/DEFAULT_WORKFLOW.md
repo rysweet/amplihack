@@ -41,12 +41,14 @@ This workflow should be followed for:
 
 ### Step 1: Rewrite and Clarify Requirements
 
+- [ ] **FIRST: Identify explicit user requirements** that CANNOT be optimized away
 - [ ] **Always use** prompt-writer agent to clarify task requirements
 - [ ] **Use** analyzer agent to understand existing codebase context
 - [ ] **Use** ambiguity agent if requirements are unclear
 - [ ] Remove ambiguity from the task description
 - [ ] Define clear success criteria
 - [ ] Document acceptance criteria
+- [ ] **CRITICAL: Pass explicit requirements to ALL subsequent agents**
 
 ### Step 2: Create GitHub Issue
 
@@ -86,13 +88,15 @@ This workflow should be followed for:
 
 ### Step 6: Refactor and Simplify
 
-- [ ] **Always use** cleanup agent for ruthless simplification
+- [ ] **CRITICAL: Provide cleanup agent with original user requirements**
+- [ ] **Always use** cleanup agent for ruthless simplification WITHIN user constraints
 - [ ] **Use** optimizer agent for performance improvements
-- [ ] Remove unnecessary abstractions
-- [ ] Eliminate dead code
-- [ ] Simplify complex logic
+- [ ] Remove unnecessary abstractions (that weren't explicitly requested)
+- [ ] Eliminate dead code (unless user explicitly wanted it)
+- [ ] Simplify complex logic (without violating user specifications)
 - [ ] Ensure single responsibility principle
 - [ ] Verify no placeholders remain
+- [ ] **VALIDATE: All explicit user requirements still preserved**
 
 ### Step 7: Run Tests and Pre-commit Hooks
 
@@ -163,12 +167,14 @@ This workflow should be followed for:
 
 ### Step 14: Final Cleanup and Verification
 
+- [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
 - [ ] **Always use** cleanup agent for final quality pass
-- [ ] Review all changes for philosophy compliance
-- [ ] Remove any temporary artifacts or test files
-- [ ] Eliminate any unnecessary complexity introduced
+- [ ] Review all changes for philosophy compliance WITHIN user constraints
+- [ ] Remove any temporary artifacts or test files (unless user wanted them)
+- [ ] Eliminate unnecessary complexity (that doesn't violate user requirements)
 - [ ] Verify module boundaries remain clean
-- [ ] Ensure zero dead code or stub implementations
+- [ ] Ensure zero dead code or stub implementations (unless explicitly requested)
+- [ ] **FINAL CHECK: All explicit user requirements preserved**
 - [ ] Confirm PR remains mergeable after cleanup
 
 ## Customization

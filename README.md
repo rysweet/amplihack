@@ -17,7 +17,6 @@ collaborative problem-solving.
 Launch Claude Code with the amplihack framework from any directory:
 
 ```sh
-# Launch with latest version (recommended)
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
 ```
 

@@ -59,7 +59,8 @@ class TestFrameworkPathResolver:
 
             with patch("pathlib.Path.cwd", return_value=temp_path):
                 result = FrameworkPathResolver.resolve_framework_file(".claude/test.md")
-                assert result == target_file
+                # Compare resolved paths since security fix returns resolved paths
+                assert result == target_file.resolve()
                 assert result is not None and result.exists()
 
     def test_resolve_framework_file_not_found(self):
@@ -154,3 +155,71 @@ class TestFrameworkPathResolver:
                     or not (Path.cwd() / ".claude").exists()
                 )
                 assert result is True
+
+    def test_resolve_framework_file_path_traversal_protection(self):
+        """Test that path traversal attempts are blocked."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            claude_dir = temp_path / ".claude"
+            claude_dir.mkdir()
+
+            # Create a file outside framework root
+            outside_file = temp_path.parent / "outside.txt"
+            outside_file.write_text("sensitive data")
+
+            with patch("pathlib.Path.cwd", return_value=temp_path):
+                # Test various path traversal attempts
+                traversal_attempts = [
+                    "../outside.txt",
+                    ".claude/../../outside.txt",
+                    ".claude/../../../outside.txt",
+                    "test/../../../outside.txt",
+                ]
+
+                for path in traversal_attempts:
+                    result = FrameworkPathResolver.resolve_framework_file(path)
+                    assert result is None, f"Path traversal was not blocked for: {path}"
+
+    def test_resolve_framework_file_null_byte_protection(self):
+        """Test that null byte injection is blocked."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            claude_dir = temp_path / ".claude"
+            claude_dir.mkdir()
+
+            with patch("pathlib.Path.cwd", return_value=temp_path):
+                # Test null byte injection attempts
+                null_byte_attempts = [
+                    "test\x00.txt",
+                    ".claude/test\x00/../../etc/passwd",
+                    "\x00/etc/passwd",
+                ]
+
+                for path in null_byte_attempts:
+                    result = FrameworkPathResolver.resolve_framework_file(path)
+                    assert result is None, f"Null byte injection was not blocked for: {path}"
+
+    def test_resolve_framework_file_symlink_escape_protection(self):
+        """Test that symlink escapes are blocked."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            claude_dir = temp_path / ".claude"
+            claude_dir.mkdir()
+
+            # Create a sensitive file outside framework
+            sensitive_file = temp_path.parent / "sensitive.txt"
+            sensitive_file.write_text("SECRET DATA")
+
+            # Create a symlink inside framework pointing outside
+            symlink = claude_dir / "escape_link"
+            try:
+                symlink.symlink_to(sensitive_file)
+
+                with patch("pathlib.Path.cwd", return_value=temp_path):
+                    # Attempt to access the symlink that points outside
+                    result = FrameworkPathResolver.resolve_framework_file(".claude/escape_link")
+                    assert result is None, "Symlink escape was not blocked"
+
+            except OSError:
+                # Skip test if symlinks are not supported
+                pass

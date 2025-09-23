@@ -83,7 +83,7 @@ jobs:
         run: |
           if command -v pytest &> /dev/null; then
             echo "Running Python tests with pytest..."
-            pytest --tb=short -v --color=yes
+            PYTHONPATH=. pytest --tb=short -v --color=yes
           else
             echo "pytest not found, skipping Python tests"
           fi

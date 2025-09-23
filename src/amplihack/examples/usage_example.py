@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from amplihack.launcher import ClaudeDirectoryDetector, ClaudeLauncher
 from amplihack.proxy import ProxyConfig
-from amplihack.utils import PathResolver
+
+# PathResolver removed in simplification
 
 
 def example_proxy_configuration():
@@ -46,19 +47,26 @@ def example_path_utilities():
     """Example of using path utilities."""
     print("\n=== Path Utilities Example ===")
 
-    # Resolve home directory path
-    home_path = PathResolver.resolve_path("~/amplihack")
-    print(f"Resolved ~/amplihack to: {home_path}")
+    # Note: PathResolver removed in simplification, using FrameworkPathResolver instead
+    from amplihack.utils.paths import FrameworkPathResolver
 
-    # Find file upward
-    readme = PathResolver.find_file_upward("README.md")
-    if readme:
-        print(f"Found README.md at: {readme}")
+    # Find framework root
+    framework_root = FrameworkPathResolver.find_framework_root()
+    if framework_root:
+        print(f"Found framework root: {framework_root}")
+    else:
+        print("No .claude framework directory found")
 
-    # Get relative path
-    if readme:
-        rel_path = PathResolver.get_relative_path(readme)
-        print(f"Relative path from cwd: {rel_path}")
+    # Find preferences file
+    prefs_file = FrameworkPathResolver.resolve_preferences_file()
+    if prefs_file:
+        print(f"Found preferences file: {prefs_file}")
+    else:
+        print("No USER_PREFERENCES.md found")
+
+    # Check if running in UVX deployment
+    is_uvx = FrameworkPathResolver.is_uvx_deployment()
+    print(f"Running in UVX deployment: {is_uvx}")
 
 
 def example_launcher_setup():

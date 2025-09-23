@@ -4,6 +4,73 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## Agent Priority Hierarchy Critical Flaw (2025-01-23)
+
+### Issue
+
+Agents were overriding explicit user requirements in favor of project
+philosophy. Specifically, when user requested "ALL files" for UVX deployment,
+cleanup/simplification agents reduced it to "essential files only", directly
+violating user's explicit instruction.
+
+### Root Cause
+
+Agents had philosophy guidance but no explicit instruction that user
+requirements override philosophy. The system prioritized simplicity principles
+over user-specified constraints, creating a hierarchy where philosophy > user
+requirements instead of user requirements > philosophy.
+
+### Solution
+
+Implemented comprehensive User Requirement Priority System:
+
+1. **Created USER_REQUIREMENT_PRIORITY.md** with mandatory hierarchy:
+   - EXPLICIT USER REQUIREMENTS (Highest - Never Override)
+   - IMPLICIT USER PREFERENCES
+   - PROJECT PHILOSOPHY
+   - DEFAULT BEHAVIORS (Lowest)
+
+2. **Updated Critical Agents** with requirement preservation:
+   - cleanup.md: Added mandatory user requirement check before any removal
+   - reviewer.md: User requirement compliance as first review criteria
+   - improvement-workflow.md: User requirement analysis in Stage 1
+
+3. **Enhanced Workflow Safeguards**:
+   - DEFAULT_WORKFLOW.md: Multiple validation checkpoints
+   - Step 1: Identify explicit requirements FIRST
+   - Step 6: Cleanup within user constraints only
+   - Step 14: Final requirement preservation check
+
+### Key Learnings
+
+- **User explicit requirements are sacred** - they override all other guidance
+- **Philosophy guides HOW to implement** - not WHAT to implement
+- **Simple instruction updates** are more effective than complex permission
+  systems
+- **Multiple validation points** prevent single-point-of-failure in requirement
+  preservation
+- **Clear priority hierarchy** must be communicated to ALL agents
+
+### Prevention
+
+- All agent instructions now include mandatory user requirement priority check
+- Workflow includes explicit requirement capture and preservation steps
+- CLAUDE.md updated with priority system as core principle
+- Validation scenarios documented for testing agent behavior
+
+### Pattern Recognition
+
+**Trigger Signs of Explicit Requirements:**
+
+- "ALL files", "include everything", "don't simplify X"
+- Quoted specifications: "use this exact format"
+- Numbered lists of requirements
+- "Must have", "explicitly", "specifically"
+
+**Agent Behavior Rule:** Before any optimization/simplification → Check: "Was
+this explicitly requested by user?" If YES → Preserve completely regardless of
+philosophy
+
 ## Format for Entries
 
 Each discovery should follow this format:
