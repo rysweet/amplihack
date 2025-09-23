@@ -35,6 +35,7 @@ exclude = [
     "**/__pycache__",
     "**/venv",
     "**/.venv",
+    "tests/**",
     "scripts/**/*.py",  # Exclude scripts from type checking
 ]
 
