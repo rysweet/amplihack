@@ -16,7 +16,7 @@ Deep analysis mode for complex tasks. Orchestrates multiple agents to break down
 
 When this command is invoked, you MUST:
 
-1. **First, read the workflow file** using the Read tool on `.claude/workflow/DEFAULT_WORKFLOW.md`
+1. **First, read the workflow file** using FrameworkPathResolver.resolve_workflow_file() to get the correct path, then use the Read tool
 2. **Create a comprehensive todo list** using TodoWrite that includes all 13 workflow steps
 3. **Execute each step systematically**, marking todos as in_progress and completed
 4. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
@@ -30,7 +30,7 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
 ### Step-by-Step Execution:
 
 1. **Initialize**:
-   - Read DEFAULT_WORKFLOW.md to get the current 13-step process
+   - Read workflow file using FrameworkPathResolver to get the current 13-step process
    - Create TodoWrite list with all workflow steps
    - Create session directory for decision logging
 
@@ -108,7 +108,7 @@ Always use TodoWrite to:
 ## Example Flow
 
 ```
-1. Read workflow from DEFAULT_WORKFLOW.md
+1. Read workflow using FrameworkPathResolver.resolve_workflow_file()
 2. Begin executing workflow steps with deep analysis
 3. Orchestrate multiple agents where complexity requires
 4. Follow all workflow steps as defined

@@ -55,11 +55,22 @@ class FrameworkPathResolver:
         Returns:
             Absolute path to file if found, None otherwise.
         """
+        # Basic security validation for path traversal
+        if ".." in relative_path or relative_path.startswith("/"):
+            return None
+
         framework_root = FrameworkPathResolver.find_framework_root()
         if not framework_root:
             return None
 
         file_path = framework_root / relative_path
+
+        # Ensure resolved path stays within framework boundaries
+        try:
+            file_path.resolve().relative_to(framework_root.resolve())
+        except ValueError:
+            return None
+
         return file_path if file_path.exists() else None
 
     @staticmethod

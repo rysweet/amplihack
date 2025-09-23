@@ -1,2 +1,7 @@
 include src/amplihack/prompts/*.md
 recursive-include src/amplihack *.py
+# Include .claude directory and all framework files for UVX deployment
+recursive-include .claude *
+include CLAUDE.md
+include DISCOVERIES.md
+include README.md

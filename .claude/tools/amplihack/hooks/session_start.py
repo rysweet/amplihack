@@ -161,11 +161,23 @@ class SessionStartHook(HookProcessor):
                 self.log(f"Could not read preferences: {e}")
                 # Fail silently - don't break session start
 
-        # Add workflow information at startup
+        # Add workflow information at startup with UVX support
         context_parts.append("\n## 📝 Default Workflow")
         context_parts.append("The 13-step workflow is automatically followed by `/ultrathink`")
-        context_parts.append("• To view the workflow: Read `.claude/workflow/DEFAULT_WORKFLOW.md`")
-        context_parts.append("• To customize: Edit the workflow file directly")
+
+        # Use FrameworkPathResolver for workflow path
+        workflow_file = None
+        if FrameworkPathResolver:
+            workflow_file = FrameworkPathResolver.resolve_workflow_file()
+
+        if workflow_file:
+            context_parts.append(f"• To view the workflow: Read {workflow_file}")
+            context_parts.append("• To customize: Edit the workflow file directly")
+        else:
+            context_parts.append(
+                "• To view the workflow: Use FrameworkPathResolver.resolve_workflow_file() (UVX-compatible)"
+            )
+            context_parts.append("• To customize: Edit the workflow file directly")
         context_parts.append(
             "• Steps include: Requirements → Issue → Branch → Design → Implement → Review → Merge"
         )
@@ -195,7 +207,7 @@ class SessionStartHook(HookProcessor):
                 [
                     "",
                     "📝 Workflow: Use `/ultrathink` for the 13-step process",
-                    "⚙️  Customize: Edit `.claude/workflow/DEFAULT_WORKFLOW.md`",
+                    "⚙️  Customize: Edit the workflow file (use FrameworkPathResolver for UVX compatibility)",
                     "🎯 Preferences: Loaded from USER_PREFERENCES.md",
                     "",
                     "Type `/help` for available commands",
