@@ -6,40 +6,5 @@
     "additionalDirectories": [".claude", "Specs"]
   },
   "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [],
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/tools/amplihack/hooks/session_start.py",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/tools/amplihack/hooks/stop.py",
-            "timeout": 30000
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/tools/amplihack/hooks/post_tool_use.py"
-          }
-        ]
-      }
-    ]
-  }
+  "enabledMcpjsonServers": []
 }
