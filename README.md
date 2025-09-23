@@ -104,7 +104,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 | **Feature**                | **What It Does**                                            | **How to Use It**                                                                                 |
 | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | **🚀 Quick Launch**        | Launch Claude Code with agents instantly                    | `uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch` |
-| **🧠 UltraThink**          | Deep analysis & multi-agent orchestration for complex tasks | `/ultrathink <task description>` - Follows 13-step workflow automatically                         |
+| **🧠 UltraThink**          | Deep analysis & multi-agent orchestration for complex tasks | `/ultrathink <task description>` - Follows 14-step workflow automatically                         |
 | **🏗️ Architect Agent**     | System design, problem decomposition, specifications        | Auto-invoked by UltraThink or use Task tool with `architect`                                      |
 | **🔨 Builder Agent**       | Code implementation from specifications                     | Auto-invoked after architect or use Task tool with `builder`                                      |
 | **👁️ Reviewer Agent**      | Code review, philosophy compliance check                    | Auto-invoked in workflow or use Task tool with `reviewer`                                         |
@@ -113,7 +113,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 | **⚡ Optimizer Agent**     | Performance analysis, bottleneck identification             | Use for performance concerns                                                                      |
 | **🧹 Cleanup Agent**       | Code simplification, dead code removal                      | Auto-runs after implementation                                                                    |
 | **🔄 CI/CD Diagnostics**   | Fix CI failures, pre-commit issues                          | `ci-diagnostic-workflow` (after push) or `pre-commit-diagnostic` (before commit)                  |
-| **📝 13-Step Workflow**    | Complete development lifecycle                              | Automatically followed by `/ultrathink`                                                           |
+| **📝 14-Step Workflow**    | Complete development lifecycle                              | Automatically followed by `/ultrathink`                                                           |
 | **📊 /analyze**            | Comprehensive code analysis                                 | `/analyze <path>` - Philosophy compliance check                                                   |
 | **🔧 /improve**            | Self-improvement & learning capture                         | `/improve [target]` - Updates DISCOVERIES.md                                                      |
 | **📋 TodoWrite**           | Task management & planning                                  | Automatically used for complex tasks                                                              |
@@ -156,7 +156,7 @@ The framework includes specialized agents for every aspect of development:
 
 ### Default Coding Workflow
 
-A standardized 13-step workflow ensures consistency and quality:
+A standardized 14-step workflow ensures consistency and quality:
 
 1. **Requirements Clarification**: Understand the task completely
 2. **Issue Creation**: Track work in GitHub
@@ -171,6 +171,7 @@ A standardized 13-step workflow ensures consistency and quality:
 11. **Feedback**: Implement review suggestions
 12. **Philosophy Check**: Final compliance validation
 13. **Merge Ready**: Clean, tested, documented code
+14. **Final Cleanup**: Quality pass and artifact removal
 
 The workflow is customizable via `.claude/workflow/DEFAULT_WORKFLOW.md`.
 

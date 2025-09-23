@@ -37,7 +37,7 @@ This workflow should be followed for:
 - Refactoring
 - Any non-trivial code changes
 
-## The 13-Step Workflow
+## The 14-Step Workflow
 
 ### Step 1: Rewrite and Clarify Requirements
 
@@ -160,6 +160,16 @@ This workflow should be followed for:
 - [ ] Verify all review comments addressed
 - [ ] Confirm PR is approved
 - [ ] Notify that PR is ready to merge
+
+### Step 14: Final Cleanup and Verification
+
+- [ ] **Always use** cleanup agent for final quality pass
+- [ ] Review all changes for philosophy compliance
+- [ ] Remove any temporary artifacts or test files
+- [ ] Eliminate any unnecessary complexity introduced
+- [ ] Verify module boundaries remain clean
+- [ ] Ensure zero dead code or stub implementations
+- [ ] Confirm PR remains mergeable after cleanup
 
 ## Customization
 
