@@ -129,7 +129,7 @@ else
     "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
     "deny": [],
     "defaultMode": "bypassPermissions",
-    "additionalDirectories": [".data", ".vscode", ".claude", ".ai", "Specs"]
+    "additionalDirectories": [".claude", "Specs"]
   },
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": [],
