@@ -255,7 +255,7 @@ def find_framework_root(config: Optional[UVXConfiguration] = None) -> Optional[P
     detection = detect_uvx_deployment(config)
     resolution = resolve_framework_paths(detection, config)
 
-    if resolution.is_successful:
+    if resolution.is_successful and resolution.location is not None:
         return resolution.location.root_path
     return None
 
@@ -267,6 +267,6 @@ def resolve_framework_file(
     detection = detect_uvx_deployment(config)
     resolution = resolve_framework_paths(detection, config)
 
-    if resolution.is_successful:
+    if resolution.is_successful and resolution.location is not None:
         return resolution.location.resolve_file(relative_path)
     return None

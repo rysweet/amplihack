@@ -62,20 +62,29 @@ class UVXStager:
             self._debug_log(f"UVX detection: {detection.result.name}")
 
         # Skip staging if not UVX deployment
-        if not session_state.detection_state.is_uvx_deployment:
+        if (
+            session_state.detection_state is None
+            or not session_state.detection_state.is_uvx_deployment
+        ):
             self._debug_log("Not in UVX deployment mode, skipping staging")
             return result
 
         # Resolve framework paths if not already done
         if session_state.path_resolution is None:
+            if session_state.detection_state is None:
+                self._debug_log("Detection state is None, cannot resolve paths")
+                return result
             resolution = resolve_framework_paths(session_state.detection_state, self.config)
             session_state.set_path_resolution(resolution)
 
-        if not session_state.path_resolution.is_successful:
+        if session_state.path_resolution is None or not session_state.path_resolution.is_successful:
             self._debug_log("Framework path resolution failed")
             return result
 
         framework_location = session_state.path_resolution.location
+        if framework_location is None:
+            self._debug_log("Framework location is None after successful resolution")
+            return result
 
         # Perform staging based on resolution strategy
         if framework_location.strategy == PathResolutionStrategy.STAGING_REQUIRED:
@@ -113,6 +122,10 @@ class UVXStager:
 
         # Find source location in sys.path
         source_root = None
+        if session_state.detection_state is None:
+            result.add_failure(target_location.root_path, "Detection state is None")
+            return result
+
         for path_str in session_state.detection_state.environment.sys_path_entries:
             candidate = Path(path_str) / "amplihack"
             if candidate.exists() and (candidate / ".claude").exists():
@@ -139,6 +152,10 @@ class UVXStager:
             StagingResult with staging operation details
         """
         result = StagingResult()
+        if session_state.detection_state is None:
+            result.add_failure(source_location.root_path, "Detection state is None")
+            return result
+
         target_dir = session_state.detection_state.environment.working_directory
 
         self._debug_log(f"Staging from resolved location: {source_location.root_path}")
