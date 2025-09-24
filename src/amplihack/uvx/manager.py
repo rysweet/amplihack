@@ -8,6 +8,7 @@ This module provides the UVXManager class that:
 """
 
 import logging
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -34,14 +35,16 @@ class UVXManager:
         self._config = UVXConfiguration()
         self._detection_state: Optional[UVXDetectionState] = None
         self._path_resolution: Optional[PathResolutionResult] = None
+        self._lock = threading.RLock()  # Reentrant lock for thread safety
 
     def _ensure_detection(self) -> None:
-        """Ensure detection has been performed."""
-        if self._detection_state is None:
-            self._detection_state = detect_uvx_deployment(self._config)
-            logger.debug(f"UVX detection result: {self._detection_state.result.name}")
-            for reason in self._detection_state.detection_reasons:
-                logger.debug(f"  - {reason}")
+        """Ensure detection has been performed (thread-safe)."""
+        with self._lock:
+            if self._detection_state is None:
+                self._detection_state = detect_uvx_deployment(self._config)
+                logger.debug(f"UVX detection result: {self._detection_state.result.name}")
+                for reason in self._detection_state.detection_reasons:
+                    logger.debug(f"  - {reason}")
 
     def _ensure_path_resolution(self) -> None:
         """Ensure path resolution has been performed."""
@@ -158,9 +161,15 @@ class UVXManager:
             abs_path = path.resolve()
             path_str = str(abs_path)
 
-            # Check for directory traversal components
-            if ".." in str(path):
-                logger.warning(f"Path contains traversal components: {path}")
+            # Check for path traversal in the original path string
+            # We check the original path (not resolved) to catch obvious traversal attempts
+            original_str = str(path)
+
+            # Check for obvious traversal patterns (multiple ../ in sequence)
+            # This catches "../../../etc" patterns while allowing legitimate paths
+            # like "/usr/local/my..app/" that happen to contain ".."
+            if "/../" in original_str or original_str.startswith("../"):
+                logger.warning(f"Path contains directory traversal pattern: {path}")
                 return False
 
             # Check for null bytes (path injection)
