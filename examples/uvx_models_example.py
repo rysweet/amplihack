@@ -100,13 +100,16 @@ def main():
         ]
 
         for file_path in test_files:
-            resolved = path_resolution.location.resolve_file(file_path)
-            if resolved:
-                status = f"✅ Found at {resolved}"
-            elif ".." in file_path or "\x00" in file_path:
-                status = "🛡️  Security: Path traversal blocked"
+            if path_resolution.location is not None:
+                resolved = path_resolution.location.resolve_file(file_path)
+                if resolved:
+                    status = f"✅ Found at {resolved}"
+                elif ".." in file_path or "\x00" in file_path:
+                    status = "🛡️  Security: Path traversal blocked"
+                else:
+                    status = "❌ Not found"
             else:
-                status = "❌ Not found"
+                status = "❌ No framework location available"
 
             print(f"  {file_path}: {status}")
 
