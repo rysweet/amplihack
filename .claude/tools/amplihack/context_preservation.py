@@ -97,121 +97,53 @@ class ContextPreserver:
         return original_request
 
     def _parse_requirements(self, prompt: str) -> List[str]:
-        """Parse explicit requirements from prompt, preserving critical keywords."""
+        """Parse explicit requirements from prompt."""
         requirements = []
-
-        # Critical keywords that must be preserved exactly
-        critical_keywords = [
-            "ZERO",
-            "ALL",
-            "EVERY",
-            "EACH",
-            "COMPLETE",
-            "COMPREHENSIVE",
-            "NO",
-            "CANNOT",
-            "MUST NOT",
-            "NEVER",
-            "ALWAYS",
-        ]
 
         # Extract marked sections first
         for pattern in [r"\*\*(Target|Problem)\*\*:\s*(.+?)(?:\n|$)"]:
             for match in re.finditer(pattern, prompt, re.IGNORECASE):
                 requirements.append(f"{match.group(1).upper()}: {match.group(2).strip()}")
 
-        # Extract Requirements section with exact text preservation
-        requirements_section = re.search(
-            r"\*\*Requirements?\*\*:\s*(.*?)(?=\*\*[A-Za-z]+\*\*|$)",
-            prompt,
-            re.DOTALL | re.IGNORECASE,
-        )
-        if requirements_section:
-            req_text = requirements_section.group(1).strip()
-            # Split by lines and preserve bullet points exactly
-            for line in req_text.split("\n"):
-                line = line.strip()
-                if line and (line.startswith("-") or line.startswith("•") or line.startswith("*")):
-                    # Keep exact formatting for critical requirements
-                    clean_line = line.lstrip("-•* ").strip()
-                    if any(keyword in clean_line.upper() for keyword in critical_keywords):
-                        requirements.append(clean_line)  # Preserve exact text
-                    elif len(clean_line) > 5:
-                        requirements.append(clean_line)
-
-        # Extract quantified statements with exact preservation
+        # Extract quantified statements (ALL, EVERY, etc.)
+        quantifier_words = ["ALL", "EVERY", "EACH", "COMPLETE", "COMPREHENSIVE"]
         sentences = re.split(r"[.!?\n]+", prompt)
         for sentence in sentences:
             sentence = sentence.strip()
-            if len(sentence) > 10:
-                sentence_upper = sentence.upper()
-                if any(word in sentence_upper for word in critical_keywords):
-                    if sentence not in requirements:
-                        requirements.append(sentence)  # Preserve exact text
+            if len(sentence) > 10 and any(word in sentence.upper() for word in quantifier_words):
+                if sentence not in requirements:
+                    requirements.append(sentence)
 
-        # Extract other bullet points
+        # Extract bullet points
         bullets = re.findall(r"[-•*]\s*([^\n]+)", prompt)
         for bullet in bullets:
             bullet = bullet.strip()
             if len(bullet) > 5 and bullet not in requirements:
                 requirements.append(bullet)
 
-        return requirements[:15]  # Increased limit to capture more critical content
+        return requirements[:10]
 
     def _parse_constraints(self, prompt: str) -> List[str]:
-        """Parse constraints from prompt, preserving critical keywords."""
+        """Parse constraints from prompt."""
         constraints = []
 
-        # Critical keywords that must be preserved exactly
-        critical_keywords = [
-            "ZERO",
-            "ALL",
-            "EVERY",
-            "EACH",
-            "COMPLETE",
-            "COMPREHENSIVE",
-            "NO",
-            "CANNOT",
-            "MUST NOT",
-            "NEVER",
-            "ALWAYS",
-            "ANY",
-        ]
-
-        # Extract Constraints section with exact text preservation
-        constraints_section = re.search(
-            r"\*\*Constraints?\*\*:\s*(.*?)(?=\*\*[A-Za-z]+\*\*|$)",
-            prompt,
-            re.DOTALL | re.IGNORECASE,
+        # Extract marked constraints
+        constraint_match = re.search(
+            r"\*\*Constraints?\*\*:\s*(.+?)(?:\n|$)", prompt, re.IGNORECASE
         )
-        if constraints_section:
-            const_text = constraints_section.group(1).strip()
-            # Split by lines and preserve bullet points exactly
-            for line in const_text.split("\n"):
-                line = line.strip()
-                if line and (line.startswith("-") or line.startswith("•") or line.startswith("*")):
-                    # Keep exact formatting for critical constraints
-                    clean_line = line.lstrip("-•* ").strip()
-                    if any(keyword in clean_line.upper() for keyword in critical_keywords):
-                        constraints.append(clean_line)  # Preserve exact text
-                    elif len(clean_line) > 5:
-                        constraints.append(clean_line)
+        if constraint_match:
+            constraints.append(constraint_match.group(1).strip())
 
-        # Extract negative statements with exact preservation
+        # Extract negative statements
         negative_patterns = ["must not", "cannot", "avoid", "limitation", "restriction"]
         sentences = re.split(r"[.!?\n]+", prompt)
         for sentence in sentences:
             sentence = sentence.strip()
-            sentence_upper = sentence.upper()
             if any(pattern in sentence.lower() for pattern in negative_patterns):
-                if len(sentence) > 5 and sentence not in constraints:
-                    constraints.append(sentence)  # Preserve exact text
-            # Also check for critical keywords in any sentence
-            elif any(keyword in sentence_upper for keyword in critical_keywords):
                 if len(sentence) > 5 and sentence not in constraints:
                     constraints.append(sentence)
 
-        return constraints[:10]  # Increased limit to capture more critical content
+        return constraints[:5]
 
     def _parse_success_criteria(self, prompt: str) -> List[str]:
         """Parse success criteria from prompt."""
