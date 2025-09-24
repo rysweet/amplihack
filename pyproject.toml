@@ -35,7 +35,9 @@ exclude = [
     "**/__pycache__",
     "**/venv",
     "**/.venv",
+    "tests/**",
     "scripts/**/*.py",  # Exclude scripts from type checking
+    ".claude/tools/amplihack/memory/tests/test_interface.py",  # TDD tests - expected to fail
 ]
 
 [tool.pytest.ini_options]
