@@ -41,8 +41,24 @@ class ClaudeLauncher:
         if claude_dir:
             print(f"Found .claude directory at: {claude_dir}")
             project_root = self.detector.get_project_root(claude_dir)
-            os.chdir(project_root)
-            print(f"Changed directory to project root: {project_root}")
+
+            # Only change directory if not already in project root
+            try:
+                # Use samefile for efficient directory comparison
+                if not os.path.samefile(os.getcwd(), project_root):
+                    os.chdir(project_root)
+                    print(f"Changed directory to project root: {project_root}")
+                else:
+                    print(f"Already in project root: {project_root}")
+            except (OSError, FileNotFoundError):
+                # Fallback for non-existent paths or permission issues
+                current_dir = Path.cwd().resolve()
+                target_dir = Path(project_root).resolve()
+                if current_dir != target_dir:
+                    os.chdir(project_root)
+                    print(f"Changed directory to project root: {project_root}")
+                else:
+                    print(f"Already in project root: {project_root}")
         else:
             print("No .claude directory found in current or parent directories")
 
