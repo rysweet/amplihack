@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class MemoryType(Enum):
@@ -38,7 +38,7 @@ class MemoryEntry:
     accessed_at: datetime
 
     # Optional fields
-    tags: Optional["list[str]"] = None
+    tags: Optional[List[str]] = None
     importance: Optional[int] = None  # 1-10 scale
     expires_at: Optional[datetime] = None
     parent_id: Optional[str] = None  # For hierarchical memories
@@ -99,7 +99,7 @@ class SessionInfo:
     session_id: str
     created_at: datetime
     last_accessed: datetime
-    agent_ids: "list[str]"
+    agent_ids: List[str]
     memory_count: int
     metadata: Dict[str, Any]
 
@@ -122,7 +122,7 @@ class MemoryQuery:
     session_id: Optional[str] = None
     agent_id: Optional[str] = None
     memory_type: Optional[MemoryType] = None
-    tags: Optional["list[str]"] = None
+    tags: Optional[List[str]] = None
     content_search: Optional[str] = None
     min_importance: Optional[int] = None
     created_after: Optional[datetime] = None
@@ -131,10 +131,10 @@ class MemoryQuery:
     offset: Optional[int] = None
     include_expired: bool = False
 
-    def to_sql_where(self) -> "tuple[str, list[Any]]":
+    def to_sql_where(self) -> Tuple[str, List[Any]]:
         """Convert to SQL WHERE clause and parameters."""
         conditions = []
-        params: "list[Any]" = []
+        params: List[Any] = []
 
         if self.session_id:
             conditions.append("session_id = ?")

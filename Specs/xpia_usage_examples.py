@@ -12,7 +12,7 @@ from typing import Any, Dict
 
 # Example imports - these would be from the actual XPIA Defense implementation
 try:
-    from xpia_defense_interface import (
+    from .xpia_defense_interface import (
         AgentCommunicationSecurity,
         BashToolIntegration,
         ContentType,

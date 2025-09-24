@@ -256,7 +256,7 @@ class BashToolIntegration:
         arguments: Optional[List[str]] = None,
         context: Optional[ValidationContext] = None,
         bypass_validation: bool = False,
-    ) -> tuple[ValidationResult, Optional[Any]]:
+    ) -> "tuple[Optional[ValidationResult], Optional[Any]]":
         """
         Execute bash command with security validation
 
@@ -270,6 +270,7 @@ class BashToolIntegration:
             Tuple of (validation_result, execution_result)
             execution_result is None if validation failed
         """
+        validation = None
         if not bypass_validation:
             validation = await self.xpia_defense.validate_bash_command(command, arguments, context)
             if validation.should_block:
@@ -303,7 +304,7 @@ class AgentCommunicationSecurity:
         target_agent: str,
         message: Dict[str, Any],
         message_type: str = "task",
-    ) -> tuple[ValidationResult, bool]:
+    ) -> "tuple[ValidationResult, bool]":
         """
         Send message with security validation
 
