@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from ..proxy.manager import ProxyManager
+from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
 
 
@@ -18,16 +19,19 @@ class ClaudeLauncher:
         self,
         proxy_manager: Optional[ProxyManager] = None,
         append_system_prompt: Optional[Path] = None,
+        force_staging: bool = False,
     ):
         """Initialize Claude launcher.
 
         Args:
             proxy_manager: Optional proxy manager for Azure integration.
             append_system_prompt: Optional path to system prompt to append.
+            force_staging: If True, force staging approach instead of --add-dir.
         """
         self.proxy_manager = proxy_manager
         self.append_system_prompt = append_system_prompt
         self.detector = ClaudeDirectoryDetector()
+        self.uvx_manager = UVXManager(force_staging=force_staging)
         self.claude_process: Optional[subprocess.Popen] = None
 
     def prepare_launch(self) -> bool:
@@ -36,31 +40,37 @@ class ClaudeLauncher:
         Returns:
             True if preparation successful, False otherwise.
         """
-        # Check for .claude directory
-        claude_dir = self.detector.find_claude_directory()
-        if claude_dir:
-            print(f"Found .claude directory at: {claude_dir}")
-            project_root = self.detector.get_project_root(claude_dir)
-
-            # Only change directory if not already in project root
-            try:
-                # Use samefile for efficient directory comparison
-                if not os.path.samefile(os.getcwd(), project_root):
-                    os.chdir(project_root)
-                    print(f"Changed directory to project root: {project_root}")
-                else:
-                    print(f"Already in project root: {project_root}")
-            except (OSError, FileNotFoundError):
-                # Fallback for non-existent paths or permission issues
-                current_dir = Path.cwd().resolve()
-                target_dir = Path(project_root).resolve()
-                if current_dir != target_dir:
-                    os.chdir(project_root)
-                    print(f"Changed directory to project root: {project_root}")
-                else:
-                    print(f"Already in project root: {project_root}")
+        # Check if we're in UVX mode and should use --add-dir instead of changing directories
+        if self.uvx_manager.is_uvx_environment() and not self.uvx_manager.should_use_staging():
+            print("UVX environment detected - will use --add-dir approach")
+            # In UVX mode with --add-dir, we don't change the working directory
+            # The session hook will handle directory changes after Claude starts
         else:
-            print("No .claude directory found in current or parent directories")
+            # Standard directory detection and change logic
+            claude_dir = self.detector.find_claude_directory()
+            if claude_dir:
+                print(f"Found .claude directory at: {claude_dir}")
+                project_root = self.detector.get_project_root(claude_dir)
+
+                # Only change directory if not already in project root
+                try:
+                    # Use samefile for efficient directory comparison
+                    if not os.path.samefile(os.getcwd(), project_root):
+                        os.chdir(project_root)
+                        print(f"Changed directory to project root: {project_root}")
+                    else:
+                        print(f"Already in project root: {project_root}")
+                except (OSError, FileNotFoundError):
+                    # Fallback for non-existent paths or permission issues
+                    current_dir = Path.cwd().resolve()
+                    target_dir = Path(project_root).resolve()
+                    if current_dir != target_dir:
+                        os.chdir(project_root)
+                        print(f"Changed directory to project root: {project_root}")
+                    else:
+                        print(f"Already in project root: {project_root}")
+            else:
+                print("No .claude directory found in current or parent directories")
 
         # Start proxy if configured
         if self.proxy_manager:
@@ -82,6 +92,9 @@ class ClaudeLauncher:
         # Add system prompt if provided
         if self.append_system_prompt and self.append_system_prompt.exists():
             cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
+
+        # Enhance command with UVX manager (adds --add-dir if appropriate)
+        cmd = self.uvx_manager.enhance_claude_command(cmd)
 
         return cmd
 
@@ -111,8 +124,12 @@ class ClaudeLauncher:
             if sys.platform != "win32":
                 signal.signal(signal.SIGTERM, signal_handler)
 
+            # Set environment variables for UVX mode
+            env = os.environ.copy()
+            env.update(self.uvx_manager.get_environment_variables())
+
             # Launch Claude
-            self.claude_process = subprocess.Popen(cmd)
+            self.claude_process = subprocess.Popen(cmd, env=env)
 
             # Wait for Claude to finish
             exit_code = self.claude_process.wait()
@@ -151,8 +168,12 @@ class ClaudeLauncher:
             if sys.platform != "win32":
                 signal.signal(signal.SIGTERM, signal_handler)
 
+            # Set environment variables for UVX mode
+            env = os.environ.copy()
+            env.update(self.uvx_manager.get_environment_variables())
+
             # Launch Claude with direct I/O (interactive mode)
-            exit_code = subprocess.call(cmd)
+            exit_code = subprocess.call(cmd, env=env)
 
             return exit_code
 
