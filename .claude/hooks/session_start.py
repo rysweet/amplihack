@@ -34,8 +34,14 @@ def main():
                     print(f"[Session Hook] Warning: .claude directory not found at {claude_dir}")
 
             except Exception as e:
-                print(f"[Session Hook] Error changing directory: {e}", file=sys.stderr)
-                return 1
+                # More graceful error handling - warn but don't fail
+                print(
+                    f"[Session Hook] Warning: Could not change to project root: {e}",
+                    file=sys.stderr,
+                )
+                print("[Session Hook] Continuing with current directory", file=sys.stderr)
+                # Don't return error code - allow session to continue
+                return 0
         else:
             print(
                 f"[Session Hook] Warning: Project root does not exist or is not a directory: {project_root}",

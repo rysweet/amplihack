@@ -5,7 +5,7 @@ framework paths using the immutable data structures from uvx_models.
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from .uvx_models import (
     FrameworkLocation,
@@ -199,7 +199,7 @@ def resolve_framework_paths(
     return result
 
 
-def _find_framework_in_sys_path(sys_path_entries: list[str]) -> Optional[Path]:
+def _find_framework_in_sys_path(sys_path_entries: List[str]) -> Optional[Path]:
     """Find framework installation in Python sys.path.
 
     Args:
