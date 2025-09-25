@@ -9,8 +9,12 @@ from unittest.mock import patch
 
 import pytest
 
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/Specs")
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src")
+sys.path.append(
+    "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/Specs"  # pragma: allowlist secret
+)
+sys.path.append(
+    "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src"  # pragma: allowlist secret
+)
 
 from amplihack.security.xpia_hooks import ClaudeCodeXPIAHook, XPIAHookAdapter
 
@@ -37,7 +41,7 @@ class TestXPIAHookAdapter:
 
         result = await adapter.pre_tool_use(context)
 
-        assert result["allow"] == True
+        assert result["allow"] is True
         assert result.get("message") is None
         assert result["metadata"]["risk_level"] in ["none", "low"]
 
@@ -55,7 +59,7 @@ class TestXPIAHookAdapter:
 
         result = await adapter.pre_tool_use(context)
 
-        assert result["allow"] == False
+        assert result["allow"] is False
         assert "Security Alert" in result["message"]
         assert result["metadata"]["risk_level"] in ["high", "critical"]
 
@@ -70,7 +74,7 @@ class TestXPIAHookAdapter:
 
         result = await adapter.pre_tool_use(context)
 
-        assert result["allow"] == True
+        assert result["allow"] is True
         assert result.get("message") is None
 
     @pytest.mark.asyncio
@@ -84,7 +88,7 @@ class TestXPIAHookAdapter:
 
         result = await adapter.pre_tool_use(context)
 
-        assert result["allow"] == False
+        assert result["allow"] is False
         assert "Security Alert" in result["message"]
         assert result["metadata"]["risk_level"] == "critical"
 
@@ -115,8 +119,8 @@ class TestXPIAHookAdapter:
 
             result = await adapter.pre_tool_use(context)
 
-            assert result["allow"] == True
-            assert result["metadata"]["xpia_enabled"] == False
+            assert result["allow"] is True
+            assert result["metadata"]["xpia_enabled"] is False
 
     @pytest.mark.asyncio
     async def test_pre_tool_use_missing_parameters(self, adapter):
@@ -125,7 +129,7 @@ class TestXPIAHookAdapter:
 
         result = await adapter.pre_tool_use(context)
 
-        assert result["allow"] == True
+        assert result["allow"] is True
         assert result["metadata"]["validation_skipped"] == "missing_parameters"
 
     @pytest.mark.asyncio
@@ -139,7 +143,7 @@ class TestXPIAHookAdapter:
 
         result = await adapter.post_tool_use(context)
 
-        assert result["processed"] == True
+        assert result["processed"] is True
         assert "warning" not in result
 
     @pytest.mark.asyncio
@@ -153,7 +157,7 @@ class TestXPIAHookAdapter:
 
         result = await adapter.post_tool_use(context)
 
-        assert result["processed"] == True
+        assert result["processed"] is True
         assert "warning" in result or result["metadata"]["risk_level"] in ["high", "critical"]
 
     @pytest.mark.asyncio
@@ -188,7 +192,7 @@ class TestXPIAHookAdapter:
 
             # Should allow high risk but not critical
             if result["metadata"].get("risk_level") == "high":
-                assert result["allow"] == True
+                assert result["allow"] is True
 
 
 class TestClaudeCodeXPIAHook:
@@ -229,7 +233,7 @@ class TestClaudeCodeXPIAHook:
 
         result = hook.pre_tool_use(context)
 
-        assert result["allow"] == True  # Should allow on error
+        assert result["allow"] is True  # Should allow on error
         assert "error" in result["metadata"]
 
     def test_post_tool_use_sync_wrapper(self, hook):
@@ -238,7 +242,7 @@ class TestClaudeCodeXPIAHook:
 
         result = hook.post_tool_use(context)
 
-        assert result["processed"] == True
+        assert result["processed"] is True
 
     def test_post_tool_use_error_handling(self, hook):
         """Test error handling in post_tool_use"""
@@ -246,7 +250,7 @@ class TestClaudeCodeXPIAHook:
 
         result = hook.post_tool_use(context)
 
-        assert result["processed"] == True
+        assert result["processed"] is True
         assert "error" in result
 
     def test_get_stats(self, hook):
@@ -308,7 +312,7 @@ class TestIntegrationScenarios:
         }
 
         result1 = await adapter.pre_tool_use(context1)
-        assert result1["allow"] == False
+        assert result1["allow"] is False
 
         # Second attempt - inject via prompt
         context2 = {
@@ -320,7 +324,7 @@ class TestIntegrationScenarios:
         }
 
         result2 = await adapter.pre_tool_use(context2)
-        assert result2["allow"] == False
+        assert result2["allow"] is False
 
     @pytest.mark.asyncio
     async def test_bash_escalation_chain_blocked(self):

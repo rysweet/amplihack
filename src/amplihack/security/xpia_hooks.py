@@ -11,14 +11,12 @@ import logging
 import os
 
 # Import from specifications
-import sys
 from datetime import datetime
 from typing import Any, Dict, Optional
 
 from .xpia_defender import WebFetchXPIADefender
-
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/Specs")
-from xpia_defense_interface import (
+from .xpia_defense_interface import (
+    ContentType,
     RiskLevel,
     ValidationResult,
     create_validation_context,
@@ -269,8 +267,6 @@ class XPIAHookAdapter:
         validation_context = create_validation_context(
             source=f"{tool_name}_hook", session_id=context.get("session_id")
         )
-
-        from xpia_defense_interface import ContentType
 
         validation = await self.defender.validate_content(
             content, ContentType.DATA, validation_context

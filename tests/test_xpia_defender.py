@@ -8,10 +8,12 @@ import sys
 
 import pytest
 
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/Specs")
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src")
+sys.path.append(
+    "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src"  # pragma: allowlist secret
+)
 
-from xpia_defense_interface import (
+from amplihack.security.xpia_defender import WebFetchXPIADefender, XPIADefender
+from amplihack.security.xpia_defense_interface import (
     ContentType,
     RiskLevel,
     SecurityConfiguration,
@@ -19,8 +21,6 @@ from xpia_defense_interface import (
     ThreatType,
     ValidationContext,
 )
-
-from amplihack.security.xpia_defender import WebFetchXPIADefender, XPIADefender
 
 
 class TestXPIADefender:
@@ -228,7 +228,7 @@ class TestXPIADefender:
         health = await defender.health_check()
 
         assert health["status"] == "healthy"
-        assert health["enabled"] == True
+        assert health["enabled"] is True
         assert health["patterns_loaded"] > 0
 
 

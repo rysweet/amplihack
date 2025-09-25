@@ -8,13 +8,11 @@ environment variable support and defaults.
 import os
 
 # Import from specifications
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/Specs")
-from xpia_defense_interface import RiskLevel, SecurityConfiguration, SecurityLevel
+from .xpia_defense_interface import RiskLevel, SecurityConfiguration, SecurityLevel
 
 
 @dataclass
@@ -193,7 +191,7 @@ class XPIAConfig:
             return True
         return False
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary"""
         return {
             "enabled": self.enabled,

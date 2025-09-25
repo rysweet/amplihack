@@ -11,21 +11,11 @@ import os
 import re
 
 # Import from specifications
-import sys
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 from urllib.parse import urlparse
 
-from .xpia_patterns import (
-    AttackPattern,
-    PatternCategory,
-    PromptPatterns,
-    URLPatterns,
-    XPIAPatterns,
-)
-
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/Specs")
-from xpia_defense_interface import (
+from .xpia_defense_interface import (
     ContentType,
     RiskLevel,
     SecurityConfiguration,
@@ -35,6 +25,13 @@ from xpia_defense_interface import (
     ValidationContext,
     ValidationResult,
     XPIADefenseInterface,
+)
+from .xpia_patterns import (
+    AttackPattern,
+    PatternCategory,
+    PromptPatterns,
+    URLPatterns,
+    XPIAPatterns,
 )
 
 # Configure logging

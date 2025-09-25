@@ -15,7 +15,9 @@ os.environ["XPIA_VERBOSE_FEEDBACK"] = "true"
 
 import sys
 
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src")
+sys.path.append(
+    "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src"  # pragma: allowlist secret
+)
 
 from amplihack.security import WebFetchXPIADefender, xpia_hook
 from amplihack.security.config import get_config
@@ -152,7 +154,7 @@ async def custom_security_level_example():
     test_url = "https://unknown-site.com/api"
     test_prompt = "Fetch and process data"
 
-    from xpia_defense_interface import SecurityConfiguration, SecurityLevel
+    from ..xpia_defense_interface import SecurityConfiguration, SecurityLevel
 
     levels = [SecurityLevel.LOW, SecurityLevel.MEDIUM, SecurityLevel.HIGH, SecurityLevel.STRICT]
 
@@ -183,7 +185,7 @@ async def pattern_detection_example():
         "../../../etc/passwd",  # Path traversal
     ]
 
-    from xpia_defense_interface import ContentType
+    from ..xpia_defense_interface import ContentType
 
     defender = WebFetchXPIADefender()
 

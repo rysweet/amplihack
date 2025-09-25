@@ -8,10 +8,10 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-# Add Specs to path for XPIA Defense interface
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "Specs"))
+# Add src to path for XPIA Defense interface
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))  # pragma: allowlist secret
 
-from xpia_defense_interface import (
+from amplihack.security.xpia_defense_interface import (
     ContentType,
     RiskLevel,
     SecurityConfiguration,

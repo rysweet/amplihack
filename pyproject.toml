@@ -40,6 +40,7 @@ exclude = [
     ".claude/tools/amplihack/memory/tests/test_interface.py",  # TDD tests - expected to fail
     "Specs/xpia_defense_interface.py",  # Example/demo code with intentional type issues
     "Specs/xpia_usage_examples.py",     # Example/demo code with intentional type issues
+    "src/amplihack/security/cli.py",    # CLI dependencies not available in CI
 ]
 
 [tool.pytest.ini_options]

@@ -8,26 +8,30 @@ import asyncio
 import json
 import sys
 
-import click
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/Specs")
-sys.path.append("/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src")
-
-from xpia_defense_interface import ContentType, RiskLevel
+try:
+    import click  # type: ignore[import]
+    from rich.console import Console  # type: ignore[import]
+    from rich.panel import Panel  # type: ignore[import]
+    from rich.table import Table  # type: ignore[import]
+except ImportError:
+    # CLI dependencies not available - skip CLI functionality
+    click = None  # type: ignore[assignment]
+    Console = None  # type: ignore[assignment]
+    Panel = None  # type: ignore[assignment]
+    Table = None  # type: ignore[assignment]
 
 from amplihack.security.config import get_config
 from amplihack.security.xpia_defender import WebFetchXPIADefender
 
-console = Console()
+from .xpia_defense_interface import ContentType, RiskLevel
 
+if click is not None:
+    console = Console()
 
-@click.group()
-def xpia():
-    """XPIA Defense System CLI"""
-    pass
+    @click.group()
+    def xpia():
+        """XPIA Defense System CLI"""
+        pass
 
 
 @xpia.command()
