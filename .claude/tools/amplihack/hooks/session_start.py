@@ -222,7 +222,12 @@ class SessionStartHook(HookProcessor):
 
             startup_message = "\n".join(startup_msg_parts)
 
-            # Add preference enforcement if needed
+            # CRITICAL: Add original request context to prevent requirement loss
+            if original_request_context:
+                # Inject original request at the top of context (highest priority)
+                full_context = original_request_context + "\n\n" + full_context
+
+            # CRITICAL: Add preference enforcement instructions to context
             if preference_enforcement:
                 enforcement = (
                     "🎯 USER PREFERENCES (MANDATORY):\n"
