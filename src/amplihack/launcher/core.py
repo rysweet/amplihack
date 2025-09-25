@@ -23,6 +23,7 @@ class ClaudeLauncher:
         append_system_prompt: Optional[Path] = None,
         force_staging: bool = False,
         checkout_repo: Optional[str] = None,
+        claude_args: Optional[List[str]] = None,
     ):
         """Initialize Claude launcher.
 
@@ -31,12 +32,14 @@ class ClaudeLauncher:
             append_system_prompt: Optional path to system prompt to append.
             force_staging: If True, force staging approach instead of --add-dir.
             checkout_repo: Optional GitHub repository URI to clone and use as working directory.
+            claude_args: Additional arguments to forward to Claude.
         """
         self.proxy_manager = proxy_manager
         self.append_system_prompt = append_system_prompt
         self.detector = ClaudeDirectoryDetector()
         self.uvx_manager = UVXManager(force_staging=force_staging)
         self.checkout_repo = checkout_repo
+        self.claude_args = claude_args or []
         self.claude_process: Optional[subprocess.Popen] = None
 
     def prepare_launch(self) -> bool:
@@ -138,6 +141,10 @@ class ClaudeLauncher:
 
         # Enhance command with UVX manager (adds --add-dir if appropriate)
         cmd = self.uvx_manager.enhance_claude_command(cmd)
+
+        # Add forwarded Claude arguments
+        if self.claude_args:
+            cmd.extend(self.claude_args)
 
         return cmd
 

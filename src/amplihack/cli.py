@@ -4,18 +4,19 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment, stage_uvx_framework
 
 
-def launch_command(args: argparse.Namespace) -> int:
+def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
     """Handle the launch command.
 
     Args:
         args: Parsed command line arguments.
+        claude_args: Additional arguments to forward to Claude.
 
     Returns:
         Exit code.
@@ -52,9 +53,47 @@ def launch_command(args: argparse.Namespace) -> int:
         proxy_manager=proxy_manager,
         append_system_prompt=system_prompt_path,
         checkout_repo=getattr(args, "checkout_repo", None),
+        claude_args=claude_args,
     )
 
     return launcher.launch_interactive()
+
+
+def parse_args_with_passthrough(
+    argv: Optional[List[str]] = None,
+) -> "tuple[argparse.Namespace, List[str]]":
+    """Parse arguments with support for -- separator for Claude argument forwarding.
+
+    Args:
+        argv: Command line arguments. Uses sys.argv if None.
+
+    Returns:
+        Tuple of (parsed_args, claude_args) where claude_args are arguments after --
+    """
+    if argv is None:
+        argv = sys.argv[1:]
+
+    # Split arguments on -- separator
+    try:
+        separator_index = argv.index("--")
+        amplihack_args = argv[:separator_index]
+        claude_args = argv[separator_index + 1 :]
+    except ValueError:
+        # No -- separator found
+        amplihack_args = argv
+        claude_args = []
+
+    parser = create_parser()
+
+    # If no amplihack command specified and we have claude_args, default to launch
+    if not amplihack_args and claude_args:
+        amplihack_args = ["launch"]
+    elif not amplihack_args:
+        # No command and no claude args - show help
+        pass
+
+    args = parser.parse_args(amplihack_args)
+    return args, claude_args
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -64,7 +103,16 @@ def create_parser() -> argparse.ArgumentParser:
         Configured argument parser.
     """
     parser = argparse.ArgumentParser(
-        prog="amplihack", description="Amplihack CLI - Enhanced tools for Claude Code development"
+        prog="amplihack",
+        description="Amplihack CLI - Enhanced tools for Claude Code development",
+        epilog="""Examples:
+  amplihack                                    # Launch Claude directly
+  amplihack -- --model claude-3-opus-20240229 # Forward model argument to Claude
+  amplihack -- --verbose                      # Forward verbose flag to Claude
+  amplihack launch -- --help                  # Get Claude help
+  amplihack install                           # Install amplihack (no forwarding)
+  amplihack install -- --verbose             # Install with Claude args forwarded""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -102,7 +150,7 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[list] = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     """Main entry point for amplihack CLI.
 
     Args:
@@ -117,12 +165,16 @@ def main(argv: Optional[list] = None) -> int:
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print("UVX staging completed")
 
-    parser = create_parser()
-    args = parser.parse_args(argv)
+    args, claude_args = parse_args_with_passthrough(argv)
 
     if not args.command:
-        parser.print_help()
-        return 1
+        # If we have claude_args but no command, default to launching Claude directly
+        if claude_args:
+            launcher = ClaudeLauncher(claude_args=claude_args)
+            return launcher.launch_interactive()
+        else:
+            create_parser().print_help()
+            return 1
 
     # Import the original functions for backward compatibility
     from . import _local_install, uninstall
@@ -151,7 +203,7 @@ def main(argv: Optional[list] = None) -> int:
         return 0
 
     elif args.command == "launch":
-        return launch_command(args)
+        return launch_command(args, claude_args)
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
@@ -176,7 +228,7 @@ def main(argv: Optional[list] = None) -> int:
             return 0
 
     else:
-        parser.print_help()
+        create_parser().print_help()
         return 1
 
 
