@@ -19,11 +19,9 @@ sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "Specs"))
 
 try:
-    from xpia_defense_interface import (
+    from xpia_defense_interface import (  # type: ignore
         ContentType,
         RiskLevel,
-        ValidationContext,
-        create_validation_context,
     )
 except ImportError:
     # Mock classes for graceful degradation
@@ -88,13 +86,13 @@ def validate_bash_command(command: str, context: Dict[str, Any]) -> Dict[str, An
         for pattern in high_risk_patterns:
             if re.search(pattern, command, re.IGNORECASE):
                 return {
-                    "risk_level": RiskLevel.HIGH.value,
+                    "risk_level": RiskLevel.HIGH,
                     "should_block": True,
                     "threats": [
                         {
                             "type": "command_injection",
                             "description": f"High-risk command pattern detected: {pattern}",
-                            "severity": RiskLevel.HIGH.value,
+                            "severity": RiskLevel.HIGH,
                         }
                     ],
                     "recommendations": [
@@ -107,13 +105,13 @@ def validate_bash_command(command: str, context: Dict[str, Any]) -> Dict[str, An
         for pattern in medium_risk_patterns:
             if re.search(pattern, command, re.IGNORECASE):
                 return {
-                    "risk_level": RiskLevel.MEDIUM.value,
+                    "risk_level": RiskLevel.MEDIUM,
                     "should_block": False,
                     "threats": [
                         {
                             "type": "elevated_privileges",
                             "description": f"Medium-risk command pattern detected: {pattern}",
-                            "severity": RiskLevel.MEDIUM.value,
+                            "severity": RiskLevel.MEDIUM,
                         }
                     ],
                     "recommendations": ["Verify command necessity", "Monitor execution results"],
@@ -121,7 +119,7 @@ def validate_bash_command(command: str, context: Dict[str, Any]) -> Dict[str, An
 
         # Command appears safe
         return {
-            "risk_level": RiskLevel.NONE.value,
+            "risk_level": RiskLevel.NONE,
             "should_block": False,
             "threats": [],
             "recommendations": ["Command appears safe"],

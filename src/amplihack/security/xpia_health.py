@@ -157,7 +157,7 @@ def check_xpia_modules() -> Dict[str, Any]:
             sys.path.insert(0, str(specs_path))
 
         try:
-            import xpia_defense_interface
+            import xpia_defense_interface  # noqa: F401  # type: ignore
 
             return {
                 "status": "ok",

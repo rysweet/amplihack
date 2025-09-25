@@ -18,7 +18,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -39,7 +39,7 @@ class HookConfig:
         hook_dict = {"type": "command", "command": self.command}
 
         if self.timeout is not None:
-            hook_dict["timeout"] = self.timeout
+            hook_dict["timeout"] = self.timeout  # type: ignore
 
         return hook_dict
 
@@ -188,7 +188,7 @@ class HookMergeUtility:
 
     async def _merge_xpia_hooks(
         self, settings: Dict[str, Any], xpia_hooks: List[HookConfig]
-    ) -> tuple[Dict[str, Any], int, int]:
+    ) -> Tuple[Dict[str, Any], int, int]:
         """
         Merge XPIA hooks into settings while preserving existing hooks
 
@@ -249,7 +249,7 @@ class HookMergeUtility:
         entry = {"hooks": [hook_data]}
 
         if matcher:
-            entry["matcher"] = matcher
+            entry["matcher"] = matcher  # type: ignore
 
         return entry
 

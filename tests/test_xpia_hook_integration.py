@@ -24,8 +24,12 @@ project_root = Path(__file__).parents[1]
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "Specs"))
 
-from amplihack.security.xpia_health import check_xpia_health
-from amplihack.utils.hook_merge_utility import HookMergeUtility, get_required_xpia_hooks
+# Imports after path modification
+from amplihack.security.xpia_health import check_xpia_health  # noqa: E402
+from amplihack.utils.hook_merge_utility import (  # noqa: E402
+    HookMergeUtility,
+    get_required_xpia_hooks,
+)
 
 
 class TestXPIAHookMergeUtility(unittest.TestCase):
