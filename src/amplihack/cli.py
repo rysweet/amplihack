@@ -47,8 +47,12 @@ def launch_command(args: argparse.Namespace) -> int:
             system_prompt_path = default_prompt
             print("Auto-appending Azure persistence prompt for proxy integration")
 
-    # Launch Claude
-    launcher = ClaudeLauncher(proxy_manager=proxy_manager, append_system_prompt=system_prompt_path)
+    # Launch Claude with checkout repo if specified
+    launcher = ClaudeLauncher(
+        proxy_manager=proxy_manager,
+        append_system_prompt=system_prompt_path,
+        checkout_repo=getattr(args, "checkout_repo", None),
+    )
 
     return launcher.launch_interactive()
 
@@ -79,6 +83,11 @@ def create_parser() -> argparse.ArgumentParser:
         "--with-proxy-config",
         metavar="PATH",
         help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
+    )
+    launch_parser.add_argument(
+        "--checkout-repo",
+        metavar="GITHUB_URI",
+        help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
     )
 
     # UVX helper command

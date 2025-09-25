@@ -11,6 +11,7 @@ from ..proxy.manager import ProxyManager
 from ..utils.claude_trace import get_claude_command
 from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
+from .repo_checkout import checkout_repository
 
 
 class ClaudeLauncher:
@@ -21,6 +22,7 @@ class ClaudeLauncher:
         proxy_manager: Optional[ProxyManager] = None,
         append_system_prompt: Optional[Path] = None,
         force_staging: bool = False,
+        checkout_repo: Optional[str] = None,
     ):
         """Initialize Claude launcher.
 
@@ -28,11 +30,13 @@ class ClaudeLauncher:
             proxy_manager: Optional proxy manager for Azure integration.
             append_system_prompt: Optional path to system prompt to append.
             force_staging: If True, force staging approach instead of --add-dir.
+            checkout_repo: Optional GitHub repository URI to clone and use as working directory.
         """
         self.proxy_manager = proxy_manager
         self.append_system_prompt = append_system_prompt
         self.detector = ClaudeDirectoryDetector()
         self.uvx_manager = UVXManager(force_staging=force_staging)
+        self.checkout_repo = checkout_repo
         self.claude_process: Optional[subprocess.Popen] = None
 
     def prepare_launch(self) -> bool:
@@ -41,6 +45,10 @@ class ClaudeLauncher:
         Returns:
             True if preparation successful, False otherwise.
         """
+        # Handle repository checkout if requested
+        if self.checkout_repo:
+            return self._handle_checkout_repo()
+
         # Check if we're in UVX mode and should use --add-dir instead of changing directories
         if self.uvx_manager.is_uvx_environment() and not self.uvx_manager.should_use_staging():
             print("UVX environment detected - will use --add-dir approach")
@@ -73,7 +81,39 @@ class ClaudeLauncher:
             else:
                 print("No .claude directory found in current or parent directories")
 
-        # Start proxy if configured
+        return self._start_proxy_if_needed()
+
+    def _handle_checkout_repo(self) -> bool:
+        """Handle repository checkout and directory change.
+
+        Returns:
+            True if checkout and preparation successful, False otherwise.
+        """
+        if not self.checkout_repo:
+            print("No repository specified for checkout")
+            return False
+
+        repo_path = checkout_repository(self.checkout_repo)
+
+        if not repo_path:
+            print(f"Failed to checkout repository: {self.checkout_repo}")
+            return False
+
+        try:
+            os.chdir(repo_path)
+            print(f"Changed directory to cloned repository: {repo_path}")
+        except Exception as e:
+            print(f"Failed to change directory to {repo_path}: {e}")
+            return False
+
+        return self._start_proxy_if_needed()
+
+    def _start_proxy_if_needed(self) -> bool:
+        """Start proxy if configured.
+
+        Returns:
+            True if proxy started successfully or not needed, False otherwise.
+        """
         if self.proxy_manager:
             if not self.proxy_manager.start_proxy():
                 print("Failed to start proxy")
