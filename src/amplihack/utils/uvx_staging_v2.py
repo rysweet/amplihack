@@ -17,6 +17,7 @@ from .uvx_models import (
     UVXConfiguration,
     UVXSessionState,
 )
+from .uvx_settings_manager import uvx_settings_manager
 
 
 class UVXStager:
@@ -204,15 +205,24 @@ class UVXStager:
                     self._create_backup(target_path)
 
                 if source_path.is_dir():
-                    shutil.copytree(
-                        source_path, target_path, dirs_exist_ok=self.config.overwrite_existing
-                    )
-                    self._debug_log(f"Staged directory: {source_path} -> {target_path}")
+                    # Handle .claude directory specially for UVX installations
+                    if item_name == ".claude":
+                        success = self._stage_claude_directory(source_path, target_path)
+                        if success:
+                            self._debug_log("Staged .claude directory with UVX optimizations")
+                            result.add_success(target_path, operation)
+                        else:
+                            result.add_failure(target_path, "Failed to stage .claude directory")
+                    else:
+                        shutil.copytree(
+                            source_path, target_path, dirs_exist_ok=self.config.overwrite_existing
+                        )
+                        self._debug_log(f"Staged directory: {source_path} -> {target_path}")
+                        result.add_success(target_path, operation)
                 else:
                     shutil.copy2(source_path, target_path)
                     self._debug_log(f"Staged file: {source_path} -> {target_path}")
-
-                result.add_success(target_path, operation)
+                    result.add_success(target_path, operation)
 
             except PermissionError as e:
                 result.add_failure(target_path, f"Permission denied: {e}")
@@ -284,6 +294,74 @@ class UVXStager:
                 self._debug_log(f"Failed to clean up {staged_path}: {e}")
 
         return cleaned_count
+
+    def _stage_claude_directory(self, source_path: Path, target_path: Path) -> bool:
+        """Stage .claude directory with special handling for settings.json.
+
+        Args:
+            source_path: Source .claude directory
+            target_path: Target .claude directory
+
+        Returns:
+            True if staging succeeded, False otherwise
+        """
+        try:
+            # Create target directory if it doesn't exist
+            target_path.mkdir(parents=True, exist_ok=True)
+
+            # Stage all items in .claude directory
+            for item in source_path.rglob("*"):
+                if item.is_file():
+                    # Calculate relative path and target
+                    rel_path = item.relative_to(source_path)
+                    item_target = target_path / rel_path
+
+                    # Create parent directories as needed
+                    item_target.parent.mkdir(parents=True, exist_ok=True)
+
+                    # Handle settings.json specially
+                    if rel_path == Path("settings.json"):
+                        if self._stage_settings_json(item, item_target):
+                            self._debug_log("Staged settings.json with UVX optimizations")
+                        else:
+                            self._debug_log("Failed to stage UVX settings.json, using source file")
+                            shutil.copy2(item, item_target)
+                    else:
+                        # Copy other files normally
+                        shutil.copy2(item, item_target)
+
+            return True
+
+        except Exception as e:
+            self._debug_log(f"Error staging .claude directory: {e}")
+            return False
+
+    def _stage_settings_json(self, source_settings: Path, target_settings: Path) -> bool:
+        """Stage settings.json with UVX-specific optimizations.
+
+        Args:
+            source_settings: Source settings.json file
+            target_settings: Target settings.json file
+
+        Returns:
+            True if UVX settings were applied, False otherwise
+        """
+        try:
+            # Check if we should use UVX template
+            if uvx_settings_manager.should_use_uvx_template(target_settings):
+                self._debug_log("Using UVX settings template for fresh installation")
+                return uvx_settings_manager.create_uvx_settings(
+                    target_settings, preserve_existing=True
+                )
+            else:
+                # Settings already exist and have proper permissions, just copy
+                self._debug_log("Existing settings.json has bypass permissions, copying source")
+                shutil.copy2(source_settings, target_settings)
+                return True
+
+        except Exception as e:
+            self._debug_log(f"Error applying UVX settings optimizations: {e}")
+            return False
 
 
 # Global stager instance for compatibility
