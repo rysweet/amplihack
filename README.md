@@ -24,8 +24,21 @@ That's it! The command automatically:
 
 - Downloads the latest framework
 - Sets up the environment
+- **Detects and uses claude-trace for enhanced debugging** (if available)
+- **Attempts to install claude-trace if not found** (requires npm)
 - Launches Claude Code with all agents configured
 - No local installation required
+
+#### Claude-Trace Enhanced Debugging
+
+The framework automatically uses
+[claude-trace](https://github.com/mariozechner/claude-trace) for better
+debugging:
+
+- **Default behavior**: Claude-trace is used automatically when available
+- **Auto-installation**: Attempts to install via npm if not found
+- **Opt-out**: Set `AMPLIHACK_USE_TRACE=0` to use standard claude
+- **Fallback**: Uses regular claude if claude-trace can't be installed
 
 ### Advanced Usage
 

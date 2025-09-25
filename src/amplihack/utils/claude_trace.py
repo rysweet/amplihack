@@ -6,8 +6,17 @@ import subprocess
 
 
 def should_use_trace() -> bool:
-    """Check if claude-trace should be used instead of claude."""
-    return os.getenv("AMPLIHACK_USE_TRACE", "").lower() in ("1", "true", "yes")
+    """Check if claude-trace should be used instead of claude.
+
+    Default behavior: Always prefer claude-trace unless explicitly disabled.
+    """
+    # Check if explicitly disabled
+    use_trace_env = os.getenv("AMPLIHACK_USE_TRACE", "").lower()
+    if use_trace_env in ("0", "false", "no"):
+        return False
+
+    # Default to using claude-trace
+    return True
 
 
 def get_claude_command() -> str:
@@ -17,20 +26,25 @@ def get_claude_command() -> str:
         Command name to use ('claude' or 'claude-trace')
 
     Side Effects:
-        May attempt to install claude-trace via npm if requested but not found
+        May attempt to install claude-trace via npm if not found
     """
     if not should_use_trace():
+        print("Claude-trace explicitly disabled via AMPLIHACK_USE_TRACE=0")
         return "claude"
 
     # Check if claude-trace is available
     if shutil.which("claude-trace"):
+        print("Using claude-trace for enhanced debugging")
         return "claude-trace"
 
     # Try to install claude-trace
+    print("Claude-trace not found, attempting to install...")
     if _install_claude_trace():
+        print("Claude-trace installed successfully")
         return "claude-trace"
 
     # Fall back to claude
+    print("Could not install claude-trace, falling back to standard claude")
     return "claude"
 
 
