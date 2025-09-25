@@ -10,10 +10,10 @@ import json
 import re
 import subprocess
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 
-def run_gh_command(args: List[str], timeout: int = 30) -> "tuple[int, str, str]":
+def run_gh_command(args: List[str], timeout: int = 30) -> Tuple[int, str, str]:
     """
     Run a gh CLI command with timeout.
 
@@ -56,7 +56,7 @@ def get_pr_for_branch(branch: str) -> Optional[int]:
 
     if code == 0 and stdout:
         try:
-            data = json.loads(str(stdout))
+            data = json.loads(stdout)
             if data and len(data) > 0:
                 return data[0].get("number")
         except json.JSONDecodeError:
@@ -80,7 +80,7 @@ def check_pr_checks(pr_number: int) -> Dict:
         return {"success": False, "error": f"Failed to get PR checks: {stderr}"}
 
     try:
-        checks = json.loads(str(stdout)) if stdout else []
+        checks = json.loads(stdout) if stdout else []
     except json.JSONDecodeError:
         return {"success": False, "error": "Failed to parse PR checks output"}
 
@@ -142,7 +142,7 @@ def check_workflow_runs(branch: Optional[str] = None, limit: int = 10) -> Dict:
         return {"success": False, "error": f"Failed to get workflow runs: {stderr}"}
 
     try:
-        runs = json.loads(str(stdout)) if stdout else []
+        runs = json.loads(stdout) if stdout else []
     except json.JSONDecodeError:
         return {"success": False, "error": "Failed to parse workflow runs output"}
 
