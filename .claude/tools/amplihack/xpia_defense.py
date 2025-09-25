@@ -41,22 +41,22 @@ from typing import Any, Callable, Dict, List, Optional, Set, Union
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../.."))
 
 try:
-    from Specs.xpia_defense_interface import (
-        ConfigurationError,
-        ContentType,
-        HookError,
-        HookRegistration,
-        HookType,
-        RiskLevel,
-        SecurityConfiguration,
-        SecurityLevel,
-        ThreatDetection,
-        ThreatType,
-        ValidationContext,
-        ValidationError,
-        ValidationResult,
-        XPIADefenseError,
-        XPIADefenseInterface,
+    from Specs.xpia_defense_interface import (  # type: ignore[import-untyped]
+        ConfigurationError,  # type: ignore[misc]
+        ContentType,  # type: ignore[misc]
+        HookError,  # type: ignore[misc]
+        HookRegistration,  # type: ignore[misc]
+        HookType,  # type: ignore[misc]
+        RiskLevel,  # type: ignore[misc]
+        SecurityConfiguration,  # type: ignore[misc]
+        SecurityLevel,  # type: ignore[misc]
+        ThreatDetection,  # type: ignore[misc]
+        ThreatType,  # type: ignore[misc]
+        ValidationContext,  # type: ignore[misc]
+        ValidationError,  # type: ignore[misc]
+        ValidationResult,  # type: ignore[misc]
+        XPIADefenseError,  # type: ignore[misc]
+        XPIADefenseInterface,  # type: ignore[misc]
     )
 except ImportError:
     # Fallback definitions if interface not available
@@ -793,7 +793,7 @@ class XPIADefenseEngine:
         if not threats:
             return RiskLevel.NONE
 
-        max_severity = max(threat.severity for threat in threats)
+        max_severity = max(threat.severity for threat in threats)  # type: ignore
         return max_severity
 
     def _generate_recommendations(
@@ -886,7 +886,7 @@ class XPIADefenseEngine:
 
         return True
 
-    def register_hook(self, registration: HookRegistration) -> str:
+    def register_hook(self, registration: HookRegistration) -> str:  # type: ignore
         """Register a security hook"""
         hook_id = str(uuid.uuid4())
         self.hooks[registration.hook_type].append(registration)
@@ -899,7 +899,7 @@ class XPIADefenseEngine:
         return True
 
 
-class SecurityValidator(XPIADefenseInterface):
+class SecurityValidator(XPIADefenseInterface):  # type: ignore
     """
     Main security validator implementing the XPIA Defense interface
 
@@ -913,7 +913,7 @@ class SecurityValidator(XPIADefenseInterface):
         self.engine = XPIADefenseEngine(self.config)
         self.logger = logging.getLogger(__name__)
 
-    async def validate_content(
+    async def validate_content(  # type: ignore[override]
         self,
         content: str,
         content_type: ContentType,
@@ -954,7 +954,7 @@ class SecurityValidator(XPIADefenseInterface):
             self.logger.error(f"Content validation failed: {e}")
             raise ValidationError(f"Validation failed: {str(e)}")
 
-    async def validate_bash_command(
+    async def validate_bash_command(  # type: ignore
         self,
         command: str,
         arguments: Optional[List[str]] = None,
@@ -990,7 +990,7 @@ class SecurityValidator(XPIADefenseInterface):
             content=full_command, content_type=ContentType.COMMAND, context=context
         )
 
-    async def validate_agent_communication(
+    async def validate_agent_communication(  # type: ignore
         self,
         source_agent: str,
         target_agent: str,
@@ -1039,11 +1039,11 @@ class SecurityValidator(XPIADefenseInterface):
             content=message_content, content_type=ContentType.DATA, context=agent_context
         )
 
-    def get_configuration(self) -> SecurityConfiguration:
+    def get_configuration(self) -> SecurityConfiguration:  # type: ignore
         """Get current security configuration"""
         return self.config
 
-    async def update_configuration(self, config: SecurityConfiguration) -> bool:
+    async def update_configuration(self, config: SecurityConfiguration) -> bool:  # type: ignore
         """Update security configuration"""
         try:
             self.config = config
@@ -1061,7 +1061,7 @@ class SecurityValidator(XPIADefenseInterface):
             self.logger.error(f"Failed to update configuration: {e}")
             raise ConfigurationError(f"Configuration update failed: {str(e)}")
 
-    def register_hook(self, registration: HookRegistration) -> str:
+    def register_hook(self, registration: HookRegistration) -> str:  # type: ignore
         """Register a security hook, returns hook ID"""
         try:
             hook_id = self.engine.register_hook(registration)
@@ -1254,7 +1254,7 @@ def pre_validate_user_input(content: str, context: str = "user") -> str:
     return content
 
 
-def validate_bash_command_hook(command: str, args: List[str] = None) -> bool:
+def validate_bash_command_hook(command: str, args: Optional[List[str]] = None) -> bool:
     """
     Hook for bash command validation
 
