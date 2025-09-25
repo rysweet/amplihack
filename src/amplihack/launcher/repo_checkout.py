@@ -15,6 +15,14 @@ def parse_github_uri(uri: str) -> str:
 
     Returns:
         owner/repo string
+
+    Examples:
+        >>> parse_github_uri("owner/repo")
+        'owner/repo'
+        >>> parse_github_uri("https://github.com/owner/repo.git")
+        'owner/repo'
+        >>> parse_github_uri("git@github.com:owner/repo.git")
+        'owner/repo'
     """
     if not uri:
         raise ValueError("Empty GitHub URI")
@@ -42,21 +50,30 @@ def checkout_repository(repo_uri: str, base_dir: Optional[Path] = None) -> Optio
     """Checkout a GitHub repository.
 
     Args:
-        repo_uri: GitHub repository URI
-        base_dir: Base directory for cloning
+        repo_uri: GitHub repository URI in any supported format
+        base_dir: Base directory for cloning (defaults to temp/claude-checkouts)
 
     Returns:
         Path to cloned repository or None if failed
+
+    Examples:
+        Basic usage with different URI formats:
+            path = checkout_repository("owner/repo")
+            path = checkout_repository("https://github.com/owner/repo.git")
+            path = checkout_repository("git@github.com:owner/repo.git", Path("/tmp"))
     """
     try:
         owner_repo = parse_github_uri(repo_uri)
-        repo_name = owner_repo.split("/")[1]
+        owner, repo_name = owner_repo.split("/")
+
+        # Use owner-repo format to prevent name collisions
+        dir_name = f"{owner}-{repo_name}"
 
         if base_dir is None:
             base_dir = Path(tempfile.gettempdir()) / "claude-checkouts"
         base_dir.mkdir(parents=True, exist_ok=True)
 
-        target_dir = base_dir / repo_name
+        target_dir = base_dir / dir_name
 
         # Use existing if valid
         if target_dir.exists() and (target_dir / ".git").exists():
