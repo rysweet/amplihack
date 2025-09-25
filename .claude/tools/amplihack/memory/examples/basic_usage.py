@@ -10,7 +10,7 @@ from pathlib import Path
 # Add the memory module to path for this example
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
-from memory import AgentMemory
+from ..interface import AgentMemory
 
 
 def example_agent_usage():

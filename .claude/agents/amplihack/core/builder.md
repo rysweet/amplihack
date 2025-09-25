@@ -1,7 +1,7 @@
 ---
 name: builder
 description: Primary implementation agent. Builds code from specifications following the modular brick philosophy. Creates self-contained, regeneratable modules.
-model: opus
+model: inherit
 ---
 
 # Builder Agent

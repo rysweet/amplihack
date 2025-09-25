@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Code review and debugging specialist. Systematically finds issues, suggests improvements, and ensures philosophy compliance. Use for bug hunting and quality assurance.
-model: opus
+model: inherit
 ---
 
 # Reviewer Agent
