@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from ..proxy.manager import ProxyManager
+from ..utils.claude_trace import get_claude_command
 from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
 
@@ -87,7 +88,9 @@ class ClaudeLauncher:
         Returns:
             List of command arguments for subprocess.
         """
-        cmd = ["claude", "--dangerously-skip-permissions"]
+        # Use claude-trace if requested and available, otherwise use claude
+        claude_binary = get_claude_command()
+        cmd = [claude_binary, "--dangerously-skip-permissions"]
 
         # Add system prompt if provided
         if self.append_system_prompt and self.append_system_prompt.exists():
