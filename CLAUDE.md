@@ -407,6 +407,27 @@ Self-improvement and learning capture
 
 ## Available Tools
 
+### Claude-Trace Integration
+
+Enable debugging and monitoring with claude-trace:
+
+```bash
+# Enable claude-trace mode
+export AMPLIHACK_USE_TRACE=1
+
+# Run normally - will use claude-trace if available
+amplihack
+
+# Disable (default)
+unset AMPLIHACK_USE_TRACE
+```
+
+The framework automatically:
+
+- Detects when claude-trace should be used
+- Attempts to install claude-trace via npm if needed
+- Falls back to regular claude if unavailable
+
 ### GitHub Issue Creation
 
 Create GitHub issues programmatically:
