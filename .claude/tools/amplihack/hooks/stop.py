@@ -2,6 +2,7 @@
 """
 Claude Code hook for session stop events.
 Uses unified HookProcessor for common functionality.
+Enhanced with reflection visibility system for user feedback.
 """
 
 import json
@@ -15,6 +16,8 @@ from typing import Any, Dict, List, Optional
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
+
+# Simplified - no console adapter needed, print() works fine
 
 
 class StopHook(HookProcessor):
@@ -184,8 +187,8 @@ class StopHook(HookProcessor):
                     self.validate_path_containment(transcript_file)
                 except ValueError as e:
                     self.log(f"Transcript path not in allowed locations: {e}", "WARNING")
-                    # Don't completely fail - just log the issue
-                    pass
+                # Don't completely fail - just log the issue
+                pass
 
             self.log(f"Reading transcript from: {transcript_path}")
 
@@ -385,18 +388,18 @@ class StopHook(HookProcessor):
                 if transcript_files:
                     # Sort by modification time, most recent first
                     transcript_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-                    recent_file = transcript_files[0]
+                recent_file = transcript_files[0]
 
-                    # Only use if it's very recent (within last hour)
-                    import time
+                # Only use if it's very recent (within last hour)
+                import time
 
-                    if time.time() - recent_file.stat().st_mtime < 3600:
-                        messages = self.read_transcript(str(recent_file))
-                        if messages:
-                            self.log(
-                                f"Using recent transcript: {recent_file} ({len(messages)} messages)"
-                            )
-                            return messages
+                if time.time() - recent_file.stat().st_mtime < 3600:
+                    messages = self.read_transcript(str(recent_file))
+                    if messages:
+                        self.log(
+                            f"Using recent transcript: {recent_file} ({len(messages)} messages)"
+                        )
+                        return messages
             except Exception as e:
                 self.log(f"Error searching in {location}: {e}", "WARNING")
 
@@ -413,6 +416,8 @@ class StopHook(HookProcessor):
         Returns:
             Metadata about the session
         """
+        # Console output works fine in hook context
+
         # Debug log the input data to understand what we're receiving
         self.log(f"Input data keys: {list(input_data.keys())}")
 
@@ -457,8 +462,22 @@ class StopHook(HookProcessor):
                         with open(latest_analysis, "r") as f:
                             analysis_data = json.load(f)
 
-                        # Add the actual session messages for AI analysis
-                        analysis_data["messages"] = messages
+                        # SECURITY: Sanitize messages before adding to analysis
+                        try:
+                            sys.path.append(str(Path(__file__).parent.parent / "reflection"))
+                            from security import sanitize_messages  # type: ignore
+
+                            analysis_data["messages"] = sanitize_messages(messages)
+                        except ImportError:
+                            # Fallback sanitization if security module not available
+                            safe_messages = []
+                            for msg in messages[:10]:  # Limit to 10 messages
+                                if isinstance(msg, dict) and "content" in msg:
+                                    content = str(msg["content"])[:200]  # Truncate content
+                                    safe_messages.append(
+                                        {"content": content, "role": msg.get("role", "unknown")}
+                                    )
+                            analysis_data["messages"] = safe_messages
 
                         # Save updated analysis with messages
                         with open(latest_analysis, "w") as f:
@@ -467,7 +486,7 @@ class StopHook(HookProcessor):
                     except Exception as e:
                         self.log(f"Warning: Could not add messages to analysis: {e}", "WARNING")
 
-                    # Run AI analysis
+                    # Run AI analysis with console visibility
                     result = process_reflection_analysis(latest_analysis)
                     if result:
                         self.log(f"✅ AI automation completed: Issue #{result}")
@@ -482,36 +501,42 @@ class StopHook(HookProcessor):
 
                 self.log(f"Stack trace: {traceback.format_exc()}", "DEBUG")
 
-        # Check for learnings
-        learnings = self.extract_learnings(messages)
+            # Check for learnings
+            learnings = self.extract_learnings(messages)
 
-        # Build response
-        output = {}
-        if learnings:
-            # Check for high priority learnings
-            priority_learnings = [
-                learning for learning in learnings if learning.get("priority") == "high"
-            ]
+            # Build response
+            output = {}
+            if learnings:
+                # Check for high priority learnings
+                priority_learnings = [
+                    learning for learning in learnings if learning.get("priority") == "high"
+                ]
 
-            output = {
-                "metadata": {
-                    "learningsFound": len(learnings),
-                    "highPriority": len(priority_learnings),
-                    "source": "reflection_analysis",
-                    "analysisPath": ".claude/runtime/analysis/",
-                    "summary": f"Found {len(learnings)} improvement opportunities",
+                output = {
+                    "metadata": {
+                        "learningsFound": len(learnings),
+                        "highPriority": len(priority_learnings),
+                        "source": "reflection_analysis",
+                        "analysisPath": ".claude/runtime/analysis/",
+                        "summary": f"Found {len(learnings)} improvement opportunities",
+                    }
                 }
-            }
 
-            # Add specific suggestions to output if high priority
-            if priority_learnings:
-                output["metadata"]["urgentSuggestion"] = priority_learnings[0].get("suggestion", "")
+                # Add specific suggestions to output if high priority
+                if priority_learnings:
+                    output["metadata"]["urgentSuggestion"] = priority_learnings[0].get(
+                        "suggestion", ""
+                    )
 
-            self.log(
-                f"Found {len(learnings)} potential improvements ({len(priority_learnings)} high priority)"
-            )
+                self.log(
+                    f"Found {len(learnings)} potential improvements ({len(priority_learnings)} high priority)"
+                )
 
-        return output
+            return output
+        else:
+            # No messages found
+            self.log("No session messages to analyze")
+            return {}
 
 
 def main():
