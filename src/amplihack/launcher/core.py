@@ -211,22 +211,48 @@ class ClaudeLauncher:
         """
         # Use claude-trace if requested and available, otherwise use claude
         claude_binary = get_claude_command()
-        cmd = [claude_binary, "--dangerously-skip-permissions"]
 
-        # Add system prompt if provided
-        if self.append_system_prompt and self.append_system_prompt.exists():
-            cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
+        if claude_binary == "claude-trace":
+            # claude-trace requires --run-with before Claude arguments
+            cmd = [claude_binary]
+            claude_args = ["--dangerously-skip-permissions"]
 
-        # Add --add-dir arguments if UVX mode and we have a target directory
-        # Use cached decision to avoid re-checking
-        if self._target_directory and self._cached_uvx_decision:
-            cmd.extend(["--add-dir", str(self._target_directory)])
+            # Add system prompt if provided
+            if self.append_system_prompt and self.append_system_prompt.exists():
+                claude_args.extend(["--append-system-prompt", str(self.append_system_prompt)])
 
-        # Add forwarded Claude arguments
-        if self.claude_args:
-            cmd.extend(self.claude_args)
+            # Add --add-dir arguments if UVX mode and we have a target directory
+            # Use cached decision to avoid re-checking
+            if self._target_directory and self._cached_uvx_decision:
+                claude_args.extend(["--add-dir", str(self._target_directory)])
 
-        return cmd
+            # Add forwarded Claude arguments
+            if self.claude_args:
+                claude_args.extend(self.claude_args)
+
+            # Add --run-with followed by all Claude arguments
+            if claude_args:
+                cmd.extend(["--run-with"] + claude_args)
+
+            return cmd
+        else:
+            # Standard claude command
+            cmd = [claude_binary, "--dangerously-skip-permissions"]
+
+            # Add system prompt if provided
+            if self.append_system_prompt and self.append_system_prompt.exists():
+                cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
+
+            # Add --add-dir arguments if UVX mode and we have a target directory
+            # Use cached decision to avoid re-checking
+            if self._target_directory and self._cached_uvx_decision:
+                cmd.extend(["--add-dir", str(self._target_directory)])
+
+            # Add forwarded Claude arguments
+            if self.claude_args:
+                cmd.extend(self.claude_args)
+
+            return cmd
 
     def launch(self) -> int:
         """Launch Claude Code with configuration.
