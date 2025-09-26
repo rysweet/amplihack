@@ -4,6 +4,54 @@ import os
 import sys
 from functools import lru_cache
 
+# Import security utilities
+try:
+    from .security import create_safe_preview, filter_pattern_suggestion
+except ImportError:
+    try:
+        from security import create_safe_preview, filter_pattern_suggestion
+    except ImportError:
+        # Fallback security functions if security module not available
+        import re
+
+        def filter_pattern_suggestion(suggestion: str) -> str:
+            """Fallback sanitization for pattern suggestions."""
+            # Remove sensitive patterns
+            sensitive_patterns = [
+                r'\b(?:password|passwd|pwd)\s*[=:]\s*[^\s\'"]+',
+                r'\b(?:token|auth|bearer)\s*[=:]\s*[^\s\'"]+',
+                r'\b(?:key|secret|private)\s*[=:]\s*[^\s\'"]+',
+                r"\bsk-[A-Za-z0-9]+",
+            ]
+
+            sanitized = suggestion
+            for pattern in sensitive_patterns:
+                sanitized = re.sub(pattern, "[REDACTED]", sanitized, flags=re.IGNORECASE)
+
+            # Truncate if needed
+            if len(sanitized) > 100:
+                sanitized = sanitized[:97] + "..."
+
+            return sanitized
+
+        def create_safe_preview(content: str, context: str = "") -> str:
+            """Fallback safe preview creation."""
+            # Basic sanitization
+            sensitive_words = ["password", "token", "secret", "key", "sk-"]
+            safe_content = content
+
+            for word in sensitive_words:
+                if word in safe_content.lower():
+                    safe_content = re.sub(
+                        f"{word}[=:]?[^\\s]*", "[REDACTED]", safe_content, flags=re.IGNORECASE
+                    )
+
+            # Truncate
+            if len(safe_content) > 50:
+                safe_content = safe_content[:47] + "..."
+
+            return f"{context}: {safe_content}" if context else safe_content
+
 
 @lru_cache(maxsize=1)
 def should_show_output() -> bool:
@@ -29,7 +77,9 @@ def show_pattern_found(pattern_type: str, suggestion: str, priority: str) -> Non
     if not should_show_output():
         return
 
-    print(f"🎯 Found {priority} priority {pattern_type}: {suggestion}")
+    # Sanitize suggestion before displaying to user
+    safe_suggestion = filter_pattern_suggestion(suggestion)
+    print(f"🎯 Found {priority} priority {pattern_type}: {safe_suggestion}")
     sys.stdout.flush()
 
 
@@ -68,6 +118,7 @@ def show_analysis_complete(patterns_found: int, issues_created: int) -> None:
 
 def show_error(error_msg: str) -> None:
     """Show error message."""
-    # Always show errors
-    print(f"❌ REFLECTION ERROR: {error_msg}")
+    # Always show errors - but sanitize error content first
+    safe_error = create_safe_preview(error_msg, "Error")
+    print(f"❌ REFLECTION ERROR: {safe_error}")
     sys.stdout.flush()

@@ -92,7 +92,7 @@ class StopHook(HookProcessor):
                 for keyword in keywords:
                     if keyword.lower() in content.lower():
                         learnings.append({"keyword": keyword, "preview": content[:200]})
-                    break
+                        break
         return learnings
 
     def save_session_analysis(self, messages: List[Dict]):
@@ -314,7 +314,7 @@ class StopHook(HookProcessor):
                 transcript_file = location / pattern
                 if transcript_file.exists():
                     self.log(f"Found transcript file: {transcript_file}")
-                return transcript_file
+                    return transcript_file
 
         return None
 
@@ -368,7 +368,7 @@ class StopHook(HookProcessor):
                     self.log(
                         f"Read {len(messages)} messages from discovered transcript: {transcript_file}"
                     )
-                return messages
+                    return messages
 
         # Strategy 4: Search for recent transcript files in common locations
         self.log("Searching for recent transcript files...")
@@ -462,8 +462,22 @@ class StopHook(HookProcessor):
                         with open(latest_analysis, "r") as f:
                             analysis_data = json.load(f)
 
-                        # Add the actual session messages for AI analysis
-                        analysis_data["messages"] = messages
+                        # SECURITY: Sanitize messages before adding to analysis
+                        try:
+                            sys.path.append(str(Path(__file__).parent.parent / "reflection"))
+                            from security import sanitize_messages  # type: ignore
+
+                            analysis_data["messages"] = sanitize_messages(messages)
+                        except ImportError:
+                            # Fallback sanitization if security module not available
+                            safe_messages = []
+                            for msg in messages[:10]:  # Limit to 10 messages
+                                if isinstance(msg, dict) and "content" in msg:
+                                    content = str(msg["content"])[:200]  # Truncate content
+                                    safe_messages.append(
+                                        {"content": content, "role": msg.get("role", "unknown")}
+                                    )
+                            analysis_data["messages"] = safe_messages
 
                         # Save updated analysis with messages
                         with open(latest_analysis, "w") as f:

@@ -20,6 +20,40 @@ from display import (
     show_pattern_found,
 )
 
+# Import security utilities
+try:
+    from .security import (
+        create_safe_preview,
+        filter_pattern_suggestion,
+        sanitize_content,
+        sanitize_messages,
+    )
+except ImportError:
+    # Fallback security functions if security module not available
+    def sanitize_messages(messages: List[Dict]) -> List[Dict]:
+        """Fallback sanitizer."""
+        return [
+            {
+                "content": str(msg.get("content", ""))[:100] + "..."
+                if len(str(msg.get("content", ""))) > 100
+                else str(msg.get("content", ""))
+            }
+            for msg in messages[:10]
+        ]
+
+    def sanitize_content(content: str, max_length: int = 200) -> str:
+        """Fallback content sanitizer."""
+        return content[:max_length] + "..." if len(content) > max_length else content
+
+    def filter_pattern_suggestion(suggestion: str) -> str:
+        """Fallback suggestion filter."""
+        return suggestion[:100] + "..." if len(suggestion) > 100 else suggestion
+
+    def create_safe_preview(content: str, context: str = "") -> str:
+        """Fallback preview creator."""
+        safe_content = content[:50] + "..." if len(content) > 50 else content
+        return f"{context}: {safe_content}" if context else safe_content
+
 
 def is_reflection_enabled() -> bool:
     """Check if reflection is enabled via environment variable."""
@@ -27,11 +61,21 @@ def is_reflection_enabled() -> bool:
 
 
 def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
-    """Analyze session for improvement patterns."""
+    """Analyze session for improvement patterns with security filtering."""
     patterns = []
-    content = " ".join(str(msg.get("content", "")) for msg in messages).lower()
 
-    # Look for error patterns
+    # SECURITY: Sanitize messages before processing
+    safe_messages = sanitize_messages(messages)
+
+    # Build sanitized content for pattern analysis
+    safe_content_parts = []
+    for msg in safe_messages:
+        if isinstance(msg, dict) and "content" in msg:
+            safe_content_parts.append(str(msg["content"]))
+
+    content = " ".join(safe_content_parts).lower()
+
+    # Look for error patterns (using sanitized content)
     if "error" in content or "failed" in content:
         patterns.append(
             {
@@ -41,7 +85,7 @@ def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
             }
         )
 
-    # Look for workflow issues
+    # Look for workflow issues (using sanitized content)
     if "try again" in content or "repeat" in content:
         patterns.append(
             {
@@ -51,7 +95,7 @@ def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
             }
         )
 
-    # Look for automation opportunities
+    # Look for automation opportunities (safe count)
     tool_count = content.count("tool_use")
     if tool_count > 10:
         patterns.append(
@@ -62,26 +106,36 @@ def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
             }
         )
 
+    # SECURITY: Filter all suggestions before returning
+    for pattern in patterns:
+        pattern["suggestion"] = filter_pattern_suggestion(pattern["suggestion"])
+
     return patterns
 
 
 def create_github_issue(pattern: Dict) -> Optional[str]:
     """Create GitHub issue for improvement pattern."""
     try:
-        title = f"AI-detected {pattern['type']}: {pattern['suggestion'][:60]}"
+        # SECURITY: Sanitize all content before creating GitHub issue
+        safe_type = sanitize_content(pattern.get("type", "unknown"), max_length=50)
+        safe_suggestion = filter_pattern_suggestion(pattern.get("suggestion", ""))
+        safe_priority = sanitize_content(pattern.get("priority", "medium"), max_length=20)
+
+        # Truncate title to prevent information disclosure
+        title = f"AI-detected {safe_type}: {safe_suggestion[:60]}"
 
         body = f"""# AI-Detected Improvement Opportunity
 
-**Type**: {pattern["type"]}
-**Priority**: {pattern["priority"]}
+**Type**: {safe_type}
+**Priority**: {safe_priority}
 
 ## Suggestion
-{pattern["suggestion"]}
+{safe_suggestion}
 
 ## Next Steps
 This improvement was identified by AI analysis. Please review and implement as appropriate.
 
-**Labels**: ai-improvement, {pattern["type"]}, {pattern["priority"]}-priority
+**Labels**: ai-improvement, {safe_type}, {safe_priority}-priority
 """
 
         result = subprocess.run(
@@ -94,7 +148,7 @@ This improvement was identified by AI analysis. Please review and implement as a
                 "--body",
                 body,
                 "--label",
-                f"ai-improvement,{pattern['type']},{pattern['priority']}-priority",
+                f"ai-improvement,{safe_type},{safe_priority}-priority",
             ],
             capture_output=True,
             text=True,
