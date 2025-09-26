@@ -15,7 +15,28 @@ from .repo_checkout import checkout_repository
 
 
 class ClaudeLauncher:
-    """Launches Claude Code with proper configuration."""
+    """Launches Claude Code with proper configuration and performance optimization.
+
+    This class manages the complete Claude Code launch process including:
+    - Repository checkout and directory management
+    - UVX environment detection and --add-dir integration
+    - Proxy management for Azure integration
+    - Performance optimization through intelligent caching
+
+    Performance Optimizations:
+        - Path resolution caching: Avoids repeated resolve() operations
+        - UVX decision caching: Prevents expensive environment checks
+        - Directory comparison caching: Optimizes same-directory detection
+
+    Caching Behavior:
+        - Path cache: Maps string paths to resolved Path objects
+        - UVX cache: Stores single boolean decision for --add-dir usage
+        - Cache lifetime: Lives for the duration of the launcher instance
+        - Cache invalidation: Available through explicit methods
+
+    Thread Safety:
+        Not thread-safe. Use separate instances for concurrent launches.
+    """
 
     def __init__(
         self,
@@ -41,6 +62,11 @@ class ClaudeLauncher:
         self.checkout_repo = checkout_repo
         self.claude_args = claude_args or []
         self.claude_process: Optional[subprocess.Popen] = None
+
+        # Cached computation results for performance optimization
+        self._cached_resolved_paths = {}  # Cache for path resolution results
+        self._cached_uvx_decision = None  # Cache for UVX --add-dir decision
+        self._target_directory = None  # Target directory for --add-dir
 
     def prepare_launch(self) -> bool:
         """Prepare environment for launching Claude.
@@ -132,12 +158,8 @@ class ClaudeLauncher:
         try:
             same_dir = os.path.samefile(current_dir, target_dir)
         except (OSError, FileNotFoundError):
-            # Fallback - cache resolved paths for efficiency
-            if not hasattr(self, "_resolved_current") or self._resolved_current[0] != current_dir:
-                self._resolved_current = (current_dir, current_dir.resolve())
-            if not hasattr(self, "_resolved_target") or self._resolved_target[0] != target_dir:
-                self._resolved_target = (target_dir, target_dir.resolve())
-            same_dir = self._resolved_current[1] == self._resolved_target[1]
+            # Fallback using cached resolved paths for efficiency
+            same_dir = self._paths_are_same_with_cache(current_dir, target_dir)
 
         if same_dir:
             # Already in correct directory
@@ -145,10 +167,10 @@ class ClaudeLauncher:
 
         # Check if we're in UVX mode and can use --add-dir (avoids directory change)
         # Cache the UVX decision to avoid repeated expensive checks
-        if not hasattr(self, "_use_add_dir_cached"):
-            self._use_add_dir_cached = self.uvx_manager.should_use_add_dir()
+        if self._cached_uvx_decision is None:
+            self._cached_uvx_decision = self.uvx_manager.should_use_add_dir()
 
-        if self._use_add_dir_cached:
+        if self._cached_uvx_decision:
             print("UVX environment detected - will use --add-dir approach")
             # Store target directory for --add-dir arguments
             self._target_directory = target_dir
@@ -197,7 +219,7 @@ class ClaudeLauncher:
 
         # Add --add-dir arguments if UVX mode and we have a target directory
         # Use cached decision to avoid re-checking
-        if hasattr(self, "_target_directory") and getattr(self, "_use_add_dir_cached", False):
+        if self._target_directory and self._cached_uvx_decision:
             cmd.extend(["--add-dir", str(self._target_directory)])
 
         # Add forwarded Claude arguments
@@ -234,7 +256,7 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
-            if hasattr(self, "_target_directory"):
+            if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
 
             # Launch Claude
@@ -279,7 +301,7 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
-            if hasattr(self, "_target_directory"):
+            if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
 
             # Launch Claude with direct I/O (interactive mode)
@@ -294,3 +316,38 @@ class ClaudeLauncher:
             # Clean up proxy
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
+
+    def _paths_are_same_with_cache(self, path1: Path, path2: Path) -> bool:
+        """Compare paths with caching for resolved paths.
+
+        Args:
+            path1: First path to compare
+            path2: Second path to compare
+
+        Returns:
+            True if paths refer to the same location, False otherwise
+        """
+
+        def get_cached_resolved(path: Path) -> Path:
+            """Get cached resolved path or compute and cache it."""
+            path_key = str(path)
+            if path_key not in self._cached_resolved_paths:
+                self._cached_resolved_paths[path_key] = path.resolve()
+            return self._cached_resolved_paths[path_key]
+
+        return get_cached_resolved(path1) == get_cached_resolved(path2)
+
+    def invalidate_path_cache(self) -> None:
+        """Invalidate cached path resolutions.
+
+        Call this when filesystem state may have changed or when
+        working directory changes.
+        """
+        self._cached_resolved_paths.clear()
+
+    def invalidate_uvx_cache(self) -> None:
+        """Invalidate cached UVX decision.
+
+        Call this when UVX environment may have changed.
+        """
+        self._cached_uvx_decision = None

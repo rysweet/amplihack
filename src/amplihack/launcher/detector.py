@@ -5,11 +5,31 @@ from typing import Optional
 
 
 class ClaudeDirectoryDetector:
-    """Detects .claude directories in project hierarchy."""
+    """Detects .claude directories in project hierarchy with intelligent caching.
+
+    This class provides efficient detection of .claude directories by caching
+    resolution results and managing cache size automatically. The cache is
+    designed to:
+
+    - Speed up repeated lookups for the same directory path
+    - Prevent unlimited memory growth through size-based eviction
+    - Allow explicit cache invalidation when filesystem changes occur
+
+    Caching Behavior:
+        - Cache key: Resolved absolute path of the start directory
+        - Cache value: Path to .claude directory or None if not found
+        - Cache size: Limited to 100 entries with FIFO eviction
+        - Cache persistence: Lives for the lifetime of the detector instance
+
+    Thread Safety:
+        This class is not thread-safe. Create separate instances for
+        concurrent use or add external synchronization.
+    """
 
     def __init__(self):
         """Initialize detector with caching support."""
         self._cache = {}
+        self._cache_max_size = 100  # Prevent unlimited cache growth
 
     def find_claude_directory(self, start_path: Optional[Path] = None) -> Optional[Path]:
         """Find .claude directory in current or parent directories with caching.
@@ -27,6 +47,10 @@ class ClaudeDirectoryDetector:
         cache_key = str(start_path.resolve())
         if cache_key in self._cache:
             return self._cache[cache_key]
+
+        # Manage cache size to prevent unlimited growth
+        if len(self._cache) >= self._cache_max_size:
+            self._evict_oldest_cache_entries()
 
         current = Path(start_path).resolve()
 
@@ -66,3 +90,46 @@ class ClaudeDirectoryDetector:
             Path to project root directory.
         """
         return claude_dir.parent
+
+    def invalidate_cache(self) -> None:
+        """Invalidate all cached directory detection results.
+
+        Call this method when the filesystem state may have changed
+        (e.g., after creating/deleting .claude directories).
+        """
+        self._cache.clear()
+
+    def invalidate_cache_entry(self, start_path: Path) -> None:
+        """Invalidate a specific cache entry.
+
+        Args:
+            start_path: The path whose cache entry should be invalidated.
+        """
+        cache_key = str(start_path.resolve())
+        self._cache.pop(cache_key, None)
+
+    def _evict_oldest_cache_entries(self) -> None:
+        """Evict oldest cache entries when cache is full.
+
+        This is a simple FIFO eviction policy. For more sophisticated
+        caching behavior, consider using functools.lru_cache instead.
+        """
+        # Remove 20% of entries to avoid frequent evictions
+        entries_to_remove = max(1, self._cache_max_size // 5)
+        keys_to_remove = list(self._cache.keys())[:entries_to_remove]
+        for key in keys_to_remove:
+            self._cache.pop(key, None)
+
+    def get_cache_stats(self) -> dict:
+        """Get cache statistics for debugging and monitoring.
+
+        Returns:
+            Dictionary with cache size and capacity information.
+        """
+        return {
+            "size": len(self._cache),
+            "max_size": self._cache_max_size,
+            "utilization": len(self._cache) / self._cache_max_size
+            if self._cache_max_size > 0
+            else 0,
+        }
