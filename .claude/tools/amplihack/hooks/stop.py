@@ -441,8 +441,16 @@ class StopHook(HookProcessor):
 
             # Try AI-powered automation (respects REFLECTION_ENABLED environment variable)
             try:
-                sys.path.append(str(Path(__file__).parent.parent / "reflection"))
-                from reflection import process_reflection_analysis  # type: ignore
+                reflection_path = Path(__file__).parent.parent / "reflection" / "reflection.py"
+                import importlib.util
+
+                spec = importlib.util.spec_from_file_location("reflection", reflection_path)
+                if spec and spec.loader:
+                    reflection_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(reflection_module)
+                    process_reflection_analysis = reflection_module.process_reflection_analysis
+                else:
+                    raise ImportError(f"Could not load reflection module from {reflection_path}")
 
                 self.log("Starting AI-powered reflection analysis...")
 
