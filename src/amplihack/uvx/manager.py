@@ -235,6 +235,18 @@ class UVXManager:
         logger.info(f"Enhanced command with --add-dir: {' '.join(enhanced)}")
         return enhanced
 
+    def get_detection_state(self) -> UVXDetectionState:
+        """Get the current UVX detection state.
+
+        Returns:
+            UVXDetectionState with detection results
+        """
+        self._ensure_detection()
+        assert self._detection_state is not None, (
+            "Detection state should be set after _ensure_detection()"
+        )
+        return self._detection_state
+
     def get_environment_variables(self) -> Dict[str, str]:
         """Get environment variables to set for UVX mode.
 
