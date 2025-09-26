@@ -524,6 +524,583 @@ def capture_ci_pattern(failure_type, solution, resolution_time):
 - **Uses Configuration Single Source** - CI settings centralized in pyproject.toml
 - **Implements Incremental Processing** - Builds pattern database over time
 
+## Pattern: Unified Validation Flow
+
+### Challenge
+
+Systems with multiple execution modes (UVX, normal) that have divergent validation paths, causing inconsistent behavior and hard-to-debug issues.
+
+### Solution
+
+Move all validation logic before execution mode branching to ensure consistent behavior across all modes.
+
+```python
+class SystemLauncher:
+    def prepare_launch(self) -> bool:
+        """Unified validation before mode-specific logic"""
+
+        # Universal validation for ALL modes - no exceptions
+        target_dir = self.detector.find_target_directory()
+        if not target_dir:
+            print("No valid target directory found")
+            return False
+
+        # Validate directory security and accessibility
+        if not self.validate_directory_security(target_dir):
+            print(f"Directory failed security validation: {target_dir}")
+            return False
+
+        # Now branch to mode-specific handling with validated directory
+        if self.is_special_mode():
+            return self._handle_special_mode(target_dir)
+        else:
+            return self._handle_normal_mode(target_dir)
+```
+
+### Key Points
+
+- **Validate before branching** - Ensure all modes get same validation
+- **No execution mode should bypass validation** - Creates divergent behavior
+- **Pass validated data to mode handlers** - Don't re-validate
+- **Log validation results** - Help debug validation failures
+
+### Real Impact
+
+From PR #148: Fixed UVX users ending up in wrong directory by moving directory validation before UVX/normal mode branching.
+
+## Pattern: Modular User Visibility
+
+### Challenge
+
+Background processes that appear broken because users can't see progress, but adding visibility shouldn't break existing functionality.
+
+### Solution
+
+Create dedicated display modules that can be imported optionally and provide graceful fallbacks.
+
+```python
+# display.py - Standalone visibility module
+def show_progress(message: str, stage: str = "info"):
+    """User-visible progress indicator with emoji-based stages"""
+    stage_icons = {
+        "start": "🤖",
+        "progress": "🔍",
+        "success": "✅",
+        "warning": "⚠️",
+        "complete": "🏁"
+    }
+
+    print(f"{stage_icons.get(stage, 'ℹ️')} {message}")
+
+def show_analysis_header(total_items: int):
+    """Clear analysis start indicator"""
+    print(f"\n{'=' * 60}")
+    print(f"🤖 AI ANALYSIS STARTING")
+    print(f"📊 Processing {total_items} items...")
+    print(f"{'=' * 60}")
+
+# In main processing module
+def analyze_data(data):
+    """Analysis with optional user feedback"""
+    try:
+        from .display import show_progress, show_analysis_header
+        show_analysis_header(len(data))
+
+        for i, item in enumerate(data):
+            show_progress(f"Processing item {i+1}/{len(data)}")
+            result = process_item(item)
+
+        show_progress("Analysis complete", "complete")
+        return results
+
+    except ImportError:
+        # Graceful fallback when display module unavailable
+        return process_silently(data)
+```
+
+### Key Points
+
+- **Optional dependency on display module** - System works without it
+- **Clear progress indicators** - Use emoji and consistent formatting
+- **Modular design** - Display logic separate from business logic
+- **Environment-controlled verbosity** - Respect user preferences
+
+### Real Impact
+
+From PR #147: Made reflection system visible to users while maintaining all existing functionality through optional display module.
+
+## Pattern: Multi-Layer Security Sanitization
+
+### Challenge
+
+Sensitive data (passwords, tokens, system paths) appearing in user output, logs, or stored analysis files across multiple processing layers.
+
+### Solution
+
+Implement sanitization at every data transformation point with safe fallbacks.
+
+```python
+# security.py - Dedicated security module
+import re
+from typing import Dict, List
+
+class ContentSanitizer:
+    """Multi-layer content sanitization with fallback strategies"""
+
+    SENSITIVE_PATTERNS = [
+        r'password["\s]*[:=]["\s]*[^\s"]+',
+        r'token["\s]*[:=]["\s]*[^\s"]+',
+        r'api[_-]?key["\s]*[:=]["\s]*[^\s"]+',
+        r'secret["\s]*[:=]["\s]*[^\s"]+',
+        r'auth["\s]*[:=]["\s]*[^\s"]+',
+    ]
+
+    SYSTEM_PATHS = [
+        r'/etc/[^\s]*',
+        r'/private/etc/[^\s]*',
+        r'/usr/bin/[^\s]*',
+        r'/System/Library/[^\s]*',
+    ]
+
+    def sanitize_content(self, content: str, max_length: int = 10000) -> str:
+        """Comprehensive content sanitization"""
+        if not content:
+            return content
+
+        # Length limit to prevent information leakage
+        if len(content) > max_length:
+            content = content[:max_length] + "... [truncated for security]"
+
+        # Remove sensitive credentials
+        for pattern in self.SENSITIVE_PATTERNS:
+            content = re.sub(pattern, "[REDACTED]", content, flags=re.IGNORECASE)
+
+        # Remove system paths
+        for pattern in self.SYSTEM_PATHS:
+            content = re.sub(pattern, "[SYSTEM_PATH]", content)
+
+        return content
+
+# In processing modules - sanitize at every layer
+def process_user_input(raw_input: str) -> str:
+    """Input sanitization layer"""
+    try:
+        from .security import ContentSanitizer
+        sanitizer = ContentSanitizer()
+        return sanitizer.sanitize_content(raw_input)
+    except ImportError:
+        # Safe fallback sanitization
+        return basic_sanitize(raw_input)
+
+def store_analysis(data: Dict) -> None:
+    """Storage sanitization layer"""
+    try:
+        from .security import ContentSanitizer
+        sanitizer = ContentSanitizer()
+
+        # Sanitize all string values before storage
+        sanitized_data = {}
+        for key, value in data.items():
+            if isinstance(value, str):
+                sanitized_data[key] = sanitizer.sanitize_content(value)
+            else:
+                sanitized_data[key] = value
+
+        save_to_file(sanitized_data)
+    except ImportError:
+        # Sanitize with basic patterns if security module unavailable
+        save_to_file(basic_sanitize_dict(data))
+
+def display_to_user(content: str) -> None:
+    """Output sanitization layer"""
+    try:
+        from .security import ContentSanitizer
+        sanitizer = ContentSanitizer()
+        print(sanitizer.sanitize_content(content))
+    except ImportError:
+        print(basic_sanitize(content))
+
+def basic_sanitize(content: str) -> str:
+    """Fallback sanitization when security module unavailable"""
+    # Basic patterns for critical security
+    patterns = [
+        (r'password["\s]*[:=]["\s]*[^\s"]+', '[REDACTED]'),
+        (r'token["\s]*[:=]["\s]*[^\s"]+', '[REDACTED]'),
+    ]
+
+    for pattern, replacement in patterns:
+        content = re.sub(pattern, replacement, content, flags=re.IGNORECASE)
+
+    return content
+```
+
+### Key Points
+
+- **Sanitize at every transformation** - Input, processing, storage, output
+- **Safe fallback patterns** - Basic sanitization if security module fails
+- **Length limits prevent leakage** - Truncate very long content
+- **Multiple pattern types** - Credentials, paths, personal data
+- **Never fail on security errors** - Always provide fallback
+
+### Real Impact
+
+From PR #147: Implemented comprehensive sanitization that prevented sensitive data exposure while maintaining system functionality through fallback strategies.
+
+## Pattern: Intelligent Caching with Lifecycle Management
+
+### Challenge
+
+Expensive operations (path resolution, environment detection) repeated unnecessarily, but naive caching leads to memory leaks and stale data.
+
+### Solution
+
+Implement smart caching with invalidation strategies and resource management.
+
+```python
+from functools import lru_cache
+from typing import Optional, Dict, Any
+import threading
+
+class SmartCache:
+    """Intelligent caching with lifecycle management"""
+
+    def __init__(self, max_size: int = 128):
+        self.max_size = max_size
+        self._cache_stats = {"hits": 0, "misses": 0}
+        self._lock = threading.RLock()
+
+    @lru_cache(maxsize=128)
+    def expensive_operation(self, input_data: str) -> str:
+        """Cached expensive operation with automatic size management"""
+        # Expensive computation here
+        result = self._compute_expensive_result(input_data)
+
+        # Track cache performance
+        with self._lock:
+            cache_info = self.expensive_operation.cache_info()
+            if cache_info.hits > self._cache_stats["hits"]:
+                self._cache_stats["hits"] = cache_info.hits
+            else:
+                self._cache_stats["misses"] += 1
+
+        return result
+
+    def invalidate_cache(self) -> None:
+        """Clear cache when data might be stale"""
+        with self._lock:
+            self.expensive_operation.cache_clear()
+            self._cache_stats = {"hits": 0, "misses": 0}
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get cache performance metrics"""
+        with self._lock:
+            cache_info = self.expensive_operation.cache_info()
+            return {
+                "hits": cache_info.hits,
+                "misses": cache_info.misses,
+                "current_size": cache_info.currsize,
+                "max_size": cache_info.maxsize,
+                "hit_rate": cache_info.hits / max(1, cache_info.hits + cache_info.misses)
+            }
+
+# Thread-safe lazy initialization pattern
+class LazyResource:
+    """Lazy initialization with thread safety"""
+
+    def __init__(self):
+        self._resource = None
+        self._initialized = False
+        self._lock = threading.RLock()
+
+    def _ensure_initialized(self) -> None:
+        """Thread-safe lazy initialization"""
+        with self._lock:
+            if not self._initialized:
+                self._resource = self._create_expensive_resource()
+                self._initialized = True
+
+    def get_resource(self):
+        """Get resource, initializing if needed"""
+        self._ensure_initialized()
+        return self._resource
+
+    def invalidate(self) -> None:
+        """Force re-initialization on next access"""
+        with self._lock:
+            self._resource = None
+            self._initialized = False
+```
+
+### Key Points
+
+- **Use lru_cache for automatic size management** - Prevents unbounded growth
+- **Thread safety is essential** - Multiple threads may access simultaneously
+- **Provide invalidation methods** - Cache must be clearable when stale
+- **Track cache performance** - Monitor hit rates for optimization
+- **Lazy initialization with locks** - Don't initialize until needed
+
+### Real Impact
+
+From PR #148: Added intelligent caching that achieved 4.1x and 10x performance improvements while maintaining thread safety and preventing memory leaks.
+
+## Pattern: Graceful Environment Adaptation
+
+### Challenge
+
+Systems that need different behavior in different environments (UVX, normal, testing) without hard-coding environment-specific logic everywhere.
+
+### Solution
+
+Detect environment automatically and adapt behavior through configuration objects and environment variables.
+
+```python
+class EnvironmentAdapter:
+    """Automatic environment detection and adaptation"""
+
+    def __init__(self):
+        self._environment = None
+        self._config = None
+
+    def detect_environment(self) -> str:
+        """Automatically detect current execution environment"""
+        if self._environment:
+            return self._environment
+
+        # Detection logic
+        if self._is_uvx_environment():
+            self._environment = "uvx"
+        elif self._is_testing_environment():
+            self._environment = "testing"
+        else:
+            self._environment = "normal"
+
+        return self._environment
+
+    def get_config(self) -> Dict[str, Any]:
+        """Get environment-specific configuration"""
+        if self._config:
+            return self._config
+
+        env = self.detect_environment()
+
+        # Environment-specific configurations
+        configs = {
+            "uvx": {
+                "use_add_dir": True,
+                "validate_paths": True,
+                "working_directory": "auto_detect",
+                "timeout_multiplier": 1.5,
+            },
+            "normal": {
+                "use_add_dir": False,
+                "validate_paths": True,
+                "working_directory": "change_to_project",
+                "timeout_multiplier": 1.0,
+            },
+            "testing": {
+                "use_add_dir": False,
+                "validate_paths": False,  # Faster tests
+                "working_directory": "temp",
+                "timeout_multiplier": 0.5,
+            }
+        }
+
+        self._config = configs.get(env, configs["normal"])
+
+        # Allow environment variable overrides
+        self._apply_env_overrides()
+
+        return self._config
+
+    def _apply_env_overrides(self) -> None:
+        """Apply environment variable overrides"""
+        import os
+
+        # Map environment variables to config keys
+        env_mappings = {
+            "AMPLIHACK_USE_ADD_DIR": ("use_add_dir", lambda x: x.lower() == "true"),
+            "AMPLIHACK_VALIDATE_PATHS": ("validate_paths", lambda x: x.lower() == "true"),
+            "AMPLIHACK_TIMEOUT_MULTIPLIER": ("timeout_multiplier", float),
+        }
+
+        for env_var, (config_key, converter) in env_mappings.items():
+            if env_var in os.environ:
+                try:
+                    self._config[config_key] = converter(os.environ[env_var])
+                except (ValueError, TypeError):
+                    # Log but don't fail on invalid environment variables
+                    pass
+
+# Usage pattern
+class SystemManager:
+    def __init__(self):
+        self.adapter = EnvironmentAdapter()
+
+    def execute(self):
+        """Execute with environment-appropriate behavior"""
+        config = self.adapter.get_config()
+
+        if config["use_add_dir"]:
+            return self._execute_with_add_dir()
+        else:
+            return self._execute_with_directory_change()
+```
+
+### Key Points
+
+- **Automatic environment detection** - Don't require manual configuration
+- **Configuration objects over scattered conditionals** - Centralize environment logic
+- **Environment variable overrides** - Allow runtime customization
+- **Sensible defaults for each environment** - Work out of the box
+- **Graceful degradation** - Handle invalid configurations
+
+### Real Impact
+
+From PR #148: Enabled seamless operation across UVX and normal environments while maintaining consistent behavior and allowing user customization.
+
+## Pattern: Reflection-Driven Self-Improvement
+
+### Challenge
+
+Systems that repeat the same mistakes because they don't learn from user interactions or identify improvement opportunities automatically.
+
+### Solution
+
+Implement AI-powered analysis of user sessions to automatically identify patterns and create improvement issues.
+
+```python
+class SessionReflector:
+    """AI-powered session analysis for self-improvement"""
+
+    def analyze_session(self, messages: List[Dict]) -> Dict:
+        """Analyze session for improvement opportunities"""
+
+        # Extract session patterns
+        patterns = self._extract_patterns(messages)
+
+        # Use AI to analyze patterns
+        improvement_opportunities = self._ai_analyze_patterns(patterns)
+
+        # Prioritize opportunities
+        prioritized = self._prioritize_improvements(improvement_opportunities)
+
+        return {
+            "session_stats": self._get_session_stats(messages),
+            "patterns": patterns,
+            "improvements": prioritized,
+            "automation_candidates": self._identify_automation_candidates(prioritized)
+        }
+
+    def _extract_patterns(self, messages: List[Dict]) -> List[Dict]:
+        """Extract behavioral patterns from session"""
+        patterns = []
+
+        # Error patterns
+        error_count = 0
+        error_types = {}
+
+        for msg in messages:
+            content = str(msg.get("content", ""))
+
+            if "error" in content.lower():
+                error_count += 1
+                # Extract error type
+                error_type = self._classify_error(content)
+                error_types[error_type] = error_types.get(error_type, 0) + 1
+
+        if error_count > 2:
+            patterns.append({
+                "type": "error_handling",
+                "severity": "high" if error_count > 5 else "medium",
+                "details": {"total_errors": error_count, "error_types": error_types}
+            })
+
+        # Repetition patterns
+        repeated_actions = self._find_repeated_actions(messages)
+        if repeated_actions:
+            patterns.append({
+                "type": "workflow_inefficiency",
+                "severity": "medium",
+                "details": {"repeated_actions": repeated_actions}
+            })
+
+        return patterns
+
+    def _ai_analyze_patterns(self, patterns: List[Dict]) -> List[Dict]:
+        """Use AI to suggest improvements for patterns"""
+        improvements = []
+
+        for pattern in patterns:
+            if pattern["type"] == "error_handling":
+                improvements.append({
+                    "type": "error_handling",
+                    "priority": "high",
+                    "suggestion": "Improve error handling and user feedback",
+                    "evidence": f"Found {pattern['details']['total_errors']} errors",
+                    "implementation_hint": "Add try-catch blocks with user-friendly messages"
+                })
+
+            elif pattern["type"] == "workflow_inefficiency":
+                improvements.append({
+                    "type": "automation",
+                    "priority": "medium",
+                    "suggestion": "Automate repetitive workflow steps",
+                    "evidence": f"User repeated actions: {pattern['details']['repeated_actions']}",
+                    "implementation_hint": "Create compound commands for common sequences"
+                })
+
+        return improvements
+
+    def create_improvement_issue(self, improvement: Dict) -> Optional[str]:
+        """Automatically create GitHub issue for improvement"""
+
+        title = f"AI-detected {improvement['type']}: {improvement['suggestion'][:60]}"
+
+        body = f"""# AI-Detected Improvement Opportunity
+
+**Type**: {improvement['type']}
+**Priority**: {improvement['priority']}
+**Evidence**: {improvement.get('evidence', 'Detected during session analysis')}
+
+## Suggestion
+{improvement['suggestion']}
+
+## Implementation Hint
+{improvement.get('implementation_hint', 'See analysis for details')}
+
+## Analysis Details
+This improvement was identified by AI analysis of session logs. The system detected patterns indicating this area needs attention.
+
+**Labels**: ai-improvement, {improvement['type']}, {improvement['priority']}-priority
+"""
+
+        # Create issue using GitHub CLI
+        result = subprocess.run([
+            "gh", "issue", "create",
+            "--title", title,
+            "--body", body,
+            "--label", f"ai-improvement,{improvement['type']},{improvement['priority']}-priority"
+        ], capture_output=True, text=True)
+
+        if result.returncode == 0:
+            issue_url = result.stdout.strip()
+            return issue_url.split("/")[-1]  # Extract issue number
+
+        return None
+```
+
+### Key Points
+
+- **Analyze actual user behavior** - Don't guess at improvements
+- **Use AI for pattern recognition** - Identify complex behavioral patterns
+- **Automatic issue creation** - Convert insights to actionable work items
+- **Evidence-based improvements** - Link suggestions to actual session data
+- **Prioritization based on impact** - Focus on high-value improvements first
+
+### Real Impact
+
+From PR #147: Created self-improving system that analyzes 1,338+ session files and automatically creates GitHub issues for detected improvement opportunities.
+
 ## Remember
 
 These patterns represent hard-won knowledge from real development challenges. When facing similar problems:
