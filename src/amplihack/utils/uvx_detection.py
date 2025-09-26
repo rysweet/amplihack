@@ -4,6 +4,7 @@ This module provides functions to detect UVX deployment state and resolve
 framework paths using the immutable data structures from uvx_models.
 """
 
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional
 
@@ -18,6 +19,12 @@ from .uvx_models import (
 )
 
 
+@lru_cache(maxsize=1)
+def _cached_env_info() -> UVXEnvironmentInfo:
+    """Cache environment info since it doesn't change during execution."""
+    return UVXEnvironmentInfo.from_current_environment()
+
+
 def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetectionState:
     """Detect UVX deployment state with detailed reasoning.
 
@@ -30,7 +37,7 @@ def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetec
     if config is None:
         config = UVXConfiguration()
 
-    env_info = UVXEnvironmentInfo.from_current_environment()
+    env_info = _cached_env_info()
     reasons = []
 
     # Check for UV_PYTHON environment variable (strongest UVX indicator)

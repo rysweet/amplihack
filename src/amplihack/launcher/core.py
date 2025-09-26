@@ -48,68 +48,124 @@ class ClaudeLauncher:
         Returns:
             True if preparation successful, False otherwise.
         """
-        # Handle repository checkout if requested
+        # 1. Handle repository checkout if needed
         if self.checkout_repo:
-            return self._handle_checkout_repo()
+            if not self._handle_repo_checkout():
+                return False
 
-        # Check if we're in UVX mode and should use --add-dir instead of changing directories
-        if self.uvx_manager.is_uvx_environment() and not self.uvx_manager.should_use_staging():
-            print("UVX environment detected - will use --add-dir approach")
-            # In UVX mode with --add-dir, we don't change the working directory
-            # The session hook will handle directory changes after Claude starts
-        else:
-            # Standard directory detection and change logic
-            claude_dir = self.detector.find_claude_directory()
-            if claude_dir:
-                print(f"Found .claude directory at: {claude_dir}")
-                project_root = self.detector.get_project_root(claude_dir)
+        # 2. Find and validate target directory
+        target_dir = self._find_target_directory()
+        if not target_dir:
+            print("Failed to determine target directory")
+            return False
 
-                # Only change directory if not already in project root
-                try:
-                    # Use samefile for efficient directory comparison
-                    if not os.path.samefile(os.getcwd(), project_root):
-                        os.chdir(project_root)
-                        print(f"Changed directory to project root: {project_root}")
-                    else:
-                        print(f"Already in project root: {project_root}")
-                except (OSError, FileNotFoundError):
-                    # Fallback for non-existent paths or permission issues
-                    current_dir = Path.cwd().resolve()
-                    target_dir = Path(project_root).resolve()
-                    if current_dir != target_dir:
-                        os.chdir(project_root)
-                        print(f"Changed directory to project root: {project_root}")
-                    else:
-                        print(f"Already in project root: {project_root}")
-            else:
-                print("No .claude directory found in current or parent directories")
+        # 3. Handle directory change if needed (unless UVX with --add-dir)
+        if not self._handle_directory_change(target_dir):
+            return False
 
+        # 4. Start proxy if needed
         return self._start_proxy_if_needed()
 
-    def _handle_checkout_repo(self) -> bool:
-        """Handle repository checkout and directory change.
+    def _handle_repo_checkout(self) -> bool:
+        """Handle repository checkout.
 
         Returns:
-            True if checkout and preparation successful, False otherwise.
+            True if successful, False otherwise.
         """
         if not self.checkout_repo:
             print("No repository specified for checkout")
             return False
 
-        repo_path = checkout_repository(self.checkout_repo)
-
-        if not repo_path:
-            print(f"Failed to checkout repository: {self.checkout_repo}")
-            return False
-
         try:
-            os.chdir(repo_path)
-            print(f"Changed directory to cloned repository: {repo_path}")
+            repo_path = checkout_repository(self.checkout_repo)
+            if not repo_path:
+                print(f"Failed to checkout repository: {self.checkout_repo}")
+                return False
+
+            repo_path_obj = Path(repo_path)
+            if not repo_path_obj.exists() or not repo_path_obj.is_dir():
+                print(f"Checked out repository path is not accessible: {repo_path}")
+                return False
+
+            print(f"Successfully checked out repository to: {repo_path}")
+            return True
         except Exception as e:
-            print(f"Failed to change directory to {repo_path}: {e}")
+            print(f"Repository checkout failed: {str(e)}")
             return False
 
-        return self._start_proxy_if_needed()
+    def _find_target_directory(self) -> Optional[Path]:
+        """Find the target directory for execution.
+
+        Returns:
+            Target directory path, or None if not found.
+        """
+        # If we did a repo checkout, use current directory (where repo was checked out)
+        if self.checkout_repo:
+            return Path.cwd()
+
+        # Find .claude directory in current or parent directories
+        claude_dir = self.detector.find_claude_directory()
+        if claude_dir:
+            # Found .claude directory - use project root
+            project_root = self.detector.get_project_root(claude_dir)
+            if project_root.exists() and project_root.is_dir():
+                return project_root
+            else:
+                print(f"Project root is not accessible: {project_root}")
+                return None
+        else:
+            # No .claude directory found - use current directory
+            return Path.cwd()
+
+    def _handle_directory_change(self, target_dir: Path) -> bool:
+        """Handle directory change based on execution mode.
+
+        Args:
+            target_dir: Target directory to change to
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        current_dir = Path.cwd()
+
+        # Check if we need to change directories (optimized comparison)
+        try:
+            same_dir = os.path.samefile(current_dir, target_dir)
+        except (OSError, FileNotFoundError):
+            # Fallback - cache resolved paths for efficiency
+            if not hasattr(self, "_resolved_current") or self._resolved_current[0] != current_dir:
+                self._resolved_current = (current_dir, current_dir.resolve())
+            if not hasattr(self, "_resolved_target") or self._resolved_target[0] != target_dir:
+                self._resolved_target = (target_dir, target_dir.resolve())
+            same_dir = self._resolved_current[1] == self._resolved_target[1]
+
+        if same_dir:
+            # Already in correct directory
+            return True
+
+        # Check if we're in UVX mode and can use --add-dir (avoids directory change)
+        # Cache the UVX decision to avoid repeated expensive checks
+        if not hasattr(self, "_use_add_dir_cached"):
+            self._use_add_dir_cached = self.uvx_manager.should_use_add_dir()
+
+        if self._use_add_dir_cached:
+            print("UVX environment detected - will use --add-dir approach")
+            # Store target directory for --add-dir arguments
+            self._target_directory = target_dir
+            return True
+
+        # Standard directory change
+        try:
+            if not target_dir.exists() or not target_dir.is_dir():
+                print(f"Target directory is not accessible: {target_dir}")
+                return False
+
+            os.chdir(target_dir)
+            print(f"Changed directory to: {target_dir}")
+            return True
+        except OSError as e:
+            print(f"Failed to change directory to {target_dir}: {e}")
+            return False
 
     def _start_proxy_if_needed(self) -> bool:
         """Start proxy if configured.
@@ -139,8 +195,10 @@ class ClaudeLauncher:
         if self.append_system_prompt and self.append_system_prompt.exists():
             cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
 
-        # Enhance command with UVX manager (adds --add-dir if appropriate)
-        cmd = self.uvx_manager.enhance_claude_command(cmd)
+        # Add --add-dir arguments if UVX mode and we have a target directory
+        # Use cached decision to avoid re-checking
+        if hasattr(self, "_target_directory") and getattr(self, "_use_add_dir_cached", False):
+            cmd.extend(["--add-dir", str(self._target_directory)])
 
         # Add forwarded Claude arguments
         if self.claude_args:
@@ -176,7 +234,8 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
-            env.update(self.uvx_manager.get_environment_variables())
+            if hasattr(self, "_target_directory"):
+                env.update(self.uvx_manager.get_environment_variables())
 
             # Launch Claude
             self.claude_process = subprocess.Popen(cmd, env=env)
@@ -220,7 +279,8 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
-            env.update(self.uvx_manager.get_environment_variables())
+            if hasattr(self, "_target_directory"):
+                env.update(self.uvx_manager.get_environment_variables())
 
             # Launch Claude with direct I/O (interactive mode)
             exit_code = subprocess.call(cmd, env=env)
