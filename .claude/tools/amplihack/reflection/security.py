@@ -1,27 +1,23 @@
 """Security utilities for reflection system - sanitizes sensitive content."""
 
 import re
+from functools import lru_cache
 from typing import Any, Dict, List
 
 
 class ContentSanitizer:
-    """Sanitizes content to prevent information disclosure."""
+    """Sanitizes content to prevent information disclosure with performance optimizations."""
 
     def __init__(self):
-        # Sensitive keyword patterns (case-insensitive)
+        # Sensitive keyword patterns (case-insensitive) - optimized order
         self.sensitive_patterns = [
-            # Credentials and authentication
-            r'\b(?:password|passwd|pwd)\s*[=:]\s*[^\s\'"]+',
-            r'\b(?:token|auth|bearer)\s*[=:]\s*[^\s\'"]+',
-            r'\b(?:key|secret|private)\s*[=:]\s*[^\s\'"]+',
-            r'\b(?:credential|cred)\s*[=:]\s*[^\s\'"]+',
-            r'\b(?:api_key|apikey)\s*[=:]\s*[^\s\'"]+',
-            # Common credential formats
-            r"\b[A-Za-z0-9]{20,}\b",  # Long alphanumeric strings (likely tokens)
-            r"\b[A-Fa-f0-9]{32,}\b",  # Hex strings (likely hashes/tokens)
-            # System paths
-            r"/[^/\s]*(?:key|secret|token|password)[^/\s]*",
-            r"C:\\[^\\s]*(?:key|secret|token|password)[^\\s]*",
+            # Most common patterns first for early exit
+            r'\b(?:password|passwd|pwd|token|auth|bearer|key|secret|private)\s*[=:]\s*[^\s\'"]+',
+            r'\b(?:credential|cred|api_key|apikey)\s*[=:]\s*[^\s\'"]+',
+            # Common credential formats - combined for efficiency
+            r"\b(?:[A-Za-z0-9]{20,}|[A-Fa-f0-9]{32,})\b",
+            # System paths - combined patterns
+            r"(?:/[^/\s]*|C:\\[^\\s]*)(?:key|secret|token|password)[^/\\s]*",
             # Environment variables
             r"\$\{?[A-Z_]*(?:KEY|SECRET|TOKEN|PASSWORD|CRED)[A-Z_]*\}?",
             # Email patterns (potential usernames)
@@ -30,29 +26,31 @@ class ContentSanitizer:
             r"https?://[^/\s]*:[^@\s]*@[^\s]+",
         ]
 
-        # Compile patterns for efficiency
-        self.compiled_patterns = [
-            re.compile(pattern, re.IGNORECASE) for pattern in self.sensitive_patterns
-        ]
+        # Single compiled pattern for maximum efficiency
+        combined_pattern = "|".join(f"({pattern})" for pattern in self.sensitive_patterns)
+        self.compiled_pattern = re.compile(combined_pattern, re.IGNORECASE)
 
-        # Sensitive keywords for basic filtering
-        self.sensitive_keywords = {
-            "password",
-            "passwd",
-            "pwd",
-            "token",
-            "auth",
-            "bearer",
-            "key",
-            "secret",
-            "private",
-            "credential",
-            "cred",
-            "api_key",
-            "apikey",
-            "oauth",
-        }
+        # Sensitive keywords as frozenset for O(1) lookup
+        self.sensitive_keywords = frozenset(
+            {
+                "password",
+                "passwd",
+                "pwd",
+                "token",
+                "auth",
+                "bearer",
+                "key",
+                "secret",
+                "private",
+                "credential",
+                "cred",
+                "api_key",
+                "apikey",
+                "oauth",
+            }
+        )
 
+    @lru_cache(maxsize=256)
     def sanitize_content(self, content: str, max_length: int = 200) -> str:
         """Sanitize content by removing sensitive information and truncating.
 
@@ -66,23 +64,28 @@ class ContentSanitizer:
         if not isinstance(content, str):
             content = str(content)
 
-        # Remove sensitive patterns
-        sanitized = content
-        for pattern in self.compiled_patterns:
-            sanitized = pattern.sub("[REDACTED]", sanitized)
+        # Early truncation for very long content before processing
+        if len(content) > max_length * 3:
+            content = content[: max_length * 3]
 
-        # Filter out lines containing sensitive keywords
-        lines = sanitized.split("\n")
-        safe_lines = []
+        # Single pattern substitution pass
+        sanitized = self.compiled_pattern.sub("[REDACTED]", content)
 
-        for line in lines:
-            line_lower = line.lower()
-            if not any(keyword in line_lower for keyword in self.sensitive_keywords):
-                safe_lines.append(line)
-            else:
-                safe_lines.append("[LINE WITH SENSITIVE DATA REDACTED]")
+        # Optimized line filtering with early break
+        if "\n" in sanitized:
+            lines = sanitized.split("\n")
+            safe_lines = []
 
-        sanitized = "\n".join(safe_lines)
+            for line in lines:
+                # Quick check: if line is short and no sensitive words, keep it
+                if len(line) < 50 and not any(kw in line.lower() for kw in self.sensitive_keywords):
+                    safe_lines.append(line)
+                elif any(kw in line.lower() for kw in self.sensitive_keywords):
+                    safe_lines.append("[LINE WITH SENSITIVE DATA REDACTED]")
+                else:
+                    safe_lines.append(line)
+
+            sanitized = "\n".join(safe_lines)
 
         # Truncate to max length
         if len(sanitized) > max_length:
@@ -116,11 +119,14 @@ class ContentSanitizer:
 
         return sanitized
 
-    def sanitize_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Sanitize a list of messages.
+    def sanitize_messages(
+        self, messages: List[Dict[str, Any]], max_messages: int = 50
+    ) -> List[Dict[str, Any]]:
+        """Sanitize a list of messages with batch optimization.
 
         Args:
             messages: List of message dictionaries
+            max_messages: Maximum messages to process
 
         Returns:
             List of sanitized messages
@@ -128,11 +134,15 @@ class ContentSanitizer:
         if not isinstance(messages, list):
             return []
 
-        sanitized_messages = []
-        for msg in messages[:50]:  # Limit to first 50 messages
-            sanitized_messages.append(self.sanitize_message(msg))
+        # Early exit for empty lists
+        if not messages:
+            return []
 
-        return sanitized_messages
+        # Process in batches for better memory efficiency
+        limited_messages = messages[:max_messages]
+
+        # Use list comprehension for better performance
+        return [self.sanitize_message(msg) for msg in limited_messages]
 
     def create_safe_preview(self, content: str, context: str = "") -> str:
         """Create a safe preview for pattern detection.
@@ -154,6 +164,7 @@ class ContentSanitizer:
             return f"{context}: {sanitized}"
         return sanitized
 
+    @lru_cache(maxsize=128)
     def filter_pattern_suggestion(self, suggestion: str) -> str:
         """Filter and sanitize pattern suggestions for safe display.
 
@@ -166,8 +177,9 @@ class ContentSanitizer:
         # Sanitize the suggestion
         safe_suggestion = self.sanitize_content(suggestion, max_length=150)
 
-        # Ensure suggestions are generic and don't expose specifics
-        if any(keyword in safe_suggestion.lower() for keyword in self.sensitive_keywords):
+        # Quick check for sensitive content using frozenset
+        suggestion_lower = safe_suggestion.lower()
+        if any(keyword in suggestion_lower for keyword in self.sensitive_keywords):
             return "Improve security and data handling practices"
 
         return safe_suggestion

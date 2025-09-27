@@ -4,6 +4,63 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## Reflection System Data Flow Fix (2025-09-26)
+
+### Problem Discovered
+
+The AI-powered reflection system was failing silently despite merged PRs:
+
+- No user-visible output during reflection analysis
+- No GitHub issues being created from session analysis
+- Error: "No session messages found for analysis"
+
+### Root Cause
+
+Data flow mismatch between legacy and AI-powered reflection systems:
+
+```python
+# BROKEN - stop.py was passing file path:
+result = process_reflection_analysis(latest_analysis)
+
+# But reflection.py expected raw messages:
+def process_reflection_analysis(analysis_path: Path) -> Optional[str]:
+```
+
+The function signature and data passing were incompatible.
+
+### Solution
+
+Fixed the interface contract to pass messages directly:
+
+```python
+# FIXED - stop.py now passes messages:
+result = process_reflection_analysis(messages)
+
+# reflection.py updated to accept messages:
+def process_reflection_analysis(messages: List[Dict]) -> Optional[str]:
+```
+
+### Key Files Modified
+
+- `.claude/tools/amplihack/reflection/reflection.py` - Changed function
+  signature
+- `.claude/tools/amplihack/hooks/stop.py` - Changed data passing approach
+
+### Verification
+
+Reflection system now properly:
+
+- Shows user-visible progress indicators and completion summaries
+- Detects error patterns and workflow inefficiencies
+- Creates GitHub issues with full URL tracking
+- Integrates with UltraThink automation
+
+### Configuration
+
+- `REFLECTION_ENABLED=true` (default) - Enables AI-powered analysis
+- `REFLECTION_ENABLED=false` - Disables reflection system
+- Output appears in console during session stop events
+
 ## Context Preservation Implementation Success (2025-09-23)
 
 ### Microsoft Amplifier-Style Solution

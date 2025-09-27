@@ -186,7 +186,7 @@ def delegate_to_ultrathink(issue_number: str, pattern: Dict) -> bool:
         return False
 
 
-def process_reflection_analysis(analysis_path: Path) -> Optional[str]:
+def process_reflection_analysis(messages: List[Dict]) -> Optional[str]:
     """Main reflection analysis entry point with user visibility."""
 
     if not is_reflection_enabled():
@@ -194,22 +194,9 @@ def process_reflection_analysis(analysis_path: Path) -> Optional[str]:
         return None
 
     try:
-        # Load session data
-        if not analysis_path.exists():
-            show_error(f"Analysis file not found: {analysis_path}")
-            return None
-
-        with open(analysis_path) as f:
-            data = json.load(f)
-
-        # Get messages from data
-        messages = data.get("messages", [])
-        if not messages and "learnings" in data:
-            # Use learnings as fallback
-            messages = [{"content": str(data["learnings"])}]
-
+        # Validate messages input
         if not messages:
-            show_error("No session messages found for analysis")
+            show_error("No session messages provided for analysis")
             return None
 
         # Start analysis with user visibility
@@ -251,12 +238,36 @@ def main():
         sys.exit(1)
 
     analysis_path = Path(sys.argv[1])
-    result = process_reflection_analysis(analysis_path)
 
-    if result:
-        print(f"Issue created: #{result}")
-    else:
-        print("No issues created")
+    # Load session data from file
+    try:
+        if not analysis_path.exists():
+            print(f"Error: Analysis file not found: {analysis_path}")
+            sys.exit(1)
+
+        with open(analysis_path) as f:
+            data = json.load(f)
+
+        # Get messages from data
+        messages = data.get("messages", [])
+        if not messages and "learnings" in data:
+            # Use learnings as fallback
+            messages = [{"content": str(data["learnings"])}]
+
+        if not messages:
+            print("Error: No session messages found for analysis")
+            sys.exit(1)
+
+        result = process_reflection_analysis(messages)
+
+        if result:
+            print(f"Issue created: #{result}")
+        else:
+            print("No issues created")
+
+    except Exception as e:
+        print(f"Error processing analysis file: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

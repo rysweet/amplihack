@@ -487,7 +487,7 @@ class StopHook(HookProcessor):
                         self.log(f"Warning: Could not add messages to analysis: {e}", "WARNING")
 
                     # Run AI analysis with console visibility
-                    result = process_reflection_analysis(latest_analysis)
+                    result = process_reflection_analysis(messages)
                     if result:
                         self.log(f"✅ AI automation completed: Issue #{result}")
                     else:
