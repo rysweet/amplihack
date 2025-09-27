@@ -45,6 +45,7 @@ class UVXEnvironmentInfo:
     amplihack_root: Optional[str] = None
     sys_path_entries: List[str] = field(default_factory=list)
     working_directory: Path = field(default_factory=Path.cwd)
+    python_executable: str = field(default_factory=str)
 
     @classmethod
     def from_current_environment(cls) -> "UVXEnvironmentInfo":
@@ -56,7 +57,20 @@ class UVXEnvironmentInfo:
             amplihack_root=os.environ.get("AMPLIHACK_ROOT"),
             sys_path_entries=sys.path.copy(),
             working_directory=Path.cwd(),
+            python_executable=sys.executable,
         )
+
+    @property
+    def is_uv_cache_execution(self) -> bool:
+        """Check if Python is running from UV cache.
+
+        This is a key indicator of UVX execution, as uvx runs packages
+        from the UV cache directory (e.g., ~/.cache/uv/).
+
+        Returns:
+            True if running from UV cache, False otherwise
+        """
+        return ".cache/uv/" in self.python_executable or "\\cache\\uv\\" in self.python_executable
 
 
 @dataclass(frozen=True)

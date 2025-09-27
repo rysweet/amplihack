@@ -55,7 +55,16 @@ def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetec
     env_info = _get_cached_environment_info()
     reasons = []
 
-    # Check for UV_PYTHON environment variable (strongest UVX indicator)
+    # Check if running from UV cache (strongest UVX indicator)
+    if env_info.is_uv_cache_execution:
+        reasons.append(f"Python executable in UV cache: {env_info.python_executable}")
+        return UVXDetectionState(
+            result=UVXDetectionResult.UVX_DEPLOYMENT,
+            environment=env_info,
+            detection_reasons=reasons,
+        )
+
+    # Check for UV_PYTHON environment variable (secondary UVX indicator)
     if env_info.uv_python_path:
         reasons.append(f"UV_PYTHON environment variable present: {env_info.uv_python_path}")
         return UVXDetectionState(
