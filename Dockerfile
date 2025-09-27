@@ -28,12 +28,19 @@ RUN uv pip install --system -e .
 # Install Claude CLI via npm (if available)
 RUN npm install -g @anthropic-ai/claude-cli || echo "Claude CLI not available via npm"
 
-# Create workspace directory for mounted code
-RUN mkdir -p /workspace
+# Create non-root user 'amplihack' with UID 1000
+RUN useradd -m -u 1000 -s /bin/bash amplihack
+
+# Create workspace directory for mounted code and set ownership
+RUN mkdir -p /workspace && \
+    chown -R amplihack:amplihack /app /workspace
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV AMPLIHACK_IN_DOCKER=1
+
+# Switch to non-root user
+USER amplihack
 
 # Default working directory for user code
 WORKDIR /workspace
