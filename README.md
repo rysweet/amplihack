@@ -51,14 +51,12 @@ Run amplihack in a containerized environment for consistent, isolated execution:
 export AMPLIHACK_USE_DOCKER=1
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
 
-# Or use the --docker flag
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --docker
+# Or set it inline
+AMPLIHACK_USE_DOCKER=1 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
 
-# Build Docker image manually
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack docker --build
-
-# Check Docker status
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack docker --status
+# Docker image is built automatically on first use
+# To force a rebuild, remove the existing image:
+docker rmi amplihack:latest
 ```
 
 The Docker integration provides:
