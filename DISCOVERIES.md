@@ -478,6 +478,104 @@ through automation and specialized agents.
 
 ---
 
+## Claude-Trace UVX Argument Passthrough Issue (2025-09-26)
+
+### Issue
+
+UVX argument passthrough was failing for claude-trace integration. Commands like
+`uvx --from git+... amplihack -- -p "prompt"` would launch interactively instead
+of executing the prompt directly, forcing users to manually enter prompts.
+
+### Root Cause
+
+**Misdiagnosis Initially**: Thought issue was with UVX argument parsing, but
+`parse_args_with_passthrough()` was working correctly.
+
+**Actual Root Cause**: Command building logic in
+`ClaudeLauncher.build_claude_command()` wasn't handling claude-trace syntax
+properly. Claude-trace requires different command structure:
+
+- **Standard claude**: `claude --dangerously-skip-permissions -p "prompt"`
+- **Claude-trace**:
+  `claude-trace --run-with chat --dangerously-skip-permissions -p "prompt"`
+
+The key difference is claude-trace needs `--run-with chat` before Claude
+arguments.
+
+### Solution
+
+Modified `src/amplihack/launcher/core.py` in `build_claude_command()` method:
+
+```python
+if claude_binary == "claude-trace":
+    # claude-trace requires --run-with followed by the command and arguments
+    # Format: claude-trace --run-with chat [claude-args...]
+    cmd = [claude_binary, "--run-with", "chat"]
+
+    # Add Claude arguments after the command
+    cmd.append("--dangerously-skip-permissions")
+
+    # Add system prompt, --add-dir, and forwarded arguments...
+    if self.claude_args:
+        cmd.extend(self.claude_args)
+
+    return cmd
+```
+
+### Key Learnings
+
+1. **Tool-specific syntax matters**: Different tools (claude vs claude-trace)
+   may require completely different argument structures even when functionally
+   equivalent
+2. **Debugging scope**: Initially focused on argument parsing when the issue was
+   in command building - trace through the entire pipeline
+3. **Integration complexity**: Claude-trace integration adds syntax complexity
+   that must be handled explicitly
+4. **Testing real scenarios**: Mock testing wasn't sufficient - needed actual
+   UVX deployment testing to catch this
+5. **Command structure precedence**: Some tools require specific argument
+   ordering (--run-with must come before other args)
+
+### Prevention
+
+- **Always test real deployment scenarios**: Don't rely only on local testing
+  when tools have different deployment contexts
+- **Document tool-specific syntax requirements**: Create clear examples for each
+  supported execution mode
+- **Test command building separately**: Unit test command construction logic
+  independently from argument parsing
+- **Integration testing**: Include UVX deployment testing in CI/CD pipeline
+- **Clear error messages**: Provide better feedback when argument passthrough
+  fails
+
+### Pattern Recognition
+
+**Trigger Signs of Command Structure Issues:**
+
+- Arguments parsed correctly but command fails silently
+- Tool works interactively but not with arguments
+- Different behavior between direct execution and wrapper tools
+- Integration tools requiring specific argument ordering
+
+**Debugging Approach:** When argument passthrough fails:
+
+1. Verify argument parsing is working (log parsed args)
+2. Check command building logic (log generated command)
+3. Test command manually to isolate syntax issues
+4. Compare tool documentation for syntax differences
+
+### Testing Validation
+
+All scenarios now working:
+
+- ✅ `uvx amplihack -- --help` (shows Claude help)
+- ✅ `uvx amplihack -- -p "Hello world"` (executes prompt)
+- ✅ `uvx amplihack -- --model claude-3-opus-20240229 -p "test"` (model +
+  prompt)
+
+**Issue**: #149 **PR**: #150 **Branch**:
+`feat/issue-149-uvx-argument-passthrough`
+
 <!-- New discoveries will be added here as the project progresses -->
 
 ## Remember
