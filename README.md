@@ -47,12 +47,12 @@ debugging:
 Run amplihack in a containerized environment for consistent, isolated execution:
 
 ```sh
-# Enable Docker mode with environment variable
+# Use --docker flag for containerized execution
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --docker
+
+# Or enable Docker mode with environment variable
 export AMPLIHACK_USE_DOCKER=1
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
-
-# Or set it inline
-AMPLIHACK_USE_DOCKER=1 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
 
 # Docker image is built automatically on first use
 # To force a rebuild, remove the existing image:

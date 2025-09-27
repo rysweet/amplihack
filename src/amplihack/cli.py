@@ -22,9 +22,18 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
-    # Check if Docker should be used
-    if DockerManager.should_use_docker():
-        print("Docker mode enabled via AMPLIHACK_USE_DOCKER")
+    # Check if Docker should be used (CLI flag takes precedence over env var)
+    use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
+
+    if use_docker:
+        print(
+            "Docker mode enabled"
+            + (
+                " via --docker flag"
+                if getattr(args, "docker", False)
+                else " via AMPLIHACK_USE_DOCKER"
+            )
+        )
         docker_manager = DockerManager()
 
         # Build command arguments for Docker
@@ -154,6 +163,11 @@ def create_parser() -> argparse.ArgumentParser:
         "--checkout-repo",
         metavar="GITHUB_URI",
         help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
+    )
+    launch_parser.add_argument(
+        "--docker",
+        action="store_true",
+        help="Run amplihack in Docker container for isolated execution",
     )
 
     # UVX helper command
