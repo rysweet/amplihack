@@ -1,0 +1,59 @@
+# Git files
+.git
+.gitignore
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Documentation
+docs/
+*.md
+
+# Local configuration
+.env
+.env.local
+.azure.env
+*.env
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Claude directory (will be created in container)
+.claude/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log

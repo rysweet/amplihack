@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment, stage_uvx_framework
@@ -21,6 +22,23 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
+    # Check if Docker should be used
+    if DockerManager.should_use_docker():
+        print("Docker mode enabled via AMPLIHACK_USE_DOCKER")
+        docker_manager = DockerManager()
+
+        # Build command arguments for Docker
+        docker_args = ["launch"]
+        if getattr(args, "with_proxy_config", None):
+            docker_args.extend(["--with-proxy-config", args.with_proxy_config])
+        if getattr(args, "checkout_repo", None):
+            docker_args.extend(["--checkout-repo", args.checkout_repo])
+        if claude_args:
+            docker_args.append("--")
+            docker_args.extend(claude_args)
+
+        return docker_manager.run_command(docker_args)
+
     proxy_manager = None
     system_prompt_path = None
 
@@ -170,6 +188,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
         if claude_args:
+            # Check if Docker should be used for direct launch
+            if DockerManager.should_use_docker():
+                print("Docker mode enabled via AMPLIHACK_USE_DOCKER")
+                docker_manager = DockerManager()
+                docker_args = ["launch", "--"] + claude_args
+                return docker_manager.run_command(docker_args)
+
             launcher = ClaudeLauncher(claude_args=claude_args)
             return launcher.launch_interactive()
         else:

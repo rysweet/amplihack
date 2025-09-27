@@ -42,6 +42,33 @@ debugging:
 
 ### Advanced Usage
 
+**With Docker Container Isolation:**
+
+Run amplihack in a containerized environment for consistent, isolated execution:
+
+```sh
+# Enable Docker mode with environment variable
+export AMPLIHACK_USE_DOCKER=1
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
+
+# Or use the --docker flag
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --docker
+
+# Build Docker image manually
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack docker --build
+
+# Check Docker status
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack docker --status
+```
+
+The Docker integration provides:
+
+- **Zero configuration**: Automatically builds image on first use
+- **Credential forwarding**: API keys are securely passed to container
+- **Working directory mounting**: Your code is mounted at `/workspace`
+- **Cross-platform consistency**: Same environment across all platforms
+- **Automatic fallback**: Runs locally if Docker is unavailable
+
 **With Azure OpenAI Integration:**
 
 For using claude code and the amplihack frameowrk with Azure OpenAI models:
