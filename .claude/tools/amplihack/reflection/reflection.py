@@ -110,32 +110,76 @@ def is_reflection_enabled() -> bool:
 
 
 def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
-    """Analyze session for improvement patterns with security filtering."""
+    """Analyze session for improvement patterns with specific error analysis."""
+    import time
+
+    # Initialize variables
+    CONTEXTUAL_ANALYSIS_AVAILABLE = False
+    ContextualErrorAnalyzer = None
+
+    try:
+        from .contextual_error_analyzer import ContextualErrorAnalyzer
+
+        CONTEXTUAL_ANALYSIS_AVAILABLE = True
+    except ImportError as e:
+        # Try alternative import paths
+        try:
+            from contextual_error_analyzer import ContextualErrorAnalyzer
+
+            CONTEXTUAL_ANALYSIS_AVAILABLE = True
+        except ImportError:
+            # Contextual analysis not available, fall back to basic detection
+            CONTEXTUAL_ANALYSIS_AVAILABLE = False
+            ContextualErrorAnalyzer = None
+            print(f"Debug: Contextual error analysis not available: {e}")
+
+    start_time = time.time()
     patterns = []
 
     # SECURITY: Sanitize messages before processing
     safe_messages = sanitize_messages(messages)
 
-    # Build sanitized content for pattern analysis
-    safe_content_parts = []
-    for msg in safe_messages:
-        if isinstance(msg, dict) and "content" in msg:
-            safe_content_parts.append(str(msg["content"]))
+    # Build sanitized content for pattern analysis (memory-efficient)
+    # Use generator to avoid creating intermediate list
+    content_parts = (
+        str(msg["content"])
+        for msg in safe_messages
+        if isinstance(msg, dict) and "content" in msg and msg["content"]
+    )
 
-    content = " ".join(safe_content_parts).lower()
+    # Join efficiently with size limit for performance
+    content = " ".join(content_parts)[:10000]  # Limit content size for performance
 
-    # Look for error patterns (using sanitized content)
-    if "error" in content or "failed" in content:
-        patterns.append(
-            {
-                "type": "error_handling",
-                "priority": "high",
-                "suggestion": "Improve error handling based on session failures",
-            }
-        )
+    # Contextual Error Pattern Detection
+    if CONTEXTUAL_ANALYSIS_AVAILABLE and ContextualErrorAnalyzer is not None:
+        try:
+            # Create analyzer instance (no caching to avoid function attribute issues)
+            analyzer = ContextualErrorAnalyzer()
+            top_suggestion = analyzer.get_top_suggestion(content)
+
+            if top_suggestion:
+                patterns.append(top_suggestion)
+
+        except Exception as e:
+            # Fallback to basic error detection if contextual analysis fails
+            print(f"Contextual error analysis failed: {e}, falling back to basic detection")
+            CONTEXTUAL_ANALYSIS_AVAILABLE = False
+
+    # Fallback for basic error detection
+    if not CONTEXTUAL_ANALYSIS_AVAILABLE:
+        content_lower = content.lower()
+        if "error" in content_lower or "failed" in content_lower:
+            patterns.append(
+                {
+                    "type": "error_handling",
+                    "priority": "high",
+                    "suggestion": "Improve error handling based on session failures",
+                }
+            )
 
     # Look for workflow issues (using sanitized content)
-    if "try again" in content or "repeat" in content:
+    content_lower = content.lower()
+    if "try again" in content_lower or "repeat" in content_lower:
         patterns.append(
             {
                 "type": "workflow",
@@ -158,6 +202,11 @@ def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
     # SECURITY: Filter all suggestions before returning
     for pattern in patterns:
         pattern["suggestion"] = filter_pattern_suggestion(pattern["suggestion"])
+
+    # Performance check - ensure under 5 seconds
+    elapsed_time = time.time() - start_time
+    if elapsed_time > 5.0:
+        print(f"Warning: Enhanced error analysis took {elapsed_time:.2f}s (target: <5s)")
 
     return patterns
 
