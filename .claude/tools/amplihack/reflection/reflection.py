@@ -20,6 +20,55 @@ from display import (
     show_pattern_found,
 )
 
+
+# Define fallback types and functions
+class FakeResult:
+    def __init__(self):
+        self.is_duplicate = False
+        self.similar_issues = []
+        self.confidence = 0.0
+        self.reason = "Duplicate detection not available"
+
+
+def fallback_check_duplicate_issue(title, body, pattern_type=None, repository="current"):
+    """Fallback - no duplicate detection."""
+    return FakeResult()
+
+
+def fallback_store_new_issue(
+    issue_id, title, body, pattern_type=None, priority="medium", repository="current"
+):
+    """Fallback - no storage."""
+    pass
+
+
+# Import semantic duplicate detection system
+try:
+    # Try relative import first
+    from .semantic_duplicate_detector import (
+        DuplicateDetectionResult,
+        check_duplicate_issue,
+        store_new_issue,
+    )
+
+    DUPLICATE_DETECTION_AVAILABLE = True
+except ImportError:
+    try:
+        # Try absolute import as fallback
+        import semantic_duplicate_detector
+
+        DuplicateDetectionResult = semantic_duplicate_detector.DuplicateDetectionResult
+        check_duplicate_issue = semantic_duplicate_detector.check_duplicate_issue
+        store_new_issue = semantic_duplicate_detector.store_new_issue
+        DUPLICATE_DETECTION_AVAILABLE = True
+    except ImportError:
+        # Fallback if semantic duplicate detection is not available
+        DUPLICATE_DETECTION_AVAILABLE = False
+        check_duplicate_issue = fallback_check_duplicate_issue
+        store_new_issue = fallback_store_new_issue
+        DuplicateDetectionResult = FakeResult
+
+
 # Import security utilities
 try:
     from .security import (
@@ -114,7 +163,7 @@ def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
 
 
 def create_github_issue(pattern: Dict) -> Optional[str]:
-    """Create GitHub issue for improvement pattern."""
+    """Create GitHub issue for improvement pattern with duplicate detection."""
     try:
         # SECURITY: Sanitize all content before creating GitHub issue
         safe_type = sanitize_content(pattern.get("type", "unknown"), max_length=50)
@@ -138,6 +187,36 @@ This improvement was identified by AI analysis. Please review and implement as a
 **Labels**: ai-improvement, {safe_type}, {safe_priority}-priority
 """
 
+        # DUPLICATE DETECTION: Check for similar issues before creating
+        if DUPLICATE_DETECTION_AVAILABLE:
+            duplicate_result = check_duplicate_issue(title, body, safe_type)
+
+            if duplicate_result.is_duplicate:
+                # Handle duplicate case
+                similar_count = len(duplicate_result.similar_issues)
+                print(f"🔍 Duplicate detected: {duplicate_result.confidence:.1%} similarity")
+                print(f"   Found {similar_count} similar issue(s). Skipping creation.")
+                print(f"   Reason: {duplicate_result.reason}")
+
+                # Return the most similar existing issue ID if available
+                if duplicate_result.similar_issues:
+                    existing_issue = duplicate_result.similar_issues[0]
+                    existing_id = existing_issue.get("issue_id")
+                    if existing_id:
+                        print(f"   📋 Existing issue: #{existing_id}")
+                        return existing_id
+
+                return None
+
+            elif duplicate_result.similar_issues:
+                # Found similar but not duplicate - inform user
+                similar_count = len(duplicate_result.similar_issues)
+                print(
+                    f"ℹ️  Found {similar_count} similar issue(s) ({duplicate_result.confidence:.1%} similarity)"
+                )
+                print("   Creating new issue as similarity is below threshold")
+
+        # Create the GitHub issue
         result = subprocess.run(
             [
                 "gh",
@@ -157,8 +236,15 @@ This improvement was identified by AI analysis. Please review and implement as a
 
         if result.returncode == 0:
             issue_url = result.stdout.strip()
+            issue_id = issue_url.split("/")[-1] if issue_url else None
+
+            # Store the new issue in duplicate detection cache
+            if DUPLICATE_DETECTION_AVAILABLE and issue_id:
+                store_new_issue(issue_id, title, body, safe_type, safe_priority)
+                print(f"💾 Cached issue #{issue_id} for future duplicate detection")
+
             show_issue_created(issue_url, pattern["type"])
-            return issue_url.split("/")[-1] if issue_url else None
+            return issue_id
         else:
             show_error(f"Failed to create GitHub issue: {result.stderr}")
             return None
