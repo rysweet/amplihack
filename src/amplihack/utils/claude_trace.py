@@ -133,6 +133,19 @@ def _test_claude_trace_execution(path: str) -> bool:
         True if binary executes without syntax errors and appears to be claude-trace
     """
     try:
+        # Special handling for known good homebrew installation
+        # The homebrew claude-trace is a symlink to a valid Node.js script
+        if path in ["/opt/homebrew/bin/claude-trace", "/usr/local/bin/claude-trace"]:
+            # Check if it's a symlink to a .js file (valid Node.js script)
+            path_obj = Path(path)
+            if path_obj.is_symlink():
+                target = path_obj.resolve()
+                if target.suffix == ".js" and target.exists():
+                    # This is a valid homebrew installation
+                    # Even if claude-trace fails to find a working claude binary,
+                    # the claude-trace binary itself is valid
+                    return True
+
         # Run with --version flag to test basic functionality
         # Use a short timeout to avoid hanging
         result = subprocess.run(
@@ -158,6 +171,15 @@ def _test_claude_trace_execution(path: str) -> bool:
                 "unexpected token",
                 "cannot find module",
             ]
+
+            # Special case: If claude-trace itself runs but the underlying claude has issues,
+            # we should still accept claude-trace as valid if it shows claude-trace output
+            if (
+                "claude trace" in combined_output
+                or "starting claude with traffic logging" in combined_output
+            ):
+                # Even if there are errors downstream, claude-trace itself is valid
+                return True
 
             # If there are syntax errors, definitely not valid
             if any(error in stderr_lower for error in syntax_errors):
