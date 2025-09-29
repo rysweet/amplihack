@@ -1,0 +1,121 @@
+{
+  "session_id": "20250927_111400",
+  "mode": "execute",
+  "timestamp": "2025-09-27T11:14:00.140243",
+  "total_issues": 96,
+  "clusters_found": 6,
+  "actions_planned": 12,
+  "sdk_available": true,
+  "clusters": [
+    {
+      "canonical": 169,
+      "duplicates": [166],
+      "type": "perfect",
+      "confidence": 1.0,
+      "phase": 1,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "canonical": 165,
+      "duplicates": [164],
+      "type": "perfect",
+      "confidence": 1.0,
+      "phase": 1,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "canonical": 163,
+      "duplicates": [162],
+      "type": "perfect",
+      "confidence": 1.0,
+      "phase": 1,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "canonical": 161,
+      "duplicates": [160],
+      "type": "perfect",
+      "confidence": 1.0,
+      "phase": 1,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "canonical": 159,
+      "duplicates": [158],
+      "type": "perfect",
+      "confidence": 1.0,
+      "phase": 1,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "canonical": 157,
+      "duplicates": [155],
+      "type": "perfect",
+      "confidence": 1.0,
+      "phase": 1,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    }
+  ],
+  "actions_summary": [
+    {
+      "type": "close_issue",
+      "issue": 166,
+      "reason": "Duplicate of #169 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "type": "add_comment",
+      "issue": 169,
+      "reason": "Cross-reference to closed duplicate #166"
+    },
+    {
+      "type": "close_issue",
+      "issue": 164,
+      "reason": "Duplicate of #165 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "type": "add_comment",
+      "issue": 165,
+      "reason": "Cross-reference to closed duplicate #164"
+    },
+    {
+      "type": "close_issue",
+      "issue": 162,
+      "reason": "Duplicate of #163 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "type": "add_comment",
+      "issue": 163,
+      "reason": "Cross-reference to closed duplicate #162"
+    },
+    {
+      "type": "close_issue",
+      "issue": 160,
+      "reason": "Duplicate of #161 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "type": "add_comment",
+      "issue": 161,
+      "reason": "Cross-reference to closed duplicate #160"
+    },
+    {
+      "type": "close_issue",
+      "issue": 158,
+      "reason": "Duplicate of #159 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "type": "add_comment",
+      "issue": 159,
+      "reason": "Cross-reference to closed duplicate #158"
+    },
+    {
+      "type": "close_issue",
+      "issue": 155,
+      "reason": "Duplicate of #157 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: ai, error, improve, handling, implement"
+    },
+    {
+      "type": "add_comment",
+      "issue": 157,
+      "reason": "Cross-reference to closed duplicate #155"
+    }
+  ]
+}

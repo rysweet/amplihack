@@ -41,6 +41,10 @@ exclude = [
     "Specs/xpia_defense_interface.py",  # Example/demo code with intentional type issues
     "Specs/xpia_usage_examples.py",     # Example/demo code with intentional type issues
     "src/amplihack/security/cli.py",    # CLI dependencies not available in CI
+    "cleanup_duplicate_issues.py",      # Uses dynamic imports from external worktree
+    "duplicate_cleanup_test.py",        # Uses dynamic imports from external worktree
+    "test_duplicate_detection_real_issues.py",  # Uses dynamic imports from external worktree
+    "test_sdk_integration.py",          # Uses dynamic imports from external worktree
 ]
 
 [tool.pytest.ini_options]

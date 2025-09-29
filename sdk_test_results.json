@@ -1,0 +1,196 @@
+{
+  "test_metadata": {
+    "timestamp": "2025-09-27T11:03:40.110670",
+    "sdk_available": true,
+    "total_tests": 11,
+    "issues_analyzed": 77
+  },
+  "overall_metrics": {
+    "accuracy": 1.0,
+    "passed_tests": 11,
+    "failed_tests": 0,
+    "average_execution_time": 0.00023113597523082387
+  },
+  "category_performance": {
+    "perfect": {
+      "accuracy": 1.0,
+      "passed": 3,
+      "total": 3,
+      "average_confidence": 1.0
+    },
+    "related-issues": {
+      "accuracy": 1.0,
+      "passed": 2,
+      "total": 2,
+      "average_confidence": 0.35157976081889125
+    },
+    "functional": {
+      "accuracy": 1.0,
+      "passed": 1,
+      "total": 1,
+      "average_confidence": 0.4973856209150327
+    },
+    "non-duplicate": {
+      "accuracy": 1.0,
+      "passed": 3,
+      "total": 3,
+      "average_confidence": 0.15180487804878048
+    },
+    "edge_case": {
+      "accuracy": 1.0,
+      "passed": 2,
+      "total": 2,
+      "average_confidence": 0.665120200524097
+    }
+  },
+  "detailed_results": [
+    {
+      "test_name": "AI-detected duplicate: #155 vs #157",
+      "category": "perfect",
+      "issue1_id": 155,
+      "issue2_id": 157,
+      "expected_duplicate": true,
+      "expected_confidence_min": 0.95,
+      "actual_duplicate": true,
+      "actual_confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: handling, improve, ai, error",
+      "correct_prediction": true,
+      "execution_time": 0.0005118846893310547
+    },
+    {
+      "test_name": "AI-detected duplicate: #160 vs #165",
+      "category": "perfect",
+      "issue1_id": 160,
+      "issue2_id": 165,
+      "expected_duplicate": true,
+      "expected_confidence_min": 0.95,
+      "actual_duplicate": true,
+      "actual_confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: handling, improve, ai, error",
+      "correct_prediction": true,
+      "execution_time": 0.0001499652862548828
+    },
+    {
+      "test_name": "AI-detected duplicate: #158 vs #169",
+      "category": "perfect",
+      "issue1_id": 158,
+      "issue2_id": 169,
+      "expected_duplicate": true,
+      "expected_confidence_min": 0.95,
+      "actual_duplicate": true,
+      "actual_confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: handling, improve, ai, error",
+      "correct_prediction": true,
+      "execution_time": 0.00013685226440429688
+    },
+    {
+      "test_name": "UVX related issue: #137 vs #138 (different components)",
+      "category": "related-issues",
+      "issue1_id": 137,
+      "issue2_id": 138,
+      "expected_duplicate": false,
+      "expected_confidence_min": 0.0,
+      "actual_duplicate": false,
+      "actual_confidence": 0.4694638694638695,
+      "reason": "Combined similarity: 46.9% (text: 50.3%, title: 50.3%, keywords: 33.3%) Shared concepts: settings, critical",
+      "correct_prediction": true,
+      "execution_time": 0.0003139972686767578
+    },
+    {
+      "test_name": "UVX related issue: #138 vs #149 (different problems)",
+      "category": "related-issues",
+      "issue1_id": 138,
+      "issue2_id": 149,
+      "expected_duplicate": false,
+      "expected_confidence_min": 0.0,
+      "actual_duplicate": false,
+      "actual_confidence": 0.23369565217391303,
+      "reason": "Combined similarity: 23.4% (text: 26.1%, title: 26.1%, keywords: 12.5%) Shared concepts: uvx",
+      "correct_prediction": true,
+      "execution_time": 0.0002868175506591797
+    },
+    {
+      "test_name": "Reviewer agent functional duplicate: #69 vs #71",
+      "category": "functional",
+      "issue1_id": 69,
+      "issue2_id": 71,
+      "expected_duplicate": true,
+      "expected_confidence_min": 0.45,
+      "actual_duplicate": true,
+      "actual_confidence": 0.4973856209150327,
+      "reason": "Combined similarity: 49.7% (text: 49.7%, title: 49.7%, keywords: 50.0%) Shared concepts: agent, pr",
+      "correct_prediction": true,
+      "execution_time": 0.0003020763397216797
+    },
+    {
+      "test_name": "Non-duplicate: #153 (Docker) vs #155 (Error handling)",
+      "category": "non-duplicate",
+      "issue1_id": 153,
+      "issue2_id": 155,
+      "expected_duplicate": false,
+      "expected_confidence_min": 0.0,
+      "actual_duplicate": false,
+      "actual_confidence": 0.192,
+      "reason": "Combined similarity: 19.2% (text: 24.0%, title: 24.0%, keywords: 0.0%)",
+      "correct_prediction": true,
+      "execution_time": 0.00018310546875
+    },
+    {
+      "test_name": "Non-duplicate: #127 (Checkout) vs #131 (Claude-trace)",
+      "category": "non-duplicate",
+      "issue1_id": 127,
+      "issue2_id": 131,
+      "expected_duplicate": false,
+      "expected_confidence_min": 0.0,
+      "actual_duplicate": false,
+      "actual_confidence": 0.13008130081300812,
+      "reason": "Combined similarity: 13.0% (text: 16.3%, title: 16.3%, keywords: 0.0%)",
+      "correct_prediction": true,
+      "execution_time": 0.0001919269561767578
+    },
+    {
+      "test_name": "Non-duplicate: #35 (Pyright) vs #42 (Session startup)",
+      "category": "non-duplicate",
+      "issue1_id": 35,
+      "issue2_id": 42,
+      "expected_duplicate": false,
+      "expected_confidence_min": 0.0,
+      "actual_duplicate": false,
+      "actual_confidence": 0.13333333333333333,
+      "reason": "Combined similarity: 13.3% (text: 16.7%, title: 16.7%, keywords: 0.0%)",
+      "correct_prediction": true,
+      "execution_time": 0.00012183189392089844
+    },
+    {
+      "test_name": "Edge case: #107 vs #108 (Context preservation)",
+      "category": "edge_case",
+      "issue1_id": 107,
+      "issue2_id": 108,
+      "expected_duplicate": true,
+      "expected_confidence_min": 0.6,
+      "actual_duplicate": true,
+      "actual_confidence": 0.6328358208955224,
+      "reason": "Combined similarity: 63.3% (text: 79.1%, title: 79.1%, keywords: 0.0%)",
+      "correct_prediction": true,
+      "execution_time": 0.00018095970153808594
+    },
+    {
+      "test_name": "Edge case: #113 vs #118 (XPIA related)",
+      "category": "edge_case",
+      "issue1_id": 113,
+      "issue2_id": 118,
+      "expected_duplicate": true,
+      "expected_confidence_min": 0.6,
+      "actual_duplicate": true,
+      "actual_confidence": 0.6974045801526718,
+      "reason": "Combined similarity: 69.7% (text: 67.2%, title: 67.2%, keywords: 80.0%) Shared concepts: port, xpia, agent, ai",
+      "correct_prediction": true,
+      "execution_time": 0.00016307830810546875
+    }
+  ],
+  "performance_stats": {
+    "sdk_available": false,
+    "cache_size": 0,
+    "method": "fallback"
+  }
+}

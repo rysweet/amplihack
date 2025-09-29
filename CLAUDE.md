@@ -94,6 +94,8 @@ dependencies require sequential order.
 - **Pattern Recognition**: Use `patterns.md` to identify reusable solutions
 - **Analysis**: Use `analyzer.md` for deep code understanding
 - **Ambiguity**: Use `ambiguity.md` when requirements are unclear
+- **Fix Workflows**: Use `fix-agent.md` for rapid resolution of common error
+  patterns (imports, CI, tests, config, quality, logic)
 
 #### Parallel Execution Decision Engine
 
@@ -211,6 +213,15 @@ test-driven development (write test → implement → validate)
   PR is mergeable (but never auto-merges).
 - **Trigger**: "CI failing", "Fix CI", "Make PR mergeable"
 
+#### Stage 3: General Fix Workflow (Optimized for Common Patterns)
+
+- **Fix Workflow**: Use `fix-agent.md` for rapid resolution of the most common
+  fix patterns identified in usage analysis. Provides QUICK (template-based),
+  DIAGNOSTIC (root cause), and COMPREHENSIVE (full workflow) modes.
+- **Trigger**: "Fix this", "Something's broken", "Error in", specific error
+  patterns
+- **Command**: `/fix [pattern] [scope]` for intelligent fix dispatch
+
 ```
 Example - Pre-commit failure:
 "My pre-commit hooks are failing"
@@ -223,6 +234,18 @@ Example - CI failure after push:
 → Use ci-diagnostic-workflow agent
 → Iterates until PR is mergeable
 → Never auto-merges without permission
+
+Example - General fix request:
+"This import error is blocking me"
+→ Use /fix import or fix-agent
+→ Auto-detects and applies import-fix-template
+→ Resolves dependency and path issues quickly
+
+Example - Complex issue:
+"Tests are failing and I'm not sure why"
+→ Use /fix test diagnostic
+→ fix-agent uses DIAGNOSTIC mode
+→ Systematic debugging and root cause analysis
 ```
 
 #### Creating Custom Agents
@@ -404,6 +427,29 @@ Comprehensive code review for philosophy compliance
 ### /improve [target]
 
 Self-improvement and learning capture
+
+### /fix [pattern] [scope]
+
+Intelligent fix workflow optimization for common error patterns. Key features:
+
+- **Auto-detection**: Automatically identifies fix pattern from error context
+- **Template-based**: Uses pre-built templates for 80% of common fixes
+- **Mode selection**: QUICK (< 5 min), DIAGNOSTIC (root cause), COMPREHENSIVE
+  (full workflow)
+- **Integration**: Seamlessly works with UltraThink and existing agents
+
+**Usage Examples:**
+
+```bash
+/fix                    # Auto-detect pattern and scope
+/fix import             # Target import/dependency issues
+/fix ci                 # Focus on CI/CD problems
+/fix test diagnostic    # Deep analysis of test failures
+/fix logic comprehensive # Full workflow for complex logic issues
+```
+
+**Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
+(25%), logic (10%)
 
 ## Available Tools
 

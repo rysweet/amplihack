@@ -1,0 +1,18 @@
+{
+  "session_id": "20250927_111032",
+  "start_time": "2025-09-27T11:10:32.221438",
+  "end_time": "2025-09-27T11:10:33.180365",
+  "mode": "dry_run",
+  "phase": null,
+  "total_issues_analyzed": 96,
+  "clusters_found": [],
+  "actions_planned": [],
+  "actions_executed": [],
+  "sdk_stats": {
+    "sdk_available": false,
+    "cache_size": 0,
+    "method": "fallback"
+  },
+  "issues_before": 0,
+  "issues_after": null
+}

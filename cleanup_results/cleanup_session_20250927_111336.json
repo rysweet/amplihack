@@ -1,0 +1,369 @@
+{
+  "session_id": "20250927_111336",
+  "start_time": "2025-09-27T11:13:36.476179",
+  "end_time": "2025-09-27T11:13:51.194960",
+  "mode": "dry_run",
+  "phase": null,
+  "total_issues_analyzed": 96,
+  "clusters_found": [
+    {
+      "canonical_issue": 169,
+      "duplicate_issues": [166],
+      "cluster_type": "perfect",
+      "confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "phase": 1
+    },
+    {
+      "canonical_issue": 165,
+      "duplicate_issues": [164],
+      "cluster_type": "perfect",
+      "confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "phase": 1
+    },
+    {
+      "canonical_issue": 163,
+      "duplicate_issues": [162],
+      "cluster_type": "perfect",
+      "confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "phase": 1
+    },
+    {
+      "canonical_issue": 161,
+      "duplicate_issues": [160],
+      "cluster_type": "perfect",
+      "confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "phase": 1
+    },
+    {
+      "canonical_issue": 159,
+      "duplicate_issues": [158],
+      "cluster_type": "perfect",
+      "confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "phase": 1
+    },
+    {
+      "canonical_issue": 157,
+      "duplicate_issues": [155],
+      "cluster_type": "perfect",
+      "confidence": 1.0,
+      "reason": "Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "phase": 1
+    }
+  ],
+  "actions_planned": [
+    {
+      "action_type": "close_issue",
+      "issue_number": 166,
+      "details": {
+        "canonical_issue": 169,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #169**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #169 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #169\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #169 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194894",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 169,
+      "details": {
+        "comment": "Related: Closed duplicate #166 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #166",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194931",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 164,
+      "details": {
+        "canonical_issue": 165,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #165**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #165 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #165\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #165 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194935",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 165,
+      "details": {
+        "comment": "Related: Closed duplicate #164 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #164",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194937",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 162,
+      "details": {
+        "canonical_issue": 163,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #163**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #163 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #163\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #163 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194939",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 163,
+      "details": {
+        "comment": "Related: Closed duplicate #162 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #162",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194940",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 160,
+      "details": {
+        "canonical_issue": 161,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #161**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #161 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #161\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #161 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194944",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 161,
+      "details": {
+        "comment": "Related: Closed duplicate #160 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #160",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194945",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 158,
+      "details": {
+        "canonical_issue": 159,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #159**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #159 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #159\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #159 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194947",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 159,
+      "details": {
+        "comment": "Related: Closed duplicate #158 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #158",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194949",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 155,
+      "details": {
+        "canonical_issue": 157,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #157**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #157 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #157\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #157 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194950",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 157,
+      "details": {
+        "comment": "Related: Closed duplicate #155 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #155",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194952",
+      "error": null
+    }
+  ],
+  "actions_executed": [
+    {
+      "action_type": "close_issue",
+      "issue_number": 166,
+      "details": {
+        "canonical_issue": 169,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #169**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #169 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #169\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #169 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194894",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 169,
+      "details": {
+        "comment": "Related: Closed duplicate #166 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #166",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194931",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 164,
+      "details": {
+        "canonical_issue": 165,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #165**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #165 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #165\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #165 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194935",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 165,
+      "details": {
+        "comment": "Related: Closed duplicate #164 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #164",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194937",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 162,
+      "details": {
+        "canonical_issue": 163,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #163**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #163 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #163\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #163 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194939",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 163,
+      "details": {
+        "comment": "Related: Closed duplicate #162 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #162",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194940",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 160,
+      "details": {
+        "canonical_issue": 161,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #161**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #161 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #161\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #161 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194944",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 161,
+      "details": {
+        "comment": "Related: Closed duplicate #160 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #160",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194945",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 158,
+      "details": {
+        "canonical_issue": 159,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #159**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #159 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #159\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #159 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194947",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 159,
+      "details": {
+        "comment": "Related: Closed duplicate #158 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #158",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194949",
+      "error": null
+    },
+    {
+      "action_type": "close_issue",
+      "issue_number": 155,
+      "details": {
+        "canonical_issue": 157,
+        "comment": "\ud83d\udd04 **Closing as duplicate of #157**\n\n**Reason**: Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error\n**Confidence**: 100.0%\n**Cluster Type**: perfect\n\n**Canonical Issue**: #157 - AI-detected error_handling: Improve error handling based on session failures\n\n**Duplicate Resolution Process**:\n- All unique information has been preserved in the canonical issue\n- Cross-references have been added for traceability\n- This closure was performed by automated safe cleanup script\n\n**Preserved Information**: No unique content identified\n\n**Reversal Process**: If this closure was incorrect, please:\n1. Reopen this issue with comment explaining why it's not a duplicate\n2. Reference specific differences from #157\n3. Tag @rysweet for manual review\n\n---\n*This cleanup was performed using SDK-based semantic duplicate detection*\n*Session ID: 20250927_111336*",
+        "cluster_type": "perfect",
+        "confidence": 1.0
+      },
+      "reason": "Duplicate of #157 - Combined similarity: 100.0% (text: 100.0%, title: 100.0%, keywords: 100.0%) Shared concepts: implement, improve, handling, ai, error",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194950",
+      "error": null
+    },
+    {
+      "action_type": "add_comment",
+      "issue_number": 157,
+      "details": {
+        "comment": "Related: Closed duplicate #155 (confidence: 100.0%)"
+      },
+      "reason": "Cross-reference to closed duplicate #155",
+      "executed": true,
+      "execution_time": "2025-09-27T11:13:51.194952",
+      "error": null
+    }
+  ],
+  "sdk_stats": {
+    "sdk_available": false,
+    "cache_size": 0,
+    "method": "fallback"
+  },
+  "issues_before": 40,
+  "issues_after": null
+}
