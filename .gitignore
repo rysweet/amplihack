@@ -71,6 +71,8 @@ next-steps.md
 # Generated files
 output
 logs
+bundles/
+packages/
 
 # Working folders
 ai_working/tmp
