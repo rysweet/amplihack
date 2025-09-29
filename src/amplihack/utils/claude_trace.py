@@ -3,6 +3,8 @@
 import os
 import shutil
 import subprocess
+from pathlib import Path
+from typing import Optional
 
 
 def should_use_trace() -> bool:
@@ -22,6 +24,9 @@ def should_use_trace() -> bool:
 def get_claude_command() -> str:
     """Get the appropriate claude command (claude or claude-trace).
 
+    Uses smart binary detection to avoid shell script wrappers and
+    prefer reliable Node.js binaries.
+
     Returns:
         Command name to use ('claude' or 'claude-trace')
 
@@ -32,20 +37,157 @@ def get_claude_command() -> str:
         print("Claude-trace explicitly disabled via AMPLIHACK_USE_TRACE=0")
         return "claude"
 
-    # Check if claude-trace is available
-    if shutil.which("claude-trace"):
-        print("Using claude-trace for enhanced debugging")
+    # Smart detection of valid claude-trace binary
+    claude_trace_path = _find_valid_claude_trace()
+    if claude_trace_path:
+        print(f"Using claude-trace for enhanced debugging: {claude_trace_path}")
         return "claude-trace"
 
     # Try to install claude-trace
     print("Claude-trace not found, attempting to install...")
     if _install_claude_trace():
-        print("Claude-trace installed successfully")
-        return "claude-trace"
+        # Verify installation worked
+        claude_trace_path = _find_valid_claude_trace()
+        if claude_trace_path:
+            print(f"Claude-trace installed successfully: {claude_trace_path}")
+            return "claude-trace"
+        else:
+            print("Claude-trace installation completed but binary validation failed")
 
     # Fall back to claude
     print("Could not install claude-trace, falling back to standard claude")
     return "claude"
+
+
+def _find_valid_claude_trace() -> Optional[str]:
+    """Find a valid claude-trace binary using smart detection.
+
+    Searches for claude-trace binaries in order of preference:
+    1. Homebrew installations (most reliable)
+    2. Global npm installations
+    3. Other PATH locations
+
+    Validates each candidate to ensure it's Node.js compatible.
+
+    Returns:
+        Path to valid claude-trace binary, or None if not found
+    """
+    # Define search paths in preference order
+    search_paths = [
+        # Homebrew locations (most reliable)
+        "/opt/homebrew/bin/claude-trace",
+        "/usr/local/bin/claude-trace",
+        # Then use shutil.which for PATH search
+        None,  # Placeholder for shutil.which result
+    ]
+
+    # Add shutil.which result to search list
+    which_result = shutil.which("claude-trace")
+    if which_result:
+        # Insert after homebrew paths but before fallbacks
+        search_paths[2] = which_result
+    else:
+        search_paths.pop()  # Remove placeholder
+
+    # Test each candidate
+    for path in search_paths:
+        if path and _is_valid_claude_trace_binary(path):
+            return path
+
+    return None
+
+
+def _is_valid_claude_trace_binary(path: str) -> bool:
+    """Check if a path points to a valid claude-trace binary.
+
+    Args:
+        path: File path to check
+
+    Returns:
+        True if the binary is valid and Node.js compatible
+    """
+    try:
+        # Check if file exists and is executable
+        path_obj = Path(path)
+        if not path_obj.exists() or not path_obj.is_file():
+            return False
+
+        # Check basic executability
+        if not os.access(path, os.X_OK):
+            return False
+
+        # Test execution to ensure it's not a broken wrapper
+        return _test_claude_trace_execution(path)
+
+    except (OSError, PermissionError):
+        return False
+
+
+def _test_claude_trace_execution(path: str) -> bool:
+    """Test if a claude-trace binary actually executes correctly.
+
+    Args:
+        path: Path to claude-trace binary to test
+
+    Returns:
+        True if binary executes without syntax errors and appears to be claude-trace
+    """
+    try:
+        # Run with --version flag to test basic functionality
+        # Use a short timeout to avoid hanging
+        result = subprocess.run(
+            [path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        # Consider success if:
+        # 1. Process exits cleanly (returncode 0 or 1 for --version)
+        # 2. No JavaScript syntax errors in stderr
+        # 3. Output suggests it's actually claude-trace (not just any binary)
+        if result.returncode in (0, 1):
+            stderr_lower = result.stderr.lower()
+            stdout_lower = result.stdout.lower()
+            combined_output = (stderr_lower + " " + stdout_lower).strip()
+
+            # Check for common Node.js syntax error indicators
+            syntax_errors = [
+                "syntaxerror",
+                "missing ) after argument list",
+                "unexpected token",
+                "cannot find module",
+            ]
+
+            # If there are syntax errors, definitely not valid
+            if any(error in stderr_lower for error in syntax_errors):
+                return False
+
+            # For claude-trace, we expect either:
+            # 1. Version output mentioning "claude" or "trace"
+            # 2. Or help text when --version fails but stderr is clean
+            # 3. Exclude obvious non-claude binaries (python, node, etc.)
+
+            # Exclude common binaries that aren't claude-trace
+            excluded_patterns = ["python", "node.js", "npm version", "usage: python"]
+
+            if any(pattern in combined_output for pattern in excluded_patterns):
+                return False
+
+            # If output mentions claude or trace, likely good
+            if "claude" in combined_output or "trace" in combined_output:
+                return True
+
+            # If no specific claude/trace mention but clean execution, accept
+            # (handles cases where claude-trace --version might not output anything useful)
+            return len(combined_output) < 1000  # Avoid huge help texts from wrong binaries
+
+        return False
+
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
+        # Any execution failure means invalid binary
+        # This includes exec format errors from shell scripts, etc.
+        return False
 
 
 def _install_claude_trace() -> bool:
