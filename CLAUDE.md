@@ -533,44 +533,90 @@ We measure success by:
 
 ## User Preferences
 
+### MANDATORY Preference Enforcement
+
+User preferences in `.claude/context/USER_PREFERENCES.md` are MANDATORY and MUST
+be strictly followed by all agents and Claude Code operations. These are NOT
+advisory suggestions - they are REQUIRED behaviors that CANNOT be optimized away
+or ignored.
+
+**Priority Hierarchy (Highest to Lowest):**
+
+1. **EXPLICIT USER REQUIREMENTS** (HIGHEST PRIORITY - NEVER OVERRIDE)
+   - Direct user instructions in quotes ("do X")
+   - Explicit requirements like "ALL files" or "include everything"
+   - These take precedence over all other guidance
+
+2. **USER_PREFERENCES.md** (MANDATORY - MUST FOLLOW)
+   - Communication style (formal, casual, technical, or custom like pirate)
+   - Verbosity level (concise, balanced, detailed)
+   - Collaboration style (independent, interactive, guided)
+   - Update frequency (minimal, regular, frequent)
+   - Priority type (features, bugs, performance, security)
+   - Preferred languages, coding standards, workflow preferences
+   - Learned patterns from user feedback
+
+3. **PROJECT PHILOSOPHY** (Strong guidance)
+   - PHILOSOPHY.md principles
+   - PATTERNS.md approaches
+   - TRUST.md guidelines
+
+4. **DEFAULT BEHAVIORS** (LOWEST PRIORITY - Override when needed)
+   - Standard Claude Code behavior
+   - Default communication patterns
+
 ### User Preference Application
-
-Apply user preferences from USER_PREFERENCES.md consistently. These preferences
-override default behavior for communication style, verbosity, and collaboration
-approach.
-
-#### Simple Preference Integration
 
 **Ruthlessly Simple Approach:**
 
 1. **Session Start**: USER_PREFERENCES.md is automatically imported at session
-   start with MANDATORY enforcement instructions
-2. **Agent Usage**: When invoking agents, include preference context in prompts
-   manually as needed
-3. **No Complex Systems**: No hooks, validators, or injection frameworks needed
+   start with MANDATORY enforcement
+2. **Every Response**: Check and apply preferences BEFORE responding
+3. **Agent Invocation**: Pass preference context to all agents
+4. **No Complex Systems**: No hooks, validators, or injection frameworks - just
+   direct application
 
 **Example Usage:**
 
 ```
-"Design an API using pirate communication style"
-→ Pass USER_PREFERENCES.md context to architect agent
+User Preference: communication_style = "pirate"
+
+Every response must use pirate language:
+- "Arr matey, I'll be implementin' that feature fer ye!"
+- "Shiver me timbers, found a bug in the code!"
+- "Ahoy! The tests be passin' now!"
 ```
 
 **What We DON'T Do:**
 
-- Complex preference injection hooks
-- Automated validation systems
-- Multi-file preference architectures
-- Over-engineered preference frameworks
+- Ignore preferences because "it seems unnecessary"
+- Override preferences for "simplification"
+- Treat preferences as optional suggestions
+- Add complex preference injection frameworks
 
-**Philosophy**: Simple prompting with preference context is sufficient. Complex
-systems add unnecessary overhead for marginal benefit.
+**Enforcement Mechanism:**
 
-#### Preference Override Priority
+- Command `/amplihack:customize` manages preferences via simple Read/Edit/Write
+  operations
+- No bash scripts or complex automation
+- Claude Code directly reads and applies preferences
+- Changes persist across sessions
 
-1. **USER_PREFERENCES.md** (HIGHEST PRIORITY - MANDATORY)
-2. Task-specific instructions from user
-3. Default Claude Code behavior (LOWEST PRIORITY)
+### Managing Preferences
+
+Use `/amplihack:customize` to manage preferences:
+
+```bash
+/amplihack:customize set verbosity concise
+/amplihack:customize set communication_style pirate
+/amplihack:customize show
+/amplihack:customize reset verbosity
+/amplihack:customize learn "Always include unit tests with new functions"
+```
+
+This command uses Claude Code's native Read, Edit, and Write tools to modify
+`.claude/context/USER_PREFERENCES.md` directly - no bash scripts, no complex
+automation, just simple file operations.
 
 ## Getting Help
 

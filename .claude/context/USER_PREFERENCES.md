@@ -1,5 +1,9 @@
 # User Preferences
 
+**MANDATORY ENFORCEMENT**: All agents and Claude Code MUST strictly follow these preferences. These are NOT advisory - they are REQUIRED behavior that CANNOT be optimized away or ignored.
+
+**Priority Level**: These preferences rank #2 in the priority hierarchy, only superseded by explicit user requirements. They take precedence over project philosophy and default behaviors.
+
 This file contains user-specific preferences and customizations that persist across sessions.
 
 ## Core Preferences
@@ -107,9 +111,9 @@ Preferences are automatically loaded when:
 2. Agents are invoked
 3. Commands are executed
 
-To modify preferences, use the `/customize` command:
+To modify preferences, use the `/amplihack:customize` command:
 
-- `/customize set verbosity concise`
-- `/customize show`
-- `/customize reset`
-- `/customize learn "Always use type hints in Python"`
+- `/amplihack:customize set verbosity concise`
+- `/amplihack:customize show`
+- `/amplihack:customize reset`
+- `/amplihack:customize learn "Always use type hints in Python"`

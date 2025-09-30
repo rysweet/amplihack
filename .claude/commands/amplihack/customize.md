@@ -11,43 +11,43 @@ argument-hint: <action> [preference] [value]
 
 ## Usage
 
-`/customize <action> [preference] [value]`
+`/amplihack:customize <action> [preference] [value]`
 
 ## Actions
 
 ### set - Set a preference
 
-`/customize set <preference> <value>`
+`/amplihack:customize set <preference> <value>`
 
 Sets or updates a user preference. Examples:
 
-- `/customize set verbosity concise`
-- `/customize set communication_style technical`
-- `/customize set priority_type bugs`
+- `/amplihack:customize set verbosity concise`
+- `/amplihack:customize set communication_style technical`
+- `/amplihack:customize set priority_type bugs`
 
 ### show - Display current preferences
 
-`/customize show`
+`/amplihack:customize show`
 
 Shows all current user preferences and their values.
 
 ### reset - Reset preferences
 
-`/customize reset [preference]`
+`/amplihack:customize reset [preference]`
 
 Resets a specific preference or all preferences to defaults.
 
-- `/customize reset verbosity` - resets verbosity to default
-- `/customize reset` - resets all preferences
+- `/amplihack:customize reset verbosity` - resets verbosity to default
+- `/amplihack:customize reset` - resets all preferences
 
 ### learn - Learn from feedback
 
-`/customize learn <feedback>`
+`/amplihack:customize learn <feedback>`
 
 Captures user feedback to improve future interactions.
 
-- `/customize learn "Always include unit tests when creating new functions"`
-- `/customize learn "Prefer async/await over callbacks"`
+- `/amplihack:customize learn "Always include unit tests when creating new functions"`
+- `/amplihack:customize learn "Prefer async/await over callbacks"`
 
 ## Available Preferences
 
@@ -98,47 +98,90 @@ Custom workflow requirements or gates
 
 ## Implementation
 
-```bash
-# Parse the command arguments
-ACTION="$1"
-PREFERENCE="$2"
-VALUE="$3"
+This command is a prompt that instructs Claude Code to use its native tools (Read, Edit, Write) to manage the USER_PREFERENCES.md file.
 
-PREFS_FILE=".claude/context/USER_PREFERENCES.md"
+When you invoke this command, follow these steps:
 
-# Ensure preferences file exists
-if [ ! -f "$PREFS_FILE" ]; then
-    echo "Creating user preferences file..."
-    !mkdir -p .claude/context
-    !cat > "$PREFS_FILE" << 'EOF'
+### For "set" action:
+
+1. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+2. Validate the preference name and value against the available preferences list above
+3. Use the Edit tool to update the preference section in USER_PREFERENCES.md:
+   - Find the section matching the preference (e.g., "### Verbosity")
+   - Replace the value on the next line with the new value
+4. Use the Edit tool to update the "Last updated" timestamp at the bottom
+5. Confirm the change to the user
+
+Example for setting verbosity to concise:
+
+```
+Use Edit tool on .claude/context/USER_PREFERENCES.md:
+  old_string: "### Verbosity\n\nbalanced"
+  new_string: "### Verbosity\n\nconcise"
+
+Then update timestamp:
+  old_string: "_Last updated: [old timestamp]_"
+  new_string: "_Last updated: [current timestamp]_"
+```
+
+### For "show" action:
+
+1. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+2. Display the contents to the user in a formatted manner
+
+### For "reset" action:
+
+If resetting a specific preference:
+
+1. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+2. Use the Edit tool to replace the preference value with its default
+3. Update the timestamp
+
+If resetting all preferences:
+
+1. Use the Write tool to overwrite `.claude/context/USER_PREFERENCES.md` with the default template (see below)
+
+Default template structure:
+
+```markdown
 # User Preferences
 
+**MANDATORY ENFORCEMENT**: All agents and Claude Code MUST strictly follow these preferences. These are NOT advisory - they are REQUIRED behavior that CANNOT be optimized away or ignored.
+
 This file contains user-specific preferences and customizations that persist across sessions.
 
 ## Core Preferences
 
 ### Verbosity
+
 balanced
 
 ### Communication Style
+
 technical
 
 ### Update Frequency
+
 regular
 
 ### Priority Type
+
 balanced
 
 ### Collaboration Style
+
 interactive
 
 ### Preferred Languages
+
 (not set)
 
 ### Coding Standards
+
 (not set)
 
 ### Workflow Preferences
+
 (not set)
 
 ## Learned Patterns
@@ -146,201 +189,75 @@ interactive
 <!-- User feedback and learned behaviors will be added here -->
 
 ---
-*Last updated: $(date)*
-EOF
-fi
 
-case "$ACTION" in
-    "set")
-        if [ -z "$PREFERENCE" ] || [ -z "$VALUE" ]; then
-            echo "Usage: /customize set <preference> <value>"
-            exit 1
-        fi
-
-        echo "Setting $PREFERENCE to $VALUE..."
-
-        # Update the preference in the file
-        case "$PREFERENCE" in
-            "verbosity")
-                if [[ "$VALUE" =~ ^(concise|balanced|detailed)$ ]]; then
-                    @Edit $PREFS_FILE "### Verbosity\n.*" "### Verbosity\n$VALUE"
-                    echo "✓ Verbosity set to: $VALUE"
-                else
-                    echo "Invalid value. Options: concise, balanced, detailed"
-                fi
-                ;;
-            "communication_style")
-                if [[ "$VALUE" =~ ^(formal|casual|technical)$ ]]; then
-                    @Edit $PREFS_FILE "### Communication Style\n.*" "### Communication Style\n$VALUE"
-                    echo "✓ Communication style set to: $VALUE"
-                else
-                    echo "Invalid value. Options: formal, casual, technical"
-                fi
-                ;;
-            "update_frequency")
-                if [[ "$VALUE" =~ ^(minimal|regular|frequent)$ ]]; then
-                    @Edit $PREFS_FILE "### Update Frequency\n.*" "### Update Frequency\n$VALUE"
-                    echo "✓ Update frequency set to: $VALUE"
-                else
-                    echo "Invalid value. Options: minimal, regular, frequent"
-                fi
-                ;;
-            "priority_type")
-                if [[ "$VALUE" =~ ^(features|bugs|performance|security|balanced)$ ]]; then
-                    @Edit $PREFS_FILE "### Priority Type\n.*" "### Priority Type\n$VALUE"
-                    echo "✓ Priority type set to: $VALUE"
-                else
-                    echo "Invalid value. Options: features, bugs, performance, security, balanced"
-                fi
-                ;;
-            "collaboration_style")
-                if [[ "$VALUE" =~ ^(independent|interactive|guided)$ ]]; then
-                    @Edit $PREFS_FILE "### Collaboration Style\n.*" "### Collaboration Style\n$VALUE"
-                    echo "✓ Collaboration style set to: $VALUE"
-                else
-                    echo "Invalid value. Options: independent, interactive, guided"
-                fi
-                ;;
-            "preferred_languages")
-                @Edit $PREFS_FILE "### Preferred Languages\n.*" "### Preferred Languages\n$VALUE"
-                echo "✓ Preferred languages set to: $VALUE"
-                ;;
-            "coding_standards")
-                @Edit $PREFS_FILE "### Coding Standards\n.*" "### Coding Standards\n$VALUE"
-                echo "✓ Coding standards updated"
-                ;;
-            "workflow_preferences")
-                @Edit $PREFS_FILE "### Workflow Preferences\n.*" "### Workflow Preferences\n$VALUE"
-                echo "✓ Workflow preferences updated"
-                ;;
-            *)
-                echo "Unknown preference: $PREFERENCE"
-                echo "Available preferences: verbosity, communication_style, update_frequency, priority_type, collaboration_style, preferred_languages, coding_standards, workflow_preferences"
-                ;;
-        esac
-
-        # Update timestamp
-        @Edit $PREFS_FILE "*Last updated:.*" "*Last updated: $(date)*"
-        ;;
-
-    "show")
-        echo "Current user preferences:"
-        echo ""
-        @Read $PREFS_FILE
-        ;;
-
-    "reset")
-        if [ -z "$PREFERENCE" ]; then
-            echo "Resetting all preferences to defaults..."
-            @Write $PREFS_FILE "# User Preferences
-
-This file contains user-specific preferences and customizations that persist across sessions.
-
-## Core Preferences
-
-### Verbosity
-balanced
-
-### Communication Style
-technical
-
-### Update Frequency
-regular
-
-### Priority Type
-balanced
-
-### Collaboration Style
-interactive
-
-### Preferred Languages
-(not set)
-
-### Coding Standards
-(not set)
-
-### Workflow Preferences
-(not set)
-
-## Learned Patterns
-
-<!-- User feedback and learned behaviors will be added here -->
-
----
-*Last updated: $(date)*"
-            echo "✓ All preferences reset to defaults"
-        else
-            echo "Resetting $PREFERENCE to default..."
-            case "$PREFERENCE" in
-                "verbosity")
-                    @Edit $PREFS_FILE "### Verbosity\n.*" "### Verbosity\nbalanced"
-                    ;;
-                "communication_style")
-                    @Edit $PREFS_FILE "### Communication Style\n.*" "### Communication Style\ntechnical"
-                    ;;
-                "update_frequency")
-                    @Edit $PREFS_FILE "### Update Frequency\n.*" "### Update Frequency\nregular"
-                    ;;
-                "priority_type")
-                    @Edit $PREFS_FILE "### Priority Type\n.*" "### Priority Type\nbalanced"
-                    ;;
-                "collaboration_style")
-                    @Edit $PREFS_FILE "### Collaboration Style\n.*" "### Collaboration Style\ninteractive"
-                    ;;
-                "preferred_languages"|"coding_standards"|"workflow_preferences")
-                    @Edit $PREFS_FILE "### ${PREFERENCE//_/ }\n.*" "### ${PREFERENCE//_/ }\n(not set)"
-                    ;;
-                *)
-                    echo "Unknown preference: $PREFERENCE"
-                    exit 1
-                    ;;
-            esac
-            echo "✓ $PREFERENCE reset to default"
-        fi
-        ;;
-
-    "learn")
-        if [ -z "$ARGUMENTS" ] || [ "$ARGUMENTS" = "learn" ]; then
-            echo "Usage: /customize learn <feedback>"
-            exit 1
-        fi
-
-        FEEDBACK="${ARGUMENTS#learn }"
-        echo "Learning from feedback: $FEEDBACK"
-
-        # Add to learned patterns section
-        TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
-        @Edit $PREFS_FILE "## Learned Patterns\n\n<!-- User feedback and learned behaviors will be added here -->" "## Learned Patterns\n\n<!-- User feedback and learned behaviors will be added here -->\n\n### [$TIMESTAMP]\n$FEEDBACK"
-
-        echo "✓ Feedback captured and stored"
-        ;;
-
-    *)
-        echo "Unknown action: $ACTION"
-        echo ""
-        echo "Available actions:"
-        echo "  set    - Set a preference value"
-        echo "  show   - Display current preferences"
-        echo "  reset  - Reset preferences to defaults"
-        echo "  learn  - Capture feedback for learning"
-        echo ""
-        echo "Example: /customize set verbosity concise"
-        ;;
-esac
+_Last updated: [current timestamp]_
 ```
+
+### For "learn" action:
+
+1. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+2. Extract the feedback text from the command arguments
+3. Use the Edit tool to add the feedback to the "Learned Patterns" section:
+   - Insert after the "<!-- User feedback... -->" comment
+   - Format as: `### [timestamp]\n\n[feedback text]\n\n`
+4. Update the "Last updated" timestamp
+
+Example:
+
+```
+Use Edit tool on .claude/context/USER_PREFERENCES.md:
+  old_string: "## Learned Patterns\n\n<!-- User feedback and learned behaviors will be added here -->"
+  new_string: "## Learned Patterns\n\n<!-- User feedback and learned behaviors will be added here -->\n\n### [2025-09-29 10:30:00]\n\nAlways include unit tests when creating new functions\n"
+```
+
+## Validation Rules
+
+Before making changes, validate:
+
+1. **Preference names** must match exactly (case-insensitive matching is acceptable):
+   - verbosity, communication_style, update_frequency, priority_type, collaboration_style, preferred_languages, coding_standards, workflow_preferences
+
+2. **Enumerated values** must match allowed options:
+   - verbosity: concise, balanced, detailed
+   - communication_style: formal, casual, technical
+   - update_frequency: minimal, regular, frequent
+   - priority_type: features, bugs, performance, security, balanced
+   - collaboration_style: independent, interactive, guided
+
+3. **Free-form values** (preferred_languages, coding_standards, workflow_preferences) can be any non-empty string
+
+4. If validation fails, provide clear error message and do NOT modify the file
+
+## Error Handling
+
+- If `.claude/context/USER_PREFERENCES.md` doesn't exist, create it with the default template
+- If preference name is invalid, list valid preferences
+- If value is invalid for enumerated preference, list valid values
+- If file operations fail, report the error clearly
+- Never leave the file in a partially edited state
 
 ## Integration
 
 This command integrates with the project by:
 
 1. Storing preferences in `.claude/context/USER_PREFERENCES.md`
-2. Preferences are loaded via CLAUDE.md imports
-3. Agents and workflows reference these preferences
+2. Preferences are loaded via CLAUDE.md imports at session start
+3. Agents and workflows reference these preferences (MANDATORY enforcement)
 4. Learned patterns accumulate over time
+
+## Priority Hierarchy
+
+Preferences follow this priority hierarchy (highest to lowest):
+
+1. **USER_PREFERENCES.md** (HIGHEST - MANDATORY)
+2. Task-specific user instructions
+3. Project philosophy (CLAUDE.md, PHILOSOPHY.md)
+4. Default Claude Code behavior (LOWEST)
 
 ## Notes
 
 - Preferences persist across sessions
 - The preferences file is imported automatically in CLAUDE.md
-- Agents should check preferences when determining behavior
+- Agents MUST check preferences and apply them strictly
 - Learned patterns help improve future interactions
+- Use simple, direct tool invocations - no complex abstractions
