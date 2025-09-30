@@ -19,8 +19,11 @@ where = ["src"]
 include = ["amplihack*"]
 
 [tool.setuptools.package-data]
-# Include prompts and other package-internal files
-amplihack = ["prompts/*.md"]
+# Include prompts and framework files
+# .claude/ is handled by custom build command in setup.py
+amplihack = [
+    "prompts/*.md",
+]
 
 [tool.ruff]
 # Essential Ruff settings only
@@ -44,7 +47,7 @@ exclude = [
     "test_sdk_integration.py",    # Root level test file with missing dependencies
     "test_implementation.py",      # Root level test file
     "scripts/**/*.py",  # Exclude scripts from type checking
-    ".claude/tools/amplihack/memory/tests/test_interface.py",  # TDD tests - expected to fail
+    "src/amplihack/.claude/tools/amplihack/memory/tests/test_interface.py",  # TDD tests - expected to fail
     "Specs/xpia_defense_interface.py",  # Example/demo code with intentional type issues
     "Specs/xpia_usage_examples.py",     # Example/demo code with intentional type issues
     "src/amplihack/security/cli.py",    # CLI dependencies not available in CI

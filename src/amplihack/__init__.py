@@ -102,7 +102,17 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
     Returns:
         List of copied directory paths relative to dst
     """
+    # Try multiple locations for .claude directory
+    # 1. repo_root/.claude (old structure - local dev)
+    # 2. repo_root/src/amplihack/.claude (new structure - packaged)
     base = os.path.join(repo_root, rel_top)
+    if not os.path.exists(base):
+        # Try the new packaged location
+        base = os.path.join(repo_root, "src", "amplihack", rel_top)
+        if not os.path.exists(base):
+            print(f"  ❌ Error: {rel_top} directory not found in {repo_root}")
+            return []
+
     copied = []
 
     for dir_path in ESSENTIAL_DIRS:

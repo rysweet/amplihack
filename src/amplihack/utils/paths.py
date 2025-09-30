@@ -8,30 +8,52 @@ from typing import Optional
 class FrameworkPathResolver:
     """Resolves framework file paths for both local and UVX deployments."""
 
+    _cached_root: Optional[Path] = None
+
     @staticmethod
     def find_framework_root() -> Optional[Path]:
-        """Find the framework root directory."""
-        # Check current working directory and parents
+        """Find the framework root directory.
+
+        Searches in this order:
+        1. Inside the amplihack package (for UVX and installed packages)
+        2. Current working directory and parents (for local development)
+        3. AMPLIHACK_ROOT environment variable
+        """
+        # Return cached result if available
+        if FrameworkPathResolver._cached_root is not None:
+            return FrameworkPathResolver._cached_root
+
+        # Strategy 1: Check inside the package (works for UVX and installed packages)
+        try:
+            import amplihack
+
+            package_root = Path(amplihack.__file__).parent
+            package_claude = package_root / ".claude"
+            if package_claude.exists():
+                FrameworkPathResolver._cached_root = package_root
+                return package_root
+        except (ImportError, AttributeError):
+            pass
+
+        # Strategy 2: Check current working directory and parents (local development)
         current = Path.cwd()
         while current != current.parent:
             if (current / ".claude").exists():
+                FrameworkPathResolver._cached_root = current
                 return current
+            # Also check inside src/amplihack for local dev
+            src_amplihack = current / "src" / "amplihack"
+            if (src_amplihack / ".claude").exists():
+                FrameworkPathResolver._cached_root = src_amplihack
+                return src_amplihack
             current = current.parent
 
-        # Check environment variable for UVX deployment
+        # Strategy 3: Check environment variable
         if "AMPLIHACK_ROOT" in os.environ:
             env_path = Path(os.environ["AMPLIHACK_ROOT"])
             if env_path.exists() and (env_path / ".claude").exists():
+                FrameworkPathResolver._cached_root = env_path
                 return env_path
-
-        # Try staging if in UVX mode
-        try:
-            from .uvx_staging import stage_uvx_framework
-
-            if stage_uvx_framework() and (Path.cwd() / ".claude").exists():
-                return Path.cwd()
-        except ImportError:
-            pass
 
         return None
 

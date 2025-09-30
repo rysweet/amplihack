@@ -39,16 +39,39 @@ class HookProcessor(ABC):
 
             self.project_root = get_project_root()
         except ImportError:
-            # Fallback for standalone execution
-            self.project_root = Path(__file__).resolve().parents[4]
-            expected_marker = self.project_root / ".claude"
-            if not expected_marker.exists():
-                raise ValueError("Invalid project structure - security check failed")
+            # Fallback: try to find project root by looking for .claude marker
+            current = Path(__file__).resolve().parent
+            found_root: Optional[Path] = None
 
-        # Setup directories
-        self.log_dir = self.project_root / ".claude" / "runtime" / "logs"
-        self.metrics_dir = self.project_root / ".claude" / "runtime" / "metrics"
-        self.analysis_dir = self.project_root / ".claude" / "runtime" / "analysis"
+            for _ in range(10):  # Max 10 levels up
+                # Check old location (repo root)
+                if (current / ".claude").exists():
+                    found_root = current
+                    break
+                # Check new location (package)
+                if (current / "src" / "amplihack" / ".claude").exists():
+                    found_root = current
+                    break
+                if current == current.parent:
+                    break
+                current = current.parent
+
+            if found_root is None:
+                raise ValueError("Could not find project root with .claude marker")
+
+            self.project_root = found_root
+
+        # Find .claude directory (could be at root or in package)
+        claude_dir = self.project_root / ".claude"
+        if not claude_dir.exists():
+            claude_dir = self.project_root / "src" / "amplihack" / ".claude"
+            if not claude_dir.exists():
+                raise ValueError("Could not find .claude directory in expected locations")
+
+        # Setup directories using found location
+        self.log_dir = claude_dir / "runtime" / "logs"
+        self.metrics_dir = claude_dir / "runtime" / "metrics"
+        self.analysis_dir = claude_dir / "runtime" / "analysis"
 
         # Create directories
         self.log_dir.mkdir(parents=True, exist_ok=True)

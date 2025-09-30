@@ -12,6 +12,7 @@ include README.md
 include *.md
 
 # Claude framework structure (ALL files as requested)
+# .claude/ is at repo root and copied during build
 recursive-include .claude *
 
 # Documentation, examples, and specifications
@@ -27,3 +28,6 @@ global-exclude __pycache__
 global-exclude .DS_Store
 global-exclude *.swp
 global-exclude *.swo
+
+# Exclude runtime data (logs, metrics, analysis)
+prune .claude/runtime
