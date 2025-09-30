@@ -187,6 +187,71 @@ class StopHook(HookProcessor):
                         break
         return learnings
 
+    def get_priority_emoji(self, priority: str) -> str:
+        """Get emoji for priority level.
+
+        Args:
+            priority: Priority level (high, medium, low)
+
+        Returns:
+            Emoji string representing priority
+        """
+        PRIORITY_EMOJI = {"high": "🔴", "medium": "🟡", "low": "🟢"}
+        return PRIORITY_EMOJI.get(priority.lower(), "⚪")
+
+    def extract_recommendations_from_patterns(
+        self, patterns: List[Dict], limit: int = 5
+    ) -> List[Dict]:
+        """Extract top N recommendations from reflection patterns.
+
+        Args:
+            patterns: List of pattern dictionaries from reflection analysis
+            limit: Maximum number of recommendations to return
+
+        Returns:
+            List of top recommendations sorted by priority
+        """
+        if not patterns:
+            return []
+
+        # Sort by priority (high > medium > low)
+        priority_order = {"high": 3, "medium": 2, "low": 1}
+        sorted_patterns = sorted(
+            patterns,
+            key=lambda p: priority_order.get(p.get("priority", "low").lower(), 0),
+            reverse=True,
+        )
+
+        # Return top N
+        return sorted_patterns[:limit]
+
+    def format_recommendations_message(self, recommendations: List[Dict]) -> str:
+        """Format recommendations as readable message.
+
+        Args:
+            recommendations: List of recommendation dictionaries
+
+        Returns:
+            Formatted string for display
+        """
+        if not recommendations:
+            return ""
+
+        lines = ["\n" + "=" * 70, "AI-Detected Improvement Recommendations", "=" * 70]
+
+        for i, rec in enumerate(recommendations, 1):
+            priority = rec.get("priority", "medium")
+            rec_type = rec.get("type", "unknown")
+            suggestion = rec.get("suggestion", "No description available")
+
+            emoji = self.get_priority_emoji(priority)
+            lines.append(f"\n{i}. {emoji} [{priority.upper()}] {rec_type}")
+            lines.append(f"   {suggestion}")
+
+        lines.append("\n" + "=" * 70)
+
+        return "\n".join(lines)
+
     def save_session_analysis(self, messages: List[Dict]):
         """Save session analysis for later review.
 
@@ -608,13 +673,14 @@ class StopHook(HookProcessor):
                 ]
 
                 output = {
+                    "message": "",  # Initialize for type checking
                     "metadata": {
                         "learningsFound": len(learnings),
                         "highPriority": len(priority_learnings),
                         "source": "reflection_analysis",
                         "analysisPath": ".claude/runtime/analysis/",
                         "summary": f"Found {len(learnings)} improvement opportunities",
-                    }
+                    },
                 }
 
                 # Add specific suggestions to output if high priority
@@ -626,6 +692,16 @@ class StopHook(HookProcessor):
                 self.log(
                     f"Found {len(learnings)} potential improvements ({len(priority_learnings)} high priority)"
                 )
+
+                # Extract top recommendations and add to message field
+                recommendations = self.extract_recommendations_from_patterns(learnings, limit=5)
+                if recommendations:
+                    rec_message = self.format_recommendations_message(recommendations)
+                    # Add to output message field (guaranteed to be displayed by Claude Code)
+                    existing_msg = output.get("message", "")
+                    if not isinstance(existing_msg, str):
+                        existing_msg = ""
+                    output["message"] = existing_msg + rec_message
 
             # Display decision summary at session end (AFTER all processing completes)
             # This allows other hook parts to write decisions first

@@ -121,7 +121,7 @@ def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
         from .contextual_error_analyzer import ContextualErrorAnalyzer
 
         CONTEXTUAL_ANALYSIS_AVAILABLE = True
-    except ImportError as e:
+    except ImportError:
         # Try alternative import paths
         try:
             from contextual_error_analyzer import ContextualErrorAnalyzer
@@ -131,7 +131,6 @@ def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
             # Contextual analysis not available, fall back to basic detection
             CONTEXTUAL_ANALYSIS_AVAILABLE = False
             ContextualErrorAnalyzer = None
-            print(f"Debug: Contextual error analysis not available: {e}")
 
     start_time = time.time()
     patterns = []
@@ -212,8 +211,27 @@ def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:
 
 
 def create_github_issue(pattern: Dict) -> Optional[str]:
-    """Create GitHub issue for improvement pattern with duplicate detection."""
+    """Create GitHub issue for improvement pattern with duplicate detection.
+
+    Returns issue URL on success, None on failure or skip.
+    Gracefully handles missing gh CLI, label errors, and timeouts.
+    """
     try:
+        # Check if gh CLI is available
+        try:
+            check_result = subprocess.run(
+                ["gh", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if check_result.returncode != 0:
+                print("ℹ️  GitHub CLI (gh) not available - skipping issue creation")
+                return None
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            print(f"ℹ️  GitHub CLI (gh) not available: {e} - skipping issue creation")
+            return None
+
         # SECURITY: Sanitize all content before creating GitHub issue
         safe_type = sanitize_content(pattern.get("type", "unknown"), max_length=50)
         safe_suggestion = filter_pattern_suggestion(pattern.get("suggestion", ""))
@@ -265,23 +283,27 @@ This improvement was identified by AI analysis. Please review and implement as a
                 )
                 print("   Creating new issue as similarity is below threshold")
 
-        # Create the GitHub issue
-        result = subprocess.run(
-            [
-                "gh",
-                "issue",
-                "create",
-                "--title",
-                title,
-                "--body",
-                body,
-                "--label",
-                f"ai-improvement,{safe_type},{safe_priority}-priority",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        # Try to create the GitHub issue with labels
+        try:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "issue",
+                    "create",
+                    "--title",
+                    title,
+                    "--body",
+                    body,
+                    "--label",
+                    f"ai-improvement,{safe_type},{safe_priority}-priority",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,  # Reduced timeout to 10 seconds
+            )
+        except subprocess.TimeoutExpired:
+            print("⚠️  GitHub issue creation timed out (>10s) - skipping")
+            return None
 
         if result.returncode == 0:
             issue_url = result.stdout.strip()
@@ -293,13 +315,42 @@ This improvement was identified by AI analysis. Please review and implement as a
                 print(f"💾 Cached issue #{issue_id} for future duplicate detection")
 
             show_issue_created(issue_url, pattern["type"])
-            return issue_id
+            return issue_url  # Return URL instead of just ID for better visibility
         else:
-            show_error(f"Failed to create GitHub issue: {result.stderr}")
+            # Check if error is due to labels - try without labels
+            error_msg = result.stderr.lower()
+            if "label" in error_msg or "not found" in error_msg:
+                print("⚠️  Label issue detected - retrying without labels...")
+                try:
+                    result_no_labels = subprocess.run(
+                        [
+                            "gh",
+                            "issue",
+                            "create",
+                            "--title",
+                            title,
+                            "--body",
+                            body,
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    if result_no_labels.returncode == 0:
+                        issue_url = result_no_labels.stdout.strip()
+                        show_issue_created(issue_url, pattern["type"])
+                        return issue_url
+                except subprocess.TimeoutExpired:
+                    print("⚠️  GitHub issue creation timed out on retry - skipping")
+                    return None
+
+            # Generic failure
+            print(f"⚠️  Failed to create GitHub issue: {result.stderr[:100]}")
             return None
 
     except Exception as e:
-        show_error(f"Exception creating GitHub issue: {e}")
+        # Log but don't crash - reflection should continue even if GitHub fails
+        print(f"⚠️  Exception creating GitHub issue: {str(e)[:100]}")
         return None
 
 
