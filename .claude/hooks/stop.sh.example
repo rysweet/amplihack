@@ -1,0 +1,86 @@
+#!/bin/bash
+# Claude Code Stop Hook - Example Implementation
+# This script runs automatically after each edit session when using Claude Code
+#
+# To use this hook:
+# 1. Copy this file to .claude/hooks/stop.sh
+# 2. Make it executable: chmod +x .claude/hooks/stop.sh
+# 3. The hook will run automatically after Claude Code edits
+
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLAUDE_DIR="$(dirname "$HOOK_DIR")"
+ROOT_DIR="$(dirname "$CLAUDE_DIR")"
+
+echo ""
+echo "========================================="
+echo "Running post-edit validation..."
+echo "========================================="
+echo ""
+
+# Check if skip validation is set
+if [ "${SKIP_CS_VALIDATION:-0}" = "1" ]; then
+    echo "⚠ C# validation skipped (SKIP_CS_VALIDATION=1)"
+    echo ""
+    exit 0
+fi
+
+# Check if any .cs files were modified
+MODIFIED_CS=$(git diff --name-only --diff-filter=ACMR HEAD 2>/dev/null | grep '\.cs$' || true)
+
+if [ -z "$MODIFIED_CS" ]; then
+    echo "✓ No C# files modified, skipping validation"
+    echo ""
+    exit 0
+fi
+
+# Count modified files
+FILE_COUNT=$(echo "$MODIFIED_CS" | wc -l | tr -d ' ')
+echo "Detected $FILE_COUNT modified C# file(s)"
+echo ""
+
+# Run validator with appropriate level
+# You can customize the validation level here:
+# --level 1: Syntax only (fastest)
+# --level 2: Syntax + Build (recommended, default)
+# --level 3: Syntax + Build + Analyzers
+# --level 4: All checks including format
+VALIDATOR_SCRIPT="${ROOT_DIR}/tools/cs-validator.sh"
+
+if [ ! -f "$VALIDATOR_SCRIPT" ]; then
+    echo "⚠ C# validator not found at: $VALIDATOR_SCRIPT"
+    echo "  Please ensure tools/cs-validator.sh exists"
+    echo ""
+    exit 0
+fi
+
+if ! "$VALIDATOR_SCRIPT" --level 2 --verbose; then
+    echo ""
+    echo "========================================="
+    echo "❌ C# VALIDATION FAILED"
+    echo "========================================="
+    echo ""
+    echo "Please fix the errors above before proceeding."
+    echo ""
+    echo "Tips:"
+    echo "  - Run 'dotnet build' to see detailed compiler errors"
+    echo "  - Run 'dotnet format' to auto-fix formatting issues"
+    echo "  - Check the error messages for specific file and line numbers"
+    echo ""
+    echo "To skip validation temporarily (NOT RECOMMENDED):"
+    echo "  export SKIP_CS_VALIDATION=1"
+    echo ""
+    echo "To adjust validation level, edit:"
+    echo "  .claude/config/cs-validator.json"
+    echo ""
+    exit 1
+fi
+
+echo ""
+echo "========================================="
+echo "✓ C# VALIDATION PASSED"
+echo "========================================="
+echo ""
+
+exit 0
