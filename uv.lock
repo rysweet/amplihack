@@ -5,4 +5,4 @@ requires-python = ">=3.8"
 [[package]]
 name = "microsofthackathon2025-agenticcoding"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }

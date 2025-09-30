@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "microsofthackathon2025-agenticcoding"
 version = "0.1.0"
@@ -36,6 +40,9 @@ exclude = [
     "**/venv",
     "**/.venv",
     "tests/**",
+    "duplicate_cleanup_test.py",  # Root level test file with missing dependencies
+    "test_sdk_integration.py",    # Root level test file with missing dependencies
+    "test_implementation.py",      # Root level test file
     "scripts/**/*.py",  # Exclude scripts from type checking
     ".claude/tools/amplihack/memory/tests/test_interface.py",  # TDD tests - expected to fail
     "Specs/xpia_defense_interface.py",  # Example/demo code with intentional type issues
@@ -60,4 +67,6 @@ addopts = [
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "performance: marks tests as performance tests",
+    "e2e: marks tests as end-to-end tests",
 ]

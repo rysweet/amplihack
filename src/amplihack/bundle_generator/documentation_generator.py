@@ -1,0 +1,332 @@
+"""Generate user-facing documentation for agent bundles."""
+
+from .models import AgentBundle
+
+
+def generate_instructions(bundle: AgentBundle) -> str:
+    """
+    Generate INSTRUCTIONS.md with full usage guide.
+
+    Args:
+        bundle: AgentBundle to generate instructions for
+
+    Returns:
+        Complete INSTRUCTIONS.md content as string
+    """
+    agent_list = "\n".join(f"  - `{agent.name}`: {agent.role}" for agent in bundle.agents)
+
+    return f"""# {bundle.name} - Usage Instructions
+
+## Overview
+
+{bundle.description}
+
+This bundle contains {len(bundle.agents)} agent(s) ready to use with Amplihack.
+
+## Prerequisites
+
+{generate_prerequisites_section()}
+
+## Installation
+
+### Option 1: Install from UVX Package
+
+If you received a `.uvx` file:
+
+```bash
+# Install the bundle
+uvx install {bundle.name}-{bundle.version}.uvx
+
+# Or run directly without installing
+uvx run {bundle.name}-{bundle.version}.uvx
+```
+
+### Option 2: Install from Source
+
+If you received the source directory:
+
+```bash
+cd {bundle.name}
+
+# Install dependencies
+pip install -e .
+
+# Or use uv
+uv pip install -e .
+```
+
+### Option 3: Manual Integration
+
+Copy the `agents/` directory to your Amplihack agents directory:
+
+```bash
+# Default location
+cp -r agents/ ~/.claude/agents/custom/
+
+# Or your custom location
+cp -r agents/ /path/to/your/agents/
+```
+
+## Quick Start
+
+### Using with Amplihack
+
+Once installed, agents are automatically available in your Amplihack environment:
+
+```bash
+# List available agents
+amplihack agents list
+
+# Use an agent (via Claude Code)
+# In your Claude Code session, reference the agent:
+# "@agent:{bundle.agents[0].name if bundle.agents else "agent-name"}"
+```
+
+### Using Agents Directly
+
+In Claude Code conversations:
+
+```
+User: I need help with [task]
+Claude: Let me use the specialized agent for this...
+@agent:{bundle.agents[0].name if bundle.agents else "agent-name"}
+```
+
+## Agents Included
+
+{agent_list}
+
+## Configuration
+
+### Bundle Configuration
+
+Edit `config/bundle_config.json` to customize bundle settings:
+
+```json
+{{
+  "enabled_agents": ["all"],
+  "default_model": "inherit",
+  "preferences": {{}}
+}}
+```
+
+### Agent-Specific Configuration
+
+Each agent can be configured individually. See `docs/` directory for agent-specific documentation.
+
+## Testing
+
+Run tests to verify the bundle is working correctly:
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run tests for specific agent
+pytest tests/test_agent_name.py
+
+# Run with verbose output
+pytest -v tests/
+```
+
+## Repackaging
+
+If you make changes to agents, use the provided repackage scripts:
+
+### Using Bash Script
+
+```bash
+./repackage.sh
+```
+
+### Using Python Script
+
+```bash
+python repackage.py
+```
+
+Both scripts will:
+1. Run validation checks
+2. Execute tests
+3. Build new UVX package
+4. Report results
+
+## Directory Structure
+
+```
+{bundle.name}/
+├── agents/              # Agent markdown files
+│   ├── agent1.md
+│   └── agent2.md
+├── tests/               # Test files
+│   ├── test_agent1.py
+│   └── test_agent2.py
+├── docs/                # Documentation
+│   └── agent_docs.md
+├── config/              # Configuration files
+│   └── bundle_config.json
+├── manifest.json        # Bundle manifest
+├── pyproject.toml       # Python project config
+├── setup.py             # Setup script
+├── README.md            # Quick reference
+├── INSTRUCTIONS.md      # This file
+├── repackage.sh         # Bash repackage script
+└── repackage.py         # Python repackage script
+```
+
+## Usage Examples
+
+### Example 1: Basic Agent Usage
+
+```python
+# In your Python code
+from {bundle.name} import get_agent
+
+agent = get_agent("{bundle.agents[0].name if bundle.agents else "agent-name"}")
+result = agent.process("your task here")
+print(result)
+```
+
+### Example 2: Loading Full Bundle
+
+```python
+from {bundle.name} import load
+
+bundle = load()
+print(f"Loaded {{len(bundle['agents'])}} agents")
+
+# Access agents
+for agent_name in bundle['agents']:
+    print(f"Available: {{agent_name}}")
+```
+
+### Example 3: Integration with Amplihack
+
+```bash
+# In your Amplihack project
+amplihack init my-project
+cd my-project
+
+# Install this bundle
+uvx install {bundle.name}-{bundle.version}.uvx
+
+# Use in your workflow
+amplihack run --agent {bundle.agents[0].name if bundle.agents else "agent-name"}
+```
+
+## Troubleshooting
+
+{generate_troubleshooting_section()}
+
+## Support
+
+For issues or questions:
+
+1. Check the `docs/` directory for detailed documentation
+2. Review test files in `tests/` for usage examples
+3. Examine agent markdown files in `agents/` for implementation details
+
+## Version Information
+
+- Bundle: {bundle.name}
+- Version: {bundle.version}
+- Bundle ID: {bundle.id}
+- Agents: {len(bundle.agents)}
+- Python Requirement: >=3.11
+
+## License
+
+See LICENSE file for details.
+
+---
+
+Generated by Agent Bundle Generator
+Bundle created: {bundle.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")}
+"""
+
+
+def generate_troubleshooting_section() -> str:
+    """
+    Generate common troubleshooting scenarios.
+
+    Returns:
+        Troubleshooting section content
+    """
+    return """### Common Issues
+
+**Issue: Agent not found**
+```
+Solution: Ensure agents are installed in correct directory
+1. Check: ~/.claude/agents/custom/
+2. Verify manifest.json is present
+3. Restart Claude Code session
+```
+
+**Issue: Import errors**
+```
+Solution: Verify dependencies are installed
+pip install -r requirements.txt
+# Or
+uv pip install -e .
+```
+
+**Issue: Tests failing**
+```
+Solution: Check Python version and dependencies
+python --version  # Should be 3.11+
+pip list | grep amplihack
+pytest tests/ -v  # Run with verbose output
+```
+
+**Issue: UVX installation fails**
+```
+Solution: Install uvx if not available
+pip install uvx
+# Or
+brew install uvx  # macOS
+```
+
+**Issue: Permission denied when copying agents**
+```
+Solution: Use sudo or adjust permissions
+sudo cp -r agents/ ~/.claude/agents/custom/
+# Or
+chmod +w ~/.claude/agents/custom/
+```
+
+**Issue: Agents not appearing in Claude Code**
+```
+Solution: Force refresh
+1. Restart Claude Code
+2. Clear cache: rm -rf ~/.claude/cache/
+3. Verify agents directory path
+```"""
+
+
+def generate_prerequisites_section() -> str:
+    """
+    Generate prerequisites and installation requirements.
+
+    Returns:
+        Prerequisites section content
+    """
+    return """### Required
+
+- Python >= 3.11
+- Amplihack >= 1.0.0 (or Claude Code environment)
+
+### Optional
+
+- `uvx` - For UVX package installation
+- `pytest` - For running tests
+- `git` - For version control integration
+
+### Installation
+
+```bash
+# Install Python dependencies
+pip install amplihack pytest
+
+# Install uvx (optional)
+pip install uvx
+```"""

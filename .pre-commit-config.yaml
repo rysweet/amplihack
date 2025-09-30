@@ -29,6 +29,7 @@ repos:
     rev: v1.1.405
     hooks:
       - id: pyright
+        exclude: ^(duplicate_cleanup_test\.py|test_sdk_integration\.py|test_implementation\.py)$
 
   # JavaScript/TypeScript/Markdown formatting
   - repo: https://github.com/pre-commit/mirrors-prettier
