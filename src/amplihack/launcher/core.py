@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from ..proxy.manager import ProxyManager
 from ..utils.claude_trace import get_claude_command
+from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
 from .repo_checkout import checkout_repository
@@ -74,22 +75,26 @@ class ClaudeLauncher:
         Returns:
             True if preparation successful, False otherwise.
         """
-        # 1. Handle repository checkout if needed
+        # 1. Check prerequisites first - fail fast with helpful guidance
+        if not check_prerequisites():
+            return False
+
+        # 2. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
 
-        # 2. Find and validate target directory
+        # 3. Find and validate target directory
         target_dir = self._find_target_directory()
         if not target_dir:
             print("Failed to determine target directory")
             return False
 
-        # 3. Handle directory change if needed (unless UVX with --add-dir)
+        # 4. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 4. Start proxy if needed
+        # 5. Start proxy if needed
         return self._start_proxy_if_needed()
 
     def _handle_repo_checkout(self) -> bool:

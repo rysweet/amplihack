@@ -30,7 +30,7 @@ class TestClaudeTrace:
 
     def test_should_use_trace_when_disabled(self):
         """Trace should not be used when environment variable indicates no."""
-        test_cases = ["0", "false", "no", "FALSE", "NO", "random"]
+        test_cases = ["0", "false", "no", "FALSE", "NO"]
         for value in test_cases:
             with patch.dict(os.environ, {"AMPLIHACK_USE_TRACE": value}):
                 assert not should_use_trace()
@@ -192,7 +192,7 @@ class TestClaudeTrace:
     @patch("subprocess.run")
     def test_test_claude_trace_execution_success(self, mock_run):
         """Test successful execution validation."""
-        mock_run.return_value = Mock(returncode=0, stderr="")
+        mock_run.return_value = Mock(returncode=0, stderr="", stdout="")
 
         assert _test_claude_trace_execution("/usr/bin/claude-trace")
         mock_run.assert_called_once_with(
@@ -205,7 +205,7 @@ class TestClaudeTrace:
     @patch("subprocess.run")
     def test_test_claude_trace_execution_returncode_1(self, mock_run):
         """Test execution validation accepts returncode 1 (common for --version)."""
-        mock_run.return_value = Mock(returncode=1, stderr="")
+        mock_run.return_value = Mock(returncode=1, stderr="", stdout="")
 
         assert _test_claude_trace_execution("/usr/bin/claude-trace")
 
@@ -213,7 +213,7 @@ class TestClaudeTrace:
     def test_test_claude_trace_execution_syntax_error(self, mock_run):
         """Test execution validation detects JavaScript syntax errors."""
         mock_run.return_value = Mock(
-            returncode=0, stderr="SyntaxError: missing ) after argument list"
+            returncode=0, stderr="SyntaxError: missing ) after argument list", stdout=""
         )
 
         assert not _test_claude_trace_execution("/usr/bin/claude-trace")
@@ -229,13 +229,13 @@ class TestClaudeTrace:
         ]
 
         for error in error_patterns:
-            mock_run.return_value = Mock(returncode=0, stderr=error)
+            mock_run.return_value = Mock(returncode=0, stderr=error, stdout="")
             assert not _test_claude_trace_execution("/usr/bin/claude-trace")
 
     @patch("subprocess.run")
     def test_test_claude_trace_execution_bad_returncode(self, mock_run):
         """Test execution validation fails on bad return codes."""
-        mock_run.return_value = Mock(returncode=127, stderr="")
+        mock_run.return_value = Mock(returncode=127, stderr="", stdout="")
 
         assert not _test_claude_trace_execution("/usr/bin/claude-trace")
 

@@ -10,6 +10,47 @@ collaborative problem-solving.
 
 ---
 
+## Prerequisites
+
+Before using AmplihHack, ensure you have the following tools installed:
+
+- **Node.js** (v18+) - [https://nodejs.org/](https://nodejs.org/)
+- **npm** - [https://www.npmjs.com/](https://www.npmjs.com/) (comes with
+  Node.js)
+- **uv** - [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/)
+- **git** - [https://git-scm.com/](https://git-scm.com/)
+
+### Quick Installation
+
+**macOS:**
+
+```bash
+brew install node uv git
+```
+
+**Linux (Ubuntu/Debian):**
+
+```bash
+sudo apt install nodejs npm git
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**Windows:**
+
+```powershell
+winget install OpenJS.NodeJS Git.Git
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+For detailed platform-specific installation instructions, see
+[docs/PREREQUISITES.md](docs/PREREQUISITES.md).
+
+**Automatic Checking:** AmplihHack automatically checks for missing
+prerequisites on launch and provides installation instructions if any are
+missing.
+
+---
+
 ## Quick Start
 
 ### Basic Usage
@@ -176,7 +217,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 | **🔄 CI/CD Diagnostics**      | Fix CI failures, pre-commit issues                                  | `ci-diagnostic-workflow` (after push) or `pre-commit-diagnostic` (before commit)                        |
 | **📝 14-Step Workflow**       | Complete development lifecycle                                      | Automatically followed by `/ultrathink`                                                                 |
 | **📊 /analyze**               | Comprehensive code analysis                                         | `/analyze <path>` - Philosophy compliance check                                                         |
-| **🔧 /improve**               | Self-improvement & learning capture                                 | `/improve [target]` - Updates DISCOVERIES.md                                                            |
+| **🔧 /improve**               | Self-improvement & learning capture                                 | `/improve [target]` - Updates .claude/context/DISCOVERIES.md                                            |
 | **📋 TodoWrite**              | Task management & planning                                          | Automatically used for complex tasks                                                                    |
 | **🔀 Parallel Execution**     | Run multiple agents/tasks simultaneously                            | Default behavior - agents run in parallel when possible                                                 |
 | **🐙 GitHub Integration**     | Issue creation, PR management                                       | Built-in `gh` CLI commands                                                                              |
@@ -348,7 +389,7 @@ We welcome contributions! The framework is designed to be extended:
 
 1. **Create new agents** in `.claude/agents/`
 2. **Document patterns** in `.claude/context/PATTERNS.md`
-3. **Share discoveries** in `DISCOVERIES.md`
+3. **Share discoveries** in `.claude/context/DISCOVERIES.md`
 4. **Improve workflows** in `.claude/workflow/`
 
 Fork the repository and submit pull requests with your improvements.

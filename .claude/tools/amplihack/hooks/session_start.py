@@ -119,10 +119,10 @@ class SessionStartHook(HookProcessor):
         context_parts.append("Focus on building AI-powered development tools.")
 
         # Check for recent discoveries
-        discoveries_file = self.project_root / "DISCOVERIES.md"
+        discoveries_file = self.project_root / ".claude" / "context" / "DISCOVERIES.md"
         if discoveries_file.exists():
             context_parts.append("\n## Recent Learnings")
-            context_parts.append("Check DISCOVERIES.md for recent insights.")
+            context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
 
         # Simplified preference file resolution
         preferences_file = (

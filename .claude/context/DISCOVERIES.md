@@ -418,8 +418,7 @@ Simplified to only essential hooks:
 ```yaml
 # From 11+ hooks down to 7 essential ones
 repos:
-  - pre-commit-hooks:
-      check-merge-conflict, trailing-whitespace, end-of-file-fixer
+  - pre-commit-hooks: check-merge-conflict, trailing-whitespace, end-of-file-fixer
   - ruff: format and basic linting
   - pyright: type checking
   - prettier: JS/TS/Markdown formatting

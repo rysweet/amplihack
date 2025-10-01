@@ -11,14 +11,25 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from display import (
-    show_analysis_complete,
-    show_analysis_start,
-    show_automation_status,
-    show_error,
-    show_issue_created,
-    show_pattern_found,
-)
+try:
+    from .display import (
+        show_analysis_complete,
+        show_analysis_start,
+        show_automation_status,
+        show_error,
+        show_issue_created,
+        show_pattern_found,
+    )
+except ImportError:
+    # Fallback to absolute import for direct execution
+    from display import (
+        show_analysis_complete,
+        show_analysis_start,
+        show_automation_status,
+        show_error,
+        show_issue_created,
+        show_pattern_found,
+    )
 
 
 # Define fallback types and functions

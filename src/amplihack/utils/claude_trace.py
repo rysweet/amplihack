@@ -160,8 +160,8 @@ def _test_claude_trace_execution(path: str) -> bool:
         # 2. No JavaScript syntax errors in stderr
         # 3. Output suggests it's actually claude-trace (not just any binary)
         if result.returncode in (0, 1):
-            stderr_lower = result.stderr.lower()
-            stdout_lower = result.stdout.lower()
+            stderr_lower = (result.stderr or "").lower()
+            stdout_lower = (result.stdout or "").lower()
             combined_output = (stderr_lower + " " + stdout_lower).strip()
 
             # Check for common Node.js syntax error indicators
@@ -217,10 +217,19 @@ def _install_claude_trace() -> bool:
 
     Returns:
         True if installation succeeded, False otherwise
+
+    Side Effects:
+        Prints helpful installation guidance if npm is not available
     """
     try:
         # Check if npm is available
         if not shutil.which("npm"):
+            print("\nNPM not found - required to install claude-trace")
+            print("\nTo install npm:")
+            print("  macOS:    brew install node")
+            print("  Linux:    sudo apt install npm  # or your package manager")
+            print("  Windows:  winget install OpenJS.NodeJS")
+            print("\nFor more information, see docs/PREREQUISITES.md")
             return False
 
         # Install claude-trace globally
@@ -231,7 +240,19 @@ def _install_claude_trace() -> bool:
             timeout=60,
         )
 
+        if result.returncode != 0:
+            print(f"\nFailed to install claude-trace: {result.stderr}")
+            print("\nYou can try installing manually:")
+            print("  npm install -g @mariozechner/claude-trace")
+
         return result.returncode == 0
 
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+    except subprocess.TimeoutExpired:
+        print("\nInstallation timed out. You can try installing manually:")
+        print("  npm install -g @mariozechner/claude-trace")
+        return False
+    except subprocess.SubprocessError as e:
+        print(f"\nError installing claude-trace: {str(e)}")
+        print("\nYou can try installing manually:")
+        print("  npm install -g @mariozechner/claude-trace")
         return False

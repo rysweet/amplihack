@@ -43,18 +43,12 @@ exclude = [
     "**/venv",
     "**/.venv",
     "tests/**",
-    "duplicate_cleanup_test.py",  # Root level test file with missing dependencies
-    "test_sdk_integration.py",    # Root level test file with missing dependencies
-    "test_implementation.py",      # Root level test file
+    ".claude/tools/test-utilities/**/*.py",  # Test utilities with missing dependencies
     "scripts/**/*.py",  # Exclude scripts from type checking
     "src/amplihack/.claude/tools/amplihack/memory/tests/test_interface.py",  # TDD tests - expected to fail
     "Specs/xpia_defense_interface.py",  # Example/demo code with intentional type issues
     "Specs/xpia_usage_examples.py",     # Example/demo code with intentional type issues
     "src/amplihack/security/cli.py",    # CLI dependencies not available in CI
-    "cleanup_duplicate_issues.py",      # Uses dynamic imports from external worktree
-    "duplicate_cleanup_test.py",        # Uses dynamic imports from external worktree
-    "test_duplicate_detection_real_issues.py",  # Uses dynamic imports from external worktree
-    "test_sdk_integration.py",          # Uses dynamic imports from external worktree
 ]
 
 [tool.pytest.ini_options]

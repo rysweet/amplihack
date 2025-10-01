@@ -22,7 +22,7 @@ When starting a session, import these files for context:
 @.claude/context/TRUST.md
 @.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
-@DISCOVERIES.md
+@.claude/context/DISCOVERIES.md
 ```
 
 ## Working Philosophy
@@ -40,7 +40,8 @@ When starting a session, import these files for context:
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Ask for clarity**: If requirements are unclear, ask questions before
   proceeding
-- **Document learnings**: Update DISCOVERIES.md with new insights
+- **Document learnings**: Update .claude/context/DISCOVERIES.md with new
+  insights
 - **Session Logs**: All interactions MUST be logged in
   .claude/runtime/logs/<session_id> where <session_id> is a unique identifier
   for the session based on the timestamp.
@@ -500,7 +501,7 @@ After code changes:
 1. Run tests if available
 2. Check philosophy compliance
 3. Verify module boundaries
-4. Update DISCOVERIES.md with learnings
+4. Update .claude/context/DISCOVERIES.md with learnings
 
 ## Common Patterns
 
@@ -517,7 +518,7 @@ See `.claude/context/PATTERNS.md` for:
 The system should continuously improve:
 
 - Track patterns in `.claude/context/PATTERNS.md`
-- Document discoveries in `DISCOVERIES.md`
+- Document discoveries in `.claude/context/DISCOVERIES.md`
 - Update agent definitions as needed
 - Create new agents for repeated tasks
 
@@ -623,7 +624,7 @@ automation, just simple file operations.
 - Review `.claude/context/PHILOSOPHY.md` for principles
 - Check `.claude/agents/CATALOG.md` for agent capabilities
 - Look in `.claude/context/PATTERNS.md` for solutions
-- Update `DISCOVERIES.md` with new learnings
+- Update `.claude/context/DISCOVERIES.md` with new learnings
 
 ---
 
