@@ -341,6 +341,16 @@ class ClaudeLauncher:
         Returns:
             Exit code from Claude process.
         """
+        import time
+
+        from .settings_manager import SettingsManager
+
+        settings_manager = SettingsManager(
+            settings_path=Path.home() / ".claude" / "settings.json",
+            session_id=f"launch_{int(time.time())}",
+            non_interactive=False,
+        )
+
         if not self.prepare_launch():
             return 1
 
@@ -373,6 +383,15 @@ class ClaudeLauncher:
             print(f"Error launching Claude: {e}")
             return 1
         finally:
+            # Restore settings.json backup if exists
+            if settings_manager.backup_path:
+                if settings_manager.restore_backup():
+                    print("  ✅ Restored settings.json from backup")
+                else:
+                    print(
+                        "  ⚠️  Could not restore settings.json - backup remains for manual recovery"
+                    )
+
             # Clean up proxy
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()

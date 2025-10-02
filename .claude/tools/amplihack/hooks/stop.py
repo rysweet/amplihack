@@ -585,6 +585,28 @@ class StopHook(HookProcessor):
         Returns:
             Metadata about the session
         """
+        # Restore settings.json backup if exists (from PR #638)
+        try:
+            import sys
+
+            sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
+            from amplihack.launcher.settings_manager import SettingsManager
+
+            settings_manager = SettingsManager(
+                settings_path=Path.home() / ".claude" / "settings.json",
+                session_id=input_data.get("session_id", "unknown"),
+                non_interactive=True,
+            )
+
+            # Try to restore from any active session backups
+            if settings_manager.load_session_state():
+                if settings_manager.restore_backup():
+                    self.log("Restored settings.json from backup")
+                else:
+                    self.log("Failed to restore settings.json backup", "WARNING")
+        except Exception as e:
+            self.log(f"Error during settings restore: {e}", "ERROR")
+
         # CRITICAL: Recursion guard (thread-local to avoid cross-session interference)
         if hasattr(self._recursion_guard, "active") and self._recursion_guard.active:
             self.log("Recursion detected, skipping reflection")

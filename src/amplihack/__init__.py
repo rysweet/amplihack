@@ -273,7 +273,30 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
 
 def ensure_settings_json():
     """Ensure settings.json exists with proper hook configuration."""
+    from amplihack.launcher.settings_manager import SettingsManager
+
     settings_path = os.path.join(CLAUDE_DIR, "settings.json")
+
+    # Create settings manager
+    settings_manager = SettingsManager(
+        settings_path=Path(settings_path),
+        session_id=f"install_{int(__import__('time').time())}",
+        non_interactive=os.getenv("AMPLIHACK_YES", "0") == "1",
+    )
+
+    # Prompt user for modification
+    if not settings_manager.prompt_user_for_modification():
+        print("  ⚠️  Settings modification declined by user")
+        return False
+
+    # Create backup
+    success, backup_path = settings_manager.create_backup()
+    if not success:
+        print("  ❌ Failed to create backup - aborting settings modification")
+        return False
+
+    if backup_path:
+        print(f"  💾 Backup created at {backup_path}")
 
     # Load existing settings or use template
     if os.path.exists(settings_path):
