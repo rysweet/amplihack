@@ -48,6 +48,16 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
 
         return docker_manager.run_command(docker_args)
 
+    # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
+    if is_uvx_deployment():
+        # Get the original directory (before we changed to temp)
+        original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+        # Add --add-dir to claude_args if not already present
+        if claude_args and "--add-dir" not in claude_args:
+            claude_args = ["--add-dir", original_cwd] + claude_args
+        elif not claude_args:
+            claude_args = ["--add-dir", original_cwd]
+
     proxy_manager = None
     system_prompt_path = None
 
