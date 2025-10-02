@@ -51,8 +51,16 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
     if is_uvx_deployment():
         original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-        if "--add-dir" not in (claude_args or []):
-            claude_args = ["--add-dir", original_cwd] + (claude_args or [])
+        # Validate the original CWD before using it
+        validated_cwd = _validate_and_sanitize_path(original_cwd, "AMPLIHACK_ORIGINAL_CWD")
+        if validated_cwd and "--add-dir" not in (claude_args or []):
+            claude_args = ["--add-dir", validated_cwd] + (claude_args or [])
+        elif not validated_cwd:
+            print(
+                "Warning: Could not validate AMPLIHACK_ORIGINAL_CWD, using current directory",
+                file=sys.stderr,
+            )
+            claude_args = ["--add-dir", os.getcwd()] + (claude_args or [])
 
     proxy_manager = None
     system_prompt_path = None
@@ -188,6 +196,47 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _validate_and_sanitize_path(path: str, var_name: str) -> Optional[str]:
+    """Validate and sanitize path with security hardening.
+
+    Args:
+        path: Path to validate
+        var_name: Variable name for logging
+
+    Returns:
+        Sanitized path if valid, None if invalid
+    """
+    try:
+        if not path or not isinstance(path, str):
+            return None
+
+        # Basic security checks
+        if len(path) > 4096:  # Max path length
+            print(f"Warning: {var_name} exceeds maximum length", file=sys.stderr)
+            return None
+
+        # Path traversal protection
+        if ".." in path or path.count("/") > 20:
+            print(f"Warning: {var_name} contains suspicious path patterns", file=sys.stderr)
+            return None
+
+        # Must be absolute path
+        if not os.path.isabs(path):
+            print(f"Warning: {var_name} must be absolute path", file=sys.stderr)
+            return None
+
+        # Character validation (allow common path characters)
+        allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/_.-~")
+        if not all(c in allowed_chars for c in path):
+            print(f"Warning: {var_name} contains invalid characters", file=sys.stderr)
+            return None
+
+        return path.strip()
+
+    except Exception:
+        return None
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     """Main entry point for amplihack CLI.
 
@@ -205,9 +254,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         temp_claude_dir = os.path.join(temp_dir, ".claude")
         original_cwd = os.getcwd()
 
-        # Set required environment variables
-        os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
-        os.environ["UVX_LAUNCH_DIRECTORY"] = original_cwd
+        # Validate and sanitize the original working directory
+        validated_cwd = _validate_and_sanitize_path(original_cwd, "AMPLIHACK_ORIGINAL_CWD")
+        if not validated_cwd:
+            print("Error: Invalid working directory for UVX deployment", file=sys.stderr)
+            return 1
+
+        # Set required environment variables with validated paths
+        os.environ["AMPLIHACK_ORIGINAL_CWD"] = validated_cwd
+        os.environ["UVX_LAUNCH_DIRECTORY"] = validated_cwd
         os.chdir(temp_dir)
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
@@ -299,8 +354,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
             if is_uvx_deployment():
                 original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-                if "--add-dir" not in claude_args:
-                    claude_args = ["--add-dir", original_cwd] + claude_args
+                # Validate the original CWD before using it
+                validated_cwd = _validate_and_sanitize_path(original_cwd, "AMPLIHACK_ORIGINAL_CWD")
+                if validated_cwd and "--add-dir" not in claude_args:
+                    claude_args = ["--add-dir", validated_cwd] + claude_args
+                elif not validated_cwd:
+                    print(
+                        "Warning: Could not validate AMPLIHACK_ORIGINAL_CWD, using current directory",
+                        file=sys.stderr,
+                    )
+                    if "--add-dir" not in claude_args:
+                        claude_args = ["--add-dir", os.getcwd()] + claude_args
 
             # Check if Docker should be used for direct launch
             if DockerManager.should_use_docker():

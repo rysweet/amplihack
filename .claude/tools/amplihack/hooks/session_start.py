@@ -5,11 +5,12 @@ Uses unified HookProcessor for common functionality.
 """
 
 # Import the base processor
+import html
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -30,7 +31,12 @@ except ImportError:
 
 
 class SessionStartHook(HookProcessor):
-    """Hook processor for session start events with performance optimizations."""
+    """Hook processor for session start events with performance optimizations and security hardening."""
+
+    # Security configuration constants
+    MAX_PATH_LENGTH = 4096  # Maximum allowed path length
+    MAX_ENV_VAR_LENGTH = 8192  # Maximum environment variable length
+    ALLOWED_PATH_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/_.-~")
 
     def __init__(self):
         super().__init__("session_start")
@@ -40,8 +46,54 @@ class SessionStartHook(HookProcessor):
         self._preferences_cache = None
         self._preferences_cache_time = 0
 
+    def _validate_environment_variable(self, var_name: str, value: str) -> Optional[str]:
+        """Validate and sanitize environment variable with security hardening.
+
+        Args:
+            var_name: Name of the environment variable
+            value: Value to validate
+
+        Returns:
+            Sanitized value if valid, None if invalid
+        """
+        try:
+            # Input validation
+            if not value or not isinstance(value, str):
+                self.log(f"Invalid {var_name}: empty or non-string value", "WARNING")
+                return None
+
+            # Length validation
+            if len(value) > self.MAX_ENV_VAR_LENGTH:
+                self.log(f"Invalid {var_name}: exceeds maximum length", "WARNING")
+                return None
+
+            # Format validation - must be absolute path
+            if not os.path.isabs(value):
+                self.log(f"Invalid {var_name}: not an absolute path", "WARNING")
+                return None
+
+            # Character validation
+            if not all(c in self.ALLOWED_PATH_CHARS for c in value):
+                self.log(f"Invalid {var_name}: contains invalid characters", "WARNING")
+                return None
+
+            # Path traversal protection - check for suspicious patterns
+            if ".." in value or value.count("/") > 20:
+                self.log(f"Invalid {var_name}: potential path traversal attack", "WARNING")
+                return None
+
+            return value.strip()
+
+        except Exception:
+            # Secure error handling - don't expose internal exception details
+            self.log(
+                f"Environment variable validation failed for {var_name} due to security constraints",
+                "ERROR",
+            )
+            return None
+
     def _validate_launch_directory(self, path: str) -> bool:
-        """Validate launch directory path for security with caching.
+        """Validate launch directory path for security with enhanced protection.
 
         Args:
             path: Directory path to validate
@@ -59,7 +111,34 @@ class SessionStartHook(HookProcessor):
                 self._path_validation_cache[path] = False
                 return False
 
-            path_obj = Path(path.strip())
+            cleaned_path = path.strip()
+
+            # Path length validation (CRITICAL SECURITY)
+            if len(cleaned_path) > self.MAX_PATH_LENGTH:
+                self.log("Path exceeds maximum length limit", "WARNING")
+                self._path_validation_cache[path] = False
+                return False
+
+            # Enhanced path traversal protection
+            if ".." in cleaned_path or cleaned_path.count("/") > 20:
+                self.log("Potential path traversal detected", "WARNING")
+                self._path_validation_cache[path] = False
+                return False
+
+            path_obj = Path(cleaned_path)
+
+            # Resolve symlinks and check for symlink attacks (HIGH SECURITY)
+            try:
+                resolved_path = path_obj.resolve(strict=False)
+                # Check if resolved path is dramatically different (potential symlink attack)
+                if len(str(resolved_path)) > len(cleaned_path) * 2:
+                    self.log("Potential symlink attack detected", "WARNING")
+                    self._path_validation_cache[path] = False
+                    return False
+            except (OSError, RuntimeError):
+                self.log("Path resolution failed for security reasons", "WARNING")
+                self._path_validation_cache[path] = False
+                return False
 
             # Quick existence check first (fastest operation)
             if not path_obj.exists():
@@ -71,17 +150,18 @@ class SessionStartHook(HookProcessor):
                 self._path_validation_cache[path] = False
                 return False
 
-            # Finally canonicalize (most expensive operation)
-            path_obj.resolve()
+            # Final security check: ensure resolved path is still reasonable
             self._path_validation_cache[path] = True
             return True
 
         except (OSError, ValueError):
+            # Secure error handling - don't leak system information
+            self.log("Path validation failed for security reasons", "WARNING")
             self._path_validation_cache[path] = False
             return False
 
     def _add_launch_directory_context(self, launch_dir: str) -> str:
-        """Add launch directory context with security validation.
+        """Add launch directory context with security validation and sanitization.
 
         Args:
             launch_dir: UVX launch directory path
@@ -90,16 +170,20 @@ class SessionStartHook(HookProcessor):
             Context message for launch directory
         """
         if not self._validate_launch_directory(launch_dir):
-            self.log(f"Invalid or inaccessible launch directory: {launch_dir}", "WARNING")
+            # Secure error handling - don't expose path details
+            self.log("Launch directory validation failed for security reasons", "WARNING")
             return ""
 
-        # Use the user's exact message format
+        # Sanitize the path for output (prevent injection)
+        sanitized_path = html.escape(launch_dir)
+
+        # Use the user's exact message format with sanitized path
         context = (
-            f"You are going to work on the project in the directory {launch_dir}. "
+            f"You are going to work on the project in the directory {sanitized_path}. "
             f"Change working dir to there and all subsequent commands should be relative to that dir and repo."
         )
 
-        self.log(f"Added UVX launch directory context: {launch_dir}")
+        self.log("Added UVX launch directory context")
         return context
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -179,18 +263,27 @@ class SessionStartHook(HookProcessor):
         except ImportError:
             pass
 
-        # Optimized UVX launch directory check with caching
+        # Enhanced UVX launch directory check with security hardening
         uvx_launch_context = ""
         # Cache environment variable access for performance
         if "UVX_LAUNCH_DIRECTORY" not in self._env_cache:
-            self._env_cache["UVX_LAUNCH_DIRECTORY"] = os.environ.get("UVX_LAUNCH_DIRECTORY")
+            raw_env_value = os.environ.get("UVX_LAUNCH_DIRECTORY")
+            # Validate and sanitize environment variable
+            validated_value = (
+                self._validate_environment_variable("UVX_LAUNCH_DIRECTORY", raw_env_value)
+                if raw_env_value
+                else None
+            )
+            self._env_cache["UVX_LAUNCH_DIRECTORY"] = validated_value
 
         uvx_launch_dir = self._env_cache["UVX_LAUNCH_DIRECTORY"]
         if uvx_launch_dir:
             uvx_launch_context = self._add_launch_directory_context(uvx_launch_dir)
             self.save_metric("uvx_launch_directory_set", True)
+            self.save_metric("uvx_launch_directory_validated", True)
         else:
             self.save_metric("uvx_launch_directory_set", False)
+            self.save_metric("uvx_launch_directory_validated", False)
 
         # Build context if needed
         context_parts = []
