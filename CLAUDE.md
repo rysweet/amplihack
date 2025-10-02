@@ -388,12 +388,23 @@ Execute comprehensive system review with all relevant agents in parallel.
 ├── context/          # Philosophy, patterns, project info
 ├── agents/           # Specialized AI agents
 ├── commands/         # Slash commands (/ultrathink, /analyze, /improve)
+├── scenarios/        # Production-ready user-facing tools
+│   ├── README.md     # Scenarios pattern documentation
+│   ├── tool-name/    # Each tool gets its own directory
+│   │   ├── README.md                 # Tool overview and usage
+│   │   ├── HOW_TO_CREATE_YOUR_OWN.md # Template for similar tools
+│   │   ├── tool.py                   # Main implementation
+│   │   ├── tests/                    # Tool-specific tests
+│   │   └── examples/                 # Usage examples
+│   └── templates/    # Shared templates and utilities
+├── ai_working/       # Experimental tools under development
 ├── tools/            # Hooks and utilities
 ├── workflow/         # Default workflow definition
 │   └── DEFAULT_WORKFLOW.md  # Customizable 13-step workflow
 └── runtime/          # Logs, metrics, analysis
 
 Specs/               # Module specifications
+Makefile             # Easy access to scenario tools
 ```
 
 ## Key Commands
@@ -437,6 +448,51 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
+
+## Scenario Tools
+
+Amplihack includes production-ready scenario tools that follow the **Progressive
+Maturity Model**:
+
+### Using Scenario Tools
+
+All scenario tools are accessible via Makefile commands:
+
+```bash
+# List all available scenario tools
+make list-scenarios
+
+# Get help for the scenarios system
+make scenarios-help
+
+# Run a specific tool
+make analyze-codebase TARGET=./src
+make analyze-codebase TARGET=./src OPTIONS='--format json --depth deep'
+```
+
+### Available Scenario Tools
+
+- **analyze-codebase**: Comprehensive codebase analysis for insights and
+  recommendations
+- See `make list-scenarios` for the complete current list
+
+### Creating New Scenario Tools
+
+1. **Start Experimental**: Create in `.claude/ai_working/tool-name/`
+2. **Develop and Test**: Build minimal viable version with real usage
+3. **Graduate to Production**: Move to `.claude/scenarios/` when criteria met
+
+See `.claude/scenarios/README.md` for detailed guidance and templates.
+
+### Graduation Criteria
+
+Tools move from experimental to production when they achieve:
+
+- Proven value (2-3 successful uses)
+- Complete documentation
+- Comprehensive test coverage
+- Makefile integration
+- Stability (no breaking changes for 1+ week)
 
 ## Available Tools
 
