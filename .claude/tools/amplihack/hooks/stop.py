@@ -603,62 +603,13 @@ class StopHook(HookProcessor):
         if messages:
             self.save_session_analysis(messages)
 
-            # Try AI-powered automation (respects REFLECTION_ENABLED environment variable)
-            try:
-                sys.path.append(str(Path(__file__).parent.parent / "reflection"))
-                from reflection import process_reflection_analysis  # type: ignore
-
-                self.log("Starting AI-powered reflection analysis...")
-
-                # Find the most recent analysis file
-                analysis_files = list(self.analysis_dir.glob("session_*.json"))
-                if analysis_files:
-                    latest_analysis = max(analysis_files, key=lambda f: f.stat().st_mtime)
-                    self.log(f"Processing analysis file: {latest_analysis}")
-
-                    # Add messages to the analysis data for AI processing
-                    try:
-                        with open(latest_analysis, "r") as f:
-                            analysis_data = json.load(f)
-
-                        # SECURITY: Sanitize messages before adding to analysis
-                        try:
-                            sys.path.append(str(Path(__file__).parent.parent / "reflection"))
-                            from security import sanitize_messages  # type: ignore
-
-                            analysis_data["messages"] = sanitize_messages(messages)
-                        except ImportError:
-                            # Fallback sanitization if security module not available
-                            safe_messages = []
-                            for msg in messages[:10]:  # Limit to 10 messages
-                                if isinstance(msg, dict) and "content" in msg:
-                                    content = str(msg["content"])[:200]  # Truncate content
-                                    safe_messages.append(
-                                        {"content": content, "role": msg.get("role", "unknown")}
-                                    )
-                            analysis_data["messages"] = safe_messages
-
-                        # Save updated analysis with messages
-                        with open(latest_analysis, "w") as f:
-                            json.dump(analysis_data, f, indent=2)
-
-                    except Exception as e:
-                        self.log(f"Warning: Could not add messages to analysis: {e}", "WARNING")
-
-                    # Run AI analysis with console visibility
-                    result = process_reflection_analysis(messages)
-                    if result:
-                        self.log(f"✅ AI automation completed: Issue #{result}")
-                    else:
-                        self.log("AI analysis complete - no automation triggered")
-                else:
-                    self.log("No analysis files found for AI processing", "WARNING")
-
-            except Exception as auto_error:
-                self.log(f"AI automation error: {auto_error}", "ERROR")
-                import traceback
-
-                self.log(f"Stack trace: {traceback.format_exc()}", "DEBUG")
+            # DISABLED: AI-powered automation temporarily disabled to prevent runaway issue creation
+            # This code caused a runaway loop creating 350+ duplicate issues on 2025-10-01
+            # Root cause: No loop prevention mechanisms (no semaphore, recursion guard, or cooldown)
+            # See: .claude/runtime/reports/RUNAWAY_ISSUE_CREATION_ROOT_CAUSE.md
+            # Fixed version with loop prevention available in PR #461
+            # DO NOT RE-ENABLE until PR #461 is merged
+            self.log("ℹ️  AI reflection disabled (use PR #461 branch for safe reflection)")
 
             # Check for learnings
             learnings = self.extract_learnings(messages)
