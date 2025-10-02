@@ -95,8 +95,11 @@ variables or secure key management systems.
 
 ### Custom Workflows
 
-Edit `.claude/workflow/DEFAULT_WORKFLOW.md` to customize. Changes apply
-immediately.
+The 14-step workflow is fully customizable. Edit
+`.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process -
+changes apply immediately to `/ultrathink` and other commands. See
+[docs/WORKFLOW_CUSTOMIZATION.md](docs/WORKFLOW_CUSTOMIZATION.md) for detailed
+customization instructions.
 
 ### Project Structure
 
