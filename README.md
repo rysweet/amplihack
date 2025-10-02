@@ -1,332 +1,83 @@
-# Microsoft Hackathon 2025 - Agentic Coding Framework
+# amplihack
+
+Development framework for Claude Code with specialized agents and automated
+workflows.
 
 ```sh
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
 ```
 
-**No installation needed.** Launch Claude Code with AI-powered agents that
-accelerate software development through automation, code generation, and
-collaborative problem-solving.
-
----
-
-## Prerequisites
-
-Before using AmplihHack, ensure you have the following tools installed:
-
-- **Node.js** (v18+) - [https://nodejs.org/](https://nodejs.org/)
-- **npm** - [https://www.npmjs.com/](https://www.npmjs.com/) (comes with
-  Node.js)
-- **uv** - [https://docs.astral.sh/uv/](https://docs.astral.sh/uv/)
-- **git** - [https://git-scm.com/](https://git-scm.com/)
-
-### Quick Installation
-
-**macOS:**
-
-```bash
-brew install node uv git
-```
-
-**Linux (Ubuntu/Debian):**
-
-```bash
-sudo apt install nodejs npm git
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-**Windows:**
-
-```powershell
-winget install OpenJS.NodeJS Git.Git
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-For detailed platform-specific installation instructions, see
-[docs/PREREQUISITES.md](docs/PREREQUISITES.md).
-
-**Automatic Checking:** AmplihHack automatically checks for missing
-prerequisites on launch and provides installation instructions if any are
-missing.
-
----
+Launches Claude Code with preconfigured agents. No installation needed.
 
 ## Quick Start
 
+### Prerequisites
+
+- Node.js 18+, npm, git
+- uv ([astral.sh/uv](https://docs.astral.sh/uv/))
+
 ### Basic Usage
 
-Launch Claude Code with the amplihack framework from any directory:
-
 ```sh
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
-```
-
-That's it! The command automatically:
-
-- Downloads the latest framework
-- Sets up the environment
-- **Detects and uses claude-trace for enhanced debugging** (if available)
-- **Attempts to install claude-trace if not found** (requires npm)
-- Launches Claude Code with all agents configured
-- No local installation required
-
-#### Claude-Trace Enhanced Debugging
-
-The framework automatically uses
-[claude-trace](https://github.com/mariozechner/claude-trace) for better
-debugging:
-
-- **Default behavior**: Claude-trace is used automatically when available
-- **Auto-installation**: Attempts to install via npm if not found
-- **Opt-out**: Set `AMPLIHACK_USE_TRACE=0` to use standard claude
-- **Fallback**: Uses regular claude if claude-trace can't be installed
-
-### Advanced Usage
-
-**With Docker Container Isolation:**
-
-Run amplihack in a containerized environment for consistent, isolated execution:
-
-```sh
-# Use --docker flag for containerized execution
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --docker
-
-# Or enable Docker mode with environment variable
-export AMPLIHACK_USE_DOCKER=1
+# Launch Claude Code with amplihack
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
 
-# Docker image is built automatically on first use
-# To force a rebuild, remove the existing image:
-docker rmi amplihack:latest
-```
-
-The Docker integration provides:
-
-- **Zero configuration**: Automatically builds image on first use
-- **Credential forwarding**: API keys are securely passed to container
-- **Working directory mounting**: Your code is mounted at `/workspace`
-- **Cross-platform consistency**: Same environment across all platforms
-- **Automatic fallback**: Runs locally if Docker is unavailable
-
-**With Azure OpenAI Integration:**
-
-For using claude code and the amplihack frameowrk with Azure OpenAI models:
-
-- Copy `example.azure.env` to `.azure.env` and then edit it with your Azure
-  OpenAI endpoint settings
-- Launch amplichack with the proxy to Azure OpenAI:
--
-
-```sh
-# Launch with Azure OpenAI proxy (includes persistence prompt)
+# With Azure OpenAI (requires azure.env configuration)
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --with-proxy-config ./azure.env
-```
 
-The Azure integration provides:
-
-- Dynamicaly loaded proxy
-- Azure OpenAI model access through Claude Code interface
-- Automatic persistence prompt for autonomous operation
-
-**With GitHub Repository Checkout:**
-
-Work directly in any GitHub repository without cloning manually:
-
-```sh
-# Clone and work in a specific repository
+# Work directly in a GitHub repository
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --checkout-repo owner/repo
-
-# Works with different URI formats
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --checkout-repo https://github.com/microsoft/vscode
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --checkout-repo git@github.com:facebook/react.git
-
-# Combine with Azure OpenAI
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --checkout-repo owner/repo --with-proxy-config ./azure.env
 ```
 
-The repository checkout feature automatically:
+### Commands in Claude Code
 
-- Clones the specified GitHub repository locally
-- Changes to the repository directory
-- Runs all Claude operations in the repository context
-- Supports owner/repo, HTTPS, and SSH URI formats
+- `/ultrathink <task>` - Orchestrate agents for complex tasks
+- `/analyze <path>` - Review code quality
+- `/improve [target]` - Capture learnings
+- `/fix [pattern]` - Fix common errors
 
-**From a Specific Branch:**
+## Core Concepts
 
-For testing features or specific versions:
+### Agents
 
-```sh
-# Launch from a development branch
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding@branch-name amplihack launch
-```
+- **architect** - System design
+- **builder** - Code generation
+- **reviewer** - Code quality
+- **tester** - Test generation
+- **security** - Vulnerability checks
+- **optimizer** - Performance
 
----
+### Workflow
 
-## Installation (For Developers Only)
+14-step development process:
 
-> **Note:** Installation is NOT required for using amplihack. The `uvx` commands
-> above work without any installation. This section is only for developers who
-> want to modify the framework itself.
+1. Clarify requirements
+2. Create issue
+3. Setup branch
+4. Design tests
+5. Implement
+6. Simplify
+7. Test
+8. Commit
+9. Create PR
+10. Review
+11. Integrate feedback
+12. Check philosophy
+13. Prepare merge
+14. Cleanup
 
-### Development Setup
+### Philosophy
 
-If you're contributing to the framework:
-
-```sh
-# Clone and install in development mode
-git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git
-cd MicrosoftHackathon2025-AgenticCoding
-uv pip install -e .
-
-# Run locally installed version
-uvx amplihack launch
-```
-
-### Requirements for Development
-
-- Python 3.x
-- git
-- [uv/uvx](https://github.com/astral-sh/uv) - Modern Python package manager
-
-### Uninstall
-
-Remove amplihack configuration (does not affect Claude Code):
-
-```sh
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack uninstall
-```
-
----
-
-## Features
-
-### Key Features Summary
-
-| **Feature**                   | **What It Does**                                                    | **How to Use It**                                                                                       |
-| ----------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **🚀 Quick Launch**           | Launch Claude Code with agents instantly                            | `uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch`       |
-| **🎁 Agent Bundle Generator** | Create specialized zero-install agent bundles from natural language | `amplihack bundle generate "description"` - See [Agent Bundle Generator Guide](#agent-bundle-generator) |
-| **🧠 UltraThink**             | Deep analysis & multi-agent orchestration for complex tasks         | `/ultrathink <task description>` - Follows 14-step workflow automatically                               |
-| **🏗️ Architect Agent**        | System design, problem decomposition, specifications                | Auto-invoked by UltraThink or use Task tool with `architect`                                            |
-| **🔨 Builder Agent**          | Code implementation from specifications                             | Auto-invoked after architect or use Task tool with `builder`                                            |
-| **👁️ Reviewer Agent**         | Code review, philosophy compliance check                            | Auto-invoked in workflow or use Task tool with `reviewer`                                               |
-| **🧪 Tester Agent**           | Test coverage analysis, TDD implementation                          | Auto-invoked for testing or use Task tool with `tester`                                                 |
-| **🔒 Security Agent**         | Vulnerability assessment, security requirements                     | Auto-invoked for security review                                                                        |
-| **⚡ Optimizer Agent**        | Performance analysis, bottleneck identification                     | Use for performance concerns                                                                            |
-| **🧹 Cleanup Agent**          | Code simplification, dead code removal                              | Auto-runs after implementation                                                                          |
-| **🔄 CI/CD Diagnostics**      | Fix CI failures, pre-commit issues                                  | `ci-diagnostic-workflow` (after push) or `pre-commit-diagnostic` (before commit)                        |
-| **📝 14-Step Workflow**       | Complete development lifecycle                                      | Automatically followed by `/ultrathink`                                                                 |
-| **📊 /analyze**               | Comprehensive code analysis                                         | `/analyze <path>` - Philosophy compliance check                                                         |
-| **🔧 /improve**               | Self-improvement & learning capture                                 | `/improve [target]` - Updates .claude/context/DISCOVERIES.md                                            |
-| **📋 TodoWrite**              | Task management & planning                                          | Automatically used for complex tasks                                                                    |
-| **🔀 Parallel Execution**     | Run multiple agents/tasks simultaneously                            | Default behavior - agents run in parallel when possible                                                 |
-| **🐙 GitHub Integration**     | Issue creation, PR management                                       | Built-in `gh` CLI commands                                                                              |
-| **🔍 Pattern Recognition**    | Identify reusable solutions                                         | `patterns` agent finds common patterns                                                                  |
-| **🤖 Azure OpenAI**           | Use Azure models instead of Claude                                  | `amplihack launch --with-proxy-config ./azure.env`                                                      |
-| **📦 GitHub Checkout**        | Work in any GitHub repo without manual cloning                      | `amplihack launch --checkout-repo owner/repo`                                                           |
-| **🎨 Custom Agents**          | Create specialized agents for repeated tasks                        | Add to `.claude/agents/amplihack/specialized/`                                                          |
-| **📚 Philosophy**             | Ruthless simplicity, bricks & studs modularity                      | Auto-enforced in all operations                                                                         |
-
-### Quick Start Commands
-
-```bash
-# Launch the framework (no installation needed!)
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
-
-# Work directly in any GitHub repository
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --checkout-repo microsoft/vscode
-
-# For any non-trivial task
-/ultrathink Add authentication to my API
-
-# Analyze existing code
-/analyze src/
-
-# Fix CI issues
-# If pre-commit fails: agent will auto-invoke pre-commit-diagnostic
-# If CI fails after push: agent will auto-invoke ci-diagnostic-workflow
-```
-
-### AI-Powered Development Agents
-
-The framework includes specialized agents for every aspect of development:
-
-- **Architect Agent**: System design and specifications
-- **Builder Agent**: Code generation from specs
-- **Reviewer Agent**: Philosophy compliance and code review
-- **Tester Agent**: Test generation and validation
-- **Security Agent**: Vulnerability assessment
-- **Optimizer Agent**: Performance bottleneck analysis
-- **Cleanup Agent**: Code simplification
-- And many more specialized agents
-
-### Default Coding Workflow
-
-A standardized 14-step workflow ensures consistency and quality:
-
-1. **Requirements Clarification**: Understand the task completely
-2. **Issue Creation**: Track work in GitHub
-3. **Branch Setup**: Isolated development environment
-4. **TDD Design**: Tests before implementation
-5. **Implementation**: Build with philosophy compliance
-6. **Simplification**: Remove unnecessary complexity
-7. **Testing**: Comprehensive validation
-8. **Committing**: Clear, atomic commits
-9. **PR Creation**: Detailed pull requests
-10. **Review**: Code and philosophy checks
-11. **Feedback**: Implement review suggestions
-12. **Philosophy Check**: Final compliance validation
-13. **Merge Ready**: Clean, tested, documented code
-14. **Final Cleanup**: Quality pass and artifact removal
-
-The workflow is customizable via `.claude/workflow/DEFAULT_WORKFLOW.md`.
-
-### Development Philosophy
-
-The framework enforces key principles:
-
-- **Ruthless Simplicity**: Start simple, add complexity only when justified
-- **Modular Design**: Self-contained "bricks" with clear "studs" (interfaces)
-- **Zero-BS Implementation**: No stubs, placeholders, or dead code
-- **Test-Driven Development**: Tests define contracts before implementation
-- **Continuous Learning**: Document discoveries and patterns
-
-### Project Structure
-
-```
-.claude/
-├── agents/           # Specialized AI agents
-├── context/          # Philosophy and patterns
-├── workflow/         # Development workflows
-├── commands/         # Slash commands (/ultrathink, /analyze, /improve)
-└── runtime/          # Logs and metrics
-
-src/amplihack/        # CLI implementation
-Specs/                # Module specifications
-```
-
-### Key Commands
-
-**Within Claude Code:**
-
-- `/ultrathink <task>` - Deep analysis using multiple agents
-- `/analyze <path>` - Comprehensive code review
-- `/improve [target]` - Self-improvement and learning capture
-
-**CLI Commands:**
-
-- `amplihack launch` - Start Claude Code with agents
-- `amplihack launch --with-proxy-config` - Use Azure OpenAI
-- `amplihack launch --checkout-repo` - Clone and work in GitHub repository
-- `amplihack uninstall` - Remove configuration
-
----
+- **Simplicity** - Start simple, add only justified complexity
+- **Modular** - Self-contained modules with clear interfaces
+- **Working code** - No stubs or dead code
+- **Test-driven** - Tests before implementation
 
 ## Configuration
 
-### Azure OpenAI Setup
+### Azure OpenAI
 
-Create an `azure.env` file with your Azure OpenAI credentials:
+Create `azure.env` with your credentials:
 
 ```env
 AZURE_OPENAI_API_KEY=your-api-key
@@ -335,83 +86,63 @@ AZURE_OPENAI_API_VERSION=2024-02-15-preview
 AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 ```
 
-Then launch with:
+**Security Warning**: Never commit API keys to version control. Use environment
+variables or secure key management systems.
+
+### Custom Workflows
+
+Edit `.claude/workflow/DEFAULT_WORKFLOW.md` to customize. Changes apply
+immediately.
+
+### Project Structure
+
+```
+.claude/
+├── agents/     # Agent definitions
+├── context/    # Philosophy and patterns
+├── workflow/   # Development processes
+└── commands/   # Slash commands
+```
+
+## Documentation
+
+- [Prerequisites](docs/PREREQUISITES.md) - Platform setup
+- [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agents
+- [Philosophy](docs/PHILOSOPHY.md) - Core principles
+- [Workflows](docs/WORKFLOW.md) - Process customization
+
+## Development
+
+### Contributing
+
+Fork, submit PRs. Add agents to `.claude/agents/`, patterns to
+`.claude/context/PATTERNS.md`.
+
+### Local Development
 
 ```sh
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --with-proxy-config ./azure.env
+git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git
+cd MicrosoftHackathon2025-AgenticCoding
+uv pip install -e .
+uvx amplihack launch
 ```
 
-### Customizing Workflows
-
-Edit `.claude/workflow/DEFAULT_WORKFLOW.md` to customize the development
-workflow:
+### Testing
 
 ```sh
-# Open workflow in your editor
-$EDITOR .claude/workflow/DEFAULT_WORKFLOW.md
+pytest tests/
 ```
 
-Changes take effect immediately - no restart needed.
+## Command Reference
 
----
-
-## Agent Bundle Generator
-
-Transform natural language descriptions into specialized, zero-install agent
-bundles. Describe what you want, and the Agent Bundle Generator creates a
-complete, executable agent system that runs directly via `uvx`.
-
-### Quick Example
-
-Generate a WSL dev environment maintenance agent:
-
-```bash
-# Generate the agent bundle
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack bundle generate \
-  "Build an agent that ensures I have the latest dev tools including python, rust, golang, uv, node, pnpm, VS Code Insiders, claude code, etc." \
-  --output-dir ~/src/wsl-dev-updater
-
-# Run your custom agent
-uvx --from ~/src/wsl-dev-updater wsl-dev-updater
-```
-
-### Learn More
-
-For complete command reference, additional examples, troubleshooting, and
-advanced topics, see the
-**[Agent Bundle Generator Guide](docs/agent-bundle-generator-guide.md)**.
-
----
-
-## Contributing
-
-We welcome contributions! The framework is designed to be extended:
-
-1. **Create new agents** in `.claude/agents/`
-2. **Document patterns** in `.claude/context/PATTERNS.md`
-3. **Share discoveries** in `.claude/context/DISCOVERIES.md`
-4. **Improve workflows** in `.claude/workflow/`
-
-Fork the repository and submit pull requests with your improvements.
-
----
+| Task        | Command                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------- |
+| Launch      | `uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch` |
+| With Azure  | Add `--with-proxy-config ./azure.env`                                                             |
+| With repo   | Add `--checkout-repo owner/repo`                                                                  |
+| From branch | Use `@branch-name` after URL                                                                      |
+| Uninstall   | `uvx [...] amplihack uninstall`                                                                   |
 
 ## License
 
-This project is licensed under the MIT License.
-
----
-
-## Quick Command Reference
-
-| Task               | Command                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| Launch Claude Code | `uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch` |
-| With Azure OpenAI  | Add `--with-proxy-config ./azure.env`                                                             |
-| With GitHub repo   | Add `--checkout-repo owner/repo`                                                                  |
-| From branch        | Use `@branch-name` after repo URL                                                                 |
-| Developer setup    | Clone repo and `uv pip install -e .`                                                              |
-
----
-
-Built with ❤️ for Microsoft Hackathon 2025
+MIT. See [LICENSE](LICENSE).
