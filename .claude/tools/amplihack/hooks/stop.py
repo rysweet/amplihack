@@ -615,8 +615,9 @@ class StopHook(HookProcessor):
         # Recursion guard removed - it was part of the broken reflection system
         self.log("Reflection system DISABLED - see incident reports for details")
 
-        # Return empty dict - NO reflection analysis, NO issue creation, NO output
-        return {}
+        # Display simple stop hook delineation message
+        # Hook messages require "message" key to be visible to users
+        return {"message": "\n=====STOP Hook=====\n"}
 
     def _should_analyze(self, state_data: ReflectionStateData) -> bool:
         """Check if enough time has passed since last analysis."""
