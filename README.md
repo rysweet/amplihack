@@ -13,8 +13,12 @@ Launches Claude Code with preconfigured agents. No installation needed.
 
 ### Prerequisites
 
-- Node.js 18+, npm, git
+- Python 3.8+, Node.js 18+, npm, git
+- GitHub CLI (`gh`) for PR/issue management
 - uv ([astral.sh/uv](https://docs.astral.sh/uv/))
+
+For detailed installation instructions, see
+[docs/PREREQUISITES.md](docs/PREREQUISITES.md).
 
 ### Basic Usage
 
