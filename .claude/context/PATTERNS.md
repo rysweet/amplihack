@@ -1101,6 +1101,788 @@ This improvement was identified by AI analysis of session logs. The system detec
 
 From PR #147: Created self-improving system that analyzes 1,338+ session files and automatically creates GitHub issues for detected improvement opportunities.
 
+## Pattern: Safe Subprocess Wrapper with Comprehensive Error Handling
+
+### Challenge
+
+Subprocess calls fail with cryptic error messages that don't help users understand what went wrong or how to fix it. Different subprocess errors (FileNotFoundError, PermissionError, TimeoutExpired) need different user-facing guidance.
+
+### Solution
+
+Create a safe subprocess wrapper that catches all error types and provides user-friendly, actionable error messages with context.
+
+```python
+def safe_subprocess_call(
+    cmd: List[str],
+    context: str,
+    timeout: Optional[int] = 30,
+) -> Tuple[int, str, str]:
+    """Safely execute subprocess with comprehensive error handling.
+
+    Args:
+        cmd: Command and arguments to execute
+        context: Human-readable context for what this command does
+        timeout: Timeout in seconds (default 30)
+
+    Returns:
+        Tuple of (returncode, stdout, stderr)
+        On error, returncode is non-zero and stderr contains helpful message
+    """
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        return result.returncode, result.stdout, result.stderr
+
+    except FileNotFoundError:
+        # Command not found - most common error
+        cmd_name = cmd[0] if cmd else "command"
+        error_msg = f"Command not found: {cmd_name}\n"
+        if context:
+            error_msg += f"Context: {context}\n"
+        error_msg += "Please ensure the tool is installed and in your PATH."
+        return 127, "", error_msg
+
+    except PermissionError:
+        cmd_name = cmd[0] if cmd else "command"
+        error_msg = f"Permission denied: {cmd_name}\n"
+        if context:
+            error_msg += f"Context: {context}\n"
+        error_msg += "Please check file permissions or run with appropriate privileges."
+        return 126, "", error_msg
+
+    except subprocess.TimeoutExpired:
+        cmd_name = cmd[0] if cmd else "command"
+        error_msg = f"Command timed out after {timeout}s: {cmd_name}\n"
+        if context:
+            error_msg += f"Context: {context}\n"
+        error_msg += "The operation took too long to complete."
+        return 124, "", error_msg
+
+    except OSError as e:
+        cmd_name = cmd[0] if cmd else "command"
+        error_msg = f"OS error running {cmd_name}: {str(e)}\n"
+        if context:
+            error_msg += f"Context: {context}\n"
+        return 1, "", error_msg
+
+    except Exception as e:
+        # Catch-all for unexpected errors
+        cmd_name = cmd[0] if cmd else "command"
+        error_msg = f"Unexpected error running {cmd_name}: {str(e)}\n"
+        if context:
+            error_msg += f"Context: {context}\n"
+        return 1, "", error_msg
+```
+
+### Key Points
+
+- **Standard exit codes** - Use conventional exit codes (127 for command not found, 126 for permission denied)
+- **Context parameter is critical** - Always tell users what operation failed ("checking git version", "installing npm package")
+- **User-friendly messages** - Avoid technical jargon, provide actionable guidance
+- **No exceptions propagate** - Always return error info via return values
+- **Default timeout** - 30 seconds prevents hanging on network issues
+
+### When to Use
+
+- ANY subprocess call in your codebase
+- Especially when calling external tools (git, npm, uv, etc.)
+- When users need to understand and fix issues themselves
+- Replace all direct subprocess.run() calls with this wrapper
+
+### Benefits
+
+- Consistent error handling across entire codebase
+- Users get actionable error messages
+- No cryptic Python tracebacks for tool issues
+- Easy to track what operation failed via context string
+
+### Trade-offs
+
+- Slightly more verbose than bare subprocess.run()
+- Must provide context string (but this is a feature, not a bug)
+
+### Related Patterns
+
+- Combines with Platform-Specific Installation Guidance pattern
+- Used by Fail-Fast Prerequisite Checking pattern
+
+### Real Impact
+
+From PR #457: Eliminated cryptic subprocess errors, making it clear when tools like npm or git are missing and exactly how to install them.
+
+## Pattern: Platform-Specific Installation Guidance
+
+### Challenge
+
+Users on different platforms (macOS, Linux, WSL, Windows) need different installation commands. Providing generic "install X" guidance wastes user time looking up platform-specific instructions.
+
+### Solution
+
+Detect platform automatically and provide exact installation commands for that platform.
+
+```python
+from enum import Enum
+import platform
+from pathlib import Path
+
+class Platform(Enum):
+    """Supported platforms for prerequisite checking."""
+    MACOS = "macos"
+    LINUX = "linux"
+    WSL = "wsl"
+    WINDOWS = "windows"
+    UNKNOWN = "unknown"
+
+class PrerequisiteChecker:
+    # Installation commands by platform and tool
+    INSTALL_COMMANDS = {
+        Platform.MACOS: {
+            "node": "brew install node",
+            "git": "brew install git",
+        },
+        Platform.LINUX: {
+            "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs\n# Arch:\nsudo pacman -S nodejs",
+            "git": "# Ubuntu/Debian:\nsudo apt install git\n# Fedora/RHEL:\nsudo dnf install git\n# Arch:\nsudo pacman -S git",
+        },
+        Platform.WSL: {
+            "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs",
+            "git": "sudo apt install git  # or your WSL distro's package manager",
+        },
+        Platform.WINDOWS: {
+            "node": "winget install OpenJS.NodeJS\n# Or: choco install nodejs",
+            "git": "winget install Git.Git\n# Or: choco install git",
+        },
+    }
+
+    # Documentation links for each tool
+    DOCUMENTATION_LINKS = {
+        "node": "https://nodejs.org/",
+        "git": "https://git-scm.com/",
+    }
+
+    def __init__(self):
+        self.platform = self._detect_platform()
+
+    def _detect_platform(self) -> Platform:
+        """Detect the current platform."""
+        system = platform.system()
+
+        if system == "Darwin":
+            return Platform.MACOS
+        elif system == "Linux":
+            if self._is_wsl():
+                return Platform.WSL
+            return Platform.LINUX
+        elif system == "Windows":
+            return Platform.WINDOWS
+        else:
+            return Platform.UNKNOWN
+
+    def _is_wsl(self) -> bool:
+        """Check if running under Windows Subsystem for Linux."""
+        try:
+            proc_version = Path("/proc/version")
+            if proc_version.exists():
+                content = proc_version.read_text().lower()
+                return "microsoft" in content
+        except (OSError, PermissionError):
+            pass
+        return False
+
+    def get_install_command(self, tool: str) -> str:
+        """Get platform-specific installation command for a tool."""
+        platform_commands = self.INSTALL_COMMANDS.get(
+            self.platform, self.INSTALL_COMMANDS.get(Platform.UNKNOWN, {})
+        )
+        return platform_commands.get(tool, f"Please install {tool} manually")
+
+    def format_missing_prerequisites(self, missing_tools: List[str]) -> str:
+        """Format user-friendly message with installation instructions."""
+        lines = []
+        lines.append("=" * 70)
+        lines.append("MISSING PREREQUISITES")
+        lines.append("=" * 70)
+        lines.append("")
+        lines.append("The following required tools are not installed:")
+        lines.append("")
+
+        for tool in missing_tools:
+            lines.append(f"  ✗ {tool}")
+        lines.append("")
+
+        lines.append("=" * 70)
+        lines.append("INSTALLATION INSTRUCTIONS")
+        lines.append("=" * 70)
+        lines.append("")
+        lines.append(f"Platform detected: {self.platform.value}")
+        lines.append("")
+
+        for tool in missing_tools:
+            lines.append(f"To install {tool}:")
+            lines.append("")
+            install_cmd = self.get_install_command(tool)
+            for cmd_line in install_cmd.split("\n"):
+                lines.append(f"  {cmd_line}")
+            lines.append("")
+
+            if tool in self.DOCUMENTATION_LINKS:
+                lines.append(f"  Documentation: {self.DOCUMENTATION_LINKS[tool]}")
+                lines.append("")
+
+        lines.append("=" * 70)
+        lines.append("")
+        lines.append("After installing the missing tools, please run this command again.")
+
+        return "\n".join(lines)
+```
+
+### Key Points
+
+- **Automatic platform detection** - No user input needed
+- **WSL detection is critical** - WSL needs different commands than native Linux
+- **Multiple package managers** - Support apt, dnf, pacman, yum for Linux
+- **Documentation links** - Give users official docs for complex installations
+- **Clear formatting** - Use separators and indentation for readability
+
+### When to Use
+
+- Any tool that requires external dependencies
+- CLI tools that users need to install before using your system
+- Cross-platform Python applications
+- Systems with multiple required tools
+
+### Benefits
+
+- Users get copy-paste commands that work
+- No time wasted looking up installation instructions
+- Supports Linux diversity (apt, dnf, pacman)
+- WSL users get appropriate guidance
+
+### Trade-offs
+
+- Must maintain commands for each platform
+- Commands may become outdated over time
+- Doesn't cover all Linux distributions
+
+### Related Patterns
+
+- Works with Safe Subprocess Wrapper pattern
+- Part of Fail-Fast Prerequisite Checking pattern
+
+### Real Impact
+
+From PR #457: Users on Windows/WSL got exact installation commands instead of generic "install Node.js" guidance, reducing setup time significantly.
+
+## Pattern: Fail-Fast Prerequisite Checking
+
+### Challenge
+
+Users start using a tool, get cryptic errors mid-workflow when missing dependencies are discovered. This wastes time and creates frustration.
+
+### Solution
+
+Check all prerequisites at startup with clear, actionable error messages before any other operations.
+
+```python
+@dataclass
+class ToolCheckResult:
+    """Result of checking a single tool prerequisite."""
+    tool: str
+    available: bool
+    path: Optional[str] = None
+    version: Optional[str] = None
+    error: Optional[str] = None
+
+@dataclass
+class PrerequisiteResult:
+    """Result of checking all prerequisites."""
+    all_available: bool
+    missing_tools: List[ToolCheckResult] = field(default_factory=list)
+    available_tools: List[ToolCheckResult] = field(default_factory=list)
+
+class PrerequisiteChecker:
+    # Required tools with their version check arguments
+    REQUIRED_TOOLS = {
+        "node": "--version",
+        "npm": "--version",
+        "uv": "--version",
+        "git": "--version",
+    }
+
+    def check_tool(self, tool: str, version_arg: Optional[str] = None) -> ToolCheckResult:
+        """Check if a single tool is available."""
+        tool_path = shutil.which(tool)
+
+        if not tool_path:
+            return ToolCheckResult(
+                tool=tool,
+                available=False,
+                error=f"{tool} not found in PATH",
+            )
+
+        # Tool found - optionally check version
+        version = None
+        if version_arg:
+            returncode, stdout, stderr = safe_subprocess_call(
+                [tool, version_arg],
+                context=f"checking {tool} version",
+                timeout=5,
+            )
+            if returncode == 0:
+                version = stdout.strip().split("\n")[0] if stdout else None
+
+        return ToolCheckResult(
+            tool=tool,
+            available=True,
+            path=tool_path,
+            version=version,
+        )
+
+    def check_all_prerequisites(self) -> PrerequisiteResult:
+        """Check all required prerequisites."""
+        missing_tools = []
+        available_tools = []
+
+        for tool, version_arg in self.REQUIRED_TOOLS.items():
+            result = self.check_tool(tool, version_arg)
+
+            if result.available:
+                available_tools.append(result)
+            else:
+                missing_tools.append(result)
+
+        return PrerequisiteResult(
+            all_available=len(missing_tools) == 0,
+            missing_tools=missing_tools,
+            available_tools=available_tools,
+        )
+
+    def check_and_report(self) -> bool:
+        """Check prerequisites and print report if any are missing.
+
+        Returns:
+            True if all prerequisites available, False otherwise
+        """
+        result = self.check_all_prerequisites()
+
+        if result.all_available:
+            return True
+
+        # Print detailed report
+        print(self.format_missing_prerequisites(result.missing_tools))
+        return False
+
+# Integration with launcher
+class ClaudeLauncher:
+    def prepare_launch(self) -> bool:
+        """Prepare for launch - check prerequisites FIRST"""
+        # Check prerequisites before anything else
+        checker = PrerequisiteChecker()
+        if not checker.check_and_report():
+            return False
+
+        # Now proceed with other setup
+        return self._setup_environment()
+```
+
+### Key Points
+
+- **Check at entry point** - Before any other operations
+- **Check all at once** - Don't fail on first missing tool, show all issues
+- **Structured results** - Use dataclasses for clear data contracts
+- **Version checking optional** - Can verify specific versions if needed
+- **Never auto-install** - User control and security first
+
+### When to Use
+
+- CLI tools with external dependencies
+- Systems that call external tools (git, npm, docker)
+- Before any operation that will fail without prerequisites
+- At application startup, not mid-workflow
+
+### Benefits
+
+- Users know all issues upfront
+- No time wasted in failed workflows
+- Clear data structures for testing
+- Easy to mock in tests
+
+### Trade-offs
+
+- Slight startup delay (typically < 1 second)
+- May check tools that won't be used in this run
+- Requires maintenance as tools change
+
+### Related Patterns
+
+- Uses Safe Subprocess Wrapper for checks
+- Uses Platform-Specific Installation Guidance for error messages
+- Part of TDD Testing Pyramid pattern
+
+### Real Impact
+
+From PR #457: Prevented users from starting workflows that would fail 5 minutes later due to missing npm, providing clear guidance immediately.
+
+## Pattern: TDD Testing Pyramid for System Utilities
+
+### Challenge
+
+System utility modules interact with external tools and platform-specific behavior, making them hard to test comprehensively while maintaining fast test execution.
+
+### Solution
+
+Follow testing pyramid with 60% unit tests, 30% integration tests, 10% E2E tests, using strategic mocking for speed.
+
+```python
+"""Tests for prerequisites module - TDD approach.
+
+Following the testing pyramid:
+- 60% Unit tests (18 tests)
+- 30% Integration tests (9 tests)
+- 10% E2E tests (3 tests)
+"""
+
+# ============================================================================
+# UNIT TESTS (60% - 18 tests)
+# ============================================================================
+
+class TestPlatformDetection:
+    """Unit tests for platform detection."""
+
+    def test_detect_macos(self):
+        """Test macOS platform detection."""
+        with patch("platform.system", return_value="Darwin"):
+            checker = PrerequisiteChecker()
+            assert checker.platform == Platform.MACOS
+
+    def test_detect_wsl(self):
+        """Test WSL platform detection."""
+        with patch("platform.system", return_value="Linux"), \
+             patch("pathlib.Path.exists", return_value=True), \
+             patch("pathlib.Path.read_text", return_value="Linux version microsoft"):
+            checker = PrerequisiteChecker()
+            assert checker.platform == Platform.WSL
+
+class TestToolChecking:
+    """Unit tests for individual tool checking."""
+
+    def test_check_tool_found(self):
+        """Test checking for a tool that exists."""
+        checker = PrerequisiteChecker()
+        with patch("shutil.which", return_value="/usr/bin/git"):
+            result = checker.check_tool("git")
+            assert result.available is True
+            assert result.path == "/usr/bin/git"
+
+    def test_check_tool_with_version(self):
+        """Test checking tool with version verification."""
+        checker = PrerequisiteChecker()
+        with patch("shutil.which", return_value="/usr/bin/node"), \
+             patch("subprocess.run", return_value=Mock(returncode=0, stdout="v20.0.0", stderr="")):
+            result = checker.check_tool("node", version_arg="--version")
+            assert result.available is True
+            assert result.version == "v20.0.0"
+
+# ============================================================================
+# INTEGRATION TESTS (30% - 9 tests)
+# ============================================================================
+
+class TestPrerequisiteIntegration:
+    """Integration tests for prerequisite checking workflow."""
+
+    def test_full_check_workflow_all_present(self):
+        """Test complete prerequisite check when all tools present."""
+        checker = PrerequisiteChecker()
+        with patch("shutil.which") as mock_which:
+            mock_which.side_effect = lambda x: f"/usr/bin/{x}"
+            result = checker.check_all_prerequisites()
+
+            assert result.all_available is True
+            assert len(result.available_tools) == 4
+
+    def test_platform_specific_install_commands(self):
+        """Test that platform detection affects install commands."""
+        platforms = [
+            ("Darwin", Platform.MACOS, "brew"),
+            ("Linux", Platform.LINUX, "apt"),
+            ("Windows", Platform.WINDOWS, "winget"),
+        ]
+
+        for system, expected_platform, expected_cmd in platforms:
+            with patch("platform.system", return_value=system):
+                checker = PrerequisiteChecker()
+                assert checker.platform == expected_platform
+                install_cmd = checker.get_install_command("git")
+                assert expected_cmd in install_cmd.lower()
+
+# ============================================================================
+# E2E TESTS (10% - 3 tests)
+# ============================================================================
+
+class TestEndToEnd:
+    """End-to-end tests for complete prerequisite checking workflows."""
+
+    def test_e2e_missing_prerequisites_with_guidance(self):
+        """E2E: Complete workflow with missing prerequisites and user guidance."""
+        with patch("platform.system", return_value="Darwin"):
+            checker = PrerequisiteChecker()
+
+            with patch("shutil.which", return_value=None):
+                result = checker.check_all_prerequisites()
+                assert result.all_available is False
+
+                message = checker.format_missing_prerequisites(result.missing_tools)
+
+                # Message should contain all missing tools
+                assert all(tool in message.lower() for tool in ["node", "npm", "uv", "git"])
+                # Installation commands
+                assert "brew install" in message
+                # Helpful context
+                assert "prerequisite" in message.lower()
+```
+
+### Key Points
+
+- **60% unit tests** - Fast, focused tests with heavy mocking
+- **30% integration tests** - Multiple components working together
+- **10% E2E tests** - Complete workflows with minimal mocking
+- **Explicit test organization** - Comment blocks separate test levels
+- **Strategic mocking** - Mock platform.system(), shutil.which(), subprocess calls
+- **Test data structures** - Verify dataclass behavior
+
+### When to Use
+
+- System utilities that interact with OS/external tools
+- Modules with platform-specific behavior
+- Code that calls subprocess frequently
+- Any module that needs fast tests despite external dependencies
+
+### Benefits
+
+- Fast test execution (all tests run in seconds)
+- High confidence without slow E2E tests
+- Easy to run in CI
+- Clear test organization
+
+### Trade-offs
+
+- Heavy mocking may miss integration issues
+- Platform-specific behavior harder to test comprehensively
+- Mock maintenance when APIs change
+
+### Related Patterns
+
+- Tests the Fail-Fast Prerequisite Checking pattern
+- Verifies Safe Subprocess Wrapper behavior
+- Validates Platform-Specific Installation Guidance
+
+### Real Impact
+
+From PR #457: 70 tests run in < 2 seconds, providing comprehensive coverage of platform detection, tool checking, and error formatting without requiring actual tools installed.
+
+## Pattern: Standard Library Only for Core Utilities
+
+### Challenge
+
+Core system utilities gain external dependencies, causing circular dependency issues or installation problems for users without those dependencies.
+
+### Solution
+
+Use only Python standard library for core utility modules. If advanced features need external dependencies, make them optional.
+
+```python
+"""Prerequisite checking and installation guidance.
+
+Philosophy:
+- Standard library only (no dependencies)
+- Safe subprocess error handling throughout
+- Platform-specific installation commands
+- Never auto-install (user control and security)
+
+Public API:
+    PrerequisiteChecker: Main class for checking prerequisites
+    safe_subprocess_call: Safe wrapper for all subprocess operations
+    Platform: Enum of supported platforms
+"""
+
+import platform
+import shutil
+import subprocess
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from typing import List, Optional, Tuple
+
+# No external dependencies - only stdlib
+
+class PrerequisiteChecker:
+    """Check prerequisites using only standard library."""
+
+    def check_tool(self, tool: str) -> bool:
+        """Check if tool is available using stdlib shutil.which()"""
+        return shutil.which(tool) is not None
+
+    def _detect_platform(self) -> str:
+        """Detect platform using stdlib platform module"""
+        system = platform.system()
+
+        if system == "Darwin":
+            return "macos"
+        elif system == "Linux":
+            # Check for WSL using /proc/version (stdlib pathlib)
+            proc_version = Path("/proc/version")
+            if proc_version.exists():
+                if "microsoft" in proc_version.read_text().lower():
+                    return "wsl"
+            return "linux"
+        elif system == "Windows":
+            return "windows"
+        else:
+            return "unknown"
+```
+
+### Key Points
+
+- **Zero external dependencies** - Only use Python stdlib
+- **Document in module docstring** - Make constraint clear
+- **Use stdlib alternatives** - shutil.which(), platform.system(), pathlib
+- **Optional advanced features** - If needed, make them try/except imports
+- **Clear **all** exports** - Define public API explicitly
+
+### When to Use
+
+- Core utility modules
+- Modules imported early in startup
+- System-level functionality (platform detection, path resolution)
+- Modules that check for other dependencies
+
+### Benefits
+
+- No circular dependency issues
+- Works immediately after Python installation
+- Easy to vendor or copy between projects
+- Faster import time
+
+### Trade-offs
+
+- May need to reimplement features available in external packages
+- More verbose code without helper libraries
+- Limited to stdlib capabilities
+
+### Related Patterns
+
+- Enables Fail-Fast Prerequisite Checking (no bootstrap problem)
+- Supports Bricks & Studs modular design
+- Follows Zero-BS Implementation (all code works)
+
+### Real Impact
+
+From PR #457: Prerequisites module has zero dependencies, preventing circular import issues when checking for tools needed by other parts of the system.
+
+## Pattern: Bricks & Studs Module Design with Clear Public API
+
+### Challenge
+
+Modules become tightly coupled, making it hard to regenerate or replace them. Internal implementation details leak into public usage.
+
+### Solution
+
+Design modules as self-contained "bricks" with clear "studs" (public API) defined via **all**.
+
+```python
+"""Prerequisite checking and installation guidance.
+
+This module provides comprehensive prerequisite checking for all required tools.
+
+Philosophy:
+- Check prerequisites early and fail fast with helpful guidance
+- Provide platform-specific installation commands
+- Never auto-install (user control and security)
+- Standard library only (no dependencies)
+
+Public API (the "studs" that other modules connect to):
+    PrerequisiteChecker: Main class for checking prerequisites
+    safe_subprocess_call: Safe wrapper for all subprocess operations
+    Platform: Enum of supported platforms
+    PrerequisiteResult: Results of prerequisite checking
+    ToolCheckResult: Results of individual tool checking
+"""
+
+# ... implementation ...
+
+# Define public API explicitly
+__all__ = [
+    "Platform",
+    "ToolCheckResult",
+    "PrerequisiteResult",
+    "PrerequisiteChecker",
+    "safe_subprocess_call",
+    "check_prerequisites",
+]
+```
+
+### Module Structure
+
+```
+src/amplihack/utils/
+└── prerequisites.py          # Self-contained module (428 lines)
+    ├── Module docstring      # Philosophy and public API
+    ├── Platform enum         # Platform types
+    ├── ToolCheckResult      # Individual tool results
+    ├── PrerequisiteResult   # Overall results
+    ├── safe_subprocess_call # Safe subprocess wrapper
+    ├── PrerequisiteChecker  # Main class
+    └── __all__              # Explicit public API
+
+tests/
+├── test_prerequisites.py              # 35 unit tests
+├── test_subprocess_error_handling.py  # 22 error handling tests
+└── test_prerequisite_integration.py   # 13 integration tests
+```
+
+### Key Points
+
+- **Single file module** - One file, one responsibility
+- **Module docstring documents philosophy** - Explain design decisions
+- **Public API in docstring** - List all public exports
+- \***\*all** defines studs\*\* - Explicit public interface
+- **Standard library only** - No external dependencies (when possible)
+- **Comprehensive tests** - Test the public API contract
+
+### When to Use
+
+- Any utility module
+- Modules that might be regenerated by AI
+- Shared functionality used across codebase
+- System-level utilities
+
+### Benefits
+
+- Clear contract for consumers
+- Easy to regenerate from specification
+- No accidental tight coupling
+- Simple to replace or refactor
+
+### Trade-offs
+
+- May have some internal code duplication
+- Resists sharing internal helpers
+- Larger single files
+
+### Related Patterns
+
+- Enables Module Regeneration Structure
+- Follows Zero-BS Implementation
+- Works with Standard Library Only pattern
+
+### Real Impact
+
+From PR #457: Prerequisites module can be used by any part of the system without worrying about internal implementation details. Clear **all** makes public API obvious.
+
 ## Remember
 
 These patterns represent hard-won knowledge from real development challenges. When facing similar problems:

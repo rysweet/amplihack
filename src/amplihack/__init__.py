@@ -15,6 +15,7 @@ ESSENTIAL_DIRS = [
     "agents/amplihack",  # Specialized agents
     "commands/amplihack",  # Slash commands
     "tools/amplihack",  # Hooks and utilities
+    "tools/xpia",  # XPIA security hooks (Issue #458)
     "context",  # Philosophy, patterns, project info
     "workflow",  # DEFAULT_WORKFLOW.md
 ]
@@ -84,6 +85,21 @@ SETTINGS_TEMPLATE = {
             }
         ],
     },
+}
+
+# Hook configurations for amplihack and xpia systems
+HOOK_CONFIGS = {
+    "amplihack": [
+        {"type": "SessionStart", "file": "session_start.py", "timeout": 10000},
+        {"type": "Stop", "file": "stop.py", "timeout": 30000},
+        {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
+        {"type": "PreCompact", "file": "pre_compact.py", "timeout": 30000},
+    ],
+    "xpia": [
+        {"type": "SessionStart", "file": "session_start.py", "timeout": 10000},
+        {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
+        {"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"},
+    ],
 }
 
 
@@ -192,6 +208,69 @@ def all_rel_dirs(base):
     return result
 
 
+def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
+    """Update hook paths for a given hook system (amplihack or xpia).
+
+    Args:
+        settings: Settings dictionary to update
+        hook_system: Name of the hook system (e.g., "amplihack", "xpia")
+        hooks_to_update: List of dicts with keys: type, file, timeout (optional), matcher (optional)
+        hooks_dir_path: Relative path to hooks directory (e.g., ".claude/tools/xpia/hooks")
+
+    Returns:
+        Number of hooks updated
+    """
+    hooks_updated = 0
+
+    for hook_info in hooks_to_update:
+        hook_type = hook_info["type"]
+        hook_file = hook_info["file"]
+        timeout = hook_info.get("timeout")
+        matcher = hook_info.get("matcher")
+
+        # Use forward slashes for relative paths (cross-platform JSON compatibility)
+        hook_path = f"{hooks_dir_path}/{hook_file}"
+
+        if hook_type not in settings.get("hooks", {}):
+            # Add missing hook configuration
+            if "hooks" not in settings:
+                settings["hooks"] = {}
+
+            # Create hook config based on type
+            hook_config = {
+                "type": "command",
+                "command": hook_path,
+            }
+            if timeout:
+                hook_config["timeout"] = timeout
+
+            # Wrap in matcher or plain structure
+            wrapper = (
+                {"matcher": matcher, "hooks": [hook_config]}
+                if matcher
+                else {"hooks": [hook_config]}
+            )
+            settings["hooks"][hook_type] = [wrapper]
+            hooks_updated += 1
+        else:
+            # Update existing hook paths
+            hook_configs = settings["hooks"][hook_type]
+            for config in hook_configs:
+                if "hooks" in config:
+                    for hook in config["hooks"]:
+                        if "command" in hook and hook_system in hook["command"]:
+                            # Update hook path
+                            old_cmd = hook["command"]
+                            if old_cmd != hook_path:
+                                hook["command"] = hook_path
+                                if timeout and "timeout" not in hook:
+                                    hook["timeout"] = timeout
+                                hooks_updated += 1
+                                print(f"  🔄 Updated {hook_type} hook path")
+
+    return hooks_updated
+
+
 def ensure_settings_json():
     """Ensure settings.json exists with proper hook configuration."""
     settings_path = os.path.join(CLAUDE_DIR, "settings.json")
@@ -218,68 +297,25 @@ def ensure_settings_json():
         print("  🔧 Creating new settings.json")
         settings = SETTINGS_TEMPLATE.copy()
 
-    # Update hook paths to use absolute paths
+    # Update amplihack hook paths (relative paths for cross-platform compatibility)
     hooks_updated = 0
-    hooks_to_update = [
-        ("SessionStart", "session_start.py"),
-        ("Stop", "stop.py"),
-        ("PostToolUse", "post_tool_use.py"),
-        ("PreCompact", "pre_compact.py"),
-    ]
+    amplihack_hooks_rel = ".claude/tools/amplihack/hooks"
 
-    for hook_type, hook_file in hooks_to_update:
-        if hook_type not in settings.get("hooks", {}):
-            # Add missing hook configuration
-            if "hooks" not in settings:
-                settings["hooks"] = {}
+    hooks_updated += update_hook_paths(
+        settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_rel
+    )
 
-            # Create hook config based on type
-            if hook_type == "PostToolUse":
-                settings["hooks"][hook_type] = [
-                    {
-                        "matcher": "*",
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": os.path.join(
-                                    HOME, ".claude", "tools", "amplihack", "hooks", hook_file
-                                ),
-                            }
-                        ],
-                    }
-                ]
-            else:
-                timeout = 30000 if hook_type in ["Stop", "PreCompact"] else 10000
-                settings["hooks"][hook_type] = [
-                    {
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": os.path.join(
-                                    HOME, ".claude", "tools", "amplihack", "hooks", hook_file
-                                ),
-                                "timeout": timeout,
-                            }
-                        ]
-                    }
-                ]
-            hooks_updated += 1
-        else:
-            # Update existing hook paths to absolute
-            hook_configs = settings["hooks"][hook_type]
-            for config in hook_configs:
-                if "hooks" in config:
-                    for hook in config["hooks"]:
-                        if "command" in hook and "amplihack/hooks" in hook["command"]:
-                            # Update to absolute path
-                            old_cmd = hook["command"]
-                            new_cmd = os.path.join(
-                                HOME, ".claude", "tools", "amplihack", "hooks", hook_file
-                            )
-                            if old_cmd != new_cmd:
-                                hook["command"] = new_cmd
-                                hooks_updated += 1
-                                print(f"  🔄 Updated {hook_type} hook path to absolute")
+    # Update XPIA hook paths if XPIA hooks directory exists
+    xpia_hooks_abs = os.path.join(HOME, ".claude", "tools", "xpia", "hooks")
+    if os.path.exists(xpia_hooks_abs):
+        print("  🔒 XPIA security hooks directory found")
+
+        xpia_hooks_rel = ".claude/tools/xpia/hooks"
+        xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_rel)
+        hooks_updated += xpia_updated
+
+        if xpia_updated > 0:
+            print(f"  🔒 XPIA security hooks configured ({xpia_updated} hooks)")
 
     # Ensure permissions are set correctly
     if "permissions" not in settings:
@@ -306,17 +342,37 @@ def ensure_settings_json():
 
 def verify_hooks():
     """Verify that all hook files exist."""
-    hooks_dir = os.path.join(CLAUDE_DIR, "tools", "amplihack", "hooks")
-    hook_files = ["session_start.py", "stop.py", "post_tool_use.py", "pre_compact.py"]
-
     all_exist = True
-    for hook_file in hook_files:
-        hook_path = os.path.join(hooks_dir, hook_file)
-        if os.path.exists(hook_path):
-            print(f"  ✅ {hook_file} found")
-        else:
-            print(f"  ❌ {hook_file} missing")
+
+    for hook_system, hooks in HOOK_CONFIGS.items():
+        hooks_dir = os.path.join(CLAUDE_DIR, "tools", hook_system, "hooks")
+
+        # Skip XPIA if directory doesn't exist (optional feature)
+        if hook_system == "xpia" and not os.path.exists(hooks_dir):
+            print("  ℹ️  XPIA security hooks not installed (optional feature)")
+            continue
+
+        # Print header with appropriate icon
+        icon = "🔒" if hook_system == "xpia" else "📋"
+        print(f"  {icon} {hook_system.capitalize()} hooks:")
+
+        system_all_exist = True
+        for hook_info in hooks:
+            hook_file = hook_info["file"]
+            hook_path = os.path.join(hooks_dir, hook_file)
+            if os.path.exists(hook_path):
+                print(f"    ✅ {hook_file} found")
+            else:
+                print(f"    ❌ {hook_file} missing")
+                system_all_exist = False
+
+        # Only mark all_exist as False if amplihack hooks are missing
+        if hook_system == "amplihack" and not system_all_exist:
             all_exist = False
+
+        # Additional message for XPIA if all hooks found
+        if hook_system == "xpia" and system_all_exist:
+            print("  🔒 XPIA security hooks configured")
 
     return all_exist
 

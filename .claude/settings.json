@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/ryan/.claude/tools/xpia/hooks/session_start.py",
+            "command": ".claude/tools/xpia/hooks/session_start.py",
             "timeout": 10000
           }
         ]
@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/ryan/.claude/tools/xpia/hooks/post_tool_use.py",
+            "command": ".claude/tools/xpia/hooks/post_tool_use.py",
             "timeout": 3000,
             "matcher": "*"
           }
@@ -77,7 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/ryan/.claude/tools/xpia/hooks/pre_tool_use.py",
+            "command": ".claude/tools/xpia/hooks/pre_tool_use.py",
             "timeout": 5000
           }
         ],
