@@ -108,8 +108,8 @@ immediately.
 
 - [Prerequisites](docs/PREREQUISITES.md) - Platform setup
 - [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agents
-- [Philosophy](docs/PHILOSOPHY.md) - Core principles
-- [Workflows](docs/WORKFLOW.md) - Process customization
+- [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles
+- [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Process customization
 
 ## Development
 
