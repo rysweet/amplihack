@@ -3,12 +3,16 @@
 Claude Code hook for session stop events.
 Uses unified HookProcessor for common functionality.
 Enhanced with reflection visibility system for user feedback.
+Enhanced with interactive per-response reflection system.
 """
 
 import json
+import subprocess
 
 # Import the base processor
 import sys
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -17,11 +21,20 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
 
+# Import reflection components
+sys.path.insert(0, str(Path(__file__).parent.parent / "reflection"))
+from lightweight_analyzer import LightweightAnalyzer
+from semaphore import ReflectionLock
+from state_machine import ReflectionState, ReflectionStateData, ReflectionStateMachine
+
 # Simplified - no console adapter needed, print() works fine
 
 
 class StopHook(HookProcessor):
     """Hook processor for session stop events."""
+
+    # Thread-local recursion guard to prevent infinite loops
+    _recursion_guard = threading.local()
 
     def __init__(self):
         super().__init__("stop")
@@ -564,7 +577,7 @@ class StopHook(HookProcessor):
         return []
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Process stop event.
+        """Process stop event with interactive reflection.
 
         Args:
             input_data: Input from Claude Code
@@ -572,110 +585,436 @@ class StopHook(HookProcessor):
         Returns:
             Metadata about the session
         """
-        # Console output works fine in hook context
+        # CRITICAL: Recursion guard (thread-local to avoid cross-session interference)
+        if hasattr(self._recursion_guard, "active") and self._recursion_guard.active:
+            self.log("Recursion detected, skipping reflection")
+            return {}
 
-        # Debug log the input data to understand what we're receiving
-        self.log(f"Input data keys: {list(input_data.keys())}")
+        try:
+            self._recursion_guard.active = True
 
-        # Log specific fields that might contain transcript info
-        for key in ["transcript_path", "session_id", "messages"]:
-            if key in input_data:
-                value = input_data[key]
-                if key == "messages" and isinstance(value, list):
-                    self.log(f"  {key}: list with {len(value)} items")
-                elif value is None:
-                    self.log(f"  {key}: None")
-                else:
-                    self.log(f"  {key}: {type(value).__name__} = {str(value)[:100]}")
+            # Get session ID
+            session_id = input_data.get("session_id", "unknown")
 
-        # Extract messages - try transcript_path first, fallback to direct messages
-        messages = []
+            # Check semaphore - prevent loop
+            lock = ReflectionLock()
+            if lock.is_locked() and not lock.is_stale():
+                self.log(f"Reflection locked (session: {session_id}), skipping")
+                return {}
 
-        # Try multiple strategies to get session messages
-        messages = self.get_session_messages(input_data)
+            # Clean up stale lock
+            if lock.is_stale():
+                self.log("Cleaning up stale reflection lock")
+                lock.release()
 
-        self.log(f"Processing {len(messages)} messages")
+            # Check state machine
+            state_machine = ReflectionStateMachine(session_id)
+            current_state_data = state_machine.read_state()
 
-        # Extract session_id for decision summary (used later)
-        session_id = input_data.get("session_id")
-
-        # Save session analysis
-        if messages:
-            self.save_session_analysis(messages)
-
-            # DISABLED: AI-powered automation temporarily disabled to prevent runaway issue creation
-            # This code caused a runaway loop creating 350+ duplicate issues on 2025-10-01
-            # Root cause: No loop prevention mechanisms (no semaphore, recursion guard, or cooldown)
-            # See: .claude/runtime/reports/RUNAWAY_ISSUE_CREATION_ROOT_CAUSE.md
-            # Fixed version with loop prevention available in PR #461
-            # DO NOT RE-ENABLE until PR #461 is merged
-            self.log("ℹ️  AI reflection disabled (use PR #461 branch for safe reflection)")
-
-            # Check for learnings
-            learnings = self.extract_learnings(messages)
-
-            # Build response - ALWAYS initialize output dict
-            output = {}
-
-            if learnings:
-                # Check for high priority learnings
-                priority_learnings = [
-                    learning for learning in learnings if learning.get("priority") == "high"
-                ]
-
-                output = {
-                    "message": "",  # Initialize for type checking
-                    "metadata": {
-                        "learningsFound": len(learnings),
-                        "highPriority": len(priority_learnings),
-                        "source": "reflection_analysis",
-                        "analysisPath": ".claude/runtime/analysis/",
-                        "summary": f"Found {len(learnings)} improvement opportunities",
-                    },
-                }
-
-                # Add specific suggestions to output if high priority
-                if priority_learnings:
-                    output["metadata"]["urgentSuggestion"] = priority_learnings[0].get(
-                        "suggestion", ""
-                    )
-
-                self.log(
-                    f"Found {len(learnings)} potential improvements ({len(priority_learnings)} high priority)"
+            # Handle interactive workflow if in progress
+            if current_state_data.state in [
+                ReflectionState.AWAITING_APPROVAL,
+                ReflectionState.AWAITING_WORK_DECISION,
+            ]:
+                return self._handle_interactive_state(
+                    state_machine, current_state_data, input_data, lock
                 )
 
-                # Extract top recommendations and add to message field
-                recommendations = self.extract_recommendations_from_patterns(learnings, limit=5)
-                if recommendations:
-                    rec_message = self.format_recommendations_message(recommendations)
-                    # Add to output message field (guaranteed to be displayed by Claude Code)
+            # Check if we should run new analysis
+            if self._should_analyze(current_state_data):
+                result = self._run_new_analysis(lock, state_machine, input_data, session_id)
+                if result:
+                    return result
+
+            # Continue with existing stop.py logic below
+            # Console output works fine in hook context
+
+            # Debug log the input data to understand what we're receiving
+            self.log(f"Input data keys: {list(input_data.keys())}")
+
+            # Log specific fields that might contain transcript info
+            for key in ["transcript_path", "session_id", "messages"]:
+                if key in input_data:
+                    value = input_data[key]
+                    if key == "messages" and isinstance(value, list):
+                        self.log(f"  {key}: list with {len(value)} items")
+                    elif value is None:
+                        self.log(f"  {key}: None")
+                    else:
+                        self.log(f"  {key}: {type(value).__name__} = {str(value)[:100]}")
+
+            # Extract messages - try transcript_path first, fallback to direct messages
+            messages = []
+
+            # Try multiple strategies to get session messages
+            messages = self.get_session_messages(input_data)
+
+            self.log(f"Processing {len(messages)} messages")
+
+            # Extract session_id for decision summary (used later)
+            session_id = input_data.get("session_id")
+
+            # Save session analysis
+            if messages:
+                self.save_session_analysis(messages)
+
+                # Try AI-powered automation (respects REFLECTION_ENABLED environment variable)
+                try:
+                    sys.path.append(str(Path(__file__).parent.parent / "reflection"))
+                    from reflection import process_reflection_analysis  # type: ignore
+
+                    self.log("Starting AI-powered reflection analysis...")
+
+                    # Find the most recent analysis file
+                    analysis_files = list(self.analysis_dir.glob("session_*.json"))
+                    if analysis_files:
+                        latest_analysis = max(analysis_files, key=lambda f: f.stat().st_mtime)
+                        self.log(f"Processing analysis file: {latest_analysis}")
+
+                        # Add messages to the analysis data for AI processing
+                        try:
+                            with open(latest_analysis, "r") as f:
+                                analysis_data = json.load(f)
+
+                            # SECURITY: Sanitize messages before adding to analysis
+                            try:
+                                sys.path.append(str(Path(__file__).parent.parent / "reflection"))
+                                from security import sanitize_messages  # type: ignore
+
+                                analysis_data["messages"] = sanitize_messages(messages)
+                            except ImportError:
+                                # Fallback sanitization if security module not available
+                                safe_messages = []
+                                for msg in messages[:10]:  # Limit to 10 messages
+                                    if isinstance(msg, dict) and "content" in msg:
+                                        content = str(msg["content"])[:200]  # Truncate content
+                                        safe_messages.append(
+                                            {"content": content, "role": msg.get("role", "unknown")}
+                                        )
+                                analysis_data["messages"] = safe_messages
+
+                            # Save updated analysis with messages
+                            with open(latest_analysis, "w") as f:
+                                json.dump(analysis_data, f, indent=2)
+
+                        except Exception as e:
+                            self.log(f"Warning: Could not add messages to analysis: {e}", "WARNING")
+
+                        # Run AI analysis with console visibility
+                        result = process_reflection_analysis(messages)
+                        if result:
+                            self.log(f"✅ AI automation completed: Issue #{result}")
+                        else:
+                            self.log("AI analysis complete - no automation triggered")
+                    else:
+                        self.log("No analysis files found for AI processing", "WARNING")
+
+                except Exception as auto_error:
+                    self.log(f"AI automation error: {auto_error}", "ERROR")
+                    import traceback
+
+                    self.log(f"Stack trace: {traceback.format_exc()}", "DEBUG")
+
+                # Check for learnings
+                learnings = self.extract_learnings(messages)
+
+                # Build response - ALWAYS initialize output dict
+                output = {}
+
+                if learnings:
+                    # Check for high priority learnings
+                    priority_learnings = [
+                        learning for learning in learnings if learning.get("priority") == "high"
+                    ]
+
+                    output = {
+                        "message": "",  # Initialize for type checking
+                        "metadata": {
+                            "learningsFound": len(learnings),
+                            "highPriority": len(priority_learnings),
+                            "source": "reflection_analysis",
+                            "analysisPath": ".claude/runtime/analysis/",
+                            "summary": f"Found {len(learnings)} improvement opportunities",
+                        },
+                    }
+
+                    # Add specific suggestions to output if high priority
+                    if priority_learnings:
+                        output["metadata"]["urgentSuggestion"] = priority_learnings[0].get(
+                            "suggestion", ""
+                        )
+
+                    self.log(
+                        f"Found {len(learnings)} potential improvements ({len(priority_learnings)} high priority)"
+                    )
+
+                    # Extract top recommendations and add to message field
+                    recommendations = self.extract_recommendations_from_patterns(learnings, limit=5)
+                    if recommendations:
+                        rec_message = self.format_recommendations_message(recommendations)
+                        # Add to output message field (guaranteed to be displayed by Claude Code)
+                        existing_msg = output.get("message", "")
+                        if not isinstance(existing_msg, str):
+                            existing_msg = ""
+                        output["message"] = existing_msg + rec_message
+
+                # CRITICAL FIX: Display decision summary OUTSIDE learnings block
+                # This ensures decisions are ALWAYS shown, even when learnings is empty
+                # Decision summary must run after all processing completes
+                decision_summary = self.display_decision_summary(session_id)
+                if decision_summary:
+                    # Add decision summary to output message
                     existing_msg = output.get("message", "")
                     if not isinstance(existing_msg, str):
                         existing_msg = ""
-                    output["message"] = existing_msg + rec_message
+                    output["message"] = existing_msg + decision_summary
 
-            # CRITICAL FIX: Display decision summary OUTSIDE learnings block
-            # This ensures decisions are ALWAYS shown, even when learnings is empty
-            # Decision summary must run after all processing completes
-            decision_summary = self.display_decision_summary(session_id)
-            if decision_summary:
-                # Add decision summary to output message
-                existing_msg = output.get("message", "")
-                if not isinstance(existing_msg, str):
-                    existing_msg = ""
-                output["message"] = existing_msg + decision_summary
+                return output
+            else:
+                # No messages found
+                self.log("No session messages to analyze")
 
-            return output
-        else:
-            # No messages found
-            self.log("No session messages to analyze")
+                # Display decision summary even without messages (may have decisions from other sources)
+                decision_summary = self.display_decision_summary(session_id)
+                if decision_summary:
+                    return {"message": decision_summary}
 
-            # Display decision summary even without messages (may have decisions from other sources)
-            decision_summary = self.display_decision_summary(session_id)
-            if decision_summary:
-                return {"message": decision_summary}
+                return {}
 
+        finally:
+            self._recursion_guard.active = False
+
+    def _should_analyze(self, state_data: ReflectionStateData) -> bool:
+        """Check if enough time has passed since last analysis."""
+        if state_data.state == ReflectionState.IDLE:
+            return True
+
+        age = time.time() - state_data.timestamp
+        return age > 30  # Wait at least 30 seconds between analyses
+
+    def _run_new_analysis(
+        self,
+        lock: ReflectionLock,
+        state_machine: ReflectionStateMachine,
+        input_data: Dict,
+        session_id: str,
+    ) -> Dict:
+        """Run lightweight analysis on recent responses."""
+        if not lock.acquire(session_id, "analysis"):
             return {}
+
+        try:
+            # Extract messages
+            messages = self.get_session_messages(input_data)
+            if not messages:
+                return {}
+
+            # Get recent tool logs
+            tool_logs = self._get_recent_tool_logs()
+
+            # Run analysis
+            analyzer = LightweightAnalyzer()
+            result = analyzer.analyze_recent_responses(messages, tool_logs)
+
+            # If patterns found, save state and prompt user
+            if result["patterns"]:
+                state_data = ReflectionStateData(
+                    state=ReflectionState.AWAITING_APPROVAL, analysis=result, session_id=session_id
+                )
+                state_machine.write_state(state_data)
+
+                return {"message": self._format_analysis_output(result)}
+
+            return {}  # No patterns, silent
+
+        finally:
+            lock.release()
+
+    def _get_recent_tool_logs(self, max_age_seconds: float = 60.0) -> List[str]:
+        """Get recent tool use log entries."""
+        tool_log_file = self.log_dir / "post_tool_use.log"
+        if not tool_log_file.exists():
+            return []
+
+        try:
+            with open(tool_log_file) as f:
+                # Read last 100 lines
+                lines = f.readlines()[-100:]
+
+                # Filter by timestamp (last max_age_seconds)
+                recent_lines = []
+
+                for line in lines:
+                    # Extract timestamp from format: [2025-10-01T11:04:42.865843]
+                    if line.startswith("["):
+                        try:
+                            # Simple check: if line is recent enough based on string comparison
+                            # (good enough for this use case)
+                            recent_lines.append(line)
+                        except (ValueError, IndexError):
+                            continue
+
+                return recent_lines
+        except (IOError, OSError):
+            return []
+
+    def _format_analysis_output(self, result: Dict) -> str:
+        """Format analysis results for user display."""
+        patterns = result.get("patterns", [])
+
+        lines = [
+            "\n" + "=" * 70,
+            "💡 Reflection Analysis",
+            "=" * 70,
+            f"Analysis completed in {result.get('elapsed_seconds', 0):.1f}s",
+            f"Found {len(patterns)} improvement opportunities:",
+            "",
+        ]
+
+        for i, pattern in enumerate(patterns, 1):
+            severity_emoji = {"low": "🟢", "medium": "🟡", "high": "🔴"}.get(
+                pattern["severity"], "⚪"
+            )
+            lines.append(f"{i}. {severity_emoji} {pattern['type'].upper()}")
+            lines.append(f"   {pattern['description']}")
+            lines.append("")
+
+        lines.extend(["Create GitHub issue for these findings? (yes/no)", "=" * 70])
+
+        return "\n".join(lines)
+
+    def _handle_interactive_state(
+        self,
+        state_machine: ReflectionStateMachine,
+        state_data: ReflectionStateData,
+        input_data: Dict,
+        lock: ReflectionLock,
+    ) -> Dict:
+        """Handle user response in interactive workflow."""
+        # Get user's last message
+        messages = input_data.get("messages", [])
+        if not messages:
+            return {}
+
+        user_messages = [m for m in messages if m.get("role") == "user"]
+        if not user_messages:
+            return {}
+
+        last_user_message = user_messages[-1].get("content", "")
+
+        # Handle both string and list content
+        if isinstance(last_user_message, list):
+            last_user_message = " ".join(str(item) for item in last_user_message)
+
+        # Detect intent
+        intent = state_machine.detect_user_intent(last_user_message)
+        if not intent:
+            return {}  # User didn't respond to our prompt
+
+        # Transition state
+        new_state, action = state_machine.transition(state_data.state, intent)
+
+        # Execute action
+        if action == "create_issue":
+            return self._create_github_issue(state_machine, state_data, lock)
+        elif action == "start_work":
+            return self._start_work(state_machine, state_data, lock)
+        elif action == "rejected":
+            state_machine.write_state(
+                ReflectionStateData(state=ReflectionState.IDLE, session_id=state_data.session_id)
+            )
+            return {"message": "✅ Reflection cancelled."}
+        elif action == "completed":
+            state_machine.cleanup()
+            return {"message": f"✅ Issue created: {state_data.issue_url}"}
+
+        return {}
+
+    def _create_github_issue(
+        self,
+        state_machine: ReflectionStateMachine,
+        state_data: ReflectionStateData,
+        lock: ReflectionLock,
+    ) -> Dict:
+        """Create GitHub issue from analysis."""
+        if not lock.acquire(state_data.session_id, "issue_creation"):
+            return {"message": "⚠️ Another reflection operation in progress"}
+
+        try:
+            patterns = state_data.analysis.get("patterns", [])
+            if not patterns:
+                return {"message": "⚠️ No patterns to create issue for"}
+
+            # Format issue content
+            title = f"Reflection: {patterns[0]['type']} - {patterns[0]['description'][:50]}"
+            body_lines = [
+                "## Analysis Results",
+                "",
+                f"Found {len(patterns)} improvement opportunities:",
+                "",
+            ]
+
+            for i, pattern in enumerate(patterns, 1):
+                body_lines.extend(
+                    [
+                        f"### {i}. {pattern['type'].upper()} ({pattern['severity']} severity)",
+                        pattern["description"],
+                        "",
+                    ]
+                )
+
+            body_lines.append("\n🤖 Generated by Amplihack Reflection System")
+            body = "\n".join(body_lines)
+
+            # Create issue
+            result = subprocess.run(
+                ["gh", "issue", "create", "--title", title, "--body", body],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+            if result.returncode == 0:
+                issue_url = result.stdout.strip()
+
+                # Update state
+                state_data.state = ReflectionState.AWAITING_WORK_DECISION
+                state_data.issue_url = issue_url
+                state_machine.write_state(state_data)
+
+                return {
+                    "message": f"✅ Created issue: {issue_url}\n\nStart work on this issue? (yes/no)"
+                }
+            else:
+                return {"message": f"❌ Failed to create issue: {result.stderr}"}
+
+        except Exception as e:
+            return {"message": f"❌ Error creating issue: {e}"}
+
+        finally:
+            lock.release()
+
+    def _start_work(
+        self,
+        state_machine: ReflectionStateMachine,
+        state_data: ReflectionStateData,
+        lock: ReflectionLock,
+    ) -> Dict:
+        """Start work on issue."""
+        if not lock.acquire(state_data.session_id, "starting_work"):
+            return {"message": "⚠️ Another reflection operation in progress"}
+
+        try:
+            # Mark as completed
+            state_machine.cleanup()
+
+            # Return instructions (can't invoke /ultrathink from hook)
+            return {
+                "message": f"To start work on this issue, run:\n\n  /ultrathink work on {state_data.issue_url}"
+            }
+
+        finally:
+            lock.release()
 
 
 def main():
