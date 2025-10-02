@@ -225,7 +225,7 @@ class UVXConfiguration:
     # Staging behavior
     overwrite_existing: bool = False
     create_backup: bool = False
-    cleanup_on_exit: bool = False
+    cleanup_on_exit: bool = True  # Default to cleanup for UVX deployments
 
     # Debug settings
     debug_enabled: Optional[bool] = None

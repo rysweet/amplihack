@@ -1,8 +1,10 @@
 """UVX framework staging utilities."""
 
 import os
+import secrets
 import shutil
 import sys
+import time
 from pathlib import Path
 from typing import Optional, Set
 
@@ -17,6 +19,8 @@ class UVXStager:
             "1",
             "yes",
         )
+        self._cleanup_handler = None
+        self._cleanup_initialized = False
 
     def _debug_log(self, message: str) -> None:
         """Log debug message if debugging is enabled."""
@@ -43,11 +47,32 @@ class UVXStager:
 
         return None
 
+    def _initialize_cleanup_system(self) -> None:
+        """Initialize cleanup system for tracking and removing staged files."""
+        if self._cleanup_initialized:
+            return
+
+        try:
+            from .cleanup_handler import initialize_cleanup_system
+            from .uvx_models import UVXConfiguration
+
+            config = UVXConfiguration()
+            # SECURITY: Use cryptographically secure session ID with timestamp
+            session_id = f"{int(time.time())}-{secrets.token_hex(8)}"
+            self._cleanup_handler = initialize_cleanup_system(config, session_id, Path.cwd())
+            self._cleanup_initialized = True
+            self._debug_log("Cleanup system initialized")
+        except Exception as e:
+            self._debug_log(f"Failed to initialize cleanup system: {e}")
+
     def stage_framework_files(self) -> bool:
         """Stage framework files from UVX to working directory."""
         if not self.detect_uvx_deployment():
             self._debug_log("Not in UVX deployment mode, skipping staging")
             return False
+
+        # Initialize cleanup system for UVX deployments
+        self._initialize_cleanup_system()
 
         uvx_root = self._find_uvx_framework_root()
         if not uvx_root:
@@ -87,6 +112,11 @@ class UVXStager:
                     shutil.copy2(source, target)
                     self._debug_log(f"Copied file: {source} -> {target}")
                 self._staged_files.add(target)
+
+                # Register for cleanup if handler is available
+                if self._cleanup_handler and hasattr(self._cleanup_handler, "registry"):
+                    self._cleanup_handler.registry.register(target)
+                    self._debug_log(f"Registered for cleanup: {target}")
             except PermissionError as e:
                 self._debug_log(f"Permission denied staging {item_name}: {e}")
             except OSError as e:
