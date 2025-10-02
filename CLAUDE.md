@@ -98,104 +98,6 @@ dependencies require sequential order.
 - **Fix Workflows**: Use `fix-agent.md` for rapid resolution of common error
   patterns (imports, CI, tests, config, quality, logic)
 
-#### Parallel Execution Decision Engine
-
-**AUTOMATIC PARALLEL TRIGGERS** - Always deploy parallel execution for:
-
-**1. Multi-File Operations**
-
-```
-TRIGGER: Reading, analyzing, or editing multiple files
-ACTION: Batch all file operations in single tool call
-EXAMPLE: [Read file1.py, Read file2.py, Read file3.py]
-```
-
-**2. Multi-Agent Coordination**
-
-```
-TRIGGER: Multiple specialized perspectives needed
-ACTION: Deploy all relevant agents simultaneously
-EXAMPLE: [architect, security, database, api-designer] for new feature
-```
-
-**3. Independent Analysis Tasks**
-
-```
-TRIGGER: Multiple components requiring separate analysis
-ACTION: Parallel analysis with different agents
-EXAMPLE: [patterns analysis, security audit, performance review]
-```
-
-**4. Research and Information Gathering**
-
-```
-TRIGGER: Multiple data sources or perspectives needed
-ACTION: Parallel research with specialized agents
-EXAMPLE: [codebase analysis, requirement clarification, dependency check]
-```
-
-**5. Diagnostic Workflows**
-
-```
-TRIGGER: System state analysis from multiple angles
-ACTION: Parallel diagnostic agents
-EXAMPLE: [environment check, log analysis, pattern detection]
-```
-
-#### Parallel Execution Templates
-
-**Template 1: Feature Development**
-
-```
-"I'll coordinate multiple agents for comprehensive feature development"
-[Single message with parallel Task calls]:
-- architect: Design system architecture and module boundaries
-- security: Identify security requirements and threat vectors
-- database: Design data schema and migration strategy
-- api-designer: Define API contracts and integration points
-- tester: Design test strategy and acceptance criteria
-```
-
-**Template 2: Code Analysis**
-
-```
-"I'll analyze this codebase from multiple perspectives"
-[Single message with parallel analysis]:
-- analyzer: Deep code structure and pattern analysis
-- security: Security vulnerability assessment
-- optimizer: Performance bottleneck identification
-- patterns: Reusable pattern detection
-- reviewer: Philosophy compliance check
-```
-
-**Template 3: Problem Diagnosis**
-
-```
-"I'll diagnose this issue comprehensively"
-[Single message with parallel diagnosis]:
-- analyzer: Root cause analysis
-- environment: System and dependency analysis
-- patterns: Similar issue pattern matching
-- logs: Error and warning pattern analysis
-```
-
-#### Sequential Execution (Exception Cases)
-
-**Only use sequential when:**
-
-- **Hard Dependencies**: Output of A required as input for B
-- **State Mutations**: Agent A changes state that B depends on
-- **Progressive Context**: Each step builds knowledge for next
-- **Resource Conflicts**: Agents would conflict on same resources
-
-**Examples of Required Sequential:**
-
-```
-architect → builder → reviewer  (specification → implementation → review)
-git operations with dependencies (checkout → modify → commit)
-test-driven development (write test → implement → validate)
-```
-
 ### Development Workflow Agents
 
 **Two-Stage Diagnostic Workflow:**
@@ -296,84 +198,168 @@ User: "Add authentication to the API"
 
 The workflow file is the single source of truth - edit it to change the process.
 
-### Parallel Execution Engine
+### Microsoft Amplifier Parallel Execution Engine
 
 **PARALLEL BY DEFAULT**: Always execute operations in parallel unless
 dependencies require sequential order.
 
-#### Automatic Parallel Detection Rules
+### Comprehensive Parallel Detection Framework
 
-**RULE 1: File Operations**
+#### RULE 1: File Operations
 
-```
-IF: Multiple files mentioned OR file patterns detected
-THEN: Batch all file operations in single tool call
-EXAMPLE: "analyze these Python files" → [Read *.py files in parallel]
-```
+Batch all file operations in single tool call when multiple files are involved.
 
-**RULE 2: Multi-Perspective Analysis**
+#### RULE 2: Multi-Perspective Analysis
 
-```
-IF: Task requires multiple viewpoints OR "comprehensive" mentioned
-THEN: Deploy relevant agents in parallel
-EXAMPLE: "review this code" → [security, patterns, optimizer, reviewer]
-```
+Deploy relevant agents in parallel when multiple viewpoints are needed.
 
-**RULE 3: Independent Components**
+#### RULE 3: Independent Components
 
-```
-IF: Task involves separate modules OR multiple systems
-THEN: Analyze each component in parallel
-EXAMPLE: "check frontend and backend" → [frontend analysis, backend analysis]
-```
+Analyze separate modules or systems in parallel.
 
-**RULE 4: Information Gathering**
+#### RULE 4: Information Gathering
 
-```
-IF: Research phase OR multiple data sources needed
-THEN: Parallel information collection
-EXAMPLE: "understand this system" → [code analysis, docs review, pattern detection]
-```
+Parallel information collection when multiple data sources are needed.
 
-#### Execution Patterns
+#### RULE 5: Development Lifecycle Tasks
 
-**Optimal (Parallel by Default):**
+Execute parallel operations for testing, building, and validation phases.
+
+#### RULE 6: Cross-Cutting Concerns
+
+Apply security, performance, and quality analysis in parallel.
+
+### Microsoft Amplifier Execution Templates
+
+#### Template 1: Comprehensive Feature Development
 
 ```
-"I'll analyze these components comprehensively"
-[Single message: analyzer(component1), security(component1), optimizer(component1),
-                analyzer(component2), security(component2), optimizer(component2)]
+[architect, security, database, api-designer, tester] for new feature
 ```
 
-**Sub-optimal (Sequential without justification):**
+#### Template 2: Multi-Dimensional Code Analysis
 
 ```
-"Let me analyze the first component"
-[analyzer(component1)]
-"Now the second component"
-[analyzer(component2)]
+[analyzer, security, optimizer, patterns, reviewer] for comprehensive review
 ```
 
-#### Parallel Coordination Protocols
+#### Template 3: Comprehensive Problem Diagnosis
 
-**Agent Coordination Guidelines:**
+```
+[analyzer, environment, patterns, logs] for issue investigation
+```
 
-- **Context Sharing**: Each agent receives full task context
-- **Output Integration**: Orchestrator synthesizes parallel results
-- **Conflict Resolution**: Sequential fallback for resource conflicts
-- **Progress Tracking**: TodoWrite manages parallel task completion
+#### Template 4: System Preparation and Validation
 
-**PARALLEL-READY Agents** (can work simultaneously):
+```
+[environment, validator, tester, ci-checker] for deployment readiness
+```
 
-- `analyzer`, `security`, `optimizer`, `patterns`, `reviewer`
-- `architect`, `api-designer`, `database`, `tester`
-- `integration`, `cleanup`, `ambiguity`
+#### Template 5: Research and Discovery
 
-**SEQUENTIAL-REQUIRED Agents** (state dependencies):
+```
+[analyzer, patterns, explorer, documenter] for knowledge gathering
+```
 
-- `builder` (after `architect`)
-- `ci-diagnostic-workflow` (after push)
-- `pre-commit-diagnostic` (during commit process)
+### Advanced Execution Patterns
+
+**Parallel (Default)**
+
+```
+[analyzer(comp1), analyzer(comp2), analyzer(comp3)]
+```
+
+**Sequential (Exception - Hard Dependencies Only)**
+
+```
+architect → builder → reviewer
+```
+
+### Microsoft Amplifier Coordination Protocols
+
+**Agent Guidelines:**
+
+- Context sharing: Each agent receives full task context
+- Output integration: Orchestrator synthesizes parallel results
+- Progress tracking: TodoWrite manages parallel task completion
+
+**PARALLEL-READY Agents**: `analyzer`, `security`, `optimizer`, `patterns`,
+`reviewer`, `architect`, `api-designer`, `database`, `tester`, `integration`,
+`cleanup`, `ambiguity`
+
+**SEQUENTIAL-REQUIRED Agents**: `architect` → `builder` → `reviewer`,
+`pre-commit-diagnostic`, `ci-diagnostic-workflow`
+
+### Systematic Decision Framework
+
+#### When to Use Parallel Execution
+
+- Independent analysis tasks
+- Multiple perspectives on same target
+- Separate components
+- Batch operations
+
+#### When to Use Sequential Execution
+
+- Hard dependencies (A output → B input)
+- State mutations
+- User-specified order
+
+#### Decision Matrix
+
+| Scenario           | Use Parallel | Use Sequential |
+| ------------------ | ------------ | -------------- |
+| File analysis      | ✓            |                |
+| Multi-agent review | ✓            |                |
+| Dependencies exist |              | ✓              |
+
+### Anti-Patterns and Common Mistakes
+
+#### Anti-Pattern 1: Unnecessary Sequencing
+
+Avoid sequential execution when tasks are independent.
+
+#### Anti-Pattern 2: False Dependencies
+
+Don't create artificial sequential dependencies.
+
+#### Anti-Pattern 3: Over-Sequencing Complex Tasks
+
+Break complex tasks into parallel components when possible.
+
+### Template Responses for Common Scenarios
+
+#### Scenario 1: New Feature Request
+
+Deploy parallel feature development template with architect, security, database,
+api-designer, and tester.
+
+#### Scenario 2: Bug Investigation
+
+Use parallel diagnostic template with analyzer, environment, patterns, and logs.
+
+#### Scenario 3: Code Review Request
+
+Apply multi-dimensional analysis with analyzer, security, optimizer, patterns,
+and reviewer.
+
+#### Scenario 4: System Analysis
+
+Execute comprehensive system review with all relevant agents in parallel.
+
+### Performance Optimization Guidelines
+
+#### Parallel Execution Optimization
+
+- Minimize agent overlap
+- Optimize context sharing
+- Track execution metrics
+
+#### Monitoring and Metrics
+
+- Monitor parallel execution performance
+- Track agent coordination efficiency
+- Measure time savings vs sequential
 
 ## Development Principles
 
