@@ -251,7 +251,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": ".claude/tools/amplihack/hooks/session_start.py",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
                                     "timeout": 10000,
                                 }
                             ]
@@ -262,7 +262,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": ".claude/tools/amplihack/hooks/stop.py",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
                                     "timeout": 30000,
                                 }
                             ]
@@ -274,7 +274,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": ".claude/tools/amplihack/hooks/post_tool_use.py",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
                                 }
                             ],
                         }
@@ -284,7 +284,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": ".claude/tools/amplihack/hooks/pre_compact.py",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
                                     "timeout": 30000,
                                 }
                             ]
