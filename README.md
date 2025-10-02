@@ -79,6 +79,9 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 ## Configuration
 
+amplihack works with Claude Code and Anthropic models by default. For additional
+capabilities, you can configure Azure OpenAI integration.
+
 ### Azure OpenAI
 
 Create `azure.env` with your credentials:
