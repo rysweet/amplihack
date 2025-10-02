@@ -57,7 +57,7 @@ class TestContextPreserver(unittest.TestCase):
     def test_extract_structured_request(self):
         """Test extraction from structured request with explicit markers."""
         prompt = """
-Implement conversation transcript and original request preservation similar to Microsoft Amplifier.
+Implement conversation transcript and original request preservation for amplihack.
 
 **Target**: Context preservation system for original user requirements
 **Problem**: Original user requests get lost during context compaction and aren't consistently passed to subagents

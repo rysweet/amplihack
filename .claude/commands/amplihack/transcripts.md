@@ -1,12 +1,12 @@
 # /transcripts - Conversation Transcript Management
 
-**Purpose**: Microsoft Amplifier-style transcript management for context preservation and restoration.
+**Purpose**: amplihack-style transcript management for context preservation and restoration.
 
 **Usage**: `/transcripts [action] [session_id]`
 
 ## Description
 
-The `/transcripts` command provides conversation history management, inspired by Microsoft Amplifier's "Never lose context again" approach. It handles automatic exports, restoration, and search across conversation transcripts.
+The `/transcripts` command provides conversation history management, implementing amplihack's "Never lose context again" approach. It handles automatic exports, restoration, and search across conversation transcripts.
 
 ## Actions
 
@@ -88,19 +88,19 @@ The actual implementation is in `/Users/ryan/src/hackathon/MicrosoftHackathon202
 ### Search Transcripts
 
 ```
-/transcripts search "Microsoft Amplifier"
+/transcripts search "amplihack"
 
-🔍 Search Results for: 'Microsoft Amplifier'
+🔍 Search Results for: 'amplihack'
 Found 2 matches across sessions
 ═════════════════════════════════════════════════════════════
 
 📄 **20250923_143022** - 2025-09-23 14:30:22
    File: ORIGINAL_REQUEST.md
-   Preview: ...preservation similar to Microsoft Amplifier. Target: Context preservation system for...
+   Preview: ...preservation for amplihack. Target: Context preservation system for...
 
 📄 **20250922_211458** - 2025-09-22 21:14:58
    File: CONVERSATION_TRANSCRIPT.md
-   Preview: ...Microsoft Amplifier's proven approach. Based on Microsoft Amplifier: - PreCompact Hook...
+   Preview: ...amplihack's proven approach. Based on amplihack: - PreCompact Hook...
 ```
 
 ## Integration Notes
@@ -119,4 +119,4 @@ Found 2 matches across sessions
 4. **Searchable History**: Find past decisions and implementations
 5. **Compaction Safe**: Automatic export before context loss
 
-This command provides Microsoft Amplifier-style transcript management, ensuring that conversation context and original requirements are never lost, even during context compaction events.
+This command provides amplihack-style transcript management, ensuring that conversation context and original requirements are never lost, even during context compaction events.

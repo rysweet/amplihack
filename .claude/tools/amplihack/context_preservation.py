@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Context Preservation System - Microsoft Amplifier Style
+Context Preservation System - amplihack Style
 Preserves original user requests and conversation context to prevent loss during compaction.
 """
 
@@ -355,7 +355,7 @@ def create_context_preserver(session_id: Optional[str] = None) -> ContextPreserv
 if __name__ == "__main__":
     # Test with sample prompt
     sample_prompt = """
-Implement conversation transcript and original request preservation similar to Microsoft Amplifier.
+Implement conversation transcript and original request preservation for amplihack.
 
 **Target**: Context preservation system for original user requirements
 **Problem**: Original user requests get lost during context compaction and aren't consistently passed to subagents

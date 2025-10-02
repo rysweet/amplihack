@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 /transcripts command - Restore conversation context from transcripts
-Implements Microsoft Amplifier-style context restoration capabilities.
+Implements amplihack-style context restoration capabilities.
 """
 
 import json

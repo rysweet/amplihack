@@ -63,10 +63,10 @@ Reflection system now properly:
 
 ## Context Preservation Implementation Success (2025-09-23)
 
-### Microsoft Amplifier-Style Solution
+### amplihack-Style Solution
 
 Successfully implemented comprehensive conversation transcript and original
-request preservation system based on Microsoft Amplifier's "Never lose context
+request preservation system based on amplihack's "Never lose context
 again" approach.
 
 ### Problem Solved
@@ -100,7 +100,7 @@ Original user requests were getting lost during context compaction, leading to:
    - Compaction event metadata tracking
 
 4. **Transcript Management** (`.claude/commands/amplihack/transcripts.md`)
-   - Microsoft Amplifier-style `/transcripts` command
+   - amplihack-style `/transcripts` command
    - Context restoration, search, and management
    - Original request retrieval and display
 
@@ -133,7 +133,7 @@ All tests passed:
 
 ### Pattern Recognition
 
-**Microsoft Amplifier's Approach Works**: Their PreCompact hook strategy is the
+**amplihack's Approach Works**: The PreCompact hook strategy is the
 gold standard for context preservation. Direct implementation of their approach
 provides immediate value.
 

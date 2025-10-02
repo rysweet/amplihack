@@ -8,7 +8,7 @@ Original user requests get lost during context compaction, leading to agents opt
 
 ## Solution
 
-Microsoft Amplifier approach:
+amplihack approach:
 
 1. **Context Preservation**: Extract and preserve original requirements
 2. **Agent Injection**: Include requirements in ALL agent prompts

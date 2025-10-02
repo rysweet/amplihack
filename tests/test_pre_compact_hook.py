@@ -113,9 +113,9 @@ class TestPreCompactHook(unittest.TestCase):
             "messages": [
                 {
                     "role": "user",
-                    "content": """Implement conversation transcript and original request preservation similar to Microsoft Amplifier.
+                    "content": """Implement conversation transcript and original request preservation for amplihack.
 **Target**: Context preservation system for original user requirements
-**Constraints**: Simple implementation based on Amplifier's proven approach""",
+**Constraints**: Simple implementation based on amplihack's proven approach""",
                     "timestamp": "2025-09-23T10:00:00",
                 }
             ],

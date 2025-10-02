@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PreCompact Hook - Microsoft Amplifier Style
+PreCompact Hook - amplihack Style
 Automatically exports conversation transcript before context compaction.
 Ensures no conversation history is lost when Claude Code compacts context.
 """
