@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Modular Build Configuration",
+  "description": "Configuration settings for the modular build command",
+
+  "default_mode": "assist",
+  "validation_strictness": "high",
+
+  "phase_configuration": {
+    "contract": {
+      "enabled": true,
+      "timeout_seconds": 300,
+      "required_agents": ["architect", "api-designer"],
+      "validation_required": true,
+      "retry_on_failure": true,
+      "max_retries": 2
+    },
+    "spec": {
+      "enabled": true,
+      "timeout_seconds": 600,
+      "required_agents": ["architect", "database", "security"],
+      "validation_required": true,
+      "retry_on_failure": true,
+      "max_retries": 2
+    },
+    "plan": {
+      "enabled": true,
+      "timeout_seconds": 300,
+      "required_agents": ["tester", "integration"],
+      "validation_required": true,
+      "retry_on_failure": true,
+      "max_retries": 2
+    },
+    "generate": {
+      "enabled": true,
+      "timeout_seconds": 1200,
+      "required_agents": ["builder", "tester", "integration"],
+      "validation_required": true,
+      "retry_on_failure": true,
+      "max_retries": 1
+    },
+    "review": {
+      "enabled": true,
+      "timeout_seconds": 900,
+      "required_agents": ["reviewer", "security", "optimizer"],
+      "validation_required": true,
+      "retry_on_failure": false,
+      "max_retries": 0
+    }
+  },
+
+  "external_tools": {
+    "enable_security_scanning": true,
+    "enable_performance_testing": true,
+    "enable_code_quality_checks": true,
+    "enable_documentation_validation": true,
+    "required_coverage_threshold": 0.85,
+    "allow_tool_failures": false,
+    "parallel_execution": true,
+    "max_parallel_tools": 3
+  },
+
+  "quality_gates": {
+    "min_code_quality_score": 8.0,
+    "max_security_warnings": 0,
+    "max_critical_security_issues": 0,
+    "required_documentation_completeness": 90,
+    "required_test_coverage": 85,
+    "max_cyclomatic_complexity": 10,
+    "max_technical_debt_ratio": 0.1
+  },
+
+  "validation_schemas": {
+    "contract_schema": ".claude/schemas/modular-build/contract.schema.json",
+    "spec_schema": ".claude/schemas/modular-build/spec.schema.json",
+    "plan_schema": ".claude/schemas/modular-build/plan.schema.json",
+    "generate_schema": ".claude/schemas/modular-build/generate.schema.json",
+    "review_schema": ".claude/schemas/modular-build/review.schema.json"
+  },
+
+  "output_configuration": {
+    "base_output_directory": ".modular-build",
+    "preserve_intermediate_files": true,
+    "generate_reports": true,
+    "report_formats": ["json", "html", "markdown"],
+    "compress_outputs": true,
+    "cleanup_on_success": false,
+    "cleanup_on_failure": false
+  },
+
+  "module_templates": {
+    "enable_templates": true,
+    "template_directory": ".claude/templates/modular-build",
+    "default_templates": {
+      "rest_api": "rest-api-module.template.json",
+      "data_processor": "data-processor-module.template.json",
+      "authentication": "auth-module.template.json",
+      "notification": "notification-module.template.json",
+      "reporting": "reporting-module.template.json"
+    },
+    "custom_templates_allowed": true
+  },
+
+  "integration_settings": {
+    "git_integration": {
+      "create_branch": false,
+      "auto_commit": false,
+      "commit_message_template": "feat: Add {module_name} module via modular-build",
+      "include_metadata": true
+    },
+    "ci_cd_integration": {
+      "trigger_ci_validation": false,
+      "wait_for_ci_results": false,
+      "ci_timeout_minutes": 30
+    },
+    "external_validators_config": ".claude/config/modular-build-validators.yaml"
+  },
+
+  "security_settings": {
+    "input_validation": {
+      "validate_module_names": true,
+      "validate_file_paths": true,
+      "sanitize_user_input": true,
+      "max_input_length": 1000
+    },
+    "execution_safety": {
+      "sandbox_external_tools": true,
+      "validate_tool_commands": true,
+      "restrict_file_access": true,
+      "allowed_file_extensions": [".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt"]
+    }
+  },
+
+  "performance_settings": {
+    "enable_caching": true,
+    "cache_directory": ".modular-build/cache",
+    "cache_validation_results": true,
+    "cache_duration_hours": 24,
+    "parallel_phase_execution": false,
+    "parallel_agent_execution": true,
+    "max_concurrent_agents": 5
+  },
+
+  "logging_configuration": {
+    "log_level": "INFO",
+    "log_directory": ".modular-build/logs",
+    "log_format": "json",
+    "include_timestamps": true,
+    "include_agent_traces": true,
+    "preserve_logs": true,
+    "max_log_size_mb": 100,
+    "log_rotation": true
+  },
+
+  "error_handling": {
+    "fail_fast": false,
+    "continue_on_validation_errors": false,
+    "retry_failed_phases": true,
+    "escalation_strategy": "manual",
+    "rollback_on_failure": true,
+    "preserve_partial_results": true
+  },
+
+  "user_experience": {
+    "interactive_confirmations": true,
+    "progress_indicators": true,
+    "detailed_error_messages": true,
+    "suggestion_engine": true,
+    "auto_fix_suggestions": true,
+    "learning_mode": true
+  },
+
+  "environment_overrides": {
+    "development": {
+      "validation_strictness": "medium",
+      "quality_gates": {
+        "min_code_quality_score": 6.0,
+        "required_documentation_completeness": 70,
+        "required_test_coverage": 70
+      },
+      "external_tools": {
+        "allow_tool_failures": true
+      }
+    },
+    "staging": {
+      "validation_strictness": "high",
+      "external_tools": {
+        "enable_performance_testing": true
+      }
+    },
+    "production": {
+      "validation_strictness": "strict",
+      "quality_gates": {
+        "min_code_quality_score": 9.0,
+        "max_security_warnings": 0,
+        "required_documentation_completeness": 95,
+        "required_test_coverage": 90
+      },
+      "external_tools": {
+        "allow_tool_failures": false,
+        "enable_security_scanning": true,
+        "enable_performance_testing": true
+      }
+    }
+  },
+
+  "experimental_features": {
+    "ai_assisted_fixes": false,
+    "automatic_optimization": false,
+    "predictive_validation": false,
+    "cross_module_analysis": false,
+    "incremental_builds": false
+  },
+
+  "metadata": {
+    "config_version": "v1.0",
+    "last_updated": "2025-10-02T09:00:00Z",
+    "created_by": "modular-build-command",
+    "description": "Default configuration for modular build command with comprehensive validation pipeline"
+  }
+}

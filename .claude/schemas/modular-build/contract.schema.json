@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://amplihack.dev/schemas/modular-build/contract.schema.json",
+  "title": "Modular Build Contract Schema",
+  "description": "Schema for module contract definition in the Contract phase",
+  "type": "object",
+  "required": [
+    "module_name",
+    "public_interface",
+    "responsibilities",
+    "dependencies",
+    "contract_version"
+  ],
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+      "minLength": 3,
+      "maxLength": 50,
+      "description": "Module name following kebab-case convention"
+    },
+    "public_interface": {
+      "type": "object",
+      "required": ["functions", "classes", "exports"],
+      "properties": {
+        "functions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "signature", "description"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$" },
+              "signature": { "type": "string" },
+              "description": { "type": "string" },
+              "parameters": { "type": "array", "items": { "type": "object" } },
+              "return_type": { "type": "string" }
+            }
+          }
+        },
+        "classes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "description", "methods"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[A-Z][a-zA-Z0-9]*$" },
+              "description": { "type": "string" },
+              "methods": { "type": "array", "items": { "type": "string" } },
+              "attributes": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "exports": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of all public exports in __all__"
+        }
+      },
+      "additionalProperties": false
+    },
+    "responsibilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "maxItems": 3,
+      "description": "1-3 clear responsibilities following single responsibility principle"
+    },
+    "dependencies": {
+      "type": "object",
+      "required": ["internal", "external"],
+      "properties": {
+        "internal": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Dependencies on other project modules"
+        },
+        "external": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "version", "purpose"],
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" },
+              "purpose": { "type": "string" }
+            }
+          },
+          "description": "External package dependencies"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contract_version": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+$",
+      "description": "Contract version following semantic versioning"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created_at": { "type": "string", "format": "date-time" },
+        "created_by": { "type": "string" },
+        "description": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "additionalProperties": false
+}
