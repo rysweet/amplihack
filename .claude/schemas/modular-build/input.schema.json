@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://amplihack.dev/schemas/modular-build/input.schema.json",
+  "title": "Modular Build Input Schema",
+  "description": "Simplified schema for modular build input validation",
+  "type": "object",
+  "required": ["module_name", "target"],
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+      "minLength": 3,
+      "maxLength": 50
+    },
+    "target": {
+      "type": "string",
+      "description": "Module description or feature specification"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["auto", "assist", "dry-run"],
+      "default": "assist"
+    }
+  },
+  "additionalProperties": false
+}

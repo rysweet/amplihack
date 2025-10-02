@@ -1,0 +1,20 @@
+# Simplified External Tools Configuration
+# Auto-detect and run available quality tools
+
+auto_detect_tools:
+  # Try these tools in order if they exist
+  - "pytest" # Testing (required)
+  - "coverage" # Coverage (required if pytest passes)
+  - "ruff" # Fast Python linting (preferred)
+  - "pylint" # Fallback Python linting
+  - "bandit" # Security scanning
+  - "safety" # Dependency vulnerabilities
+
+required_minimums:
+  test_coverage: 85
+  security_warnings: 0
+
+settings:
+  timeout: 300
+  parallel: true
+  fail_on_missing_required: false # Graceful degradation
