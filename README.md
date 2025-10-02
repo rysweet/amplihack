@@ -33,12 +33,16 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --checkout-repo owner/repo
 ```
 
+Not sure where to start? Use the command above to run from uvx, then tell Claude
+Code to `cd /path/to/my/project` and
+`/amplihack:ultrathink <my first prompt here>`.
+
 ### Commands in Claude Code
 
-- `/ultrathink <task>` - Orchestrate agents for complex tasks
-- `/analyze <path>` - Review code quality
-- `/improve [target]` - Capture learnings
-- `/fix [pattern]` - Fix common errors
+- `/amplihack:ultrathink <task>` - Orchestrate agents for complex tasks
+- `/amplihack:analyze <path>` - Review code quality
+- `/amplihack:improve [target]` - Capture learnings
+- `/amplihack:fix [pattern]` - Fix common errors
 
 ## Core Concepts
 
