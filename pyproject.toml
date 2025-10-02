@@ -32,7 +32,7 @@ target-version = "py38"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I"]  # Basic errors, warnings, pyflakes, isort
-ignore = ["E501"]  # Line too long - handled by formatter
+ignore = ["E501", "E402"]  # Line too long - handled by formatter, Module level import not at top of file
 
 [tool.pyright]
 # Essential Pyright settings only
