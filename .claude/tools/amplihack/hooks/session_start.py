@@ -5,6 +5,7 @@ Uses unified HookProcessor for common functionality.
 """
 
 # Import the base processor
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -29,10 +30,77 @@ except ImportError:
 
 
 class SessionStartHook(HookProcessor):
-    """Hook processor for session start events."""
+    """Hook processor for session start events with performance optimizations."""
 
     def __init__(self):
         super().__init__("session_start")
+        # Performance optimizations: caching for repeated operations
+        self._env_cache = {}
+        self._path_validation_cache = {}
+        self._preferences_cache = None
+        self._preferences_cache_time = 0
+
+    def _validate_launch_directory(self, path: str) -> bool:
+        """Validate launch directory path for security with caching.
+
+        Args:
+            path: Directory path to validate
+
+        Returns:
+            True if path is valid and accessible
+        """
+        # Use cached result if available
+        if path in self._path_validation_cache:
+            return self._path_validation_cache[path]
+
+        try:
+            # Early exit for empty or whitespace-only paths
+            if not path or not path.strip():
+                self._path_validation_cache[path] = False
+                return False
+
+            path_obj = Path(path.strip())
+
+            # Quick existence check first (fastest operation)
+            if not path_obj.exists():
+                self._path_validation_cache[path] = False
+                return False
+
+            # Then check if it's a directory
+            if not path_obj.is_dir():
+                self._path_validation_cache[path] = False
+                return False
+
+            # Finally canonicalize (most expensive operation)
+            path_obj.resolve()
+            self._path_validation_cache[path] = True
+            return True
+
+        except (OSError, ValueError):
+            self._path_validation_cache[path] = False
+            return False
+
+    def _add_launch_directory_context(self, launch_dir: str) -> str:
+        """Add launch directory context with security validation.
+
+        Args:
+            launch_dir: UVX launch directory path
+
+        Returns:
+            Context message for launch directory
+        """
+        if not self._validate_launch_directory(launch_dir):
+            self.log(f"Invalid or inaccessible launch directory: {launch_dir}", "WARNING")
+            return ""
+
+        # Use the user's exact message format
+        context = (
+            f"You are going to work on the project in the directory {launch_dir}. "
+            f"Change working dir to there and all subsequent commands should be relative to that dir and repo."
+        )
+
+        self.log(f"Added UVX launch directory context: {launch_dir}")
+        return context
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process session start event.
@@ -54,23 +122,25 @@ class SessionStartHook(HookProcessor):
         original_request_context = ""
         original_request_captured = False
 
-        # Simple check for substantial requests
-        substantial_keywords = [
-            "implement",
-            "create",
-            "build",
-            "add",
-            "fix",
-            "update",
-            "all",
-            "every",
-            "each",
-            "complete",
-            "comprehensive",
-        ]
-        is_substantial = len(prompt) > 20 or any(
-            word in prompt.lower() for word in substantial_keywords
-        )
+        # Optimized substantial request detection
+        is_substantial = len(prompt) > 20
+        if not is_substantial:
+            # Use set for O(1) lookup instead of list iteration
+            substantial_keywords = {
+                "implement",
+                "create",
+                "build",
+                "add",
+                "fix",
+                "update",
+                "all",
+                "every",
+                "each",
+                "complete",
+                "comprehensive",
+            }
+            prompt_lower = prompt.lower()
+            is_substantial = any(word in prompt_lower for word in substantial_keywords)
 
         if ContextPreserver and is_substantial:
             try:
@@ -81,7 +151,7 @@ class SessionStartHook(HookProcessor):
                 # Extract and save original request
                 original_request = preserver.extract_original_request(prompt)
 
-                # Simple verification and context formatting
+                # Verify and format context
                 session_dir = self.project_root / ".claude" / "runtime" / "logs" / session_id
                 original_request_captured = (session_dir / "ORIGINAL_REQUEST.md").exists()
 
@@ -109,6 +179,19 @@ class SessionStartHook(HookProcessor):
         except ImportError:
             pass
 
+        # Optimized UVX launch directory check with caching
+        uvx_launch_context = ""
+        # Cache environment variable access for performance
+        if "UVX_LAUNCH_DIRECTORY" not in self._env_cache:
+            self._env_cache["UVX_LAUNCH_DIRECTORY"] = os.environ.get("UVX_LAUNCH_DIRECTORY")
+
+        uvx_launch_dir = self._env_cache["UVX_LAUNCH_DIRECTORY"]
+        if uvx_launch_dir:
+            uvx_launch_context = self._add_launch_directory_context(uvx_launch_dir)
+            self.save_metric("uvx_launch_directory_set", True)
+        else:
+            self.save_metric("uvx_launch_directory_set", False)
+
         # Build context if needed
         context_parts = []
         preference_enforcement = []
@@ -131,17 +214,41 @@ class SessionStartHook(HookProcessor):
             else self.project_root / ".claude" / "context" / "USER_PREFERENCES.md"
         )
 
-        if preferences_file and preferences_file.exists():
+        # Optimized preferences reading with time-based caching
+        prefs_content = None
+        if preferences_file:
             try:
-                with open(preferences_file, "r") as f:
-                    prefs_content = f.read()
-                self.log(f"Successfully read preferences from: {preferences_file}")
+                # Check if file exists first (cheap operation)
+                if preferences_file.exists():
+                    # Get file modification time
+                    mtime = preferences_file.stat().st_mtime
 
+                    # Return cached content if file hasn't changed
+                    if (
+                        self._preferences_cache is not None
+                        and mtime <= self._preferences_cache_time
+                    ):
+                        prefs_content = self._preferences_cache
+                        self.log(f"Using cached preferences from: {preferences_file}")
+                    else:
+                        # Read and cache the content
+                        with open(preferences_file, "r") as f:
+                            prefs_content = f.read()
+                        self._preferences_cache = prefs_content
+                        self._preferences_cache_time = mtime
+                        self.log(
+                            f"Successfully read and cached preferences from: {preferences_file}"
+                        )
+            except (OSError, IOError) as e:
+                self.log(f"Could not read preferences: {e}")
+
+        if prefs_content:
+            try:
                 import re
 
                 context_parts.append("\n## 🎯 Active User Preferences")
 
-                # Simple preference extraction
+                # Extract key preferences
                 key_prefs = [
                     "Communication Style",
                     "Verbosity",
@@ -164,37 +271,29 @@ class SessionStartHook(HookProcessor):
                     context_parts.append("• Using default settings")
 
             except Exception as e:
-                self.log(f"Could not read preferences: {e}")
-                # Fail silently - don't break session start
+                self.log(f"Could not process preferences: {e}")
 
-        # Add workflow information at startup with UVX support
+        # Add workflow information
         context_parts.append("\n## 📝 Default Workflow")
         context_parts.append("The 13-step workflow is automatically followed by `/ultrathink`")
 
-        # Use FrameworkPathResolver for workflow path
-        workflow_file = None
-        if FrameworkPathResolver:
-            workflow_file = FrameworkPathResolver.resolve_workflow_file()
-
+        workflow_file = (
+            FrameworkPathResolver.resolve_workflow_file() if FrameworkPathResolver else None
+        )
         if workflow_file:
-            context_parts.append(f"• To view the workflow: Read {workflow_file}")
-            context_parts.append("• To customize: Edit the workflow file directly")
+            context_parts.append(f"• To view: Read {workflow_file}")
         else:
-            context_parts.append(
-                "• To view the workflow: Use FrameworkPathResolver.resolve_workflow_file() (UVX-compatible)"
-            )
-            context_parts.append("• To customize: Edit the workflow file directly")
+            context_parts.append("• To view: Use FrameworkPathResolver.resolve_workflow_file()")
+        context_parts.append("• To customize: Edit the workflow file directly")
         context_parts.append(
-            "• Steps include: Requirements → Issue → Branch → Design → Implement → Review → Merge"
+            "• Steps: Requirements → Issue → Branch → Design → Implement → Review → Merge"
         )
 
         # Add verbosity instructions
         context_parts.append("\n## 🎤 Verbosity Mode")
         context_parts.append("• Current setting: balanced")
-        context_parts.append(
-            "• To enable verbose: Use TodoWrite tool frequently and provide detailed explanations"
-        )
-        context_parts.append("• Claude will adapt to your verbosity preference in responses")
+        context_parts.append("• To enable verbose: Use TodoWrite tool frequently")
+        context_parts.append("• Claude adapts to your verbosity preference")
 
         # Build response
         output = {}
@@ -202,18 +301,17 @@ class SessionStartHook(HookProcessor):
             # Create comprehensive startup context
             full_context = "\n".join(context_parts)
 
-            # Build a visible startup message (even though Claude Code may not display it)
+            # Build startup message
             startup_msg_parts = ["🚀 AmplifyHack Session Initialized", "━" * 40]
 
-            # Add preference summary if any exist
-            if len([p for p in context_parts if "**" in p and ":" in p]) > 0:
+            if any("**" in p and ":" in p for p in context_parts):
                 startup_msg_parts.append("🎯 Active preferences loaded and enforced")
 
             startup_msg_parts.extend(
                 [
                     "",
                     "📝 Workflow: Use `/ultrathink` for the 13-step process",
-                    "⚙️  Customize: Edit the workflow file (use FrameworkPathResolver for UVX compatibility)",
+                    "⚙️ Customize: Edit the workflow file",
                     "🎯 Preferences: Loaded from USER_PREFERENCES.md",
                     "",
                     "Type `/help` for available commands",
@@ -222,12 +320,11 @@ class SessionStartHook(HookProcessor):
 
             startup_message = "\n".join(startup_msg_parts)
 
-            # CRITICAL: Add original request context to prevent requirement loss
-            if original_request_context:
-                # Inject original request at the top of context (highest priority)
-                full_context = original_request_context + "\n\n" + full_context
+            # Add UVX launch directory context at highest priority
+            if uvx_launch_context:
+                full_context = uvx_launch_context + "\n\n" + full_context
 
-            # CRITICAL: Add preference enforcement instructions to context
+            # Add preference enforcement instructions to context
             if preference_enforcement:
                 enforcement = (
                     "🎯 USER PREFERENCES (MANDATORY):\n"
@@ -236,7 +333,7 @@ class SessionStartHook(HookProcessor):
                 )
                 full_context = enforcement + full_context
 
-            # Inject original request context at top priority
+            # Add original request context to prevent requirement loss (highest priority)
             if original_request_context:
                 full_context = original_request_context + "\n\n" + full_context
 

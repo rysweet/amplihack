@@ -50,13 +50,9 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
 
     # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
     if is_uvx_deployment():
-        # Get the original directory (before we changed to temp)
         original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-        # Add --add-dir to claude_args if not already present
-        if claude_args and "--add-dir" not in claude_args:
-            claude_args = ["--add-dir", original_cwd] + claude_args
-        elif not claude_args:
-            claude_args = ["--add-dir", original_cwd]
+        if "--add-dir" not in (claude_args or []):
+            claude_args = ["--add-dir", original_cwd] + (claude_args or [])
 
     proxy_manager = None
     system_prompt_path = None
@@ -202,21 +198,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         Exit code.
     """
     # Initialize UVX staging if needed (before parsing args)
-    temp_claude_dir = None
     if is_uvx_deployment():
-        # Create temporary Claude environment for UVX zero-install
         import tempfile
 
         temp_dir = tempfile.mkdtemp(prefix="amplihack_uvx_")
         temp_claude_dir = os.path.join(temp_dir, ".claude")
-
-        # Save original directory - we'll use this for --add-dir
         original_cwd = os.getcwd()
 
-        # Store it for later use in --add-dir
+        # Set required environment variables
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
-
-        # Change to temp directory - this sets CLAUDE_PROJECT_DIR
+        os.environ["UVX_LAUNCH_DIRECTORY"] = original_cwd
         os.chdir(temp_dir)
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
@@ -236,17 +227,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 break
 
         if amplihack_src:
-            # Copy .claude contents to temp .claude directory
-            # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
             copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
-
-            # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
-            # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
             if copied:
                 settings_path = os.path.join(temp_claude_dir, "settings.json")
                 import json
 
-                # Create minimal settings.json with just amplihack hooks
+                # Create settings.json with amplihack hooks
                 settings = {
                     "hooks": {
                         "SessionStart": [
@@ -312,7 +298,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         if claude_args:
             # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
             if is_uvx_deployment():
-                # Get the original directory (before we changed to temp)
                 original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
                 if "--add-dir" not in claude_args:
                     claude_args = ["--add-dir", original_cwd] + claude_args
@@ -357,13 +342,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "launch":
-        # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
-        if is_uvx_deployment():
-            # Get the original directory (before we changed to temp)
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            # Add --add-dir to claude_args if not already present
-            if "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + (claude_args or [])
         return launch_command(args, claude_args)
 
     elif args.command == "uvx-help":
