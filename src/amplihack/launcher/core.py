@@ -170,16 +170,8 @@ class ClaudeLauncher:
             # Already in correct directory
             return True
 
-        # Check if we're in UVX mode and can use --add-dir (avoids directory change)
-        # Cache the UVX decision to avoid repeated expensive checks
-        if self._cached_uvx_decision is None:
-            self._cached_uvx_decision = self.uvx_manager.should_use_add_dir()
-
-        if self._cached_uvx_decision:
-            print("UVX environment detected - will use --add-dir approach")
-            # Store target directory for --add-dir arguments
-            self._target_directory = target_dir
-            return True
+        # In UVX mode, we've already changed to the temp directory in CLI
+        # So we don't need to change directories again here
 
         # Standard directory change
         try:
@@ -318,6 +310,9 @@ class ClaudeLauncher:
             env = os.environ.copy()
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
+            # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
+            if "CLAUDE_PROJECT_DIR" in os.environ:
+                env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
             # Launch Claude
             self.claude_process = subprocess.Popen(cmd, env=env)
@@ -373,6 +368,9 @@ class ClaudeLauncher:
             env = os.environ.copy()
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
+            # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
+            if "CLAUDE_PROJECT_DIR" in os.environ:
+                env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
             # Launch Claude with direct I/O (interactive mode)
             exit_code = subprocess.call(cmd, env=env)
