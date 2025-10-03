@@ -7,6 +7,21 @@ name = "microsofthackathon2025-agenticcoding"
 version = "0.1.0"
 description = "Agentic Coding Framework for Microsoft Hackathon 2025"
 requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.25.0",
+    "pathlib2>=2.3.0; python_version<'3.6'",
+]
+
+[project.optional-dependencies]
+tui-testing = [
+    "pytest-asyncio>=0.21.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=22.0.0",
+    "ruff>=0.1.0",
+]
 
 [project.scripts]
 amplihack = "amplihack:main"
@@ -66,4 +81,12 @@ markers = [
     "integration: marks tests as integration tests",
     "performance: marks tests as performance tests",
     "e2e: marks tests as end-to-end tests",
+    "tui: marks tests as TUI/interactive tests",
+    "gadugi: marks tests as requiring gadugi-agentic-test",
+    "slow_tui: marks tests as slow TUI tests (takes >30 seconds)",
+]
+timeout = 300
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
 ]
