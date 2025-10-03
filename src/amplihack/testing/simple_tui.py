@@ -187,8 +187,9 @@ async def test_amplihack_basics() -> Dict[str, TestResult]:
     """Test basic AmplIHack commands"""
     tester = create_tui_tester()
 
-    # Add basic tests
+    # Add basic tests - only use commands that actually exist
     tester.add_test(create_amplihack_test("help", "--help"))
-    tester.add_test(create_amplihack_test("version", "--version"))
+    # Replace --version with install --help since --version doesn't exist
+    tester.add_test(create_amplihack_test("install_help", "install --help"))
 
     return await tester.run_all()

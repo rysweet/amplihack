@@ -58,9 +58,9 @@ async def test_basic_amplihack_suite():
     results = await test_amplihack_basics()
 
     assert "help" in results
-    assert "version" in results
+    assert "install_help" in results
     assert results["help"].status == "passed"
-    assert results["version"].status == "passed"
+    assert results["install_help"].status == "passed"
 
 
 @pytest.mark.asyncio
