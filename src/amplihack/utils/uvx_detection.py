@@ -202,20 +202,36 @@ def resolve_framework_paths(
             if location.is_valid:
                 return PathResolutionResult(location=location, attempts=result.attempts)
 
-    # Strategy 5: Staging required (for UVX deployments when direct resolution fails)
+    # Strategy 5: Working directory staging (for UVX deployments when direct resolution fails)
     if detection_state.result == UVXDetectionResult.UVX_DEPLOYMENT and config.allow_staging:
-        # Create a staging location in working directory
         working_dir = detection_state.environment.working_directory
-        location = FrameworkLocation(
-            root_path=working_dir, strategy=PathResolutionStrategy.STAGING_REQUIRED
-        )
 
-        result = result.with_attempt(
-            PathResolutionStrategy.STAGING_REQUIRED,
-            working_dir,
-            success=True,
-            notes="Staging required for UVX deployment",
-        )
+        # Use working directory staging if enabled, otherwise fallback to temp staging
+        if config.use_working_directory_staging:
+            # Stage to working_directory/.claude
+            staging_target = working_dir / config.working_directory_subdir
+            location = FrameworkLocation(
+                root_path=working_dir, strategy=PathResolutionStrategy.WORKING_DIRECTORY_STAGING
+            )
+
+            result = result.with_attempt(
+                PathResolutionStrategy.WORKING_DIRECTORY_STAGING,
+                working_dir,
+                success=True,
+                notes=f"Working directory staging to {staging_target}",
+            )
+        else:
+            # Fallback to temp directory staging (original behavior)
+            location = FrameworkLocation(
+                root_path=working_dir, strategy=PathResolutionStrategy.STAGING_REQUIRED
+            )
+
+            result = result.with_attempt(
+                PathResolutionStrategy.STAGING_REQUIRED,
+                working_dir,
+                success=True,
+                notes="Staging required for UVX deployment",
+            )
 
         return PathResolutionResult(location=location, attempts=result.attempts)
 

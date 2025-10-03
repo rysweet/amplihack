@@ -33,6 +33,7 @@ class PathResolutionStrategy(Enum):
     WORKING_DIRECTORY = auto()  # Found framework files in working directory
     ENVIRONMENT_VARIABLE = auto()  # Using AMPLIHACK_ROOT environment variable
     SYSTEM_PATH_SEARCH = auto()  # Found via sys.path search
+    WORKING_DIRECTORY_STAGING = auto()  # Stage files to working directory/.claude
     STAGING_REQUIRED = auto()  # Need to stage files from UVX installation
     RESOLUTION_FAILED = auto()  # Could not resolve framework location
 
@@ -193,9 +194,9 @@ class PathResolutionResult:
     @property
     def requires_staging(self) -> bool:
         """True if successful resolution requires staging files."""
-        return (
-            self.location is not None
-            and self.location.strategy == PathResolutionStrategy.STAGING_REQUIRED
+        return self.location is not None and self.location.strategy in (
+            PathResolutionStrategy.STAGING_REQUIRED,
+            PathResolutionStrategy.WORKING_DIRECTORY_STAGING,
         )
 
     def with_attempt(
@@ -226,6 +227,9 @@ class UVXConfiguration:
     overwrite_existing: bool = False
     create_backup: bool = False
     cleanup_on_exit: bool = True  # Default to cleanup for UVX deployments
+    use_working_directory_staging: bool = True  # Use working directory instead of temp dirs
+    working_directory_subdir: str = ".claude"  # Subdirectory name for staging
+    handle_existing_claude_dir: str = "backup"  # "backup", "merge", "overwrite"
 
     # Debug settings
     debug_enabled: Optional[bool] = None
@@ -251,6 +255,9 @@ class UVXConfiguration:
             overwrite_existing=self.overwrite_existing,
             create_backup=self.create_backup,
             cleanup_on_exit=self.cleanup_on_exit,
+            use_working_directory_staging=self.use_working_directory_staging,
+            working_directory_subdir=self.working_directory_subdir,
+            handle_existing_claude_dir=self.handle_existing_claude_dir,
             debug_enabled=enabled,
         )
 

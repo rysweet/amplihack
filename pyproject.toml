@@ -66,4 +66,5 @@ markers = [
     "integration: marks tests as integration tests",
     "performance: marks tests as performance tests",
     "e2e: marks tests as end-to-end tests",
+    "stress: marks tests as stress tests (long running)",
 ]
