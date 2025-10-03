@@ -84,6 +84,7 @@ markers = [
     "tui: marks tests as TUI/interactive tests",
     "gadugi: marks tests as requiring gadugi-agentic-test",
     "slow_tui: marks tests as slow TUI tests (takes >30 seconds)",
+    "asyncio: marks tests as async tests",
 ]
 timeout = 300
 filterwarnings = [
