@@ -5,12 +5,10 @@ Uses unified HookProcessor for common functionality.
 """
 
 # Import the base processor
-import html
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -31,160 +29,10 @@ except ImportError:
 
 
 class SessionStartHook(HookProcessor):
-    """Hook processor for session start events with performance optimizations and security hardening."""
-
-    # Security configuration constants
-    MAX_PATH_LENGTH = 4096  # Maximum allowed path length
-    MAX_ENV_VAR_LENGTH = 8192  # Maximum environment variable length
-    ALLOWED_PATH_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/_.-~")
+    """Hook processor for session start events."""
 
     def __init__(self):
         super().__init__("session_start")
-        # Performance optimizations: caching for repeated operations
-        self._env_cache = {}
-        self._path_validation_cache = {}
-        self._preferences_cache = None
-        self._preferences_cache_time = 0
-
-    def _validate_environment_variable(self, var_name: str, value: str) -> Optional[str]:
-        """Validate and sanitize environment variable with security hardening.
-
-        Args:
-            var_name: Name of the environment variable
-            value: Value to validate
-
-        Returns:
-            Sanitized value if valid, None if invalid
-        """
-        try:
-            # Input validation
-            if not value or not isinstance(value, str):
-                self.log(f"Invalid {var_name}: empty or non-string value", "WARNING")
-                return None
-
-            # Length validation
-            if len(value) > self.MAX_ENV_VAR_LENGTH:
-                self.log(f"Invalid {var_name}: exceeds maximum length", "WARNING")
-                return None
-
-            # Format validation - must be absolute path
-            if not os.path.isabs(value):
-                self.log(f"Invalid {var_name}: not an absolute path", "WARNING")
-                return None
-
-            # Character validation
-            if not all(c in self.ALLOWED_PATH_CHARS for c in value):
-                self.log(f"Invalid {var_name}: contains invalid characters", "WARNING")
-                return None
-
-            # Path traversal protection - check for suspicious patterns
-            if ".." in value or value.count("/") > 20:
-                self.log(f"Invalid {var_name}: potential path traversal attack", "WARNING")
-                return None
-
-            return value.strip()
-
-        except Exception:
-            # Secure error handling - don't expose internal exception details
-            self.log(
-                f"Environment variable validation failed for {var_name} due to security constraints",
-                "ERROR",
-            )
-            return None
-
-    def _validate_launch_directory(self, path: str) -> bool:
-        """Validate launch directory path for security with enhanced protection.
-
-        Args:
-            path: Directory path to validate
-
-        Returns:
-            True if path is valid and accessible
-        """
-        # Use cached result if available
-        if path in self._path_validation_cache:
-            return self._path_validation_cache[path]
-
-        try:
-            # Early exit for empty or whitespace-only paths
-            if not path or not path.strip():
-                self._path_validation_cache[path] = False
-                return False
-
-            cleaned_path = path.strip()
-
-            # Path length validation (CRITICAL SECURITY)
-            if len(cleaned_path) > self.MAX_PATH_LENGTH:
-                self.log("Path exceeds maximum length limit", "WARNING")
-                self._path_validation_cache[path] = False
-                return False
-
-            # Enhanced path traversal protection
-            if ".." in cleaned_path or cleaned_path.count("/") > 20:
-                self.log("Potential path traversal detected", "WARNING")
-                self._path_validation_cache[path] = False
-                return False
-
-            path_obj = Path(cleaned_path)
-
-            # Resolve symlinks and check for symlink attacks (HIGH SECURITY)
-            try:
-                resolved_path = path_obj.resolve(strict=False)
-                # Check if resolved path is dramatically different (potential symlink attack)
-                if len(str(resolved_path)) > len(cleaned_path) * 2:
-                    self.log("Potential symlink attack detected", "WARNING")
-                    self._path_validation_cache[path] = False
-                    return False
-            except (OSError, RuntimeError):
-                self.log("Path resolution failed for security reasons", "WARNING")
-                self._path_validation_cache[path] = False
-                return False
-
-            # Quick existence check first (fastest operation)
-            if not path_obj.exists():
-                self._path_validation_cache[path] = False
-                return False
-
-            # Then check if it's a directory
-            if not path_obj.is_dir():
-                self._path_validation_cache[path] = False
-                return False
-
-            # Final security check: ensure resolved path is still reasonable
-            self._path_validation_cache[path] = True
-            return True
-
-        except (OSError, ValueError):
-            # Secure error handling - don't leak system information
-            self.log("Path validation failed for security reasons", "WARNING")
-            self._path_validation_cache[path] = False
-            return False
-
-    def _add_launch_directory_context(self, launch_dir: str) -> str:
-        """Add launch directory context with security validation and sanitization.
-
-        Args:
-            launch_dir: UVX launch directory path
-
-        Returns:
-            Context message for launch directory
-        """
-        if not self._validate_launch_directory(launch_dir):
-            # Secure error handling - don't expose path details
-            self.log("Launch directory validation failed for security reasons", "WARNING")
-            return ""
-
-        # Sanitize the path for output (prevent injection)
-        sanitized_path = html.escape(launch_dir)
-
-        # Use the user's exact message format with sanitized path
-        context = (
-            f"You are going to work on the project in the directory {sanitized_path}. "
-            f"Change working dir to there and all subsequent commands should be relative to that dir and repo."
-        )
-
-        self.log("Added UVX launch directory context")
-        return context
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process session start event.
@@ -206,25 +54,23 @@ class SessionStartHook(HookProcessor):
         original_request_context = ""
         original_request_captured = False
 
-        # Optimized substantial request detection
-        is_substantial = len(prompt) > 20
-        if not is_substantial:
-            # Use set for O(1) lookup instead of list iteration
-            substantial_keywords = {
-                "implement",
-                "create",
-                "build",
-                "add",
-                "fix",
-                "update",
-                "all",
-                "every",
-                "each",
-                "complete",
-                "comprehensive",
-            }
-            prompt_lower = prompt.lower()
-            is_substantial = any(word in prompt_lower for word in substantial_keywords)
+        # Simple check for substantial requests
+        substantial_keywords = [
+            "implement",
+            "create",
+            "build",
+            "add",
+            "fix",
+            "update",
+            "all",
+            "every",
+            "each",
+            "complete",
+            "comprehensive",
+        ]
+        is_substantial = len(prompt) > 20 or any(
+            word in prompt.lower() for word in substantial_keywords
+        )
 
         if ContextPreserver and is_substantial:
             try:
@@ -235,7 +81,7 @@ class SessionStartHook(HookProcessor):
                 # Extract and save original request
                 original_request = preserver.extract_original_request(prompt)
 
-                # Verify and format context
+                # Simple verification and context formatting
                 session_dir = self.project_root / ".claude" / "runtime" / "logs" / session_id
                 original_request_captured = (session_dir / "ORIGINAL_REQUEST.md").exists()
 
@@ -263,28 +109,6 @@ class SessionStartHook(HookProcessor):
         except ImportError:
             pass
 
-        # Enhanced UVX launch directory check with security hardening
-        uvx_launch_context = ""
-        # Cache environment variable access for performance
-        if "UVX_LAUNCH_DIRECTORY" not in self._env_cache:
-            raw_env_value = os.environ.get("UVX_LAUNCH_DIRECTORY")
-            # Validate and sanitize environment variable
-            validated_value = (
-                self._validate_environment_variable("UVX_LAUNCH_DIRECTORY", raw_env_value)
-                if raw_env_value
-                else None
-            )
-            self._env_cache["UVX_LAUNCH_DIRECTORY"] = validated_value
-
-        uvx_launch_dir = self._env_cache["UVX_LAUNCH_DIRECTORY"]
-        if uvx_launch_dir:
-            uvx_launch_context = self._add_launch_directory_context(uvx_launch_dir)
-            self.save_metric("uvx_launch_directory_set", True)
-            self.save_metric("uvx_launch_directory_validated", True)
-        else:
-            self.save_metric("uvx_launch_directory_set", False)
-            self.save_metric("uvx_launch_directory_validated", False)
-
         # Build context if needed
         context_parts = []
         preference_enforcement = []
@@ -307,41 +131,17 @@ class SessionStartHook(HookProcessor):
             else self.project_root / ".claude" / "context" / "USER_PREFERENCES.md"
         )
 
-        # Optimized preferences reading with time-based caching
-        prefs_content = None
-        if preferences_file:
+        if preferences_file and preferences_file.exists():
             try:
-                # Check if file exists first (cheap operation)
-                if preferences_file.exists():
-                    # Get file modification time
-                    mtime = preferences_file.stat().st_mtime
+                with open(preferences_file, "r") as f:
+                    prefs_content = f.read()
+                self.log(f"Successfully read preferences from: {preferences_file}")
 
-                    # Return cached content if file hasn't changed
-                    if (
-                        self._preferences_cache is not None
-                        and mtime <= self._preferences_cache_time
-                    ):
-                        prefs_content = self._preferences_cache
-                        self.log(f"Using cached preferences from: {preferences_file}")
-                    else:
-                        # Read and cache the content
-                        with open(preferences_file, "r") as f:
-                            prefs_content = f.read()
-                        self._preferences_cache = prefs_content
-                        self._preferences_cache_time = mtime
-                        self.log(
-                            f"Successfully read and cached preferences from: {preferences_file}"
-                        )
-            except (OSError, IOError) as e:
-                self.log(f"Could not read preferences: {e}")
-
-        if prefs_content:
-            try:
                 import re
 
                 context_parts.append("\n## 🎯 Active User Preferences")
 
-                # Extract key preferences
+                # Simple preference extraction
                 key_prefs = [
                     "Communication Style",
                     "Verbosity",
@@ -364,29 +164,37 @@ class SessionStartHook(HookProcessor):
                     context_parts.append("• Using default settings")
 
             except Exception as e:
-                self.log(f"Could not process preferences: {e}")
+                self.log(f"Could not read preferences: {e}")
+                # Fail silently - don't break session start
 
-        # Add workflow information
+        # Add workflow information at startup with UVX support
         context_parts.append("\n## 📝 Default Workflow")
         context_parts.append("The 13-step workflow is automatically followed by `/ultrathink`")
 
-        workflow_file = (
-            FrameworkPathResolver.resolve_workflow_file() if FrameworkPathResolver else None
-        )
+        # Use FrameworkPathResolver for workflow path
+        workflow_file = None
+        if FrameworkPathResolver:
+            workflow_file = FrameworkPathResolver.resolve_workflow_file()
+
         if workflow_file:
-            context_parts.append(f"• To view: Read {workflow_file}")
+            context_parts.append(f"• To view the workflow: Read {workflow_file}")
+            context_parts.append("• To customize: Edit the workflow file directly")
         else:
-            context_parts.append("• To view: Use FrameworkPathResolver.resolve_workflow_file()")
-        context_parts.append("• To customize: Edit the workflow file directly")
+            context_parts.append(
+                "• To view the workflow: Use FrameworkPathResolver.resolve_workflow_file() (UVX-compatible)"
+            )
+            context_parts.append("• To customize: Edit the workflow file directly")
         context_parts.append(
-            "• Steps: Requirements → Issue → Branch → Design → Implement → Review → Merge"
+            "• Steps include: Requirements → Issue → Branch → Design → Implement → Review → Merge"
         )
 
         # Add verbosity instructions
         context_parts.append("\n## 🎤 Verbosity Mode")
         context_parts.append("• Current setting: balanced")
-        context_parts.append("• To enable verbose: Use TodoWrite tool frequently")
-        context_parts.append("• Claude adapts to your verbosity preference")
+        context_parts.append(
+            "• To enable verbose: Use TodoWrite tool frequently and provide detailed explanations"
+        )
+        context_parts.append("• Claude will adapt to your verbosity preference in responses")
 
         # Build response
         output = {}
@@ -394,17 +202,18 @@ class SessionStartHook(HookProcessor):
             # Create comprehensive startup context
             full_context = "\n".join(context_parts)
 
-            # Build startup message
+            # Build a visible startup message (even though Claude Code may not display it)
             startup_msg_parts = ["🚀 AmplifyHack Session Initialized", "━" * 40]
 
-            if any("**" in p and ":" in p for p in context_parts):
+            # Add preference summary if any exist
+            if len([p for p in context_parts if "**" in p and ":" in p]) > 0:
                 startup_msg_parts.append("🎯 Active preferences loaded and enforced")
 
             startup_msg_parts.extend(
                 [
                     "",
                     "📝 Workflow: Use `/ultrathink` for the 13-step process",
-                    "⚙️ Customize: Edit the workflow file",
+                    "⚙️  Customize: Edit the workflow file (use FrameworkPathResolver for UVX compatibility)",
                     "🎯 Preferences: Loaded from USER_PREFERENCES.md",
                     "",
                     "Type `/help` for available commands",
@@ -413,11 +222,12 @@ class SessionStartHook(HookProcessor):
 
             startup_message = "\n".join(startup_msg_parts)
 
-            # Add UVX launch directory context at highest priority
-            if uvx_launch_context:
-                full_context = uvx_launch_context + "\n\n" + full_context
+            # CRITICAL: Add original request context to prevent requirement loss
+            if original_request_context:
+                # Inject original request at the top of context (highest priority)
+                full_context = original_request_context + "\n\n" + full_context
 
-            # Add preference enforcement instructions to context
+            # CRITICAL: Add preference enforcement instructions to context
             if preference_enforcement:
                 enforcement = (
                     "🎯 USER PREFERENCES (MANDATORY):\n"
@@ -426,7 +236,7 @@ class SessionStartHook(HookProcessor):
                 )
                 full_context = enforcement + full_context
 
-            # Add original request context to prevent requirement loss (highest priority)
+            # Inject original request context at top priority
             if original_request_context:
                 full_context = original_request_context + "\n\n" + full_context
 
