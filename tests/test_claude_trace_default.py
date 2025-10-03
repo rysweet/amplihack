@@ -52,23 +52,25 @@ def test_get_claude_command_when_disabled():
 def test_get_claude_command_when_trace_available():
     """Test that claude-trace is used when available."""
     with patch.dict(os.environ, {}, clear=True):
-        with patch("shutil.which") as mock_which:
+        with patch("amplihack.utils.claude_trace._find_valid_claude_trace") as mock_find:
             with patch("builtins.print") as mock_print:
-                mock_which.return_value = "/usr/local/bin/claude-trace"
+                mock_find.return_value = "/usr/local/bin/claude-trace"
 
                 cmd = get_claude_command()
                 assert cmd == "claude-trace"
-                mock_print.assert_called_with("Using claude-trace for enhanced debugging")
+                mock_print.assert_called_with(
+                    "Using claude-trace for enhanced debugging: /usr/local/bin/claude-trace"
+                )
 
 
 def test_get_claude_command_install_success():
     """Test that claude-trace is installed and used when not found."""
     with patch.dict(os.environ, {}, clear=True):
-        with patch("shutil.which") as mock_which:
+        with patch("amplihack.utils.claude_trace._find_valid_claude_trace") as mock_find:
             with patch("amplihack.utils.claude_trace._install_claude_trace") as mock_install:
                 with patch("builtins.print") as mock_print:
-                    # First check returns None (not found), second would return path after install
-                    mock_which.return_value = None
+                    # First check returns None (not found), second returns path after install
+                    mock_find.side_effect = [None, "/usr/local/bin/claude-trace"]
                     mock_install.return_value = True
 
                     cmd = get_claude_command()
@@ -80,16 +82,18 @@ def test_get_claude_command_install_success():
                     # Check print messages
                     assert mock_print.call_count == 2
                     mock_print.assert_any_call("Claude-trace not found, attempting to install...")
-                    mock_print.assert_any_call("Claude-trace installed successfully")
+                    mock_print.assert_any_call(
+                        "Claude-trace installed successfully: /usr/local/bin/claude-trace"
+                    )
 
 
 def test_get_claude_command_install_failure():
     """Test fallback to claude when installation fails."""
     with patch.dict(os.environ, {}, clear=True):
-        with patch("shutil.which") as mock_which:
+        with patch("amplihack.utils.claude_trace._find_valid_claude_trace") as mock_find:
             with patch("amplihack.utils.claude_trace._install_claude_trace") as mock_install:
                 with patch("builtins.print") as mock_print:
-                    mock_which.return_value = None
+                    mock_find.return_value = None  # Always returns None (not found)
                     mock_install.return_value = False
 
                     cmd = get_claude_command()
