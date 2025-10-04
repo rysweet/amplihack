@@ -160,6 +160,7 @@ class ProxyManager:
             self.env_manager.setup(self.proxy_port, api_key, azure_config)
 
             print(f"Proxy started successfully on port {self.proxy_port}")
+            self._display_log_locations()
             return True
 
         except Exception as e:
@@ -476,3 +477,27 @@ class ProxyManager:
             return ["npm", "start"]
         else:
             return None
+
+    def _display_log_locations(self) -> None:
+        """Display proxy log file locations."""
+        try:
+            from datetime import datetime
+
+            # Create log directory path following amplihack pattern
+            log_dir = Path("/tmp/amplihack_logs")
+
+            # Generate timestamp for log file names
+            timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+
+            # Define log file paths (following the pattern from Azure docs)
+            jsonl_log = log_dir / f"proxy-log-{timestamp}.jsonl"
+            html_log = log_dir / f"proxy-log-{timestamp}.html"
+
+            # Display log locations
+            print("Logs will be written to:")
+            print(f"  JSONL: {jsonl_log}")
+            print(f"  HTML:  {html_log}")
+
+        except Exception as e:
+            # Don't fail proxy startup if logging display fails
+            print(f"Note: Unable to display log locations: {e}")
