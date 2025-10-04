@@ -40,80 +40,36 @@ class ProxyManager:
         self._api_version_cache = {}
 
     def ensure_proxy_installed(self) -> bool:
-        """Ensure claude-code-proxy is installed.
+        """Ensure claude-code-proxy is available via uvx.
+
+        For UVX environments, we use the PyPI package directly instead of
+        cloning and manually installing dependencies.
 
         Returns:
             True if proxy is ready to use, False otherwise.
         """
-        proxy_repo = self.proxy_dir / "claude-code-proxy"
+        # Check if uvx is available
+        try:
+            result = subprocess.run(
+                ["uvx", "--version"], capture_output=True, text=True, timeout=10
+            )
+            if result.returncode == 0:
+                print("Using claude-code-proxy via uvx (PyPI package)")
+                return True
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+            pass
 
-        if not proxy_repo.exists():
-            print("Claude-code-proxy not found. Cloning...")
-            try:
-                self.proxy_dir.mkdir(parents=True, exist_ok=True)
-                subprocess.run(
-                    [
-                        "git",
-                        "clone",
-                        "https://github.com/fuergaosi233/claude-code-proxy.git",
-                        str(proxy_repo),
-                    ],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-                print(f"Successfully cloned claude-code-proxy to {proxy_repo}")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to clone claude-code-proxy: {e}")
-                return False
+        # Fallback: check if uv is available for direct package management
+        try:
+            result = subprocess.run(["uv", "--version"], capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                print("UV available for claude-code-proxy management")
+                return True
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+            pass
 
-        if not proxy_repo.exists():
-            return False
-
-        # Install dependencies if they exist
-        requirements_txt = proxy_repo / "requirements.txt"
-        package_json = proxy_repo / "package.json"
-
-        # Install Python dependencies if needed
-        if requirements_txt.exists():
-            print("Installing Python proxy dependencies...")
-            # Try uv first (preferred in uvx context), fall back to pip
-            pip_commands = [
-                ["uv", "pip", "install", "-r", "requirements.txt"],
-                ["pip", "install", "-r", "requirements.txt"],
-            ]
-
-            install_result = None
-            for pip_cmd in pip_commands:
-                install_result = subprocess.run(
-                    pip_cmd,
-                    cwd=str(proxy_repo),
-                    capture_output=True,
-                    text=True,
-                )
-                if install_result.returncode == 0:
-                    print("Python dependencies installed successfully")
-                    break
-            else:
-                print("Failed to install Python dependencies")
-                if install_result:
-                    print(f"Error: {install_result.stderr}")
-                return False
-
-        # Install npm dependencies if needed
-        elif package_json.exists():
-            node_modules = proxy_repo / "node_modules"
-            if not node_modules.exists():
-                print("Installing npm proxy dependencies...")
-                install_result = subprocess.run(
-                    ["npm", "install"], cwd=str(proxy_repo), capture_output=True, text=True
-                )
-                if install_result.returncode != 0:
-                    print(f"Failed to install npm dependencies: {install_result.stderr}")
-                    return False
-                print("npm dependencies installed successfully")
-
-        return True
+        print("Neither uvx nor uv available - cannot run claude-code-proxy in this environment")
+        return False
 
     def setup_proxy_config(self) -> bool:
         """Set up proxy configuration.
@@ -154,30 +110,9 @@ class ProxyManager:
         if not self.ensure_proxy_installed():
             return False
 
-        if not self.setup_proxy_config():
-            return False
-
-        proxy_repo = self.proxy_dir / "claude-code-proxy"
-
         try:
-            # Check for npm dependencies that need installation
-            package_json = proxy_repo / "package.json"
-
-            # Install npm dependencies if needed
-            if package_json.exists():
-                node_modules = proxy_repo / "node_modules"
-                if not node_modules.exists():
-                    print("Installing npm proxy dependencies...")
-                    install_result = subprocess.run(
-                        ["npm", "install"], cwd=str(proxy_repo), capture_output=True, text=True
-                    )
-                    if install_result.returncode != 0:
-                        print(f"Failed to install npm dependencies: {install_result.stderr}")
-                        return False
-                    print("npm dependencies installed successfully")
-
-            # Start the proxy process
-            print(f"Starting claude-code-proxy on port {self.proxy_port}...")
+            # Start the proxy process using uvx (UVX-compatible approach)
+            print(f"Starting claude-code-proxy on port {self.proxy_port} via uvx...")
 
             # Create environment for the proxy process
             proxy_env = os.environ.copy()
@@ -186,27 +121,11 @@ class ProxyManager:
             # Ensure PORT is set for the proxy process
             proxy_env["PORT"] = str(self.proxy_port)
 
-            # Check if we should use 'npm start' or 'python' based on project structure
-            start_command = ["npm", "start"]
-            if (proxy_repo / "start_proxy.py").exists():
-                # It's a Python project - try uv run first, fall back to python
-                # Check if uv is available
-                uv_check = subprocess.run(["which", "uv"], capture_output=True, shell=True)
-                if uv_check.returncode == 0:
-                    start_command = ["uv", "run", "python", "start_proxy.py"]
-                else:
-                    start_command = ["python", "start_proxy.py"]
-            elif (proxy_repo / "src" / "proxy.py").exists():
-                # Alternative Python structure
-                uv_check = subprocess.run(["which", "uv"], capture_output=True, shell=True)
-                if uv_check.returncode == 0:
-                    start_command = ["uv", "run", "python", "-m", "src.proxy"]
-                else:
-                    start_command = ["python", "-m", "src.proxy"]
+            # Use uvx to run claude-code-proxy directly from PyPI
+            start_command = ["uvx", "claude-code-proxy"]
 
             self.proxy_process = subprocess.Popen(
                 start_command,
-                cwd=str(proxy_repo),
                 env=proxy_env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -219,14 +138,16 @@ class ProxyManager:
             atexit.register(self.stop_proxy)
 
             # Wait a moment for the proxy to start
-            time.sleep(2)
+            time.sleep(3)
 
             # Check if proxy is still running
             if self.proxy_process.poll() is not None:
-                stdout, stderr = self.proxy_process.communicate(timeout=0.1)
+                stdout, stderr = self.proxy_process.communicate(timeout=1)
                 print(f"Proxy failed to start. Exit code: {self.proxy_process.returncode}")
                 if stderr:
                     print(f"Error output: {stderr}")
+                if stdout:
+                    print(f"Output: {stdout}")
                 return False
 
             # Set up environment variables - handle both OpenAI and Azure configs
