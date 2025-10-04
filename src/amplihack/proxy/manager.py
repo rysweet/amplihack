@@ -2,11 +2,12 @@
 
 import atexit
 import os
+import re
 import signal
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
@@ -250,11 +251,19 @@ class ProxyManager:
 
                 print("Proxy stopped successfully")
             except Exception as e:
-                print(f"Error stopping proxy: {e}")
+                sanitized_error = self._sanitize_subprocess_error(str(e))
+                print(f"Error stopping proxy: {sanitized_error}")
 
         # Restore environment variables
         self.env_manager.restore()
+
+        # Clear sensitive process information
         self.proxy_process = None
+
+        # Force garbage collection of any cached sensitive data
+        self._url_template_cache.clear()
+        self._endpoint_cache.clear()
+        self._api_version_cache.clear()
 
     def is_running(self) -> bool:
         """Check if proxy is running.
@@ -437,3 +446,90 @@ class ProxyManager:
             normalized["model"] = original_model
 
         return normalized
+
+    def _validate_git_url(self, url: str) -> bool:
+        """Validate git repository URL for security.
+
+        Args:
+            url: Git repository URL
+
+        Returns:
+            True if URL is safe, False otherwise.
+        """
+        # Only allow HTTPS GitHub URLs for security
+        allowed_patterns = [r"https://github\.com/[a-zA-Z0-9\-_.]+/[a-zA-Z0-9\-_.]+\.git$"]
+        return any(re.match(pattern, url) for pattern in allowed_patterns)
+
+    def _sanitize_subprocess_error(self, error_msg: str) -> str:
+        """Sanitize subprocess error messages to prevent credential leakage.
+
+        Args:
+            error_msg: Error message from subprocess
+
+        Returns:
+            Sanitized error message.
+        """
+        if not error_msg:
+            return "<no error message>"
+
+        # Remove potential API keys, passwords, and other sensitive data
+        sensitive_patterns = [
+            r"[a-zA-Z0-9\-_]{20,}",  # Potential API keys
+            r"password[=:]\s*\S+",  # Passwords
+            r"key[=:]\s*\S+",  # Keys
+            r"token[=:]\s*\S+",  # Tokens
+        ]
+
+        sanitized = error_msg
+        for pattern in sensitive_patterns:
+            sanitized = re.sub(pattern, "<redacted>", sanitized, flags=re.IGNORECASE)
+
+        return sanitized
+
+    def _create_secure_env(self) -> Dict[str, str]:
+        """Create a secure environment dictionary.
+
+        Returns:
+            Sanitized environment dictionary.
+        """
+        env = {}
+
+        # Only include necessary environment variables
+        safe_vars = {
+            "PATH",
+            "HOME",
+            "USER",
+            "SHELL",
+            "TERM",
+            "LANG",
+            "LC_ALL",
+            "NODE_ENV",
+            "NPM_CONFIG_PREFIX",
+            "PYTHONPATH",
+            "PORT",
+        }
+
+        for key in safe_vars:
+            if key in os.environ:
+                env[key] = os.environ[key]
+
+        return env
+
+    def _get_secure_start_command(self, proxy_repo: Path) -> Optional[List[str]]:
+        """Get a secure start command for the proxy.
+
+        Args:
+            proxy_repo: Path to proxy repository
+
+        Returns:
+            Secure start command list or None if no valid command found.
+        """
+        # Check for valid start methods in priority order
+        if (proxy_repo / "start_proxy.py").exists():
+            return ["python", "start_proxy.py"]
+        elif (proxy_repo / "src" / "proxy.py").exists():
+            return ["python", "-m", "src.proxy"]
+        elif (proxy_repo / "package.json").exists():
+            return ["npm", "start"]
+        else:
+            return None

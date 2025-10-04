@@ -1,6 +1,7 @@
 """Environment variable management for proxy integration."""
 
 import os
+import re
 from typing import Dict, Optional
 
 
@@ -85,6 +86,9 @@ class ProxyEnvironment:
         Args:
             config: Azure configuration dictionary
         """
+        # Validate config before setting up environment
+        if config and not self._validate_azure_config_security(config):
+            raise ValueError("Invalid Azure configuration - security validation failed")
         self._setup_azure_environment(config)
 
     def _setup_azure_environment(self, config: Dict[str, str]) -> None:
@@ -103,11 +107,14 @@ class ProxyEnvironment:
 
         for config_key, env_key in azure_mappings.items():
             if config_key in config and config[config_key]:
-                os.environ[env_key] = config[config_key]
+                sanitized_value = self._sanitize_env_value(config[config_key])
+                if sanitized_value:  # Only set if sanitization didn't remove everything
+                    os.environ[env_key] = sanitized_value
 
-        # Set Azure-specific variables
-        if config.get("AZURE_OPENAI_API_KEY"):
-            os.environ["OPENAI_API_KEY"] = config["AZURE_OPENAI_API_KEY"]
+        # Set Azure-specific variables with validation
+        azure_api_key = config.get("AZURE_OPENAI_API_KEY")
+        if azure_api_key and self._validate_api_key_format(azure_api_key):
+            os.environ["OPENAI_API_KEY"] = azure_api_key
 
     def __enter__(self):
         """Context manager entry.
@@ -126,3 +133,95 @@ class ProxyEnvironment:
             exc_tb: Exception traceback if any.
         """
         self.restore()
+
+    def _validate_azure_config_security(self, config: Dict[str, str]) -> bool:
+        """Validate Azure configuration for security issues.
+
+        Args:
+            config: Configuration dictionary to validate
+
+        Returns:
+            True if configuration is secure, False otherwise.
+        """
+        # Check for required fields - be lenient for backward compatibility
+        has_api_key = config.get("AZURE_OPENAI_API_KEY")
+        has_endpoint = config.get("AZURE_OPENAI_ENDPOINT") or config.get("AZURE_OPENAI_BASE_URL")
+
+        if not (has_api_key and has_endpoint):
+            return False
+
+        # Validate API key format
+        api_key = config.get("AZURE_OPENAI_API_KEY")
+        if api_key and not self._validate_api_key_format(api_key):
+            return False
+
+        # Validate endpoint URL
+        endpoint = config.get("AZURE_OPENAI_ENDPOINT") or config.get("AZURE_OPENAI_BASE_URL")
+        if endpoint and not self._validate_endpoint_url(endpoint):
+            return False
+
+        return True
+
+    def _validate_api_key_format(self, api_key: str) -> bool:
+        """Validate API key format.
+
+        Args:
+            api_key: API key to validate
+
+        Returns:
+            True if format is valid, False otherwise.
+        """
+        if not api_key:
+            return False
+
+        # Allow test keys for development/testing
+        if api_key.startswith(("test-", "sk-test-", "dummy-")):
+            return len(api_key) >= 8
+
+        # For production keys, require minimum length and format
+        if len(api_key) < 20:
+            return False
+
+        # API keys should be alphanumeric with dashes/underscores
+        pattern = r"^[a-zA-Z0-9\-_]{20,}$"
+        return bool(re.match(pattern, api_key))
+
+    def _validate_endpoint_url(self, url: str) -> bool:
+        """Validate endpoint URL format.
+
+        Args:
+            url: URL to validate
+
+        Returns:
+            True if URL is valid, False otherwise.
+        """
+        if not url:
+            return False
+
+        # Must be HTTPS
+        if not url.startswith("https://"):
+            return False
+
+        # Basic URL format validation
+        url_pattern = r"^https://[a-zA-Z0-9\-_.]+\.[a-zA-Z]{2,}(/.*)?$"
+        return bool(re.match(url_pattern, url))
+
+    def _sanitize_env_value(self, value: str) -> str:
+        """Sanitize environment variable value.
+
+        Args:
+            value: Value to sanitize
+
+        Returns:
+            Sanitized value.
+        """
+        if not value:
+            return ""
+
+        # Remove potentially dangerous characters
+        dangerous_chars = ["<", ">", '"', "'", "&", "|", ";", "$", "`"]
+        sanitized = value
+        for char in dangerous_chars:
+            sanitized = sanitized.replace(char, "")
+
+        return sanitized

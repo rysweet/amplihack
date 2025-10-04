@@ -91,8 +91,10 @@ class AzureEndpointDetector:
         if not endpoint.startswith("https://"):
             result = False
         else:
-            # Must match Azure patterns
-            result = self._is_azure_url_pattern(endpoint)
+            # Must match Azure patterns and pass additional security checks
+            result = self._is_azure_url_pattern(endpoint) and self._validate_endpoint_security(
+                endpoint
+            )
 
         # Cache result (with size limit to prevent memory leaks)
         if len(self._validation_cache) >= self._cache_size:
@@ -137,3 +139,51 @@ class AzureEndpointDetector:
         """Check if config has Azure-specific variables."""
         azure_vars = ["AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_BASE_URL", "AZURE_OPENAI_API_KEY"]
         return any(var in config and config[var] for var in azure_vars)
+
+    def _validate_endpoint_security(self, endpoint: str) -> bool:
+        """Validate endpoint security requirements.
+
+        Args:
+            endpoint: Endpoint URL to validate
+
+        Returns:
+            True if endpoint meets security requirements.
+        """
+        try:
+            parsed = urlparse(endpoint)
+
+            # Must use HTTPS
+            if parsed.scheme != "https":
+                return False
+
+            # Must have valid hostname
+            if not parsed.hostname:
+                return False
+
+            # Hostname must not contain suspicious characters
+            hostname = parsed.hostname.lower()
+            if any(char in hostname for char in ["<", ">", '"', "'", "&"]):
+                return False
+
+            # Must be reasonable length
+            if len(hostname) > 255 or len(endpoint) > 2048:
+                return False
+
+            # Additional Azure-specific security checks
+            if "azure" in hostname:
+                # Must be legitimate Azure domain
+                valid_azure_domains = [
+                    "openai.azure.com",
+                    "openai.azure.us",
+                    "openai.azure.cn",
+                    "cognitive.microsoft.com",
+                    "cognitiveservices.azure.com",
+                ]
+
+                if not any(hostname.endswith(domain) for domain in valid_azure_domains):
+                    return False
+
+            return True
+
+        except Exception:
+            return False

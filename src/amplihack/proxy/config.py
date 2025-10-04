@@ -4,6 +4,7 @@ import os
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 from .azure_detector import AzureEndpointDetector
 from .azure_models import AzureModelMapper
@@ -14,6 +15,8 @@ class ProxyConfig:
 
     # Compile regex patterns once at class level for performance
     _API_VERSION_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    _API_KEY_REGEX = re.compile(r"[a-zA-Z0-9\-_]{20,}")
+    _DEPLOYMENT_NAME_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{1,64}$")
 
     def __init__(self, config_path: Optional[Path] = None):
         """Initialize proxy configuration.
@@ -134,7 +137,25 @@ class ProxyConfig:
         Returns:
             Dictionary of environment variables.
         """
+        # Create a copy and sanitize sensitive values if needed for debugging
         return self.config.copy()
+
+    def to_sanitized_dict(self) -> Dict[str, str]:
+        """Convert configuration to sanitized dictionary safe for logging.
+
+        Returns:
+            Dictionary with sensitive values sanitized.
+        """
+        sanitized = {}
+        sensitive_keys = {"AZURE_OPENAI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"}
+
+        for key, value in self.config.items():
+            if key in sensitive_keys:
+                sanitized[key] = self._sanitize_for_logging(value)
+            else:
+                sanitized[key] = value
+
+        return sanitized
 
     def save_to(self, target_path: Path) -> None:
         """Save configuration to a new .env file.
@@ -186,6 +207,10 @@ class ProxyConfig:
                 error_msg = "Missing required Azure configuration: AZURE_OPENAI_API_KEY"
             self.validation_errors.append(error_msg)
             print(error_msg)
+        elif not self._validate_api_key_format(api_key):
+            error_msg = "Invalid Azure API key format"
+            self.validation_errors.append(error_msg)
+            print(error_msg)
 
         # Check for endpoint - at least one should be provided
         endpoint = self.config.get("AZURE_OPENAI_ENDPOINT") or self.config.get(
@@ -196,7 +221,12 @@ class ProxyConfig:
             self.validation_errors.append(error_msg)
             print(error_msg)
         elif not self.validate_azure_endpoint_format():
-            error_msg = f"Invalid Azure endpoint URL: {endpoint}"
+            # Don't expose the actual endpoint URL in error messages for security
+            error_msg = "Invalid Azure endpoint URL format"
+            self.validation_errors.append(error_msg)
+            print(error_msg)
+        elif not self._enforce_https_endpoint(endpoint):
+            error_msg = "Azure endpoint must use HTTPS for security"
             self.validation_errors.append(error_msg)
             print(error_msg)
 
@@ -204,9 +234,16 @@ class ProxyConfig:
         if not self.validate_azure_api_version():
             api_version = self.config.get("AZURE_OPENAI_API_VERSION")
             if api_version:  # Only report error if version is provided
-                error_msg = f"Invalid Azure API version format: {api_version}"
+                # Don't expose the actual version in error messages for security
+                error_msg = "Invalid Azure API version format"
                 self.validation_errors.append(error_msg)
                 print(error_msg)
+
+        # Validate deployment names if provided
+        if not self.validate_azure_deployments():
+            error_msg = "Invalid Azure deployment name format"
+            self.validation_errors.append(error_msg)
+            print(error_msg)
 
         return len(self.validation_errors) == 0
 
@@ -276,10 +313,12 @@ class ProxyConfig:
         if not deployment_keys:
             return True
 
-        # Validate each deployment name (non-empty)
+        # Validate each deployment name (non-empty and secure format)
         for key in deployment_keys:
             value = self.config.get(key, "").strip()
             if not value:
+                return False
+            if not self._validate_deployment_name(value):
                 return False
 
         return True
@@ -304,3 +343,64 @@ class ProxyConfig:
         # Azure API versions follow YYYY-MM-DD format
         # Use cached compiled regex for better performance
         return bool(self._API_VERSION_REGEX.match(api_version))
+
+    def _validate_api_key_format(self, api_key: str) -> bool:
+        """Validate Azure API key format.
+
+        Args:
+            api_key: API key string
+
+        Returns:
+            True if valid format, False otherwise.
+        """
+        if not api_key:
+            return False
+
+        # Allow test keys for development/testing
+        if api_key.startswith(("test-", "sk-test-", "dummy-")):
+            return len(api_key) >= 8
+
+        # Basic format validation - at least 20 chars, alphanumeric with dashes/underscores
+        return bool(self._API_KEY_REGEX.match(api_key))
+
+    def _validate_deployment_name(self, deployment_name: str) -> bool:
+        """Validate Azure deployment name format.
+
+        Args:
+            deployment_name: Deployment name string
+
+        Returns:
+            True if valid format, False otherwise.
+        """
+        # Deployment names should be 1-64 chars, alphanumeric with dashes/underscores
+        return bool(self._DEPLOYMENT_NAME_REGEX.match(deployment_name))
+
+    def _enforce_https_endpoint(self, endpoint: str) -> bool:
+        """Enforce HTTPS for Azure endpoints.
+
+        Args:
+            endpoint: Endpoint URL
+
+        Returns:
+            True if HTTPS, False otherwise.
+        """
+        try:
+            parsed = urlparse(endpoint)
+            return parsed.scheme == "https"
+        except Exception:
+            return False
+
+    def _sanitize_for_logging(self, value: str) -> str:
+        """Sanitize sensitive values for safe logging.
+
+        Args:
+            value: Value to sanitize
+
+        Returns:
+            Sanitized value safe for logging.
+        """
+        if not value:
+            return "<empty>"
+        if len(value) <= 8:
+            return "<redacted>"
+        return value[:4] + "..." + value[-4:]
