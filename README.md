@@ -358,6 +358,14 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 - ✅ **Improved error messages**: Clear troubleshooting guidance
 - ✅ **Cross-platform support**: Works on macOS, Linux, and Windows
 
+#### Known Issues (External Dependencies)
+
+- ⚠️ **Internal Server Error**: The external `claude-code-proxy` package has
+  bugs causing JSON serialization errors during request processing
+- ⚠️ **Missing log output**: Proxy doesn't show log file locations during
+  startup
+- ⚠️ **Model mapping warnings**: Azure deployment mapping needs upstream fixes
+
 #### Example Configuration
 
 ```env

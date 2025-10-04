@@ -175,6 +175,26 @@ ValueError: could not convert string to float: '"300"      # 5 minutes for large
 
 **Solution**: Enhanced configuration parser to handle inline comments in .env files.
 
+## Known Issues (External Package)
+
+### Issue: Internal Server Error from claude-code-proxy
+
+**Problem**: The external `claude-code-proxy` package has bugs that cause Internal Server Errors:
+
+```
+TypeError: Object of type Response is not JSON serializable
+```
+
+**Root Cause**: Bug in the proxy's error handling code when trying to log Azure request failures.
+
+**Impact**:
+
+- ❌ Proxy returns "Internal Server Error" instead of proper responses
+- ❌ No log file location output during startup
+- ⚠️ Model mapping warnings for Azure deployments
+
+**Workaround**: This is an external package issue that needs to be reported upstream to the `claude-code-proxy` maintainers.
+
 **Before (Broken):**
 
 ```env
@@ -219,6 +239,24 @@ REQUEST_TIMEOUT="300"
 3. **Missing or invalid API key**
    - **Check**: API key is correct and has proper permissions
    - **Verify**: Key works with direct Azure API calls
+
+### Internal Server Error (NEW ISSUE)
+
+**Error:** `Internal Server Error` responses when making requests to proxy
+
+**Root Cause:** Bug in external `claude-code-proxy` package's error handling
+
+**Diagnosis Steps:**
+
+1. Check proxy logs for `TypeError: Object of type Response is not JSON serializable`
+2. Look for model mapping warnings: `⚠️ No prefix or mapping rule for model`
+3. Verify proxy starts but provides no log location output
+
+**Solutions:**
+
+1. **Report upstream**: This is a bug in the `claude-code-proxy` PyPI package
+2. **Use alternative**: Consider direct Azure OpenAI integration
+3. **Monitor status**: Check for updates to the external package
 
 ### Authentication Errors
 
