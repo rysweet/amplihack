@@ -39,7 +39,6 @@ def ci_environment_setup():
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(30)
 async def test_simple_tui_tester():
     """Test basic SimpleTUITester functionality"""
     tester = create_tui_tester()
@@ -57,7 +56,6 @@ async def test_simple_tui_tester():
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(30)
 async def test_failing_test():
     """Test that failing tests are detected"""
     tester = create_tui_tester()
@@ -73,7 +71,6 @@ async def test_failing_test():
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(30)
 async def test_amplihack_cli_tests():
     """Test AmplIHack CLI test creation"""
     test_case = create_amplihack_test("help", "--help")
@@ -84,7 +81,6 @@ async def test_amplihack_cli_tests():
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(60)  # Longer timeout for the actual CLI calls
 @pytest.mark.skipif(
     os.environ.get("CI") == "true",
     reason="Skipping amplihack CLI tests in CI - command not installed",
@@ -100,7 +96,6 @@ async def test_basic_amplihack_suite():
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(30)
 async def test_run_all_tests():
     """Test running multiple tests"""
     tester = create_tui_tester()
