@@ -111,6 +111,22 @@ class ProxyEnvironment:
                 if sanitized_value:  # Only set if sanitization didn't remove everything
                     os.environ[env_key] = sanitized_value
 
+        # Set performance and server configuration variables
+        performance_mappings = {
+            "REQUEST_TIMEOUT": "REQUEST_TIMEOUT",
+            "MAX_RETRIES": "MAX_RETRIES",
+            "LOG_LEVEL": "LOG_LEVEL",
+            "HOST": "HOST",
+            "PORT": "PORT",
+            "MAX_TOKENS_LIMIT": "MAX_TOKENS_LIMIT",
+            "MIN_TOKENS_LIMIT": "MIN_TOKENS_LIMIT",
+        }
+
+        for config_key, env_key in performance_mappings.items():
+            if config_key in config and config[config_key]:
+                # These values should be clean already from our config parser
+                os.environ[env_key] = config[config_key]
+
         # Set Azure-specific variables with validation
         azure_api_key = config.get("AZURE_OPENAI_API_KEY")
         if azure_api_key and self._validate_api_key_format(azure_api_key):

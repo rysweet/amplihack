@@ -58,11 +58,36 @@ class ProxyConfig:
             if eq_index > 0:  # Must have key and equals sign
                 key = line[:eq_index].strip()
                 value = line[eq_index + 1 :].strip()
+
+                # Strip inline comments (everything after # outside of quotes)
+                if '"' in value and value.count('"') >= 2:
+                    # Handle quoted values with potential comments after quotes
+                    if value.startswith('"'):
+                        end_quote = value.find('"', 1)
+                        if end_quote > 0:
+                            value = value[: end_quote + 1]
+                elif "'" in value and value.count("'") >= 2:
+                    # Handle single-quoted values with potential comments after quotes
+                    if value.startswith("'"):
+                        end_quote = value.find("'", 1)
+                        if end_quote > 0:
+                            value = value[: end_quote + 1]
+                else:
+                    # Handle unquoted values - strip everything after #
+                    comment_index = value.find("#")
+                    if comment_index >= 0:
+                        value = value[:comment_index].strip()
+
                 # Remove quotes more efficiently
                 if value.startswith('"') and value.endswith('"'):
                     value = value[1:-1]
                 elif value.startswith("'") and value.endswith("'"):
                     value = value[1:-1]
+
+                # Debug: Print REQUEST_TIMEOUT value to verify comment stripping
+                if key == "REQUEST_TIMEOUT":
+                    print(f"DEBUG: Parsed REQUEST_TIMEOUT = '{value}'")
+
                 self.config[key] = value
 
         # Reinitialize Azure mapper after loading config
@@ -82,6 +107,12 @@ class ProxyConfig:
             "PROXY_TYPE",
             "PROXY_MODE",
             "PORT",
+            "REQUEST_TIMEOUT",
+            "MAX_RETRIES",
+            "LOG_LEVEL",
+            "HOST",
+            "MAX_TOKENS_LIMIT",
+            "MIN_TOKENS_LIMIT",
         ]
 
         # Add Azure deployment variables
