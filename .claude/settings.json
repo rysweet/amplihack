@@ -83,6 +83,17 @@
         ],
         "matcher": "Bash"
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/user_prompt_submit.py",
+            "timeout": 35000
+          }
+        ]
+      }
     ]
   }
 }
