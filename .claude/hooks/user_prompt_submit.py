@@ -7,8 +7,10 @@ Blocks prompt submission and shows command output.
 """
 
 import json
+import shlex
 import subprocess
 import sys
+import tempfile
 
 # Safe read-only commands only
 SAFE_COMMANDS = {"ls", "pwd", "date", "whoami", "cat", "head", "tail", "echo", "wc"}
@@ -34,8 +36,16 @@ def main():
             print(json.dumps(output))
             sys.exit(0)
 
+        # Parse command safely
+        try:
+            cmd_args = shlex.split(command)
+        except ValueError:
+            output = {"decision": "block", "reason": "🚫 Invalid command format"}
+            print(json.dumps(output))
+            sys.exit(0)
+
         # Basic safety: whitelist check
-        base_cmd = command.split()[0]
+        base_cmd = cmd_args[0]
         if base_cmd not in SAFE_COMMANDS:
             safe_list = ", ".join(sorted(SAFE_COMMANDS))
             reason = f"🚫 Command '{base_cmd}' not allowed.\n\nAllowed commands: {safe_list}"
@@ -43,9 +53,14 @@ def main():
             print(json.dumps(output))
             sys.exit(0)
 
-        # Execute with basic safety
+        # Execute safely without shell
         result = subprocess.run(
-            command, shell=True, capture_output=True, text=True, timeout=5, cwd="/tmp"
+            cmd_args,
+            shell=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=tempfile.gettempdir(),
         )
 
         # Format output

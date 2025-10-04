@@ -34,9 +34,11 @@ overengineering.
 ### Security
 
 - **Whitelist only**: 9 safe read-only commands
-- **No shell injection**: Basic command validation
+- **No shell injection**: Uses `shell=False` with argument parsing
+- **Safe argument parsing**: Uses `shlex.split()` for proper escaping
 - **Timeout protection**: 5-second limit
-- **Restricted directory**: Runs in `/tmp`
+- **Restricted directory**: Runs in system temp directory
+- **Cross-platform**: Works on Unix, macOS, and Windows
 
 ### Safe Commands
 
