@@ -12,7 +12,11 @@ from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
 
-def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
+def launch_command(
+    args: argparse.Namespace,
+    claude_args: Optional[List[str]] = None,
+    resolved_proxy_config: Optional[str] = None,
+) -> int:
     """Handle the launch command.
 
     Args:
@@ -63,7 +67,12 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
 
     # Set up proxy if configuration provided
     if args.with_proxy_config:
-        config_path = Path(args.with_proxy_config).resolve()
+        # Use pre-resolved config path if provided (for UVX compatibility)
+        config_path = (
+            Path(resolved_proxy_config)
+            if resolved_proxy_config
+            else Path(args.with_proxy_config).resolve()
+        )
         if not config_path.exists():
             print(f"Error: Proxy configuration file not found: {config_path}")
             return 1
@@ -201,6 +210,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     Returns:
         Exit code.
     """
+    # Pre-parse arguments to resolve relative paths before UVX staging changes cwd
+    preliminary_args, _ = parse_args_with_passthrough(argv)
+
+    # Resolve proxy config path relative to original directory before UVX staging
+    resolved_proxy_config = None
+    if hasattr(preliminary_args, "with_proxy_config") and preliminary_args.with_proxy_config:
+        resolved_proxy_config = str(Path(preliminary_args.with_proxy_config).resolve())
+
     # Initialize UVX staging if needed (before parsing args)
     temp_claude_dir = None
     if is_uvx_deployment():
@@ -364,7 +381,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             # Add --add-dir to claude_args if not already present
             if "--add-dir" not in claude_args:
                 claude_args = ["--add-dir", original_cwd] + (claude_args or [])
-        return launch_command(args, claude_args)
+        return launch_command(args, claude_args, resolved_proxy_config)
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
