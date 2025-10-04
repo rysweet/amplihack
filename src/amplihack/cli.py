@@ -202,53 +202,117 @@ def main(argv: Optional[List[str]] = None) -> int:
         Exit code.
     """
     # Initialize UVX staging if needed (before parsing args)
+    temp_claude_dir = None
     if is_uvx_deployment():
-        # Stage framework files to working directory/.claude instead of temp directory
-        from .utils.uvx_models import UVXConfiguration
-        from .utils.uvx_staging_v2 import UVXStager
+        # Create temporary Claude environment for UVX zero-install
+        import tempfile
 
-        # Store original working directory for --add-dir
+        temp_dir = tempfile.mkdtemp(prefix="amplihack_uvx_")
+        temp_claude_dir = os.path.join(temp_dir, ".claude")
+
+        # Save original directory - we'll use this for --add-dir
         original_cwd = os.getcwd()
+
+        # Store it for later use in --add-dir
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
-        # Create configuration for working directory staging
-        config = UVXConfiguration(
-            use_working_directory_staging=True,
-            working_directory_subdir=".claude",
-            handle_existing_claude_dir="backup",  # Backup existing .claude directories
-        )
+        # Change to temp directory - this sets CLAUDE_PROJECT_DIR
+        os.chdir(temp_dir)
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            config = config.with_debug(True)
-            print(f"UVX mode: Using working directory staging to {original_cwd}/.claude")
-            print(f"Staying in original working directory: {original_cwd}")
+            print(f"UVX mode: Created temp Claude environment at {temp_dir}")
+            print(f"Changed working directory to {temp_dir}")
 
-        # Perform UVX detection and staging
-        stager = UVXStager(config)
-        staging_result = stager.stage_framework_files()
+        # Stage framework files to the temp .claude directory
+        # Use the built-in _local_install function to copy framework files
+        # Find the amplihack package location
+        # Find amplihack package location for .claude files
+        import amplihack
 
-        if staging_result.is_successful:
+        from . import copytree_manifest
+
+        amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
+
+        # Copy .claude contents to temp .claude directory
+        # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
+        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+
+        # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
+        # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
+        if copied:
+            settings_path = os.path.join(temp_claude_dir, "settings.json")
+            import json
+
+            # Create minimal settings.json with just amplihack hooks
+            settings = {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+                                    "timeout": 10000,
+                                }
+                            ]
+                        }
+                    ],
+                    "Stop": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+                                    "timeout": 30000,
+                                }
+                            ]
+                        }
+                    ],
+                    "PostToolUse": [
+                        {
+                            "matcher": "*",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
+                                }
+                            ],
+                        }
+                    ],
+                    "PreCompact": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+                                    "timeout": 30000,
+                                }
+                            ]
+                        }
+                    ],
+                }
+            }
+
+            # Write settings.json
+            os.makedirs(temp_claude_dir, exist_ok=True)
+            with open(settings_path, "w") as f:
+                json.dump(settings, f, indent=2)
+
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                print(f"UVX staging completed: {len(staging_result.successful)} files staged")
-                print(f"Framework files available at {original_cwd}/.claude")
-        else:
-            # Fallback to error handling
-            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                print(f"UVX staging failed: {len(staging_result.failed)} failures")
-                for path, error in staging_result.failed.items():
-                    print(f"  {path}: {error}")
+                print(f"UVX staging completed to {temp_claude_dir}")
+                print("Created settings.json with relative hook paths")
 
     args, claude_args = parse_args_with_passthrough(argv)
 
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
         if claude_args:
-            # If in UVX mode, ensure we use --add-dir for the working directory
+            # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
             if is_uvx_deployment():
-                # Use the current working directory (we no longer change directories)
-                working_dir = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+                # Get the original directory (before we changed to temp)
+                original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
                 if "--add-dir" not in claude_args:
-                    claude_args = ["--add-dir", working_dir] + claude_args
+                    claude_args = ["--add-dir", original_cwd] + claude_args
 
             # Check if Docker should be used for direct launch
             if DockerManager.should_use_docker():
