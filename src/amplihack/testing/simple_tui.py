@@ -1,6 +1,7 @@
 """Simple TUI testing for AmplIHack - using gadugi-agentic-test framework"""
 
 import json
+import os
 import subprocess
 import time
 from dataclasses import dataclass
@@ -25,7 +26,7 @@ class TUITestCase:
     test_id: str
     name: str
     commands: List[str]
-    timeout: int = 30
+    timeout: int = 10  # Reduce default timeout for CI friendliness
 
 
 class SimpleTUITester:
@@ -43,12 +44,31 @@ class SimpleTUITester:
 
     def _check_gadugi_available(self) -> bool:
         """Check if gadugi-agentic-test is available"""
+        # In CI environments, we want to avoid hanging on npx downloads
+        # Check if we're in a CI environment and disable gadugi to prevent hangs
+        ci_env_vars = ["CI", "GITHUB_ACTIONS", "TRAVIS", "CIRCLECI", "JENKINS_URL"]
+        if any(os.environ.get(var) for var in ci_env_vars):
+            return False
+
         try:
+            # First check if npx is available at all
+            npx_check = subprocess.run(
+                ["npx", "--version"], capture_output=True, text=True, timeout=3
+            )
+            if npx_check.returncode != 0:
+                return False
+
+            # Then check gadugi-test with a short timeout to avoid CI hangs
             result = subprocess.run(
-                ["npx", "gadugi-test", "--help"], capture_output=True, text=True, timeout=5
+                ["npx", "gadugi-test", "--help"],
+                capture_output=True,
+                text=True,
+                timeout=3,
+                # Prevent npx from auto-installing packages in CI
+                env={**os.environ, "NPX_NO_INSTALL": "1"},
             )
             return result.returncode == 0
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return False
 
     async def run_test(self, test_id: str) -> TestResult:
@@ -74,14 +94,16 @@ class SimpleTUITester:
                 with open(config_file, "w") as f:
                     json.dump(test_config, f)
 
-                # Run the test using gadugi
+                # Run the test using gadugi with reduced timeout for CI
                 try:
+                    gadugi_timeout = min(test_case.timeout + 10, 30)  # Cap gadugi timeout
                     result = subprocess.run(
                         ["npx", "gadugi-test", "run", str(config_file)],
                         capture_output=True,
                         text=True,
-                        timeout=test_case.timeout + 30,
+                        timeout=gadugi_timeout,
                         cwd=self.output_dir,
+                        env={**os.environ, "CI": "true"},
                     )
 
                     duration = time.time() - start_time
@@ -117,12 +139,17 @@ class SimpleTUITester:
                 duration = 0
                 for command in test_case.commands:
                     cmd_start = time.time()
+                    # Use a shorter timeout for individual commands to prevent CI hangs
+                    cmd_timeout = min(test_case.timeout, 8)  # Cap at 8 seconds per command
+
                     try:
                         result = subprocess.run(
                             command.split(),
                             capture_output=True,
                             text=True,
-                            timeout=test_case.timeout,
+                            timeout=cmd_timeout,
+                            # Add environment variables to prevent interactive prompts
+                            env={**os.environ, "CI": "true", "DEBIAN_FRONTEND": "noninteractive"},
                         )
                         duration += time.time() - cmd_start
 
@@ -139,7 +166,7 @@ class SimpleTUITester:
                             test_id,
                             "failed",
                             duration,
-                            f"Command '{command}' timed out after {test_case.timeout} seconds",
+                            f"Command '{command}' timed out after {cmd_timeout} seconds",
                         )
                     except Exception as e:
                         duration += time.time() - cmd_start
