@@ -77,16 +77,28 @@ class ProxyManager:
         # Install Python dependencies if needed
         if requirements_txt.exists():
             print("Installing Python proxy dependencies...")
-            install_result = subprocess.run(
+            # Try uv first (preferred in uvx context), fall back to pip
+            pip_commands = [
+                ["uv", "pip", "install", "-r", "requirements.txt"],
                 ["pip", "install", "-r", "requirements.txt"],
-                cwd=str(proxy_repo),
-                capture_output=True,
-                text=True,
-            )
-            if install_result.returncode != 0:
-                print(f"Failed to install Python dependencies: {install_result.stderr}")
+            ]
+
+            install_result = None
+            for pip_cmd in pip_commands:
+                install_result = subprocess.run(
+                    pip_cmd,
+                    cwd=str(proxy_repo),
+                    capture_output=True,
+                    text=True,
+                )
+                if install_result.returncode == 0:
+                    print("Python dependencies installed successfully")
+                    break
+            else:
+                print("Failed to install Python dependencies")
+                if install_result:
+                    print(f"Error: {install_result.stderr}")
                 return False
-            print("Python dependencies installed successfully")
 
         # Install npm dependencies if needed
         elif package_json.exists():
@@ -175,12 +187,22 @@ class ProxyManager:
             proxy_env["PORT"] = str(self.proxy_port)
 
             # Check if we should use 'npm start' or 'python' based on project structure
+            start_command = ["npm", "start"]
             if (proxy_repo / "start_proxy.py").exists():
-                start_command = ["python", "start_proxy.py"]
+                # It's a Python project - try uv run first, fall back to python
+                # Check if uv is available
+                uv_check = subprocess.run(["which", "uv"], capture_output=True, shell=True)
+                if uv_check.returncode == 0:
+                    start_command = ["uv", "run", "python", "start_proxy.py"]
+                else:
+                    start_command = ["python", "start_proxy.py"]
             elif (proxy_repo / "src" / "proxy.py").exists():
-                start_command = ["python", "-m", "src.proxy"]
-            else:
-                start_command = ["npm", "start"]
+                # Alternative Python structure
+                uv_check = subprocess.run(["which", "uv"], capture_output=True, shell=True)
+                if uv_check.returncode == 0:
+                    start_command = ["uv", "run", "python", "-m", "src.proxy"]
+                else:
+                    start_command = ["python", "-m", "src.proxy"]
 
             self.proxy_process = subprocess.Popen(
                 start_command,
