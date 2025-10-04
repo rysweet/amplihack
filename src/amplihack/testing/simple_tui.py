@@ -140,11 +140,41 @@ class SimpleTUITester:
                 for command in test_case.commands:
                     cmd_start = time.time()
                     # Use a shorter timeout for individual commands to prevent CI hangs
-                    cmd_timeout = min(test_case.timeout, 8)  # Cap at 8 seconds per command
+                    cmd_timeout = min(test_case.timeout, 5)  # Cap at 5 seconds per command in CI
+
+                    # Split command into parts for validation
+                    cmd_parts = command.split()
+                    if not cmd_parts:
+                        return TestResult(
+                            test_id, "failed", duration, f"Empty command provided: '{command}'"
+                        )
+
+                    # Check if command exists first (prevent hanging on non-existent commands)
+                    command_exists = False
+                    try:
+                        which_result = subprocess.run(
+                            ["which", cmd_parts[0]],
+                            capture_output=True,
+                            text=True,
+                            timeout=2,
+                            env={**os.environ, "PATH": os.environ.get("PATH", "")},
+                        )
+                        command_exists = which_result.returncode == 0
+                    except (subprocess.TimeoutExpired, FileNotFoundError):
+                        command_exists = False
+
+                    # If command doesn't exist, fail fast instead of hanging
+                    if not command_exists:
+                        return TestResult(
+                            test_id,
+                            "failed",
+                            duration,
+                            f"Command '{cmd_parts[0]}' not found in PATH. Available commands can be checked with 'which {cmd_parts[0]}'",
+                        )
 
                     try:
                         result = subprocess.run(
-                            command.split(),
+                            cmd_parts,
                             capture_output=True,
                             text=True,
                             timeout=cmd_timeout,
@@ -167,6 +197,14 @@ class SimpleTUITester:
                             "failed",
                             duration,
                             f"Command '{command}' timed out after {cmd_timeout} seconds",
+                        )
+                    except FileNotFoundError:
+                        duration += time.time() - cmd_start
+                        return TestResult(
+                            test_id,
+                            "failed",
+                            duration,
+                            f"Command '{cmd_parts[0]}' not found",
                         )
                     except Exception as e:
                         duration += time.time() - cmd_start

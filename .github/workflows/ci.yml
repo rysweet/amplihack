@@ -80,10 +80,14 @@ jobs:
 
       - name: Run Python tests
         id: python-tests
+        timeout-minutes: 5
         run: |
           if command -v pytest &> /dev/null; then
             echo "Running Python tests with pytest..."
-            PYTHONPATH=. pytest --tb=short -v --color=yes
+            # Set CI-friendly environment variables and add timeout
+            CI=true DEBIAN_FRONTEND=noninteractive NPX_NO_INSTALL=1 \
+            PYTHONPATH=. pytest --tb=short -v --color=yes --timeout=30 --durations=10 \
+            --maxfail=1 -x
           else
             echo "pytest not found, skipping Python tests"
           fi
