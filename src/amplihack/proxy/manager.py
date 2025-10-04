@@ -117,11 +117,7 @@ class ProxyManager:
             # Create environment for the proxy process
             proxy_env = os.environ.copy()
             if self.proxy_config:
-                config_env = self.proxy_config.to_env_dict()
-                # Debug: Print REQUEST_TIMEOUT to verify it's clean
-                if "REQUEST_TIMEOUT" in config_env:
-                    print(f"DEBUG: REQUEST_TIMEOUT env value = '{config_env['REQUEST_TIMEOUT']}'")
-                proxy_env.update(config_env)
+                proxy_env.update(self.proxy_config.to_env_dict())
             # Ensure PORT is set for the proxy process
             proxy_env["PORT"] = str(self.proxy_port)
 

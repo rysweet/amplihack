@@ -84,10 +84,6 @@ class ProxyConfig:
                 elif value.startswith("'") and value.endswith("'"):
                     value = value[1:-1]
 
-                # Debug: Print REQUEST_TIMEOUT value to verify comment stripping
-                if key == "REQUEST_TIMEOUT":
-                    print(f"DEBUG: Parsed REQUEST_TIMEOUT = '{value}'")
-
                 self.config[key] = value
 
         # Reinitialize Azure mapper after loading config
