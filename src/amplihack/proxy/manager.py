@@ -4,6 +4,7 @@ import atexit
 import os
 import re
 import signal
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -38,6 +39,54 @@ class ProxyManager:
         self._url_template_cache = {}
         self._endpoint_cache = {}
         self._api_version_cache = {}
+
+    def _is_port_available(self, port: int) -> bool:
+        """Check if a port is available for binding.
+
+        Args:
+            port: Port number to check.
+
+        Returns:
+            True if port is available, False otherwise.
+        """
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", port))
+                return True
+        except OSError:
+            return False
+
+    def _find_available_port(self, preferred_port: int = 8082, max_attempts: int = 20) -> int:
+        """Find an available port starting from preferred_port.
+
+        Args:
+            preferred_port: Preferred port number to start with.
+            max_attempts: Maximum number of sequential ports to try.
+
+        Returns:
+            Available port number.
+        """
+        # Try preferred port first
+        if self._is_port_available(preferred_port):
+            return preferred_port
+
+        print(f"Port {preferred_port} is in use, searching for alternative...")
+
+        # Try sequential ports
+        for i in range(1, max_attempts):
+            port = preferred_port + i
+            if self._is_port_available(port):
+                print(f"Port {preferred_port} in use, using port {port}")
+                return port
+
+        # Final fallback: OS-assigned port
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+            print(
+                f"Port range {preferred_port}-{preferred_port + max_attempts - 1} exhausted, using OS-assigned port {port}"
+            )
+            return port
 
     def ensure_proxy_installed(self) -> bool:
         """Ensure claude-code-proxy is available via uvx.
@@ -110,15 +159,20 @@ class ProxyManager:
         if not self.ensure_proxy_installed():
             return False
 
+        # Find an available port dynamically
+        preferred_port = self.proxy_port
+        if preferred_port == 8080:  # Default port was used, switch to 8082 as preferred
+            preferred_port = 8082
+
         try:
-            # Start the proxy process using uvx (UVX-compatible approach)
+            self.proxy_port = self._find_available_port(preferred_port)
             print(f"Starting claude-code-proxy on port {self.proxy_port} via uvx...")
 
             # Create environment for the proxy process
             proxy_env = os.environ.copy()
             if self.proxy_config:
                 proxy_env.update(self.proxy_config.to_env_dict())
-            # Ensure PORT is set for the proxy process
+            # Ensure PORT is set for the proxy process with the dynamically selected port
             proxy_env["PORT"] = str(self.proxy_port)
 
             # Use uvx to run claude-code-proxy directly from PyPI
@@ -144,8 +198,35 @@ class ProxyManager:
             if self.proxy_process.poll() is not None:
                 stdout, stderr = self.proxy_process.communicate(timeout=1)
                 print(f"Proxy failed to start. Exit code: {self.proxy_process.returncode}")
+
+                # Enhanced error surfacing with user-friendly messages
                 if stderr:
-                    print(f"Error output: {stderr}")
+                    error_msg = stderr.strip()
+                    print(f"Error output: {error_msg}")
+
+                    # Check for common error patterns and provide actionable guidance
+                    if "address already in use" in error_msg.lower():
+                        # This shouldn't happen with our dynamic port selection, but just in case
+                        print(
+                            f"Port conflict detected. Try stopping other services on port {self.proxy_port}"
+                        )
+                        print("You can check which process is using the port with: lsof -i :<port>")
+                    elif "permission denied" in error_msg.lower():
+                        print(
+                            "Permission denied - ensure you have rights to bind to the selected port"
+                        )
+                        print("Ports below 1024 typically require administrator privileges")
+                    elif "connection refused" in error_msg.lower():
+                        print(
+                            "Connection refused - check if proxy dependencies are properly installed"
+                        )
+                        print("Try running: uvx --help to verify uvx is working correctly")
+                    elif "module not found" in error_msg.lower() or "import" in error_msg.lower():
+                        print("Missing dependencies detected - proxy may not be properly installed")
+                        print("Try reinstalling with: uvx install claude-code-proxy")
+                    else:
+                        print("For troubleshooting help, check the proxy logs or contact support")
+
                 if stdout:
                     print(f"Output: {stdout}")
                 return False
@@ -159,12 +240,43 @@ class ProxyManager:
             )
             self.env_manager.setup(self.proxy_port, api_key, azure_config)
 
-            print(f"Proxy started successfully on port {self.proxy_port}")
+            # Display success message with port information
+            if self.proxy_port != preferred_port:
+                print(
+                    f"Proxy started successfully on port {self.proxy_port} (port {preferred_port} was in use)"
+                )
+            else:
+                print(f"Proxy started successfully on port {self.proxy_port}")
+
+            print(
+                f"Environment variable ANTHROPIC_BASE_URL set to: http://localhost:{self.proxy_port}"
+            )
             self._display_log_locations()
             return True
 
         except Exception as e:
-            print(f"Failed to start proxy: {e}")
+            error_msg = str(e)
+            print(f"Failed to start proxy: {error_msg}")
+
+            # Enhanced error surfacing for startup exceptions
+            if "errno 48" in error_msg.lower() or "address already in use" in error_msg.lower():
+                print("Port binding failed - this shouldn't happen with dynamic port selection")
+                print(
+                    f"Please check if another service is rapidly claiming ports around {self.proxy_port}"
+                )
+            elif "errno 13" in error_msg.lower() or "permission denied" in error_msg.lower():
+                print("Permission error - check that you have rights to run network services")
+            elif "no such file or directory" in error_msg.lower():
+                print("uvx command not found - ensure uvx is properly installed and in PATH")
+                print("Install with: curl -LsSf https://astral.sh/uv/install.sh | sh")
+            elif "timeout" in error_msg.lower():
+                print("Proxy startup timed out - this may indicate system resource constraints")
+                print("Try running with more time or check system load")
+            else:
+                print("Unexpected error during proxy startup")
+                print("Check that uvx is working: uvx --version")
+                print("Check that claude-code-proxy is available: uvx claude-code-proxy --help")
+
             return False
 
     def stop_proxy(self) -> None:
