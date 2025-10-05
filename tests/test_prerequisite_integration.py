@@ -129,17 +129,22 @@ class TestWorkflowIntegration:
         """E2E: Complete launch workflow when all prerequisites present."""
         launcher = ClaudeLauncher()
 
-        with patch("shutil.which") as mock_which, patch(
-            "subprocess.Popen"
-        ) as mock_popen, patch.object(
-            launcher.detector, "find_claude_directory", return_value=None
-        ):
+        with patch("shutil.which") as mock_which, patch("subprocess.Popen") as mock_popen, patch(
+            "subprocess.run"
+        ) as mock_run, patch.object(launcher.detector, "find_claude_directory", return_value=None):
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
             mock_process = Mock()
             mock_process.wait.return_value = 0
             mock_process.__enter__ = Mock(return_value=mock_process)
             mock_process.__exit__ = Mock(return_value=None)
             mock_popen.return_value = mock_process
+
+            # Mock subprocess.run for claude-trace installation and prerequisite checks
+            mock_run_result = Mock()
+            mock_run_result.returncode = 0
+            mock_run_result.stdout = "1.0.0"  # Mock version output
+            mock_run_result.stderr = ""
+            mock_run.return_value = mock_run_result
 
             exit_code = launcher.launch()
 
