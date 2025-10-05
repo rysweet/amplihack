@@ -7,20 +7,22 @@ separated prompts and Claude Agent SDK calls for auto-mode functionality.
 
 import json
 import logging
-from dataclasses import dataclass, asdict
+import re
+import uuid
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Union
-import re
-import uuid
-from jinja2 import Environment, BaseLoader, TemplateNotFound
+from typing import Any, Dict, List, Optional
+
+from jinja2 import BaseLoader, Environment, TemplateNotFound
 
 logger = logging.getLogger(__name__)
 
 
 class PromptType(Enum):
     """Types of prompts in auto-mode system"""
+
     OBJECTIVE_CLARIFICATION = "objective_clarification"
     PROGRESS_ASSESSMENT = "progress_assessment"
     NEXT_ACTION = "next_action"
@@ -32,6 +34,7 @@ class PromptType(Enum):
 @dataclass
 class PromptTemplate:
     """A reusable prompt template"""
+
     id: str
     name: str
     type: PromptType
@@ -45,6 +48,7 @@ class PromptTemplate:
 @dataclass
 class PromptContext:
     """Context data for prompt rendering"""
+
     session_id: str
     user_objective: str
     working_directory: str
@@ -59,6 +63,7 @@ class PromptContext:
 @dataclass
 class RenderedPrompt:
     """A rendered prompt ready for execution"""
+
     id: str
     template_id: str
     type: PromptType
@@ -71,11 +76,13 @@ class RenderedPrompt:
 
 class PromptValidationError(Exception):
     """Raised when prompt validation fails"""
+
     pass
 
 
 class TemplateRenderError(Exception):
     """Raised when template rendering fails"""
+
     pass
 
 
@@ -151,9 +158,8 @@ Provide a clear, actionable breakdown of what we need to achieve.
                 required_variables=["user_objective", "working_directory", "session_id"],
                 optional_variables=["previous_outputs"],
                 description="Clarifies user objectives for auto-mode",
-                metadata={"priority": "high", "category": "initialization"}
+                metadata={"priority": "high", "category": "initialization"},
             ),
-
             PromptTemplate(
                 id="progress_assessment",
                 name="Progress Assessment",
@@ -187,12 +193,16 @@ Please evaluate:
 
 Provide specific recommendations for next steps.
 """.strip(),
-                required_variables=["user_objective", "current_step", "total_steps", "working_directory"],
+                required_variables=[
+                    "user_objective",
+                    "current_step",
+                    "total_steps",
+                    "working_directory",
+                ],
                 optional_variables=["analysis_results", "previous_outputs"],
                 description="Evaluates progress against objectives",
-                metadata={"priority": "high", "category": "assessment"}
+                metadata={"priority": "high", "category": "assessment"},
             ),
-
             PromptTemplate(
                 id="next_action",
                 name="Next Action Generation",
@@ -232,9 +242,8 @@ Make your recommendation concrete and actionable.
                 required_variables=["user_objective", "current_step", "total_steps"],
                 optional_variables=["workflow_state", "analysis_results", "previous_outputs"],
                 description="Generates next actionable steps",
-                metadata={"priority": "high", "category": "action"}
+                metadata={"priority": "high", "category": "action"},
             ),
-
             PromptTemplate(
                 id="error_resolution",
                 name="Error Resolution",
@@ -272,9 +281,8 @@ Focus on practical, implementable solutions.
                 required_variables=["user_objective", "working_directory"],
                 optional_variables=["error_details", "previous_outputs", "analysis_results"],
                 description="Resolves errors and issues",
-                metadata={"priority": "urgent", "category": "troubleshooting"}
+                metadata={"priority": "urgent", "category": "troubleshooting"},
             ),
-
             PromptTemplate(
                 id="quality_review",
                 name="Quality Review",
@@ -306,8 +314,8 @@ Suggest specific improvements and their priority levels.
                 required_variables=["user_objective", "current_step", "total_steps"],
                 optional_variables=["previous_outputs", "analysis_results"],
                 description="Reviews work quality and suggests improvements",
-                metadata={"priority": "medium", "category": "quality"}
-            )
+                metadata={"priority": "medium", "category": "quality"},
+            ),
         ]
 
         # Register default templates
@@ -323,7 +331,7 @@ Suggest specific improvements and their priority levels.
 
         for template_file in templates_path.glob("*.json"):
             try:
-                with open(template_file, 'r') as f:
+                with open(template_file, "r") as f:
                     template_data = json.load(f)
 
                 template = PromptTemplate(
@@ -334,7 +342,7 @@ Suggest specific improvements and their priority levels.
                     required_variables=template_data["required_variables"],
                     optional_variables=template_data.get("optional_variables", []),
                     description=template_data.get("description", ""),
-                    metadata=template_data.get("metadata", {})
+                    metadata=template_data.get("metadata", {}),
                 )
 
                 self.register_template(template)
@@ -355,7 +363,7 @@ Suggest specific improvements and their priority levels.
         self,
         template_id: str,
         context: PromptContext,
-        custom_variables: Optional[Dict[str, Any]] = None
+        custom_variables: Optional[Dict[str, Any]] = None,
     ) -> RenderedPrompt:
         """
         Render a prompt from template with context injection.
@@ -401,7 +409,7 @@ Suggest specific improvements and their priority levels.
                 context_snapshot=render_vars.copy(),
                 validation_status="pending",
                 validation_messages=[],
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
             # Validate rendered prompt
@@ -417,15 +425,13 @@ Suggest specific improvements and their priority levels.
             raise TemplateRenderError(f"Failed to render template {template_id}: {e}")
 
     def _validate_rendered_prompt(
-        self,
-        rendered_prompt: RenderedPrompt,
-        template: PromptTemplate
+        self, rendered_prompt: RenderedPrompt, template: PromptTemplate
     ) -> None:
         """Validate a rendered prompt"""
         validation_messages = []
 
         # Check for placeholder variables that weren't filled
-        placeholder_pattern = r'\{\{\s*([^}]+)\s*\}\}'
+        placeholder_pattern = r"\{\{\s*([^}]+)\s*\}\}"
         unfilled_vars = re.findall(placeholder_pattern, rendered_prompt.content)
 
         if unfilled_vars:
@@ -480,7 +486,7 @@ Suggest specific improvements and their priority levels.
         working_directory: str,
         current_step: int = 1,
         total_steps: int = 10,
-        **kwargs
+        **kwargs,
     ) -> PromptContext:
         """Create a new prompt context"""
         context = PromptContext(
@@ -492,17 +498,13 @@ Suggest specific improvements and their priority levels.
             previous_outputs=kwargs.get("previous_outputs", []),
             analysis_results=kwargs.get("analysis_results", []),
             workflow_state=kwargs.get("workflow_state", {}),
-            custom_variables=kwargs.get("custom_variables", {})
+            custom_variables=kwargs.get("custom_variables", {}),
         )
 
         self.context_history.append(context)
         return context
 
-    def update_context(
-        self,
-        context: PromptContext,
-        **updates
-    ) -> PromptContext:
+    def update_context(self, context: PromptContext, **updates) -> PromptContext:
         """Update an existing context with new data"""
         for key, value in updates.items():
             if hasattr(context, key):
@@ -513,9 +515,7 @@ Suggest specific improvements and their priority levels.
         return context
 
     def get_prompt_suggestions(
-        self,
-        context: PromptContext,
-        recent_analysis: Optional[Dict[str, Any]] = None
+        self, context: PromptContext, recent_analysis: Optional[Dict[str, Any]] = None
     ) -> List[str]:
         """Get suggested prompt templates based on context"""
         suggestions = []
@@ -556,10 +556,10 @@ Suggest specific improvements and their priority levels.
             "required_variables": template.required_variables,
             "optional_variables": template.optional_variables,
             "description": template.description,
-            "metadata": template.metadata
+            "metadata": template.metadata,
         }
 
-        with open(file_path, 'w') as f:
+        with open(file_path, "w") as f:
             json.dump(template_data, f, indent=2)
 
         logger.info(f"Exported template {template_id} to {file_path}")
@@ -573,5 +573,5 @@ Suggest specific improvements and their priority levels.
             "template_types": {
                 ptype.value: len([t for t in self.templates.values() if t.type == ptype])
                 for ptype in PromptType
-            }
+            },
         }

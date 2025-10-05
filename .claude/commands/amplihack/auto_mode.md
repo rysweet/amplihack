@@ -15,27 +15,32 @@ Auto-mode monitors Claude Code sessions, analyzes progress toward user objective
 ### Commands
 
 **Start Auto-Mode Session:**
+
 ```
 /amplihack:auto-mode start "Objective description" [--working-dir /path] [--max-iterations 50]
 ```
 
 **Process Claude Output:**
+
 ```
 /amplihack:auto-mode process "Claude output text" [--session-id <id>]
 ```
 
 **Check Progress:**
+
 ```
 /amplihack:auto-mode status [--session-id <id>]
 ```
 
 **Pause/Resume:**
+
 ```
 /amplihack:auto-mode pause [--session-id <id>]
 /amplihack:auto-mode resume [--session-id <id>]
 ```
 
 **Stop Session:**
+
 ```
 /amplihack:auto-mode stop [--session-id <id>]
 ```
@@ -43,28 +48,34 @@ Auto-mode monitors Claude Code sessions, analyzes progress toward user objective
 ## Examples
 
 ### Starting Auto-Mode
+
 ```
 /amplihack:auto-mode start "Build a REST API with authentication, user management, and data persistence"
 ```
 
 ### Processing Progress
+
 When Claude Code produces output, auto-mode analyzes it:
+
 ```
 /amplihack:auto-mode process "I've implemented the authentication system with JWT tokens and password hashing."
 ```
 
 Auto-mode will:
+
 1. Analyze the progress toward the objective
 2. Evaluate code quality and completeness
 3. Generate the next logical prompt
 4. Provide confidence scores and recommendations
 
 ### Checking Status
+
 ```
 /amplihack:auto-mode status
 ```
 
 Returns:
+
 - Current iteration and progress percentage
 - Confidence in current approach
 - Milestones achieved
@@ -74,6 +85,7 @@ Returns:
 ## Core Features
 
 ### Real-Time Analysis
+
 - **Progress Evaluation**: Measures advancement toward objectives
 - **Quality Assessment**: Reviews code quality and best practices
 - **Next Prompt Generation**: Creates specific, actionable next steps
@@ -81,6 +93,7 @@ Returns:
 - **Objective Alignment**: Ensures work stays focused on goals
 
 ### Intelligent Prompt Templates
+
 - **Objective Clarification**: When goals are unclear
 - **Progress Assessment**: Regular progress check-ins
 - **Next Action**: Specific implementation steps
@@ -88,6 +101,7 @@ Returns:
 - **Quality Review**: Code review and improvement
 
 ### Session Management
+
 - **Persistent State**: Sessions survive restarts
 - **Conversation History**: Full context preservation
 - **Milestone Tracking**: Progress checkpoint recording
@@ -95,6 +109,7 @@ Returns:
 - **Resource Management**: Automatic cleanup and optimization
 
 ### Error Handling & Security
+
 - **Circuit Breakers**: Protect against cascade failures
 - **Retry Logic**: Automatic recovery from transient errors
 - **Security Validation**: Input sanitization and threat detection
@@ -103,6 +118,7 @@ Returns:
 ## Configuration
 
 ### Auto-Mode Config
+
 ```python
 AutoModeConfig(
     max_iterations=50,              # Maximum analysis iterations
@@ -115,6 +131,7 @@ AutoModeConfig(
 ```
 
 ### Analysis Engine Config
+
 ```python
 AnalysisConfig(
     batch_size=10,                  # Entries per SDK call
@@ -128,18 +145,21 @@ AnalysisConfig(
 ## Integration Points
 
 ### Claude Agent SDK
+
 - Uses `mcp__ide__executeCode` for real AI analysis
 - Persistent conversation management
 - Session recovery and state synchronization
 - Secure authentication and error handling
 
 ### Workflow Integration
+
 - Follows DEFAULT_WORKFLOW.md steps automatically
 - Coordinates with amplihack agents at each stage
 - Maintains compliance with project philosophy
 - Integrates with existing slash commands
 
 ### TDD Integration
+
 - Monitors test implementation progress
 - Ensures test-first development practices
 - Validates test coverage and quality
@@ -148,6 +168,7 @@ AnalysisConfig(
 ## Output Format
 
 ### Progress Analysis
+
 ```json
 {
   "iteration": 5,
@@ -171,6 +192,7 @@ AnalysisConfig(
 ```
 
 ### Session Status
+
 ```json
 {
   "session_id": "uuid-here",
@@ -200,6 +222,7 @@ AnalysisConfig(
 ## Best Practices
 
 ### Effective Objectives
+
 - **Specific**: Clear, detailed requirements
 - **Measurable**: Observable completion criteria
 - **Achievable**: Realistic scope and timeline
@@ -207,12 +230,14 @@ AnalysisConfig(
 - **Time-bound**: Defined completion expectations
 
 ### Monitoring Progress
+
 - Check status regularly during development
 - Review milestone achievements for quality
 - Monitor confidence scores for potential issues
 - Use error analysis for improvement opportunities
 
 ### Troubleshooting
+
 - Low confidence scores may indicate unclear objectives
 - High error counts suggest environmental issues
 - Slow progress might need objective refinement
@@ -221,9 +246,11 @@ AnalysisConfig(
 ## Implementation Details
 
 ### Real AI Analysis
+
 Auto-mode uses the Claude Agent SDK to perform genuine AI analysis of Claude Code output. This is not pattern matching or simulation - it's real Claude AI understanding context, evaluating progress, and making informed recommendations.
 
 ### Security & Reliability
+
 - All inputs are validated and sanitized
 - Circuit breakers prevent cascade failures
 - Retry logic handles transient errors
@@ -231,6 +258,7 @@ Auto-mode uses the Claude Agent SDK to perform genuine AI analysis of Claude Cod
 - Rate limiting prevents abuse
 
 ### Performance Optimization
+
 - Analysis results are cached intelligently
 - Batch processing reduces SDK calls
 - Background tasks handle maintenance

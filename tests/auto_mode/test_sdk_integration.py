@@ -9,17 +9,17 @@ Tests Claude Agent SDK integration including:
 - Error handling and recovery
 """
 
+import time
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import pytest_asyncio
-import asyncio
-import time
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
 
 from amplihack.auto_mode.sdk_integration import (
     ClaudeAgentSDKClient,
     SDKConnectionState,
     SDKMessage,
-    SDKSession
+    SDKSession,
 )
 
 
@@ -28,10 +28,7 @@ class TestSDKDataModels:
 
     def test_sdk_message_creation(self):
         """Test SDKMessage creation and defaults"""
-        message = SDKMessage(
-            message_type="test_message",
-            content={"test": "data"}
-        )
+        message = SDKMessage(message_type="test_message", content={"test": "data"})
 
         assert message.message_type == "test_message"
         assert message.content == {"test": "data"}
@@ -44,7 +41,7 @@ class TestSDKDataModels:
         session = SDKSession(
             session_id="auto_session_123",
             claude_session_id="claude_session_456",
-            user_id="test_user"
+            user_id="test_user",
         )
 
         assert session.session_id == "auto_session_123"
@@ -72,22 +69,24 @@ class TestSDKClientInitialization:
     @pytest.mark.asyncio
     async def test_initialization_success_with_api_key(self, sdk_client):
         """Test successful initialization with API key"""
-        with patch.dict('os.environ', {'CLAUDE_API_KEY': 'test_api_key'}):
+        with patch.dict(
+            "os.environ", {"CLAUDE_API_KEY": "test_api_key"}
+        ):  # pragma: allowlist secret
             success = await sdk_client.initialize()
 
             assert success is True
             assert sdk_client.connection_state == SDKConnectionState.AUTHENTICATED
-            assert sdk_client.api_key == 'test_api_key'
+            assert sdk_client.api_key == "test_api_key"  # pragma: allowlist secret
 
     @pytest.mark.asyncio
     async def test_initialization_success_without_api_key(self, sdk_client):
         """Test initialization without API key (mock mode)"""
-        with patch.dict('os.environ', {}, clear=True):
+        with patch.dict("os.environ", {}, clear=True):
             success = await sdk_client.initialize()
 
             assert success is True
             assert sdk_client.connection_state == SDKConnectionState.AUTHENTICATED
-            assert sdk_client.api_key == "mock_api_key"
+            assert sdk_client.api_key == "mock_api_key"  # pragma: allowlist secret
 
     @pytest.mark.asyncio
     async def test_initialization_with_custom_parameters(self, sdk_client):
@@ -101,7 +100,7 @@ class TestSDKClientInitialization:
     @pytest.mark.asyncio
     async def test_connection_establishment(self, sdk_client):
         """Test connection establishment process"""
-        with patch.object(sdk_client, '_authenticate', new_callable=AsyncMock, return_value=True):
+        with patch.object(sdk_client, "_authenticate", new_callable=AsyncMock, return_value=True):
             success = await sdk_client._establish_connection()
 
             assert success is True
@@ -111,7 +110,7 @@ class TestSDKClientInitialization:
     @pytest.mark.asyncio
     async def test_authentication_success(self, sdk_client):
         """Test successful authentication"""
-        sdk_client.api_key = "test_key"
+        sdk_client.api_key = "test_key"  # pragma: allowlist secret
 
         success = await sdk_client._authenticate()
 
@@ -120,10 +119,10 @@ class TestSDKClientInitialization:
     @pytest.mark.asyncio
     async def test_authentication_failure(self, sdk_client):
         """Test authentication failure handling"""
-        sdk_client.api_key = "invalid_key"
+        sdk_client.api_key = "invalid_key"  # pragma: allowlist secret
 
         # Mock authentication failure
-        with patch.object(sdk_client, '_authenticate', new_callable=AsyncMock, return_value=False):
+        with patch.object(sdk_client, "_authenticate", new_callable=AsyncMock, return_value=False):
             success = await sdk_client._establish_connection()
 
             assert success is False
@@ -151,7 +150,7 @@ class TestSessionManagement:
         session = await client.create_persistent_session(
             auto_mode_session_id="auto_session_123",
             user_id="test_user",
-            initial_context={"messages": [], "goals": []}
+            initial_context={"messages": [], "goals": []},
         )
 
         assert session is not None
@@ -167,9 +166,7 @@ class TestSessionManagement:
         # Don't initialize - stays in DISCONNECTED state
 
         session = await client.create_persistent_session(
-            auto_mode_session_id="auto_session_123",
-            user_id="test_user",
-            initial_context={}
+            auto_mode_session_id="auto_session_123", user_id="test_user", initial_context={}
         )
 
         assert session is None
@@ -181,15 +178,13 @@ class TestSessionManagement:
 
         # Create session first
         session = await client.create_persistent_session(
-            auto_mode_session_id="auto_session_123",
-            user_id="test_user",
-            initial_context={}
+            auto_mode_session_id="auto_session_123", user_id="test_user", initial_context={}
         )
 
         # Update conversation context
         conversation_update = {
             "new_messages": [{"role": "user", "content": "Hello"}],
-            "goals": [{"id": "goal1", "description": "Test goal"}]
+            "goals": [{"id": "goal1", "description": "Test goal"}],
         }
 
         success = await client.update_conversation_context("auto_session_123", conversation_update)
@@ -214,9 +209,7 @@ class TestSessionManagement:
 
         # Create session first
         await client.create_persistent_session(
-            auto_mode_session_id="auto_session_123",
-            user_id="test_user",
-            initial_context={}
+            auto_mode_session_id="auto_session_123", user_id="test_user", initial_context={}
         )
 
         assert "auto_session_123" in client.active_sessions
@@ -249,7 +242,7 @@ class TestAnalysisAndSynthesis:
         session = await client.create_persistent_session(
             auto_mode_session_id="auto_session_123",
             user_id="test_user",
-            initial_context={"messages": []}
+            initial_context={"messages": []},
         )
 
         try:
@@ -265,14 +258,14 @@ class TestAnalysisAndSynthesis:
         analysis_results = await client.request_analysis("auto_session_123", "comprehensive")
 
         assert analysis_results is not None
-        assert 'session_id' in analysis_results
-        assert 'quality_assessment' in analysis_results
-        assert 'detected_patterns' in analysis_results
-        assert 'improvement_opportunities' in analysis_results
+        assert "session_id" in analysis_results
+        assert "quality_assessment" in analysis_results
+        assert "detected_patterns" in analysis_results
+        assert "improvement_opportunities" in analysis_results
 
         # Check that session analysis state was updated
-        assert session.analysis_state['analysis_count'] == 1
-        assert 'last_analysis' in session.analysis_state
+        assert session.analysis_state["analysis_count"] == 1
+        assert "last_analysis" in session.analysis_state
 
     @pytest.mark.asyncio
     async def test_request_analysis_nonexistent_session(self, client_with_session):
@@ -288,19 +281,17 @@ class TestAnalysisAndSynthesis:
         """Test successful conversation synthesis"""
         client, session = client_with_session
 
-        synthesis_params = {
-            'type': 'summary',
-            'scope': 'full_conversation',
-            'format': 'structured'
-        }
+        synthesis_params = {"type": "summary", "scope": "full_conversation", "format": "structured"}
 
-        synthesis_results = await client.synthesize_conversation("auto_session_123", synthesis_params)
+        synthesis_results = await client.synthesize_conversation(
+            "auto_session_123", synthesis_params
+        )
 
         assert synthesis_results is not None
-        assert 'summary' in synthesis_results
-        assert 'key_insights' in synthesis_results
-        assert 'recommendations' in synthesis_results
-        assert 'quality_metrics' in synthesis_results
+        assert "summary" in synthesis_results
+        assert "key_insights" in synthesis_results
+        assert "recommendations" in synthesis_results
+        assert "quality_metrics" in synthesis_results
 
     @pytest.mark.asyncio
     async def test_synthesize_conversation_nonexistent_session(self, client_with_session):
@@ -316,12 +307,12 @@ class TestAnalysisAndSynthesis:
         """Test different analysis types and parameters"""
         client, session = client_with_session
 
-        analysis_types = ['quick', 'comprehensive', 'quality', 'patterns']
+        analysis_types = ["quick", "comprehensive", "quality", "patterns"]
 
         for analysis_type in analysis_types:
             results = await client.request_analysis("auto_session_123", analysis_type)
             assert results is not None
-            assert results['session_id'] == session.claude_session_id
+            assert results["session_id"] == session.claude_session_id
 
 
 class TestConnectionManagement:
@@ -361,11 +352,11 @@ class TestConnectionManagement:
 
         status = client.get_connection_status()
 
-        assert status['connection_state'] == 'authenticated'
-        assert status['active_sessions'] >= 0
-        assert status['connection_attempts'] > 0
-        assert status['successful_requests'] >= 0
-        assert status['last_heartbeat'] > 0
+        assert status["connection_state"] == "authenticated"
+        assert status["active_sessions"] >= 0
+        assert status["connection_attempts"] > 0
+        assert status["successful_requests"] >= 0
+        assert status["last_heartbeat"] > 0
 
     @pytest.mark.asyncio
     async def test_session_info_retrieval(self, authenticated_client):
@@ -374,20 +365,18 @@ class TestConnectionManagement:
 
         # Create session
         await client.create_persistent_session(
-            auto_mode_session_id="auto_session_123",
-            user_id="test_user",
-            initial_context={}
+            auto_mode_session_id="auto_session_123", user_id="test_user", initial_context={}
         )
 
         # Get session info
         session_info = client.get_session_info("auto_session_123")
 
         assert session_info is not None
-        assert session_info['session_id'] == "auto_session_123"
-        assert session_info['user_id'] == "test_user"
-        assert 'claude_session_id' in session_info
-        assert 'created_at' in session_info
-        assert 'analysis_count' in session_info
+        assert session_info["session_id"] == "auto_session_123"
+        assert session_info["user_id"] == "test_user"
+        assert "claude_session_id" in session_info
+        assert "created_at" in session_info
+        assert "analysis_count" in session_info
 
     def test_session_info_nonexistent(self, authenticated_client):
         """Test session info for non-existent session"""
@@ -408,7 +397,12 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_initialization_exception_handling(self, sdk_client):
         """Test initialization exception handling"""
-        with patch.object(sdk_client, '_establish_connection', new_callable=AsyncMock, side_effect=Exception("Connection failed")):
+        with patch.object(
+            sdk_client,
+            "_establish_connection",
+            new_callable=AsyncMock,
+            side_effect=Exception("Connection failed"),
+        ):
             success = await sdk_client.initialize()
 
             assert success is False
@@ -420,7 +414,9 @@ class TestErrorHandling:
         await sdk_client.initialize()
 
         # Force an exception during session creation
-        with patch.object(sdk_client, '_generate_claude_session_id', side_effect=Exception("ID generation failed")):
+        with patch.object(
+            sdk_client, "_generate_claude_session_id", side_effect=Exception("ID generation failed")
+        ):
             session = await sdk_client.create_persistent_session("test", "user", {})
 
             assert session is None
@@ -433,7 +429,9 @@ class TestErrorHandling:
         sdk_client.retry_attempts = 2
 
         # Mock failed reconnection attempts
-        with patch.object(sdk_client, '_establish_connection', new_callable=AsyncMock, return_value=False):
+        with patch.object(
+            sdk_client, "_establish_connection", new_callable=AsyncMock, return_value=False
+        ):
             await sdk_client._attempt_reconnection()
 
             assert sdk_client.connection_state == SDKConnectionState.ERROR
@@ -461,7 +459,12 @@ class TestErrorHandling:
         await sdk_client.initialize()
 
         # Mock exception during session closure
-        with patch.object(sdk_client, 'close_session', new_callable=AsyncMock, side_effect=Exception("Close failed")):
+        with patch.object(
+            sdk_client,
+            "close_session",
+            new_callable=AsyncMock,
+            side_effect=Exception("Close failed"),
+        ):
             # Should not raise exception
             await sdk_client.shutdown()
 
@@ -480,7 +483,7 @@ class TestMockAnalysisGeneration:
         session = await client.create_persistent_session(
             auto_mode_session_id="auto_session_123",
             user_id="test_user",
-            initial_context={"messages": []}
+            initial_context={"messages": []},
         )
 
         try:
@@ -512,27 +515,27 @@ class TestMockAnalysisGeneration:
 
         analysis = client._generate_mock_analysis(session)
 
-        assert analysis['session_id'] == session.claude_session_id
-        assert 'analysis_timestamp' in analysis
-        assert 'quality_assessment' in analysis
-        assert 'detected_patterns' in analysis
-        assert 'improvement_opportunities' in analysis
-        assert 'user_insights' in analysis
+        assert analysis["session_id"] == session.claude_session_id
+        assert "analysis_timestamp" in analysis
+        assert "quality_assessment" in analysis
+        assert "detected_patterns" in analysis
+        assert "improvement_opportunities" in analysis
+        assert "user_insights" in analysis
 
         # Check quality assessment structure
-        quality = analysis['quality_assessment']
-        assert 'overall_score' in quality
-        assert 'dimensions' in quality
-        assert 0.0 <= quality['overall_score'] <= 1.0
+        quality = analysis["quality_assessment"]
+        assert "overall_score" in quality
+        assert "dimensions" in quality
+        assert 0.0 <= quality["overall_score"] <= 1.0
 
         # Check patterns structure
-        patterns = analysis['detected_patterns']
+        patterns = analysis["detected_patterns"]
         assert isinstance(patterns, list)
         if patterns:
             pattern = patterns[0]
-            assert 'pattern_type' in pattern
-            assert 'confidence' in pattern
-            assert 'description' in pattern
+            assert "pattern_type" in pattern
+            assert "confidence" in pattern
+            assert "description" in pattern
 
 
 if __name__ == "__main__":

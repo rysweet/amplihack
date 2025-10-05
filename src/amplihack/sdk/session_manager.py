@@ -5,14 +5,25 @@ Manages persistent Claude Agent SDK sessions with authentication,
 session recovery, and state persistence for the auto-mode feature.
 """
 
-import asyncio
+import base64
+import hashlib
 import json
-import uuid
-from dataclasses import dataclass, asdict
+import logging
+import secrets
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-import logging
+from typing import Any, Dict, List, Optional
+
+try:
+    from cryptography.fernet import Fernet
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+    ENCRYPTION_AVAILABLE = True
+except ImportError:
+    ENCRYPTION_AVAILABLE = False
+    logger.warning("Cryptography package not available - session encryption disabled")
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SessionConfig:
     """Configuration for Claude SDK sessions"""
+
     session_timeout_minutes: int = 60
     max_retries: int = 3
     retry_delay_seconds: float = 1.0
@@ -30,6 +42,7 @@ class SessionConfig:
 @dataclass
 class SessionState:
     """Current state of a Claude SDK session"""
+
     session_id: str
     created_at: datetime
     last_activity: datetime
@@ -43,6 +56,7 @@ class SessionState:
 @dataclass
 class ConversationMessage:
     """A single message in the conversation"""
+
     id: str
     timestamp: datetime
     role: str  # "user", "assistant"
@@ -53,11 +67,13 @@ class ConversationMessage:
 
 class SessionRecoveryError(Exception):
     """Raised when session recovery fails"""
+
     pass
 
 
 class AuthenticationError(Exception):
     """Raised when authentication fails"""
+
     pass
 
 
@@ -89,13 +105,29 @@ class SDKSessionManager:
         sessions_file = Path(self.config.persistence_dir) / "sessions.json"
         if sessions_file.exists():
             try:
-                with open(sessions_file, 'r') as f:
-                    data = json.load(f)
-                    for session_id, session_data in data.items():
-                        # Convert datetime strings back to datetime objects
-                        session_data['created_at'] = datetime.fromisoformat(session_data['created_at'])
-                        session_data['last_activity'] = datetime.fromisoformat(session_data['last_activity'])
-                        self.sessions[session_id] = SessionState(**session_data)
+                # Try to load as encrypted first, then fall back to plain text
+                data_str = ""
+                try:
+                    if ENCRYPTION_AVAILABLE:
+                        with open(sessions_file, "rb") as f:
+                            encrypted_data = f.read()
+                            data_str = self._decrypt_session_data(encrypted_data)
+                    else:
+                        with open(sessions_file, "r") as f:
+                            data_str = f.read()
+                except (UnicodeDecodeError, ValueError):
+                    # Fall back to plain text if decryption fails
+                    with open(sessions_file, "r") as f:
+                        data_str = f.read()
+
+                data = json.loads(data_str)
+                for session_id, session_data in data.items():
+                    # Convert datetime strings back to datetime objects
+                    session_data["created_at"] = datetime.fromisoformat(session_data["created_at"])
+                    session_data["last_activity"] = datetime.fromisoformat(
+                        session_data["last_activity"]
+                    )
+                    self.sessions[session_id] = SessionState(**session_data)
                 logger.info(f"Loaded {len(self.sessions)} persisted sessions")
             except Exception as e:
                 logger.warning(f"Failed to load persisted sessions: {e}")
@@ -111,12 +143,20 @@ class SDKSessionManager:
             serializable = {}
             for session_id, session in self.sessions.items():
                 session_dict = asdict(session)
-                session_dict['created_at'] = session.created_at.isoformat()
-                session_dict['last_activity'] = session.last_activity.isoformat()
+                session_dict["created_at"] = session.created_at.isoformat()
+                session_dict["last_activity"] = session.last_activity.isoformat()
                 serializable[session_id] = session_dict
 
-            with open(sessions_file, 'w') as f:
-                json.dump(serializable, f, indent=2)
+            # Encrypt session data if possible
+            data_to_save = json.dumps(serializable, indent=2)
+            if ENCRYPTION_AVAILABLE:
+                data_to_save = self._encrypt_session_data(data_to_save)
+
+            with open(sessions_file, "w" if not ENCRYPTION_AVAILABLE else "wb") as f:
+                if ENCRYPTION_AVAILABLE:
+                    f.write(data_to_save)
+                else:
+                    f.write(data_to_save)
         except Exception as e:
             logger.error(f"Failed to save sessions: {e}")
 
@@ -134,7 +174,7 @@ class SDKSessionManager:
         Raises:
             AuthenticationError: If SDK authentication fails
         """
-        session_id = str(uuid.uuid4())
+        session_id = self._generate_secure_session_id()
         timestamp = datetime.now()
 
         try:
@@ -152,9 +192,9 @@ class SDKSessionManager:
                 context={
                     "user_objective": user_objective,
                     "working_dir": working_dir,
-                    "auto_mode_enabled": True
+                    "auto_mode_enabled": True,
                 },
-                metadata={}
+                metadata={},
             )
 
             self.sessions[session_id] = session_state
@@ -213,7 +253,7 @@ class SDKSessionManager:
         role: str,
         content: str,
         message_type: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Add a message to the session conversation.
@@ -224,14 +264,14 @@ class SDKSessionManager:
         if session_id not in self.conversations:
             self.conversations[session_id] = []
 
-        message_id = str(uuid.uuid4())
+        message_id = self._generate_secure_session_id()
         message = ConversationMessage(
             id=message_id,
             timestamp=datetime.now(),
             role=role,
             content=content,
             message_type=message_type,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         self.conversations[session_id].append(message)
@@ -244,9 +284,7 @@ class SDKSessionManager:
         return message_id
 
     async def get_conversation_history(
-        self,
-        session_id: str,
-        limit: Optional[int] = None
+        self, session_id: str, limit: Optional[int] = None
     ) -> List[ConversationMessage]:
         """Get conversation history for session"""
         messages = self.conversations.get(session_id, [])
@@ -316,5 +354,56 @@ class SDKSessionManager:
             "total_sessions": len(self.sessions),
             "active_sessions": active_sessions,
             "total_conversations": total_conversations,
-            "total_tokens_used": total_tokens
+            "total_tokens_used": total_tokens,
         }
+
+    def _generate_secure_session_id(self) -> str:
+        """Generate cryptographically secure session ID"""
+        # Use secrets module for cryptographically secure random generation
+        random_bytes = secrets.token_bytes(32)
+
+        # Create hash with timestamp and random data for additional entropy
+        timestamp = str(datetime.now().timestamp()).encode()
+        combined = random_bytes + timestamp
+
+        # Use SHA-256 for secure hashing
+        session_hash = hashlib.sha256(combined).digest()
+
+        # Encode as URL-safe base64
+        session_id = base64.urlsafe_b64encode(session_hash).decode().rstrip("=")
+
+        return session_id
+
+    def _get_encryption_key(self) -> bytes:
+        """Get or generate encryption key for session data"""
+        key_file = Path(self.config.persistence_dir) / ".session_key"
+
+        if key_file.exists():
+            with open(key_file, "rb") as f:
+                return f.read()
+        else:
+            # Generate new key
+            key = Fernet.generate_key()
+            with open(key_file, "wb") as f:
+                f.write(key)
+            # Set restrictive permissions
+            key_file.chmod(0o600)
+            return key
+
+    def _encrypt_session_data(self, data: str) -> bytes:
+        """Encrypt session data"""
+        if not ENCRYPTION_AVAILABLE:
+            return data.encode()
+
+        key = self._get_encryption_key()
+        fernet = Fernet(key)
+        return fernet.encrypt(data.encode())
+
+    def _decrypt_session_data(self, encrypted_data: bytes) -> str:
+        """Decrypt session data"""
+        if not ENCRYPTION_AVAILABLE:
+            return encrypted_data.decode()
+
+        key = self._get_encryption_key()
+        fernet = Fernet(key)
+        return fernet.decrypt(encrypted_data).decode()

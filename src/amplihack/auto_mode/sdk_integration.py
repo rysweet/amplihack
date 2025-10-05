@@ -6,18 +6,22 @@ conversation analysis, and multi-turn conversation coordination.
 """
 
 import asyncio
-import json
-import time
 import hashlib
+import logging
 import os
-from typing import Dict, List, Optional, Any, Callable
+import time
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
+from typing import Any, Callable, Dict, Optional
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 class SDKConnectionState(Enum):
     """States of the SDK connection"""
+
     DISCONNECTED = "disconnected"
     CONNECTING = "connecting"
     CONNECTED = "connected"
@@ -28,6 +32,7 @@ class SDKConnectionState(Enum):
 @dataclass
 class SDKMessage:
     """Message for SDK communication"""
+
     message_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: float = field(default_factory=time.time)
     message_type: str = ""
@@ -38,6 +43,7 @@ class SDKMessage:
 @dataclass
 class SDKSession:
     """SDK session information"""
+
     session_id: str
     claude_session_id: str
     user_id: str
@@ -90,12 +96,11 @@ class ClaudeAgentSDKClient:
         self.retry_attempts = retry_attempts
 
         try:
-            # Get API key from environment
-            self.api_key = os.getenv('CLAUDE_API_KEY')
+            # Get API key from environment securely
+            self.api_key = self._get_secure_api_key()
             if not self.api_key:
-                print("Warning: CLAUDE_API_KEY not found in environment")
-                # For now, continue without API key for mock implementation
-                self.api_key = "mock_api_key"
+                logger.warning("CLAUDE_API_KEY not found in environment")
+                raise ConnectionError("API key is required for Claude Agent SDK integration")
 
             # Attempt to connect
             connected = await self._establish_connection()
@@ -103,14 +108,14 @@ class ClaudeAgentSDKClient:
             if connected:
                 # Start background tasks
                 asyncio.create_task(self._heartbeat_loop())
-                print("Claude Agent SDK client initialized successfully")
+                logger.info("Claude Agent SDK client initialized successfully")
                 return True
             else:
-                print("Failed to establish connection to Claude Agent SDK")
+                logger.error("Failed to establish connection to Claude Agent SDK")
                 return False
 
         except Exception as e:
-            print(f"Failed to initialize Claude Agent SDK client: {e}")
+            logger.error(f"Failed to initialize Claude Agent SDK client: {e}")
             self.connection_state = SDKConnectionState.ERROR
             return False
 
@@ -145,9 +150,9 @@ class ClaudeAgentSDKClient:
         try:
             # Mock authentication request
             auth_request = {
-                'api_key': self.api_key,
-                'client_type': 'auto_mode',
-                'client_version': '1.0.0'
+                "api_key_present": bool(self.api_key),  # Don't log actual key
+                "client_type": "auto_mode",
+                "client_version": "1.0.0",
             }
 
             # In production, send actual authentication request
@@ -157,11 +162,12 @@ class ClaudeAgentSDKClient:
             return True
 
         except Exception as e:
-            print(f"Authentication failed: {e}")
+            logger.error(f"Authentication failed: {e}")
             return False
 
-    async def create_persistent_session(self, auto_mode_session_id: str, user_id: str,
-                                      initial_context: Dict[str, Any]) -> Optional[SDKSession]:
+    async def create_persistent_session(
+        self, auto_mode_session_id: str, user_id: str, initial_context: Dict[str, Any]
+    ) -> Optional[SDKSession]:
         """
         Create a persistent session with Claude Agent SDK.
 
@@ -175,7 +181,7 @@ class ClaudeAgentSDKClient:
         """
         try:
             if self.connection_state != SDKConnectionState.AUTHENTICATED:
-                print("SDK not authenticated - cannot create session")
+                logger.error("SDK not authenticated - cannot create session")
                 return None
 
             # Generate Claude session ID
@@ -183,20 +189,20 @@ class ClaudeAgentSDKClient:
 
             # Create session request
             session_request = {
-                'session_id': claude_session_id,
-                'user_id': user_id,
-                'initial_context': initial_context,
-                'capabilities': [
-                    'conversation_analysis',
-                    'quality_assessment',
-                    'pattern_recognition',
-                    'learning_capture'
+                "session_id": claude_session_id,
+                "user_id": user_id,
+                "initial_context": initial_context,
+                "capabilities": [
+                    "conversation_analysis",
+                    "quality_assessment",
+                    "pattern_recognition",
+                    "learning_capture",
                 ],
-                'preferences': {
-                    'analysis_frequency': 'adaptive',
-                    'intervention_style': 'subtle',
-                    'learning_mode': 'enabled'
-                }
+                "preferences": {
+                    "analysis_frequency": "adaptive",
+                    "intervention_style": "subtle",
+                    "learning_mode": "enabled",
+                },
             }
 
             # Mock session creation
@@ -207,7 +213,7 @@ class ClaudeAgentSDKClient:
                 session_id=auto_mode_session_id,
                 claude_session_id=claude_session_id,
                 user_id=user_id,
-                conversation_context=initial_context.copy()
+                conversation_context=initial_context.copy(),
             )
 
             self.active_sessions[auto_mode_session_id] = sdk_session
@@ -221,8 +227,9 @@ class ClaudeAgentSDKClient:
             self.failed_requests += 1
             return None
 
-    async def update_conversation_context(self, session_id: str,
-                                        conversation_update: Dict[str, Any]) -> bool:
+    async def update_conversation_context(
+        self, session_id: str, conversation_update: Dict[str, Any]
+    ) -> bool:
         """
         Update conversation context for an existing session.
 
@@ -242,10 +249,10 @@ class ClaudeAgentSDKClient:
 
             # Prepare update request
             update_request = {
-                'session_id': sdk_session.claude_session_id,
-                'update_type': 'conversation_context',
-                'data': conversation_update,
-                'timestamp': time.time()
+                "session_id": sdk_session.claude_session_id,
+                "update_type": "conversation_context",
+                "data": conversation_update,
+                "timestamp": time.time(),
             }
 
             # Mock context update
@@ -263,7 +270,9 @@ class ClaudeAgentSDKClient:
             self.failed_requests += 1
             return False
 
-    async def request_analysis(self, session_id: str, analysis_type: str = "comprehensive") -> Optional[Dict[str, Any]]:
+    async def request_analysis(
+        self, session_id: str, analysis_type: str = "comprehensive"
+    ) -> Optional[Dict[str, Any]]:
         """
         Request conversation analysis from Claude Agent SDK.
 
@@ -283,15 +292,15 @@ class ClaudeAgentSDKClient:
 
             # Prepare analysis request
             analysis_request = {
-                'session_id': sdk_session.claude_session_id,
-                'analysis_type': analysis_type,
-                'context_window': sdk_session.conversation_context,
-                'requested_insights': [
-                    'conversation_quality',
-                    'user_satisfaction',
-                    'improvement_opportunities',
-                    'pattern_recognition'
-                ]
+                "session_id": sdk_session.claude_session_id,
+                "analysis_type": analysis_type,
+                "context_window": sdk_session.conversation_context,
+                "requested_insights": [
+                    "conversation_quality",
+                    "user_satisfaction",
+                    "improvement_opportunities",
+                    "pattern_recognition",
+                ],
             }
 
             # Mock analysis request
@@ -301,10 +310,12 @@ class ClaudeAgentSDKClient:
             analysis_results = self._generate_mock_analysis(sdk_session)
 
             # Update session analysis state
-            sdk_session.analysis_state.update({
-                'last_analysis': time.time(),
-                'analysis_count': sdk_session.analysis_state.get('analysis_count', 0) + 1
-            })
+            sdk_session.analysis_state.update(
+                {
+                    "last_analysis": time.time(),
+                    "analysis_count": sdk_session.analysis_state.get("analysis_count", 0) + 1,
+                }
+            )
 
             self.successful_requests += 1
             return analysis_results
@@ -314,7 +325,9 @@ class ClaudeAgentSDKClient:
             self.failed_requests += 1
             return None
 
-    async def synthesize_conversation(self, session_id: str, synthesis_params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def synthesize_conversation(
+        self, session_id: str, synthesis_params: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """
         Request conversation synthesis from Claude Agent SDK.
 
@@ -334,10 +347,10 @@ class ClaudeAgentSDKClient:
 
             # Prepare synthesis request
             synthesis_request = {
-                'session_id': sdk_session.claude_session_id,
-                'synthesis_type': synthesis_params.get('type', 'summary'),
-                'scope': synthesis_params.get('scope', 'full_conversation'),
-                'format': synthesis_params.get('format', 'structured')
+                "session_id": sdk_session.claude_session_id,
+                "synthesis_type": synthesis_params.get("type", "summary"),
+                "scope": synthesis_params.get("scope", "full_conversation"),
+                "format": synthesis_params.get("format", "structured"),
             }
 
             # Mock synthesis request
@@ -345,22 +358,22 @@ class ClaudeAgentSDKClient:
 
             # Generate mock synthesis results
             synthesis_results = {
-                'summary': "Conversation focused on implementing auto-mode functionality with good progress on core components.",
-                'key_insights': [
+                "summary": "Conversation focused on implementing auto-mode functionality with good progress on core components.",
+                "key_insights": [
                     "User is implementing a complex feature systematically",
                     "Good use of TDD approach and modular design",
-                    "Strong focus on security and user preferences"
+                    "Strong focus on security and user preferences",
                 ],
-                'recommendations': [
+                "recommendations": [
                     "Continue with current structured approach",
                     "Consider adding more comprehensive error handling",
-                    "Plan for user feedback integration"
+                    "Plan for user feedback integration",
                 ],
-                'quality_metrics': {
-                    'overall_satisfaction': 0.8,
-                    'goal_achievement': 0.7,
-                    'conversation_efficiency': 0.8
-                }
+                "quality_metrics": {
+                    "overall_satisfaction": 0.8,
+                    "goal_achievement": 0.7,
+                    "conversation_efficiency": 0.8,
+                },
             }
 
             self.successful_requests += 1
@@ -390,9 +403,9 @@ class ClaudeAgentSDKClient:
 
             # Prepare session close request
             close_request = {
-                'session_id': sdk_session.claude_session_id,
-                'close_reason': 'user_ended',
-                'final_state': sdk_session.conversation_context
+                "session_id": sdk_session.claude_session_id,
+                "close_reason": "user_ended",
+                "final_state": sdk_session.conversation_context,
             }
 
             # Mock session close
@@ -467,36 +480,36 @@ class ClaudeAgentSDKClient:
     def _generate_mock_analysis(self, sdk_session: SDKSession) -> Dict[str, Any]:
         """Generate mock analysis results for testing"""
         return {
-            'session_id': sdk_session.claude_session_id,
-            'analysis_timestamp': time.time(),
-            'quality_assessment': {
-                'overall_score': 0.75,
-                'dimensions': {
-                    'clarity': 0.8,
-                    'effectiveness': 0.7,
-                    'engagement': 0.8,
-                    'satisfaction': 0.7
-                }
+            "session_id": sdk_session.claude_session_id,
+            "analysis_timestamp": time.time(),
+            "quality_assessment": {
+                "overall_score": 0.75,
+                "dimensions": {
+                    "clarity": 0.8,
+                    "effectiveness": 0.7,
+                    "engagement": 0.8,
+                    "satisfaction": 0.7,
+                },
             },
-            'detected_patterns': [
+            "detected_patterns": [
                 {
-                    'pattern_type': 'systematic_implementation',
-                    'confidence': 0.9,
-                    'description': 'User following systematic implementation approach'
+                    "pattern_type": "systematic_implementation",
+                    "confidence": 0.9,
+                    "description": "User following systematic implementation approach",
                 }
             ],
-            'improvement_opportunities': [
+            "improvement_opportunities": [
                 {
-                    'area': 'error_handling',
-                    'priority': 'medium',
-                    'description': 'Consider adding more comprehensive error handling'
+                    "area": "error_handling",
+                    "priority": "medium",
+                    "description": "Consider adding more comprehensive error handling",
                 }
             ],
-            'user_insights': {
-                'expertise_level': 'advanced',
-                'communication_style': 'technical',
-                'preferred_detail_level': 'high'
-            }
+            "user_insights": {
+                "expertise_level": "advanced",
+                "communication_style": "technical",
+                "preferred_detail_level": "high",
+            },
         }
 
     async def shutdown(self):
@@ -519,13 +532,13 @@ class ClaudeAgentSDKClient:
     def get_connection_status(self) -> Dict[str, Any]:
         """Get current connection status and metrics"""
         return {
-            'connection_state': self.connection_state.value,
-            'active_sessions': len(self.active_sessions),
-            'connection_attempts': self.connection_attempts,
-            'successful_requests': self.successful_requests,
-            'failed_requests': self.failed_requests,
-            'last_heartbeat': self.last_heartbeat,
-            'uptime_seconds': time.time() - self.last_heartbeat if self.last_heartbeat > 0 else 0
+            "connection_state": self.connection_state.value,
+            "active_sessions": len(self.active_sessions),
+            "connection_attempts": self.connection_attempts,
+            "successful_requests": self.successful_requests,
+            "failed_requests": self.failed_requests,
+            "last_heartbeat": self.last_heartbeat,
+            "uptime_seconds": time.time() - self.last_heartbeat if self.last_heartbeat > 0 else 0,
         }
 
     def get_session_info(self, session_id: str) -> Optional[Dict[str, Any]]:
@@ -535,11 +548,52 @@ class ClaudeAgentSDKClient:
 
         sdk_session = self.active_sessions[session_id]
         return {
-            'session_id': sdk_session.session_id,
-            'claude_session_id': sdk_session.claude_session_id,
-            'user_id': sdk_session.user_id,
-            'created_at': sdk_session.created_at,
-            'last_activity': sdk_session.last_activity,
-            'analysis_count': sdk_session.analysis_state.get('analysis_count', 0),
-            'last_analysis': sdk_session.analysis_state.get('last_analysis', 0)
+            "session_id": sdk_session.session_id,
+            "claude_session_id": sdk_session.claude_session_id,
+            "user_id": sdk_session.user_id,
+            "created_at": sdk_session.created_at,
+            "last_activity": sdk_session.last_activity,
+            "analysis_count": sdk_session.analysis_state.get("analysis_count", 0),
+            "last_analysis": sdk_session.analysis_state.get("last_analysis", 0),
         }
+
+    def _get_secure_api_key(self) -> Optional[str]:
+        """Securely get API key from environment without logging it"""
+        api_key = os.getenv("CLAUDE_API_KEY")
+
+        if api_key:
+            # Validate API key format without logging it
+            if len(api_key) < 10:
+                logger.error("API key appears to be invalid (too short)")
+                return None
+
+            # Don't log the actual key - just confirm it exists
+            logger.info("API key loaded from environment")
+            return api_key
+
+        # Check for alternative environment variables
+        alt_keys = ["ANTHROPIC_API_KEY", "CLAUDE_AI_KEY"]
+        for alt_key in alt_keys:
+            api_key = os.getenv(alt_key)
+            if api_key and len(api_key) >= 10:
+                logger.info(f"API key loaded from {alt_key} environment variable")
+                return api_key
+
+        return None
+
+    def _validate_api_key_format(self, api_key: str) -> bool:
+        """Validate API key format without logging sensitive data"""
+        if not api_key:
+            return False
+
+        # Basic format validation for Claude API keys
+        # Typically start with 'sk-ant-' prefix
+        if api_key.startswith("sk-ant-") and len(api_key) > 20:  # pragma: allowlist secret
+            return True
+
+        # Also accept test/mock keys for development
+        if api_key.startswith("test-") or api_key == "mock_api_key":  # pragma: allowlist secret
+            logger.warning("Using test/mock API key - not for production use")
+            return True
+
+        return False

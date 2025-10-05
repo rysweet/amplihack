@@ -8,23 +8,23 @@ the auto-mode system, with persistence and coordination capabilities.
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Callable, Union
 import uuid
-import threading
+from dataclasses import asdict, dataclass
+from datetime import datetime
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
-from .session_manager import SDKSessionManager, SessionState, SessionConfig
-from .analysis_engine import ConversationAnalysisEngine, AnalysisResult, AnalysisType
-from .prompt_coordinator import PromptCoordinator, PromptContext, PromptType
+from .analysis_engine import AnalysisResult, AnalysisType, ConversationAnalysisEngine
+from .prompt_coordinator import PromptContext, PromptCoordinator, PromptType
+from .session_manager import SDKSessionManager, SessionConfig
 
 logger = logging.getLogger(__name__)
 
 
 class AutoModeState(Enum):
     """States of auto-mode operation"""
+
     INITIALIZING = "initializing"
     ACTIVE = "active"
     PAUSED = "paused"
@@ -36,6 +36,7 @@ class AutoModeState(Enum):
 @dataclass
 class AutoModeConfig:
     """Configuration for auto-mode integration"""
+
     max_iterations: int = 50
     iteration_timeout_seconds: int = 300
     min_confidence_threshold: float = 0.6
@@ -44,10 +45,64 @@ class AutoModeConfig:
     state_sync_interval_seconds: int = 30
     error_recovery_attempts: int = 3
 
+    def __post_init__(self):
+        """Validate configuration after initialization"""
+        self._validate_config()
+
+    def _validate_config(self) -> None:
+        """Validate configuration parameters"""
+        errors = []
+
+        # Validate max_iterations
+        if not isinstance(self.max_iterations, int) or self.max_iterations <= 0:
+            errors.append("max_iterations must be a positive integer")
+        elif self.max_iterations > 1000:
+            errors.append("max_iterations cannot exceed 1000")
+
+        # Validate iteration_timeout_seconds
+        if (
+            not isinstance(self.iteration_timeout_seconds, int)
+            or self.iteration_timeout_seconds <= 0
+        ):
+            errors.append("iteration_timeout_seconds must be a positive integer")
+        elif self.iteration_timeout_seconds > 3600:  # 1 hour max
+            errors.append("iteration_timeout_seconds cannot exceed 3600 (1 hour)")
+
+        # Validate min_confidence_threshold
+        if not isinstance(self.min_confidence_threshold, (int, float)):
+            errors.append("min_confidence_threshold must be a number")
+        elif not 0.0 <= self.min_confidence_threshold <= 1.0:
+            errors.append("min_confidence_threshold must be between 0.0 and 1.0")
+
+        # Validate state_sync_interval_seconds
+        if (
+            not isinstance(self.state_sync_interval_seconds, int)
+            or self.state_sync_interval_seconds <= 0
+        ):
+            errors.append("state_sync_interval_seconds must be a positive integer")
+        elif self.state_sync_interval_seconds > 300:  # 5 minutes max
+            errors.append("state_sync_interval_seconds cannot exceed 300 (5 minutes)")
+
+        # Validate error_recovery_attempts
+        if not isinstance(self.error_recovery_attempts, int) or self.error_recovery_attempts < 0:
+            errors.append("error_recovery_attempts must be a non-negative integer")
+        elif self.error_recovery_attempts > 10:
+            errors.append("error_recovery_attempts cannot exceed 10")
+
+        # Validate boolean types
+        if not isinstance(self.auto_progression_enabled, bool):
+            errors.append("auto_progression_enabled must be a boolean")
+        if not isinstance(self.persistence_enabled, bool):
+            errors.append("persistence_enabled must be a boolean")
+
+        if errors:
+            raise ValueError(f"Configuration validation failed: {'; '.join(errors)}")
+
 
 @dataclass
 class StateSnapshot:
     """Snapshot of auto-mode state at a point in time"""
+
     timestamp: datetime
     session_id: str
     auto_mode_state: AutoModeState
@@ -64,6 +119,7 @@ class StateSnapshot:
 @dataclass
 class ProgressMilestone:
     """A milestone in auto-mode progress"""
+
     id: str
     iteration: int
     timestamp: datetime
@@ -75,6 +131,7 @@ class ProgressMilestone:
 
 class StateIntegrationError(Exception):
     """Raised when state integration operations fail"""
+
     pass
 
 
@@ -89,7 +146,7 @@ class AutoModeOrchestrator:
     def __init__(
         self,
         config: AutoModeConfig = AutoModeConfig(),
-        session_config: Optional[SessionConfig] = None
+        session_config: Optional[SessionConfig] = None,
     ):
         self.config = config
         self.auto_mode_state = AutoModeState.INITIALIZING
@@ -122,11 +179,7 @@ class AutoModeOrchestrator:
         if self.config.persistence_enabled:
             Path(".claude/runtime/auto_mode").mkdir(parents=True, exist_ok=True)
 
-    async def start_auto_mode_session(
-        self,
-        user_objective: str,
-        working_directory: str
-    ) -> str:
+    async def start_auto_mode_session(self, user_objective: str, working_directory: str) -> str:
         """
         Start a new auto-mode session.
 
@@ -141,6 +194,9 @@ class AutoModeOrchestrator:
             StateIntegrationError: If session start fails
         """
         try:
+            # Validate inputs
+            self._validate_session_inputs(user_objective, working_directory)
+
             self.auto_mode_state = AutoModeState.INITIALIZING
             self.current_iteration = 0
             self.error_count = 0
@@ -157,7 +213,7 @@ class AutoModeOrchestrator:
                 user_objective=user_objective,
                 working_directory=working_directory,
                 current_step=1,
-                total_steps=self.config.max_iterations
+                total_steps=self.config.max_iterations,
             )
 
             # Take initial snapshot
@@ -177,9 +233,7 @@ class AutoModeOrchestrator:
             raise StateIntegrationError(f"Failed to start auto-mode session: {e}")
 
     async def process_claude_output(
-        self,
-        claude_output: str,
-        output_metadata: Optional[Dict[str, Any]] = None
+        self, claude_output: str, output_metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Process new Claude Code output and determine next actions.
@@ -209,7 +263,7 @@ class AutoModeOrchestrator:
                 role="assistant",
                 content=claude_output,
                 message_type="claude_output",
-                metadata=output_metadata
+                metadata=output_metadata,
             )
 
             # Analyze the output
@@ -218,7 +272,7 @@ class AutoModeOrchestrator:
                 claude_output=claude_output,
                 user_objective=self.current_context.user_objective,
                 analysis_type=AnalysisType.PROGRESS_EVALUATION,
-                context=asdict(self.current_context)
+                context=asdict(self.current_context),
             )
 
             # Update context with analysis
@@ -226,7 +280,7 @@ class AutoModeOrchestrator:
                 self.current_context,
                 current_step=self.current_iteration,
                 previous_outputs=self.current_context.previous_outputs + [claude_output],
-                analysis_results=self.current_context.analysis_results + [asdict(analysis_result)]
+                analysis_results=self.current_context.analysis_results + [asdict(analysis_result)],
             )
 
             # Check for milestones
@@ -247,7 +301,7 @@ class AutoModeOrchestrator:
                 "next_action": next_action,
                 "confidence": analysis_result.confidence,
                 "should_continue": await self._should_continue_auto_mode(analysis_result),
-                "state": self.auto_mode_state.value
+                "state": self.auto_mode_state.value,
             }
 
             logger.info(f"Processed Claude output for iteration {self.current_iteration}")
@@ -257,10 +311,41 @@ class AutoModeOrchestrator:
             self.error_count += 1
             logger.error(f"Error processing Claude output: {e}")
 
+            # Enhanced error handling with configuration validation
             if self.error_count >= self.config.error_recovery_attempts:
                 await self._transition_state(AutoModeState.ERROR)
+                logger.critical(f"Auto-mode entering error state after {self.error_count} failures")
 
             raise StateIntegrationError(f"Failed to process Claude output: {e}")
+
+    def _validate_session_inputs(self, user_objective: str, working_directory: str) -> None:
+        """Validate session creation inputs"""
+        if not user_objective or not user_objective.strip():
+            raise ValueError("user_objective cannot be empty")
+
+        if len(user_objective) > 10000:
+            raise ValueError("user_objective is too long (max 10000 characters)")
+
+        if not working_directory or not working_directory.strip():
+            raise ValueError("working_directory cannot be empty")
+
+        # Basic path validation
+        try:
+            from pathlib import Path
+
+            path = Path(working_directory)
+            if not path.is_absolute():
+                raise ValueError("working_directory must be an absolute path")
+        except Exception as e:
+            raise ValueError(f"Invalid working_directory: {e}")
+
+        # Security check for dangerous paths
+        dangerous_paths = ["/etc", "/bin", "/sbin", "/usr/bin", "/usr/sbin", "/root"]
+        for dangerous_path in dangerous_paths:
+            if working_directory.startswith(dangerous_path):
+                raise ValueError(
+                    f"working_directory cannot be in restricted system directory: {dangerous_path}"
+                )
 
     async def _generate_next_action(self, analysis_result: AnalysisResult) -> Optional[str]:
         """Generate the next action based on analysis results"""
@@ -283,11 +368,18 @@ class AutoModeOrchestrator:
 
             template = templates[0]  # Use first available template
 
-            # Render prompt
+            # Render prompt (ensure context exists)
+            if self.current_context is None:
+                logger.warning("Current context is None, creating default context")
+                self.current_context = self.prompt_coordinator.create_context(
+                    session_id="default",
+                    user_objective="Generate next action",
+                    working_directory="/tmp",
+                    current_step=1
+                )
+
             rendered_prompt = self.prompt_coordinator.render_prompt(
-                template.id,
-                self.current_context,
-                {"analysis_insights": analysis_result.findings}
+                template.id, self.current_context, {"analysis_insights": analysis_result.findings}
             )
 
             return rendered_prompt.content
@@ -301,10 +393,10 @@ class AutoModeOrchestrator:
         try:
             # Define milestone criteria
             is_milestone = (
-                analysis_result.confidence > 0.8 or
-                analysis_result.quality_score > 0.8 or
-                len(analysis_result.recommendations) > 3 or
-                self.current_iteration % 10 == 0  # Every 10 iterations
+                analysis_result.confidence > 0.8
+                or analysis_result.quality_score > 0.8
+                or len(analysis_result.recommendations) > 3
+                or self.current_iteration % 10 == 0  # Every 10 iterations
             )
 
             if is_milestone:
@@ -315,7 +407,7 @@ class AutoModeOrchestrator:
                     description=f"Milestone at iteration {self.current_iteration}",
                     confidence=analysis_result.confidence,
                     evidence=analysis_result.findings,
-                    next_actions=analysis_result.recommendations
+                    next_actions=analysis_result.recommendations,
                 )
 
                 self.progress_milestones.append(milestone)
@@ -372,12 +464,14 @@ class AutoModeOrchestrator:
                 auto_mode_state=self.auto_mode_state,
                 current_iteration=self.current_iteration,
                 user_objective=self.current_context.user_objective if self.current_context else "",
-                working_directory=self.current_context.working_directory if self.current_context else "",
+                working_directory=self.current_context.working_directory
+                if self.current_context
+                else "",
                 latest_claude_output=latest_output,
                 latest_analysis=None,  # Simplified for now
                 pending_prompts=[],
                 error_count=self.error_count,
-                metadata={"description": description}
+                metadata={"description": description},
             )
 
             self.state_snapshots.append(snapshot)
@@ -415,7 +509,9 @@ class AutoModeOrchestrator:
         self.auto_mode_state = new_state
 
         # Take snapshot of state change
-        snapshot = await self._take_state_snapshot(f"State transition: {old_state.value} -> {new_state.value}")
+        snapshot = await self._take_state_snapshot(
+            f"State transition: {old_state.value} -> {new_state.value}"
+        )
 
         # Notify callbacks
         for callback in self.state_change_callbacks:
@@ -494,7 +590,9 @@ class AutoModeOrchestrator:
 
         logger.info("Auto-mode stopped")
 
-    def add_state_change_callback(self, callback: Callable[[AutoModeState, StateSnapshot], None]) -> None:
+    def add_state_change_callback(
+        self, callback: Callable[[AutoModeState, StateSnapshot], None]
+    ) -> None:
         """Add callback for state changes"""
         self.state_change_callbacks.append(callback)
 
@@ -510,13 +608,13 @@ class AutoModeOrchestrator:
             "error_count": self.error_count,
             "session_id": self.active_session_id,
             "snapshots_count": len(self.state_snapshots),
-            "milestones_count": len(self.progress_milestones)
+            "milestones_count": len(self.progress_milestones),
         }
 
     def get_progress_summary(self) -> Dict[str, Any]:
         """Get summary of auto-mode progress"""
         if not self.progress_milestones:
-            return {"milestones": 0, "progress": 0.0}
+            return {"milestones": 0, "progress_percentage": 0.0}
 
         latest_milestone = self.progress_milestones[-1]
         progress_percentage = (self.current_iteration / self.config.max_iterations) * 100
@@ -525,5 +623,30 @@ class AutoModeOrchestrator:
             "milestones": len(self.progress_milestones),
             "progress_percentage": progress_percentage,
             "latest_milestone": asdict(latest_milestone),
-            "average_confidence": sum(m.confidence for m in self.progress_milestones) / len(self.progress_milestones)
+            "average_confidence": sum(m.confidence for m in self.progress_milestones)
+            / len(self.progress_milestones),
         }
+
+    @staticmethod
+    def validate_config_dict(config_dict: Dict[str, Any]) -> AutoModeConfig:
+        """Validate and create config from dictionary"""
+        try:
+            return AutoModeConfig(**config_dict)
+        except TypeError as e:
+            raise ValueError(f"Invalid configuration parameters: {e}")
+        except ValueError as e:
+            raise ValueError(f"Configuration validation failed: {e}")
+
+    def update_config(self, new_config: Dict[str, Any]) -> None:
+        """Update configuration with validation"""
+        # Validate new config
+        validated_config = self.validate_config_dict({**asdict(self.config), **new_config})
+
+        # Apply updates
+        for key, value in new_config.items():
+            if hasattr(self.config, key):
+                setattr(self.config, key, value)
+            else:
+                logger.warning(f"Unknown configuration parameter: {key}")
+
+        logger.info(f"Configuration updated: {new_config}")

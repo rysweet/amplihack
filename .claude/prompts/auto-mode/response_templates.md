@@ -3,15 +3,18 @@
 ## Template Categories
 
 ### 1. Background Analysis Updates
+
 Templates for non-intrusive status updates during ongoing conversations.
 
 #### Template: Silent Analysis
+
 ```
 🔍 Auto-mode: Background analysis in progress...
 Session: {session_id} | Cycle: {analysis_cycle} | Status: {status}
 ```
 
 #### Template: Analysis Complete
+
 ```
 ✅ Auto-mode: Analysis cycle {cycle_number} completed
 Quality Score: {quality_score}/1.0 | Opportunities: {opportunity_count}
@@ -19,9 +22,11 @@ Quality Score: {quality_score}/1.0 | Opportunities: {opportunity_count}
 ```
 
 ### 2. Intervention Suggestions
+
 Templates for suggesting improvements or clarifications.
 
 #### Template: Clarification Suggestion
+
 ```
 💡 Auto-mode suggests: Consider asking about {specific_area} to improve clarity.
 Confidence: {confidence_score} | Impact: {impact_level}
@@ -29,6 +34,7 @@ Confidence: {confidence_score} | Impact: {impact_level}
 ```
 
 #### Template: Tool Recommendation
+
 ```
 🛠️ Auto-mode recommends: Using {tool_name} might help with {specific_task}.
 Reasoning: {brief_explanation}
@@ -36,6 +42,7 @@ Reasoning: {brief_explanation}
 ```
 
 #### Template: Workflow Optimization
+
 ```
 ⚡ Auto-mode optimization: This process could be streamlined by {optimization}.
 Potential time savings: {estimated_savings}
@@ -43,9 +50,11 @@ Potential time savings: {estimated_savings}
 ```
 
 ### 3. Session Summaries
+
 Templates for end-of-session or periodic summaries.
 
 #### Template: Session Summary
+
 ```
 📊 Auto-mode Session Summary
 Duration: {session_duration} | Messages: {message_count}
@@ -62,6 +71,7 @@ Recommendations for Next Session:
 ```
 
 #### Template: Progress Report
+
 ```
 📈 Auto-mode Progress Report
 Sessions Analyzed: {session_count}
@@ -75,9 +85,11 @@ Recent Optimizations:
 ```
 
 ### 4. User Preference Learning
+
 Templates for capturing and confirming user preferences.
 
 #### Template: Preference Detection
+
 ```
 🎯 Auto-mode learned: You prefer {preference_type} = {preference_value}
 Based on: {evidence_summary}
@@ -85,6 +97,7 @@ Based on: {evidence_summary}
 ```
 
 #### Template: Style Adaptation
+
 ```
 🎨 Auto-mode adapted: Communication style adjusted to {style_preference}
 Changes: {specific_changes}
@@ -92,9 +105,11 @@ Changes: {specific_changes}
 ```
 
 ### 5. Error Handling and Recovery
+
 Templates for handling issues and recovery scenarios.
 
 #### Template: Analysis Error
+
 ```
 ⚠️ Auto-mode encountered an issue during analysis
 Error: {error_type} | Session: {session_id}
@@ -103,6 +118,7 @@ Fallback: {fallback_action}
 ```
 
 #### Template: SDK Connection Issue
+
 ```
 🔌 Auto-mode: Connection to Claude Agent SDK interrupted
 Status: {connection_status} | Retry in: {retry_countdown}
@@ -111,9 +127,11 @@ Impact: {impact_description}
 ```
 
 ### 6. Configuration and Control
+
 Templates for user control and configuration.
 
 #### Template: Configuration Update
+
 ```
 ⚙️ Auto-mode configuration updated
 Changes: {configuration_changes}
@@ -122,6 +140,7 @@ Effective: {effective_time}
 ```
 
 #### Template: Permission Request
+
 ```
 🔐 Auto-mode requests permission: {permission_type}
 Purpose: {permission_purpose}
@@ -132,6 +151,7 @@ Data Access: {data_scope}
 ## Template Variables
 
 ### Standard Variables
+
 - `{session_id}`: Unique session identifier
 - `{timestamp}`: Current timestamp
 - `{user_id}`: User identifier (if available)
@@ -139,12 +159,14 @@ Data Access: {data_scope}
 - `{analysis_cycle}`: Current analysis cycle number
 
 ### Dynamic Content Variables
+
 - `{insights_list}`: Generated list of insights
 - `{recommendations_list}`: Generated recommendations
 - `{improvement_areas}`: Identified improvement areas
 - `{optimization_list}`: Recent optimizations applied
 
 ### User Context Variables
+
 - `{user_preferences}`: Current user preferences
 - `{conversation_context}`: Current conversation context
 - `{session_history}`: Historical session data
@@ -153,18 +175,21 @@ Data Access: {data_scope}
 ## Template Usage Guidelines
 
 ### Timing
+
 - Background updates: Non-intrusive, minimal UI impact
 - Intervention suggestions: Only when high confidence + high impact
 - Session summaries: End of natural conversation breaks
 - Error messages: Immediate, with clear recovery options
 
 ### Tone
+
 - Professional but friendly
 - Concise and actionable
 - Respectful of user autonomy
 - Transparent about capabilities and limitations
 
 ### Personalization
+
 - Adapt language to user's technical level
 - Respect communication style preferences
 - Adjust verbosity based on user feedback

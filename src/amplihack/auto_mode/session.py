@@ -6,18 +6,18 @@ Provides secure session isolation and data persistence.
 """
 
 import asyncio
+import hashlib
 import json
 import time
-import os
-import hashlib
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class SessionState:
     """State of an auto-mode session"""
+
     session_id: str
     user_id: str
     created_at: float = field(default_factory=time.time)
@@ -46,12 +46,12 @@ class SessionState:
         state_dict = asdict(self)
 
         # Convert analysis_history to serializable format
-        state_dict['analysis_history'] = [
+        state_dict["analysis_history"] = [
             {
-                'cycle_id': result.cycle_id,
-                'timestamp': result.timestamp,
-                'quality_score': result.analysis.quality_score,
-                'interventions_count': len(result.interventions_suggested)
+                "cycle_id": result.cycle_id,
+                "timestamp": result.timestamp,
+                "quality_score": result.analysis.quality_score,
+                "interventions_count": len(result.interventions_suggested),
             }
             for result in self.analysis_history
         ]
@@ -59,10 +59,10 @@ class SessionState:
         return state_dict
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SessionState':
+    def from_dict(cls, data: Dict[str, Any]) -> "SessionState":
         """Create session state from dictionary"""
         # Handle analysis_history separately since it contains complex objects
-        analysis_history_data = data.pop('analysis_history', [])
+        analysis_history_data = data.pop("analysis_history", [])
 
         session = cls(**data)
 
@@ -87,7 +87,7 @@ class SessionStorage:
             self.storage_dir = Path(storage_dir)
         else:
             home = Path.home()
-            self.storage_dir = home / '.amplihack' / 'auto-mode' / 'sessions'
+            self.storage_dir = home / ".amplihack" / "auto-mode" / "sessions"
 
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
@@ -112,8 +112,8 @@ class SessionStorage:
             session_data = session_state.to_dict()
 
             # Write atomically using temporary file
-            temp_file = session_file.with_suffix('.tmp')
-            with open(temp_file, 'w') as f:
+            temp_file = session_file.with_suffix(".tmp")
+            with open(temp_file, "w") as f:
                 json.dump(session_data, f, indent=2)
 
             # Atomic move
@@ -141,7 +141,7 @@ class SessionStorage:
             if not session_file.exists():
                 return None
 
-            with open(session_file, 'r') as f:
+            with open(session_file, "r") as f:
                 session_data = json.load(f)
 
             return SessionState.from_dict(session_data)
@@ -187,22 +187,24 @@ class SessionStorage:
         try:
             for session_file in self.storage_dir.glob("session_*.json"):
                 try:
-                    with open(session_file, 'r') as f:
+                    with open(session_file, "r") as f:
                         session_data = json.load(f)
 
                     # Filter by user_id if specified
-                    if user_id and session_data.get('user_id') != user_id:
+                    if user_id and session_data.get("user_id") != user_id:
                         continue
 
                     # Return metadata only
-                    sessions.append({
-                        'session_id': session_data['session_id'],
-                        'user_id': session_data['user_id'],
-                        'created_at': session_data['created_at'],
-                        'last_updated': session_data['last_updated'],
-                        'analysis_cycles': session_data['analysis_cycles'],
-                        'current_quality_score': session_data['current_quality_score']
-                    })
+                    sessions.append(
+                        {
+                            "session_id": session_data["session_id"],
+                            "user_id": session_data["user_id"],
+                            "created_at": session_data["created_at"],
+                            "last_updated": session_data["last_updated"],
+                            "analysis_cycles": session_data["analysis_cycles"],
+                            "current_quality_score": session_data["current_quality_score"],
+                        }
+                    )
 
                 except Exception as e:
                     print(f"Failed to read session file {session_file}: {e}")
@@ -236,8 +238,9 @@ class SessionManager:
         # Start background cleanup task
         self._cleanup_task = asyncio.create_task(self._cleanup_loop())
 
-    async def create_session(self, session_id: str, user_id: str,
-                           initial_context: Dict[str, Any]) -> SessionState:
+    async def create_session(
+        self, session_id: str, user_id: str, initial_context: Dict[str, Any]
+    ) -> SessionState:
         """
         Create a new auto-mode session.
 
@@ -265,9 +268,7 @@ class SessionManager:
 
         # Create new session
         session_state = SessionState(
-            session_id=session_id,
-            user_id=user_id,
-            conversation_context=initial_context.copy()
+            session_id=session_id, user_id=user_id, conversation_context=initial_context.copy()
         )
 
         # Store in active sessions
@@ -301,8 +302,9 @@ class SessionManager:
 
         return None
 
-    async def update_conversation(self, session_state: SessionState,
-                                conversation_update: Dict[str, Any]) -> bool:
+    async def update_conversation(
+        self, session_state: SessionState, conversation_update: Dict[str, Any]
+    ) -> bool:
         """
         Update conversation context for a session.
 
@@ -318,10 +320,9 @@ class SessionManager:
             session_state.conversation_context.update(conversation_update)
 
             # Add to conversation history
-            session_state.conversation_history.append({
-                'timestamp': time.time(),
-                'update': conversation_update.copy()
-            })
+            session_state.conversation_history.append(
+                {"timestamp": time.time(), "update": conversation_update.copy()}
+            )
 
             # Update timestamps
             session_state.last_updated = time.time()
@@ -335,8 +336,9 @@ class SessionManager:
             print(f"Failed to update conversation for session {session_state.session_id}: {e}")
             return False
 
-    async def update_user_preferences(self, session_state: SessionState,
-                                    preferences: Dict[str, Any]) -> bool:
+    async def update_user_preferences(
+        self, session_state: SessionState, preferences: Dict[str, Any]
+    ) -> bool:
         """
         Update user preferences for a session.
 
@@ -358,8 +360,9 @@ class SessionManager:
             print(f"Failed to update preferences for session {session_state.session_id}: {e}")
             return False
 
-    async def add_learned_pattern(self, session_state: SessionState,
-                                pattern: Dict[str, Any]) -> bool:
+    async def add_learned_pattern(
+        self, session_state: SessionState, pattern: Dict[str, Any]
+    ) -> bool:
         """
         Add a learned pattern to the session.
 
@@ -371,7 +374,7 @@ class SessionManager:
             bool: True if addition successful, False otherwise
         """
         try:
-            pattern['learned_at'] = time.time()
+            pattern["learned_at"] = time.time()
             session_state.learned_patterns.append(pattern)
             session_state.last_updated = time.time()
 

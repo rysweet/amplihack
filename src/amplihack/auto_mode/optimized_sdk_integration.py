@@ -6,21 +6,25 @@ while preserving all user requirements for auto-mode functionality.
 """
 
 import asyncio
-import json
-import time
 import hashlib
+import json
+import logging
 import os
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, field
-from enum import Enum
+import time
 import uuid
 from collections import defaultdict
-import weakref
+from dataclasses import dataclass
+from enum import Enum
 from functools import lru_cache
+from typing import Any, Callable, Dict, List, Optional
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 class SDKConnectionState(Enum):
     """States of the SDK connection"""
+
     DISCONNECTED = "disconnected"
     CONNECTING = "connecting"
     CONNECTED = "connected"
@@ -31,6 +35,7 @@ class SDKConnectionState(Enum):
 @dataclass
 class ConnectionPoolConfig:
     """Configuration for connection pooling"""
+
     max_connections: int = 10
     min_connections: int = 2
     connection_timeout: float = 30.0
@@ -41,6 +46,7 @@ class ConnectionPoolConfig:
 @dataclass
 class CacheConfig:
     """Configuration for SDK response caching"""
+
     max_cache_size: int = 1000
     ttl_seconds: int = 300  # 5 minutes
     analysis_cache_ttl: int = 60  # 1 minute for analysis results
@@ -50,6 +56,7 @@ class CacheConfig:
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for monitoring"""
+
     total_requests: int = 0
     cache_hits: int = 0
     cache_misses: int = 0
@@ -86,13 +93,12 @@ class ConnectionPool:
         try:
             # Try to get an available connection with timeout
             connection = await asyncio.wait_for(
-                self.available_connections.get(),
-                timeout=self.config.connection_timeout
+                self.available_connections.get(), timeout=self.config.connection_timeout
             )
 
             # Validate connection is still active
             if await self._validate_connection(connection):
-                self.active_connections.add(connection['id'])
+                self.active_connections.add(connection["id"])
                 return connection
             else:
                 # Connection is stale, create a new one
@@ -108,12 +114,12 @@ class ConnectionPool:
 
     async def release(self, connection: Dict[str, Any]):
         """Release a connection back to the pool"""
-        connection_id = connection['id']
+        connection_id = connection["id"]
         self.active_connections.discard(connection_id)
 
         # Check if connection is still valid
         if await self._validate_connection(connection):
-            connection['last_used'] = time.time()
+            connection["last_used"] = time.time()
             try:
                 self.available_connections.put_nowait(connection)
             except asyncio.QueueFull:
@@ -125,11 +131,11 @@ class ConnectionPool:
     async def _create_connection(self) -> Dict[str, Any]:
         """Create a new connection"""
         connection = {
-            'id': str(uuid.uuid4()),
-            'created_at': time.time(),
-            'last_used': time.time(),
-            'request_count': 0,
-            'status': 'active'
+            "id": str(uuid.uuid4()),
+            "created_at": time.time(),
+            "last_used": time.time(),
+            "request_count": 0,
+            "status": "active",
         }
 
         self.connection_count += 1
@@ -137,11 +143,11 @@ class ConnectionPool:
 
     async def _validate_connection(self, connection: Dict[str, Any]) -> bool:
         """Validate that a connection is still usable"""
-        if connection.get('status') != 'active':
+        if connection.get("status") != "active":
             return False
 
         # Check if connection has been idle too long
-        idle_time = time.time() - connection.get('last_used', 0)
+        idle_time = time.time() - connection.get("last_used", 0)
         if idle_time > self.config.idle_timeout:
             return False
 
@@ -149,7 +155,7 @@ class ConnectionPool:
 
     async def _close_connection(self, connection: Dict[str, Any]):
         """Close and cleanup a connection"""
-        connection['status'] = 'closed'
+        connection["status"] = "closed"
         self.connection_count -= 1
 
     async def cleanup_idle_connections(self):
@@ -196,22 +202,22 @@ class ResponseCache:
         """Get cached response"""
         async with self._lock:
             if key not in self.cache:
-                self.cache_stats['misses'] += 1
+                self.cache_stats["misses"] += 1
                 return None
 
             entry = self.cache[key]
 
             # Check TTL
-            if time.time() - entry['timestamp'] > entry['ttl']:
+            if time.time() - entry["timestamp"] > entry["ttl"]:
                 del self.cache[key]
                 del self.access_times[key]
-                self.cache_stats['misses'] += 1
+                self.cache_stats["misses"] += 1
                 return None
 
             # Update access time for LRU
             self.access_times[key] = time.time()
-            self.cache_stats['hits'] += 1
-            return entry['data']
+            self.cache_stats["hits"] += 1
+            return entry["data"]
 
     async def set(self, key: str, data: Any, ttl: int = None):
         """Set cached response"""
@@ -223,11 +229,7 @@ class ResponseCache:
             if len(self.cache) >= self.config.max_cache_size:
                 await self._evict_lru()
 
-            self.cache[key] = {
-                'data': data,
-                'timestamp': time.time(),
-                'ttl': ttl
-            }
+            self.cache[key] = {"data": data, "timestamp": time.time(), "ttl": ttl}
             self.access_times[key] = time.time()
 
     async def _evict_lru(self):
@@ -246,14 +248,14 @@ class ResponseCache:
 
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics"""
-        total = self.cache_stats['hits'] + self.cache_stats['misses']
-        hit_rate = self.cache_stats['hits'] / total if total > 0 else 0.0
+        total = self.cache_stats["hits"] + self.cache_stats["misses"]
+        hit_rate = self.cache_stats["hits"] / total if total > 0 else 0.0
 
         return {
-            'cache_size': len(self.cache),
-            'hit_rate': hit_rate,
-            'hits': self.cache_stats['hits'],
-            'misses': self.cache_stats['misses']
+            "cache_size": len(self.cache),
+            "hit_rate": hit_rate,
+            "hits": self.cache_stats["hits"],
+            "misses": self.cache_stats["misses"],
         }
 
 
@@ -263,10 +265,7 @@ class OptimizedClaudeAgentSDKClient:
     caching, and async optimizations while preserving all auto-mode requirements.
     """
 
-    def __init__(self,
-                 pool_config: ConnectionPoolConfig = None,
-                 cache_config: CacheConfig = None):
-
+    def __init__(self, pool_config: ConnectionPoolConfig = None, cache_config: CacheConfig = None):
         # Configuration
         self.pool_config = pool_config or ConnectionPoolConfig()
         self.cache_config = cache_config or CacheConfig()
@@ -300,10 +299,10 @@ class OptimizedClaudeAgentSDKClient:
         """
         try:
             # Initialize API key (preserved requirement)
-            self.api_key = os.getenv('CLAUDE_API_KEY')
+            self.api_key = self._get_secure_api_key()
             if not self.api_key:
-                print("Warning: CLAUDE_API_KEY not found in environment")
-                self.api_key = "mock_api_key"
+                logger.warning("CLAUDE_API_KEY not found in environment")
+                raise ConnectionError("API key is required for Claude Agent SDK integration")
 
             # Initialize connection pool
             await self.connection_pool.initialize()
@@ -314,14 +313,14 @@ class OptimizedClaudeAgentSDKClient:
             if connected:
                 # Start optimized background tasks
                 self._start_background_tasks()
-                print("Optimized Claude Agent SDK client initialized successfully")
+                logger.info("Optimized Claude Agent SDK client initialized successfully")
                 return True
             else:
-                print("Failed to establish connection to Claude Agent SDK")
+                logger.error("Failed to establish connection to Claude Agent SDK")
                 return False
 
         except Exception as e:
-            print(f"Failed to initialize optimized SDK client: {e}")
+            logger.error(f"Failed to initialize optimized SDK client: {e}")
             self.connection_state = SDKConnectionState.ERROR
             return False
 
@@ -378,8 +377,9 @@ class OptimizedClaudeAgentSDKClient:
         self._background_tasks.add(metrics_task)
         metrics_task.add_done_callback(self._background_tasks.discard)
 
-    async def create_persistent_session(self, auto_mode_session_id: str, user_id: str,
-                                      initial_context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def create_persistent_session(
+        self, auto_mode_session_id: str, user_id: str, initial_context: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """
         Create persistent session with performance optimizations.
 
@@ -410,21 +410,21 @@ class OptimizedClaudeAgentSDKClient:
                 claude_session_id = self._generate_claude_session_id(auto_mode_session_id, user_id)
 
                 # Create session request (preserved structure)
-                session_request = {
-                    'session_id': claude_session_id,
-                    'user_id': user_id,
-                    'initial_context': initial_context,
-                    'capabilities': [
-                        'conversation_analysis',
-                        'quality_assessment',
-                        'pattern_recognition',
-                        'learning_capture'
+                # session_request = {  # Future use for actual SDK calls
+                    "session_id": claude_session_id,
+                    "user_id": user_id,
+                    "initial_context": initial_context,
+                    "capabilities": [
+                        "conversation_analysis",
+                        "quality_assessment",
+                        "pattern_recognition",
+                        "learning_capture",
                     ],
-                    'preferences': {
-                        'analysis_frequency': 'adaptive',
-                        'intervention_style': 'subtle',
-                        'learning_mode': 'enabled'
-                    }
+                    "preferences": {
+                        "analysis_frequency": "adaptive",
+                        "intervention_style": "subtle",
+                        "learning_mode": "enabled",
+                    },
                 }
 
                 # Optimized session creation (reduced latency)
@@ -432,13 +432,13 @@ class OptimizedClaudeAgentSDKClient:
 
                 # Create session object (preserved structure)
                 sdk_session = {
-                    'session_id': auto_mode_session_id,
-                    'claude_session_id': claude_session_id,
-                    'user_id': user_id,
-                    'created_at': time.time(),
-                    'last_activity': time.time(),
-                    'conversation_context': initial_context.copy(),
-                    'analysis_state': {}
+                    "session_id": auto_mode_session_id,
+                    "claude_session_id": claude_session_id,
+                    "user_id": user_id,
+                    "created_at": time.time(),
+                    "last_activity": time.time(),
+                    "conversation_context": initial_context.copy(),
+                    "analysis_state": {},
                 }
 
                 # Store session (preserved requirement)
@@ -462,8 +462,9 @@ class OptimizedClaudeAgentSDKClient:
             self.metrics.failed_requests += 1
             return None
 
-    async def request_analysis_optimized(self, session_id: str,
-                                       analysis_type: str = "comprehensive") -> Optional[Dict[str, Any]]:
+    async def request_analysis_optimized(
+        self, session_id: str, analysis_type: str = "comprehensive"
+    ) -> Optional[Dict[str, Any]]:
         """
         Optimized analysis request with caching and batching.
 
@@ -480,7 +481,7 @@ class OptimizedClaudeAgentSDKClient:
             # Generate cache key based on session state
             session = self.active_sessions[session_id]
             context_hash = hashlib.md5(
-                json.dumps(session['conversation_context'], sort_keys=True).encode()
+                json.dumps(session["conversation_context"], sort_keys=True).encode()
             ).hexdigest()
             cache_key = f"analysis:{session_id}:{analysis_type}:{context_hash}"
 
@@ -497,16 +498,16 @@ class OptimizedClaudeAgentSDKClient:
 
             try:
                 # Prepare analysis request (preserved structure)
-                analysis_request = {
-                    'session_id': session['claude_session_id'],
-                    'analysis_type': analysis_type,
-                    'context_window': session['conversation_context'],
-                    'requested_insights': [
-                        'conversation_quality',
-                        'user_satisfaction',
-                        'improvement_opportunities',
-                        'pattern_recognition'
-                    ]
+                # analysis_request = {  # Future use for actual SDK calls
+                    "session_id": session["claude_session_id"],
+                    "analysis_type": analysis_type,
+                    "context_window": session["conversation_context"],
+                    "requested_insights": [
+                        "conversation_quality",
+                        "user_satisfaction",
+                        "improvement_opportunities",
+                        "pattern_recognition",
+                    ],
                 }
 
                 # Optimized analysis execution (reduced latency)
@@ -516,16 +517,16 @@ class OptimizedClaudeAgentSDKClient:
                 analysis_results = self._generate_optimized_analysis(session)
 
                 # Update session state (preserved requirement)
-                session['analysis_state'].update({
-                    'last_analysis': time.time(),
-                    'analysis_count': session['analysis_state'].get('analysis_count', 0) + 1
-                })
+                session["analysis_state"].update(
+                    {
+                        "last_analysis": time.time(),
+                        "analysis_count": session["analysis_state"].get("analysis_count", 0) + 1,
+                    }
+                )
 
                 # Cache result with shorter TTL for analysis
                 await self.response_cache.set(
-                    cache_key,
-                    analysis_results,
-                    ttl=self.cache_config.analysis_cache_ttl
+                    cache_key, analysis_results, ttl=self.cache_config.analysis_cache_ttl
                 )
 
                 # Update metrics
@@ -546,36 +547,36 @@ class OptimizedClaudeAgentSDKClient:
         """Generate optimized analysis with reduced computation"""
         # Preserved analysis structure with performance optimizations
         return {
-            'session_id': session['claude_session_id'],
-            'analysis_timestamp': time.time(),
-            'quality_assessment': {
-                'overall_score': 0.75,
-                'dimensions': {
-                    'clarity': 0.8,
-                    'effectiveness': 0.7,
-                    'engagement': 0.8,
-                    'satisfaction': 0.7
-                }
+            "session_id": session["claude_session_id"],
+            "analysis_timestamp": time.time(),
+            "quality_assessment": {
+                "overall_score": 0.75,
+                "dimensions": {
+                    "clarity": 0.8,
+                    "effectiveness": 0.7,
+                    "engagement": 0.8,
+                    "satisfaction": 0.7,
+                },
             },
-            'detected_patterns': [
+            "detected_patterns": [
                 {
-                    'pattern_type': 'systematic_implementation',
-                    'confidence': 0.9,
-                    'description': 'User following systematic implementation approach'
+                    "pattern_type": "systematic_implementation",
+                    "confidence": 0.9,
+                    "description": "User following systematic implementation approach",
                 }
             ],
-            'improvement_opportunities': [
+            "improvement_opportunities": [
                 {
-                    'area': 'performance_optimization',
-                    'priority': 'high',
-                    'description': 'Optimized analysis processing for better performance'
+                    "area": "performance_optimization",
+                    "priority": "high",
+                    "description": "Optimized analysis processing for better performance",
                 }
             ],
-            'user_insights': {
-                'expertise_level': 'advanced',
-                'communication_style': 'technical',
-                'preferred_detail_level': 'high'
-            }
+            "user_insights": {
+                "expertise_level": "advanced",
+                "communication_style": "technical",
+                "preferred_detail_level": "high",
+            },
         }
 
     def _generate_claude_session_id(self, auto_mode_session_id: str, user_id: str) -> str:
@@ -650,9 +651,11 @@ class OptimizedClaudeAgentSDKClient:
 
                 # Log performance metrics
                 if self.metrics.total_requests > 0:
-                    print(f"Performance Metrics - Requests: {self.metrics.total_requests}, "
-                          f"Cache Hit Rate: {self.metrics.cache_hit_rate:.2%}, "
-                          f"Avg Response: {self.metrics.avg_response_time:.3f}s")
+                    print(
+                        f"Performance Metrics - Requests: {self.metrics.total_requests}, "
+                        f"Cache Hit Rate: {self.metrics.cache_hit_rate:.2%}, "
+                        f"Avg Response: {self.metrics.avg_response_time:.3f}s"
+                    )
 
             except asyncio.CancelledError:
                 break
@@ -671,7 +674,7 @@ class OptimizedClaudeAgentSDKClient:
                 print("Optimized reconnection successful")
                 return
 
-            await asyncio.sleep(min(2 ** attempt, 30))  # Exponential backoff with cap
+            await asyncio.sleep(min(2**attempt, 30))  # Exponential backoff with cap
 
         print("Optimized reconnection failed - entering error state")
         self.connection_state = SDKConnectionState.ERROR
@@ -726,14 +729,38 @@ class OptimizedClaudeAgentSDKClient:
         cache_stats = self.response_cache.get_stats()
 
         return {
-            'connection_state': self.connection_state.value,
-            'active_sessions': len(self.active_sessions),
-            'total_requests': self.metrics.total_requests,
-            'successful_requests': self.metrics.successful_requests,
-            'failed_requests': self.metrics.failed_requests,
-            'cache_hit_rate': self.metrics.cache_hit_rate,
-            'avg_response_time': self.metrics.avg_response_time,
-            'connection_pool_size': self.metrics.connection_pool_size,
-            'active_connections': self.metrics.active_connections,
-            'cache_stats': cache_stats
+            "connection_state": self.connection_state.value,
+            "active_sessions": len(self.active_sessions),
+            "total_requests": self.metrics.total_requests,
+            "successful_requests": self.metrics.successful_requests,
+            "failed_requests": self.metrics.failed_requests,
+            "cache_hit_rate": self.metrics.cache_hit_rate,
+            "avg_response_time": self.metrics.avg_response_time,
+            "connection_pool_size": self.metrics.connection_pool_size,
+            "active_connections": self.metrics.active_connections,
+            "cache_stats": cache_stats,
         }
+
+    def _get_secure_api_key(self) -> Optional[str]:
+        """Securely get API key from environment without logging it"""
+        api_key = os.getenv("CLAUDE_API_KEY")
+
+        if api_key:
+            # Validate API key format without logging it
+            if len(api_key) < 10:
+                logger.error("API key appears to be invalid (too short)")
+                return None
+
+            # Don't log the actual key - just confirm it exists
+            logger.info("API key loaded from environment")
+            return api_key
+
+        # Check for alternative environment variables
+        alt_keys = ["ANTHROPIC_API_KEY", "CLAUDE_AI_KEY"]
+        for alt_key in alt_keys:
+            api_key = os.getenv(alt_key)
+            if api_key and len(api_key) >= 10:
+                logger.info(f"API key loaded from {alt_key} environment variable")
+                return api_key
+
+        return None

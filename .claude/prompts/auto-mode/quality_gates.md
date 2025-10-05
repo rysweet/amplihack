@@ -1,14 +1,17 @@
 # Auto-Mode Quality Gates
 
 ## Purpose
+
 Quality gates define the criteria and thresholds for auto-mode interventions, ensuring that suggestions and actions are valuable, timely, and appropriate.
 
 ## Gate Categories
 
 ### 1. Intervention Threshold Gates
+
 Determine when auto-mode should suggest interventions.
 
 #### Gate: Conversation Quality Drop
+
 ```yaml
 trigger_conditions:
   - quality_score < 0.6
@@ -27,6 +30,7 @@ intervention_actions:
 ```
 
 #### Gate: Goal Achievement Stagnation
+
 ```yaml
 trigger_conditions:
   - goal_progress < 0.3 for 10+ exchanges
@@ -45,9 +49,11 @@ intervention_actions:
 ```
 
 ### 2. Learning Opportunity Gates
+
 Identify when auto-mode should capture insights or preferences.
 
 #### Gate: Pattern Recognition
+
 ```yaml
 trigger_conditions:
   - pattern_occurrence_count >= 3
@@ -66,6 +72,7 @@ learning_actions:
 ```
 
 #### Gate: Optimization Opportunity
+
 ```yaml
 trigger_conditions:
   - efficiency_improvement_potential >= 0.3
@@ -84,9 +91,11 @@ optimization_actions:
 ```
 
 ### 3. Safety and Privacy Gates
+
 Ensure auto-mode operations respect boundaries and maintain security.
 
 #### Gate: Privacy Protection
+
 ```yaml
 trigger_conditions:
   - sensitive_data_detected in conversation
@@ -105,6 +114,7 @@ protection_actions:
 ```
 
 #### Gate: User Autonomy Respect
+
 ```yaml
 trigger_conditions:
   - user_expressed_preference against automation
@@ -123,9 +133,11 @@ respect_actions:
 ```
 
 ### 4. Technical Quality Gates
+
 Ensure technical accuracy and appropriateness of suggestions.
 
 #### Gate: Solution Accuracy
+
 ```yaml
 trigger_conditions:
   - technical_solution_confidence < 0.8
@@ -144,6 +156,7 @@ quality_actions:
 ```
 
 #### Gate: Tool Appropriateness
+
 ```yaml
 trigger_conditions:
   - tool_suggestion_confidence < 0.7
@@ -164,6 +177,7 @@ appropriateness_actions:
 ## Gate Evaluation Process
 
 ### 1. Continuous Monitoring
+
 ```python
 # Pseudo-code for gate evaluation
 def evaluate_quality_gates(conversation_state, analysis_results):
@@ -185,7 +199,9 @@ def evaluate_quality_gates(conversation_state, analysis_results):
 ```
 
 ### 2. Action Prioritization
+
 Priority levels for conflicting gate actions:
+
 1. **Safety/Privacy**: Always highest priority
 2. **User Autonomy**: High priority, respect user preferences
 3. **Quality Issues**: Medium-high priority for conversation health
@@ -193,7 +209,9 @@ Priority levels for conflicting gate actions:
 5. **Learning**: Low-medium priority for future improvements
 
 ### 3. Threshold Calibration
+
 Thresholds are dynamically adjusted based on:
+
 - User feedback on intervention quality
 - Success rates of previous suggestions
 - Context-specific factors (task complexity, user expertise)
@@ -202,10 +220,11 @@ Thresholds are dynamically adjusted based on:
 ## Gate Configuration
 
 ### User-Customizable Parameters
+
 ```yaml
 user_preferences:
   intervention_frequency: "minimal|balanced|active"
-  suggestion_confidence_threshold: 0.7  # 0.0-1.0
+  suggestion_confidence_threshold: 0.7 # 0.0-1.0
   privacy_protection_level: "strict|balanced|permissive"
   learning_rate: "slow|normal|aggressive"
 
@@ -216,7 +235,9 @@ user_preferences:
 ```
 
 ### Adaptive Learning
+
 Gates learn and improve through:
+
 - User acceptance/rejection of suggestions
 - Outcome effectiveness measurement
 - Conversation quality improvements
@@ -225,12 +246,14 @@ Gates learn and improve through:
 ## Monitoring and Analytics
 
 ### Gate Performance Metrics
+
 - **Trigger Accuracy**: How often triggered gates lead to valuable interventions
 - **User Acceptance Rate**: Percentage of suggestions accepted by users
 - **Quality Improvement**: Measurable conversation quality gains
 - **False Positive Rate**: Inappropriate interventions triggered
 
 ### Continuous Improvement
+
 - Weekly threshold optimization based on performance data
 - Monthly gate effectiveness reviews
 - Quarterly user satisfaction assessments

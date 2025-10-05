@@ -7,53 +7,41 @@ prompt coordination, state integration, and error handling.
 
 import asyncio
 import json
-import pytest
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
-from typing import Dict, Any
+from unittest.mock import patch
+
+import pytest
 
 from src.amplihack.sdk import (
     SDKSessionManager,
     SessionConfig,
-    SessionState,
-    ConversationMessage,
-    SessionRecoveryError,
-    AuthenticationError
 )
 from src.amplihack.sdk.analysis_engine import (
-    ConversationAnalysisEngine,
     AnalysisConfig,
-    AnalysisType,
     AnalysisResult,
-    SDKConnectionError,
-    AnalysisError
+    AnalysisType,
+    ConversationAnalysisEngine,
+)
+from src.amplihack.sdk.error_handling import (
+    CircuitBreaker,
+    ErrorHandlingManager,
+    RetryConfig,
+    SecurityViolationError,
+    with_retry,
 )
 from src.amplihack.sdk.prompt_coordinator import (
+    PromptContext,
     PromptCoordinator,
     PromptTemplate,
     PromptType,
-    PromptContext,
-    TemplateRenderError,
-    PromptValidationError
+    PromptValidationError,
 )
 from src.amplihack.sdk.state_integration import (
-    AutoModeOrchestrator,
     AutoModeConfig,
+    AutoModeOrchestrator,
     AutoModeState,
-    StateSnapshot,
-    ProgressMilestone
-)
-from src.amplihack.sdk.error_handling import (
-    ErrorHandlingManager,
-    CircuitBreaker,
-    RetryConfig,
-    ErrorSeverity,
-    RecoveryStrategy,
-    SecurityValidator,
-    SecurityViolationError,
-    with_retry
 )
 
 
@@ -64,10 +52,7 @@ class TestSDKSessionManager:
     async def session_manager(self):
         """Create test session manager"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            config = SessionConfig(
-                persistence_dir=temp_dir,
-                enable_persistence=True
-            )
+            config = SessionConfig(persistence_dir=temp_dir, enable_persistence=True)
             manager = SDKSessionManager(config)
             yield manager
             # Cleanup
@@ -113,10 +98,7 @@ class TestSDKSessionManager:
 
         # Add message
         message_id = await session_manager.add_conversation_message(
-            session_id,
-            role="user",
-            content="Test message",
-            message_type="test"
+            session_id, role="user", content="Test message", message_type="test"
         )
 
         assert message_id is not None
@@ -162,7 +144,7 @@ class TestConversationAnalysisEngine:
             session_id="test_session",
             claude_output=claude_output,
             user_objective=user_objective,
-            analysis_type=AnalysisType.PROGRESS_EVALUATION
+            analysis_type=AnalysisType.PROGRESS_EVALUATION,
         )
 
         assert isinstance(result, AnalysisResult)
@@ -180,7 +162,7 @@ class TestConversationAnalysisEngine:
             session_id="test_session",
             claude_output=claude_output,
             user_objective=user_objective,
-            analysis_type=AnalysisType.NEXT_PROMPT_GENERATION
+            analysis_type=AnalysisType.NEXT_PROMPT_GENERATION,
         )
 
         assert result.next_prompt is not None
@@ -199,7 +181,7 @@ class TestConversationAnalysisEngine:
                 claude_output="Output 1",
                 user_objective="Objective 1",
                 context={},
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             ),
             AnalysisRequest(
                 id="2",
@@ -208,8 +190,8 @@ class TestConversationAnalysisEngine:
                 claude_output="Output 2",
                 user_objective="Objective 2",
                 context={},
-                timestamp=datetime.now()
-            )
+                timestamp=datetime.now(),
+            ),
         ]
 
         results = await analysis_engine.batch_analyze(requests)
@@ -249,7 +231,7 @@ class TestPromptCoordinator:
             previous_outputs=[],
             analysis_results=[],
             workflow_state={},
-            custom_variables={}
+            custom_variables={},
         )
 
     def test_default_templates_loaded(self, prompt_coordinator):
@@ -265,10 +247,7 @@ class TestPromptCoordinator:
 
     def test_render_objective_clarification(self, prompt_coordinator, sample_context):
         """Test rendering objective clarification prompt"""
-        rendered = prompt_coordinator.render_prompt(
-            "objective_clarification",
-            sample_context
-        )
+        rendered = prompt_coordinator.render_prompt("objective_clarification", sample_context)
 
         assert rendered.validation_status == "valid"
         assert sample_context.user_objective in rendered.content
@@ -279,9 +258,7 @@ class TestPromptCoordinator:
         custom_vars = {"special_note": "This is important"}
 
         rendered = prompt_coordinator.render_prompt(
-            "objective_clarification",
-            sample_context,
-            custom_variables=custom_vars
+            "objective_clarification", sample_context, custom_variables=custom_vars
         )
 
         assert rendered.validation_status == "valid"
@@ -297,7 +274,7 @@ class TestPromptCoordinator:
             required_variables=["undefined_variable"],
             optional_variables=[],
             description="Test template with missing vars",
-            metadata={}
+            metadata={},
         )
 
         prompt_coordinator.register_template(bad_template)
@@ -311,7 +288,7 @@ class TestPromptCoordinator:
             previous_outputs=[],
             analysis_results=[],
             workflow_state={},
-            custom_variables={}
+            custom_variables={},
         )
 
         with pytest.raises(PromptValidationError):
@@ -319,7 +296,7 @@ class TestPromptCoordinator:
 
     def test_template_export_import(self, prompt_coordinator):
         """Test template export and import functionality"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             template_file = f.name
 
         try:
@@ -328,7 +305,7 @@ class TestPromptCoordinator:
 
             # Verify file exists and has content
             assert Path(template_file).exists()
-            with open(template_file, 'r') as f:
+            with open(template_file, "r") as f:
                 data = json.load(f)
                 assert data["id"] == "objective_clarification"
 
@@ -349,10 +326,7 @@ class TestAutoModeOrchestrator:
     @pytest.fixture
     async def orchestrator(self):
         """Create test orchestrator"""
-        config = AutoModeConfig(
-            max_iterations=10,
-            persistence_enabled=False
-        )
+        config = AutoModeConfig(max_iterations=10, persistence_enabled=False)
         orchestrator = AutoModeOrchestrator(config)
         yield orchestrator
         await orchestrator.stop_auto_mode()
@@ -361,8 +335,7 @@ class TestAutoModeOrchestrator:
     async def test_start_session(self, orchestrator):
         """Test starting auto-mode session"""
         session_id = await orchestrator.start_auto_mode_session(
-            "Build a simple calculator",
-            "/test/project"
+            "Build a simple calculator", "/test/project"
         )
 
         assert session_id is not None
@@ -372,10 +345,7 @@ class TestAutoModeOrchestrator:
     @pytest.mark.asyncio
     async def test_process_claude_output(self, orchestrator):
         """Test processing Claude Code output"""
-        await orchestrator.start_auto_mode_session(
-            "Build a calculator",
-            "/test/project"
-        )
+        await orchestrator.start_auto_mode_session("Build a calculator", "/test/project")
 
         result = await orchestrator.process_claude_output(
             "I have created a basic calculator with add and subtract functions."
@@ -416,7 +386,7 @@ class TestAutoModeOrchestrator:
         await orchestrator.start_auto_mode_session("Test", "/test")
 
         # Simulate high-confidence output that should trigger milestone
-        with patch.object(orchestrator.analysis_engine, 'analyze_conversation') as mock_analyze:
+        with patch.object(orchestrator.analysis_engine, "analyze_conversation") as mock_analyze:
             mock_analyze.return_value = AnalysisResult(
                 request_id="test",
                 session_id="test",
@@ -429,7 +399,7 @@ class TestAutoModeOrchestrator:
                 progress_indicators={},
                 ai_reasoning="Excellent work so far",
                 metadata={},
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
             await orchestrator.process_claude_output("Excellent progress made!")
@@ -451,9 +421,7 @@ class TestErrorHandlingManager:
         connection_error = ConnectionError("Network connection failed")
 
         result = await error_manager.handle_error(
-            connection_error,
-            {"operation": "test"},
-            "test_operation"
+            connection_error, {"operation": "test"}, "test_operation"
         )
 
         assert result["pattern_id"] == "sdk_connection"
@@ -539,9 +507,7 @@ class TestErrorHandlingManager:
 
         # Trigger error that uses fallback strategy
         result = await error_manager.handle_error(
-            ValueError("Test validation error"),
-            {"test": "context"},
-            "test_operation"
+            ValueError("Test validation error"), {"test": "context"}, "test_operation"
         )
 
         assert callback_called
@@ -555,17 +521,14 @@ class TestIntegrationScenarios:
     async def test_complete_auto_mode_workflow(self):
         """Test complete auto-mode workflow from start to finish"""
         config = AutoModeConfig(
-            max_iterations=5,
-            persistence_enabled=False,
-            auto_progression_enabled=True
+            max_iterations=5, persistence_enabled=False, auto_progression_enabled=True
         )
         orchestrator = AutoModeOrchestrator(config)
 
         try:
             # Start session
             session_id = await orchestrator.start_auto_mode_session(
-                "Create a simple Python calculator",
-                "/test/project"
+                "Create a simple Python calculator", "/test/project"
             )
 
             # Simulate several iterations of Claude output
@@ -574,7 +537,7 @@ class TestIntegrationScenarios:
                 "Here's the Calculator class with add and subtract methods.",
                 "I've added multiply and divide methods to the calculator.",
                 "Added error handling for division by zero.",
-                "The calculator is now complete with comprehensive tests."
+                "The calculator is now complete with comprehensive tests.",
             ]
 
             for i, output in enumerate(outputs):
@@ -604,7 +567,7 @@ class TestIntegrationScenarios:
             await orchestrator.start_auto_mode_session("Test", "/test")
 
             # Simulate error in processing
-            with patch.object(orchestrator.analysis_engine, 'analyze_conversation') as mock_analyze:
+            with patch.object(orchestrator.analysis_engine, "analyze_conversation") as mock_analyze:
                 mock_analyze.side_effect = ConnectionError("SDK connection failed")
 
                 # Should handle error gracefully
@@ -623,13 +586,10 @@ class TestIntegrationScenarios:
         orchestrator = AutoModeOrchestrator(AutoModeConfig(persistence_enabled=False))
 
         try:
-            await orchestrator.start_auto_mode_session(
-                "Build a web application",
-                "/test/project"
-            )
+            await orchestrator.start_auto_mode_session("Build a web application", "/test/project")
 
             # Mock analysis result that suggests clarification needed
-            with patch.object(orchestrator.analysis_engine, 'analyze_conversation') as mock_analyze:
+            with patch.object(orchestrator.analysis_engine, "analyze_conversation") as mock_analyze:
                 mock_analyze.return_value = AnalysisResult(
                     request_id="test",
                     session_id="test",
@@ -642,7 +602,7 @@ class TestIntegrationScenarios:
                     progress_indicators={},
                     ai_reasoning="Need clarification on requirements",
                     metadata={},
-                    timestamp=datetime.now()
+                    timestamp=datetime.now(),
                 )
 
                 result = await orchestrator.process_claude_output(

@@ -8,20 +8,15 @@ Tests session lifecycle, persistence, and state management including:
 - Storage operations and recovery
 """
 
+import json
+import tempfile
+import time
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import pytest_asyncio
-import asyncio
-import time
-import tempfile
-import json
-from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
 
-from amplihack.auto_mode.session import (
-    SessionManager,
-    SessionState,
-    SessionStorage
-)
+from amplihack.auto_mode.session import SessionManager, SessionState, SessionStorage
 
 
 class TestSessionState:
@@ -29,10 +24,7 @@ class TestSessionState:
 
     def test_session_state_creation(self):
         """Test creating new session state"""
-        session_state = SessionState(
-            session_id="test_session",
-            user_id="test_user"
-        )
+        session_state = SessionState(session_id="test_session", user_id="test_user")
 
         assert session_state.session_id == "test_session"
         assert session_state.user_id == "test_user"
@@ -46,12 +38,12 @@ class TestSessionState:
             session_id="test_session",
             user_id="test_user",
             analysis_cycles=5,
-            current_quality_score=0.8
+            current_quality_score=0.8,
         )
 
         # Add some mock analysis history
-        from amplihack.auto_mode.orchestrator import AnalysisCycleResult
         from amplihack.auto_mode.analysis import ConversationAnalysis
+        from amplihack.auto_mode.orchestrator import AnalysisCycleResult
 
         mock_result = AnalysisCycleResult(
             cycle_id="cycle_1",
@@ -59,34 +51,34 @@ class TestSessionState:
             timestamp=time.time(),
             analysis=ConversationAnalysis(quality_score=0.8),
             quality_gates=[],
-            interventions_suggested=[]
+            interventions_suggested=[],
         )
         session_state.analysis_history.append(mock_result)
 
         data = session_state.to_dict()
 
-        assert data['session_id'] == "test_session"
-        assert data['user_id'] == "test_user"
-        assert data['analysis_cycles'] == 5
-        assert data['current_quality_score'] == 0.8
-        assert len(data['analysis_history']) == 1
-        assert data['analysis_history'][0]['cycle_id'] == "cycle_1"
+        assert data["session_id"] == "test_session"
+        assert data["user_id"] == "test_user"
+        assert data["analysis_cycles"] == 5
+        assert data["current_quality_score"] == 0.8
+        assert len(data["analysis_history"]) == 1
+        assert data["analysis_history"][0]["cycle_id"] == "cycle_1"
 
     def test_session_state_deserialization(self):
         """Test session state from_dict conversion"""
         data = {
-            'session_id': "test_session",
-            'user_id': "test_user",
-            'created_at': time.time(),
-            'analysis_cycles': 3,
-            'current_quality_score': 0.7,
-            'conversation_history': [],
-            'analysis_history': [],
-            'total_interventions': 1,
-            'user_preferences': {},
-            'learned_patterns': [],
-            'sensitive_data_flags': [],
-            'permission_grants': {}
+            "session_id": "test_session",
+            "user_id": "test_user",
+            "created_at": time.time(),
+            "analysis_cycles": 3,
+            "current_quality_score": 0.7,
+            "conversation_history": [],
+            "analysis_history": [],
+            "total_interventions": 1,
+            "user_preferences": {},
+            "learned_patterns": [],
+            "sensitive_data_flags": [],
+            "permission_grants": {},
         }
 
         session_state = SessionState.from_dict(data)
@@ -118,7 +110,7 @@ class TestSessionStorage:
             session_id="test_session",
             user_id="test_user",
             analysis_cycles=2,
-            current_quality_score=0.75
+            current_quality_score=0.75,
         )
 
         success = await session_storage.save_session(session_state)
@@ -130,12 +122,12 @@ class TestSessionStorage:
         assert session_file.exists()
 
         # Verify content
-        with open(session_file, 'r') as f:
+        with open(session_file, "r") as f:
             saved_data = json.load(f)
 
-        assert saved_data['session_id'] == "test_session"
-        assert saved_data['user_id'] == "test_user"
-        assert saved_data['analysis_cycles'] == 2
+        assert saved_data["session_id"] == "test_session"
+        assert saved_data["user_id"] == "test_user"
+        assert saved_data["analysis_cycles"] == 2
 
     @pytest.mark.asyncio
     async def test_load_session_success(self, session_storage):
@@ -145,7 +137,7 @@ class TestSessionStorage:
             session_id="test_session",
             user_id="test_user",
             analysis_cycles=3,
-            current_quality_score=0.8
+            current_quality_score=0.8,
         )
 
         await session_storage.save_session(original_session)
@@ -225,27 +217,23 @@ class TestSessionStorage:
             user_id="test_user",
             analysis_cycles=5,
             current_quality_score=0.85,
-            total_interventions=3
+            total_interventions=3,
         )
 
         # Add conversation history
-        original_session.conversation_history.append({
-            'timestamp': time.time(),
-            'update': {'new_message': 'test message'}
-        })
+        original_session.conversation_history.append(
+            {"timestamp": time.time(), "update": {"new_message": "test message"}}
+        )
 
         # Add user preferences
-        original_session.user_preferences.update({
-            'communication_style': 'technical',
-            'detail_level': 'high'
-        })
+        original_session.user_preferences.update(
+            {"communication_style": "technical", "detail_level": "high"}
+        )
 
         # Add learned patterns
-        original_session.learned_patterns.append({
-            'pattern_type': 'systematic_approach',
-            'confidence': 0.9,
-            'learned_at': time.time()
-        })
+        original_session.learned_patterns.append(
+            {"pattern_type": "systematic_approach", "confidence": 0.9, "learned_at": time.time()}
+        )
 
         # Save and load
         await session_storage.save_session(original_session)
@@ -258,7 +246,7 @@ class TestSessionStorage:
         assert loaded_session.current_quality_score == original_session.current_quality_score
         assert loaded_session.total_interventions == original_session.total_interventions
         assert len(loaded_session.conversation_history) == 1
-        assert loaded_session.user_preferences['communication_style'] == 'technical'
+        assert loaded_session.user_preferences["communication_style"] == "technical"
         assert len(loaded_session.learned_patterns) == 1
 
 
@@ -303,9 +291,7 @@ class TestSessionManager:
         user_id = "test_user"
         initial_context = {"messages": [], "goals": []}
 
-        session_state = await session_manager.create_session(
-            session_id, user_id, initial_context
-        )
+        session_state = await session_manager.create_session(session_id, user_id, initial_context)
 
         assert session_state.session_id == session_id
         assert session_state.user_id == user_id
@@ -338,7 +324,9 @@ class TestSessionManager:
         assert len(session_manager.active_sessions) == 2
 
         # Create third session - should clean up oldest
-        with patch.object(session_manager, 'close_session', new_callable=AsyncMock, return_value=True) as mock_close:
+        with patch.object(
+            session_manager, "close_session", new_callable=AsyncMock, return_value=True
+        ) as mock_close:
             session3 = await session_manager.create_session("session3", user_id, {})
 
             # Should have closed oldest session
@@ -393,15 +381,12 @@ class TestSessionManager:
         # Create session
         session_state = await session_manager.create_session(session_id, user_id, {})
 
-        conversation_update = {
-            'new_message': 'Hello world',
-            'timestamp': time.time()
-        }
+        conversation_update = {"new_message": "Hello world", "timestamp": time.time()}
 
         success = await session_manager.update_conversation(session_state, conversation_update)
 
         assert success is True
-        assert 'new_message' in session_state.conversation_context
+        assert "new_message" in session_state.conversation_context
         assert len(session_state.conversation_history) == 1
 
     @pytest.mark.asyncio
@@ -413,16 +398,13 @@ class TestSessionManager:
         # Create session
         session_state = await session_manager.create_session(session_id, user_id, {})
 
-        preferences = {
-            'communication_style': 'casual',
-            'detail_level': 'medium'
-        }
+        preferences = {"communication_style": "casual", "detail_level": "medium"}
 
         success = await session_manager.update_user_preferences(session_state, preferences)
 
         assert success is True
-        assert session_state.user_preferences['communication_style'] == 'casual'
-        assert session_state.user_preferences['detail_level'] == 'medium'
+        assert session_state.user_preferences["communication_style"] == "casual"
+        assert session_state.user_preferences["detail_level"] == "medium"
 
     @pytest.mark.asyncio
     async def test_add_learned_pattern_success(self, session_manager):
@@ -434,17 +416,17 @@ class TestSessionManager:
         session_state = await session_manager.create_session(session_id, user_id, {})
 
         pattern = {
-            'pattern_type': 'prefers_examples',
-            'confidence': 0.8,
-            'evidence': 'User frequently asks for examples'
+            "pattern_type": "prefers_examples",
+            "confidence": 0.8,
+            "evidence": "User frequently asks for examples",
         }
 
         success = await session_manager.add_learned_pattern(session_state, pattern)
 
         assert success is True
         assert len(session_state.learned_patterns) == 1
-        assert session_state.learned_patterns[0]['pattern_type'] == 'prefers_examples'
-        assert 'learned_at' in session_state.learned_patterns[0]
+        assert session_state.learned_patterns[0]["pattern_type"] == "prefers_examples"
+        assert "learned_at" in session_state.learned_patterns[0]
 
     @pytest.mark.asyncio
     async def test_close_session_success(self, session_manager):
@@ -509,7 +491,9 @@ class TestSessionManager:
         session_state = await manager.create_session("test_session", "test_user", {})
 
         # Mock storage save
-        with patch.object(manager.storage, 'save_session', new_callable=AsyncMock, return_value=True) as mock_save:
+        with patch.object(
+            manager.storage, "save_session", new_callable=AsyncMock, return_value=True
+        ) as mock_save:
             await manager.shutdown()
 
             # Should save all active sessions

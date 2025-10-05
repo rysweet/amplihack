@@ -8,12 +8,12 @@ Tests the `amplihack auto` command functionality including:
 - Interactive mode functionality
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
-from amplihack.commands.auto_mode_cli import AutoModeCLI, auto_command_handler
+import pytest
+
 from amplihack.auto_mode.command_handler import CommandResult
+from amplihack.commands.auto_mode_cli import AutoModeCLI, auto_command_handler
 
 
 class TestAutoModeCLI:
@@ -34,7 +34,7 @@ class TestAutoModeCLI:
         auto_parser = auto_cli.create_auto_parser(subparsers)
 
         assert auto_parser is not None
-        assert auto_parser.prog.endswith('auto')
+        assert auto_parser.prog.endswith("auto")
 
     @pytest.mark.asyncio
     async def test_handle_auto_command_start(self, auto_cli):
@@ -50,10 +50,10 @@ class TestAutoModeCLI:
         mock_result = CommandResult(
             success=True,
             message="Auto-mode started",
-            data={"session_id": "test_session", "config": "default", "status": "active"}
+            data={"session_id": "test_session", "config": "default", "status": "active"},
         )
 
-        with patch.object(auto_cli, 'command_handler', create=True) as mock_handler:
+        with patch.object(auto_cli, "command_handler", create=True) as mock_handler:
             mock_handler.handle_command = AsyncMock(return_value=mock_result)
 
             result_code = await auto_cli.handle_auto_command(args)
@@ -78,11 +78,11 @@ class TestAutoModeCLI:
                 "status": "active",
                 "active_sessions": 1,
                 "total_sessions": 1,
-                "sdk_connection": "connected"
-            }
+                "sdk_connection": "connected",
+            },
         )
 
-        with patch.object(auto_cli, 'command_handler', create=True) as mock_handler:
+        with patch.object(auto_cli, "command_handler", create=True) as mock_handler:
             mock_handler.handle_command = AsyncMock(return_value=mock_result)
 
             result_code = await auto_cli.handle_auto_command(args)
@@ -98,12 +98,10 @@ class TestAutoModeCLI:
         args.auto_action = "start"
 
         mock_result = CommandResult(
-            success=False,
-            message="Failed to start auto-mode",
-            error_code="initialization_failed"
+            success=False, message="Failed to start auto-mode", error_code="initialization_failed"
         )
 
-        with patch.object(auto_cli, 'command_handler', create=True) as mock_handler:
+        with patch.object(auto_cli, "command_handler", create=True) as mock_handler:
             mock_handler.handle_command = AsyncMock(return_value=mock_result)
 
             result_code = await auto_cli.handle_auto_command(args)
@@ -132,10 +130,10 @@ class TestAutoModeCLI:
         result = CommandResult(
             success=True,
             message="Command successful",
-            data={"session_id": "test_session", "config": "default", "status": "active"}
+            data={"session_id": "test_session", "config": "default", "status": "active"},
         )
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             exit_code = auto_cli._handle_command_result(result, args)
 
             assert exit_code == 0
@@ -150,12 +148,10 @@ class TestAutoModeCLI:
         args.json = True
 
         result = CommandResult(
-            success=True,
-            message="Status retrieved",
-            data={"status": "active", "sessions": 1}
+            success=True, message="Status retrieved", data={"status": "active", "sessions": 1}
         )
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             exit_code = auto_cli._handle_command_result(result, args)
 
             assert exit_code == 0
@@ -174,10 +170,10 @@ class TestAutoModeCLI:
             "interventions": 10,
             "average_quality": 0.85,
             "uptime": "300s",
-            "sdk_connection": "connected"
+            "sdk_connection": "connected",
         }
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             auto_cli._print_status_info(status_data)
 
             mock_print.assert_called()
@@ -192,10 +188,10 @@ class TestAutoModeCLI:
             "analysis_frequency": "adaptive",
             "intervention_threshold": 0.7,
             "background_mode": True,
-            "learning_mode": True
+            "learning_mode": True,
         }
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             auto_cli._print_configuration(config_data)
 
             mock_print.assert_called()
@@ -209,6 +205,7 @@ class TestCommandParsing:
     def test_parse_start_command(self):
         """Test parsing start command arguments"""
         import argparse
+
         from amplihack.commands.auto_mode_cli import AutoModeCLI
 
         auto_cli = AutoModeCLI()
@@ -216,7 +213,9 @@ class TestCommandParsing:
         subparsers = parser.add_subparsers(dest="command")
         auto_cli.create_auto_parser(subparsers)
 
-        args = parser.parse_args(["auto", "start", "--config", "learning_mode", "--user-id", "test_user"])
+        args = parser.parse_args(
+            ["auto", "start", "--config", "learning_mode", "--user-id", "test_user"]
+        )
 
         assert args.command == "auto"
         assert args.auto_action == "start"
@@ -226,6 +225,7 @@ class TestCommandParsing:
     def test_parse_status_command(self):
         """Test parsing status command arguments"""
         import argparse
+
         from amplihack.commands.auto_mode_cli import AutoModeCLI
 
         auto_cli = AutoModeCLI()
@@ -243,6 +243,7 @@ class TestCommandParsing:
     def test_parse_configure_command(self):
         """Test parsing configure command arguments"""
         import argparse
+
         from amplihack.commands.auto_mode_cli import AutoModeCLI
 
         auto_cli = AutoModeCLI()
@@ -260,6 +261,7 @@ class TestCommandParsing:
     def test_parse_analyze_command(self):
         """Test parsing analyze command arguments"""
         import argparse
+
         from amplihack.commands.auto_mode_cli import AutoModeCLI
 
         auto_cli = AutoModeCLI()
@@ -286,7 +288,7 @@ class TestCommandHandlerIntegration:
         args = argparse.Namespace()
         args.auto_action = "status"
 
-        with patch('amplihack.commands.auto_mode_cli.AutoModeCLI') as mock_cli_class:
+        with patch("amplihack.commands.auto_mode_cli.AutoModeCLI") as mock_cli_class:
             mock_cli = Mock()
             mock_cli_class.return_value = mock_cli
             mock_cli.handle_auto_command = AsyncMock(return_value=0)
@@ -304,7 +306,7 @@ class TestCommandHandlerIntegration:
         args = argparse.Namespace()
         # No auto_action attribute
 
-        with patch('amplihack.commands.auto_mode_cli.AutoModeCLI') as mock_cli_class:
+        with patch("amplihack.commands.auto_mode_cli.AutoModeCLI") as mock_cli_class:
             mock_cli = Mock()
             mock_cli_class.return_value = mock_cli
             mock_cli.run_interactive_mode = AsyncMock(return_value=0)
@@ -323,7 +325,7 @@ class TestInteractiveMode:
         """Test interactive mode help command"""
         auto_cli = AutoModeCLI()
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             auto_cli._print_interactive_help()
 
             mock_print.assert_called()
@@ -342,9 +344,11 @@ class TestCLIIntegrationMocks:
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
 
-        with patch('amplihack.commands.auto_mode_cli.AutoModeCLI', side_effect=ImportError("No auto-mode")):
+        with patch(
+            "amplihack.commands.auto_mode_cli.AutoModeCLI", side_effect=ImportError("No auto-mode")
+        ):
             # Should not raise error, should create placeholder parser
-            from amplihack.cli import create_parser
+            pass
 
             # The create_parser function should handle the import error gracefully
             # and create a placeholder auto command
@@ -374,7 +378,7 @@ class TestCLIIntegrationMocks:
         auto_cli = AutoModeCLI()
 
         # Mock command handler to raise exception
-        with patch.object(auto_cli, 'command_handler', create=True) as mock_handler:
+        with patch.object(auto_cli, "command_handler", create=True) as mock_handler:
             mock_handler.handle_command = AsyncMock(side_effect=Exception("Test error"))
 
             result_code = await auto_cli.handle_auto_command(args)

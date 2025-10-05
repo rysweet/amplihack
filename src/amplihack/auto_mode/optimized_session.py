@@ -6,23 +6,21 @@ and efficient persistence while preserving all auto-mode requirements.
 """
 
 import asyncio
+import gzip
+import hashlib
 import json
 import time
-import os
-import hashlib
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field, asdict
-from pathlib import Path
 from collections import defaultdict
-import weakref
 from concurrent.futures import ThreadPoolExecutor
-import pickle
-import gzip
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class OptimizedSessionState:
     """Optimized session state with performance enhancements"""
+
     session_id: str
     user_id: str
     created_at: float = field(default_factory=time.time)
@@ -72,35 +70,37 @@ class OptimizedSessionState:
 
         # Optimize analysis_history for serialization
         if self.analysis_history:
-            state_dict['analysis_history'] = [
+            state_dict["analysis_history"] = [
                 {
-                    'cycle_id': getattr(result, 'cycle_id', ''),
-                    'timestamp': getattr(result, 'timestamp', time.time()),
-                    'quality_score': getattr(result.analysis, 'quality_score', 0.0) if hasattr(result, 'analysis') else 0.0,
-                    'interventions_count': len(getattr(result, 'interventions_suggested', []))
+                    "cycle_id": getattr(result, "cycle_id", ""),
+                    "timestamp": getattr(result, "timestamp", time.time()),
+                    "quality_score": getattr(result.analysis, "quality_score", 0.0)
+                    if hasattr(result, "analysis")
+                    else 0.0,
+                    "interventions_count": len(getattr(result, "interventions_suggested", [])),
                 }
                 for result in self.analysis_history[-10:]  # Keep only last 10 for performance
             ]
         else:
-            state_dict['analysis_history'] = []
+            state_dict["analysis_history"] = []
 
         # Remove performance-related fields
-        state_dict.pop('_dirty', None)
-        state_dict.pop('_last_serialized', None)
-        state_dict.pop('_memory_usage', None)
+        state_dict.pop("_dirty", None)
+        state_dict.pop("_last_serialized", None)
+        state_dict.pop("_memory_usage", None)
 
         return state_dict
 
     @classmethod
-    def from_dict_optimized(cls, data: Dict[str, Any]) -> 'OptimizedSessionState':
+    def from_dict_optimized(cls, data: Dict[str, Any]) -> "OptimizedSessionState":
         """Optimized deserialization from persistence"""
         # Remove analysis_history for separate handling
-        analysis_history_data = data.pop('analysis_history', [])
+        analysis_history_data = data.pop("analysis_history", [])
 
         # Remove performance fields if present
-        data.pop('_dirty', None)
-        data.pop('_last_serialized', None)
-        data.pop('_memory_usage', None)
+        data.pop("_dirty", None)
+        data.pop("_last_serialized", None)
+        data.pop("_memory_usage", None)
 
         session = cls(**data)
 
@@ -126,7 +126,7 @@ class OptimizedSessionStorage:
             self.storage_dir = Path(storage_dir)
         else:
             home = Path.home()
-            self.storage_dir = home / '.amplihack' / 'auto-mode' / 'sessions'
+            self.storage_dir = home / ".amplihack" / "auto-mode" / "sessions"
 
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.enable_compression = enable_compression
@@ -164,10 +164,7 @@ class OptimizedSessionStorage:
 
                 # Write batch if we have data and enough time has passed
                 current_time = time.time()
-                if write_batch and (
-                    len(write_batch) >= 10 or
-                    current_time - last_write >= 5.0
-                ):
+                if write_batch and (len(write_batch) >= 10 or current_time - last_write >= 5.0):
                     await self._flush_write_batch(write_batch)
                     write_batch.clear()
                     last_write = current_time
@@ -185,11 +182,7 @@ class OptimizedSessionStorage:
         try:
             # Use thread pool for I/O operations
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                self._thread_pool,
-                self._write_batch_sync,
-                batch
-            )
+            await loop.run_in_executor(self._thread_pool, self._write_batch_sync, batch)
         except Exception as e:
             print(f"Error flushing write batch: {e}")
 
@@ -202,16 +195,16 @@ class OptimizedSessionStorage:
                 # Prepare data for writing
                 if self.enable_compression:
                     serialized = gzip.compress(
-                        json.dumps(session_data, separators=(',', ':')).encode('utf-8')
+                        json.dumps(session_data, separators=(",", ":")).encode("utf-8")
                     )
-                    file_suffix = '.json.gz'
+                    file_suffix = ".json.gz"
                 else:
-                    serialized = json.dumps(session_data, indent=2).encode('utf-8')
-                    file_suffix = '.json'
+                    serialized = json.dumps(session_data, indent=2).encode("utf-8")
+                    file_suffix = ".json"
 
                 # Write atomically using temporary file
-                temp_file = session_file.with_suffix(f'{file_suffix}.tmp')
-                with open(temp_file, 'wb') as f:
+                temp_file = session_file.with_suffix(f"{file_suffix}.tmp")
+                with open(temp_file, "wb") as f:
                     f.write(serialized)
 
                 # Atomic move
@@ -266,9 +259,7 @@ class OptimizedSessionStorage:
 
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(
-                self._thread_pool,
-                self._write_batch_sync,
-                {session_state.session_id: session_data}
+                self._thread_pool, self._write_batch_sync, {session_state.session_id: session_data}
             )
 
             session_state.mark_clean()
@@ -296,9 +287,7 @@ class OptimizedSessionStorage:
             # Load from disk using thread pool
             loop = asyncio.get_event_loop()
             session_data = await loop.run_in_executor(
-                self._thread_pool,
-                self._load_session_sync,
-                session_id
+                self._thread_pool, self._load_session_sync, session_id
             )
 
             if session_data:
@@ -316,17 +305,17 @@ class OptimizedSessionStorage:
             session_file = self._get_session_file(session_id)
 
             # Try compressed file first
-            compressed_file = session_file.with_suffix('.json.gz')
+            compressed_file = session_file.with_suffix(".json.gz")
             if compressed_file.exists():
-                with open(compressed_file, 'rb') as f:
+                with open(compressed_file, "rb") as f:
                     compressed_data = f.read()
-                    json_data = gzip.decompress(compressed_data).decode('utf-8')
+                    json_data = gzip.decompress(compressed_data).decode("utf-8")
                     session_data = json.loads(json_data)
             else:
                 # Try uncompressed file
-                uncompressed_file = session_file.with_suffix('.json')
+                uncompressed_file = session_file.with_suffix(".json")
                 if uncompressed_file.exists():
-                    with open(uncompressed_file, 'r') as f:
+                    with open(uncompressed_file, "r") as f:
                         session_data = json.load(f)
                 else:
                     return None
@@ -350,11 +339,7 @@ class OptimizedSessionStorage:
 
             # Delete files using thread pool
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                self._thread_pool,
-                self._delete_session_sync,
-                session_id
-            )
+            await loop.run_in_executor(self._thread_pool, self._delete_session_sync, session_id)
 
             return True
 
@@ -367,7 +352,7 @@ class OptimizedSessionStorage:
         session_file = self._get_session_file(session_id)
 
         # Delete both compressed and uncompressed versions
-        for suffix in ['.json.gz', '.json']:
+        for suffix in [".json.gz", ".json"]:
             file_path = session_file.with_suffix(suffix)
             if file_path.exists():
                 file_path.unlink()
@@ -377,9 +362,7 @@ class OptimizedSessionStorage:
         try:
             loop = asyncio.get_event_loop()
             sessions = await loop.run_in_executor(
-                self._thread_pool,
-                self._list_sessions_sync,
-                user_id
+                self._thread_pool, self._list_sessions_sync, user_id
             )
             return sessions
 
@@ -400,28 +383,30 @@ class OptimizedSessionStorage:
                 for session_file in shard_dir.glob("session_*.json*"):
                     try:
                         # Load session metadata only
-                        if session_file.suffix == '.gz':
-                            with open(session_file, 'rb') as f:
+                        if session_file.suffix == ".gz":
+                            with open(session_file, "rb") as f:
                                 compressed_data = f.read()
-                                json_data = gzip.decompress(compressed_data).decode('utf-8')
+                                json_data = gzip.decompress(compressed_data).decode("utf-8")
                                 session_data = json.loads(json_data)
                         else:
-                            with open(session_file, 'r') as f:
+                            with open(session_file, "r") as f:
                                 session_data = json.load(f)
 
                         # Filter by user_id if specified
-                        if user_id and session_data.get('user_id') != user_id:
+                        if user_id and session_data.get("user_id") != user_id:
                             continue
 
                         # Return metadata only
-                        sessions.append({
-                            'session_id': session_data['session_id'],
-                            'user_id': session_data['user_id'],
-                            'created_at': session_data['created_at'],
-                            'last_updated': session_data['last_updated'],
-                            'analysis_cycles': session_data['analysis_cycles'],
-                            'current_quality_score': session_data['current_quality_score']
-                        })
+                        sessions.append(
+                            {
+                                "session_id": session_data["session_id"],
+                                "user_id": session_data["user_id"],
+                                "created_at": session_data["created_at"],
+                                "last_updated": session_data["last_updated"],
+                                "analysis_cycles": session_data["analysis_cycles"],
+                                "current_quality_score": session_data["current_quality_score"],
+                            }
+                        )
 
                     except Exception as e:
                         print(f"Failed to read session file {session_file}: {e}")
@@ -473,10 +458,10 @@ class OptimizedSessionManager:
         # Optimized cleanup task
         self._cleanup_task: Optional[asyncio.Task] = None
         self._stats = {
-            'cache_hits': 0,
-            'cache_misses': 0,
-            'total_sessions_created': 0,
-            'total_sessions_cleaned': 0
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "total_sessions_created": 0,
+            "total_sessions_cleaned": 0,
         }
 
     async def initialize(self):
@@ -484,8 +469,9 @@ class OptimizedSessionManager:
         # Start optimized cleanup task
         self._cleanup_task = asyncio.create_task(self._optimized_cleanup_loop())
 
-    async def create_session_optimized(self, session_id: str, user_id: str,
-                                     initial_context: Dict[str, Any]) -> OptimizedSessionState:
+    async def create_session_optimized(
+        self, session_id: str, user_id: str, initial_context: Dict[str, Any]
+    ) -> OptimizedSessionState:
         """
         Create optimized session with performance enhancements.
 
@@ -501,16 +487,13 @@ class OptimizedSessionManager:
         if len(user_session_ids) >= self.max_sessions_per_user:
             # Clean up oldest session using index
             oldest_session_id = min(
-                user_session_ids,
-                key=lambda sid: self.active_sessions[sid].last_updated
+                user_session_ids, key=lambda sid: self.active_sessions[sid].last_updated
             )
             await self.close_session_optimized(oldest_session_id)
 
         # Create optimized session state
         session_state = OptimizedSessionState(
-            session_id=session_id,
-            user_id=user_id,
-            conversation_context=initial_context.copy()
+            session_id=session_id, user_id=user_id, conversation_context=initial_context.copy()
         )
 
         # Store in optimized structures
@@ -522,7 +505,7 @@ class OptimizedSessionManager:
         await self.storage.save_session_optimized(session_state)
 
         # Update stats
-        self._stats['total_sessions_created'] += 1
+        self._stats["total_sessions_created"] += 1
 
         return session_state
 
@@ -535,10 +518,10 @@ class OptimizedSessionManager:
         """
         # Check active sessions first (memory cache)
         if session_id in self.active_sessions:
-            self._stats['cache_hits'] += 1
+            self._stats["cache_hits"] += 1
             return self.active_sessions[session_id]
 
-        self._stats['cache_misses'] += 1
+        self._stats["cache_misses"] += 1
 
         # Load from storage and add to cache
         stored_session = await self.storage.load_session_optimized(session_id)
@@ -550,8 +533,9 @@ class OptimizedSessionManager:
 
         return None
 
-    async def update_conversation_optimized(self, session_state: OptimizedSessionState,
-                                          conversation_update: Dict[str, Any]) -> bool:
+    async def update_conversation_optimized(
+        self, session_state: OptimizedSessionState, conversation_update: Dict[str, Any]
+    ) -> bool:
         """
         Optimized conversation update with lazy persistence.
 
@@ -563,10 +547,9 @@ class OptimizedSessionManager:
             session_state.conversation_context.update(conversation_update)
 
             # Add to conversation history (preserved structure)
-            session_state.conversation_history.append({
-                'timestamp': time.time(),
-                'update': conversation_update.copy()
-            })
+            session_state.conversation_history.append(
+                {"timestamp": time.time(), "update": conversation_update.copy()}
+            )
 
             # Optimize conversation history size
             if len(session_state.conversation_history) > 100:
@@ -642,11 +625,13 @@ class OptimizedSessionManager:
 
                 if cleaned_count > 0:
                     print(f"Cleaned up {cleaned_count} expired auto-mode sessions")
-                    self._stats['total_sessions_cleaned'] += cleaned_count
+                    self._stats["total_sessions_cleaned"] += cleaned_count
 
                 # Log performance stats periodically
-                if self._stats['cache_hits'] + self._stats['cache_misses'] > 0:
-                    hit_rate = self._stats['cache_hits'] / (self._stats['cache_hits'] + self._stats['cache_misses'])
+                if self._stats["cache_hits"] + self._stats["cache_misses"] > 0:
+                    hit_rate = self._stats["cache_hits"] / (
+                        self._stats["cache_hits"] + self._stats["cache_misses"]
+                    )
                     print(f"Session cache hit rate: {hit_rate:.2%}")
 
             except asyncio.CancelledError:
@@ -667,15 +652,13 @@ class OptimizedSessionManager:
 
             # Batch save all dirty sessions
             dirty_sessions = [
-                session for session in self.active_sessions.values()
-                if session.needs_persistence
+                session for session in self.active_sessions.values() if session.needs_persistence
             ]
 
             if dirty_sessions:
                 print(f"Saving {len(dirty_sessions)} dirty sessions...")
                 save_tasks = [
-                    self.storage.save_session_optimized(session)
-                    for session in dirty_sessions
+                    self.storage.save_session_optimized(session) for session in dirty_sessions
                 ]
                 await asyncio.gather(*save_tasks, return_exceptions=True)
 
@@ -693,18 +676,17 @@ class OptimizedSessionManager:
 
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get performance statistics"""
-        total_lookups = self._stats['cache_hits'] + self._stats['cache_misses']
-        cache_hit_rate = self._stats['cache_hits'] / total_lookups if total_lookups > 0 else 0.0
+        total_lookups = self._stats["cache_hits"] + self._stats["cache_misses"]
+        cache_hit_rate = self._stats["cache_hits"] / total_lookups if total_lookups > 0 else 0.0
 
         return {
-            'active_sessions': len(self.active_sessions),
-            'users_with_sessions': len(self.session_index),
-            'cache_hit_rate': cache_hit_rate,
-            'total_sessions_created': self._stats['total_sessions_created'],
-            'total_sessions_cleaned': self._stats['total_sessions_cleaned'],
-            'memory_usage_mb': sum(
-                len(str(session)) for session in self.active_sessions.values()
-            ) / (1024 * 1024)
+            "active_sessions": len(self.active_sessions),
+            "users_with_sessions": len(self.session_index),
+            "cache_hit_rate": cache_hit_rate,
+            "total_sessions_created": self._stats["total_sessions_created"],
+            "total_sessions_cleaned": self._stats["total_sessions_cleaned"],
+            "memory_usage_mb": sum(len(str(session)) for session in self.active_sessions.values())
+            / (1024 * 1024),
         }
 
     def get_user_session_count_optimized(self, user_id: str) -> int:

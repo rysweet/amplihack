@@ -8,17 +8,19 @@ Evaluates progress against user objectives and formulates next prompts.
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, asdict
+import re
+import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Any, List, Optional, Callable
-import uuid
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class AnalysisType(Enum):
     """Types of analysis to perform"""
+
     PROGRESS_EVALUATION = "progress_evaluation"
     QUALITY_ASSESSMENT = "quality_assessment"
     NEXT_PROMPT_GENERATION = "next_prompt_generation"
@@ -29,6 +31,7 @@ class AnalysisType(Enum):
 @dataclass
 class AnalysisRequest:
     """Request for analysis from the engine"""
+
     id: str
     session_id: str
     analysis_type: AnalysisType
@@ -41,6 +44,7 @@ class AnalysisRequest:
 @dataclass
 class AnalysisResult:
     """Result from analysis"""
+
     request_id: str
     session_id: str
     analysis_type: AnalysisType
@@ -58,6 +62,7 @@ class AnalysisResult:
 @dataclass
 class AnalysisConfig:
     """Configuration for analysis engine"""
+
     batch_size: int = 10
     max_analysis_length: int = 8000  # Max chars of Claude output to analyze
     confidence_threshold: float = 0.6
@@ -68,11 +73,19 @@ class AnalysisConfig:
 
 class SDKConnectionError(Exception):
     """Raised when SDK connection fails"""
+
     pass
 
 
 class AnalysisError(Exception):
     """Raised when analysis fails"""
+
+    pass
+
+
+class PromptInjectionError(Exception):
+    """Raised when prompt injection is detected"""
+
     pass
 
 
@@ -91,6 +104,22 @@ class ConversationAnalysisEngine:
         self._mcp_available = False
         self._validate_sdk_connection()
 
+        # Security validation patterns
+        self._dangerous_patterns = [
+            r"exec\s*\(",
+            r"eval\s*\(",
+            r"__import__",
+            r"subprocess",
+            r"os\.system",
+            r"file\s*=\s*open",
+            r"rm\s+-rf",
+            r"DELETE\s+FROM",
+            r"DROP\s+TABLE",
+            r"<script.*?>",
+            r"javascript:",
+            r"data:.*base64",
+        ]
+
     def _validate_sdk_connection(self) -> None:
         """Validate that MCP functions are available"""
         try:
@@ -108,7 +137,7 @@ class ConversationAnalysisEngine:
         claude_output: str,
         user_objective: str,
         analysis_type: AnalysisType,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> AnalysisResult:
         """
         Analyze Claude Code output for insights and next steps.
@@ -130,14 +159,18 @@ class ConversationAnalysisEngine:
         if not self._mcp_available:
             raise SDKConnectionError("Claude Agent SDK not available")
 
+        # Validate inputs for security
+        self._validate_prompt_content(claude_output)
+        self._validate_prompt_content(user_objective)
+
         request = AnalysisRequest(
             id=str(uuid.uuid4()),
             session_id=session_id,
             analysis_type=analysis_type,
             claude_output=self._truncate_output(claude_output),
-            user_objective=user_objective,
+            user_objective=self._sanitize_input(user_objective),
             context=context or {},
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         try:
@@ -172,8 +205,8 @@ class ConversationAnalysisEngine:
             return output
 
         # Truncate but try to preserve structure
-        truncated = output[:self.config.max_analysis_length]
-        last_newline = truncated.rfind('\n')
+        truncated = output[: self.config.max_analysis_length]
+        last_newline = truncated.rfind("\n")
         if last_newline > self.config.max_analysis_length * 0.8:
             truncated = truncated[:last_newline]
 
@@ -201,22 +234,66 @@ class ConversationAnalysisEngine:
         except Exception as e:
             raise AnalysisError(f"SDK analysis failed: {e}")
 
+    def _validate_prompt_content(self, content: str) -> None:
+        """Validate content for prompt injection attempts"""
+        if not content:
+            return
+
+        content_lower = content.lower()
+
+        # Check for dangerous patterns
+        for pattern in self._dangerous_patterns:
+            if re.search(pattern, content_lower, re.IGNORECASE):
+                logger.warning(f"Dangerous pattern detected in prompt content: {pattern}")
+                raise PromptInjectionError(f"Potentially dangerous content detected: {pattern}")
+
+        # Check for excessive length (potential DoS)
+        if len(content) > 50000:
+            raise PromptInjectionError("Content exceeds maximum length")
+
+    def _sanitize_input(self, text: str) -> str:
+        """Sanitize user input to prevent injection"""
+        if not text:
+            return ""
+
+        # Remove or escape potentially dangerous characters
+        # Replace control characters
+        text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]", "", text)
+
+        # Escape potential script injection
+        text = text.replace("<", "&lt;").replace(">", "&gt;")
+        text = text.replace("${", "\\${")
+        text = text.replace("#{", "\\#{")
+
+        # Limit length
+        if len(text) > 10000:
+            text = text[:10000] + "...[truncated for security]"
+
+        return text
+
     def _build_analysis_prompt(self, request: AnalysisRequest) -> str:
-        """Build analysis prompt based on request type"""
+        """Build analysis prompt based on request type with sanitized inputs"""
+
+        # Double-sanitize critical inputs
+        safe_objective = self._sanitize_input(request.user_objective)
+        safe_output = self._sanitize_input(request.claude_output)
+        safe_session_id = re.sub(r"[^a-zA-Z0-9\-_]", "", request.session_id)
 
         base_context = f"""
 You are analyzing Claude Code session output to help with auto-mode operation.
 
-User Objective: {request.user_objective}
+User Objective: {safe_objective}
 Analysis Type: {request.analysis_type.value}
-Session ID: {request.session_id}
+Session ID: {safe_session_id}
 
 Claude Code Output to Analyze:
-{request.claude_output}
+{safe_output}
 """
 
         if request.analysis_type == AnalysisType.PROGRESS_EVALUATION:
-            return base_context + """
+            return (
+                base_context
+                + """
 Evaluate the progress toward the user's objective. Consider:
 1. What has been accomplished so far?
 2. What remains to be done?
@@ -225,9 +302,12 @@ Evaluate the progress toward the user's objective. Consider:
 
 Provide a confidence score (0.0-1.0) for progress assessment.
 """
+            )
 
         elif request.analysis_type == AnalysisType.QUALITY_ASSESSMENT:
-            return base_context + """
+            return (
+                base_context
+                + """
 Assess the quality of the work done. Consider:
 1. Code quality and best practices
 2. Completeness of implementation
@@ -236,9 +316,12 @@ Assess the quality of the work done. Consider:
 
 Provide a quality score (0.0-1.0) for the work.
 """
+            )
 
         elif request.analysis_type == AnalysisType.NEXT_PROMPT_GENERATION:
-            return base_context + """
+            return (
+                base_context
+                + """
 Generate the next prompt to continue toward the objective. Consider:
 1. What should be done next?
 2. What information or clarification is needed?
@@ -247,9 +330,12 @@ Generate the next prompt to continue toward the objective. Consider:
 
 Provide a specific, actionable next prompt.
 """
+            )
 
         elif request.analysis_type == AnalysisType.ERROR_DIAGNOSIS:
-            return base_context + """
+            return (
+                base_context
+                + """
 Diagnose any errors or issues in the output. Consider:
 1. What went wrong?
 2. Root cause analysis
@@ -258,9 +344,12 @@ Diagnose any errors or issues in the output. Consider:
 
 Provide specific recommendations for resolution.
 """
+            )
 
         elif request.analysis_type == AnalysisType.OBJECTIVE_ALIGNMENT:
-            return base_context + """
+            return (
+                base_context
+                + """
 Evaluate alignment with the user's objective. Consider:
 1. Is the work moving toward the goal?
 2. Are we solving the right problem?
@@ -269,11 +358,15 @@ Evaluate alignment with the user's objective. Consider:
 
 Provide recommendations for maintaining alignment.
 """
+            )
 
         else:
-            return base_context + """
+            return (
+                base_context
+                + """
 Perform general analysis of the Claude Code output and provide insights.
 """
+            )
 
     def _build_analysis_code(self, request: AnalysisRequest, prompt: str) -> str:
         """Build Python code for execution in Jupyter kernel"""
@@ -338,25 +431,25 @@ print(json.dumps(analysis_result, indent=2))
                 "confidence": 0.8,
                 "findings": [
                     "Progress is being made toward objective",
-                    "Code quality appears good"
+                    "Code quality appears good",
                 ],
                 "recommendations": [
                     "Continue with current approach",
-                    "Add more comprehensive tests"
+                    "Add more comprehensive tests",
                 ],
                 "next_prompt": "Please add unit tests for the implemented functions",
                 "quality_score": 0.85,
                 "progress_indicators": {
                     "completion_percentage": 60,
                     "blockers_identified": 0,
-                    "objectives_met": 2
+                    "objectives_met": 2,
                 },
                 "ai_reasoning": "Based on the output analysis, the implementation is progressing well with good code structure.",
                 "metadata": {
                     "analysis_type": "progress_evaluation",
                     "timestamp": datetime.now().isoformat(),
-                    "tokens_analyzed": 500
-                }
+                    "tokens_analyzed": 500,
+                },
             }
 
             return json.dumps(simulated_result, indent=2)
@@ -381,7 +474,7 @@ print(json.dumps(analysis_result, indent=2))
                 progress_indicators=data.get("progress_indicators", {}),
                 ai_reasoning=data.get("ai_reasoning", ""),
                 metadata=data.get("metadata", {}),
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
         except json.JSONDecodeError as e:
@@ -393,7 +486,7 @@ print(json.dumps(analysis_result, indent=2))
         key_data = {
             "analysis_type": request.analysis_type.value,
             "output_hash": hash(request.claude_output[:1000]),  # Hash first 1000 chars
-            "objective_hash": hash(request.user_objective)
+            "objective_hash": hash(request.user_objective),
         }
         return f"{request.session_id}_{hash(str(key_data))}"
 
@@ -402,26 +495,26 @@ print(json.dumps(analysis_result, indent=2))
         age_minutes = (datetime.now() - result.timestamp).total_seconds() / 60
         return age_minutes < self.config.cache_ttl_minutes
 
-    async def batch_analyze(
-        self,
-        requests: List[AnalysisRequest]
-    ) -> List[AnalysisResult]:
+    async def batch_analyze(self, requests: List[AnalysisRequest]) -> List[AnalysisResult]:
         """Analyze multiple requests in batch for efficiency"""
         results = []
 
         # Process in batches
         for i in range(0, len(requests), self.config.batch_size):
-            batch = requests[i:i + self.config.batch_size]
-            batch_results = await asyncio.gather(*[
-                self.analyze_conversation(
-                    req.session_id,
-                    req.claude_output,
-                    req.user_objective,
-                    req.analysis_type,
-                    req.context
-                )
-                for req in batch
-            ], return_exceptions=True)
+            batch = requests[i : i + self.config.batch_size]
+            batch_results = await asyncio.gather(
+                *[
+                    self.analyze_conversation(
+                        req.session_id,
+                        req.claude_output,
+                        req.user_objective,
+                        req.analysis_type,
+                        req.context,
+                    )
+                    for req in batch
+                ],
+                return_exceptions=True,
+            )
 
             # Filter out exceptions and add successful results
             for result in batch_results:
@@ -436,7 +529,7 @@ print(json.dumps(analysis_result, indent=2))
         self,
         session_id: Optional[str] = None,
         analysis_type: Optional[AnalysisType] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> List[AnalysisResult]:
         """Get analysis history with optional filtering"""
         filtered = self.analysis_history
@@ -474,5 +567,5 @@ print(json.dumps(analysis_result, indent=2))
             "average_confidence": avg_confidence,
             "average_quality_score": avg_quality,
             "analysis_types": type_counts,
-            "cache_hit_rate": len(self.analysis_cache) / total if total > 0 else 0
+            "cache_hit_rate": len(self.analysis_cache) / total if total > 0 else 0,
         }

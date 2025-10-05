@@ -5,16 +5,14 @@ Provides CLI interface for auto-mode functionality through `amplihack auto` comm
 Integrates with the core auto-mode orchestrator and provides user-friendly interface.
 """
 
-import asyncio
 import argparse
+import asyncio
 import json
 import sys
-import time
-from typing import Dict, Any, Optional, List
-from pathlib import Path
+from typing import Any, Dict, Optional
 
-from ..auto_mode.orchestrator import AutoModeOrchestrator, OrchestratorConfig
 from ..auto_mode.command_handler import AutoModeCommandHandler
+from ..auto_mode.orchestrator import AutoModeOrchestrator
 
 
 class AutoModeCLI:
@@ -49,154 +47,142 @@ class AutoModeCLI:
   amplihack auto configure --show                  # Show current configuration
   amplihack auto configure analysis_frequency high # Configure analysis frequency
   amplihack auto analyze --output json             # Request immediate analysis (JSON output)
-  amplihack auto summary                           # Generate session summary"""
+  amplihack auto summary                           # Generate session summary""",
         )
 
         # Create subcommands for auto-mode
         auto_subparsers = auto_parser.add_subparsers(
-            dest="auto_action",
-            help="Auto-mode actions",
-            metavar="ACTION"
+            dest="auto_action", help="Auto-mode actions", metavar="ACTION"
         )
 
         # Start command
         start_parser = auto_subparsers.add_parser("start", help="Start auto-mode session")
         start_parser.add_argument(
-            "--config", "-c",
-            choices=["default", "aggressive_analysis", "minimal_intervention", "learning_mode", "privacy_focused"],
+            "--config",
+            "-c",
+            choices=[
+                "default",
+                "aggressive_analysis",
+                "minimal_intervention",
+                "learning_mode",
+                "privacy_focused",
+            ],
             default="default",
-            help="Configuration preset to use"
+            help="Configuration preset to use",
         )
         start_parser.add_argument(
-            "--user-id", "-u",
-            help="User identifier (auto-detected if not provided)"
+            "--user-id", "-u", help="User identifier (auto-detected if not provided)"
         )
         start_parser.add_argument(
-            "--background", "-b",
-            action="store_true",
-            help="Run in background mode (daemon-like)"
+            "--background", "-b", action="store_true", help="Run in background mode (daemon-like)"
         )
 
         # Stop command
         stop_parser = auto_subparsers.add_parser("stop", help="Stop auto-mode session")
         stop_parser.add_argument(
-            "--session-id", "-s",
-            help="Specific session to stop (stops all user sessions if not provided)"
+            "--session-id",
+            "-s",
+            help="Specific session to stop (stops all user sessions if not provided)",
         )
         stop_parser.add_argument(
-            "--save-insights",
-            action="store_true",
-            help="Save learned insights for future sessions"
+            "--save-insights", action="store_true", help="Save learned insights for future sessions"
         )
 
         # Status command
         status_parser = auto_subparsers.add_parser("status", help="Check auto-mode status")
         status_parser.add_argument(
-            "--detailed", "-d",
-            action="store_true",
-            help="Show detailed status information"
+            "--detailed", "-d", action="store_true", help="Show detailed status information"
         )
-        status_parser.add_argument(
-            "--session-id", "-s",
-            help="Show status for specific session"
-        )
-        status_parser.add_argument(
-            "--json",
-            action="store_true",
-            help="Output status as JSON"
-        )
+        status_parser.add_argument("--session-id", "-s", help="Show status for specific session")
+        status_parser.add_argument("--json", action="store_true", help="Output status as JSON")
 
         # Configure command
-        configure_parser = auto_subparsers.add_parser("configure", help="Configure auto-mode settings")
+        configure_parser = auto_subparsers.add_parser(
+            "configure", help="Configure auto-mode settings"
+        )
         configure_parser.add_argument(
             "setting",
             nargs="?",
             choices=[
-                "analysis_frequency", "intervention_threshold", "background_mode",
-                "learning_mode", "privacy_level"
+                "analysis_frequency",
+                "intervention_threshold",
+                "background_mode",
+                "learning_mode",
+                "privacy_level",
             ],
-            help="Setting to configure"
+            help="Setting to configure",
         )
         configure_parser.add_argument(
-            "value",
-            nargs="?",
-            help="Value to set (show current values if not provided)"
+            "value", nargs="?", help="Value to set (show current values if not provided)"
         )
         configure_parser.add_argument(
-            "--show",
-            action="store_true",
-            help="Show current configuration"
+            "--show", action="store_true", help="Show current configuration"
         )
 
         # Analyze command
         analyze_parser = auto_subparsers.add_parser("analyze", help="Request immediate analysis")
         analyze_parser.add_argument(
-            "--type", "-t",
+            "--type",
+            "-t",
             choices=["quick", "comprehensive", "quality", "patterns"],
             default="comprehensive",
-            help="Type of analysis to perform"
+            help="Type of analysis to perform",
         )
         analyze_parser.add_argument(
             "--scope",
             choices=["current", "session", "recent"],
             default="current",
-            help="Scope of analysis"
+            help="Scope of analysis",
         )
         analyze_parser.add_argument(
-            "--output", "-o",
+            "--output",
+            "-o",
             choices=["summary", "detailed", "json"],
             default="summary",
-            help="Output format"
+            help="Output format",
         )
 
         # Summary command
         summary_parser = auto_subparsers.add_parser("summary", help="Generate session summary")
         summary_parser.add_argument(
-            "--format", "-f",
+            "--format",
+            "-f",
             choices=["brief", "detailed", "report"],
             default="detailed",
-            help="Summary format"
+            help="Summary format",
         )
         summary_parser.add_argument(
             "--include",
             choices=["analysis", "insights", "recommendations", "metrics"],
             nargs="+",
             default=["analysis", "insights", "recommendations"],
-            help="Sections to include in summary"
+            help="Sections to include in summary",
         )
-        summary_parser.add_argument(
-            "--save",
-            help="Save summary to file"
-        )
+        summary_parser.add_argument("--save", help="Save summary to file")
 
         # Insights command
         insights_parser = auto_subparsers.add_parser("insights", help="View learned insights")
         insights_parser.add_argument(
             "--category",
             choices=["preferences", "patterns", "optimizations"],
-            help="Filter by insight category"
+            help="Filter by insight category",
         )
         insights_parser.add_argument(
             "--export",
             choices=["text", "json", "markdown"],
-            help="Export insights in specified format"
+            help="Export insights in specified format",
         )
 
         # Feedback command
-        feedback_parser = auto_subparsers.add_parser("feedback", help="Provide feedback on auto-mode")
-        feedback_parser.add_argument(
-            "--rating",
-            type=int,
-            choices=range(1, 6),
-            help="Rating from 1-5"
+        feedback_parser = auto_subparsers.add_parser(
+            "feedback", help="Provide feedback on auto-mode"
         )
         feedback_parser.add_argument(
-            "--comment",
-            help="Detailed feedback comment"
+            "--rating", type=int, choices=range(1, 6), help="Rating from 1-5"
         )
+        feedback_parser.add_argument("--comment", help="Detailed feedback comment")
         feedback_parser.add_argument(
-            "--suggestion-id",
-            help="Provide feedback on specific suggestion"
+            "--suggestion-id", help="Provide feedback on specific suggestion"
         )
 
         return auto_parser
@@ -213,7 +199,9 @@ class AutoModeCLI:
         """
         try:
             if not args.auto_action:
-                print("Error: No auto-mode action specified. Use 'amplihack auto --help' for available actions.")
+                print(
+                    "Error: No auto-mode action specified. Use 'amplihack auto --help' for available actions."
+                )
                 return 1
 
             # Initialize command handler if needed
@@ -225,52 +213,52 @@ class AutoModeCLI:
 
             # Add arguments based on action
             if args.auto_action == "start":
-                if hasattr(args, 'config'):
-                    command_parts.extend(['--config', args.config])
-                if hasattr(args, 'user_id') and args.user_id:
-                    command_parts.extend(['--user-id', args.user_id])
+                if hasattr(args, "config"):
+                    command_parts.extend(["--config", args.config])
+                if hasattr(args, "user_id") and args.user_id:
+                    command_parts.extend(["--user-id", args.user_id])
 
             elif args.auto_action == "stop":
-                if hasattr(args, 'session_id') and args.session_id:
-                    command_parts.extend(['--session-id', args.session_id])
-                if hasattr(args, 'save_insights') and args.save_insights:
-                    command_parts.append('--save-insights')
+                if hasattr(args, "session_id") and args.session_id:
+                    command_parts.extend(["--session-id", args.session_id])
+                if hasattr(args, "save_insights") and args.save_insights:
+                    command_parts.append("--save-insights")
 
             elif args.auto_action == "status":
-                if hasattr(args, 'detailed') and args.detailed:
-                    command_parts.append('--detailed')
-                if hasattr(args, 'session_id') and args.session_id:
-                    command_parts.extend(['--session-id', args.session_id])
+                if hasattr(args, "detailed") and args.detailed:
+                    command_parts.append("--detailed")
+                if hasattr(args, "session_id") and args.session_id:
+                    command_parts.extend(["--session-id", args.session_id])
 
             elif args.auto_action == "configure":
-                if hasattr(args, 'setting') and args.setting:
+                if hasattr(args, "setting") and args.setting:
                     command_parts.append(args.setting)
-                    if hasattr(args, 'value') and args.value:
+                    if hasattr(args, "value") and args.value:
                         command_parts.append(args.value)
 
             elif args.auto_action == "analyze":
-                if hasattr(args, 'type'):
-                    command_parts.extend(['--type', args.type])
-                if hasattr(args, 'scope'):
-                    command_parts.extend(['--scope', args.scope])
-                if hasattr(args, 'output'):
-                    command_parts.extend(['--output', args.output])
+                if hasattr(args, "type"):
+                    command_parts.extend(["--type", args.type])
+                if hasattr(args, "scope"):
+                    command_parts.extend(["--scope", args.scope])
+                if hasattr(args, "output"):
+                    command_parts.extend(["--output", args.output])
 
             elif args.auto_action == "summary":
-                if hasattr(args, 'format'):
-                    command_parts.extend(['--format', args.format])
-                if hasattr(args, 'include'):
-                    command_parts.extend(['--include', ','.join(args.include)])
+                if hasattr(args, "format"):
+                    command_parts.extend(["--format", args.format])
+                if hasattr(args, "include"):
+                    command_parts.extend(["--include", ",".join(args.include)])
 
             # Build context
             context = {
-                'user_id': getattr(args, 'user_id', 'cli_user'),
-                'conversation_context': {},
-                'cli_mode': True
+                "user_id": getattr(args, "user_id", "cli_user"),
+                "conversation_context": {},
+                "cli_mode": True,
             }
 
             # Execute command
-            command_string = ' '.join(command_parts)
+            command_string = " ".join(command_parts)
             result = await self.command_handler.handle_command(command_string, context)
 
             # Handle output
@@ -299,14 +287,17 @@ class AutoModeCLI:
                 return 1
 
             # Handle JSON output for status command
-            if (hasattr(args, 'json') and args.json and
-                args.auto_action == "status" and result.data):
+            if hasattr(args, "json") and args.json and args.auto_action == "status" and result.data:
                 print(json.dumps(result.data, indent=2))
                 return 0
 
             # Handle JSON output for analyze command
-            if (hasattr(args, 'output') and args.output == "json" and
-                args.auto_action == "analyze" and result.data):
+            if (
+                hasattr(args, "output")
+                and args.output == "json"
+                and args.auto_action == "analyze"
+                and result.data
+            ):
                 print(json.dumps(result.data, indent=2))
                 return 0
 
@@ -314,7 +305,7 @@ class AutoModeCLI:
             print(result.message)
 
             # Print additional data if available
-            if result.data and not (hasattr(args, 'json') and args.json):
+            if result.data and not (hasattr(args, "json") and args.json):
                 if args.auto_action == "start":
                     print(f"Session ID: {result.data.get('session_id', 'unknown')}")
                     print(f"Configuration: {result.data.get('config', 'default')}")
@@ -323,7 +314,7 @@ class AutoModeCLI:
                 elif args.auto_action == "status":
                     self._print_status_info(result.data)
 
-                elif args.auto_action == "configure" and not hasattr(args, 'setting'):
+                elif args.auto_action == "configure" and not hasattr(args, "setting"):
                     self._print_configuration(result.data)
 
             return 0
@@ -334,11 +325,11 @@ class AutoModeCLI:
 
     def _print_status_info(self, status_data: Dict[str, Any]):
         """Print formatted status information."""
-        print(f"\nAuto-Mode Status:")
+        print("\nAuto-Mode Status:")
         print(f"  Status: {status_data.get('status', 'unknown')}")
         print(f"  Active Sessions: {status_data.get('active_sessions', 0)}")
 
-        if status_data.get('total_sessions', 0) > 0:
+        if status_data.get("total_sessions", 0) > 0:
             print(f"  Total Sessions: {status_data.get('total_sessions')}")
             print(f"  Analysis Cycles: {status_data.get('analysis_cycles', 0)}")
             print(f"  Interventions: {status_data.get('interventions', 0)}")
@@ -348,18 +339,18 @@ class AutoModeCLI:
         print(f"  SDK Connection: {status_data.get('sdk_connection', 'unknown')}")
 
         # Print detailed info if available
-        if 'detailed_metrics' in status_data:
-            print(f"\nDetailed Metrics:")
-            metrics = status_data['detailed_metrics']
+        if "detailed_metrics" in status_data:
+            print("\nDetailed Metrics:")
+            metrics = status_data["detailed_metrics"]
             for key, value in metrics.items():
-                if key not in ['uptime_seconds']:  # Skip already shown items
+                if key not in ["uptime_seconds"]:  # Skip already shown items
                     print(f"  {key.replace('_', ' ').title()}: {value}")
 
     def _print_configuration(self, config_data: Dict[str, Any]):
         """Print formatted configuration information."""
-        print(f"\nCurrent Configuration:")
+        print("\nCurrent Configuration:")
         for key, value in config_data.items():
-            formatted_key = key.replace('_', ' ').title()
+            formatted_key = key.replace("_", " ").title()
             print(f"  {formatted_key}: {value}")
 
     async def run_interactive_mode(self, args: argparse.Namespace) -> int:
@@ -383,11 +374,11 @@ class AutoModeCLI:
                     if not command_input:
                         continue
 
-                    if command_input.lower() in ['quit', 'exit']:
+                    if command_input.lower() in ["quit", "exit"]:
                         print("Goodbye!")
                         break
 
-                    if command_input.lower() == 'help':
+                    if command_input.lower() == "help":
                         self._print_interactive_help()
                         continue
 
@@ -402,9 +393,11 @@ class AutoModeCLI:
 
                     # Simple argument parsing for interactive mode
                     for i, part in enumerate(command_parts[1:], 1):
-                        if part.startswith('--'):
-                            key = part[2:].replace('-', '_')
-                            if i + 1 < len(command_parts) and not command_parts[i + 1].startswith('--'):
+                        if part.startswith("--"):
+                            key = part[2:].replace("-", "_")
+                            if i + 1 < len(command_parts) and not command_parts[i + 1].startswith(
+                                "--"
+                            ):
                                 setattr(mock_args, key, command_parts[i + 1])
                             else:
                                 setattr(mock_args, key, True)
@@ -464,7 +457,7 @@ def auto_command_handler(args: argparse.Namespace) -> int:
     cli = AutoModeCLI()
 
     # Check if this should be interactive mode
-    if not hasattr(args, 'auto_action') or not args.auto_action:
+    if not hasattr(args, "auto_action") or not args.auto_action:
         # Interactive mode
         return asyncio.run(cli.run_interactive_mode(args))
     else:
@@ -473,4 +466,4 @@ def auto_command_handler(args: argparse.Namespace) -> int:
 
 
 # Export for CLI integration
-__all__ = ['AutoModeCLI', 'auto_command_handler']
+__all__ = ["AutoModeCLI", "auto_command_handler"]

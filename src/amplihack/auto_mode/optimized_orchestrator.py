@@ -8,20 +8,21 @@ and intelligent scheduling while preserving all auto-mode requirements.
 import asyncio
 import logging
 import time
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, field
-from enum import Enum
 import uuid
 from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
-from .optimized_session import OptimizedSessionManager, OptimizedSessionState
-from .optimized_analysis import OptimizedAnalysisEngine, ConversationAnalysis
-from .quality_gates import QualityGateEvaluator, QualityGateResult
+from .optimized_analysis import ConversationAnalysis, OptimizedAnalysisEngine
 from .optimized_sdk_integration import OptimizedClaudeAgentSDKClient
+from .optimized_session import OptimizedSessionManager, OptimizedSessionState
+from .quality_gates import QualityGateEvaluator, QualityGateResult
 
 
 class OrchestratorState(Enum):
     """States of the auto-mode orchestrator (preserved)"""
+
     INACTIVE = "inactive"
     INITIALIZING = "initializing"
     ACTIVE = "active"
@@ -33,6 +34,7 @@ class OrchestratorState(Enum):
 @dataclass
 class OptimizedOrchestratorConfig:
     """Optimized configuration with performance tuning"""
+
     # Analysis cycle timing (optimized defaults)
     analysis_interval_seconds: float = 20.0  # Reduced from 30.0
     max_analysis_cycles: int = 200  # Increased from 100
@@ -72,6 +74,7 @@ class OptimizedOrchestratorConfig:
 @dataclass
 class OptimizedAnalysisCycleResult:
     """Optimized analysis cycle result with performance metadata"""
+
     cycle_id: str
     session_id: str
     timestamp: float
@@ -90,6 +93,7 @@ class OptimizedAnalysisCycleResult:
 @dataclass
 class PerformanceMetrics:
     """Comprehensive performance metrics"""
+
     # Orchestrator metrics
     total_sessions: int = 0
     active_sessions: int = 0
@@ -170,19 +174,19 @@ class OptimizedAutoModeOrchestrator:
                 self.quality_gate_evaluator.initialize(),
                 self.sdk_client.initialize(
                     timeout=self.config.sdk_timeout_seconds,
-                    retry_attempts=self.config.sdk_retry_attempts
-                )
+                    retry_attempts=self.config.sdk_retry_attempts,
+                ),
             ]
 
             results = await asyncio.gather(*init_tasks, return_exceptions=True)
 
             # Check for initialization failures
-            sdk_initialized = True
+            # sdk_initialized = True  # Future use for state tracking
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     if i == 3:  # SDK initialization
                         self.logger.warning(f"SDK initialization failed: {result}")
-                        sdk_initialized = False
+                        # sdk_initialized = False  # Future use for tracking state
                     else:
                         raise result
 
@@ -222,7 +226,9 @@ class OptimizedAutoModeOrchestrator:
             self.background_tasks.add(task)
             task.add_done_callback(self.background_tasks.discard)
 
-    async def start_session_optimized(self, user_id: str, conversation_context: Dict[str, Any]) -> str:
+    async def start_session_optimized(
+        self, user_id: str, conversation_context: Dict[str, Any]
+    ) -> str:
         """
         Optimized session creation with performance enhancements.
 
@@ -243,18 +249,14 @@ class OptimizedAutoModeOrchestrator:
 
             # Create optimized session state
             session_state = await self.session_manager.create_session_optimized(
-                session_id=session_id,
-                user_id=user_id,
-                initial_context=conversation_context
+                session_id=session_id, user_id=user_id, initial_context=conversation_context
             )
 
             self.active_sessions[session_id] = session_state
 
             # Start optimized analysis loop with priority
             if self.config.background_analysis_enabled:
-                task = asyncio.create_task(
-                    self._run_optimized_analysis_loop(session_id)
-                )
+                task = asyncio.create_task(self._run_optimized_analysis_loop(session_id))
                 self.analysis_tasks[session_id] = task
 
             # Update metrics
@@ -288,7 +290,7 @@ class OptimizedAutoModeOrchestrator:
         session_items.sort(
             key=lambda x: (
                 self._session_priorities[x[0]],  # Lower priority first
-                x[1].last_updated  # Older sessions first
+                x[1].last_updated,  # Older sessions first
             )
         )
 
@@ -316,10 +318,11 @@ class OptimizedAutoModeOrchestrator:
         max_consecutive_errors = 3
 
         try:
-            while (cycle_count < self.config.max_analysis_cycles and
-                   session_id in self.active_sessions and
-                   consecutive_errors < max_consecutive_errors):
-
+            while (
+                cycle_count < self.config.max_analysis_cycles
+                and session_id in self.active_sessions
+                and consecutive_errors < max_consecutive_errors
+            ):
                 cycle_start = time.time()
                 cycle_id = f"{session_id}-{cycle_count}"
 
@@ -331,7 +334,9 @@ class OptimizedAutoModeOrchestrator:
 
                     # Check if session needs analysis (optimized)
                     if not await self._should_analyze_session(session_id):
-                        await asyncio.sleep(wait_interval * 0.5)  # Shorter wait for inactive sessions
+                        await asyncio.sleep(
+                            wait_interval * 0.5
+                        )  # Shorter wait for inactive sessions
                         continue
 
                     # Execute optimized analysis cycle
@@ -358,7 +363,9 @@ class OptimizedAutoModeOrchestrator:
 
                         # Notify callbacks asynchronously
                         if self.on_analysis_complete:
-                            asyncio.create_task(self._notify_callbacks(self.on_analysis_complete, result))
+                            asyncio.create_task(
+                                self._notify_callbacks(self.on_analysis_complete, result)
+                            )
 
                         # Calculate next cycle delay
                         next_delay = result.next_cycle_delay
@@ -369,14 +376,18 @@ class OptimizedAutoModeOrchestrator:
 
                     else:
                         consecutive_errors += 1
-                        await asyncio.sleep(min(5.0 * consecutive_errors, 30.0))  # Exponential backoff
+                        await asyncio.sleep(
+                            min(5.0 * consecutive_errors, 30.0)
+                        )  # Exponential backoff
 
                 except asyncio.CancelledError:
                     self.logger.info(f"Optimized analysis loop cancelled for session: {session_id}")
                     break
                 except Exception as e:
                     consecutive_errors += 1
-                    self.logger.error(f"Optimized analysis cycle failed for session {session_id}: {e}")
+                    self.logger.error(
+                        f"Optimized analysis cycle failed for session {session_id}: {e}"
+                    )
                     await asyncio.sleep(min(2.0 * consecutive_errors, 10.0))
 
                 cycle_count += 1
@@ -408,7 +419,9 @@ class OptimizedAutoModeOrchestrator:
 
         return True
 
-    async def _execute_optimized_analysis_cycle(self, session_id: str, cycle_id: str) -> Optional[OptimizedAnalysisCycleResult]:
+    async def _execute_optimized_analysis_cycle(
+        self, session_id: str, cycle_id: str
+    ) -> Optional[OptimizedAnalysisCycleResult]:
         """
         Execute optimized analysis cycle with caching and batching.
 
@@ -438,7 +451,7 @@ class OptimizedAutoModeOrchestrator:
                 # Perform fresh analysis
                 analysis = await self.analysis_engine.analyze_conversation_optimized(
                     conversation_context=session_state.conversation_context,
-                    session_history=session_state.analysis_history
+                    session_history=session_state.analysis_history,
                 )
 
                 # Cache the result
@@ -451,9 +464,7 @@ class OptimizedAutoModeOrchestrator:
             # Parallel quality gate evaluation
             quality_gates_task = asyncio.create_task(
                 self.quality_gate_evaluator.evaluate(
-                    analysis=analysis,
-                    session_state=session_state,
-                    config=self.config
+                    analysis=analysis, session_state=session_state, config=self.config
                 )
             )
 
@@ -463,8 +474,10 @@ class OptimizedAutoModeOrchestrator:
             # Generate interventions efficiently
             interventions = []
             for gate_result in quality_gates:
-                if (gate_result.triggered and
-                    gate_result.confidence >= self.config.intervention_confidence_threshold):
+                if (
+                    gate_result.triggered
+                    and gate_result.confidence >= self.config.intervention_confidence_threshold
+                ):
                     interventions.extend(gate_result.suggested_actions)
 
             # Calculate adaptive next cycle delay
@@ -482,7 +495,7 @@ class OptimizedAutoModeOrchestrator:
                 cycle_duration=time.time() - cycle_start,
                 cache_hit=cache_hit,
                 sdk_response_time=sdk_response_time,
-                analysis_performance=self.analysis_engine.get_performance_metrics()
+                analysis_performance=self.analysis_engine.get_performance_metrics(),
             )
 
             return result
@@ -496,6 +509,7 @@ class OptimizedAutoModeOrchestrator:
         # Create hash based on conversation context
         context_str = str(session_state.conversation_context)
         import hashlib
+
         return hashlib.md5(context_str.encode()).hexdigest()
 
     def _is_cache_valid(self, cached_analysis: ConversationAnalysis) -> bool:
@@ -503,8 +517,9 @@ class OptimizedAutoModeOrchestrator:
         # Cache valid for 5 minutes
         return time.time() - cached_analysis.timestamp < 300
 
-    def _calculate_adaptive_delay(self, analysis: ConversationAnalysis,
-                                session_state: OptimizedSessionState) -> float:
+    def _calculate_adaptive_delay(
+        self, analysis: ConversationAnalysis, session_state: OptimizedSessionState
+    ) -> float:
         """Calculate adaptive delay based on analysis results"""
         base_interval = self.config.analysis_interval_seconds
 
@@ -522,8 +537,9 @@ class OptimizedAutoModeOrchestrator:
         adaptive_delay = base_interval * quality_factor / activity_factor
         return max(10.0, min(60.0, adaptive_delay))  # Clamp between 10s and 60s
 
-    async def _update_session_from_analysis(self, session_id: str,
-                                          result: OptimizedAnalysisCycleResult):
+    async def _update_session_from_analysis(
+        self, session_id: str, result: OptimizedAnalysisCycleResult
+    ):
         """Efficiently update session state from analysis results"""
         if session_id not in self.active_sessions:
             return
@@ -545,12 +561,13 @@ class OptimizedAutoModeOrchestrator:
         if result.analysis.quality_score < 0.5:
             self._session_priorities[session_id] = 10  # High priority
         elif result.analysis.quality_score > 0.8:
-            self._session_priorities[session_id] = 1   # Low priority
+            self._session_priorities[session_id] = 1  # Low priority
         else:
-            self._session_priorities[session_id] = 5   # Medium priority
+            self._session_priorities[session_id] = 5  # Medium priority
 
-    async def _handle_quality_gates_async(self, session_id: str,
-                                        quality_gates: List[QualityGateResult]):
+    async def _handle_quality_gates_async(
+        self, session_id: str, quality_gates: List[QualityGateResult]
+    ):
         """Handle quality gates asynchronously"""
         try:
             if session_id not in self.active_sessions:
@@ -562,9 +579,10 @@ class OptimizedAutoModeOrchestrator:
                 if not gate_result.triggered:
                     continue
 
-                if (self.config.intervention_suggestions_enabled and
-                    gate_result.confidence >= self.config.intervention_confidence_threshold):
-
+                if (
+                    self.config.intervention_suggestions_enabled
+                    and gate_result.confidence >= self.config.intervention_confidence_threshold
+                ):
                     # Update intervention count
                     session_state.total_interventions += len(gate_result.suggested_actions)
                     session_state.mark_dirty()
@@ -574,7 +592,9 @@ class OptimizedAutoModeOrchestrator:
 
                     # Notify callbacks
                     if self.on_intervention_suggested:
-                        await self._notify_callbacks(self.on_intervention_suggested, session_id, gate_result)
+                        await self._notify_callbacks(
+                            self.on_intervention_suggested, session_id, gate_result
+                        )
 
         except Exception as e:
             self.logger.error(f"Error handling quality gates: {e}")
@@ -591,9 +611,11 @@ class OptimizedAutoModeOrchestrator:
                     tasks.append(callback(*args))
                 else:
                     # Run sync callback in thread pool
-                    tasks.append(asyncio.create_task(
-                        asyncio.get_event_loop().run_in_executor(None, callback, *args)
-                    ))
+                    tasks.append(
+                        asyncio.create_task(
+                            asyncio.get_event_loop().run_in_executor(None, callback, *args)
+                        )
+                    )
             except Exception as e:
                 self.logger.warning(f"Callback preparation failed: {e}")
 
@@ -644,14 +666,20 @@ class OptimizedAutoModeOrchestrator:
 
                 # Calculate throughput
                 if self.metrics.uptime_seconds > 0:
-                    self.metrics.cycles_per_minute = (self.metrics.total_analysis_cycles * 60) / self.metrics.uptime_seconds
-                    self.metrics.sessions_per_hour = (self.metrics.total_sessions * 3600) / self.metrics.uptime_seconds
+                    self.metrics.cycles_per_minute = (
+                        self.metrics.total_analysis_cycles * 60
+                    ) / self.metrics.uptime_seconds
+                    self.metrics.sessions_per_hour = (
+                        self.metrics.total_sessions * 3600
+                    ) / self.metrics.uptime_seconds
 
                 # Log performance summary
                 if self.config.detailed_logging:
-                    self.logger.info(f"Performance: {self.metrics.cycles_per_minute:.1f} cycles/min, "
-                                   f"{self.metrics.avg_cycle_duration:.3f}s avg duration, "
-                                   f"{self.metrics.active_sessions} active sessions")
+                    self.logger.info(
+                        f"Performance: {self.metrics.cycles_per_minute:.1f} cycles/min, "
+                        f"{self.metrics.avg_cycle_duration:.3f}s avg duration, "
+                        f"{self.metrics.active_sessions} active sessions"
+                    )
 
             except asyncio.CancelledError:
                 break
@@ -666,14 +694,19 @@ class OptimizedAutoModeOrchestrator:
 
                 # Memory usage estimation
                 import sys
+
                 memory_mb = sys.getsizeof(self.active_sessions) / (1024 * 1024)
-                memory_mb += sum(sys.getsizeof(session) for session in self.active_sessions.values()) / (1024 * 1024)
+                memory_mb += sum(
+                    sys.getsizeof(session) for session in self.active_sessions.values()
+                ) / (1024 * 1024)
 
                 self.metrics.memory_usage_mb = memory_mb
 
                 # Check memory limits
                 if memory_mb > self.config.max_memory_usage_mb:
-                    self.logger.warning(f"Memory usage ({memory_mb:.1f}MB) exceeds limit ({self.config.max_memory_usage_mb}MB)")
+                    self.logger.warning(
+                        f"Memory usage ({memory_mb:.1f}MB) exceeds limit ({self.config.max_memory_usage_mb}MB)"
+                    )
                     await self._cleanup_memory()
 
                 # Cleanup analysis cache periodically
@@ -681,7 +714,8 @@ class OptimizedAutoModeOrchestrator:
                     # Remove old entries
                     current_time = time.time()
                     expired_keys = [
-                        key for key, analysis in self._analysis_cache.items()
+                        key
+                        for key, analysis in self._analysis_cache.items()
                         if current_time - analysis.timestamp > 600  # 10 minutes
                     ]
 
@@ -731,9 +765,13 @@ class OptimizedAutoModeOrchestrator:
                     time_since_update = time.time() - session_state.last_updated
 
                     if time_since_update < 60:  # Very active
-                        self._adaptive_intervals[session_id] = max(10.0, self._adaptive_intervals[session_id] * 0.8)
+                        self._adaptive_intervals[session_id] = max(
+                            10.0, self._adaptive_intervals[session_id] * 0.8
+                        )
                     elif time_since_update > 600:  # Inactive
-                        self._adaptive_intervals[session_id] = min(120.0, self._adaptive_intervals[session_id] * 1.5)
+                        self._adaptive_intervals[session_id] = min(
+                            120.0, self._adaptive_intervals[session_id] * 1.5
+                        )
 
             except asyncio.CancelledError:
                 break
@@ -834,8 +872,7 @@ class OptimizedAutoModeOrchestrator:
             if all_tasks:
                 try:
                     await asyncio.wait_for(
-                        asyncio.gather(*all_tasks, return_exceptions=True),
-                        timeout=5.0
+                        asyncio.gather(*all_tasks, return_exceptions=True), timeout=5.0
                     )
                 except asyncio.TimeoutError:
                     self.logger.warning("Some tasks did not complete within timeout")
@@ -847,10 +884,7 @@ class OptimizedAutoModeOrchestrator:
                 await asyncio.gather(*close_tasks, return_exceptions=True)
 
             # Shutdown components in parallel
-            shutdown_tasks = [
-                self.sdk_client.shutdown(),
-                self.session_manager.shutdown_optimized()
-            ]
+            shutdown_tasks = [self.sdk_client.shutdown(), self.session_manager.shutdown_optimized()]
             await asyncio.gather(*shutdown_tasks, return_exceptions=True)
 
             # Final cleanup
@@ -872,30 +906,42 @@ class OptimizedAutoModeOrchestrator:
         self.metrics.uptime_seconds = current_time - self.start_time
 
         # Get component metrics
-        sdk_metrics = self.sdk_client.get_performance_metrics() if hasattr(self.sdk_client, 'get_performance_metrics') else {}
-        session_metrics = self.session_manager.get_performance_stats() if hasattr(self.session_manager, 'get_performance_stats') else {}
-        analysis_metrics = self.analysis_engine.get_performance_metrics() if hasattr(self.analysis_engine, 'get_performance_metrics') else {}
+        sdk_metrics = (
+            self.sdk_client.get_performance_metrics()
+            if hasattr(self.sdk_client, "get_performance_metrics")
+            else {}
+        )
+        session_metrics = (
+            self.session_manager.get_performance_stats()
+            if hasattr(self.session_manager, "get_performance_stats")
+            else {}
+        )
+        analysis_metrics = (
+            self.analysis_engine.get_performance_metrics()
+            if hasattr(self.analysis_engine, "get_performance_metrics")
+            else {}
+        )
 
         return {
-            'orchestrator_metrics': {
-                'total_sessions': self.metrics.total_sessions,
-                'active_sessions': self.metrics.active_sessions,
-                'total_analysis_cycles': self.metrics.total_analysis_cycles,
-                'total_interventions': self.metrics.total_interventions,
-                'average_quality_score': self.metrics.average_quality_score,
-                'uptime_seconds': self.metrics.uptime_seconds,
-                'avg_cycle_duration': self.metrics.avg_cycle_duration,
-                'cycles_per_minute': self.metrics.cycles_per_minute,
-                'memory_usage_mb': self.metrics.memory_usage_mb
+            "orchestrator_metrics": {
+                "total_sessions": self.metrics.total_sessions,
+                "active_sessions": self.metrics.active_sessions,
+                "total_analysis_cycles": self.metrics.total_analysis_cycles,
+                "total_interventions": self.metrics.total_interventions,
+                "average_quality_score": self.metrics.average_quality_score,
+                "uptime_seconds": self.metrics.uptime_seconds,
+                "avg_cycle_duration": self.metrics.avg_cycle_duration,
+                "cycles_per_minute": self.metrics.cycles_per_minute,
+                "memory_usage_mb": self.metrics.memory_usage_mb,
             },
-            'sdk_metrics': sdk_metrics,
-            'session_metrics': session_metrics,
-            'analysis_metrics': analysis_metrics,
-            'optimization_features': {
-                'adaptive_intervals_enabled': self.config.adaptive_interval_enabled,
-                'analysis_caching_enabled': self.config.enable_analysis_caching,
-                'batch_analysis_enabled': self.config.batch_analysis_size > 1,
-                'active_adaptive_intervals': len(self._adaptive_intervals),
-                'analysis_cache_size': len(self._analysis_cache)
-            }
+            "sdk_metrics": sdk_metrics,
+            "session_metrics": session_metrics,
+            "analysis_metrics": analysis_metrics,
+            "optimization_features": {
+                "adaptive_intervals_enabled": self.config.adaptive_interval_enabled,
+                "analysis_caching_enabled": self.config.enable_analysis_caching,
+                "batch_analysis_enabled": self.config.batch_analysis_size > 1,
+                "active_adaptive_intervals": len(self._adaptive_intervals),
+                "analysis_cache_size": len(self._analysis_cache),
+            },
         }

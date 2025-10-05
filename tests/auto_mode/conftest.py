@@ -5,22 +5,27 @@ Provides common test fixtures, configurations, and utilities
 for all auto-mode test modules.
 """
 
-import pytest
-import pytest_asyncio
-import asyncio
 import tempfile
 import time
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock
 
+import pytest
+import pytest_asyncio
+
+from amplihack.auto_mode.analysis import (
+    ConversationAnalysis,
+    ConversationPattern,
+    ConversationSignal,
+    QualityDimension,
+)
 from amplihack.auto_mode.orchestrator import AutoModeOrchestrator, OrchestratorConfig
-from amplihack.auto_mode.session import SessionManager, SessionState
-from amplihack.auto_mode.analysis import ConversationAnalysis, ConversationSignal, ConversationPattern, QualityDimension
 from amplihack.auto_mode.quality_gates import QualityGateEvaluator
 from amplihack.auto_mode.sdk_integration import ClaudeAgentSDKClient
-
+from amplihack.auto_mode.session import SessionManager, SessionState
 
 # Use pytest-asyncio's built-in event loop fixture
-pytest_plugins = ('pytest_asyncio',)
+pytest_plugins = ("pytest_asyncio",)
+
 
 # Set the default fixture loop scope to function to avoid deprecation warnings
 def pytest_configure(config):
@@ -46,7 +51,7 @@ def basic_orchestrator_config():
         session_timeout_minutes=1,
         max_concurrent_sessions=3,
         background_analysis_enabled=True,
-        detailed_logging=False
+        detailed_logging=False,
     )
 
 
@@ -56,23 +61,23 @@ def sample_conversation_context():
     return {
         "messages": [
             {"role": "user", "content": "Hello, I need help with my Python code"},
-            {"role": "assistant", "content": "I'd be happy to help! What specific issue are you having?"},
+            {
+                "role": "assistant",
+                "content": "I'd be happy to help! What specific issue are you having?",
+            },
             {"role": "user", "content": "I'm getting an error when I try to run my script"},
-            {"role": "assistant", "content": "Can you share the error message you're seeing?"}
+            {"role": "assistant", "content": "Can you share the error message you're seeing?"},
         ],
         "goals": [
             {"id": "goal1", "description": "Fix the Python script error", "status": "pending"},
-            {"id": "goal2", "description": "Understand the root cause", "status": "pending"}
+            {"id": "goal2", "description": "Understand the root cause", "status": "pending"},
         ],
         "tool_usage": [
             {"tool_name": "bash", "timestamp": time.time(), "status": "success"},
-            {"tool_name": "edit", "timestamp": time.time(), "status": "success"}
+            {"tool_name": "edit", "timestamp": time.time(), "status": "success"},
         ],
         "domain": "programming",
-        "user_preferences": {
-            "communication_style": "technical",
-            "detail_level": "high"
-        }
+        "user_preferences": {"communication_style": "technical", "detail_level": "high"},
     }
 
 
@@ -85,22 +90,11 @@ def sample_session_state():
         analysis_cycles=3,
         current_quality_score=0.75,
         total_interventions=1,
-        conversation_context={
-            "messages": [
-                {"role": "user", "content": "Test message"}
-            ]
-        },
-        user_preferences={
-            "communication_style": "casual",
-            "detail_level": "medium"
-        },
+        conversation_context={"messages": [{"role": "user", "content": "Test message"}]},
+        user_preferences={"communication_style": "casual", "detail_level": "medium"},
         learned_patterns=[
-            {
-                "pattern_type": "prefers_examples",
-                "confidence": 0.8,
-                "learned_at": time.time()
-            }
-        ]
+            {"pattern_type": "prefers_examples", "confidence": 0.8, "learned_at": time.time()}
+        ],
     )
 
 
@@ -118,20 +112,20 @@ def sample_conversation_analysis():
                 dimension="clarity",
                 score=0.8,
                 evidence=["Clear communication"],
-                improvement_suggestions=["Continue current approach"]
+                improvement_suggestions=["Continue current approach"],
             ),
             QualityDimension(
                 dimension="effectiveness",
                 score=0.7,
                 evidence=["Good progress toward goals"],
-                improvement_suggestions=["Focus on completion"]
+                improvement_suggestions=["Focus on completion"],
             ),
             QualityDimension(
                 dimension="engagement",
                 score=0.8,
                 evidence=["Active user participation"],
-                improvement_suggestions=["Maintain engagement level"]
-            )
+                improvement_suggestions=["Maintain engagement level"],
+            ),
         ],
         identified_patterns=[
             ConversationPattern(
@@ -140,7 +134,7 @@ def sample_conversation_analysis():
                 frequency=2,
                 confidence=0.85,
                 impact_level="medium",
-                examples=["Python code help", "Error debugging"]
+                examples=["Python code help", "Error debugging"],
             )
         ],
         detected_signals=[ConversationSignal.POSITIVE_ENGAGEMENT],
@@ -149,7 +143,7 @@ def sample_conversation_analysis():
                 "area": "code_review",
                 "description": "Consider suggesting code review best practices",
                 "priority": "medium",
-                "confidence": 0.7
+                "confidence": 0.7,
             }
         ],
         conversation_activity_level=1.2,
@@ -158,8 +152,8 @@ def sample_conversation_analysis():
         satisfaction_signals={
             "overall_sentiment": "positive",
             "confidence": 0.8,
-            "indicators": ["positive_engagement"]
-        }
+            "indicators": ["positive_engagement"],
+        },
     )
 
 
@@ -177,21 +171,22 @@ def mock_orchestrator():
     orchestrator.start_session = AsyncMock(return_value="test_session_123")
     orchestrator.stop_session = AsyncMock(return_value=True)
     orchestrator.update_conversation = AsyncMock(return_value=True)
-    orchestrator.get_session_status = AsyncMock(return_value={
-        "session_id": "test_session_123",
-        "status": "active"
-    })
+    orchestrator.get_session_status = AsyncMock(
+        return_value={"session_id": "test_session_123", "status": "active"}
+    )
     orchestrator.shutdown = AsyncMock()
 
     # Mock metrics
-    orchestrator.get_metrics = Mock(return_value={
-        "total_sessions": 1,
-        "total_analysis_cycles": 5,
-        "total_interventions": 1,
-        "average_quality_score": 0.75,
-        "uptime_seconds": 300,
-        "active_sessions": 1
-    })
+    orchestrator.get_metrics = Mock(
+        return_value={
+            "total_sessions": 1,
+            "total_analysis_cycles": 5,
+            "total_interventions": 1,
+            "average_quality_score": 0.75,
+            "uptime_seconds": 300,
+            "active_sessions": 1,
+        }
+    )
 
     return orchestrator
 
@@ -230,16 +225,13 @@ def mock_command_context():
     return {
         "user_id": "test_user",
         "session_id": "current_session_123",
-        "conversation_context": {
-            "messages": [
-                {"role": "user", "content": "Hello"}
-            ]
-        },
-        "timestamp": time.time()
+        "conversation_context": {"messages": [{"role": "user", "content": "Hello"}]},
+        "timestamp": time.time(),
     }
 
 
 # Test utilities
+
 
 def create_test_session_state(session_id="test_session", user_id="test_user", **kwargs):
     """Utility function to create test session state with custom attributes."""
@@ -248,7 +240,7 @@ def create_test_session_state(session_id="test_session", user_id="test_user", **
         "user_id": user_id,
         "analysis_cycles": 0,
         "current_quality_score": 0.0,
-        "total_interventions": 0
+        "total_interventions": 0,
     }
     defaults.update(kwargs)
     return SessionState(**defaults)
@@ -262,7 +254,7 @@ def create_test_analysis(quality_score=0.75, signals=None, patterns=None, **kwar
         "identified_patterns": patterns or [],
         "conversation_length": 4,
         "user_message_count": 2,
-        "assistant_message_count": 2
+        "assistant_message_count": 2,
     }
     defaults.update(kwargs)
     return ConversationAnalysis(**defaults)
@@ -270,7 +262,7 @@ def create_test_analysis(quality_score=0.75, signals=None, patterns=None, **kwar
 
 def create_mock_quality_gate_result(gate_id="test_gate", triggered=True, confidence=0.8):
     """Utility function to create mock quality gate result."""
-    from amplihack.auto_mode.quality_gates import QualityGateResult, GatePriority
+    from amplihack.auto_mode.quality_gates import GatePriority, QualityGateResult
 
     return QualityGateResult(
         gate_id=gate_id,
@@ -283,28 +275,26 @@ def create_mock_quality_gate_result(gate_id="test_gate", triggered=True, confide
                 "type": "test_action",
                 "title": "Test Action",
                 "description": "Test action description",
-                "confidence": confidence
+                "confidence": confidence,
             }
-        ] if triggered else []
+        ]
+        if triggered
+        else [],
     )
 
 
 # Pytest markers
 
+
 def pytest_configure(config):
     """Configure pytest with custom markers."""
-    config.addinivalue_line(
-        "markers", "integration: mark test as integration test"
-    )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
-    )
-    config.addinivalue_line(
-        "markers", "requires_sdk: mark test as requiring SDK connection"
-    )
+    config.addinivalue_line("markers", "integration: mark test as integration test")
+    config.addinivalue_line("markers", "slow: mark test as slow running")
+    config.addinivalue_line("markers", "requires_sdk: mark test as requiring SDK connection")
 
 
 # Test collection customization
+
 
 def pytest_collection_modifyitems(config, items):
     """Modify test collection to add markers based on test characteristics."""
@@ -323,6 +313,7 @@ def pytest_collection_modifyitems(config, items):
 
 
 # Custom assertion helpers
+
 
 def assert_valid_session_state(session_state):
     """Assert that session state is valid."""

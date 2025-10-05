@@ -8,16 +8,16 @@ Tests end-to-end functionality and component integration:
 - Performance and reliability under load
 """
 
-import pytest
-import pytest_asyncio
 import asyncio
 import time
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
-from amplihack.auto_mode.orchestrator import AutoModeOrchestrator, OrchestratorConfig
-from amplihack.auto_mode.command_handler import AutoModeCommandHandler
-from amplihack.auto_mode.session import SessionState
+import pytest
+import pytest_asyncio
+
 from amplihack.auto_mode.analysis import ConversationAnalysis, ConversationSignal
+from amplihack.auto_mode.command_handler import AutoModeCommandHandler
+from amplihack.auto_mode.orchestrator import AutoModeOrchestrator, OrchestratorConfig
 
 
 class TestFullWorkflow:
@@ -29,16 +29,20 @@ class TestFullWorkflow:
         config = OrchestratorConfig(
             analysis_interval_seconds=0.1,  # Fast for testing
             max_analysis_cycles=5,  # Limited for testing
-            session_timeout_minutes=1
+            session_timeout_minutes=1,
         )
         orchestrator = AutoModeOrchestrator(config)
 
         # Mock component initialization to avoid real I/O
-        with patch.object(orchestrator.session_manager, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.analysis_engine, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.quality_gate_evaluator, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.sdk_client, 'initialize', new_callable=AsyncMock, return_value=True):
-
+        with patch.object(
+            orchestrator.session_manager, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.analysis_engine, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.quality_gate_evaluator, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.sdk_client, "initialize", new_callable=AsyncMock, return_value=True
+        ):
             await orchestrator.initialize()
 
         try:
@@ -53,11 +57,9 @@ class TestFullWorkflow:
         conversation_context = {
             "messages": [
                 {"role": "user", "content": "Hello, I need help with my code"},
-                {"role": "assistant", "content": "Sure! What specific issue are you having?"}
+                {"role": "assistant", "content": "Sure! What specific issue are you having?"},
             ],
-            "goals": [
-                {"id": "goal1", "description": "Fix the bug", "status": "pending"}
-            ]
+            "goals": [{"id": "goal1", "description": "Fix the bug", "status": "pending"}],
         }
 
         # 1. Start session
@@ -70,7 +72,7 @@ class TestFullWorkflow:
         conversation_update = {
             "messages": [
                 {"role": "user", "content": "The error is in line 42"},
-                {"role": "assistant", "content": "Let me help you debug that"}
+                {"role": "assistant", "content": "Let me help you debug that"},
             ]
         }
         success = await orchestrator.update_conversation(session_id, conversation_update)
@@ -82,8 +84,8 @@ class TestFullWorkflow:
         # 4. Check session status
         status = await orchestrator.get_session_status(session_id)
         assert status is not None
-        assert status['session_id'] == session_id
-        assert status['user_id'] == user_id
+        assert status["session_id"] == session_id
+        assert status["user_id"] == user_id
 
         # 5. Stop session
         success = await orchestrator.stop_session(session_id)
@@ -99,18 +101,26 @@ class TestFullWorkflow:
             "messages": [
                 {"role": "user", "content": "I'm confused and frustrated"},
                 {"role": "assistant", "content": "Let me help clarify"},
-                {"role": "user", "content": "This isn't working at all"}
+                {"role": "user", "content": "This isn't working at all"},
             ]
         }
 
         # Mock analysis engine to return poor quality analysis
         mock_analysis = ConversationAnalysis(
             quality_score=0.3,  # Poor quality
-            detected_signals=[ConversationSignal.CONFUSION_INDICATOR, ConversationSignal.FRUSTRATION_SIGNAL],
-            conversation_length=3
+            detected_signals=[
+                ConversationSignal.CONFUSION_INDICATOR,
+                ConversationSignal.FRUSTRATION_SIGNAL,
+            ],
+            conversation_length=3,
         )
 
-        with patch.object(orchestrator.analysis_engine, 'analyze_conversation', new_callable=AsyncMock, return_value=mock_analysis):
+        with patch.object(
+            orchestrator.analysis_engine,
+            "analyze_conversation",
+            new_callable=AsyncMock,
+            return_value=mock_analysis,
+        ):
             # Start session
             session_id = await orchestrator.start_session(user_id, conversation_context)
 
@@ -140,17 +150,21 @@ class TestFullWorkflow:
             "messages": [
                 {"role": "user", "content": "I don't understand"},
                 {"role": "assistant", "content": "Let me explain"},
-                {"role": "user", "content": "Still confused"}
+                {"role": "user", "content": "Still confused"},
             ]
         }
 
         # Mock poor quality analysis
         mock_analysis = ConversationAnalysis(
-            quality_score=0.4,
-            detected_signals=[ConversationSignal.CONFUSION_INDICATOR]
+            quality_score=0.4, detected_signals=[ConversationSignal.CONFUSION_INDICATOR]
         )
 
-        with patch.object(orchestrator.analysis_engine, 'analyze_conversation', new_callable=AsyncMock, return_value=mock_analysis):
+        with patch.object(
+            orchestrator.analysis_engine,
+            "analyze_conversation",
+            new_callable=AsyncMock,
+            return_value=mock_analysis,
+        ):
             session_id = await orchestrator.start_session("test_user", conversation_context)
 
             # Wait for analysis and quality gate evaluation
@@ -201,20 +215,20 @@ class TestCommandHandlerIntegration:
     @pytest.mark.asyncio
     async def test_start_stop_command_flow(self, handler):
         """Test start and stop commands working together"""
-        context = {'user_id': 'test_user', 'conversation_context': {}}
+        context = {"user_id": "test_user", "conversation_context": {}}
 
         # Start auto-mode
         result = await handler.handle_command("start --config default", context)
         assert result.success is True
-        assert 'session_id' in result.data
+        assert "session_id" in result.data
 
-        session_id = result.data['session_id']
+        session_id = result.data["session_id"]
 
         # Check status
         result = await handler.handle_command("status", context)
         assert result.success is True
-        assert result.data['status'] == 'active'
-        assert result.data['active_sessions'] > 0
+        assert result.data["status"] == "active"
+        assert result.data["active_sessions"] > 0
 
         # Stop auto-mode
         result = await handler.handle_command(f"stop --session-id {session_id}", context)
@@ -223,12 +237,12 @@ class TestCommandHandlerIntegration:
         # Check status again
         result = await handler.handle_command("status", context)
         assert result.success is True
-        assert result.data['active_sessions'] == 0
+        assert result.data["active_sessions"] == 0
 
     @pytest.mark.asyncio
     async def test_configure_command_integration(self, handler):
         """Test configuration commands with orchestrator"""
-        context = {'user_id': 'test_user', 'conversation_context': {}}
+        context = {"user_id": "test_user", "conversation_context": {}}
 
         # Start auto-mode
         result = await handler.handle_command("start", context)
@@ -252,29 +266,34 @@ class TestCommandHandlerIntegration:
     @pytest.mark.asyncio
     async def test_analyze_command_integration(self, handler):
         """Test analyze command with active session"""
-        context = {'user_id': 'test_user', 'conversation_context': {
-            'messages': [
-                {"role": "user", "content": "Hello"},
-                {"role": "assistant", "content": "Hi there!"}
-            ]
-        }}
+        context = {
+            "user_id": "test_user",
+            "conversation_context": {
+                "messages": [
+                    {"role": "user", "content": "Hello"},
+                    {"role": "assistant", "content": "Hi there!"},
+                ]
+            },
+        }
 
         # Start auto-mode
         result = await handler.handle_command("start", context)
         assert result.success is True
 
         # Mock analysis result
-        mock_analysis = ConversationAnalysis(
-            quality_score=0.8,
-            conversation_length=2
-        )
+        mock_analysis = ConversationAnalysis(quality_score=0.8, conversation_length=2)
 
-        with patch.object(handler.orchestrator.analysis_engine, 'analyze_conversation', new_callable=AsyncMock, return_value=mock_analysis):
+        with patch.object(
+            handler.orchestrator.analysis_engine,
+            "analyze_conversation",
+            new_callable=AsyncMock,
+            return_value=mock_analysis,
+        ):
             # Request analysis
             result = await handler.handle_command("analyze --output json", context)
             assert result.success is True
-            assert 'quality_score' in result.data
-            assert result.data['quality_score'] == 0.8
+            assert "quality_score" in result.data
+            assert result.data["quality_score"] == 0.8
 
         # Stop auto-mode
         result = await handler.handle_command("stop", context)
@@ -295,18 +314,22 @@ class TestDataFlowIntegration:
             orchestrator = AutoModeOrchestrator(config)
 
             # Mock initialization
-            with patch.object(orchestrator.session_manager, 'initialize', new_callable=AsyncMock), \
-                 patch.object(orchestrator.analysis_engine, 'initialize', new_callable=AsyncMock), \
-                 patch.object(orchestrator.quality_gate_evaluator, 'initialize', new_callable=AsyncMock), \
-                 patch.object(orchestrator.sdk_client, 'initialize', new_callable=AsyncMock, return_value=True):
-
+            with patch.object(
+                orchestrator.session_manager, "initialize", new_callable=AsyncMock
+            ), patch.object(
+                orchestrator.analysis_engine, "initialize", new_callable=AsyncMock
+            ), patch.object(
+                orchestrator.quality_gate_evaluator, "initialize", new_callable=AsyncMock
+            ), patch.object(
+                orchestrator.sdk_client, "initialize", new_callable=AsyncMock, return_value=True
+            ):
                 await orchestrator.initialize()
 
             # Create session with data
             user_id = "test_user"
             conversation_context = {
                 "messages": [{"role": "user", "content": "Test message"}],
-                "goals": [{"id": "goal1", "status": "pending"}]
+                "goals": [{"id": "goal1", "status": "pending"}],
             }
 
             session_id = await orchestrator.start_session(user_id, conversation_context)
@@ -328,34 +351,47 @@ class TestDataFlowIntegration:
         orchestrator = AutoModeOrchestrator(config)
 
         # Mock initialization
-        with patch.object(orchestrator.session_manager, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.analysis_engine, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.quality_gate_evaluator, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.sdk_client, 'initialize', new_callable=AsyncMock, return_value=True):
-
+        with patch.object(
+            orchestrator.session_manager, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.analysis_engine, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.quality_gate_evaluator, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.sdk_client, "initialize", new_callable=AsyncMock, return_value=True
+        ):
             await orchestrator.initialize()
 
         # Create analysis result with specific characteristics
         mock_analysis = ConversationAnalysis(
             quality_score=0.3,  # Low quality to trigger gates
             detected_signals=[ConversationSignal.CONFUSION_INDICATOR],
-            conversation_length=5
+            conversation_length=5,
         )
 
         # Mock quality gate evaluation
-        from amplihack.auto_mode.quality_gates import QualityGateResult, GatePriority
+        from amplihack.auto_mode.quality_gates import GatePriority, QualityGateResult
+
         mock_gate_result = QualityGateResult(
             gate_id="quality_drop",
             gate_name="Quality Drop",
             triggered=True,
             confidence=0.8,
             priority=GatePriority.HIGH,
-            suggested_actions=[{"type": "clarification", "title": "Ask for clarification"}]
+            suggested_actions=[{"type": "clarification", "title": "Ask for clarification"}],
         )
 
-        with patch.object(orchestrator.analysis_engine, 'analyze_conversation', new_callable=AsyncMock, return_value=mock_analysis), \
-             patch.object(orchestrator.quality_gate_evaluator, 'evaluate', new_callable=AsyncMock, return_value=[mock_gate_result]):
-
+        with patch.object(
+            orchestrator.analysis_engine,
+            "analyze_conversation",
+            new_callable=AsyncMock,
+            return_value=mock_analysis,
+        ), patch.object(
+            orchestrator.quality_gate_evaluator,
+            "evaluate",
+            new_callable=AsyncMock,
+            return_value=[mock_gate_result],
+        ):
             # Create session and let analysis run
             session_id = await orchestrator.start_session("test_user", {})
 
@@ -379,22 +415,24 @@ class TestErrorRecovery:
     @pytest.mark.asyncio
     async def test_analysis_error_recovery(self):
         """Test recovery from analysis errors"""
-        config = OrchestratorConfig(
-            analysis_interval_seconds=0.1,
-            max_analysis_cycles=3
-        )
+        config = OrchestratorConfig(analysis_interval_seconds=0.1, max_analysis_cycles=3)
         orchestrator = AutoModeOrchestrator(config)
 
         # Mock initialization
-        with patch.object(orchestrator.session_manager, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.analysis_engine, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.quality_gate_evaluator, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.sdk_client, 'initialize', new_callable=AsyncMock, return_value=True):
-
+        with patch.object(
+            orchestrator.session_manager, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.analysis_engine, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.quality_gate_evaluator, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.sdk_client, "initialize", new_callable=AsyncMock, return_value=True
+        ):
             await orchestrator.initialize()
 
         # Mock analysis engine to fail first, then succeed
         call_count = 0
+
         def analysis_side_effect(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -402,7 +440,9 @@ class TestErrorRecovery:
                 raise Exception("Analysis failed")
             return ConversationAnalysis(quality_score=0.8)
 
-        with patch.object(orchestrator.analysis_engine, 'analyze_conversation', side_effect=analysis_side_effect):
+        with patch.object(
+            orchestrator.analysis_engine, "analyze_conversation", side_effect=analysis_side_effect
+        ):
             session_id = await orchestrator.start_session("test_user", {})
 
             # Let analysis run and recover
@@ -425,15 +465,24 @@ class TestErrorRecovery:
         orchestrator = AutoModeOrchestrator(config)
 
         # Mock initialization
-        with patch.object(orchestrator.session_manager, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.analysis_engine, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.quality_gate_evaluator, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.sdk_client, 'initialize', new_callable=AsyncMock, return_value=True):
-
+        with patch.object(
+            orchestrator.session_manager, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.analysis_engine, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.quality_gate_evaluator, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.sdk_client, "initialize", new_callable=AsyncMock, return_value=True
+        ):
             await orchestrator.initialize()
 
         # Mock session manager to fail during session creation
-        with patch.object(orchestrator.session_manager, 'create_session', new_callable=AsyncMock, side_effect=Exception("Session creation failed")):
+        with patch.object(
+            orchestrator.session_manager,
+            "create_session",
+            new_callable=AsyncMock,
+            side_effect=Exception("Session creation failed"),
+        ):
             with pytest.raises(Exception, match="Session creation failed"):
                 await orchestrator.start_session("test_user", {})
 
@@ -449,18 +498,19 @@ class TestPerformanceCharacteristics:
     @pytest.mark.asyncio
     async def test_rapid_session_creation_cleanup(self):
         """Test rapid session creation and cleanup"""
-        config = OrchestratorConfig(
-            max_concurrent_sessions=10,
-            analysis_interval_seconds=0.1
-        )
+        config = OrchestratorConfig(max_concurrent_sessions=10, analysis_interval_seconds=0.1)
         orchestrator = AutoModeOrchestrator(config)
 
         # Mock initialization
-        with patch.object(orchestrator.session_manager, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.analysis_engine, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.quality_gate_evaluator, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.sdk_client, 'initialize', new_callable=AsyncMock, return_value=True):
-
+        with patch.object(
+            orchestrator.session_manager, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.analysis_engine, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.quality_gate_evaluator, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.sdk_client, "initialize", new_callable=AsyncMock, return_value=True
+        ):
             await orchestrator.initialize()
 
         # Create and immediately stop sessions rapidly
@@ -487,24 +537,33 @@ class TestPerformanceCharacteristics:
         """Test analysis loop performance under load"""
         config = OrchestratorConfig(
             analysis_interval_seconds=0.05,  # Very fast
-            max_analysis_cycles=10
+            max_analysis_cycles=10,
         )
         orchestrator = AutoModeOrchestrator(config)
 
         # Mock initialization
-        with patch.object(orchestrator.session_manager, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.analysis_engine, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.quality_gate_evaluator, 'initialize', new_callable=AsyncMock), \
-             patch.object(orchestrator.sdk_client, 'initialize', new_callable=AsyncMock, return_value=True):
-
+        with patch.object(
+            orchestrator.session_manager, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.analysis_engine, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.quality_gate_evaluator, "initialize", new_callable=AsyncMock
+        ), patch.object(
+            orchestrator.sdk_client, "initialize", new_callable=AsyncMock, return_value=True
+        ):
             await orchestrator.initialize()
 
         # Mock fast analysis
         mock_analysis = ConversationAnalysis(quality_score=0.8)
 
-        with patch.object(orchestrator.analysis_engine, 'analyze_conversation', new_callable=AsyncMock, return_value=mock_analysis), \
-             patch.object(orchestrator.quality_gate_evaluator, 'evaluate', new_callable=AsyncMock, return_value=[]):
-
+        with patch.object(
+            orchestrator.analysis_engine,
+            "analyze_conversation",
+            new_callable=AsyncMock,
+            return_value=mock_analysis,
+        ), patch.object(
+            orchestrator.quality_gate_evaluator, "evaluate", new_callable=AsyncMock, return_value=[]
+        ):
             session_id = await orchestrator.start_session("test_user", {})
 
             # Let analysis cycles run

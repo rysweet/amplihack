@@ -11,19 +11,12 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from amplihack.sdk import (
-    AutoModeOrchestrator,
-    AutoModeConfig,
-    AutoModeState,
-    AnalysisType,
-    SessionConfig,
-    StateIntegrationError
-)
+from amplihack.sdk import AutoModeConfig, AutoModeOrchestrator, StateIntegrationError
 
 
 class AutoModeCommand:
@@ -67,14 +60,14 @@ class AutoModeCommand:
                 return {
                     "success": False,
                     "error": f"Unknown command: {command}",
-                    "help": "Use '/amplihack:auto-mode help' for usage information"
+                    "help": "Use '/amplihack:auto-mode help' for usage information",
                 }
 
         except Exception as e:
             return {
                 "success": False,
                 "error": f"Command execution failed: {str(e)}",
-                "type": type(e).__name__
+                "type": type(e).__name__,
             }
 
     async def _start_command(self, args: List[str]) -> Dict[str, Any]:
@@ -83,7 +76,7 @@ class AutoModeCommand:
             return {
                 "success": False,
                 "error": "Objective is required",
-                "usage": "/amplihack:auto-mode start \"Objective description\""
+                "usage": '/amplihack:auto-mode start "Objective description"',
             }
 
         # Parse arguments
@@ -109,15 +102,12 @@ class AutoModeCommand:
                 config = AutoModeConfig(
                     max_iterations=max_iterations,
                     persistence_enabled=True,
-                    auto_progression_enabled=True
+                    auto_progression_enabled=True,
                 )
                 self.orchestrator = AutoModeOrchestrator(config)
 
             # Start session
-            session_id = await self.orchestrator.start_auto_mode_session(
-                objective,
-                working_dir
-            )
+            session_id = await self.orchestrator.start_auto_mode_session(objective, working_dir)
             self.active_session_id = session_id
 
             return {
@@ -127,14 +117,14 @@ class AutoModeCommand:
                 "working_directory": working_dir,
                 "max_iterations": max_iterations,
                 "state": "active",
-                "message": f"Auto-mode session started for: {objective[:60]}..."
+                "message": f"Auto-mode session started for: {objective[:60]}...",
             }
 
         except StateIntegrationError as e:
             return {
                 "success": False,
                 "error": f"Failed to start session: {str(e)}",
-                "type": "StateIntegrationError"
+                "type": "StateIntegrationError",
             }
 
     async def _process_command(self, args: List[str]) -> Dict[str, Any]:
@@ -143,14 +133,14 @@ class AutoModeCommand:
             return {
                 "success": False,
                 "error": "Claude output is required",
-                "usage": "/amplihack:auto-mode process \"Claude output text\""
+                "usage": '/amplihack:auto-mode process "Claude output text"',
             }
 
         if not self.orchestrator or not self.active_session_id:
             return {
                 "success": False,
                 "error": "No active auto-mode session. Start one with 'auto-mode start'",
-                "suggestion": "Use '/amplihack:auto-mode start \"Your objective\"' first"
+                "suggestion": "Use '/amplihack:auto-mode start \"Your objective\"' first",
             }
 
         claude_output = args[0]
@@ -168,8 +158,7 @@ class AutoModeCommand:
         try:
             # Process output
             result = await self.orchestrator.process_claude_output(
-                claude_output,
-                {"processed_at": datetime.now().isoformat()}
+                claude_output, {"processed_at": datetime.now().isoformat()}
             )
 
             # Format response
@@ -181,11 +170,14 @@ class AutoModeCommand:
                     "confidence": result["confidence"],
                     "findings": result["analysis"]["findings"][:3],  # Top 3 findings
                     "quality_score": result["analysis"]["quality_score"],
-                    "ai_reasoning": result["analysis"]["ai_reasoning"][:200] + "..."  # Truncate for display
+                    "ai_reasoning": result["analysis"]["ai_reasoning"][:200]
+                    + "...",  # Truncate for display
                 },
-                "recommendations": result["analysis"]["recommendations"][:3],  # Top 3 recommendations
+                "recommendations": result["analysis"]["recommendations"][
+                    :3
+                ],  # Top 3 recommendations
                 "should_continue": result["should_continue"],
-                "state": result["state"]
+                "state": result["state"],
             }
 
             # Add next action if available
@@ -201,7 +193,7 @@ class AutoModeCommand:
             return {
                 "success": False,
                 "error": f"Processing failed: {str(e)}",
-                "type": "StateIntegrationError"
+                "type": "StateIntegrationError",
             }
 
     async def _status_command(self, args: List[str]) -> Dict[str, Any]:
@@ -210,7 +202,7 @@ class AutoModeCommand:
             return {
                 "success": False,
                 "error": "No auto-mode session active",
-                "suggestion": "Start a session with '/amplihack:auto-mode start'"
+                "suggestion": "Start a session with '/amplihack:auto-mode start'",
             }
 
         try:
@@ -227,83 +219,64 @@ class AutoModeCommand:
                     "id": current_state["session_id"],
                     "state": current_state["state"],
                     "iteration": current_state["iteration"],
-                    "error_count": current_state["error_count"]
+                    "error_count": current_state["error_count"],
                 },
                 "progress": {
                     "milestones": progress_summary["milestones"],
                     "progress_percentage": progress_summary["progress_percentage"],
-                    "average_confidence": progress_summary.get("average_confidence", 0.0)
+                    "average_confidence": progress_summary.get("average_confidence", 0.0),
                 },
                 "statistics": {
                     "total_sessions": session_stats["total_sessions"],
                     "active_sessions": session_stats["active_sessions"],
                     "total_analyses": analysis_stats["total_analyses"],
-                    "cache_hit_rate": analysis_stats.get("cache_hit_rate", 0.0)
+                    "cache_hit_rate": analysis_stats.get("cache_hit_rate", 0.0),
                 },
                 "context": {
-                    "objective": self.orchestrator.current_context.user_objective if self.orchestrator.current_context else "Unknown",
-                    "working_directory": self.orchestrator.current_context.working_directory if self.orchestrator.current_context else "Unknown"
-                }
+                    "objective": self.orchestrator.current_context.user_objective
+                    if self.orchestrator.current_context
+                    else "Unknown",
+                    "working_directory": self.orchestrator.current_context.working_directory
+                    if self.orchestrator.current_context
+                    else "Unknown",
+                },
             }
 
         except Exception as e:
             return {
                 "success": False,
                 "error": f"Status check failed: {str(e)}",
-                "type": type(e).__name__
+                "type": type(e).__name__,
             }
 
     async def _pause_command(self, args: List[str]) -> Dict[str, Any]:
         """Pause auto-mode session"""
         if not self.orchestrator:
-            return {
-                "success": False,
-                "error": "No auto-mode session to pause"
-            }
+            return {"success": False, "error": "No auto-mode session to pause"}
 
         try:
             await self.orchestrator.pause_auto_mode()
-            return {
-                "success": True,
-                "message": "Auto-mode session paused",
-                "state": "paused"
-            }
+            return {"success": True, "message": "Auto-mode session paused", "state": "paused"}
 
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to pause: {str(e)}"
-            }
+            return {"success": False, "error": f"Failed to pause: {str(e)}"}
 
     async def _resume_command(self, args: List[str]) -> Dict[str, Any]:
         """Resume auto-mode session"""
         if not self.orchestrator:
-            return {
-                "success": False,
-                "error": "No auto-mode session to resume"
-            }
+            return {"success": False, "error": "No auto-mode session to resume"}
 
         try:
             await self.orchestrator.resume_auto_mode()
-            return {
-                "success": True,
-                "message": "Auto-mode session resumed",
-                "state": "active"
-            }
+            return {"success": True, "message": "Auto-mode session resumed", "state": "active"}
 
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to resume: {str(e)}"
-            }
+            return {"success": False, "error": f"Failed to resume: {str(e)}"}
 
     async def _stop_command(self, args: List[str]) -> Dict[str, Any]:
         """Stop auto-mode session"""
         if not self.orchestrator:
-            return {
-                "success": False,
-                "error": "No auto-mode session to stop"
-            }
+            return {"success": False, "error": "No auto-mode session to stop"}
 
         try:
             # Get final stats before stopping
@@ -322,15 +295,12 @@ class AutoModeCommand:
                 "final_stats": {
                     "total_iterations": current_state["iteration"],
                     "milestones_achieved": progress_summary["milestones"],
-                    "final_progress": progress_summary["progress_percentage"]
-                }
+                    "final_progress": progress_summary["progress_percentage"],
+                },
             }
 
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to stop: {str(e)}"
-            }
+            return {"success": False, "error": f"Failed to stop: {str(e)}"}
 
     def _show_help(self) -> Dict[str, Any]:
         """Show help information for auto-mode command"""
@@ -340,31 +310,31 @@ class AutoModeCommand:
             "description": "Persistent analysis and autonomous progression through objectives",
             "usage": {
                 "start": {
-                    "syntax": "/amplihack:auto-mode start \"Objective\" [--working-dir /path] [--max-iterations 50]",
+                    "syntax": '/amplihack:auto-mode start "Objective" [--working-dir /path] [--max-iterations 50]',
                     "description": "Start new auto-mode session",
-                    "example": "/amplihack:auto-mode start \"Build a REST API with authentication\""
+                    "example": '/amplihack:auto-mode start "Build a REST API with authentication"',
                 },
                 "process": {
-                    "syntax": "/amplihack:auto-mode process \"Claude output\"",
+                    "syntax": '/amplihack:auto-mode process "Claude output"',
                     "description": "Process Claude Code output through analysis",
-                    "example": "/amplihack:auto-mode process \"I've implemented the user authentication system.\""
+                    "example": '/amplihack:auto-mode process "I\'ve implemented the user authentication system."',
                 },
                 "status": {
                     "syntax": "/amplihack:auto-mode status",
-                    "description": "Check current session status and progress"
+                    "description": "Check current session status and progress",
                 },
                 "pause": {
                     "syntax": "/amplihack:auto-mode pause",
-                    "description": "Pause the current session"
+                    "description": "Pause the current session",
                 },
                 "resume": {
                     "syntax": "/amplihack:auto-mode resume",
-                    "description": "Resume a paused session"
+                    "description": "Resume a paused session",
                 },
                 "stop": {
                     "syntax": "/amplihack:auto-mode stop",
-                    "description": "Stop and cleanup current session"
-                }
+                    "description": "Stop and cleanup current session",
+                },
             },
             "features": [
                 "Real-time progress analysis using Claude Agent SDK",
@@ -372,8 +342,8 @@ class AutoModeCommand:
                 "Session persistence and recovery",
                 "Quality assessment and recommendations",
                 "Milestone tracking and progress monitoring",
-                "Error handling and recovery mechanisms"
-            ]
+                "Error handling and recovery mechanisms",
+            ],
         }
 
 

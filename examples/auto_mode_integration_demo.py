@@ -7,29 +7,19 @@ and autonomous progression through complex objectives.
 """
 
 import asyncio
-import json
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
-import sys
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from amplihack.sdk import (
-    AutoModeOrchestrator,
-    AutoModeConfig,
-    AutoModeState,
-    AnalysisType,
-    SessionConfig,
-    PromptType,
-    ErrorSeverity
-)
+from amplihack.sdk import AutoModeConfig, AutoModeOrchestrator, AutoModeState
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -78,7 +68,7 @@ class AutoModeDemo:
             iteration_timeout_seconds=60,
             min_confidence_threshold=0.6,
             auto_progression_enabled=True,
-            persistence_enabled=True
+            persistence_enabled=True,
         )
 
         # Create orchestrator
@@ -109,8 +99,7 @@ class AutoModeDemo:
 
         # Start session
         session_id = await self.orchestrator.start_auto_mode_session(
-            objective.strip(),
-            working_directory
+            objective.strip(), working_directory
         )
 
         logger.info(f"✓ Session created: {session_id}")
@@ -125,7 +114,7 @@ class AutoModeDemo:
         development_outputs = [
             {
                 "output": "I'll start by setting up the project structure and implementing user authentication.",
-                "iteration": 1
+                "iteration": 1,
             },
             {
                 "output": """
@@ -136,7 +125,7 @@ class AutoModeDemo:
                 - Basic user registration and login endpoints
                 - Password hashing with bcrypt
                 """,
-                "iteration": 2
+                "iteration": 2,
             },
             {
                 "output": """
@@ -148,7 +137,7 @@ class AutoModeDemo:
                 - Rate limiting on auth endpoints
                 - Security headers and CORS configuration
                 """,
-                "iteration": 3
+                "iteration": 3,
             },
             {
                 "output": """
@@ -160,7 +149,7 @@ class AutoModeDemo:
                 - Inventory tracking
                 - Product reviews and ratings system
                 """,
-                "iteration": 4
+                "iteration": 4,
             },
             {
                 "output": """
@@ -172,8 +161,8 @@ class AutoModeDemo:
                 - Price calculations including tax
                 - Cart abandonment handling
                 """,
-                "iteration": 5
-            }
+                "iteration": 5,
+            },
         ]
 
         for dev_output in development_outputs:
@@ -182,7 +171,7 @@ class AutoModeDemo:
             # Process through auto-mode
             result = await self.orchestrator.process_claude_output(
                 dev_output["output"],
-                {"iteration": dev_output['iteration'], "timestamp": datetime.now().isoformat()}
+                {"iteration": dev_output["iteration"], "timestamp": datetime.now().isoformat()},
             )
 
             # Log analysis results
@@ -206,7 +195,7 @@ class AutoModeDemo:
             problematic_outputs = [
                 "I encountered an error: Connection timeout when accessing the database.",
                 "The authentication system is failing with 500 errors on login attempts.",
-                "Tests are failing due to import errors and missing dependencies."
+                "Tests are failing due to import errors and missing dependencies.",
             ]
 
             for i, output in enumerate(problematic_outputs):
@@ -241,7 +230,7 @@ class AutoModeDemo:
         logger.info(f"Milestones Achieved: {progress_summary['milestones']}")
         logger.info(f"Progress: {progress_summary['progress_percentage']:.1f}%")
 
-        if progress_summary.get('average_confidence'):
+        if progress_summary.get("average_confidence"):
             logger.info(f"Average Confidence: {progress_summary['average_confidence']:.2f}")
 
         # Show analysis engine statistics
@@ -288,7 +277,9 @@ class AutoModeDemo:
 
     def _on_milestone(self, milestone):
         """Callback for milestones"""
-        logger.info(f"🎯 Milestone Achieved: {milestone.description} (confidence: {milestone.confidence:.2f})")
+        logger.info(
+            f"🎯 Milestone Achieved: {milestone.description} (confidence: {milestone.confidence:.2f})"
+        )
 
     async def _cleanup(self):
         """Clean up demo resources"""
@@ -308,16 +299,15 @@ async def run_integration_test():
         orchestrator = AutoModeOrchestrator(config)
 
         # Start session
-        session_id = await orchestrator.start_auto_mode_session(
-            "Create a simple Python calculator with basic operations",
-            "/tmp/calculator_test"
+        await orchestrator.start_auto_mode_session(
+            "Create a simple Python calculator with basic operations", "/tmp/calculator_test"
         )
 
         # Process a few outputs
         test_outputs = [
             "I'll create a Calculator class with basic arithmetic operations.",
             "Implemented Calculator class with add, subtract, multiply, and divide methods.",
-            "Added error handling for division by zero and input validation."
+            "Added error handling for division by zero and input validation.",
         ]
 
         for output in test_outputs:

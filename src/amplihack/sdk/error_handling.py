@@ -6,20 +6,20 @@ and security controls for the Claude Agent SDK integration.
 """
 
 import asyncio
+import functools
 import logging
-import time
-from dataclasses import dataclass, field
+import uuid
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, Any, List, Optional, Callable, Type, Union
-import uuid
-import functools
+from typing import Any, Callable, Dict, List, Optional, Type
 
 logger = logging.getLogger(__name__)
 
 
 class ErrorSeverity(Enum):
     """Severity levels for errors"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -28,6 +28,7 @@ class ErrorSeverity(Enum):
 
 class RecoveryStrategy(Enum):
     """Recovery strategies for different error types"""
+
     RETRY = "retry"
     FALLBACK = "fallback"
     CIRCUIT_BREAK = "circuit_break"
@@ -38,6 +39,7 @@ class RecoveryStrategy(Enum):
 @dataclass
 class ErrorPattern:
     """Pattern definition for error classification"""
+
     id: str
     name: str
     exception_types: List[Type[Exception]]
@@ -53,6 +55,7 @@ class ErrorPattern:
 @dataclass
 class ErrorOccurrence:
     """Record of a specific error occurrence"""
+
     id: str
     timestamp: datetime
     pattern_id: str
@@ -68,6 +71,7 @@ class ErrorOccurrence:
 @dataclass
 class CircuitBreakerState:
     """State of a circuit breaker"""
+
     name: str
     state: str  # "closed", "open", "half_open"
     failure_count: int = 0
@@ -80,16 +84,19 @@ class CircuitBreakerState:
 
 class SecurityViolationError(Exception):
     """Raised when security violations are detected"""
+
     pass
 
 
 class CircuitBreakerOpenError(Exception):
     """Raised when circuit breaker is open"""
+
     pass
 
 
 class MaxRetriesExceededError(Exception):
     """Raised when maximum retries are exceeded"""
+
     pass
 
 
@@ -106,7 +113,7 @@ class CircuitBreaker:
             name=name,
             state="closed",
             failure_threshold=failure_threshold,
-            recovery_timeout=recovery_timeout
+            recovery_timeout=recovery_timeout,
         )
 
     async def call(self, func: Callable, *args, **kwargs):
@@ -123,7 +130,7 @@ class CircuitBreaker:
             await self._on_success()
             return result
 
-        except Exception as e:
+        except Exception:
             await self._on_failure()
             raise
 
@@ -165,7 +172,7 @@ class RetryConfig:
         base_delay: float = 1.0,
         max_delay: float = 60.0,
         exponential_base: float = 2.0,
-        jitter: bool = True
+        jitter: bool = True,
     ):
         self.max_attempts = max_attempts
         self.base_delay = base_delay
@@ -183,15 +190,13 @@ class RetryConfig:
 
         if self.jitter:
             import random
+
             delay = delay * (0.5 + random.random() * 0.5)  # Add 0-50% jitter
 
         return delay
 
 
-def with_retry(
-    retry_config: Optional[RetryConfig] = None,
-    exceptions: tuple = (Exception,)
-):
+def with_retry(retry_config: Optional[RetryConfig] = None, exceptions: tuple = (Exception,)):
     """Decorator for adding retry logic to functions"""
     if retry_config is None:
         retry_config = RetryConfig()
@@ -217,9 +222,10 @@ def with_retry(
                     logger.warning(f"Attempt {attempt + 1} failed, retrying in {delay:.2f}s: {e}")
                     await asyncio.sleep(delay)
 
-            raise MaxRetriesExceededError(f"Max retries exceeded") from last_exception
+            raise MaxRetriesExceededError("Max retries exceeded") from last_exception
 
         return wrapper
+
     return decorator
 
 
@@ -236,7 +242,7 @@ class SecurityValidator:
             r"file\s*=\s*open",
             r"rm\s+-rf",
             r"DELETE\s+FROM",
-            r"DROP\s+TABLE"
+            r"DROP\s+TABLE",
         ]
 
     def validate_prompt_content(self, content: str) -> None:
@@ -255,7 +261,9 @@ class SecurityValidator:
             raise SecurityViolationError("Prompt content exceeds maximum length")
 
         # Check for potential code injection
-        if "```" in content and any(lang in content_lower for lang in ["python", "bash", "sh", "cmd"]):
+        if "```" in content and any(
+            lang in content_lower for lang in ["python", "bash", "sh", "cmd"]
+        ):
             # Allow legitimate code blocks but log them
             logger.info("Code block detected in prompt - monitoring for safety")
 
@@ -321,7 +329,7 @@ class ErrorHandlingManager:
                 recovery_strategy=RecoveryStrategy.CIRCUIT_BREAK,
                 max_retries=3,
                 retry_delay=2.0,
-                circuit_break_threshold=3
+                circuit_break_threshold=3,
             ),
             ErrorPattern(
                 id="authentication",
@@ -330,7 +338,7 @@ class ErrorHandlingManager:
                 keywords=["auth", "permission", "unauthorized", "forbidden"],
                 severity=ErrorSeverity.CRITICAL,
                 recovery_strategy=RecoveryStrategy.ESCALATE,
-                max_retries=1
+                max_retries=1,
             ),
             ErrorPattern(
                 id="rate_limit",
@@ -340,7 +348,7 @@ class ErrorHandlingManager:
                 severity=ErrorSeverity.MEDIUM,
                 recovery_strategy=RecoveryStrategy.RETRY,
                 max_retries=5,
-                retry_delay=5.0
+                retry_delay=5.0,
             ),
             ErrorPattern(
                 id="validation",
@@ -349,7 +357,7 @@ class ErrorHandlingManager:
                 keywords=["invalid", "validation", "format", "type"],
                 severity=ErrorSeverity.LOW,
                 recovery_strategy=RecoveryStrategy.FALLBACK,
-                max_retries=1
+                max_retries=1,
             ),
             ErrorPattern(
                 id="security_violation",
@@ -358,17 +366,14 @@ class ErrorHandlingManager:
                 keywords=["security", "violation", "dangerous", "blocked"],
                 severity=ErrorSeverity.CRITICAL,
                 recovery_strategy=RecoveryStrategy.ESCALATE,
-                max_retries=0
-            )
+                max_retries=0,
+            ),
         ]
 
         return {pattern.id: pattern for pattern in patterns}
 
     async def handle_error(
-        self,
-        exception: Exception,
-        context: Dict[str, Any],
-        operation_name: str
+        self, exception: Exception, context: Dict[str, Any], operation_name: str
     ) -> Dict[str, Any]:
         """
         Handle an error with appropriate recovery strategy.
@@ -393,7 +398,7 @@ class ErrorHandlingManager:
                 exception_type=type(exception).__name__,
                 error_message=str(exception),
                 context=context,
-                severity=pattern.severity
+                severity=pattern.severity,
             )
 
             self.error_history.append(error_occurrence)
@@ -401,7 +406,7 @@ class ErrorHandlingManager:
             # Log error
             logger.error(
                 f"Error in {operation_name}: {pattern.name} - {exception}",
-                extra={"error_id": error_occurrence.id, "pattern": pattern.id}
+                extra={"error_id": error_occurrence.id, "pattern": pattern.id},
             )
 
             # Apply recovery strategy
@@ -414,7 +419,7 @@ class ErrorHandlingManager:
                 "pattern_id": pattern.id,
                 "severity": pattern.severity.value,
                 "recovery_strategy": pattern.recovery_strategy.value,
-                "recovery_result": recovery_result
+                "recovery_result": recovery_result,
             }
 
         except Exception as e:
@@ -424,7 +429,7 @@ class ErrorHandlingManager:
                 "pattern_id": "unknown",
                 "severity": "critical",
                 "recovery_strategy": "escalate",
-                "recovery_result": {"success": False, "error": str(e)}
+                "recovery_result": {"success": False, "error": str(e)},
             }
 
     def _classify_error(self, exception: Exception) -> ErrorPattern:
@@ -448,14 +453,11 @@ class ErrorHandlingManager:
             exception_types=[],
             keywords=[],
             severity=ErrorSeverity.MEDIUM,
-            recovery_strategy=RecoveryStrategy.RETRY
+            recovery_strategy=RecoveryStrategy.RETRY,
         )
 
     async def _apply_recovery_strategy(
-        self,
-        pattern: ErrorPattern,
-        error_occurrence: ErrorOccurrence,
-        operation_name: str
+        self, pattern: ErrorPattern, error_occurrence: ErrorOccurrence, operation_name: str
     ) -> Dict[str, Any]:
         """Apply recovery strategy for error pattern"""
         if pattern.recovery_strategy == RecoveryStrategy.RETRY:
@@ -477,26 +479,22 @@ class ErrorHandlingManager:
             return {"success": False, "error": "Unknown recovery strategy"}
 
     async def _handle_retry_strategy(
-        self,
-        pattern: ErrorPattern,
-        error_occurrence: ErrorOccurrence
+        self, pattern: ErrorPattern, error_occurrence: ErrorOccurrence
     ) -> Dict[str, Any]:
         """Handle retry recovery strategy"""
         if error_occurrence.retry_count >= pattern.max_retries:
             return {"success": False, "error": "Max retries exceeded"}
 
-        retry_delay = pattern.retry_delay * (2 ** error_occurrence.retry_count)
+        retry_delay = pattern.retry_delay * (2**error_occurrence.retry_count)
         return {
             "success": True,
             "action": "retry",
             "delay": retry_delay,
-            "attempt": error_occurrence.retry_count + 1
+            "attempt": error_occurrence.retry_count + 1,
         }
 
     async def _handle_circuit_break_strategy(
-        self,
-        pattern: ErrorPattern,
-        operation_name: str
+        self, pattern: ErrorPattern, operation_name: str
     ) -> Dict[str, Any]:
         """Handle circuit breaker recovery strategy"""
         circuit_breaker = self._get_circuit_breaker(operation_name, pattern)
@@ -506,13 +504,11 @@ class ErrorHandlingManager:
             "success": False,
             "action": "circuit_break",
             "circuit_state": circuit_breaker.state.state,
-            "failure_count": circuit_breaker.state.failure_count
+            "failure_count": circuit_breaker.state.failure_count,
         }
 
     async def _handle_fallback_strategy(
-        self,
-        pattern: ErrorPattern,
-        error_occurrence: ErrorOccurrence
+        self, pattern: ErrorPattern, error_occurrence: ErrorOccurrence
     ) -> Dict[str, Any]:
         """Handle fallback recovery strategy"""
         # Call registered fallback handler if available
@@ -527,15 +523,13 @@ class ErrorHandlingManager:
         return {"success": True, "action": "fallback", "result": "default_fallback"}
 
     async def _handle_escalate_strategy(
-        self,
-        pattern: ErrorPattern,
-        error_occurrence: ErrorOccurrence
+        self, pattern: ErrorPattern, error_occurrence: ErrorOccurrence
     ) -> Dict[str, Any]:
         """Handle escalation recovery strategy"""
         # Log critical error
         logger.critical(
             f"Critical error requiring escalation: {error_occurrence.error_message}",
-            extra={"error_id": error_occurrence.id}
+            extra={"error_id": error_occurrence.id},
         )
 
         # Could send notifications, create tickets, etc.
@@ -546,9 +540,7 @@ class ErrorHandlingManager:
         key = f"{operation_name}_{pattern.id}"
         if key not in self.circuit_breakers:
             self.circuit_breakers[key] = CircuitBreaker(
-                name=key,
-                failure_threshold=pattern.circuit_break_threshold,
-                recovery_timeout=60
+                name=key, failure_threshold=pattern.circuit_break_threshold, recovery_timeout=60
             )
         return self.circuit_breakers[key]
 
@@ -562,8 +554,7 @@ class ErrorHandlingManager:
 
         # Remove old entries
         self.rate_limits[operation] = [
-            timestamp for timestamp in self.rate_limits[operation]
-            if timestamp > window_start
+            timestamp for timestamp in self.rate_limits[operation] if timestamp > window_start
         ]
 
         # Check limit
@@ -599,7 +590,6 @@ class ErrorHandlingManager:
             "severity_distribution": severity_counts,
             "pattern_distribution": pattern_counts,
             "circuit_breakers": {
-                name: breaker.state.state
-                for name, breaker in self.circuit_breakers.items()
-            }
+                name: breaker.state.state for name, breaker in self.circuit_breakers.items()
+            },
         }

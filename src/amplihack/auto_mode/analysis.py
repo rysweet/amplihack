@@ -5,16 +5,16 @@ Analyzes conversation quality, patterns, and improvement opportunities.
 Provides quantitative and qualitative assessment of conversation effectiveness.
 """
 
-import time
 import re
-from typing import Dict, List, Optional, Any, Tuple
+import time
 from dataclasses import dataclass, field
 from enum import Enum
-import asyncio
+from typing import Any, Dict, List, Tuple
 
 
 class ConversationSignal(Enum):
     """Types of signals detected in conversations"""
+
     POSITIVE_ENGAGEMENT = "positive_engagement"
     CONFUSION_INDICATOR = "confusion_indicator"
     FRUSTRATION_SIGNAL = "frustration_signal"
@@ -28,6 +28,7 @@ class ConversationSignal(Enum):
 @dataclass
 class ConversationPattern:
     """Identified pattern in conversation"""
+
     pattern_type: str
     description: str
     frequency: int
@@ -40,6 +41,7 @@ class ConversationPattern:
 @dataclass
 class QualityDimension:
     """Quality assessment for a specific dimension"""
+
     dimension: str
     score: float  # 0.0 - 1.0
     evidence: List[str] = field(default_factory=list)
@@ -49,6 +51,7 @@ class QualityDimension:
 @dataclass
 class ConversationAnalysis:
     """Complete analysis result for a conversation"""
+
     # Basic metrics
     timestamp: float = field(default_factory=time.time)
     conversation_length: int = 0
@@ -82,31 +85,37 @@ class SignalDetector:
     def __init__(self):
         # Compile regex patterns for efficiency
         self.positive_patterns = [
-            re.compile(r'\b(thank you|thanks|great|perfect|exactly|awesome|helpful)\b', re.IGNORECASE),
-            re.compile(r'\b(works|working|solved|fixed|success)\b', re.IGNORECASE),
-            re.compile(r'(that helps|much better|makes sense)\b', re.IGNORECASE)
+            re.compile(
+                r"\b(thank you|thanks|great|perfect|exactly|awesome|helpful)\b", re.IGNORECASE
+            ),
+            re.compile(r"\b(works|working|solved|fixed|success)\b", re.IGNORECASE),
+            re.compile(r"(that helps|much better|makes sense)\b", re.IGNORECASE),
         ]
 
         self.confusion_patterns = [
-            re.compile(r'\b(confused|don\'t understand|unclear|not sure|what do you mean)\b', re.IGNORECASE),
-            re.compile(r'\b(how do I|what is|can you explain|I don\'t get)\b', re.IGNORECASE),
-            re.compile(r'(\?\?\?|huh\?|what\?)', re.IGNORECASE)
+            re.compile(
+                r"\b(confused|don\'t understand|unclear|not sure|what do you mean)\b", re.IGNORECASE
+            ),
+            re.compile(r"\b(how do I|what is|can you explain|I don\'t get)\b", re.IGNORECASE),
+            re.compile(r"(\?\?\?|huh\?|what\?)", re.IGNORECASE),
         ]
 
         self.frustration_patterns = [
-            re.compile(r'\b(frustrated|annoying|not working|broken|error)\b', re.IGNORECASE),
-            re.compile(r'\b(tried everything|nothing works|still failing)\b', re.IGNORECASE),
-            re.compile(r'(this is ridiculous|waste of time)', re.IGNORECASE)
+            re.compile(r"\b(frustrated|annoying|not working|broken|error)\b", re.IGNORECASE),
+            re.compile(r"\b(tried everything|nothing works|still failing)\b", re.IGNORECASE),
+            re.compile(r"(this is ridiculous|waste of time)", re.IGNORECASE),
         ]
 
         self.clarification_patterns = [
-            re.compile(r'\b(can you clarify|what exactly|more specific|elaborate)\b', re.IGNORECASE),
-            re.compile(r'\b(show me|example|demonstrate|walk me through)\b', re.IGNORECASE)
+            re.compile(
+                r"\b(can you clarify|what exactly|more specific|elaborate)\b", re.IGNORECASE
+            ),
+            re.compile(r"\b(show me|example|demonstrate|walk me through)\b", re.IGNORECASE),
         ]
 
         self.success_patterns = [
-            re.compile(r'\b(it works|working now|fixed|resolved|completed)\b', re.IGNORECASE),
-            re.compile(r'\b(goal achieved|task done|mission accomplished)\b', re.IGNORECASE)
+            re.compile(r"\b(it works|working now|fixed|resolved|completed)\b", re.IGNORECASE),
+            re.compile(r"\b(goal achieved|task done|mission accomplished)\b", re.IGNORECASE),
         ]
 
     def detect_signals(self, text: str) -> List[ConversationSignal]:
@@ -142,13 +151,14 @@ class PatternAnalyzer:
     def __init__(self):
         self.pattern_cache: Dict[str, List[ConversationPattern]] = {}
 
-    def analyze_patterns(self, conversation_context: Dict[str, Any],
-                        session_history: List[Any]) -> List[ConversationPattern]:
+    def analyze_patterns(
+        self, conversation_context: Dict[str, Any], session_history: List[Any]
+    ) -> List[ConversationPattern]:
         """Analyze conversation for patterns"""
         patterns = []
 
         # Extract conversation messages
-        messages = conversation_context.get('messages', [])
+        messages = conversation_context.get("messages", [])
         if not messages:
             return patterns
 
@@ -160,7 +170,9 @@ class PatternAnalyzer:
 
         return patterns
 
-    def _analyze_message_patterns(self, messages: List[Dict[str, Any]]) -> List[ConversationPattern]:
+    def _analyze_message_patterns(
+        self, messages: List[Dict[str, Any]]
+    ) -> List[ConversationPattern]:
         """Analyze patterns in message content and structure"""
         patterns = []
 
@@ -168,122 +180,144 @@ class PatternAnalyzer:
             return patterns
 
         # Look for repetitive questions
-        user_messages = [msg for msg in messages if msg.get('role') == 'user']
-        question_count = sum(1 for msg in user_messages if '?' in msg.get('content', ''))
+        user_messages = [msg for msg in messages if msg.get("role") == "user"]
+        question_count = sum(1 for msg in user_messages if "?" in msg.get("content", ""))
 
         if question_count > len(user_messages) * 0.7:
-            patterns.append(ConversationPattern(
-                pattern_type="high_question_frequency",
-                description="User asking many questions, might need more proactive guidance",
-                frequency=question_count,
-                confidence=0.8,
-                impact_level="medium",
-                examples=[msg['content'][:100] for msg in user_messages if '?' in msg.get('content', '')][:3]
-            ))
+            patterns.append(
+                ConversationPattern(
+                    pattern_type="high_question_frequency",
+                    description="User asking many questions, might need more proactive guidance",
+                    frequency=question_count,
+                    confidence=0.8,
+                    impact_level="medium",
+                    examples=[
+                        msg["content"][:100]
+                        for msg in user_messages
+                        if "?" in msg.get("content", "")
+                    ][:3],
+                )
+            )
 
         # Look for repeated similar requests
-        user_contents = [msg.get('content', '') for msg in user_messages]
+        user_contents = [msg.get("content", "") for msg in user_messages]
         similar_requests = self._find_similar_content(user_contents)
 
         if len(similar_requests) > 1:
-            patterns.append(ConversationPattern(
-                pattern_type="repeated_requests",
-                description="User making similar requests multiple times",
-                frequency=len(similar_requests),
-                confidence=0.7,
-                impact_level="high",
-                examples=similar_requests[:3]
-            ))
+            patterns.append(
+                ConversationPattern(
+                    pattern_type="repeated_requests",
+                    description="User making similar requests multiple times",
+                    frequency=len(similar_requests),
+                    confidence=0.7,
+                    impact_level="high",
+                    examples=similar_requests[:3],
+                )
+            )
 
         return patterns
 
-    def _analyze_tool_usage_patterns(self, conversation_context: Dict[str, Any]) -> List[ConversationPattern]:
+    def _analyze_tool_usage_patterns(
+        self, conversation_context: Dict[str, Any]
+    ) -> List[ConversationPattern]:
         """Analyze tool usage patterns"""
         patterns = []
 
-        tool_usage = conversation_context.get('tool_usage', [])
+        tool_usage = conversation_context.get("tool_usage", [])
         if not tool_usage:
             return patterns
 
         # Count tool frequency
         tool_counts = {}
         for tool_use in tool_usage:
-            tool_name = tool_use.get('tool_name', 'unknown')
+            tool_name = tool_use.get("tool_name", "unknown")
             tool_counts[tool_name] = tool_counts.get(tool_name, 0) + 1
 
         # Look for overused tools
         total_tools = len(tool_usage)
         for tool_name, count in tool_counts.items():
             if count > total_tools * 0.4:  # More than 40% of tool usage
-                patterns.append(ConversationPattern(
-                    pattern_type="tool_overuse",
-                    description=f"Heavy reliance on {tool_name} tool",
-                    frequency=count,
-                    confidence=0.8,
-                    impact_level="medium",
-                    metadata={'tool_name': tool_name, 'usage_percentage': count / total_tools}
-                ))
+                patterns.append(
+                    ConversationPattern(
+                        pattern_type="tool_overuse",
+                        description=f"Heavy reliance on {tool_name} tool",
+                        frequency=count,
+                        confidence=0.8,
+                        impact_level="medium",
+                        metadata={"tool_name": tool_name, "usage_percentage": count / total_tools},
+                    )
+                )
 
         return patterns
 
-    def _analyze_goal_patterns(self, conversation_context: Dict[str, Any]) -> List[ConversationPattern]:
+    def _analyze_goal_patterns(
+        self, conversation_context: Dict[str, Any]
+    ) -> List[ConversationPattern]:
         """Analyze goal achievement patterns"""
         patterns = []
 
-        goals = conversation_context.get('goals', [])
+        goals = conversation_context.get("goals", [])
         if not goals:
             return patterns
 
-        completed_goals = [g for g in goals if g.get('status') == 'completed']
-        pending_goals = [g for g in goals if g.get('status') != 'completed']
+        completed_goals = [g for g in goals if g.get("status") == "completed"]
+        pending_goals = [g for g in goals if g.get("status") != "completed"]
 
         # Check for goal completion efficiency
         if len(goals) > 3:
             completion_rate = len(completed_goals) / len(goals)
             if completion_rate < 0.3:
-                patterns.append(ConversationPattern(
-                    pattern_type="low_goal_completion",
-                    description="Many goals started but few completed",
-                    frequency=len(pending_goals),
-                    confidence=0.9,
-                    impact_level="high",
-                    metadata={'completion_rate': completion_rate}
-                ))
+                patterns.append(
+                    ConversationPattern(
+                        pattern_type="low_goal_completion",
+                        description="Many goals started but few completed",
+                        frequency=len(pending_goals),
+                        confidence=0.9,
+                        impact_level="high",
+                        metadata={"completion_rate": completion_rate},
+                    )
+                )
 
         return patterns
 
-    def _analyze_learning_patterns(self, messages: List[Dict[str, Any]]) -> List[ConversationPattern]:
+    def _analyze_learning_patterns(
+        self, messages: List[Dict[str, Any]]
+    ) -> List[ConversationPattern]:
         """Analyze learning and knowledge transfer patterns"""
         patterns = []
 
         # Look for learning indicators
-        learning_keywords = ['how', 'why', 'what', 'explain', 'understand', 'learn']
-        user_messages = [msg for msg in messages if msg.get('role') == 'user']
+        learning_keywords = ["how", "why", "what", "explain", "understand", "learn"]
+        user_messages = [msg for msg in messages if msg.get("role") == "user"]
 
         learning_message_count = 0
         for msg in user_messages:
-            content = msg.get('content', '').lower()
+            content = msg.get("content", "").lower()
             if any(keyword in content for keyword in learning_keywords):
                 learning_message_count += 1
 
         if learning_message_count > len(user_messages) * 0.5:
-            patterns.append(ConversationPattern(
-                pattern_type="learning_focused",
-                description="User is in learning mode, focus on educational responses",
-                frequency=learning_message_count,
-                confidence=0.8,
-                impact_level="medium",
-                metadata={'learning_intensity': learning_message_count / len(user_messages)}
-            ))
+            patterns.append(
+                ConversationPattern(
+                    pattern_type="learning_focused",
+                    description="User is in learning mode, focus on educational responses",
+                    frequency=learning_message_count,
+                    confidence=0.8,
+                    impact_level="medium",
+                    metadata={"learning_intensity": learning_message_count / len(user_messages)},
+                )
+            )
 
         return patterns
 
-    def _find_similar_content(self, contents: List[str], similarity_threshold: float = 0.7) -> List[str]:
+    def _find_similar_content(
+        self, contents: List[str], similarity_threshold: float = 0.7
+    ) -> List[str]:
         """Find similar content in a list of strings"""
         similar_groups = []
 
         for i, content1 in enumerate(contents):
-            for j, content2 in enumerate(contents[i+1:], i+1):
+            for j, content2 in enumerate(contents[i + 1 :], i + 1):
                 similarity = self._calculate_similarity(content1, content2)
                 if similarity >= similarity_threshold:
                     similar_groups.append(content1)
@@ -314,13 +348,20 @@ class QualityAssessor:
 
     def __init__(self):
         self.dimensions = [
-            'clarity', 'effectiveness', 'engagement',
-            'technical_accuracy', 'efficiency', 'satisfaction'
+            "clarity",
+            "effectiveness",
+            "engagement",
+            "technical_accuracy",
+            "efficiency",
+            "satisfaction",
         ]
 
-    def assess_quality(self, conversation_context: Dict[str, Any],
-                      detected_signals: List[ConversationSignal],
-                      identified_patterns: List[ConversationPattern]) -> Tuple[float, List[QualityDimension]]:
+    def assess_quality(
+        self,
+        conversation_context: Dict[str, Any],
+        detected_signals: List[ConversationSignal],
+        identified_patterns: List[ConversationPattern],
+    ) -> Tuple[float, List[QualityDimension]]:
         """Assess overall conversation quality"""
 
         dimension_assessments = []
@@ -337,28 +378,36 @@ class QualityAssessor:
 
         return overall_score, dimension_assessments
 
-    def _assess_dimension(self, dimension: str, conversation_context: Dict[str, Any],
-                         signals: List[ConversationSignal],
-                         patterns: List[ConversationPattern]) -> QualityDimension:
+    def _assess_dimension(
+        self,
+        dimension: str,
+        conversation_context: Dict[str, Any],
+        signals: List[ConversationSignal],
+        patterns: List[ConversationPattern],
+    ) -> QualityDimension:
         """Assess a specific quality dimension"""
 
-        if dimension == 'clarity':
+        if dimension == "clarity":
             return self._assess_clarity(conversation_context, signals, patterns)
-        elif dimension == 'effectiveness':
+        elif dimension == "effectiveness":
             return self._assess_effectiveness(conversation_context, signals, patterns)
-        elif dimension == 'engagement':
+        elif dimension == "engagement":
             return self._assess_engagement(conversation_context, signals, patterns)
-        elif dimension == 'technical_accuracy':
+        elif dimension == "technical_accuracy":
             return self._assess_technical_accuracy(conversation_context, signals, patterns)
-        elif dimension == 'efficiency':
+        elif dimension == "efficiency":
             return self._assess_efficiency(conversation_context, signals, patterns)
-        elif dimension == 'satisfaction':
+        elif dimension == "satisfaction":
             return self._assess_satisfaction(conversation_context, signals, patterns)
         else:
             return QualityDimension(dimension=dimension, score=0.5)
 
-    def _assess_clarity(self, context: Dict[str, Any], signals: List[ConversationSignal],
-                       patterns: List[ConversationPattern]) -> QualityDimension:
+    def _assess_clarity(
+        self,
+        context: Dict[str, Any],
+        signals: List[ConversationSignal],
+        patterns: List[ConversationPattern],
+    ) -> QualityDimension:
         """Assess conversation clarity"""
         base_score = 0.7
         evidence = []
@@ -391,20 +440,24 @@ class QualityAssessor:
             dimension="clarity",
             score=max(0.0, min(1.0, base_score)),
             evidence=evidence,
-            improvement_suggestions=suggestions
+            improvement_suggestions=suggestions,
         )
 
-    def _assess_effectiveness(self, context: Dict[str, Any], signals: List[ConversationSignal],
-                            patterns: List[ConversationPattern]) -> QualityDimension:
+    def _assess_effectiveness(
+        self,
+        context: Dict[str, Any],
+        signals: List[ConversationSignal],
+        patterns: List[ConversationPattern],
+    ) -> QualityDimension:
         """Assess conversation effectiveness"""
         base_score = 0.7
         evidence = []
         suggestions = []
 
         # Check goal achievement
-        goals = context.get('goals', [])
+        goals = context.get("goals", [])
         if goals:
-            completed = len([g for g in goals if g.get('status') == 'completed'])
+            completed = len([g for g in goals if g.get("status") == "completed"])
             completion_rate = completed / len(goals)
             base_score = completion_rate
             evidence.append(f"Goal completion rate: {completion_rate:.1%}")
@@ -426,20 +479,24 @@ class QualityAssessor:
             dimension="effectiveness",
             score=max(0.0, min(1.0, base_score)),
             evidence=evidence,
-            improvement_suggestions=suggestions
+            improvement_suggestions=suggestions,
         )
 
-    def _assess_engagement(self, context: Dict[str, Any], signals: List[ConversationSignal],
-                          patterns: List[ConversationPattern]) -> QualityDimension:
+    def _assess_engagement(
+        self,
+        context: Dict[str, Any],
+        signals: List[ConversationSignal],
+        patterns: List[ConversationPattern],
+    ) -> QualityDimension:
         """Assess user engagement level"""
         base_score = 0.6
         evidence = []
         suggestions = []
 
-        messages = context.get('messages', [])
+        messages = context.get("messages", [])
         if messages:
-            user_messages = [m for m in messages if m.get('role') == 'user']
-            avg_length = sum(len(m.get('content', '')) for m in user_messages) / len(user_messages)
+            user_messages = [m for m in messages if m.get("role") == "user"]
+            avg_length = sum(len(m.get("content", "")) for m in user_messages) / len(user_messages)
 
             if avg_length > 100:
                 base_score += 0.2
@@ -464,11 +521,15 @@ class QualityAssessor:
             dimension="engagement",
             score=max(0.0, min(1.0, base_score)),
             evidence=evidence,
-            improvement_suggestions=suggestions
+            improvement_suggestions=suggestions,
         )
 
-    def _assess_technical_accuracy(self, context: Dict[str, Any], signals: List[ConversationSignal],
-                                  patterns: List[ConversationPattern]) -> QualityDimension:
+    def _assess_technical_accuracy(
+        self,
+        context: Dict[str, Any],
+        signals: List[ConversationSignal],
+        patterns: List[ConversationPattern],
+    ) -> QualityDimension:
         """Assess technical accuracy of solutions"""
         # This is a simplified assessment - in practice would need more sophisticated checks
         base_score = 0.8
@@ -476,8 +537,8 @@ class QualityAssessor:
         suggestions = []
 
         # Look for error indicators
-        tool_usage = context.get('tool_usage', [])
-        error_count = sum(1 for tool in tool_usage if tool.get('status') == 'error')
+        tool_usage = context.get("tool_usage", [])
+        error_count = sum(1 for tool in tool_usage if tool.get("status") == "error")
 
         if error_count > 0:
             error_rate = error_count / len(tool_usage)
@@ -489,11 +550,15 @@ class QualityAssessor:
             dimension="technical_accuracy",
             score=max(0.0, min(1.0, base_score)),
             evidence=evidence,
-            improvement_suggestions=suggestions
+            improvement_suggestions=suggestions,
         )
 
-    def _assess_efficiency(self, context: Dict[str, Any], signals: List[ConversationSignal],
-                          patterns: List[ConversationPattern]) -> QualityDimension:
+    def _assess_efficiency(
+        self,
+        context: Dict[str, Any],
+        signals: List[ConversationSignal],
+        patterns: List[ConversationPattern],
+    ) -> QualityDimension:
         """Assess conversation efficiency"""
         base_score = 0.7
         evidence = []
@@ -507,7 +572,7 @@ class QualityAssessor:
                 suggestions.append("Consider diversifying tool usage for better efficiency")
 
         # Check message efficiency
-        messages = context.get('messages', [])
+        messages = context.get("messages", [])
         if len(messages) > 20:
             base_score -= 0.1
             evidence.append("Long conversation - check for efficiency opportunities")
@@ -517,11 +582,15 @@ class QualityAssessor:
             dimension="efficiency",
             score=max(0.0, min(1.0, base_score)),
             evidence=evidence,
-            improvement_suggestions=suggestions
+            improvement_suggestions=suggestions,
         )
 
-    def _assess_satisfaction(self, context: Dict[str, Any], signals: List[ConversationSignal],
-                           patterns: List[ConversationPattern]) -> QualityDimension:
+    def _assess_satisfaction(
+        self,
+        context: Dict[str, Any],
+        signals: List[ConversationSignal],
+        patterns: List[ConversationPattern],
+    ) -> QualityDimension:
         """Assess user satisfaction"""
         base_score = 0.6
         evidence = []
@@ -530,14 +599,14 @@ class QualityAssessor:
         # Positive satisfaction signals
         positive_signals = [
             ConversationSignal.POSITIVE_ENGAGEMENT,
-            ConversationSignal.SUCCESS_CONFIRMATION
+            ConversationSignal.SUCCESS_CONFIRMATION,
         ]
         positive_count = sum(1 for signal in signals if signal in positive_signals)
 
         # Negative satisfaction signals
         negative_signals = [
             ConversationSignal.FRUSTRATION_SIGNAL,
-            ConversationSignal.CONFUSION_INDICATOR
+            ConversationSignal.CONFUSION_INDICATOR,
         ]
         negative_count = sum(1 for signal in signals if signal in negative_signals)
 
@@ -555,7 +624,7 @@ class QualityAssessor:
             dimension="satisfaction",
             score=max(0.0, min(1.0, base_score)),
             evidence=evidence,
-            improvement_suggestions=suggestions
+            improvement_suggestions=suggestions,
         )
 
 
@@ -574,8 +643,9 @@ class AnalysisEngine:
         # Any async initialization can go here
         pass
 
-    async def analyze_conversation(self, conversation_context: Dict[str, Any],
-                                 session_history: List[Any]) -> ConversationAnalysis:
+    async def analyze_conversation(
+        self, conversation_context: Dict[str, Any], session_history: List[Any]
+    ) -> ConversationAnalysis:
         """
         Perform comprehensive conversation analysis.
 
@@ -589,13 +659,15 @@ class AnalysisEngine:
         analysis = ConversationAnalysis()
 
         # Extract basic metrics
-        messages = conversation_context.get('messages', [])
+        messages = conversation_context.get("messages", [])
         analysis.conversation_length = len(messages)
-        analysis.user_message_count = len([m for m in messages if m.get('role') == 'user'])
-        analysis.assistant_message_count = len([m for m in messages if m.get('role') == 'assistant'])
+        analysis.user_message_count = len([m for m in messages if m.get("role") == "user"])
+        analysis.assistant_message_count = len(
+            [m for m in messages if m.get("role") == "assistant"]
+        )
 
         # Detect signals in conversation
-        all_text = ' '.join(msg.get('content', '') for msg in messages)
+        all_text = " ".join(msg.get("content", "") for msg in messages)
         analysis.detected_signals = self.signal_detector.detect_signals(all_text)
 
         # Analyze patterns
@@ -625,7 +697,9 @@ class AnalysisEngine:
 
         return analysis
 
-    def _generate_improvement_opportunities(self, analysis: ConversationAnalysis) -> List[Dict[str, Any]]:
+    def _generate_improvement_opportunities(
+        self, analysis: ConversationAnalysis
+    ) -> List[Dict[str, Any]]:
         """Generate improvement opportunities based on analysis"""
         opportunities = []
 
@@ -633,29 +707,33 @@ class AnalysisEngine:
         for dimension in analysis.quality_dimensions:
             if dimension.score < 0.6 and dimension.improvement_suggestions:
                 for suggestion in dimension.improvement_suggestions:
-                    opportunities.append({
-                        'area': dimension.dimension,
-                        'description': suggestion,
-                        'priority': 'high' if dimension.score < 0.4 else 'medium',
-                        'confidence': 0.8
-                    })
+                    opportunities.append(
+                        {
+                            "area": dimension.dimension,
+                            "description": suggestion,
+                            "priority": "high" if dimension.score < 0.4 else "medium",
+                            "confidence": 0.8,
+                        }
+                    )
 
         # Add pattern-based opportunities
         for pattern in analysis.identified_patterns:
-            if pattern.impact_level == 'high':
-                opportunities.append({
-                    'area': 'pattern_optimization',
-                    'description': f"Address {pattern.pattern_type}: {pattern.description}",
-                    'priority': 'high',
-                    'confidence': pattern.confidence
-                })
+            if pattern.impact_level == "high":
+                opportunities.append(
+                    {
+                        "area": "pattern_optimization",
+                        "description": f"Address {pattern.pattern_type}: {pattern.description}",
+                        "priority": "high",
+                        "confidence": pattern.confidence,
+                    }
+                )
 
         return opportunities
 
     def _assess_user_expertise(self, conversation_context: Dict[str, Any]) -> str:
         """Assess user's technical expertise level"""
-        messages = conversation_context.get('messages', [])
-        user_messages = [m for m in messages if m.get('role') == 'user']
+        messages = conversation_context.get("messages", [])
+        user_messages = [m for m in messages if m.get("role") == "user"]
 
         if not user_messages:
             return "unknown"
@@ -665,14 +743,22 @@ class AnalysisEngine:
         basic_questions = 0
 
         for msg in user_messages:
-            content = msg.get('content', '').lower()
+            content = msg.get("content", "").lower()
 
             # Count technical terms (simplified)
-            tech_keywords = ['api', 'function', 'class', 'method', 'algorithm', 'database', 'framework']
+            tech_keywords = [
+                "api",
+                "function",
+                "class",
+                "method",
+                "algorithm",
+                "database",
+                "framework",
+            ]
             technical_terms += sum(1 for keyword in tech_keywords if keyword in content)
 
             # Count basic questions
-            if any(phrase in content for phrase in ['how do i', 'what is', 'can you help']):
+            if any(phrase in content for phrase in ["how do i", "what is", "can you help"]):
                 basic_questions += 1
 
         # Simple classification
@@ -685,22 +771,22 @@ class AnalysisEngine:
 
     def _identify_domain_context(self, conversation_context: Dict[str, Any]) -> str:
         """Identify the domain context of the conversation"""
-        messages = conversation_context.get('messages', [])
-        all_text = ' '.join(msg.get('content', '') for msg in messages).lower()
+        messages = conversation_context.get("messages", [])
+        all_text = " ".join(msg.get("content", "") for msg in messages).lower()
 
         # Domain keywords mapping
         domains = {
-            'programming': ['code', 'function', 'class', 'variable', 'programming', 'software'],
-            'data_science': ['data', 'analysis', 'machine learning', 'statistics', 'model'],
-            'web_development': ['web', 'html', 'css', 'javascript', 'frontend', 'backend'],
-            'devops': ['deployment', 'docker', 'kubernetes', 'CI/CD', 'infrastructure'],
-            'security': ['security', 'authentication', 'encryption', 'vulnerability'],
-            'general': []
+            "programming": ["code", "function", "class", "variable", "programming", "software"],
+            "data_science": ["data", "analysis", "machine learning", "statistics", "model"],
+            "web_development": ["web", "html", "css", "javascript", "frontend", "backend"],
+            "devops": ["deployment", "docker", "kubernetes", "CI/CD", "infrastructure"],
+            "security": ["security", "authentication", "encryption", "vulnerability"],
+            "general": [],
         }
 
         domain_scores = {}
         for domain, keywords in domains.items():
-            if domain == 'general':
+            if domain == "general":
                 continue
             score = sum(1 for keyword in keywords if keyword in all_text)
             domain_scores[domain] = score
@@ -711,22 +797,25 @@ class AnalysisEngine:
             if domain_scores[max_domain] > 0:
                 return max_domain
 
-        return 'general'
+        return "general"
 
-    def _calculate_activity_level(self, conversation_context: Dict[str, Any],
-                                session_history: List[Any]) -> float:
+    def _calculate_activity_level(
+        self, conversation_context: Dict[str, Any], session_history: List[Any]
+    ) -> float:
         """Calculate conversation activity level for adaptive analysis"""
         base_level = 1.0
 
         # Recent message frequency
-        messages = conversation_context.get('messages', [])
+        messages = conversation_context.get("messages", [])
         if len(messages) > 10:
             base_level *= 1.5  # More active conversation
 
         # Recent analysis results
         if len(session_history) > 3:
             recent_analyses = session_history[-3:]
-            avg_quality = sum(r.analysis.quality_score for r in recent_analyses) / len(recent_analyses)
+            avg_quality = sum(r.analysis.quality_score for r in recent_analyses) / len(
+                recent_analyses
+            )
 
             if avg_quality < 0.5:
                 base_level *= 2.0  # More frequent analysis needed
@@ -737,31 +826,27 @@ class AnalysisEngine:
 
     def _extract_satisfaction_signals(self, analysis: ConversationAnalysis) -> Dict[str, Any]:
         """Extract user satisfaction signals from analysis"""
-        signals = {
-            'overall_sentiment': 'neutral',
-            'confidence': 0.5,
-            'indicators': []
-        }
+        signals = {"overall_sentiment": "neutral", "confidence": 0.5, "indicators": []}
 
         positive_signals = [
             ConversationSignal.POSITIVE_ENGAGEMENT,
-            ConversationSignal.SUCCESS_CONFIRMATION
+            ConversationSignal.SUCCESS_CONFIRMATION,
         ]
         negative_signals = [
             ConversationSignal.FRUSTRATION_SIGNAL,
-            ConversationSignal.CONFUSION_INDICATOR
+            ConversationSignal.CONFUSION_INDICATOR,
         ]
 
         positive_count = sum(1 for s in analysis.detected_signals if s in positive_signals)
         negative_count = sum(1 for s in analysis.detected_signals if s in negative_signals)
 
         if positive_count > negative_count:
-            signals['overall_sentiment'] = 'positive'
-            signals['confidence'] = min(0.9, 0.5 + (positive_count * 0.1))
+            signals["overall_sentiment"] = "positive"
+            signals["confidence"] = min(0.9, 0.5 + (positive_count * 0.1))
         elif negative_count > positive_count:
-            signals['overall_sentiment'] = 'negative'
-            signals['confidence'] = min(0.9, 0.5 + (negative_count * 0.1))
+            signals["overall_sentiment"] = "negative"
+            signals["confidence"] = min(0.9, 0.5 + (negative_count * 0.1))
 
-        signals['indicators'] = [signal.value for signal in analysis.detected_signals]
+        signals["indicators"] = [signal.value for signal in analysis.detected_signals]
 
         return signals
