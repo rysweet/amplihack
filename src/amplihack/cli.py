@@ -12,11 +12,7 @@ from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
 
-def launch_command(
-    args: argparse.Namespace,
-    claude_args: Optional[List[str]] = None,
-    resolved_proxy_config: Optional[str] = None,
-) -> int:
+def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
     """Handle the launch command.
 
     Args:
@@ -67,12 +63,7 @@ def launch_command(
 
     # Set up proxy if configuration provided
     if args.with_proxy_config:
-        # Use pre-resolved config path if provided (for UVX compatibility)
-        config_path = (
-            Path(resolved_proxy_config)
-            if resolved_proxy_config
-            else Path(args.with_proxy_config).resolve()
-        )
+        config_path = Path(args.with_proxy_config).resolve()
         if not config_path.exists():
             print(f"Error: Proxy configuration file not found: {config_path}")
             return 1
@@ -86,7 +77,9 @@ def launch_command(
             )
             return 1
 
-        proxy_manager = ProxyManager(proxy_config)
+        # Check if built-in proxy should be used
+        use_builtin_proxy = getattr(args, "builtin_proxy", False)
+        proxy_manager = ProxyManager(proxy_config, use_builtin=use_builtin_proxy)
 
         # When using proxy, automatically use Azure persistence prompt
         default_prompt = Path(__file__).parent / "prompts" / "azure_persistence.md"
@@ -179,6 +172,11 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
     )
     launch_parser.add_argument(
+        "--builtin-proxy",
+        action="store_true",
+        help="Use built-in proxy server with OpenAI Responses API support instead of external claude-code-proxy",
+    )
+    launch_parser.add_argument(
         "--checkout-repo",
         metavar="GITHUB_URI",
         help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
@@ -210,14 +208,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     Returns:
         Exit code.
     """
-    # Pre-parse arguments to resolve relative paths before UVX staging changes cwd
-    preliminary_args, _ = parse_args_with_passthrough(argv)
-
-    # Resolve proxy config path relative to original directory before UVX staging
-    resolved_proxy_config = None
-    if hasattr(preliminary_args, "with_proxy_config") and preliminary_args.with_proxy_config:
-        resolved_proxy_config = str(Path(preliminary_args.with_proxy_config).resolve())
-
     # Initialize UVX staging if needed (before parsing args)
     temp_claude_dir = None
     if is_uvx_deployment():
@@ -243,84 +233,81 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Stage framework files to the temp .claude directory
         # Use the built-in _local_install function to copy framework files
         # Find the amplihack package location
+        # Find amplihack package location for .claude files
+        import amplihack
+
         from . import copytree_manifest
 
-        amplihack_src = None
-        for path in sys.path:
-            test_path = os.path.join(path, "amplihack", ".claude")
-            if os.path.exists(test_path):
-                amplihack_src = os.path.join(path, "amplihack")
-                break
+        amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
-        if amplihack_src:
-            # Copy .claude contents to temp .claude directory
-            # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-            copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+        # Copy .claude contents to temp .claude directory
+        # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
+        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
-            # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
-            # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
-            if copied:
-                settings_path = os.path.join(temp_claude_dir, "settings.json")
-                import json
+        # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
+        # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
+        if copied:
+            settings_path = os.path.join(temp_claude_dir, "settings.json")
+            import json
 
-                # Create minimal settings.json with just amplihack hooks
-                settings = {
-                    "hooks": {
-                        "SessionStart": [
-                            {
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/session_start.py",
-                                        "timeout": 10000,
-                                    }
-                                ]
-                            }
-                        ],
-                        "Stop": [
-                            {
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/stop.py",
-                                        "timeout": 30000,
-                                    }
-                                ]
-                            }
-                        ],
-                        "PostToolUse": [
-                            {
-                                "matcher": "*",
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/post_tool_use.py",
-                                    }
-                                ],
-                            }
-                        ],
-                        "PreCompact": [
-                            {
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/pre_compact.py",
-                                        "timeout": 30000,
-                                    }
-                                ]
-                            }
-                        ],
-                    }
+            # Create minimal settings.json with just amplihack hooks
+            settings = {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+                                    "timeout": 10000,
+                                }
+                            ]
+                        }
+                    ],
+                    "Stop": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+                                    "timeout": 30000,
+                                }
+                            ]
+                        }
+                    ],
+                    "PostToolUse": [
+                        {
+                            "matcher": "*",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
+                                }
+                            ],
+                        }
+                    ],
+                    "PreCompact": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+                                    "timeout": 30000,
+                                }
+                            ]
+                        }
+                    ],
                 }
+            }
 
-                # Write settings.json
-                os.makedirs(temp_claude_dir, exist_ok=True)
-                with open(settings_path, "w") as f:
-                    json.dump(settings, f, indent=2)
+            # Write settings.json
+            os.makedirs(temp_claude_dir, exist_ok=True)
+            with open(settings_path, "w") as f:
+                json.dump(settings, f, indent=2)
 
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"UVX staging completed to {temp_claude_dir}")
-                    print("Created settings.json with relative hook paths")
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"UVX staging completed to {temp_claude_dir}")
+                print("Created settings.json with relative hook paths")
 
     args, claude_args = parse_args_with_passthrough(argv)
 
@@ -381,7 +368,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             # Add --add-dir to claude_args if not already present
             if "--add-dir" not in claude_args:
                 claude_args = ["--add-dir", original_cwd] + (claude_args or [])
-        return launch_command(args, claude_args, resolved_proxy_config)
+        return launch_command(args, claude_args)
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
