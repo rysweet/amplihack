@@ -611,11 +611,26 @@ class StopHook(HookProcessor):
         except Exception as e:
             self.log(f"Error during settings restore: {e}", "ERROR")
 
-        # EMERGENCY DISABLE: All reflection functionality disabled
-        # Recursion guard removed - it was part of the broken reflection system
-        self.log("Reflection system DISABLED - see incident reports for details")
+        # EMERGENCY DISABLE: Complex reflection system disabled, using simple replacement
+        self.log("Using simple reflection system replacement")
 
-        # Return empty dict - NO reflection analysis, NO issue creation, NO output
+        # Try simple reflection integration
+        transcript_path = input_data.get("transcript_path")
+        if transcript_path:
+            try:
+                import sys
+
+                sys.path.insert(0, str(self.project_root))
+                from simple_reflection import main as reflect
+
+                issue_url = reflect(transcript_path)
+                if issue_url:
+                    self.log(f"Simple reflection created: {issue_url}")
+            except Exception as e:
+                self.log(f"Simple reflection failed silently: {e}", "DEBUG")
+                pass  # Silent fail, don't break stop hook
+
+        # Return empty dict - simple reflection handles output independently
         return {}
 
     def _should_analyze(self, state_data: ReflectionStateData) -> bool:
