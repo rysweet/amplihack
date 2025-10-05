@@ -411,21 +411,21 @@ class OptimizedClaudeAgentSDKClient:
 
                 # Create session request (preserved structure)
                 # session_request = {  # Future use for actual SDK calls
-                    "session_id": claude_session_id,
-                    "user_id": user_id,
-                    "initial_context": initial_context,
-                    "capabilities": [
-                        "conversation_analysis",
-                        "quality_assessment",
-                        "pattern_recognition",
-                        "learning_capture",
-                    ],
-                    "preferences": {
-                        "analysis_frequency": "adaptive",
-                        "intervention_style": "subtle",
-                        "learning_mode": "enabled",
-                    },
-                }
+                #     "session_id": claude_session_id,
+                #     "user_id": user_id,
+                #     "initial_context": initial_context,
+                #     "capabilities": [
+                #         "conversation_analysis",
+                #         "quality_assessment",
+                #         "pattern_recognition",
+                #         "learning_capture",
+                #     ],
+                #     "preferences": {
+                #         "analysis_frequency": "adaptive",
+                #         "intervention_style": "subtle",
+                #         "learning_mode": "enabled",
+                #     },
+                # }
 
                 # Optimized session creation (reduced latency)
                 await asyncio.sleep(0.01)  # Reduced from 0.1s
@@ -499,16 +499,16 @@ class OptimizedClaudeAgentSDKClient:
             try:
                 # Prepare analysis request (preserved structure)
                 # analysis_request = {  # Future use for actual SDK calls
-                    "session_id": session["claude_session_id"],
-                    "analysis_type": analysis_type,
-                    "context_window": session["conversation_context"],
-                    "requested_insights": [
-                        "conversation_quality",
-                        "user_satisfaction",
-                        "improvement_opportunities",
-                        "pattern_recognition",
-                    ],
-                }
+                #     "session_id": session["claude_session_id"],
+                #     "analysis_type": analysis_type,
+                #     "context_window": session["conversation_context"],
+                #     "requested_insights": [
+                #         "conversation_quality",
+                #         "user_satisfaction",
+                #         "improvement_opportunities",
+                #         "pattern_recognition",
+                #     ],
+                # }
 
                 # Optimized analysis execution (reduced latency)
                 await asyncio.sleep(0.02)  # Reduced from 0.2s

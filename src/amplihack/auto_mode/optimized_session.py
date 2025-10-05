@@ -95,7 +95,8 @@ class OptimizedSessionState:
     def from_dict_optimized(cls, data: Dict[str, Any]) -> "OptimizedSessionState":
         """Optimized deserialization from persistence"""
         # Remove analysis_history for separate handling
-        analysis_history_data = data.pop("analysis_history", [])
+        # analysis_history_data = data.pop("analysis_history", [])  # Future use for separate handling
+        data.pop("analysis_history", [])
 
         # Remove performance fields if present
         data.pop("_dirty", None)
