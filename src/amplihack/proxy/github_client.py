@@ -236,6 +236,7 @@ class GitHubCopilotClient:
                         )
                         async for chunk in stream_result:
                             yield chunk
+
                 return _stream_wrapper()
 
             return _stream_generator
