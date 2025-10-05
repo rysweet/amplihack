@@ -6,10 +6,13 @@ import signal
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
+
+if TYPE_CHECKING:
+    from .server import BuiltinProxyServer
 
 
 class ProxyManager:
@@ -25,6 +28,7 @@ class ProxyManager:
         self.proxy_process: Optional[subprocess.Popen] = None
         self.proxy_dir = Path.home() / ".amplihack" / "proxy"
         self.env_manager = ProxyEnvironment()
+        self.builtin_server: Optional["BuiltinProxyServer"] = None
         # Read PORT from proxy_config if available, otherwise use default
         if proxy_config and proxy_config.get("PORT"):
             self.proxy_port = int(proxy_config.get("PORT"))
@@ -174,6 +178,15 @@ class ProxyManager:
                 else:
                     start_command = ["python", "-m", "src.proxy"]
 
+            # Set Windows-specific creation flags if available
+            creation_flags = 0
+            if os.name == "nt":
+                try:
+                    creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+                except AttributeError:
+                    # Fallback for older Python versions on Windows
+                    creation_flags = 0x00000200
+
             self.proxy_process = subprocess.Popen(
                 start_command,
                 cwd=str(proxy_repo),
@@ -182,7 +195,7 @@ class ProxyManager:
                 stderr=subprocess.PIPE,
                 text=True,
                 preexec_fn=os.setsid if os.name != "nt" else None,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
+                creationflags=creation_flags,
             )
 
             # Register cleanup on exit
