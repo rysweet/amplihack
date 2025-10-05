@@ -210,8 +210,8 @@ class TestPreCompactHook(unittest.TestCase):
         hook = self._create_hook_with_mocked_paths()
 
         # Create a session with transcript that's newer than the hook's session
-        # Use a timestamp that's guaranteed to be later
-        session_id = "20250923_200000"  # Later time ensures it's the "latest"
+        # Use a timestamp that's guaranteed to be later (far future)
+        session_id = "20991231_235959"  # Far future ensures it's the "latest"
         session_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs" / session_id
         session_dir.mkdir(parents=True)
 
