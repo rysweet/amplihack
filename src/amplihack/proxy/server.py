@@ -84,6 +84,7 @@ app = FastAPI()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
 # Get preferred provider (default to openai)
 PREFERRED_PROVIDER = os.environ.get("PREFERRED_PROVIDER", "openai").lower()
@@ -111,6 +112,9 @@ OPENAI_MODELS = [
 
 # List of Gemini models
 GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
+
+# List of GitHub Copilot models
+GITHUB_COPILOT_MODELS = ["copilot-gpt-4", "copilot-gpt-3.5-turbo"]
 
 
 # Helper function to clean schema for Gemini
@@ -247,6 +251,9 @@ class MessagesRequest(BaseModel):
             if clean_v in GEMINI_MODELS and not v.startswith("gemini/"):
                 new_model = f"gemini/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
+            elif clean_v in GITHUB_COPILOT_MODELS and not v.startswith("github/"):
+                new_model = f"github/{clean_v}"
+                mapped = True  # Technically mapped to add prefix
             elif clean_v in OPENAI_MODELS and not v.startswith("openai/"):
                 new_model = f"openai/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
@@ -256,7 +263,7 @@ class MessagesRequest(BaseModel):
             logger.debug(f"📌 MODEL MAPPING: '{original_model}' ➡️ '{new_model}'")
         else:
             # If no mapping occurred and no prefix exists, log warning or decide default
-            if not v.startswith(("openai/", "gemini/", "anthropic/")):
+            if not v.startswith(("openai/", "gemini/", "github/", "anthropic/")):
                 logger.warning(
                     f"⚠️ No prefix or mapping rule for model: '{original_model}'. Using as is."
                 )
@@ -324,6 +331,9 @@ class TokenCountRequest(BaseModel):
         elif not mapped:
             if clean_v in GEMINI_MODELS and not v.startswith("gemini/"):
                 new_model = f"gemini/{clean_v}"
+                mapped = True  # Technically mapped to add prefix
+            elif clean_v in GITHUB_COPILOT_MODELS and not v.startswith("github/"):
+                new_model = f"github/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
             elif clean_v in OPENAI_MODELS and not v.startswith("openai/"):
                 new_model = f"openai/{clean_v}"
@@ -1168,6 +1178,9 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         elif request.model.startswith("gemini/"):
             litellm_request["api_key"] = GEMINI_API_KEY
             logger.debug(f"Using Gemini API key for model: {request.model}")
+        elif request.model.startswith("github/"):
+            litellm_request["api_key"] = GITHUB_TOKEN
+            logger.debug(f"Using GitHub token for model: {request.model}")
         else:
             litellm_request["api_key"] = ANTHROPIC_API_KEY
             logger.debug(f"Using Anthropic API key for model: {request.model}")
