@@ -23,7 +23,7 @@ class ProxyConfig:
         if config_path and config_path.exists():
             self._load_config()
         elif allow_env_fallback:
-            # Fall back to environment variables if file not found
+            # Fall back to environment variables if file not found or not provided
             self._load_from_environment()
 
     def _load_config(self) -> None:

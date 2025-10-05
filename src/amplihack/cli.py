@@ -63,7 +63,8 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
 
     # Set up proxy if configuration provided
     if args.with_proxy_config or getattr(args, "use_env_config", False):
-        resolved_path = None
+        resolved_path: Optional[Path] = None
+        search_paths: List[Path] = []
 
         if getattr(args, "use_env_config", False):
             # Use environment variables directly
@@ -77,15 +78,15 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
                 resolved_path = config_path
             else:
                 # For relative paths, try multiple locations in order of preference
-                search_paths = [
-                    Path.cwd() / config_path,  # Current directory
-                ]
 
-                # If in UVX deployment, also try original working directory
+                # If in UVX deployment, prioritize original working directory
                 if is_uvx_deployment():
                     original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD")
                     if original_cwd:
                         search_paths.append(Path(original_cwd) / config_path)
+
+                # Also try current directory (temp directory in uvx case)
+                search_paths.append(Path.cwd() / config_path)
 
                 # Find the first existing path
                 for search_path in search_paths:
@@ -96,24 +97,35 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
             # Create proxy config with environment variable fallback
             proxy_config = ProxyConfig(resolved_path, allow_env_fallback=True)
 
+        # Report config source and any fallbacks
+        config_source = proxy_config.get_config_source()
+
+        # Check if we fell back to environment variables
+        if args.with_proxy_config and (not resolved_path or not resolved_path.exists()):
+            print(f"Config file not found: {args.with_proxy_config}")
+            if is_uvx_deployment():
+                print("  UVX deployment detected - searched original working directory")
+                if search_paths:
+                    print(f"  Searched paths: {[str(p) for p in search_paths]}")
+            print("  Falling back to environment variables")
+
+        print(f"Proxy configuration loaded from: {config_source}")
+
         # Validate configuration
         if not proxy_config.validate():
-            config_source = proxy_config.get_config_source()
             print(f"Error: Invalid proxy configuration from {config_source}")
-            if args.with_proxy_config and resolved_path and not resolved_path.exists():
-                print(f"  Config file not found: {resolved_path}")
-                if is_uvx_deployment():
-                    print("  UVX deployment detected - tried original working directory")
-                print("  Tried environment variable fallback but required keys missing")
+            if args.with_proxy_config and (not resolved_path or not resolved_path.exists()):
+                print("  Config file not found and environment variable fallback failed")
+                if is_uvx_deployment() and search_paths:
+                    print(f"  Searched for '{args.with_proxy_config}' in:")
+                    for search_path in search_paths:
+                        exists = "✓" if search_path.exists() else "✗"
+                        print(f"    {exists} {search_path}")
             print("  Required: OPENAI_API_KEY (or AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT)")
             print(
                 "  Hint: You can use --use-env-config to skip file lookup and use environment variables directly"
             )
             return 1
-
-        # Success - report config source
-        config_source = proxy_config.get_config_source()
-        print(f"Proxy configuration loaded from: {config_source}")
 
         # Use built-in proxy if requested
         if getattr(args, "use_builtin", False):
@@ -214,7 +226,7 @@ def create_parser() -> argparse.ArgumentParser:
     launch_parser.add_argument(
         "--with-proxy-config",
         metavar="PATH",
-        help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt). Falls back to environment variables if file not found.",
+        help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt). In UVX deployments, searches original working directory first, then current directory. Automatically falls back to environment variables if file not found.",
     )
     launch_parser.add_argument(
         "--use-env-config",
