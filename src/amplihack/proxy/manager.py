@@ -4,6 +4,7 @@ import atexit
 import os
 import re
 import signal
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -131,6 +132,7 @@ class ProxyManager:
 
             # Use uvx to run claude-code-proxy directly from PyPI
             start_command = ["uvx", "claude-code-proxy"]
+            print(f"Executing command: {' '.join(start_command)}")
 
             self.proxy_process = subprocess.Popen(
                 start_command,
@@ -142,20 +144,16 @@ class ProxyManager:
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
             )
 
+            print(f"Proxy process started with PID: {self.proxy_process.pid}")
+
             # Register cleanup on exit
             atexit.register(self.stop_proxy)
 
-            # Wait a moment for the proxy to start
-            time.sleep(3)
-
-            # Check if proxy is still running
-            if self.proxy_process.poll() is not None:
-                stdout, stderr = self.proxy_process.communicate(timeout=1)
-                print(f"Proxy failed to start. Exit code: {self.proxy_process.returncode}")
-                if stderr:
-                    print(f"Error output: {stderr}")
-                if stdout:
-                    print(f"Output: {stdout}")
+            # Wait for proxy to be ready (with health check)
+            # Use a more generous timeout for initial startup
+            if not self.wait_for_proxy_ready(timeout=45):
+                print("Proxy startup failed or timed out")
+                self.stop_proxy()
                 return False
 
             # Set up environment variables - handle both OpenAI and Azure configs
@@ -216,6 +214,78 @@ class ProxyManager:
         self._url_template_cache.clear()
         self._endpoint_cache.clear()
         self._api_version_cache.clear()
+
+    def wait_for_proxy_ready(self, timeout: int = 30) -> bool:
+        """Wait for proxy to be ready to accept connections.
+
+        Args:
+            timeout: Maximum time to wait in seconds.
+
+        Returns:
+            True if proxy is ready, False if timeout or proxy failed.
+        """
+        start_time = time.time()
+        check_interval = 0.5  # Check every 500ms
+        last_check_time = start_time
+
+        print(f"Waiting for proxy to be ready on port {self.proxy_port}...")
+
+        while time.time() - start_time < timeout:
+            elapsed = time.time() - start_time
+
+            # First check if process is still running
+            if self.proxy_process and self.proxy_process.poll() is not None:
+                # Process has exited, get error details
+                try:
+                    stdout, stderr = self.proxy_process.communicate(timeout=2)
+                    print(f"Proxy process exited with code: {self.proxy_process.returncode}")
+                    if stderr:
+                        print(f"Error output: {stderr}")
+                    if stdout:
+                        print(f"Output: {stdout}")
+                except subprocess.TimeoutExpired:
+                    print("Proxy process exited but couldn't get output")
+                return False
+
+            # Check if port is accepting connections
+            if self._check_port_ready(self.proxy_port):
+                print(f"Proxy ready after {elapsed:.1f} seconds")
+                return True
+
+            # Print progress every 5 seconds
+            if elapsed - (last_check_time - start_time) >= 5:
+                print(f"Still waiting for proxy... ({elapsed:.1f}s elapsed)")
+                last_check_time = time.time()
+
+            time.sleep(check_interval)
+
+        print(f"Timeout waiting for proxy to be ready after {timeout} seconds")
+
+        # Try to get final process status for debugging
+        if self.proxy_process:
+            if self.proxy_process.poll() is None:
+                print("Proxy process is still running but not accepting connections")
+            else:
+                print(f"Proxy process has exited with code: {self.proxy_process.returncode}")
+
+        return False
+
+    def _check_port_ready(self, port: int) -> bool:
+        """Check if a port is ready to accept connections.
+
+        Args:
+            port: Port number to check.
+
+        Returns:
+            True if port is accepting connections, False otherwise.
+        """
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(1.0)  # 1 second timeout for connection attempt
+                result = sock.connect_ex(("localhost", port))
+                return result == 0
+        except Exception:
+            return False
 
     def is_running(self) -> bool:
         """Check if proxy is running.
