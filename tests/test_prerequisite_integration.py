@@ -137,6 +137,8 @@ class TestWorkflowIntegration:
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
             mock_process = Mock()
             mock_process.wait.return_value = 0
+            mock_process.__enter__ = Mock(return_value=mock_process)
+            mock_process.__exit__ = Mock(return_value=None)
             mock_popen.return_value = mock_process
 
             exit_code = launcher.launch()
