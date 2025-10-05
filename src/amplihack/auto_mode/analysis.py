@@ -334,8 +334,8 @@ class PatternAnalyzer:
         import re
 
         # Remove punctuation and normalize
-        text1_clean = re.sub(r'[^\w\s]', '', text1.lower())
-        text2_clean = re.sub(r'[^\w\s]', '', text2.lower())
+        text1_clean = re.sub(r"[^\w\s]", "", text1.lower())
+        text2_clean = re.sub(r"[^\w\s]", "", text2.lower())
 
         words1 = set(text1_clean.split())
         words2 = set(text2_clean.split())
@@ -344,7 +344,7 @@ class PatternAnalyzer:
             return 0.0
 
         # Check for semantic similarity - key terms that indicate similar intent
-        key_terms = ['create', 'make', 'file', 'new']
+        key_terms = ["create", "make", "file", "new"]
 
         # Give higher weight to shared key terms
         key_intersection = words1.intersection(words2).intersection(key_terms)
@@ -809,7 +809,7 @@ class AnalysisEngine:
 
         # Return domain with highest score, or 'general' if none
         if domain_scores:
-            max_domain = max(domain_scores, key=domain_scores.get)
+            max_domain = max(domain_scores, key=lambda x: domain_scores[x])
             if domain_scores[max_domain] > 0:
                 return max_domain
 
