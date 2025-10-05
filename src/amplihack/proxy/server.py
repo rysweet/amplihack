@@ -15,6 +15,9 @@ from fastapi import FastAPI, HTTPException, Request  # type: ignore
 from fastapi.responses import StreamingResponse  # type: ignore
 from pydantic import BaseModel, field_validator  # type: ignore
 
+from .github_auth import GitHubAuthManager
+from .passthrough import PassthroughHandler
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -89,6 +92,15 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 # Get preferred provider (default to openai)
 PREFERRED_PROVIDER = os.environ.get("PREFERRED_PROVIDER", "openai").lower()
 
+# Initialize passthrough handler
+PASSTHROUGH_MODE = os.environ.get("PASSTHROUGH_MODE", "false").lower() == "true"
+passthrough_handler = PassthroughHandler() if PASSTHROUGH_MODE else None
+
+if PASSTHROUGH_MODE:
+    logger.info(
+        "Passthrough mode enabled - will try Anthropic API first, fallback to Azure on 429 errors"
+    )
+
 # Get model mapping configuration from environment
 # Default to latest OpenAI models if not set
 BIG_MODEL = os.environ.get("BIG_MODEL", "gpt-4.1")
@@ -115,6 +127,39 @@ GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
 
 # List of GitHub Copilot models
 GITHUB_COPILOT_MODELS = ["copilot-gpt-4", "copilot-gpt-3.5-turbo"]
+
+# Configure LiteLLM for GitHub Copilot
+GITHUB_COPILOT_ENABLED = os.environ.get("GITHUB_COPILOT_ENABLED", "false").lower() == "true"
+
+# Initialize GitHub authentication if needed
+if not GITHUB_TOKEN:
+    try:
+        # Try to get existing GitHub token from gh CLI
+        auth_manager = GitHubAuthManager()
+        existing_token = auth_manager.get_existing_token()
+        if existing_token:
+            GITHUB_TOKEN = existing_token
+            os.environ["GITHUB_TOKEN"] = existing_token
+            logger.info("Using existing GitHub token from gh CLI")
+        else:
+            logger.warning("No GitHub token found. GitHub Copilot features will be unavailable.")
+            logger.info("To enable GitHub Copilot, run: gh auth login --scopes copilot")
+    except Exception as e:
+        logger.warning(f"Failed to check for existing GitHub token: {e}")
+
+if GITHUB_TOKEN and GITHUB_COPILOT_ENABLED:
+    # Set up LiteLLM environment variables for GitHub Copilot provider
+    os.environ["GITHUB_TOKEN"] = GITHUB_TOKEN
+    if not os.environ.get("GITHUB_API_BASE"):
+        os.environ["GITHUB_API_BASE"] = "https://api.github.com"
+    logger.info("GitHub Copilot LiteLLM integration enabled")
+elif GITHUB_TOKEN and not GITHUB_COPILOT_ENABLED:
+    # Auto-enable if we have a token but flag is not explicitly set
+    os.environ["GITHUB_TOKEN"] = GITHUB_TOKEN
+    if not os.environ.get("GITHUB_API_BASE"):
+        os.environ["GITHUB_API_BASE"] = "https://api.github.com"
+    logger.info("GitHub Copilot LiteLLM integration auto-enabled (GITHUB_TOKEN detected)")
+    GITHUB_COPILOT_ENABLED = True
 
 
 # Helper function to clean schema for Gemini
@@ -1147,10 +1192,8 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 @app.post("/v1/messages")
 async def create_message(request: MessagesRequest, raw_request: Request):
     try:
-        # print the body here
+        # Get request body for logging and passthrough mode
         body = await raw_request.body()
-
-        # Parse the raw body as JSON since it's bytes
         body_json = json.loads(body.decode("utf-8"))
         original_model = body_json.get("model", "unknown")
 
@@ -1167,6 +1210,83 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             clean_model = clean_model[len("openai/") :]
 
         logger.debug(f"📊 PROCESSING REQUEST: Model={request.model}, Stream={request.stream}")
+
+        # Check if this is a Claude model and passthrough mode is enabled
+        if PASSTHROUGH_MODE and passthrough_handler and clean_model.startswith("claude-"):
+            logger.debug("Using passthrough mode for Claude model")
+
+            # Prepare request data for passthrough
+            request_data = {
+                "model": clean_model,
+                "max_tokens": request.max_tokens,
+                "messages": [],
+                "stream": request.stream,
+                "temperature": request.temperature,
+            }
+
+            # Add system message if present
+            if request.system:
+                request_data["system"] = request.system
+
+            # Convert messages to the format expected by Anthropic API
+            for msg in request.messages:
+                passthrough_msg = {"role": msg.role, "content": msg.content}
+                request_data["messages"].append(passthrough_msg)
+
+            # Add tools if present
+            if request.tools:
+                request_data["tools"] = [
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "input_schema": tool.input_schema,
+                    }
+                    for tool in request.tools
+                ]
+
+            # Add tool_choice if present
+            if request.tool_choice:
+                request_data["tool_choice"] = request.tool_choice
+
+            # Add optional parameters
+            if request.stop_sequences:
+                request_data["stop_sequences"] = request.stop_sequences
+            if request.top_p:
+                request_data["top_p"] = request.top_p
+            if request.top_k:
+                request_data["top_k"] = request.top_k
+
+            try:
+                # Use passthrough handler
+                async with passthrough_handler:
+                    passthrough_response = await passthrough_handler.handle_request(request_data)
+
+                # Log the request
+                num_tools = len(request.tools) if request.tools else 0
+                log_request_beautifully(
+                    "POST",
+                    raw_request.url.path,
+                    display_model,
+                    f"passthrough/{clean_model}",
+                    len(request.messages),
+                    num_tools,
+                    200,
+                )
+
+                # Handle streaming response
+                if request.stream:
+                    # TODO: Implement streaming for passthrough mode
+                    raise HTTPException(
+                        status_code=501, detail="Streaming not yet implemented for passthrough mode"
+                    )
+                else:
+                    return passthrough_response
+
+            except Exception as e:
+                logger.error(f"Passthrough mode failed: {e}")
+                # Fall back to normal LiteLLM processing
+                logger.info("Falling back to LiteLLM processing")
+                # Continue with normal processing below
 
         # Convert Anthropic request to LiteLLM format
         litellm_request = convert_anthropic_to_litellm(request)
@@ -1593,6 +1713,27 @@ async def openai_responses(request: OpenAIResponsesRequest, raw_request: Request
 @app.get("/")
 async def root():
     return {"message": "Anthropic Proxy for LiteLLM with OpenAI Responses API"}
+
+
+@app.get("/status")
+async def status():
+    """Get proxy status including passthrough mode and GitHub Copilot information."""
+    status_info = {
+        "proxy_active": True,
+        "anthropic_api_key_configured": bool(ANTHROPIC_API_KEY),
+        "openai_api_key_configured": bool(OPENAI_API_KEY),
+        "gemini_api_key_configured": bool(GEMINI_API_KEY),
+        "github_token_configured": bool(GITHUB_TOKEN),
+        "github_copilot_enabled": GITHUB_COPILOT_ENABLED,
+        "github_copilot_models": GITHUB_COPILOT_MODELS,
+        "preferred_provider": PREFERRED_PROVIDER,
+        "passthrough_mode": PASSTHROUGH_MODE,
+    }
+
+    if PASSTHROUGH_MODE and passthrough_handler:
+        status_info["passthrough_status"] = passthrough_handler.get_status()
+
+    return status_info
 
 
 # Define ANSI color codes for terminal output

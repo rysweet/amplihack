@@ -131,21 +131,29 @@ class TestSimpleReflection(unittest.TestCase):
         """Test successful GitHub issue creation."""
         from simple_reflection import create_github_issue
 
-        # Mock successful gh CLI call
-        mock_run.return_value.returncode = 0
-        mock_run.return_value.stdout = "https://github.com/user/repo/issues/123\n"
+        # Mock successful gh CLI calls - first for duplicate check, then for creation
+        mock_run.side_effect = [
+            # First call: duplicate check returns empty list
+            type("MockResult", (), {"returncode": 0, "stdout": "[]"})(),
+            # Second call: issue creation
+            type(
+                "MockResult",
+                (),
+                {"returncode": 0, "stdout": "https://github.com/user/repo/issues/123\n"},
+            )(),
+        ]
 
         patterns = {"error_handling": 5, "type_hints": 3}
         result = create_github_issue(patterns)
 
         self.assertEqual(result, "https://github.com/user/repo/issues/123")
-        mock_run.assert_called_once()
+        self.assertEqual(mock_run.call_count, 2)  # Two calls: duplicate check + creation
 
-        # Verify the call includes the right title and body
-        call_args = mock_run.call_args[0][0]
-        self.assertEqual(call_args[0], "gh")
-        self.assertEqual(call_args[1], "issue")
-        self.assertEqual(call_args[2], "create")
+        # Verify the second call was for issue creation
+        create_call_args = mock_run.call_args_list[1][0][0]
+        self.assertEqual(create_call_args[0], "gh")
+        self.assertEqual(create_call_args[1], "issue")
+        self.assertEqual(create_call_args[2], "create")
 
     @patch("subprocess.run")
     def test_create_github_issue_failure(self, mock_run):
