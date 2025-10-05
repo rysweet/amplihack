@@ -29,8 +29,13 @@ pytest_plugins = ("pytest_asyncio",)
 
 # Set the default fixture loop scope to function to avoid deprecation warnings
 def pytest_configure(config):
-    """Configure pytest with asyncio settings."""
+    """Configure pytest with asyncio settings and custom markers."""
     config.option.asyncio_default_fixture_loop_scope = "function"
+
+    # Add custom test markers
+    config.addinivalue_line("markers", "integration: mark test as integration test")
+    config.addinivalue_line("markers", "slow: mark test as slow running")
+    config.addinivalue_line("markers", "requires_sdk: mark test as requiring SDK connection")
 
 
 @pytest.fixture
@@ -286,11 +291,7 @@ def create_mock_quality_gate_result(gate_id="test_gate", triggered=True, confide
 # Pytest markers
 
 
-def pytest_configure(config):
-    """Configure pytest with custom markers."""
-    config.addinivalue_line("markers", "integration: mark test as integration test")
-    config.addinivalue_line("markers", "slow: mark test as slow running")
-    config.addinivalue_line("markers", "requires_sdk: mark test as requiring SDK connection")
+# pytest_configure function defined earlier with both asyncio and marker configuration
 
 
 # Test collection customization

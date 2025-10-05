@@ -62,7 +62,8 @@ class SessionState:
     def from_dict(cls, data: Dict[str, Any]) -> "SessionState":
         """Create session state from dictionary"""
         # Handle analysis_history separately since it contains complex objects
-        analysis_history_data = data.pop("analysis_history", [])
+        # Remove analysis_history from data to avoid conflicts during object creation
+        data.pop("analysis_history", [])
 
         session = cls(**data)
 

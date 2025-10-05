@@ -338,11 +338,9 @@ class TestCLIIntegrationMocks:
 
     def test_import_error_handling(self):
         """Test handling of import errors for auto-mode components"""
-        import argparse
 
         # Test parser creation with import error
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers(dest="command")
+        # Note: would create parser and subparsers for testing command creation
 
         with patch(
             "amplihack.commands.auto_mode_cli.AutoModeCLI", side_effect=ImportError("No auto-mode")
@@ -362,7 +360,8 @@ class TestCLIIntegrationMocks:
 
         # Should be able to parse auto command
         try:
-            args = parser.parse_args(["auto", "--help"])
+            # This would normally parse arguments, but --help causes SystemExit
+            parser.parse_args(["auto", "--help"])
         except SystemExit:
             # argparse calls sys.exit on --help, which is expected
             pass

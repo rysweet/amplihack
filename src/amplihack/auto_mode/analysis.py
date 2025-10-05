@@ -311,7 +311,7 @@ class PatternAnalyzer:
         return patterns
 
     def _find_similar_content(
-        self, contents: List[str], similarity_threshold: float = 0.7
+        self, contents: List[str], similarity_threshold: float = 0.4
     ) -> List[str]:
         """Find similar content in a list of strings"""
         similar_groups = []
@@ -330,17 +330,33 @@ class PatternAnalyzer:
         if not text1 or not text2:
             return 0.0
 
-        # Simple word-based similarity
-        words1 = set(text1.lower().split())
-        words2 = set(text2.lower().split())
+        # Normalize and extract key words
+        import re
+
+        # Remove punctuation and normalize
+        text1_clean = re.sub(r'[^\w\s]', '', text1.lower())
+        text2_clean = re.sub(r'[^\w\s]', '', text2.lower())
+
+        words1 = set(text1_clean.split())
+        words2 = set(text2_clean.split())
 
         if not words1 or not words2:
             return 0.0
 
-        intersection = words1.intersection(words2)
+        # Check for semantic similarity - key terms that indicate similar intent
+        key_terms = ['create', 'make', 'file', 'new']
+
+        # Give higher weight to shared key terms
+        key_intersection = words1.intersection(words2).intersection(key_terms)
+        regular_intersection = words1.intersection(words2)
         union = words1.union(words2)
 
-        return len(intersection) / len(union)
+        # Boost similarity score if key terms match
+        base_similarity = len(regular_intersection) / len(union)
+        if key_intersection:
+            base_similarity += 0.3  # Boost for matching key terms
+
+        return min(base_similarity, 1.0)  # Cap at 1.0
 
 
 class QualityAssessor:

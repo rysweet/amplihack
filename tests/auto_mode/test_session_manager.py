@@ -318,8 +318,8 @@ class TestSessionManager:
         user_id = "test_user"
 
         # Create sessions up to limit
-        session1 = await session_manager.create_session("session1", user_id, {})
-        session2 = await session_manager.create_session("session2", user_id, {})
+        await session_manager.create_session("session1", user_id, {})
+        await session_manager.create_session("session2", user_id, {})
 
         assert len(session_manager.active_sessions) == 2
 
@@ -327,7 +327,7 @@ class TestSessionManager:
         with patch.object(
             session_manager, "close_session", new_callable=AsyncMock, return_value=True
         ) as mock_close:
-            session3 = await session_manager.create_session("session3", user_id, {})
+            await session_manager.create_session("session3", user_id, {})
 
             # Should have closed oldest session
             mock_close.assert_called_once()

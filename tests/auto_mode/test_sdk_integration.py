@@ -70,8 +70,9 @@ class TestSDKClientInitialization:
     async def test_initialization_success_with_api_key(self, sdk_client):
         """Test successful initialization with API key"""
         with patch.dict(
-            "os.environ", {"CLAUDE_API_KEY": "test_api_key"}
-        ):  # pragma: allowlist secret
+            "os.environ",
+            {"CLAUDE_API_KEY": "test_api_key"},  # pragma: allowlist secret
+        ):
             success = await sdk_client.initialize()
 
             assert success is True

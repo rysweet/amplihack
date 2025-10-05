@@ -15,17 +15,16 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+logger = logging.getLogger(__name__)
+
 try:
     from cryptography.fernet import Fernet
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    # Note: hashes and PBKDF2HMAC imports reserved for future encryption implementation
 
     ENCRYPTION_AVAILABLE = True
 except ImportError:
     ENCRYPTION_AVAILABLE = False
     logger.warning("Cryptography package not available - session encryption disabled")
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -218,8 +217,8 @@ class SDKSessionManager:
         try:
             # Test if mcp__ide__executeCode is available
             # This is a basic connectivity test
-            test_code = "print('SDK connectivity test')"
-            # Note: In real implementation, this would call the actual MCP function
+            # Note: In real implementation, this would call the actual MCP function with:
+            # test_code = "print('SDK connectivity test')"
             # For now, we'll simulate the check
             logger.info("SDK availability validated")
         except Exception as e:

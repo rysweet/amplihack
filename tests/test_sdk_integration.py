@@ -527,7 +527,7 @@ class TestIntegrationScenarios:
 
         try:
             # Start session
-            session_id = await orchestrator.start_auto_mode_session(
+            await orchestrator.start_auto_mode_session(
                 "Create a simple Python calculator", "/test/project"
             )
 

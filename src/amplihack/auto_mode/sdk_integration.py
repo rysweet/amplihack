@@ -148,12 +148,10 @@ class ClaudeAgentSDKClient:
     async def _authenticate(self) -> bool:
         """Authenticate with Claude Agent SDK"""
         try:
-            # Mock authentication request
-            auth_request = {
-                "api_key_present": bool(self.api_key),  # Don't log actual key
-                "client_type": "auto_mode",
-                "client_version": "1.0.0",
-            }
+            # In production, would send authentication request with:
+            # - api_key_present: bool(self.api_key)
+            # - client_type: "auto_mode"
+            # - client_version: "1.0.0"
 
             # In production, send actual authentication request
             await asyncio.sleep(0.1)  # Simulate auth time
@@ -187,23 +185,11 @@ class ClaudeAgentSDKClient:
             # Generate Claude session ID
             claude_session_id = self._generate_claude_session_id(auto_mode_session_id, user_id)
 
-            # Create session request
-            session_request = {
-                "session_id": claude_session_id,
-                "user_id": user_id,
-                "initial_context": initial_context,
-                "capabilities": [
-                    "conversation_analysis",
-                    "quality_assessment",
-                    "pattern_recognition",
-                    "learning_capture",
-                ],
-                "preferences": {
-                    "analysis_frequency": "adaptive",
-                    "intervention_style": "subtle",
-                    "learning_mode": "enabled",
-                },
-            }
+            # In production, would create session request with:
+            # - session_id: claude_session_id
+            # - user_id: user_id
+            # - initial_context: initial_context
+            # - capabilities: conversation_analysis, quality_assessment, etc.
 
             # Mock session creation
             await asyncio.sleep(0.1)  # Simulate API call
@@ -247,13 +233,11 @@ class ClaudeAgentSDKClient:
 
             sdk_session = self.active_sessions[session_id]
 
-            # Prepare update request
-            update_request = {
-                "session_id": sdk_session.claude_session_id,
-                "update_type": "conversation_context",
-                "data": conversation_update,
-                "timestamp": time.time(),
-            }
+            # In production, would prepare update request with:
+            # - session_id: sdk_session.claude_session_id
+            # - update_type: "conversation_context"
+            # - data: conversation_update
+            # - timestamp: time.time()
 
             # Mock context update
             await asyncio.sleep(0.05)  # Simulate API call
@@ -290,18 +274,11 @@ class ClaudeAgentSDKClient:
 
             sdk_session = self.active_sessions[session_id]
 
-            # Prepare analysis request
-            analysis_request = {
-                "session_id": sdk_session.claude_session_id,
-                "analysis_type": analysis_type,
-                "context_window": sdk_session.conversation_context,
-                "requested_insights": [
-                    "conversation_quality",
-                    "user_satisfaction",
-                    "improvement_opportunities",
-                    "pattern_recognition",
-                ],
-            }
+            # In production, would prepare analysis request with:
+            # - session_id: sdk_session.claude_session_id
+            # - analysis_type: analysis_type
+            # - context_window: sdk_session.conversation_context
+            # - requested_insights: conversation_quality, user_satisfaction, etc.
 
             # Mock analysis request
             await asyncio.sleep(0.2)  # Simulate analysis time
@@ -343,15 +320,11 @@ class ClaudeAgentSDKClient:
                 print(f"Session {session_id} not found")
                 return None
 
-            sdk_session = self.active_sessions[session_id]
-
-            # Prepare synthesis request
-            synthesis_request = {
-                "session_id": sdk_session.claude_session_id,
-                "synthesis_type": synthesis_params.get("type", "summary"),
-                "scope": synthesis_params.get("scope", "full_conversation"),
-                "format": synthesis_params.get("format", "structured"),
-            }
+            # In production, would prepare synthesis request with:
+            # - session_id: sdk_session.claude_session_id
+            # - synthesis_type: synthesis_params.get("type", "summary")
+            # - scope: synthesis_params.get("scope", "full_conversation")
+            # - format: synthesis_params.get("format", "structured")
 
             # Mock synthesis request
             await asyncio.sleep(0.3)  # Simulate synthesis time
@@ -401,12 +374,10 @@ class ClaudeAgentSDKClient:
 
             sdk_session = self.active_sessions[session_id]
 
-            # Prepare session close request
-            close_request = {
-                "session_id": sdk_session.claude_session_id,
-                "close_reason": "user_ended",
-                "final_state": sdk_session.conversation_context,
-            }
+            # In production, would prepare session close request with:
+            # - session_id: sdk_session.claude_session_id
+            # - close_reason: "user_ended"
+            # - final_state: sdk_session.conversation_context
 
             # Mock session close
             await asyncio.sleep(0.1)  # Simulate API call

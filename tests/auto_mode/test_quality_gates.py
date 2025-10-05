@@ -420,7 +420,7 @@ class TestGateEvaluation:
         results = await evaluator.evaluate(sample_analysis, sample_session, mock_config)
 
         # Should have fewer or no results due to adjusted threshold
-        quality_drop_results = [r for r in results if r.gate_id == "quality_drop"]
+        [r for r in results if r.gate_id == "quality_drop"]
         # The exact behavior depends on the specific gate configuration
 
 

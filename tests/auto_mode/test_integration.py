@@ -308,7 +308,7 @@ class TestDataFlowIntegration:
         """Test session data persistence flow"""
         import tempfile
 
-        with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.TemporaryDirectory():
             # Create orchestrator with custom storage
             config = OrchestratorConfig()
             orchestrator = AutoModeOrchestrator(config)

@@ -144,13 +144,12 @@ class AutoModeCommand:
             }
 
         claude_output = args[0]
-        session_id = None
 
-        # Parse optional session ID
+        # Parse optional session ID (currently not used)
         i = 1
         while i < len(args):
             if args[i] == "--session-id" and i + 1 < len(args):
-                session_id = args[i + 1]
+                # Skip session-id argument for now (not used in current implementation)
                 i += 2
             else:
                 i += 1

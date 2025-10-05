@@ -305,7 +305,7 @@ class TestAnalysisLoop:
     async def test_execute_analysis_cycle(self, orchestrator_with_session):
         """Test single analysis cycle execution"""
         orchestrator = orchestrator_with_session
-        session_state = orchestrator.active_sessions["test_session"]
+        orchestrator.active_sessions["test_session"]
 
         # Mock analysis results
         mock_analysis = ConversationAnalysis(quality_score=0.8, conversation_activity_level=1.5)

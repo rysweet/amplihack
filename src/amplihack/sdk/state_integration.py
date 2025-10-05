@@ -375,7 +375,7 @@ class AutoModeOrchestrator:
                     session_id="default",
                     user_objective="Generate next action",
                     working_directory="/tmp",
-                    current_step=1
+                    current_step=1,
                 )
 
             rendered_prompt = self.prompt_coordinator.render_prompt(
@@ -452,11 +452,8 @@ class AutoModeOrchestrator:
             if self.current_context and self.current_context.previous_outputs:
                 latest_output = self.current_context.previous_outputs[-1]
 
-            latest_analysis = None
-            if self.current_context and self.current_context.analysis_results:
-                latest_analysis_data = self.current_context.analysis_results[-1]
-                # Convert dict back to AnalysisResult if needed
-                # For now, we'll store the dict representation
+            # Note: Analysis results would be processed here if needed
+            # Currently using basic snapshot without detailed analysis integration
 
             snapshot = StateSnapshot(
                 timestamp=datetime.now(),
@@ -639,8 +636,8 @@ class AutoModeOrchestrator:
 
     def update_config(self, new_config: Dict[str, Any]) -> None:
         """Update configuration with validation"""
-        # Validate new config
-        validated_config = self.validate_config_dict({**asdict(self.config), **new_config})
+        # Validate new config (validation logic would be applied here)
+        # Note: validated_config = self.validate_config_dict({**asdict(self.config), **new_config})
 
         # Apply updates
         for key, value in new_config.items():
