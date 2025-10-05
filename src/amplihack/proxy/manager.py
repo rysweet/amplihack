@@ -181,9 +181,6 @@ class ProxyManager:
             self.proxy_process = subprocess.Popen(
                 start_command,
                 env=proxy_env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
                 preexec_fn=os.setsid if os.name != "nt" else None,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
             )
