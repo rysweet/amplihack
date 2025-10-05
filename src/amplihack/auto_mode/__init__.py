@@ -16,6 +16,9 @@ from .orchestrator import AutoModeOrchestrator
 from .quality_gates import QualityGateEvaluator, QualityGateResult
 from .session import SessionManager, SessionState
 
+# Configuration constants are available for import but not in __all__
+from . import config
+
 __all__ = [
     "AutoModeOrchestrator",
     "SessionManager",

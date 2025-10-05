@@ -15,6 +15,15 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 from .analysis import AnalysisEngine, ConversationAnalysis
+from .config import (
+    DEFAULT_ANALYSIS_INTERVAL_SECONDS,
+    DEFAULT_SESSION_TIMEOUT_MINUTES_ORCHESTRATOR,
+    DEFAULT_MAX_CONCURRENT_SESSIONS,
+    DEFAULT_SDK_RETRY_ATTEMPTS,
+    DEFAULT_SDK_TIMEOUT_SECONDS,
+    DEFAULT_NEXT_CYCLE_DELAY_SECONDS,
+    DEFAULT_ERROR_SLEEP_SECONDS,
+)
 from .quality_gates import QualityGateEvaluator, QualityGateResult
 from .sdk_integration import ClaudeAgentSDKClient
 from .session import SessionManager, SessionState
@@ -36,7 +45,7 @@ class OrchestratorConfig:
     """Configuration for the auto-mode orchestrator"""
 
     # Analysis cycle timing
-    analysis_interval_seconds: float = 30.0
+    analysis_interval_seconds: float = DEFAULT_ANALYSIS_INTERVAL_SECONDS
     max_analysis_cycles: int = 100
 
     # Quality thresholds
@@ -44,12 +53,12 @@ class OrchestratorConfig:
     intervention_confidence_threshold: float = 0.7
 
     # Session management
-    session_timeout_minutes: int = 60
-    max_concurrent_sessions: int = 10
+    session_timeout_minutes: int = DEFAULT_SESSION_TIMEOUT_MINUTES_ORCHESTRATOR
+    max_concurrent_sessions: int = DEFAULT_MAX_CONCURRENT_SESSIONS
 
     # SDK integration
-    sdk_retry_attempts: int = 3
-    sdk_timeout_seconds: float = 10.0
+    sdk_retry_attempts: int = DEFAULT_SDK_RETRY_ATTEMPTS
+    sdk_timeout_seconds: float = DEFAULT_SDK_TIMEOUT_SECONDS
 
     # User preferences
     background_analysis_enabled: bool = True
@@ -71,7 +80,7 @@ class AnalysisCycleResult:
     analysis: ConversationAnalysis
     quality_gates: List[QualityGateResult]
     interventions_suggested: List[Dict[str, Any]]
-    next_cycle_delay: float = field(default=30.0)
+    next_cycle_delay: float = field(default=DEFAULT_NEXT_CYCLE_DELAY_SECONDS)
 
 
 class AutoModeOrchestrator:
@@ -349,7 +358,7 @@ class AutoModeOrchestrator:
                 except Exception as e:
                     self.logger.error(f"Analysis cycle failed for session {session_id}: {e}")
                     # Continue with next cycle after error delay
-                    await asyncio.sleep(5.0)
+                    await asyncio.sleep(DEFAULT_ERROR_SLEEP_SECONDS)
 
                 cycle_count += 1
 

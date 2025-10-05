@@ -5,13 +5,23 @@ Implements the /auto-mode slash command functionality for Claude Code integratio
 Provides user interface for controlling and interacting with auto-mode features.
 """
 
+import logging
 import shlex
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from .config import (
+    DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+    DEFAULT_INTERVENTION_CONFIDENCE_THRESHOLD,
+    DEFAULT_ANALYSIS_INTERVAL_SECONDS,
+    DEFAULT_QUALITY_THRESHOLD,
+)
 from .orchestrator import AutoModeOrchestrator, OrchestratorConfig
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,12 +48,12 @@ class AutoModeCommandHandler:
             "default": OrchestratorConfig(),
             "aggressive_analysis": OrchestratorConfig(
                 analysis_interval_seconds=15.0,
-                min_quality_threshold=0.5,
-                intervention_confidence_threshold=0.5,
+                min_quality_threshold=DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+                intervention_confidence_threshold=DEFAULT_INTERVENTION_CONFIDENCE_THRESHOLD,
             ),
             "minimal_intervention": OrchestratorConfig(
-                analysis_interval_seconds=60.0,
-                min_quality_threshold=0.3,
+                analysis_interval_seconds=DEFAULT_ANALYSIS_INTERVAL_SECONDS * 2,  # Conservative mode
+                min_quality_threshold=DEFAULT_MIN_CONFIDENCE_THRESHOLD * 0.6,  # Lower threshold
                 intervention_confidence_threshold=0.9,
             ),
             "learning_mode": OrchestratorConfig(
@@ -162,7 +172,7 @@ class AutoModeCommandHandler:
             return args
 
         except Exception as e:
-            print(f"Failed to parse command args: {e}")
+            logger.error(f"Failed to parse command args: {type(e).__name__}")
             return None
 
     async def _handle_start(self, args: Dict[str, Any], context: Dict[str, Any]) -> CommandResult:
@@ -524,9 +534,9 @@ class AutoModeCommandHandler:
         try:
             if setting == "analysis_frequency":
                 if value == "low":
-                    self.orchestrator.config.analysis_interval_seconds = 60.0
+                    self.orchestrator.config.analysis_interval_seconds = DEFAULT_ANALYSIS_INTERVAL_SECONDS * 2
                 elif value == "normal":
-                    self.orchestrator.config.analysis_interval_seconds = 30.0
+                    self.orchestrator.config.analysis_interval_seconds = DEFAULT_ANALYSIS_INTERVAL_SECONDS
                 elif value == "high":
                     self.orchestrator.config.analysis_interval_seconds = 15.0
                 elif value == "adaptive":
@@ -617,7 +627,7 @@ class AutoModeCommandHandler:
             "🟢"
             if analysis.quality_score >= 0.7
             else "🟡"
-            if analysis.quality_score >= 0.5
+            if analysis.quality_score >= DEFAULT_QUALITY_THRESHOLD
             else "🔴"
         )
 
@@ -652,7 +662,7 @@ class AutoModeCommandHandler:
             "🟢"
             if analysis_result.quality_score >= 0.7
             else "🟡"
-            if analysis_result.quality_score >= 0.5
+            if analysis_result.quality_score >= DEFAULT_QUALITY_THRESHOLD
             else "🔴"
         )
 

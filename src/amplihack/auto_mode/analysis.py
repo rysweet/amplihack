@@ -11,6 +11,26 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Tuple
 
+from .config import (
+    DEFAULT_MIN_MESSAGES_FOR_ANALYSIS,
+    DEFAULT_MAX_SIMILAR_REQUESTS,
+    DEFAULT_MAX_GOALS_CONSIDERATION,
+    DEFAULT_LOW_COMPLETION_RATE_THRESHOLD,
+    DEFAULT_HIGH_LEARNING_MESSAGE_RATIO,
+    DEFAULT_KEY_TERMS_SIMILARITY_BOOST,
+    DEFAULT_ERROR_IMPACT_MULTIPLIER,
+    DEFAULT_LOW_COMPLETION_THRESHOLD,
+    DEFAULT_BASIC_QUESTIONS_RATIO,
+    DEFAULT_CONVERSATION_ACTIVITY_THRESHOLD,
+    DEFAULT_CONVERSATION_ACTIVITY_MULTIPLIER,
+    DEFAULT_RECENT_ANALYSES_COUNT,
+    DEFAULT_LOW_QUALITY_THRESHOLD,
+    DEFAULT_MAX_ANALYSIS_FREQUENCY_MULTIPLIER,
+    DEFAULT_SENTIMENT_BASE_CONFIDENCE,
+    DEFAULT_SENTIMENT_CONFIDENCE_INCREMENT,
+    DEFAULT_SENTIMENT_MAX_CONFIDENCE,
+)
+
 
 class ConversationSignal(Enum):
     """Types of signals detected in conversations"""
@@ -176,7 +196,7 @@ class PatternAnalyzer:
         """Analyze patterns in message content and structure"""
         patterns = []
 
-        if len(messages) < 3:
+        if len(messages) < DEFAULT_MIN_MESSAGES_FOR_ANALYSIS:
             return patterns
 
         # Look for repetitive questions
@@ -195,7 +215,7 @@ class PatternAnalyzer:
                         msg["content"][:100]
                         for msg in user_messages
                         if "?" in msg.get("content", "")
-                    ][:3],
+                    ][:DEFAULT_MAX_SIMILAR_REQUESTS],
                 )
             )
 
@@ -211,7 +231,7 @@ class PatternAnalyzer:
                     frequency=len(similar_requests),
                     confidence=0.7,
                     impact_level="high",
-                    examples=similar_requests[:3],
+                    examples=similar_requests[:DEFAULT_MAX_SIMILAR_REQUESTS],
                 )
             )
 
@@ -264,9 +284,9 @@ class PatternAnalyzer:
         pending_goals = [g for g in goals if g.get("status") != "completed"]
 
         # Check for goal completion efficiency
-        if len(goals) > 3:
+        if len(goals) > DEFAULT_MAX_GOALS_CONSIDERATION:
             completion_rate = len(completed_goals) / len(goals)
-            if completion_rate < 0.3:
+            if completion_rate < DEFAULT_LOW_COMPLETION_RATE_THRESHOLD:
                 patterns.append(
                     ConversationPattern(
                         pattern_type="low_goal_completion",
@@ -296,7 +316,7 @@ class PatternAnalyzer:
             if any(keyword in content for keyword in learning_keywords):
                 learning_message_count += 1
 
-        if learning_message_count > len(user_messages) * 0.5:
+        if learning_message_count > len(user_messages) * DEFAULT_HIGH_LEARNING_MESSAGE_RATIO:
             patterns.append(
                 ConversationPattern(
                     pattern_type="learning_focused",
@@ -354,7 +374,7 @@ class PatternAnalyzer:
         # Boost similarity score if key terms match
         base_similarity = len(regular_intersection) / len(union)
         if key_intersection:
-            base_similarity += 0.3  # Boost for matching key terms
+            base_similarity += DEFAULT_KEY_TERMS_SIMILARITY_BOOST  # Boost for matching key terms
 
         return min(base_similarity, 1.0)  # Cap at 1.0
 
@@ -416,7 +436,7 @@ class QualityAssessor:
         elif dimension == "satisfaction":
             return self._assess_satisfaction(conversation_context, signals, patterns)
         else:
-            return QualityDimension(dimension=dimension, score=0.5)
+            return QualityDimension(dimension=dimension, score=DEFAULT_SENTIMENT_BASE_CONFIDENCE)
 
     def _assess_clarity(
         self,
@@ -431,7 +451,7 @@ class QualityAssessor:
 
         # Negative indicators
         if ConversationSignal.CONFUSION_INDICATOR in signals:
-            base_score -= 0.3
+            base_score -= DEFAULT_ERROR_IMPACT_MULTIPLIER
             evidence.append("Confusion indicators detected in conversation")
             suggestions.append("Consider providing clearer explanations or examples")
 
@@ -478,7 +498,7 @@ class QualityAssessor:
             base_score = completion_rate
             evidence.append(f"Goal completion rate: {completion_rate:.1%}")
 
-            if completion_rate < 0.5:
+            if completion_rate < DEFAULT_LOW_COMPLETION_THRESHOLD:
                 suggestions.append("Focus on completing current goals before adding new ones")
 
         # Signal-based adjustments
@@ -487,7 +507,7 @@ class QualityAssessor:
             evidence.append("Success confirmations detected")
 
         if ConversationSignal.FRUSTRATION_SIGNAL in signals:
-            base_score -= 0.3
+            base_score -= DEFAULT_ERROR_IMPACT_MULTIPLIER
             evidence.append("Frustration signals detected")
             suggestions.append("Address user frustration and provide alternative approaches")
 
@@ -558,7 +578,7 @@ class QualityAssessor:
 
         if error_count > 0:
             error_rate = error_count / len(tool_usage)
-            base_score -= error_rate * 0.3
+            base_score -= error_rate * DEFAULT_ERROR_IMPACT_MULTIPLIER
             evidence.append(f"Tool error rate: {error_rate:.1%}")
             suggestions.append("Review and improve error handling")
 
@@ -780,7 +800,7 @@ class AnalysisEngine:
         # Simple classification
         if technical_terms > len(user_messages):
             return "advanced"
-        elif technical_terms > 0 and basic_questions < len(user_messages) * 0.5:
+        elif technical_terms > 0 and basic_questions < len(user_messages) * DEFAULT_BASIC_QUESTIONS_RATIO:
             return "intermediate"
         else:
             return "beginner"
@@ -823,26 +843,26 @@ class AnalysisEngine:
 
         # Recent message frequency
         messages = conversation_context.get("messages", [])
-        if len(messages) > 10:
-            base_level *= 1.5  # More active conversation
+        if len(messages) > DEFAULT_CONVERSATION_ACTIVITY_THRESHOLD:
+            base_level *= DEFAULT_CONVERSATION_ACTIVITY_MULTIPLIER  # More active conversation
 
         # Recent analysis results
-        if len(session_history) > 3:
-            recent_analyses = session_history[-3:]
+        if len(session_history) > DEFAULT_RECENT_ANALYSES_COUNT:
+            recent_analyses = session_history[-DEFAULT_RECENT_ANALYSES_COUNT:]
             avg_quality = sum(r.analysis.quality_score for r in recent_analyses) / len(
                 recent_analyses
             )
 
-            if avg_quality < 0.5:
+            if avg_quality < DEFAULT_LOW_QUALITY_THRESHOLD:
                 base_level *= 2.0  # More frequent analysis needed
             elif avg_quality > 0.8:
                 base_level *= 0.7  # Less frequent analysis needed
 
-        return min(3.0, base_level)  # Cap at 3x base frequency
+        return min(DEFAULT_MAX_ANALYSIS_FREQUENCY_MULTIPLIER, base_level)  # Cap at max frequency multiplier
 
     def _extract_satisfaction_signals(self, analysis: ConversationAnalysis) -> Dict[str, Any]:
         """Extract user satisfaction signals from analysis"""
-        signals = {"overall_sentiment": "neutral", "confidence": 0.5, "indicators": []}
+        signals = {"overall_sentiment": "neutral", "confidence": DEFAULT_SENTIMENT_BASE_CONFIDENCE, "indicators": []}
 
         positive_signals = [
             ConversationSignal.POSITIVE_ENGAGEMENT,
@@ -858,10 +878,10 @@ class AnalysisEngine:
 
         if positive_count > negative_count:
             signals["overall_sentiment"] = "positive"
-            signals["confidence"] = min(0.9, 0.5 + (positive_count * 0.1))
+            signals["confidence"] = min(DEFAULT_SENTIMENT_MAX_CONFIDENCE, DEFAULT_SENTIMENT_BASE_CONFIDENCE + (positive_count * DEFAULT_SENTIMENT_CONFIDENCE_INCREMENT))
         elif negative_count > positive_count:
             signals["overall_sentiment"] = "negative"
-            signals["confidence"] = min(0.9, 0.5 + (negative_count * 0.1))
+            signals["confidence"] = min(DEFAULT_SENTIMENT_MAX_CONFIDENCE, DEFAULT_SENTIMENT_BASE_CONFIDENCE + (negative_count * DEFAULT_SENTIMENT_CONFIDENCE_INCREMENT))
 
         signals["indicators"] = [signal.value for signal in analysis.detected_signals]
 

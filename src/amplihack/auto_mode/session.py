@@ -8,10 +8,21 @@ Provides secure session isolation and data persistence.
 import asyncio
 import hashlib
 import json
+import logging
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from .config import (
+    DEFAULT_SESSION_TIMEOUT_MINUTES,
+    DEFAULT_MAX_SESSIONS_PER_USER,
+    DEFAULT_CLEANUP_INTERVAL_MINUTES,
+    SECONDS_PER_MINUTE,
+)
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -123,7 +134,7 @@ class SessionStorage:
 
         except Exception as e:
             # Log error but don't raise - session can continue without persistence
-            print(f"Failed to save session {session_state.session_id}: {e}")
+            logger.error(f"Failed to save session state: {type(e).__name__}")
             return False
 
     async def load_session(self, session_id: str) -> Optional[SessionState]:
@@ -148,7 +159,7 @@ class SessionStorage:
             return SessionState.from_dict(session_data)
 
         except Exception as e:
-            print(f"Failed to load session {session_id}: {e}")
+            logger.error(f"Failed to load session: {type(e).__name__}")
             return None
 
     async def delete_session(self, session_id: str) -> bool:
@@ -170,7 +181,7 @@ class SessionStorage:
             return True
 
         except Exception as e:
-            print(f"Failed to delete session {session_id}: {e}")
+            logger.error(f"Failed to delete session: {type(e).__name__}")
             return False
 
     async def list_sessions(self, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -208,11 +219,11 @@ class SessionStorage:
                     )
 
                 except Exception as e:
-                    print(f"Failed to read session file {session_file}: {e}")
+                    logger.warning(f"Failed to read session file: {type(e).__name__}")
                     continue
 
         except Exception as e:
-            print(f"Failed to list sessions: {e}")
+            logger.error(f"Failed to list sessions: {type(e).__name__}")
 
         return sessions
 
@@ -227,9 +238,9 @@ class SessionManager:
         self.active_sessions: Dict[str, SessionState] = {}
 
         # Session cleanup settings
-        self.session_timeout_minutes = 60
-        self.max_sessions_per_user = 5
-        self.cleanup_interval_minutes = 10
+        self.session_timeout_minutes = DEFAULT_SESSION_TIMEOUT_MINUTES
+        self.max_sessions_per_user = DEFAULT_MAX_SESSIONS_PER_USER
+        self.cleanup_interval_minutes = DEFAULT_CLEANUP_INTERVAL_MINUTES
 
         # Cleanup task
         self._cleanup_task: Optional[asyncio.Task] = None
@@ -334,7 +345,7 @@ class SessionManager:
             return True
 
         except Exception as e:
-            print(f"Failed to update conversation for session {session_state.session_id}: {e}")
+            logger.error(f"Failed to update conversation: {type(e).__name__}")
             return False
 
     async def update_user_preferences(
@@ -358,7 +369,7 @@ class SessionManager:
             return True
 
         except Exception as e:
-            print(f"Failed to update preferences for session {session_state.session_id}: {e}")
+            logger.error(f"Failed to update preferences: {type(e).__name__}")
             return False
 
     async def add_learned_pattern(
@@ -383,7 +394,7 @@ class SessionManager:
             return True
 
         except Exception as e:
-            print(f"Failed to add learned pattern for session {session_state.session_id}: {e}")
+            logger.error(f"Failed to add learned pattern: {type(e).__name__}")
             return False
 
     async def close_session(self, session_state: SessionState) -> bool:
@@ -408,7 +419,7 @@ class SessionManager:
             return True
 
         except Exception as e:
-            print(f"Failed to close session {session_state.session_id}: {e}")
+            logger.error(f"Failed to close session: {type(e).__name__}")
             return False
 
     async def cleanup_expired_sessions(self) -> int:
@@ -419,7 +430,7 @@ class SessionManager:
             int: Number of sessions cleaned up
         """
         current_time = time.time()
-        timeout_seconds = self.session_timeout_minutes * 60
+        timeout_seconds = self.session_timeout_minutes * SECONDS_PER_MINUTE
         cleaned_up = 0
 
         # Find expired sessions
@@ -439,15 +450,15 @@ class SessionManager:
         """Background cleanup loop"""
         while True:
             try:
-                await asyncio.sleep(self.cleanup_interval_minutes * 60)
+                await asyncio.sleep(self.cleanup_interval_minutes * SECONDS_PER_MINUTE)
                 cleaned_up = await self.cleanup_expired_sessions()
                 if cleaned_up > 0:
-                    print(f"Cleaned up {cleaned_up} expired auto-mode sessions")
+                    logger.info(f"Cleaned up {cleaned_up} expired auto-mode sessions")
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"Error in session cleanup loop: {e}")
+                logger.error(f"Error in session cleanup loop: {type(e).__name__}")
 
     async def shutdown(self):
         """Shutdown the session manager"""

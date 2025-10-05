@@ -18,6 +18,15 @@ import yaml
 logger = logging.getLogger(__name__)
 
 from .analysis import ConversationAnalysis, ConversationSignal
+from .config import (
+    DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+    DEFAULT_COOLDOWN_MINUTES,
+    DEFAULT_MAX_TRIGGERS_PER_SESSION,
+    DEFAULT_FRUSTRATION_COOLDOWN_MINUTES,
+    DEFAULT_QUALITY_THRESHOLD,
+    SECONDS_PER_MINUTE,
+    SECONDS_PER_DAY,
+)
 from .session import SessionState
 
 
@@ -80,9 +89,9 @@ class QualityGateDefinition:
     actions: List[QualityGateAction] = field(default_factory=list)
 
     # Configuration
-    min_confidence_threshold: float = 0.5
-    cooldown_minutes: int = 5  # Minimum time between same gate triggers
-    max_triggers_per_session: int = 3
+    min_confidence_threshold: float = DEFAULT_MIN_CONFIDENCE_THRESHOLD
+    cooldown_minutes: int = DEFAULT_COOLDOWN_MINUTES  # Minimum time between same gate triggers
+    max_triggers_per_session: int = DEFAULT_MAX_TRIGGERS_PER_SESSION
 
     # User customization
     user_enabled: bool = True
@@ -174,7 +183,7 @@ class QualityGateEvaluator:
                     condition_type="quality_dimension",
                     field_path="analysis.quality_dimensions",
                     operator="dimension_score_lt",
-                    threshold={"dimension": "effectiveness", "score": 0.5},
+                    threshold={"dimension": "effectiveness", "score": DEFAULT_QUALITY_THRESHOLD},
                 ),
                 QualityGateCondition(
                     condition_type="pattern_present",
@@ -278,10 +287,10 @@ class QualityGateEvaluator:
                     action_type=InterventionType.ERROR_RESOLUTION,
                     title="Address Frustration",
                     description="Acknowledge frustration and provide alternative approaches",
-                    confidence_boost=0.3,
+                    confidence_boost=DEFAULT_MIN_CONFIDENCE_THRESHOLD * 0.6,  # 60% of base threshold
                 )
             ],
-            cooldown_minutes=10,  # Longer cooldown for frustration gates
+            cooldown_minutes=DEFAULT_FRUSTRATION_COOLDOWN_MINUTES,  # Longer cooldown for frustration gates
         )
 
         # Gate: Privacy Protection
@@ -303,7 +312,7 @@ class QualityGateEvaluator:
                     action_type=InterventionType.PRIVACY_PROTECTION,
                     title="Protect Sensitive Data",
                     description="Suggest privacy protection measures",
-                    confidence_boost=0.5,
+                    confidence_boost=DEFAULT_MIN_CONFIDENCE_THRESHOLD,  # Full threshold boost
                 )
             ],
             min_confidence_threshold=0.9,  # High threshold for privacy
@@ -361,9 +370,9 @@ class QualityGateEvaluator:
                 priority=GatePriority(config.get("priority", "medium")),
                 conditions=conditions,
                 actions=actions,
-                min_confidence_threshold=config.get("min_confidence_threshold", 0.5),
-                cooldown_minutes=config.get("cooldown_minutes", 5),
-                max_triggers_per_session=config.get("max_triggers_per_session", 3),
+                min_confidence_threshold=config.get("min_confidence_threshold", DEFAULT_MIN_CONFIDENCE_THRESHOLD),
+                cooldown_minutes=config.get("cooldown_minutes", DEFAULT_COOLDOWN_MINUTES),
+                max_triggers_per_session=config.get("max_triggers_per_session", DEFAULT_MAX_TRIGGERS_PER_SESSION),
             )
 
             self.gates[gate_id] = gate
@@ -596,7 +605,7 @@ class QualityGateEvaluator:
             return False
 
         last_trigger_time = self.gate_history[key][-1] if self.gate_history[key] else 0
-        cooldown_seconds = cooldown_minutes * 60
+        cooldown_seconds = cooldown_minutes * SECONDS_PER_MINUTE
 
         return (current_time - last_trigger_time) < cooldown_seconds
 
@@ -619,7 +628,7 @@ class QualityGateEvaluator:
         self.gate_history[key].append(trigger_time)
 
         # Keep only recent triggers (last 24 hours)
-        cutoff_time = trigger_time - (24 * 60 * 60)
+        cutoff_time = trigger_time - SECONDS_PER_DAY
         self.gate_history[key] = [t for t in self.gate_history[key] if t >= cutoff_time]
 
     def add_custom_gate(self, gate: QualityGateDefinition):
