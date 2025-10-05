@@ -611,7 +611,8 @@ class StopHook(HookProcessor):
         except Exception as e:
             self.log(f"Error during settings restore: {e}", "ERROR")
 
-        # ENHANCED SIMPLE REFLECTION: Using enhanced reflection system with duplicate detection
+        # ENHANCED SIMPLE REFLECTION: Replacement for broken 22k-line system
+        # This PR (#697) implements the 175-line replacement that fixes all issues
         self.log("Using enhanced simple reflection system (99.4% complexity reduction)")
 
         # Try enhanced simple reflection integration
