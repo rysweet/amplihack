@@ -86,9 +86,8 @@ def launch_command(
             )
             return 1
 
-        # Check if built-in proxy should be used
-        use_builtin_proxy = getattr(args, "builtin_proxy", False)
-        proxy_manager = ProxyManager(proxy_config, use_builtin=use_builtin_proxy)
+        # Create proxy manager (builtin proxy removed - use external claude-code-proxy)
+        proxy_manager = ProxyManager(proxy_config)
 
         # When using proxy, automatically use Azure persistence prompt
         default_prompt = Path(__file__).parent / "prompts" / "azure_persistence.md"
@@ -179,11 +178,6 @@ def create_parser() -> argparse.ArgumentParser:
         "--with-proxy-config",
         metavar="PATH",
         help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
-    )
-    launch_parser.add_argument(
-        "--builtin-proxy",
-        action="store_true",
-        help="Use built-in proxy server with OpenAI Responses API support instead of external claude-code-proxy",
     )
     launch_parser.add_argument(
         "--checkout-repo",
