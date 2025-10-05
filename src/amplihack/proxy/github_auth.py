@@ -58,7 +58,7 @@ class GitHubAuthManager:
             RuntimeError: If device flow initiation fails.
         """
         try:
-            import requests
+            import requests  # type: ignore
         except ImportError:
             raise RuntimeError(
                 "requests library required for GitHub OAuth. Install with: pip install requests"
@@ -93,7 +93,7 @@ class GitHubAuthManager:
             RuntimeError: If authorization fails or times out.
         """
         try:
-            import requests
+            import requests  # type: ignore
         except ImportError:
             raise RuntimeError(
                 "requests library required for GitHub OAuth. Install with: pip install requests"
@@ -188,7 +188,7 @@ class GitHubAuthManager:
             True if token has Copilot access, False otherwise.
         """
         try:
-            import requests
+            import requests  # type: ignore
         except ImportError:
             # If requests not available, assume token is valid
             return True
@@ -258,7 +258,7 @@ class GitHubAuthManager:
             True if revocation successful, False otherwise.
         """
         try:
-            import requests
+            import requests  # type: ignore
         except ImportError:
             return False
 

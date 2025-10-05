@@ -8,12 +8,12 @@ import time
 import uuid
 from typing import Any, Dict, List, Literal, Optional, Union
 
-import httpx
-import litellm
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, field_validator
+import httpx  # type: ignore
+import litellm  # type: ignore
+from dotenv import load_dotenv  # type: ignore
+from fastapi import FastAPI, HTTPException, Request  # type: ignore
+from fastapi.responses import StreamingResponse  # type: ignore
+from pydantic import BaseModel, field_validator  # type: ignore
 
 # Load environment variables from .env file
 load_dotenv()
@@ -1477,7 +1477,7 @@ async def count_tokens(request: TokenCountRequest, raw_request: Request):
         # Use LiteLLM's token_counter function
         try:
             # Import token_counter function
-            from litellm import token_counter
+            from litellm import token_counter  # type: ignore
 
             # Log the request beautifully
             num_tools = len(request.tools) if request.tools else 0
@@ -1651,7 +1651,7 @@ def log_request_beautifully(
 def run_server(host: str = "127.0.0.1", port: int = 8082):
     """Run the built-in proxy server."""
     try:
-        import uvicorn
+        import uvicorn  # type: ignore
 
         uvicorn.run(app, host=host, port=port)
     except ImportError:

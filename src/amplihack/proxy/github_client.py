@@ -34,7 +34,7 @@ class GitHubCopilotClient:
         """Ensure HTTP session is initialized."""
         if not self.session:
             try:
-                import aiohttp
+                import aiohttp  # type: ignore
 
                 self.session = aiohttp.ClientSession(
                     headers={
