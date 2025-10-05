@@ -12,6 +12,10 @@ from src.amplihack.utils.paths import FrameworkPathResolver
 class TestFrameworkPathResolver:
     """Test cases for FrameworkPathResolver."""
 
+    def setup_method(self):
+        """Clear the cached root before each test."""
+        FrameworkPathResolver._cached_root = None
+
     def test_find_framework_root_local_deployment(self):
         """Test finding framework root in local deployment scenario."""
         with tempfile.TemporaryDirectory() as temp_dir:
