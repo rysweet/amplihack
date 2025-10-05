@@ -134,6 +134,19 @@ class ProxyConfig:
         ]
         env_vars.extend(deployment_vars)
 
+        # Add passthrough mode variables
+        passthrough_vars = [
+            "PASSTHROUGH_MODE",
+            "PASSTHROUGH_FALLBACK_ENABLED",
+            "PASSTHROUGH_MAX_RETRIES",
+            "PASSTHROUGH_RETRY_DELAY",
+            "PASSTHROUGH_FALLBACK_AFTER_FAILURES",
+            "AZURE_CLAUDE_SONNET_DEPLOYMENT",
+            "AZURE_CLAUDE_HAIKU_DEPLOYMENT",
+            "AZURE_CLAUDE_OPUS_DEPLOYMENT",
+        ]
+        env_vars.extend(passthrough_vars)
+
         # Override with environment variables
         for var in env_vars:
             env_value = os.environ.get(var)
@@ -556,6 +569,93 @@ class ProxyConfig:
             return parsed.scheme == "https"
         except Exception:
             return False
+
+    def is_passthrough_mode_enabled(self) -> bool:
+        """Check if passthrough mode is enabled.
+
+        Returns:
+            True if passthrough mode is enabled, False otherwise.
+        """
+        return self.config.get("PASSTHROUGH_MODE", "false").lower() == "true"
+
+    def is_passthrough_fallback_enabled(self) -> bool:
+        """Check if passthrough fallback is enabled.
+
+        Returns:
+            True if fallback is enabled, False otherwise.
+        """
+        return self.config.get("PASSTHROUGH_FALLBACK_ENABLED", "true").lower() == "true"
+
+    def get_passthrough_max_retries(self) -> int:
+        """Get maximum retries for passthrough mode.
+
+        Returns:
+            Maximum number of retries.
+        """
+        return int(self.config.get("PASSTHROUGH_MAX_RETRIES", "3"))
+
+    def get_passthrough_retry_delay(self) -> float:
+        """Get retry delay for passthrough mode.
+
+        Returns:
+            Delay in seconds between retries.
+        """
+        return float(self.config.get("PASSTHROUGH_RETRY_DELAY", "1.0"))
+
+    def get_passthrough_fallback_after_failures(self) -> int:
+        """Get number of failures before switching to fallback.
+
+        Returns:
+            Number of failures before fallback.
+        """
+        return int(self.config.get("PASSTHROUGH_FALLBACK_AFTER_FAILURES", "2"))
+
+    def get_azure_claude_deployment(self, model_name: str) -> Optional[str]:
+        """Get Azure deployment for Claude model mapping.
+
+        Args:
+            model_name: Claude model name
+
+        Returns:
+            Azure deployment name or None.
+        """
+        deployment_mappings = {
+            "claude-3-5-sonnet-20241022": "AZURE_CLAUDE_SONNET_DEPLOYMENT",
+            "claude-3-5-haiku-20241022": "AZURE_CLAUDE_HAIKU_DEPLOYMENT",
+            "claude-3-opus-20240229": "AZURE_CLAUDE_OPUS_DEPLOYMENT",
+            "claude-3-sonnet-20240229": "AZURE_CLAUDE_SONNET_DEPLOYMENT",
+            "claude-3-haiku-20240307": "AZURE_CLAUDE_HAIKU_DEPLOYMENT",
+        }
+
+        env_var = deployment_mappings.get(model_name)
+        if env_var:
+            return self.config.get(env_var)
+        return None
+
+    def validate_passthrough_config(self) -> bool:
+        """Validate passthrough mode configuration.
+
+        Returns:
+            True if configuration is valid, False otherwise.
+        """
+        if not self.is_passthrough_mode_enabled():
+            return True  # No validation needed if not enabled
+
+        # Check for required Anthropic configuration
+        if not self.config.get("ANTHROPIC_API_KEY"):
+            print("Passthrough mode requires ANTHROPIC_API_KEY")
+            return False
+
+        # Check for fallback configuration if enabled
+        if self.is_passthrough_fallback_enabled():
+            if not self.config.get("AZURE_OPENAI_API_KEY"):
+                print("Passthrough fallback requires AZURE_OPENAI_API_KEY")
+                return False
+            if not self.config.get("AZURE_OPENAI_ENDPOINT"):
+                print("Passthrough fallback requires AZURE_OPENAI_ENDPOINT")
+                return False
+
+        return True
 
     def _sanitize_for_logging(self, value: str) -> str:
         """Sanitize sensitive values for safe logging.

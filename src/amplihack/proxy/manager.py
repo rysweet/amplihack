@@ -87,6 +87,14 @@ class ProxyManager:
         try:
             self.proxy_config.save_to(target_env)
             print(f"Copied proxy configuration to {target_env}")
+
+            # Validate passthrough configuration if enabled
+            if self.proxy_config.is_passthrough_mode_enabled():
+                if not self.proxy_config.validate_passthrough_config():
+                    print("Passthrough mode configuration validation failed")
+                    return False
+                print("Passthrough mode enabled and validated")
+
             return True
         except Exception as e:
             print(f"Failed to copy proxy configuration: {e}")
