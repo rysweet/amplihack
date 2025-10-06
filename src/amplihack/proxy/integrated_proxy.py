@@ -1,10 +1,12 @@
 import json
 import logging
+import logging.handlers
 import os
 import ssl
 import sys
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import aiohttp
@@ -18,17 +20,51 @@ from pydantic import BaseModel, field_validator
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(
-    level=logging.WARN,  # Change to INFO level to show more details
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
+# Configure logging with file output and rotation
+def setup_logging():
+    """Set up logging with file rotation and console output."""
+    # Create logs directory
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
 
-# Tell uvicorn's loggers to be quiet
-logging.getLogger("uvicorn").setLevel(logging.WARNING)
-logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+    # Create logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)  # Set to DEBUG for file logging
+
+    # Clear any existing handlers
+    logger.handlers.clear()
+
+    # File handler with rotation (10MB files, keep 5 backups)
+    file_handler = logging.handlers.RotatingFileHandler(
+        logs_dir / "proxy.log",
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    file_handler.setFormatter(file_formatter)
+    logger.addHandler(file_handler)
+
+    # Console handler (WARN level and above only)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.WARN)
+    console_formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(message)s"
+    )
+    console_handler.setFormatter(console_formatter)
+    logger.addHandler(console_handler)
+
+    # Tell uvicorn's loggers to be quiet
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+
+    return logger
+
+# Set up logging
+logger = setup_logging()
 
 
 # Create a filter to block any log messages containing specific strings
@@ -50,14 +86,12 @@ class MessageFilter(logging.Filter):
         return True
 
 
-# Apply the filter to the root logger to catch all messages
-root_logger = logging.getLogger()
-root_logger.addFilter(MessageFilter())
+# Apply the filter to the main logger to catch all messages
+logger.addFilter(MessageFilter())
 
-
-# Custom formatter for model mapping logs
+# Custom formatter for model mapping logs (only for console)
 class ColorizedFormatter(logging.Formatter):
-    """Custom formatter to highlight model mappings"""
+    """Custom formatter to highlight model mappings in console output"""
 
     BLUE = "\033[94m"
     GREEN = "\033[92m"
@@ -67,15 +101,14 @@ class ColorizedFormatter(logging.Formatter):
     BOLD = "\033[1m"
 
     def format(self, record):
-        if record.levelno == logging.debug and "MODEL MAPPING" in record.msg:
+        if record.levelno == logging.DEBUG and "MODEL MAPPING" in getattr(record, 'msg', ''):
             # Apply colors and formatting to model mapping logs
             return f"{self.BOLD}{self.GREEN}{record.msg}{self.RESET}"
         return super().format(record)
 
-
-# Apply custom formatter to console handler
+# Apply custom formatter only to console handler
 for handler in logger.handlers:
-    if isinstance(handler, logging.StreamHandler):
+    if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.handlers.RotatingFileHandler):
         handler.setFormatter(ColorizedFormatter("%(asctime)s - %(levelname)s - %(message)s"))
 
 
@@ -101,28 +134,28 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
     MIDDLE_MODEL = config.get("MIDDLE_MODEL", os.environ.get("MIDDLE_MODEL", "gpt-5-codex"))
     SMALL_MODEL = config.get("SMALL_MODEL", os.environ.get("SMALL_MODEL", "gpt-5-codex"))
 
-    print(f"🔧 Model Configuration: BIG={BIG_MODEL}, MIDDLE={MIDDLE_MODEL}, SMALL={SMALL_MODEL}")
+    logger.info(f"Model Configuration: BIG={BIG_MODEL}, MIDDLE={MIDDLE_MODEL}, SMALL={SMALL_MODEL}")
 
     # Copy all the existing helper functions and route definitions inside this scope
     # For now, I'll add the essential routes needed for Azure Responses API
 
     def map_claude_model_to_azure(model: str) -> str:
         """Map Claude model names to Azure deployment names based on configuration."""
-        print(f"Mapping Claude model '{model}' to Azure deployment...")
+        logger.debug(f"📋 MODEL MAPPING: Mapping Claude model '{model}' to Azure deployment...")
 
         # Map Claude models to configured Azure models
         if "sonnet" in model.lower() or "opus" in model.lower():
             azure_model = BIG_MODEL
-            print(f"  Large model detected -> {azure_model}")
+            logger.debug(f"📋 MODEL MAPPING: Large model detected -> {azure_model}")
             return azure_model
         elif "haiku" in model.lower():
             azure_model = SMALL_MODEL
-            print(f"  Small model detected -> {azure_model}")
+            logger.debug(f"📋 MODEL MAPPING: Small model detected -> {azure_model}")
             return azure_model
         else:
             # Default to big model for unrecognized patterns
             azure_model = BIG_MODEL
-            print(f"  Unknown model pattern, using BIG_MODEL -> {azure_model}")
+            logger.debug(f"📋 MODEL MAPPING: Unknown model pattern, using BIG_MODEL -> {azure_model}")
             return azure_model
 
     def should_use_responses_api_for_azure_model(azure_model: str) -> bool:
@@ -142,14 +175,14 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         # Special case: gpt-5 without -chat suffix uses Responses API
         if azure_model == "gpt-5":
             is_responses = True
-            print(f"  Azure model '{azure_model}' is gpt-5 (without -chat) -> Responses API: {is_responses}")
+            logger.debug(f"API Routing: Azure model '{azure_model}' is gpt-5 (without -chat) -> Responses API: {is_responses}")
             return is_responses
 
         # Check if model starts with any Responses API pattern
         for pattern in responses_api_patterns:
             if azure_model.startswith(pattern):
                 is_responses = True
-                print(f"  Azure model '{azure_model}' matches pattern '{pattern}' -> Responses API: {is_responses}")
+                logger.debug(f"API Routing: Azure model '{azure_model}' matches pattern '{pattern}' -> Responses API: {is_responses}")
                 return is_responses
 
         # Chat API patterns: gpt-4*, gpt-5-chat*
@@ -157,12 +190,12 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         for pattern in chat_api_patterns:
             if azure_model.startswith(pattern):
                 is_responses = False
-                print(f"  Azure model '{azure_model}' matches pattern '{pattern}' -> Chat API: {not is_responses}")
+                logger.debug(f"API Routing: Azure model '{azure_model}' matches pattern '{pattern}' -> Chat API: {not is_responses}")
                 return is_responses
 
         # Default fallback - assume Chat API for unknown patterns
         is_responses = False
-        print(f"  Azure model '{azure_model}' unknown pattern -> Chat API (default): {not is_responses}")
+        logger.debug(f"API Routing: Azure model '{azure_model}' unknown pattern -> Chat API (default): {not is_responses}")
         return is_responses
 
     async def make_azure_api_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -339,7 +372,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         """Handle messages with proper model mapping to Azure and real API calls."""
         try:
             claude_model = request.get("model", "unknown")
-            print(f"\n🔄 Processing request for Claude model: {claude_model}")
+            logger.info(f"Processing request for Claude model: {claude_model}")
 
             # Step 1: Map Claude model to Azure deployment
             azure_model = map_claude_model_to_azure(claude_model)
@@ -349,7 +382,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
 
             # Step 3: Handle API routing
             if use_responses_api:
-                print(f"✅ Using Azure Responses API for {azure_model}")
+                logger.info(f"Using Azure Responses API for {azure_model}")
 
                 # Convert Anthropic request to Azure format
                 azure_request = convert_anthropic_to_azure(request)
@@ -370,7 +403,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                     keyword in user_content
                     for keyword in ["agents", "commands", "available", "what do you have", "tell me what"]
                 ):
-                    print("🎯 Detected agent/command query - providing comprehensive response")
+                    logger.info("Detected agent/command query - providing comprehensive response")
 
                     agent_response = f"""I'm Claude, successfully running through the Azure Responses API integration with model **{azure_model}**.
 
@@ -424,12 +457,12 @@ The Azure OpenAI integration is working perfectly! Claude models are mapped to *
 
                 else:
                     # For other queries, make actual Azure API call
-                    print(f"🌐 Making Azure Responses API call for: {azure_model}")
+                    logger.info(f"Making Azure Responses API call for: {azure_model}")
                     azure_response = await make_azure_api_call(azure_request)
                     return convert_azure_to_anthropic(azure_response, claude_model)
 
             else:
-                print(f"ℹ️ Using Chat API for {azure_model}")
+                logger.info(f"Using Chat API for {azure_model}")
                 return {
                     "id": f"msg_{uuid.uuid4()}",
                     "model": claude_model,
@@ -2157,7 +2190,7 @@ def log_request_beautifully(
     log_line = f"{Colors.BOLD}{method} {endpoint}{Colors.RESET} {status_str}"
     model_line = f"{claude_display} → {openai_display} {tools_str} {messages_str}"
 
-    # Print to console
-    print(log_line)
-    print(model_line)
+    # Log request information (these are significant events worth showing in console)
+    logger.warning(log_line)  # Use WARNING level to ensure visibility in console
+    logger.warning(model_line)
     sys.stdout.flush()
