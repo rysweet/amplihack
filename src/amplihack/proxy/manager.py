@@ -27,13 +27,10 @@ class ProxyManager:
         self.proxy_process: Optional[subprocess.Popen] = None
         self.proxy_dir = Path.home() / ".amplihack" / "proxy"
         self.env_manager = ProxyEnvironment()
-        # Read PORT from proxy_config if available, otherwise use default
-        if proxy_config and proxy_config.get("PORT"):
-            self.proxy_port = int(proxy_config.get("PORT"))
-            print(f"Using proxy port from config: {self.proxy_port}")
-        else:
-            self.proxy_port = 8080  # Default port
-            print(f"Using default proxy port: {self.proxy_port}")
+        # claude-code-proxy PyPI package runs on fixed port 8082
+        # Ignore PORT config as the package doesn't support custom ports
+        self.proxy_port = 8082
+        print(f"Using claude-code-proxy fixed port: {self.proxy_port}")
 
         # Performance optimizations - cache URL templates and common operations
         self._url_template_cache = {}
