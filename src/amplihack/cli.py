@@ -92,7 +92,12 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         claude_args=claude_args,
     )
 
-    return launcher.launch_interactive()
+    # Check if claude_args contains a prompt (-p) - if so, use non-interactive mode
+    has_prompt = claude_args and ("-p" in claude_args)
+    if has_prompt:
+        return launcher.launch()
+    else:
+        return launcher.launch_interactive()
 
 
 def parse_args_with_passthrough(
@@ -321,7 +326,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 return docker_manager.run_command(docker_args)
 
             launcher = ClaudeLauncher(claude_args=claude_args)
-            return launcher.launch_interactive()
+            # Check if claude_args contains a prompt (-p) - if so, use non-interactive mode
+            has_prompt = "-p" in claude_args
+            if has_prompt:
+                return launcher.launch()
+            else:
+                return launcher.launch_interactive()
         else:
             create_parser().print_help()
             return 1
@@ -358,8 +368,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             # Get the original directory (before we changed to temp)
             original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
             # Add --add-dir to claude_args if not already present
-            if "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + (claude_args or [])
+            if claude_args and "--add-dir" not in claude_args:
+                claude_args = ["--add-dir", original_cwd] + claude_args
+            elif not claude_args:
+                claude_args = ["--add-dir", original_cwd]
         return launch_command(args, claude_args)
 
     elif args.command == "uvx-help":
