@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
+from .log_streaming import LogStreamingService
 from .responses_api_proxy import ResponsesAPIProxy, create_responses_api_proxy
 
 
@@ -72,16 +73,15 @@ class ProxyManager:
         self.proxy_config = proxy_config
         self.proxy_process: Optional[subprocess.Popen] = None
         self.responses_api_proxy: Optional[ResponsesAPIProxy] = None
+        self.log_streaming_service: Optional[LogStreamingService] = None
         self.proxy_dir = Path.home() / ".amplihack" / "proxy"
         self.env_manager = ProxyEnvironment()
         # Get port from configuration, default to 8082 if not specified
         self.proxy_port = self.get_configured_port()
         print(f"Using proxy port from config: {self.proxy_port}")
 
-        # Performance optimizations - cache URL templates and common operations
-        self._url_template_cache = {}
-        self._endpoint_cache = {}
-        self._api_version_cache = {}
+        # URL template cache for performance
+        self._url_cache = {}
 
     def get_configured_port(self) -> int:
         """Get the configured port from proxy config with dynamic port selection.
@@ -195,7 +195,11 @@ class ProxyManager:
                     # Create the FastAPI app and run it
                     app = integrated_proxy.create_app(proxy_env)
 
-                    import uvicorn
+                    try:
+                        import uvicorn  # type: ignore[import-untyped,import-not-found]
+                    except ImportError:
+                        print("uvicorn not available - cannot start integrated proxy")
+                        return
 
                     uvicorn.run(app, host=host, port=self.proxy_port, log_level="error")
                 except Exception as e:
@@ -218,7 +222,7 @@ class ProxyManager:
 
             # Test if the server is responding
             try:
-                import requests
+                import requests  # type: ignore[import-untyped]
 
                 response = requests.get(f"http://127.0.0.1:{self.proxy_port}/health", timeout=10)
                 if response.status_code == 200:
@@ -235,18 +239,48 @@ class ProxyManager:
                     )
                     self.env_manager.setup(self.proxy_port, api_key, azure_config)
 
+                    # Start log streaming service
+                    self._start_log_streaming_service()
+
                     self._display_log_locations()
                     return True
                 else:
                     print(f"Integrated proxy health check failed: {response.status_code}")
                     return False
-            except requests.exceptions.RequestException as e:
+            except Exception as e:
                 print(f"Failed to connect to integrated proxy: {e}")
                 return False
 
         except Exception as e:
             print(f"Failed to start integrated proxy: {e}")
             return False
+
+    def _start_log_streaming_service(self) -> None:
+        """Start log streaming service in background."""
+        try:
+            stream_port = self.proxy_port + 1000
+            self.log_streaming_service = LogStreamingService(stream_port)
+
+            # Start in background thread with new event loop
+            import threading
+
+            def run_service():
+                import asyncio
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    if self.log_streaming_service:
+                        loop.run_until_complete(self.log_streaming_service.start())
+                        loop.run_forever()
+                except Exception:
+                    pass
+
+            self.stream_thread = threading.Thread(target=run_service, daemon=True)
+            self.stream_thread.start()
+
+        except Exception:
+            pass
 
     def ensure_proxy_installed(self) -> bool:
         """Ensure claude-code-proxy is available via uvx.
@@ -397,6 +431,9 @@ class ProxyManager:
 
     def stop_proxy(self) -> None:
         """Stop the proxy server."""
+        # Log streaming service stops automatically (daemon thread)
+        self.log_streaming_service = None
+
         # Stop responses API proxy if running
         if self.responses_api_proxy:
             print("Stopping Responses API proxy...")
@@ -439,10 +476,8 @@ class ProxyManager:
         # Clear sensitive process information
         self.proxy_process = None
 
-        # Force garbage collection of any cached sensitive data
-        self._url_template_cache.clear()
-        self._endpoint_cache.clear()
-        self._api_version_cache.clear()
+        # Clear URL cache
+        self._url_cache.clear()
 
     def wait_for_proxy_ready(self, timeout: int = 30) -> bool:
         """Wait for proxy to be ready to accept connections.
@@ -527,7 +562,7 @@ class ProxyManager:
             if self.server_thread.is_alive():
                 # Double-check with health check
                 try:
-                    import requests
+                    import requests  # type: ignore[import-untyped]
 
                     response = requests.get(f"http://127.0.0.1:{self.proxy_port}/health", timeout=2)
                     return response.status_code == 200
@@ -658,41 +693,22 @@ class ProxyManager:
         if not self.proxy_config or not self.is_azure_mode():
             return None
 
-        # Check cache first for common model/endpoint combinations
         cache_key = f"{model}:{id(self.proxy_config)}"
-        if cache_key in self._url_template_cache:
-            return self._url_template_cache[cache_key]
+        if cache_key in self._url_cache:
+            return self._url_cache[cache_key]
 
-        # Get components (these may also be cached)
-        endpoint_cache_key = id(self.proxy_config)
-        if endpoint_cache_key not in self._endpoint_cache:
-            endpoint = self.proxy_config.get_azure_endpoint()
-            if endpoint:
-                self._endpoint_cache[endpoint_cache_key] = endpoint.rstrip("/")
-            else:
-                return None
-        else:
-            endpoint = self._endpoint_cache[endpoint_cache_key]
+        endpoint = self.proxy_config.get_azure_endpoint()
+        if not endpoint:
+            return None
 
         deployment = self.proxy_config.get_azure_deployment(model)
         if not deployment:
             return None
 
-        # Cache API version
-        api_version_key = id(self.proxy_config)
-        if api_version_key not in self._api_version_cache:
-            self._api_version_cache[api_version_key] = (
-                self.proxy_config.get_azure_api_version() or "2024-02-01"
-            )
-        api_version = self._api_version_cache[api_version_key]
+        api_version = self.proxy_config.get_azure_api_version() or "2024-02-01"
+        url = f"{endpoint.rstrip('/')}/openai/deployments/{deployment}/chat/completions?api-version={api_version}"
 
-        # Construct URL using format for better performance
-        url = (
-            f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version={api_version}"
-        )
-
-        # Cache the result
-        self._url_template_cache[cache_key] = url
+        self._url_cache[cache_key] = url
         return url
 
     def normalize_azure_response(
@@ -805,37 +821,47 @@ class ProxyManager:
     def _display_log_locations(self) -> None:
         """Display proxy log file locations."""
         try:
+            # Show main proxy info
+            print("\n📊 Proxy Information:")
+            print(f"  • Proxy URL: http://localhost:{self.proxy_port}")
+
             if self.proxy_process:
-                print("\n📊 Proxy Logs:")
                 print(f"  • Process PID: {self.proxy_process.pid}")
-                print(f"  • Proxy URL: http://localhost:{self.proxy_port}")
                 print("  • Real-time logs: Captured in subprocess pipes")
                 print("    - stdout: Available via proxy_process.stdout")
                 print("    - stderr: Available via proxy_process.stderr")
                 print(f"  • To monitor process: ps {self.proxy_process.pid}")
                 print("  • To view live logs: Use proxy_process.stdout.read() or .stderr.read()")
-                print("  • Log level can be set via LOG_LEVEL env var")
-                print(f"  • Working directory: {os.getcwd()}")
-
-                # Show recent stdout if available
-                if self.proxy_process.stdout:
-                    try:
-                        # Try to read any immediately available output (non-blocking)
-                        import select
-                        import sys
-
-                        if hasattr(select, "select") and sys.platform != "win32":
-                            ready, _, _ = select.select([self.proxy_process.stdout], [], [], 0)
-                            if ready:
-                                recent_output = self.proxy_process.stdout.read(1024)
-                                if recent_output:
-                                    print(f"  • Recent stdout: {recent_output[:200]}...")
-                    except Exception:
-                        # Non-blocking read failed, that's okay
-                        pass
-                print()
             else:
-                print("\n📊 Proxy process not available for log display\n")
+                print("  • Running integrated proxy (thread-based)")
+                print("  • Logs are captured by Python logging system")
+
+            print("  • Log level can be set via LOG_LEVEL env var")
+            print(f"  • Working directory: {os.getcwd()}")
+
+            # Show log streaming info if available
+            if self.log_streaming_service:
+                stream_port = self.proxy_port + 1000
+                print(f"\n📡 Log Streaming: http://127.0.0.1:{stream_port}/stream/logs")
+
+            # Show recent stdout if available (external proxy only)
+            if self.proxy_process and self.proxy_process.stdout:
+                try:
+                    # Try to read any immediately available output (non-blocking)
+                    import select
+                    import sys
+
+                    if hasattr(select, "select") and sys.platform != "win32":
+                        ready, _, _ = select.select([self.proxy_process.stdout], [], [], 0)
+                        if ready:
+                            recent_output = self.proxy_process.stdout.read(1024)
+                            if recent_output:
+                                print(f"  • Recent stdout: {recent_output[:200]}...")
+                except Exception:
+                    # Non-blocking read failed, that's okay
+                    pass
+
+            print()  # Add spacing after all log information
 
         except Exception as e:
             # Don't fail proxy startup if logging display fails
