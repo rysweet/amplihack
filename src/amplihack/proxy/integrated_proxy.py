@@ -198,15 +198,37 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
     ) -> Dict[str, Any]:
         """Convert Azure Responses API response to Anthropic format."""
         try:
-            # Extract the response content
-            choices = azure_response.get("choices", [])
-            if not choices:
-                raise ValueError("No choices in Azure response")
+            # Azure Responses API has a different response format than Chat Completions
+            # It may have 'content' directly or still use 'choices' structure
+            content_text = ""
 
-            choice = choices[0]
-            message = choice.get("message", {})
-            content_text = message.get("content", "")
-            finish_reason = choice.get("finish_reason", "stop")
+            # Try different response formats from Azure Responses API
+            if "content" in azure_response:
+                # Direct content format in Responses API
+                content_text = azure_response.get("content", "")
+            elif "choices" in azure_response:
+                # Traditional choices format (fallback)
+                choices = azure_response.get("choices", [])
+                if choices:
+                    choice = choices[0]
+                    if "message" in choice:
+                        content_text = choice["message"].get("content", "")
+                    elif "content" in choice:
+                        content_text = choice.get("content", "")
+            elif "output" in azure_response:
+                # Alternative output format
+                content_text = azure_response.get("output", "")
+
+            if not content_text:
+                # Try to extract any text content from the response
+                content_text = str(azure_response.get("text", azure_response.get("response", "No content found")))
+
+            # Extract finish reason if available
+            finish_reason = "stop"
+            if "finish_reason" in azure_response:
+                finish_reason = azure_response["finish_reason"]
+            elif "choices" in azure_response and azure_response["choices"]:
+                finish_reason = azure_response["choices"][0].get("finish_reason", "stop")
 
             # Map finish reasons
             stop_reason_map = {
@@ -217,10 +239,10 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
             }
             stop_reason = stop_reason_map.get(finish_reason, "end_turn")
 
-            # Extract usage information
+            # Extract usage information - Azure Responses API may have different usage format
             usage_info = azure_response.get("usage", {})
-            input_tokens = usage_info.get("prompt_tokens", 0)
-            output_tokens = usage_info.get("completion_tokens", 0)
+            input_tokens = usage_info.get("prompt_tokens", usage_info.get("input_tokens", 0))
+            output_tokens = usage_info.get("completion_tokens", usage_info.get("output_tokens", 0))
 
             # Create Anthropic response format
             return {
@@ -234,6 +256,8 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
 
         except Exception as e:
             logger.error(f"Error converting Azure response to Anthropic format: {str(e)}")
+            # Log the full response for debugging
+            logger.error(f"Azure response structure: {azure_response}")
             # Fallback response
             return {
                 "id": f"msg_{uuid.uuid4()}",
@@ -250,27 +274,30 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         claude_model = request.get("model", "unknown")
         azure_model = map_claude_model_to_azure(claude_model)
 
-        # Convert messages to Azure Responses API format
-        messages = []
+        # For Azure Responses API, we need to combine all conversation into a single 'input' string
+        # Instead of using separate 'messages', the Responses API uses a single 'input' parameter
+        input_text = ""
 
         # Add system message if present
         system_content = request.get("system")
         if system_content:
             if isinstance(system_content, str):
-                messages.append({"role": "system", "content": system_content})
+                input_text += f"System: {system_content}\n\n"
             elif isinstance(system_content, list):
                 system_text = ""
                 for block in system_content:
                     if isinstance(block, dict) and block.get("type") == "text":
                         system_text += block.get("text", "") + "\n\n"
                 if system_text:
-                    messages.append({"role": "system", "content": system_text.strip()})
+                    input_text += f"System: {system_text.strip()}\n\n"
 
-        # Add conversation messages (simplified conversion)
+        # Add conversation messages (convert to single input string)
         for msg in request.get("messages", []):
+            role = msg.get("role", "user").title()  # Capitalize role
             content = msg.get("content", "")
+
             if isinstance(content, str):
-                messages.append({"role": msg.get("role"), "content": content})
+                input_text += f"{role}: {content}\n\n"
             else:
                 # Extract text content from complex content blocks
                 text_content = ""
@@ -284,13 +311,14 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                                 text_content += result_content + "\n"
 
                 if text_content.strip():
-                    messages.append({"role": msg.get("role"), "content": text_content.strip()})
+                    input_text += f"{role}: {text_content.strip()}\n\n"
                 else:
-                    messages.append({"role": msg.get("role"), "content": "..."})
+                    input_text += f"{role}: ...\n\n"
 
+        # Azure Responses API format with single 'input' parameter
         return {
             "model": azure_model,  # Use mapped Azure model
-            "messages": messages,
+            "input": input_text.strip(),  # Single input string instead of messages array
             "max_tokens": request.get("max_tokens", 1000),
             "temperature": request.get("temperature", 1.0),
             "stream": request.get("stream", False),
