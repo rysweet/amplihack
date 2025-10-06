@@ -96,7 +96,7 @@ curl -X POST http://localhost:8082/openai/responses \
 
 Tested with real Azure OpenAI configuration:
 
-- **Endpoint**: `ai-adapt-oai-eastus2.cognitiveservices.azure.com`
+- **Endpoint**: `ai-adapt-oai-eastus2.openai.azure.com`
 - **Model**: `gpt-5-codex`
 - **API Version**: `2025-04-01-preview`
 

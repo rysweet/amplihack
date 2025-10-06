@@ -205,7 +205,7 @@ def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Ro
         return None
 
     # Parse Azure endpoint URL
-    # Format: https://ai-adapt-oai-eastus2.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
+    # Format: https://ai-adapt-oai-eastus2.openai.azure.com/v1/responses?api-version=2025-04-01-preview
     try:
         from urllib.parse import parse_qs, urlparse
 
@@ -1458,12 +1458,14 @@ def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> 
             else:
                 tool_dict = tool
 
-            # Azure Responses API expects direct fields, not nested under 'function'
+            # Azure Responses API expects nested function structure
             azure_tool = {
                 "type": "function",
-                "name": tool_dict.get("name", ""),
-                "description": tool_dict.get("description", ""),
-                "parameters": tool_dict.get("input_schema", {}),
+                "function": {
+                    "name": tool_dict.get("name", ""),
+                    "description": tool_dict.get("description", ""),
+                    "parameters": tool_dict.get("input_schema", {}),
+                },
             }
             azure_tools.append(azure_tool)
 
@@ -1494,9 +1496,13 @@ async def make_azure_responses_api_call(request_data: Dict[str, Any]) -> Dict[st
         "api-key": AZURE_OPENAI_KEY,
     }
 
+    # Create SSL context using certifi certificates to fix SSL verification issues
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
     timeout = aiohttp.ClientTimeout(total=120)
 
-    async with aiohttp.ClientSession(timeout=timeout) as session:
+    async with aiohttp.ClientSession(
+        timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)
+    ) as session:
         async with session.post(OPENAI_BASE_URL, json=request_data, headers=headers) as response:
             if response.status != 200:
                 error_text = await response.text()
