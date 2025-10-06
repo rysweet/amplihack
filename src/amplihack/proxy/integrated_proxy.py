@@ -1145,6 +1145,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         request_data = {
             "model": azure_model,
             "input": messages,  # Pass messages array as input
+            "temperature": 1.0,  # Always use temperature=1 for Azure Responses API models
         }
 
         # Add supported parameters according to migration guide
@@ -2140,7 +2141,7 @@ def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> 
         "model": model,
         "messages": messages,
         "max_tokens": anthropic_request.max_tokens,
-        "temperature": anthropic_request.temperature,
+        "temperature": 1.0,  # Always use temperature=1 for Azure Responses API models
         "stream": anthropic_request.stream,
     }
 
