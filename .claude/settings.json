@@ -1,28 +1,11 @@
 {
-  "permissions": {
-    "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
-    "deny": [],
-    "defaultMode": "bypassPermissions",
-    "additionalDirectories": [".claude", "Specs"]
-  },
-  "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [],
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/tools/amplihack/hooks/session_start.py",
-            "timeout": 10000
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/tools/xpia/hooks/session_start.py",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
             "timeout": 10000
           }
         ]
@@ -33,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/tools/amplihack/hooks/stop.py",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
             "timeout": 30000
           }
         ]
@@ -45,20 +28,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/tools/amplihack/hooks/post_tool_use.py"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py"
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/tools/xpia/hooks/post_tool_use.py",
-            "timeout": 3000,
-            "matcher": "*"
-          }
-        ],
-        "matcher": "*"
       }
     ],
     "PreCompact": [
@@ -66,22 +38,10 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/tools/amplihack/hooks/pre_compact.py",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
             "timeout": 30000
           }
         ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/tools/xpia/hooks/pre_tool_use.py",
-            "timeout": 5000
-          }
-        ],
-        "matcher": "Bash"
       }
     ]
   }

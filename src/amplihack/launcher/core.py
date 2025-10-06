@@ -381,7 +381,9 @@ class ClaudeLauncher:
 
             # Launch Claude with direct I/O (interactive mode)
             print("Starting Claude...")
-            print(f"If Claude appears to hang, check proxy connection at: {self.proxy_manager.get_proxy_url() if self.proxy_manager else 'N/A'}")
+            print(
+                f"If Claude appears to hang, check proxy connection at: {self.proxy_manager.get_proxy_url() if self.proxy_manager else 'N/A'}"
+            )
             exit_code = subprocess.call(cmd, env=env)
 
             return exit_code

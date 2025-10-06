@@ -560,12 +560,12 @@ class ProxyManager:
         """Display proxy log file locations."""
         try:
             if self.proxy_process:
-                print(f"\n📊 Proxy Logs:")
+                print("\n📊 Proxy Logs:")
                 print(f"  • Process PID: {self.proxy_process.pid}")
                 print(f"  • Proxy URL: http://localhost:{self.proxy_port}")
-                print(f"  • Real-time logs: Check proxy process stdout/stderr")
+                print("  • Real-time logs: Check proxy process stdout/stderr")
                 print(f"  • To monitor: ps {self.proxy_process.pid}")
-                print(f"  • Log level can be set via LOG_LEVEL env var\n")
+                print("  • Log level can be set via LOG_LEVEL env var\n")
             else:
                 print("\n📊 Proxy process not available for log display\n")
 
