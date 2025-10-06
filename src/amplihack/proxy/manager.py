@@ -114,9 +114,10 @@ class ProxyManager:
         """
         try:
             # Import the integrated proxy (run_server function)
-            from . import integrated_proxy
             import threading
             import time
+
+            from . import integrated_proxy
 
             if not self.proxy_config:
                 print("No proxy configuration available for integrated proxy")
@@ -138,12 +139,8 @@ class ProxyManager:
                     app = integrated_proxy.create_app(proxy_env)
 
                     import uvicorn
-                    uvicorn.run(
-                        app,
-                        host=host,
-                        port=self.proxy_port,
-                        log_level="error"
-                    )
+
+                    uvicorn.run(app, host=host, port=self.proxy_port, log_level="error")
                 except Exception as e:
                     print(f"Error in integrated proxy server: {e}")
 
@@ -157,12 +154,15 @@ class ProxyManager:
             # Test if the server is responding
             try:
                 import requests
+
                 response = requests.get(f"http://127.0.0.1:{self.proxy_port}/health", timeout=10)
                 if response.status_code == 200:
                     print(f"Integrated proxy started successfully on port {self.proxy_port}")
 
                     # Set up environment variables for Claude
-                    api_key = self.proxy_config.get("ANTHROPIC_API_KEY") if self.proxy_config else None
+                    api_key = (
+                        self.proxy_config.get("ANTHROPIC_API_KEY") if self.proxy_config else None
+                    )
                     azure_config = (
                         self.proxy_config.to_env_dict()
                         if self.proxy_config and self.is_azure_mode()

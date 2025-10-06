@@ -411,12 +411,12 @@ def parse_tool_result_content(content):
                 else:
                     try:
                         result += json.dumps(item) + "\n"
-                    except:
+                    except (TypeError, ValueError, json.decoder.JSONDecodeError):
                         result += str(item) + "\n"
             else:
                 try:
                     result += str(item) + "\n"
-                except:
+                except (TypeError, ValueError):
                     result += "Unparseable content\n"
         return result.strip()
 
@@ -425,13 +425,13 @@ def parse_tool_result_content(content):
             return content.get("text", "")
         try:
             return json.dumps(content)
-        except:
+        except (TypeError, ValueError, json.decoder.JSONDecodeError):
             return str(content)
 
     # Fallback for any other type
     try:
         return str(content)
-    except:
+    except (TypeError, ValueError):
         return "Unparseable content"
 
 
@@ -642,7 +642,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                 for block in content:
                     if hasattr(block, "type") and block.type == "tool_result":
                         # Get the raw result content without wrapping it in explanatory text
-                        tool_id = block.tool_use_id if hasattr(block, "tool_use_id") else ""
+                        # tool_id = block.tool_use_id if hasattr(block, "tool_use_id") else ""  # unused
 
                         if hasattr(block, "content"):
                             result_content = block.content
@@ -1049,12 +1049,12 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
         yield f"event: ping\ndata: {json.dumps({'type': 'ping'})}\n\n"
 
         tool_index = None
-        current_tool_call = None
+        # current_tool_call = None  # unused
         tool_content = ""
         accumulated_text = ""  # Track accumulated text content
         text_sent = False  # Track if we've sent any text content
         text_block_closed = False  # Track if text block is closed
-        input_tokens = 0
+        # input_tokens = 0  # unused
         output_tokens = 0
         has_sent_stop_reason = False
         last_tool_index = 0
@@ -1065,7 +1065,8 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                 # Check if this is the end of the response with usage data
                 if hasattr(chunk, "usage") and chunk.usage is not None:
                     if hasattr(chunk.usage, "prompt_tokens"):
-                        input_tokens = chunk.usage.prompt_tokens
+                        # input_tokens = chunk.usage.prompt_tokens  # unused
+                        pass
                     if hasattr(chunk.usage, "completion_tokens"):
                         output_tokens = chunk.usage.completion_tokens
 
@@ -1171,7 +1172,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                                 # Start a new tool_use block
                                 yield f"event: content_block_start\ndata: {json.dumps({'type': 'content_block_start', 'index': anthropic_tool_index, 'content_block': {'type': 'tool_use', 'id': tool_id, 'name': name, 'input': {}}})}\n\n"
-                                current_tool_call = tool_call
+                                # current_tool_call = tool_call  # unused
                                 tool_content = ""
 
                             # Extract function arguments
@@ -1383,7 +1384,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                         # Get the first tool result to extract as a direct function result
                         # This handles bash and other tools properly
                         block = msg["content"][0]  # Take the first tool result
-                        tool_use_id = block.get("tool_use_id", "")
+                        # tool_use_id = block.get("tool_use_id", "")  # unused
                         result_content = block.get("content", "")
 
                         # For function tools like Bash, we need to pass the raw result
@@ -1397,7 +1398,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                                 litellm_request["messages"][i]["content"] = json.dumps(
                                     result_content
                                 )
-                            except:
+                            except (TypeError, ValueError, json.decoder.JSONDecodeError):
                                 litellm_request["messages"][i]["content"] = str(result_content)
                         elif isinstance(result_content, list):
                             # Extract text content if available
@@ -1410,7 +1411,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                                 else:
                                     try:
                                         extracted_content += json.dumps(item) + "\n"
-                                    except:
+                                    except (TypeError, ValueError, json.decoder.JSONDecodeError):
                                         extracted_content += str(item) + "\n"
                             litellm_request["messages"][i]["content"] = (
                                 extracted_content.strip() or "..."
@@ -1459,7 +1460,11 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                                             else:
                                                 try:
                                                     text_content += json.dumps(item) + "\n"
-                                                except:
+                                                except (
+                                                    TypeError,
+                                                    ValueError,
+                                                    json.decoder.JSONDecodeError,
+                                                ):
                                                     text_content += str(item) + "\n"
                                     elif isinstance(result_content, dict):
                                         # Handle dictionary content
@@ -1468,13 +1473,13 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                                         else:
                                             try:
                                                 text_content += json.dumps(result_content) + "\n"
-                                            except:
+                                            except (TypeError, ValueError, json.decoder.JSONDecodeError):
                                                 text_content += str(result_content) + "\n"
                                     else:
                                         # Fallback for any other type
                                         try:
                                             text_content += str(result_content) + "\n"
-                                        except:
+                                        except (TypeError, ValueError):
                                             text_content += "Unparseable content\n"
 
                                 # Handle tool_use content blocks
