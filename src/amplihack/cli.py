@@ -63,7 +63,14 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
 
     # Set up proxy if configuration provided
     if args.with_proxy_config:
-        config_path = Path(args.with_proxy_config).resolve()
+        # For UVX mode, resolve relative paths from original directory
+        if not Path(args.with_proxy_config).is_absolute():
+            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+            config_path = Path(original_cwd) / args.with_proxy_config
+            config_path = config_path.resolve()
+        else:
+            config_path = Path(args.with_proxy_config).resolve()
+
         if not config_path.exists():
             print(f"Error: Proxy configuration file not found: {config_path}")
             return 1
