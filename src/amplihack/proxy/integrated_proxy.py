@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import logging.handlers
@@ -27,6 +28,46 @@ if os.path.exists(".azure.env"):
 
 # Check if we should use LiteLLM router for Azure
 USE_LITELLM_ROUTER = os.environ.get("AMPLIHACK_USE_LITELLM", "true").lower() == "true"
+
+# Phase 2: Tool Configuration Environment Variables
+ENFORCE_ONE_TOOL_CALL_PER_RESPONSE = os.environ.get("AMPLIHACK_TOOL_ONE_PER_RESPONSE", "true").lower() == "true"
+TOOL_CALL_RETRY_ATTEMPTS = int(os.environ.get("AMPLIHACK_TOOL_RETRY_ATTEMPTS", "3"))
+TOOL_CALL_TIMEOUT = int(os.environ.get("AMPLIHACK_TOOL_TIMEOUT", "30"))  # seconds
+ENABLE_TOOL_FALLBACK = os.environ.get("AMPLIHACK_TOOL_FALLBACK", "true").lower() == "true"
+TOOL_STREAM_BUFFER_SIZE = int(os.environ.get("AMPLIHACK_TOOL_STREAM_BUFFER", "1024"))
+ENABLE_REASONING_EFFORT = os.environ.get("AMPLIHACK_REASONING_EFFORT", "false").lower() == "true"
+
+# Phase 2: Tool-Specific Exception Types
+class ToolCallError(Exception):
+    """Base exception for tool call errors"""
+    def __init__(self, message: str, tool_name: str = None, retry_count: int = 0):
+        super().__init__(message)
+        self.tool_name = tool_name
+        self.retry_count = retry_count
+
+class ToolValidationError(ToolCallError):
+    """Exception for tool schema validation errors"""
+    def __init__(self, message: str, tool_name: str = None, schema_errors: List[str] = None):
+        super().__init__(message, tool_name)
+        self.schema_errors = schema_errors or []
+
+class ToolTimeoutError(ToolCallError):
+    """Exception for tool call timeouts"""
+    def __init__(self, message: str, tool_name: str = None, timeout_seconds: int = None):
+        super().__init__(message, tool_name)
+        self.timeout_seconds = timeout_seconds
+
+class ToolStreamingError(ToolCallError):
+    """Exception for tool streaming errors"""
+    def __init__(self, message: str, tool_name: str = None, chunk_data: Dict[str, Any] = None):
+        super().__init__(message, tool_name)
+        self.chunk_data = chunk_data or {}
+
+class ConversationStateError(Exception):
+    """Exception for conversation state management errors"""
+    def __init__(self, message: str, state: str = None):
+        super().__init__(message)
+        self.state = state
 
 # Configure logging with file output and rotation
 def setup_logging():
@@ -757,6 +798,19 @@ AZURE_OPENAI_KEY = os.environ.get("AZURE_OPENAI_KEY", OPENAI_API_KEY)
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL")
 AZURE_API_VERSION = os.environ.get("AZURE_API_VERSION", "2025-04-01-preview")
 
+# Initialize LiteLLM router at module level
+litellm_router = None
+if USE_LITELLM_ROUTER:
+    try:
+        litellm_router = setup_litellm_router()
+        if litellm_router:
+            logger.info("✅ Global LiteLLM router initialized successfully")
+        else:
+            logger.warning("⚠️ LiteLLM router setup returned None")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize global LiteLLM router: {e}")
+        litellm_router = None
+
 # Get preferred provider (default to openai)
 PREFERRED_PROVIDER = os.environ.get("PREFERRED_PROVIDER", "openai").lower()
 
@@ -858,6 +912,43 @@ class Tool(BaseModel):
 
 class ThinkingConfig(BaseModel):
     enabled: bool = True
+
+
+class ConversationState(BaseModel):
+    """Phase 2: Manages conversation state for tool call analysis"""
+    phase: Literal["normal", "tool_call_pending", "tool_result_pending", "tool_complete"] = "normal"
+    pending_tool_calls: List[Dict[str, Any]] = []
+    completed_tool_calls: List[Dict[str, Any]] = []
+    last_tool_call_id: Optional[str] = None
+    tool_call_count: int = 0
+    has_streaming_tools: bool = False
+    conversation_turn: int = 0
+
+    def add_tool_call(self, tool_call: Dict[str, Any]) -> None:
+        """Add a pending tool call"""
+        self.pending_tool_calls.append(tool_call)
+        self.last_tool_call_id = tool_call.get("id")
+        self.tool_call_count += 1
+        self.phase = "tool_call_pending"
+
+    def complete_tool_call(self, tool_call_id: str, result: Dict[str, Any]) -> None:
+        """Mark a tool call as completed"""
+        for i, call in enumerate(self.pending_tool_calls):
+            if call.get("id") == tool_call_id:
+                completed_call = self.pending_tool_calls.pop(i)
+                completed_call["result"] = result
+                self.completed_tool_calls.append(completed_call)
+                break
+
+        if not self.pending_tool_calls:
+            self.phase = "tool_complete"
+
+    def reset_for_new_turn(self) -> None:
+        """Reset state for a new conversation turn"""
+        self.conversation_turn += 1
+        self.phase = "normal"
+        self.pending_tool_calls = []
+        self.has_streaming_tools = False
 
 
 class MessagesRequest(BaseModel):
@@ -1102,6 +1193,75 @@ def parse_tool_result_content(content):
         return str(content)
     except (TypeError, ValueError):
         return "Unparseable content"
+
+
+def analyze_conversation_for_tools(messages: List[Message]) -> ConversationState:
+    """
+    Phase 2: Analyze conversation messages to determine tool call state.
+
+    Args:
+        messages: List of conversation messages
+
+    Returns:
+        ConversationState: Current state of tool interactions
+
+    Raises:
+        ConversationStateError: If conversation state cannot be determined
+    """
+    state = ConversationState()
+
+    try:
+        for i, message in enumerate(messages):
+            state.conversation_turn = i
+
+            if message.role == "assistant":
+                # Check for tool calls in assistant messages
+                if isinstance(message.content, list):
+                    for content_block in message.content:
+                        if isinstance(content_block, dict) and content_block.get("type") == "tool_use":
+                            tool_call = {
+                                "id": content_block.get("id"),
+                                "name": content_block.get("name"),
+                                "input": content_block.get("input", {})
+                            }
+                            state.add_tool_call(tool_call)
+                        elif hasattr(content_block, "type") and content_block.type == "tool_use":
+                            tool_call = {
+                                "id": getattr(content_block, "id", None),
+                                "name": getattr(content_block, "name", None),
+                                "input": getattr(content_block, "input", {})
+                            }
+                            state.add_tool_call(tool_call)
+
+            elif message.role == "user":
+                # Check for tool results in user messages
+                if isinstance(message.content, list):
+                    for content_block in message.content:
+                        if isinstance(content_block, dict) and content_block.get("type") == "tool_result":
+                            tool_call_id = content_block.get("tool_use_id")
+                            result = content_block.get("content", {})
+                            if tool_call_id:
+                                state.complete_tool_call(tool_call_id, result)
+                        elif hasattr(content_block, "type") and content_block.type == "tool_result":
+                            tool_call_id = getattr(content_block, "tool_use_id", None)
+                            result = getattr(content_block, "content", {})
+                            if tool_call_id:
+                                state.complete_tool_call(tool_call_id, result)
+
+        # Determine final phase based on analysis
+        if state.pending_tool_calls:
+            state.phase = "tool_result_pending"
+        elif state.completed_tool_calls and not state.pending_tool_calls:
+            state.phase = "tool_complete"
+        else:
+            state.phase = "normal"
+
+        logger.debug(f"🔍 Conversation analysis: {state.phase}, {len(state.pending_tool_calls)} pending, {len(state.completed_tool_calls)} completed")
+        return state
+
+    except Exception as e:
+        logger.error(f"❌ Error analyzing conversation for tools: {e}")
+        raise ConversationStateError(f"Failed to analyze conversation state: {e}")
 
 
 def is_azure_responses_api() -> bool:
@@ -1706,6 +1866,267 @@ def convert_litellm_to_anthropic(
         )
 
 
+async def retry_tool_call(func, max_attempts: int = None, tool_name: str = None):
+    """
+    Phase 2: Retry tool calls with exponential backoff.
+
+    Args:
+        func: The async function to retry
+        max_attempts: Maximum retry attempts (defaults to TOOL_CALL_RETRY_ATTEMPTS)
+        tool_name: Name of the tool for logging
+
+    Returns:
+        The result of the successful function call
+
+    Raises:
+        ToolCallError: If all retry attempts fail
+    """
+    max_attempts = max_attempts or TOOL_CALL_RETRY_ATTEMPTS
+    last_exception = None
+
+    for attempt in range(max_attempts):
+        try:
+            logger.debug(f"🔄 Attempting tool call (attempt {attempt + 1}/{max_attempts}): {tool_name}")
+            return await func()
+
+        except (aiohttp.ClientTimeout, aiohttp.ClientError) as e:
+            last_exception = e
+            if attempt < max_attempts - 1:
+                # Exponential backoff: 1s, 2s, 4s, etc.
+                wait_time = 2 ** attempt
+                logger.warning(f"⏳ Tool call failed, retrying in {wait_time}s (attempt {attempt + 1}/{max_attempts}): {e}")
+                await asyncio.sleep(wait_time)
+            else:
+                logger.error(f"❌ Tool call failed after {max_attempts} attempts: {e}")
+
+        except ToolValidationError as e:
+            # Don't retry validation errors
+            logger.error(f"❌ Tool validation error (no retry): {e}")
+            raise
+
+        except Exception as e:
+            last_exception = e
+            if attempt < max_attempts - 1:
+                wait_time = 2 ** attempt
+                logger.warning(f"⏳ Unexpected tool call error, retrying in {wait_time}s (attempt {attempt + 1}/{max_attempts}): {e}")
+                await asyncio.sleep(wait_time)
+            else:
+                logger.error(f"❌ Tool call failed after {max_attempts} attempts: {e}")
+
+    raise ToolCallError(
+        f"Tool call failed after {max_attempts} attempts: {last_exception}",
+        tool_name=tool_name,
+        retry_count=max_attempts
+    )
+
+
+def validate_tool_schema(tool: Dict[str, Any]) -> List[str]:
+    """
+    Phase 2: Validate tool schema and return list of errors.
+
+    Args:
+        tool: Tool definition dictionary
+
+    Returns:
+        List of validation errors (empty if valid)
+    """
+    errors = []
+
+    if not isinstance(tool, dict):
+        errors.append("Tool must be a dictionary")
+        return errors
+
+    # Required fields
+    if "name" not in tool:
+        errors.append("Tool must have a 'name' field")
+    elif not isinstance(tool["name"], str) or not tool["name"].strip():
+        errors.append("Tool name must be a non-empty string")
+
+    if "input_schema" not in tool:
+        errors.append("Tool must have an 'input_schema' field")
+    elif not isinstance(tool["input_schema"], dict):
+        errors.append("Tool input_schema must be a dictionary")
+
+    # Optional fields validation
+    if "description" in tool and not isinstance(tool["description"], str):
+        errors.append("Tool description must be a string")
+
+    return errors
+
+
+async def handle_tool_call_with_fallback(litellm_request: Dict[str, Any], original_request: MessagesRequest):
+    """
+    Phase 2: Handle tool calls with fallback strategies.
+
+    Args:
+        litellm_request: The LiteLLM request with tools
+        original_request: The original MessagesRequest
+
+    Returns:
+        Response from LiteLLM or fallback response
+
+    Raises:
+        ToolCallError: If tools fail and fallback is disabled
+    """
+    try:
+        # Validate tools if present
+        if litellm_request.get("tools"):
+            for tool in litellm_request["tools"]:
+                validation_errors = validate_tool_schema(tool)
+                if validation_errors:
+                    error_msg = f"Tool validation failed: {', '.join(validation_errors)}"
+                    if ENABLE_TOOL_FALLBACK:
+                        logger.warning(f"⚠️ {error_msg}, removing invalid tool")
+                        continue
+                    else:
+                        raise ToolValidationError(error_msg, tool_name=tool.get("name"))
+
+        # Attempt the tool call with retry logic
+        async def make_request():
+            if USE_LITELLM_ROUTER and litellm_router:
+                return await litellm_router.acompletion(**litellm_request)
+            else:
+                return await litellm.acompletion(**litellm_request)
+
+        return await retry_tool_call(make_request, tool_name="litellm_completion")
+
+    except (ToolCallError, ToolValidationError) as e:
+        logger.error(f"❌ Tool call failed: {e}")
+
+        if not ENABLE_TOOL_FALLBACK:
+            raise
+
+        logger.info("🔄 Falling back to tool-less completion")
+
+        # Remove tools and tool_choice for fallback
+        fallback_request = litellm_request.copy()
+        fallback_request.pop("tools", None)
+        fallback_request.pop("tool_choice", None)
+
+        # Make fallback request
+        async def make_fallback_request():
+            if USE_LITELLM_ROUTER and litellm_router:
+                return await litellm_router.acompletion(**fallback_request)
+            else:
+                return await litellm.acompletion(**fallback_request)
+
+        return await retry_tool_call(make_fallback_request, tool_name="fallback_completion")
+
+
+async def stream_with_tools(response_generator, original_request: MessagesRequest, conversation_state: ConversationState):
+    """
+    Phase 2: Handle streaming responses with tool call support.
+
+    Args:
+        response_generator: The LiteLLM response generator
+        original_request: The original MessagesRequest
+        conversation_state: Current conversation state
+
+    Yields:
+        Anthropic-formatted streaming events with tool support
+
+    Raises:
+        ToolStreamingError: If tool streaming fails
+    """
+    try:
+        message_id = f"msg_{uuid.uuid4().hex[:24]}"
+        current_text = ""
+        current_tool_calls = []
+        buffer = ""
+
+        logger.debug(f"🔧 Starting tool-aware streaming for conversation phase: {conversation_state.phase}")
+
+        # Send message_start event
+        yield f"event: message_start\ndata: {json.dumps({'type': 'message_start', 'message': {'id': message_id, 'type': 'message', 'role': 'assistant', 'model': original_request.model, 'content': [], 'stop_reason': None, 'stop_sequence': None, 'usage': {'input_tokens': 0, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': 0, 'output_tokens': 0}}})}\n\n"
+
+        async for chunk in response_generator:
+            try:
+                if hasattr(chunk, 'choices') and len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta
+
+                    # Handle text content
+                    if hasattr(delta, 'content') and delta.content:
+                        if not conversation_state.has_streaming_tools:
+                            # Regular text streaming
+                            yield f"event: content_block_start\ndata: {json.dumps({'type': 'content_block_start', 'index': 0, 'content_block': {'type': 'text', 'text': ''}})}\n\n"
+                            conversation_state.has_streaming_tools = True
+
+                        current_text += delta.content
+                        yield f"event: content_block_delta\ndata: {json.dumps({'type': 'content_block_delta', 'index': 0, 'delta': {'type': 'text_delta', 'text': delta.content}})}\n\n"
+
+                    # Handle tool calls
+                    if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                        for tool_call in delta.tool_calls:
+                            tool_call_id = getattr(tool_call, 'id', f"toolu_{uuid.uuid4().hex[:24]}")
+
+                            if hasattr(tool_call, 'function'):
+                                function = tool_call.function
+                                tool_name = getattr(function, 'name', 'unknown_tool')
+                                arguments = getattr(function, 'arguments', '{}')
+
+                                try:
+                                    # Parse arguments if they're a string
+                                    if isinstance(arguments, str):
+                                        tool_input = json.loads(arguments) if arguments else {}
+                                    else:
+                                        tool_input = arguments or {}
+                                except json.JSONDecodeError as e:
+                                    logger.warning(f"⚠️ Failed to parse tool arguments: {e}")
+                                    tool_input = {"raw_arguments": arguments}
+
+                                # Create Anthropic-style tool use block
+                                tool_use_block = {
+                                    "type": "tool_use",
+                                    "id": tool_call_id,
+                                    "name": tool_name,
+                                    "input": tool_input
+                                }
+
+                                # Send tool use events
+                                content_index = len(current_tool_calls)
+                                yield f"event: content_block_start\ndata: {json.dumps({'type': 'content_block_start', 'index': content_index, 'content_block': tool_use_block})}\n\n"
+
+                                current_tool_calls.append(tool_use_block)
+                                conversation_state.add_tool_call(tool_use_block)
+
+                                if ENFORCE_ONE_TOOL_CALL_PER_RESPONSE and len(current_tool_calls) >= 1:
+                                    logger.debug("🚫 Enforcing single tool call limit")
+                                    break
+
+                    # Handle finish_reason
+                    if hasattr(chunk.choices[0], 'finish_reason') and chunk.choices[0].finish_reason:
+                        finish_reason = chunk.choices[0].finish_reason
+                        stop_reason = "end_turn" if finish_reason in ["stop", "length"] else "tool_use" if current_tool_calls else "end_turn"
+
+                        # End content blocks
+                        if current_text or current_tool_calls:
+                            for i in range(len(current_tool_calls) + (1 if current_text else 0)):
+                                yield f"event: content_block_stop\ndata: {json.dumps({'type': 'content_block_stop', 'index': i})}\n\n"
+
+                        # Send message_delta with stop information
+                        yield f"event: message_delta\ndata: {json.dumps({'type': 'message_delta', 'delta': {'stop_reason': stop_reason, 'stop_sequence': None}, 'usage': {'output_tokens': len(current_text.split()) if current_text else 0}})}\n\n"
+
+                        # Send message_stop
+                        yield f"event: message_stop\ndata: {json.dumps({'type': 'message_stop'})}\n\n"
+                        break
+
+            except Exception as chunk_error:
+                logger.error(f"❌ Error processing streaming chunk: {chunk_error}")
+                if not ENABLE_TOOL_FALLBACK:
+                    raise ToolStreamingError(f"Failed to process streaming chunk: {chunk_error}")
+                continue
+
+    except Exception as e:
+        logger.error(f"❌ Tool streaming failed: {e}")
+        if ENABLE_TOOL_FALLBACK:
+            # Fall back to regular streaming
+            logger.info("🔄 Falling back to regular streaming")
+            async for event in handle_streaming(response_generator, original_request):
+                yield event
+        else:
+            raise ToolStreamingError(f"Tool streaming failed: {e}")
+
+
 async def handle_streaming(response_generator, original_request: MessagesRequest):
     """Handle streaming responses from LiteLLM and convert to Anthropic format."""
     try:
@@ -2234,11 +2655,15 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             f"Request for model: {litellm_request.get('model')}, stream: {litellm_request.get('stream', False)}"
         )
 
-        # Handle streaming mode
-        if request.stream:
-            # Use LiteLLM for streaming
-            num_tools = len(request.tools) if request.tools else 0
+        # Phase 2: Tool Call Lifecycle Management
+        # Analyze conversation state for tool handling
+        conversation_state = analyze_conversation_for_tools(request.messages)
+        logger.debug(f"🔍 Conversation state: {conversation_state.phase}")
 
+        num_tools = len(request.tools) if request.tools else 0
+
+        # Handle streaming mode with tool support
+        if request.stream:
             log_request_beautifully(
                 "POST",
                 raw_request.url.path,
@@ -2248,16 +2673,33 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                 num_tools,
                 200,  # Assuming success at this point
             )
-            # Ensure we use the async version for streaming
-            response_generator = await litellm.acompletion(**litellm_request)
 
-            return StreamingResponse(
-                handle_streaming(response_generator, request), media_type="text/event-stream"
-            )
+            # Use Phase 2 tool-aware streaming if tools are present
+            if num_tools > 0 or conversation_state.phase != "normal":
+                try:
+                    response_generator = await handle_tool_call_with_fallback(litellm_request, request)
+                    return StreamingResponse(
+                        stream_with_tools(response_generator, request, conversation_state),
+                        media_type="text/event-stream"
+                    )
+                except Exception as e:
+                    logger.error(f"❌ Tool-aware streaming failed: {e}")
+                    if ENABLE_TOOL_FALLBACK:
+                        logger.info("🔄 Falling back to regular streaming")
+                        response_generator = await litellm.acompletion(**litellm_request)
+                        return StreamingResponse(
+                            handle_streaming(response_generator, request), media_type="text/event-stream"
+                        )
+                    else:
+                        raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}")
+            else:
+                # Regular streaming for non-tool requests
+                response_generator = await litellm.acompletion(**litellm_request)
+                return StreamingResponse(
+                    handle_streaming(response_generator, request), media_type="text/event-stream"
+                )
         else:
-            # Use LiteLLM for regular completion
-            num_tools = len(request.tools) if request.tools else 0
-
+            # Handle non-streaming mode with tool support
             log_request_beautifully(
                 "POST",
                 raw_request.url.path,
@@ -2268,7 +2710,21 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                 200,  # Assuming success at this point
             )
             start_time = time.time()
-            litellm_response = litellm.completion(**litellm_request)
+
+            # Use Phase 2 tool-aware completion if tools are present
+            if num_tools > 0 or conversation_state.phase != "normal":
+                try:
+                    litellm_response = await handle_tool_call_with_fallback(litellm_request, request)
+                except Exception as e:
+                    logger.error(f"❌ Tool-aware completion failed: {e}")
+                    if ENABLE_TOOL_FALLBACK:
+                        logger.info("🔄 Falling back to regular completion")
+                        litellm_response = litellm.completion(**litellm_request)
+                    else:
+                        raise HTTPException(status_code=500, detail=f"Tool completion failed: {e}")
+            else:
+                # Regular completion for non-tool requests
+                litellm_response = litellm.completion(**litellm_request)
             logger.debug(
                 f"✅ RESPONSE RECEIVED: Model={litellm_request.get('model')}, Time={time.time() - start_time:.2f}s"
             )
