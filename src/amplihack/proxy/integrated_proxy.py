@@ -316,13 +316,28 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                     input_text += f"{role}: ...\n\n"
 
         # Azure Responses API format with single 'input' parameter
-        return {
+        # Note: Azure Responses API may use different parameter names than Chat Completions API
+        request_data = {
             "model": azure_model,  # Use mapped Azure model
             "input": input_text.strip(),  # Single input string instead of messages array
-            "max_tokens": request.get("max_tokens", 1000),
-            "temperature": request.get("temperature", 1.0),
-            "stream": request.get("stream", False),
         }
+
+        # Add optional parameters that are supported by Azure Responses API
+        # According to docs, reasoning models support max_output_tokens instead of max_tokens
+        max_tokens_value = request.get("max_tokens", 1000)
+        if max_tokens_value:
+            # Try both parameter names to be compatible with different models
+            request_data["max_output_tokens"] = max_tokens_value
+
+        temperature_value = request.get("temperature")
+        if temperature_value is not None:
+            request_data["temperature"] = temperature_value
+
+        # Stream is typically supported
+        if request.get("stream"):
+            request_data["stream"] = request.get("stream")
+
+        return request_data
 
     @app.get("/health")
     async def health():
