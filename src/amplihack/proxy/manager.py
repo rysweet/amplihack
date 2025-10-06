@@ -106,6 +106,83 @@ class ProxyManager:
             print(f"Failed to start Responses API proxy: {e}")
             return False
 
+    def _start_integrated_proxy(self) -> bool:
+        """Start our integrated proxy server.
+
+        Returns:
+            True if proxy started successfully, False otherwise.
+        """
+        try:
+            # Import the integrated proxy (run_server function)
+            from . import integrated_proxy
+            import threading
+            import time
+
+            if not self.proxy_config:
+                print("No proxy configuration available for integrated proxy")
+                return False
+
+            # Create environment dict from proxy config
+            proxy_env = self.proxy_config.to_env_dict()
+
+            # Start the integrated proxy server in a background thread
+            def run_integrated_server():
+                try:
+                    # Get host and port from config
+                    host = proxy_env.get("HOST", "127.0.0.1")
+
+                    print(f"Starting integrated proxy server on {host}:{self.proxy_port}")
+                    print(f"Configuration: {len(proxy_env)} environment variables loaded")
+
+                    # Create the FastAPI app and run it
+                    app = integrated_proxy.create_app(proxy_env)
+
+                    import uvicorn
+                    uvicorn.run(
+                        app,
+                        host=host,
+                        port=self.proxy_port,
+                        log_level="error"
+                    )
+                except Exception as e:
+                    print(f"Error in integrated proxy server: {e}")
+
+            # Start the server thread
+            server_thread = threading.Thread(target=run_integrated_server, daemon=True)
+            server_thread.start()
+
+            # Wait for server to start up
+            time.sleep(3)
+
+            # Test if the server is responding
+            try:
+                import requests
+                response = requests.get(f"http://127.0.0.1:{self.proxy_port}/health", timeout=10)
+                if response.status_code == 200:
+                    print(f"Integrated proxy started successfully on port {self.proxy_port}")
+
+                    # Set up environment variables for Claude
+                    api_key = self.proxy_config.get("ANTHROPIC_API_KEY") if self.proxy_config else None
+                    azure_config = (
+                        self.proxy_config.to_env_dict()
+                        if self.proxy_config and self.is_azure_mode()
+                        else None
+                    )
+                    self.env_manager.setup(self.proxy_port, api_key, azure_config)
+
+                    self._display_log_locations()
+                    return True
+                else:
+                    print(f"Integrated proxy health check failed: {response.status_code}")
+                    return False
+            except requests.exceptions.RequestException as e:
+                print(f"Failed to connect to integrated proxy: {e}")
+                return False
+
+        except Exception as e:
+            print(f"Failed to start integrated proxy: {e}")
+            return False
+
     def ensure_proxy_installed(self) -> bool:
         """Ensure claude-code-proxy is available via uvx.
 
@@ -182,13 +259,13 @@ class ProxyManager:
             print("Invalid proxy configuration")
             return False
 
-        # Check if we need to use our custom Responses API proxy
-        if self.is_responses_api():
-            print("Detected Azure Responses API endpoint - using custom proxy translation layer")
-            return self._start_responses_api_proxy()
+        # Use our integrated proxy instead of external package
+        print("Starting integrated proxy with Azure Responses API support")
+        return self._start_integrated_proxy()
 
-        if not self.ensure_proxy_installed():
-            return False
+        # OLD LOGIC - keeping for reference but not used
+        # if not self.ensure_proxy_installed():
+        #     return False
 
         try:
             # Start the proxy process using uvx (UVX-compatible approach)
