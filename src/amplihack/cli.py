@@ -48,15 +48,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
 
         return docker_manager.run_command(docker_args)
 
-    # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
-    if is_uvx_deployment():
-        # Get the original directory (before we changed to temp)
-        original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-        # Add --add-dir to claude_args if not already present
-        if claude_args and "--add-dir" not in claude_args:
-            claude_args = ["--add-dir", original_cwd] + claude_args
-        elif not claude_args:
-            claude_args = ["--add-dir", original_cwd]
+    # In UVX mode, Claude now runs from the current directory so no --add-dir needed
 
     proxy_manager = None
     system_prompt_path = None
@@ -216,27 +208,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Initialize UVX staging if needed (before parsing args)
     temp_claude_dir = None
     if is_uvx_deployment():
-        # Create temporary Claude environment for UVX zero-install
-        import tempfile
+        # Stage Claude environment in current directory for UVX zero-install
 
-        temp_dir = tempfile.mkdtemp(prefix="amplihack_uvx_")
-        temp_claude_dir = os.path.join(temp_dir, ".claude")
-
-        # Save original directory - we'll use this for --add-dir
+        # Save original directory (which is now also the working directory)
         original_cwd = os.getcwd()
 
-        # Store it for later use in --add-dir
+        # Store it for later use (though now it's the same as current directory)
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
-        # Change to temp directory - this sets CLAUDE_PROJECT_DIR
-        os.chdir(temp_dir)
+        # Use .claude directory in current working directory instead of temp
+        temp_claude_dir = os.path.join(original_cwd, ".claude")
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"UVX mode: Created temp Claude environment at {temp_dir}")
-            print(f"Changed working directory to {temp_dir}")
+            print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")
+            print(f"Working directory remains: {original_cwd}")
 
-        # Stage framework files to the temp .claude directory
-        # Use the built-in _local_install function to copy framework files
+        # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
         # Find amplihack package location for .claude files
         import amplihack
