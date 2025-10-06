@@ -138,6 +138,46 @@ class ResponsesAPIProxy:
         if "stream" in openai_request:
             responses_request["stream"] = openai_request["stream"]
 
+        # Add tool definitions if present - Azure Responses API format
+        if openai_request.get("tools"):
+            azure_tools = []
+            for tool in openai_request["tools"]:
+                # OpenAI tools already have the nested function structure
+                # Convert OpenAI format to Azure Responses API format
+                if isinstance(tool, dict) and tool.get("type") == "function":
+                    function = tool.get("function", {})
+                    azure_tool = {
+                        "type": "function",
+                        "function": {
+                            "name": function.get("name", ""),
+                            "description": function.get("description", ""),
+                            "parameters": function.get(
+                                "parameters", {}
+                            ),  # OpenAI uses "parameters", not "input_schema"
+                        },
+                    }
+                    azure_tools.append(azure_tool)
+
+            responses_request["tools"] = azure_tools
+
+            # Handle tool_choice if present
+            if openai_request.get("tool_choice"):
+                tool_choice = openai_request["tool_choice"]
+                if isinstance(tool_choice, dict):
+                    if tool_choice.get("type") == "function":
+                        function_name = tool_choice.get("function", {}).get("name")
+                        if function_name:
+                            responses_request["tool_choice"] = {
+                                "type": "function",
+                                "function": {"name": function_name},
+                            }
+                elif tool_choice == "auto":
+                    responses_request["tool_choice"] = "auto"
+                elif tool_choice == "none":
+                    responses_request["tool_choice"] = "none"
+                elif tool_choice == "required":
+                    responses_request["tool_choice"] = "required"
+
         return responses_request
 
     def _transform_to_openai_format(self, azure_response: Dict[str, Any]) -> Dict[str, Any]:
@@ -154,13 +194,54 @@ class ResponsesAPIProxy:
         # Transform choices
         if "choices" in azure_response:
             for choice in azure_response["choices"]:
+                message = {
+                    "role": "assistant",
+                    "content": choice.get("text", choice.get("message", {}).get("content", "")),
+                }
+
+                # Handle tool calls in the response
+                tool_calls = None
+                if "tool_calls" in choice:
+                    tool_calls = choice["tool_calls"]
+                elif "message" in choice and "tool_calls" in choice["message"]:
+                    tool_calls = choice["message"]["tool_calls"]
+
+                if tool_calls:
+                    openai_tool_calls = []
+                    for tool_call in tool_calls:
+                        # Azure Responses API format -> OpenAI format
+                        if isinstance(tool_call, dict):
+                            openai_tool_call = {
+                                "id": tool_call.get("id", f"call_{int(time.time())}"),
+                                "type": "function",
+                                "function": {
+                                    "name": tool_call.get("function", {}).get("name", ""),
+                                    "arguments": tool_call.get("function", {}).get(
+                                        "arguments", "{}"
+                                    ),
+                                },
+                            }
+                            openai_tool_calls.append(openai_tool_call)
+
+                    if openai_tool_calls:
+                        message["tool_calls"] = openai_tool_calls
+                        # If there are tool calls, content might be null in OpenAI format
+                        if not message["content"]:
+                            message["content"] = None
+
+                # Map finish_reason
+                finish_reason = choice.get("finish_reason", "stop")
+                if finish_reason == "tool_calls" or (tool_calls and finish_reason == "stop"):
+                    finish_reason = "tool_calls"
+                elif finish_reason == "length":
+                    finish_reason = "length"
+                else:
+                    finish_reason = "stop"
+
                 openai_choice = {
                     "index": choice.get("index", 0),
-                    "message": {
-                        "role": "assistant",
-                        "content": choice.get("text", choice.get("message", {}).get("content", "")),
-                    },
-                    "finish_reason": choice.get("finish_reason", "stop"),
+                    "message": message,
+                    "finish_reason": finish_reason,
                 }
                 openai_response["choices"].append(openai_choice)
 
