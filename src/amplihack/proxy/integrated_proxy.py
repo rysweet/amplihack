@@ -198,51 +198,41 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
     ) -> Dict[str, Any]:
         """Convert Azure Responses API response to Anthropic format."""
         try:
-            # Azure Responses API has a different response format than Chat Completions
-            # It may have 'content' directly or still use 'choices' structure
+            # Parse Azure Responses API format according to migration guide
+            # Response format: { "output": [items...] } where items can be reasoning, message, etc.
             content_text = ""
 
-            # Try different response formats from Azure Responses API
-            if "content" in azure_response:
-                # Direct content format in Responses API
-                content_text = azure_response.get("content", "")
-            elif "choices" in azure_response:
-                # Traditional choices format (fallback)
-                choices = azure_response.get("choices", [])
-                if choices:
-                    choice = choices[0]
-                    if "message" in choice:
-                        content_text = choice["message"].get("content", "")
-                    elif "content" in choice:
-                        content_text = choice.get("content", "")
-            elif "output" in azure_response:
-                # Alternative output format
-                content_text = azure_response.get("output", "")
+            # According to migration guide, response has "output" array with items
+            output_items = azure_response.get("output", [])
 
+            for item in output_items:
+                item_type = item.get("type")
+
+                if item_type == "message":
+                    # Message item contains the actual response content
+                    content_blocks = item.get("content", [])
+                    for content_block in content_blocks:
+                        if content_block.get("type") == "output_text":
+                            content_text += content_block.get("text", "")
+
+                # Skip reasoning items for now - they contain internal reasoning
+                elif item_type == "reasoning":
+                    continue
+
+            # If no content found, try alternative approaches
             if not content_text:
-                # Try to extract any text content from the response
-                content_text = str(azure_response.get("text", azure_response.get("response", "No content found")))
+                # Fallback: look for any text in the response
+                if "output_text" in azure_response:
+                    content_text = azure_response["output_text"]
+                else:
+                    # Log the response structure to understand what we're getting
+                    logger.info(f"Azure response structure: {azure_response}")
+                    content_text = "Response received but no text content found"
 
-            # Extract finish reason if available
-            finish_reason = "stop"
-            if "finish_reason" in azure_response:
-                finish_reason = azure_response["finish_reason"]
-            elif "choices" in azure_response and azure_response["choices"]:
-                finish_reason = azure_response["choices"][0].get("finish_reason", "stop")
-
-            # Map finish reasons
-            stop_reason_map = {
-                "stop": "end_turn",
-                "length": "max_tokens",
-                "content_filter": "end_turn",
-                "tool_calls": "tool_use",
-            }
-            stop_reason = stop_reason_map.get(finish_reason, "end_turn")
-
-            # Extract usage information - Azure Responses API may have different usage format
+            # Extract usage information
             usage_info = azure_response.get("usage", {})
-            input_tokens = usage_info.get("prompt_tokens", usage_info.get("input_tokens", 0))
-            output_tokens = usage_info.get("completion_tokens", usage_info.get("output_tokens", 0))
+            input_tokens = usage_info.get("input_tokens", usage_info.get("prompt_tokens", 0))
+            output_tokens = usage_info.get("output_tokens", usage_info.get("completion_tokens", 0))
 
             # Create Anthropic response format
             return {
@@ -250,7 +240,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                 "model": claude_model,  # Return original Claude model name
                 "role": "assistant",
                 "content": [{"type": "text", "text": content_text}],
-                "stop_reason": stop_reason,
+                "stop_reason": "end_turn",  # Responses API doesn't have same finish_reason concept
                 "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
             }
 
@@ -274,30 +264,31 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         claude_model = request.get("model", "unknown")
         azure_model = map_claude_model_to_azure(claude_model)
 
-        # For Azure Responses API, we need to combine all conversation into a single 'input' string
-        # Instead of using separate 'messages', the Responses API uses a single 'input' parameter
-        input_text = ""
+        # Per OpenAI migration guide: Responses API can accept either:
+        # 1. A simple string with 'input'
+        # 2. An array of messages (for compatibility)
+        # Let's use the messages array approach for better compatibility
+
+        messages = []
 
         # Add system message if present
         system_content = request.get("system")
         if system_content:
             if isinstance(system_content, str):
-                input_text += f"System: {system_content}\n\n"
+                messages.append({"role": "system", "content": system_content})
             elif isinstance(system_content, list):
                 system_text = ""
                 for block in system_content:
                     if isinstance(block, dict) and block.get("type") == "text":
                         system_text += block.get("text", "") + "\n\n"
                 if system_text:
-                    input_text += f"System: {system_text.strip()}\n\n"
+                    messages.append({"role": "system", "content": system_text.strip()})
 
-        # Add conversation messages (convert to single input string)
+        # Add conversation messages
         for msg in request.get("messages", []):
-            role = msg.get("role", "user").title()  # Capitalize role
             content = msg.get("content", "")
-
             if isinstance(content, str):
-                input_text += f"{role}: {content}\n\n"
+                messages.append({"role": msg.get("role"), "content": content})
             else:
                 # Extract text content from complex content blocks
                 text_content = ""
@@ -311,33 +302,25 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                                 text_content += result_content + "\n"
 
                 if text_content.strip():
-                    input_text += f"{role}: {text_content.strip()}\n\n"
+                    messages.append({"role": msg.get("role"), "content": text_content.strip()})
                 else:
-                    input_text += f"{role}: ...\n\n"
+                    messages.append({"role": msg.get("role"), "content": "..."})
 
-        # Azure Responses API format with single 'input' parameter
-        # Note: Azure Responses API may use different parameter names than Chat Completions API
+        # Azure Responses API format - can use messages array for compatibility
         request_data = {
-            "model": azure_model,  # Use mapped Azure model
-            "input": input_text.strip(),  # Single input string instead of messages array
+            "model": azure_model,
+            "input": messages,  # Pass messages array as input
         }
 
-        # Add optional parameters that are supported by Azure Responses API
-        # According to docs, reasoning models support max_output_tokens instead of max_tokens
-        max_tokens_value = request.get("max_tokens", 1000)
+        # Add supported parameters according to migration guide
+        max_tokens_value = request.get("max_tokens")
         if max_tokens_value:
             # Ensure minimum value of 16 for Azure Responses API
             max_tokens_value = max(16, max_tokens_value)
             request_data["max_output_tokens"] = max_tokens_value
 
-        # Temperature is not supported by some models (like gpt-5-codex reasoning models)
-        # Skip temperature parameter to avoid errors
-        # temperature_value = request.get("temperature")
-        # if temperature_value is not None:
-        #     request_data["temperature"] = temperature_value
-
-        # Stream is typically supported, but disable for now to avoid parsing issues
-        # request_data["stream"] = request.get("stream", False)
+        # Store parameter (defaults to true in Responses API)
+        request_data["store"] = False  # Disable storage for privacy
 
         return request_data
 
