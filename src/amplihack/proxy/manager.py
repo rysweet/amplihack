@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
+from .responses_api_proxy import ResponsesAPIProxy, create_responses_api_proxy
 
 
 class ProxyManager:
@@ -25,17 +26,85 @@ class ProxyManager:
         """
         self.proxy_config = proxy_config
         self.proxy_process: Optional[subprocess.Popen] = None
+        self.responses_api_proxy: Optional[ResponsesAPIProxy] = None
         self.proxy_dir = Path.home() / ".amplihack" / "proxy"
         self.env_manager = ProxyEnvironment()
-        # claude-code-proxy PyPI package runs on fixed port 8082
-        # Ignore PORT config as the package doesn't support custom ports
-        self.proxy_port = 8082
-        print(f"Using claude-code-proxy fixed port: {self.proxy_port}")
+        # Get port from configuration, default to 8082 if not specified
+        self.proxy_port = self.get_configured_port()
+        print(f"Using proxy port from config: {self.proxy_port}")
 
         # Performance optimizations - cache URL templates and common operations
         self._url_template_cache = {}
         self._endpoint_cache = {}
         self._api_version_cache = {}
+
+    def get_configured_port(self) -> int:
+        """Get the configured port from proxy config, with fallback to default.
+
+        Returns:
+            Port number to use for the proxy.
+        """
+        if self.proxy_config:
+            port_str = self.proxy_config.get("PORT")
+            if port_str:
+                try:
+                    return int(port_str)
+                except (ValueError, TypeError):
+                    print(f"Invalid PORT value '{port_str}', using default 8082")
+
+        # Default port if not configured or invalid
+        return 8082
+
+    def is_responses_api(self) -> bool:
+        """Check if the configured endpoint uses Azure Responses API.
+
+        Returns:
+            True if the endpoint appears to be using Azure Responses API.
+        """
+        if not self.proxy_config:
+            return False
+
+        base_url = self.proxy_config.get("OPENAI_BASE_URL", "")
+        return "/openai/responses" in base_url
+
+    def _start_responses_api_proxy(self) -> bool:
+        """Start the custom Responses API proxy.
+
+        Returns:
+            True if proxy started successfully, False otherwise.
+        """
+        try:
+            # Create the responses API proxy
+            if not self.proxy_config:
+                print("No proxy configuration available for Responses API")
+                return False
+
+            self.responses_api_proxy = create_responses_api_proxy(
+                self.proxy_config.to_env_dict(), self.proxy_port
+            )
+
+            # Start the proxy
+            if not self.responses_api_proxy.start():
+                print("Failed to start Responses API proxy")
+                return False
+
+            print(f"Responses API proxy started successfully on port {self.proxy_port}")
+
+            # Set up environment variables for Claude to use our proxy
+            api_key = self.proxy_config.get("ANTHROPIC_API_KEY") if self.proxy_config else None
+            azure_config = (
+                self.proxy_config.to_env_dict()
+                if self.proxy_config and self.is_azure_mode()
+                else None
+            )
+            self.env_manager.setup(self.proxy_port, api_key, azure_config)
+
+            self._display_log_locations()
+            return True
+
+        except Exception as e:
+            print(f"Failed to start Responses API proxy: {e}")
+            return False
 
     def ensure_proxy_installed(self) -> bool:
         """Ensure claude-code-proxy is available via uvx.
@@ -113,6 +182,11 @@ class ProxyManager:
             print("Invalid proxy configuration")
             return False
 
+        # Check if we need to use our custom Responses API proxy
+        if self.is_responses_api():
+            print("Detected Azure Responses API endpoint - using custom proxy translation layer")
+            return self._start_responses_api_proxy()
+
         if not self.ensure_proxy_installed():
             return False
 
@@ -171,7 +245,14 @@ class ProxyManager:
             return False
 
     def stop_proxy(self) -> None:
-        """Stop the claude-code-proxy server."""
+        """Stop the proxy server."""
+        # Stop responses API proxy if running
+        if self.responses_api_proxy:
+            print("Stopping Responses API proxy...")
+            self.responses_api_proxy.stop()
+            self.responses_api_proxy = None
+
+        # Stop claude-code-proxy if running
         if not self.proxy_process:
             return
 
@@ -560,9 +641,31 @@ class ProxyManager:
                 print("\n📊 Proxy Logs:")
                 print(f"  • Process PID: {self.proxy_process.pid}")
                 print(f"  • Proxy URL: http://localhost:{self.proxy_port}")
-                print("  • Real-time logs: Check proxy process stdout/stderr")
-                print(f"  • To monitor: ps {self.proxy_process.pid}")
-                print("  • Log level can be set via LOG_LEVEL env var\n")
+                print("  • Real-time logs: Captured in subprocess pipes")
+                print("    - stdout: Available via proxy_process.stdout")
+                print("    - stderr: Available via proxy_process.stderr")
+                print(f"  • To monitor process: ps {self.proxy_process.pid}")
+                print("  • To view live logs: Use proxy_process.stdout.read() or .stderr.read()")
+                print("  • Log level can be set via LOG_LEVEL env var")
+                print(f"  • Working directory: {os.getcwd()}")
+
+                # Show recent stdout if available
+                if self.proxy_process.stdout:
+                    try:
+                        # Try to read any immediately available output (non-blocking)
+                        import select
+                        import sys
+
+                        if hasattr(select, "select") and sys.platform != "win32":
+                            ready, _, _ = select.select([self.proxy_process.stdout], [], [], 0)
+                            if ready:
+                                recent_output = self.proxy_process.stdout.read(1024)
+                                if recent_output:
+                                    print(f"  • Recent stdout: {recent_output[:200]}...")
+                    except Exception:
+                        # Non-blocking read failed, that's okay
+                        pass
+                print()
             else:
                 print("\n📊 Proxy process not available for log display\n")
 
