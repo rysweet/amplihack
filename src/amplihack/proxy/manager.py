@@ -148,8 +148,16 @@ class ProxyManager:
             server_thread = threading.Thread(target=run_integrated_server, daemon=True)
             server_thread.start()
 
+            # Store thread reference for is_running() check
+            self.server_thread = server_thread
+
             # Wait for server to start up
             time.sleep(3)
+
+            # Check if thread is still alive
+            if not server_thread.is_alive():
+                print("Server thread died immediately after startup")
+                return False
 
             # Test if the server is responding
             try:
@@ -457,7 +465,23 @@ class ProxyManager:
         Returns:
             True if proxy is running, False otherwise.
         """
-        return self.proxy_process is not None and self.proxy_process.poll() is None
+        # Check if integrated proxy (thread-based) is running
+        if hasattr(self, 'server_thread') and self.server_thread is not None:
+            if self.server_thread.is_alive():
+                # Double-check with health check
+                try:
+                    import requests
+                    response = requests.get(f"http://127.0.0.1:{self.proxy_port}/health", timeout=2)
+                    return response.status_code == 200
+                except Exception:
+                    return False
+            return False
+
+        # Check if external proxy (subprocess-based) is running
+        if self.proxy_process is not None:
+            return self.proxy_process.poll() is None
+
+        return False
 
     def get_proxy_url(self) -> str:
         """Get the proxy URL.

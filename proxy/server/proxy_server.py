@@ -1473,7 +1473,11 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                                         else:
                                             try:
                                                 text_content += json.dumps(result_content) + "\n"
-                                            except (TypeError, ValueError, json.decoder.JSONDecodeError):
+                                            except (
+                                                TypeError,
+                                                ValueError,
+                                                json.decoder.JSONDecodeError,
+                                            ):
                                                 text_content += str(result_content) + "\n"
                                     else:
                                         # Fallback for any other type
