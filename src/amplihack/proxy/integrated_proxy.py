@@ -1150,10 +1150,22 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
 
         # Add supported parameters according to migration guide
         max_tokens_value = request.get("max_tokens")
+
+        # Get configured token limits from environment
+        min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+        max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+        # For Azure Responses API, always use high token limit for better performance
         if max_tokens_value:
-            # Ensure minimum value of 16 for Azure Responses API
-            max_tokens_value = max(16, max_tokens_value)
-            request_data["max_output_tokens"] = max_tokens_value
+            # Ensure we use at least the minimum configured limit
+            max_tokens_value = max(min_tokens_limit, max_tokens_value)
+            # Cap at maximum configured limit
+            max_tokens_value = min(max_tokens_limit, max_tokens_value)
+        else:
+            # Default to maximum limit for Azure Responses API models
+            max_tokens_value = max_tokens_limit
+
+        request_data["max_output_tokens"] = max_tokens_value
 
         # Store parameter (defaults to true in Responses API)
         request_data["store"] = False  # Disable storage for privacy
@@ -1229,12 +1241,27 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         elif "sonnet" in claude_model.lower() or "opus" in claude_model.lower():
             router_model = "claude-sonnet"
 
+        # Get configured token limits from environment for Azure Responses API
+        min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+        max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+        # Ensure proper token limits for Azure Responses API
+        max_tokens_value = request.get("max_tokens", 1)
+        if max_tokens_value and max_tokens_value > 1:
+            # Ensure we use at least the minimum configured limit
+            max_tokens_value = max(min_tokens_limit, max_tokens_value)
+            # Cap at maximum configured limit
+            max_tokens_value = min(max_tokens_limit, max_tokens_value)
+        else:
+            # Default to maximum limit for Azure Responses API models when request has low/no max_tokens
+            max_tokens_value = max_tokens_limit
+
         # Create LiteLLM-compatible request
         litellm_request = {
             "model": router_model,
             "messages": [],
-            "max_tokens": request.get("max_tokens", 4096),
-            "temperature": request.get("temperature", 1.0),
+            "max_tokens": max_tokens_value,
+            "temperature": 1.0,  # Always use temperature=1 for Azure Responses API models
             "stream": request.get("stream", False),
         }
 
@@ -2136,11 +2163,26 @@ def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> 
             else:
                 messages.append({"role": msg.role, "content": "..."})
 
+    # Get configured token limits from environment for Azure Responses API
+    min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+    max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+    # Ensure proper token limits for Azure Responses API
+    max_tokens_value = anthropic_request.max_tokens
+    if max_tokens_value and max_tokens_value > 1:
+        # Ensure we use at least the minimum configured limit
+        max_tokens_value = max(min_tokens_limit, max_tokens_value)
+        # Cap at maximum configured limit
+        max_tokens_value = min(max_tokens_limit, max_tokens_value)
+    else:
+        # Default to maximum limit for Azure Responses API models when request has low/no max_tokens
+        max_tokens_value = max_tokens_limit
+
     # Convert tools to Azure Responses API format if present
     azure_request = {
         "model": model,
         "messages": messages,
-        "max_tokens": anthropic_request.max_tokens,
+        "max_tokens": max_tokens_value,
         "temperature": 1.0,  # Always use temperature=1 for Azure Responses API models
         "stream": anthropic_request.stream,
     }
@@ -2306,12 +2348,27 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
     # So we just need to convert our Pydantic model to a dict in the expected format
 
+    # Get configured token limits from environment for Azure Responses API
+    min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+    max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+    # Ensure proper token limits for Azure Responses API
+    max_tokens_value = anthropic_request.max_tokens
+    if max_tokens_value and max_tokens_value > 1:
+        # Ensure we use at least the minimum configured limit
+        max_tokens_value = max(min_tokens_limit, max_tokens_value)
+        # Cap at maximum configured limit
+        max_tokens_value = min(max_tokens_limit, max_tokens_value)
+    else:
+        # Default to maximum limit for Azure Responses API models when request has low/no max_tokens
+        max_tokens_value = max_tokens_limit
+
     # Initialize the LiteLLM request dict first to ensure we always return the right structure
     litellm_request = {
         "model": anthropic_request.model,  # it understands "anthropic/claude-x" format
         "messages": [],
-        "max_tokens": anthropic_request.max_tokens,
-        "temperature": anthropic_request.temperature,
+        "max_tokens": max_tokens_value,
+        "temperature": 1.0,  # Always use temperature=1 for Azure Responses API models
         "stream": anthropic_request.stream,
     }
 
