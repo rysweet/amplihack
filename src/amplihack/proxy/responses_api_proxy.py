@@ -115,10 +115,26 @@ class ResponsesAPIProxy:
         }
 
         # Map other parameters as needed
-        if "max_tokens" in openai_request:
-            responses_request["max_tokens"] = openai_request["max_tokens"]
-        if "temperature" in openai_request:
-            responses_request["temperature"] = openai_request["temperature"]
+        # Get configured token limits from environment for Azure Responses API
+        import os
+
+        min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+        max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+        # Ensure proper token limits for Azure Responses API
+        max_tokens_value = openai_request.get("max_tokens", 1)
+        if max_tokens_value and max_tokens_value > 1:
+            # Ensure we use at least the minimum configured limit
+            max_tokens_value = max(min_tokens_limit, max_tokens_value)
+            # Cap at maximum configured limit
+            max_tokens_value = min(max_tokens_limit, max_tokens_value)
+        else:
+            # Default to maximum limit for Azure Responses API models
+            max_tokens_value = max_tokens_limit
+
+        responses_request["max_tokens"] = max_tokens_value
+        # Always use temperature=1.0 for Azure Responses API models
+        responses_request["temperature"] = 1.0
         if "stream" in openai_request:
             responses_request["stream"] = openai_request["stream"]
 

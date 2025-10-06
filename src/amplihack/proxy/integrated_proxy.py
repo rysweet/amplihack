@@ -964,6 +964,20 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         )
         return is_responses
 
+    def get_temperature_for_model(
+        model_name: str, requested_temperature: Optional[float] = None
+    ) -> float:
+        """Get appropriate temperature for the model - temperature=1.0 for Azure Responses API models, original for others."""
+        # Map the model to Azure model first to check if it uses Responses API
+        azure_model = map_claude_model_to_azure(model_name)
+
+        if should_use_responses_api_for_azure_model(azure_model):
+            # Azure Responses API models always use temperature=1.0 for high creativity
+            return 1.0
+        else:
+            # Chat API models use the requested temperature or default to 1.0
+            return requested_temperature if requested_temperature is not None else 1.0
+
     async def make_azure_api_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Make a direct call to Azure Responses API with robust error handling and retry logic."""
 
@@ -2363,12 +2377,23 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
         # Default to maximum limit for Azure Responses API models when request has low/no max_tokens
         max_tokens_value = max_tokens_limit
 
+    # Determine appropriate temperature based on target model type
+    # For Azure Responses API models, use temperature=1.0; for others, keep original or default to 1.0
+    if anthropic_request.model and (
+        "o3" in anthropic_request.model.lower() or "gpt" in anthropic_request.model.lower()
+    ):
+        temperature = 1.0  # Azure Responses API requires temperature=1.0
+    else:
+        temperature = (
+            anthropic_request.temperature if anthropic_request.temperature is not None else 1.0
+        )
+
     # Initialize the LiteLLM request dict first to ensure we always return the right structure
     litellm_request = {
         "model": anthropic_request.model,  # it understands "anthropic/claude-x" format
         "messages": [],
         "max_tokens": max_tokens_value,
-        "temperature": 1.0,  # Always use temperature=1 for Azure Responses API models
+        "temperature": temperature,
         "stream": anthropic_request.stream,
     }
 

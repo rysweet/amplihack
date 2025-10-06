@@ -501,12 +501,69 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
     # So we just need to convert our Pydantic model to a dict in the expected format
 
+    # Get configured token limits from environment for Azure Responses API
+    import os
+
+    min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+    max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+    # Ensure proper token limits for Azure Responses API
+    max_tokens_value = anthropic_request.max_tokens
+    if max_tokens_value and max_tokens_value > 1:
+        # Ensure we use at least the minimum configured limit
+        max_tokens_value = max(min_tokens_limit, max_tokens_value)
+        # Cap at maximum configured limit
+        max_tokens_value = min(max_tokens_limit, max_tokens_value)
+    else:
+        # Default to maximum limit for Azure Responses API models when request has low/no max_tokens
+        max_tokens_value = max_tokens_limit
+
+    # Determine appropriate temperature based on target model type
+    def map_claude_model_to_azure_local(model: str) -> str:
+        """Map Claude model names to Azure deployment names based on configuration."""
+        # Map Claude models to configured Azure models
+        if "sonnet" in model.lower() or "opus" in model.lower():
+            return BIG_MODEL
+        elif "haiku" in model.lower():
+            return SMALL_MODEL
+        else:
+            # Default to big model for unrecognized patterns
+            return BIG_MODEL
+
+    def should_use_responses_api_for_azure_model_local(azure_model: str) -> bool:
+        """Check if the Azure model should use Responses API based on model type."""
+        openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
+        if not (openai_base_url and "/responses" in openai_base_url):
+            return False
+
+        # Check if model name matches Responses API patterns
+        if (
+            azure_model.startswith(("o3-", "o4-"))
+            or azure_model.startswith("gpt-5-code")
+            or azure_model == "gpt-5"
+        ):
+            return True
+        return False
+
+    # Map the model to Azure model first to check if it uses Responses API
+    azure_model = map_claude_model_to_azure_local(anthropic_request.model)
+
+    # Determine temperature based on API type
+    if should_use_responses_api_for_azure_model_local(azure_model):
+        # Azure Responses API models always use temperature=1.0 for high creativity
+        temperature = 1.0
+    else:
+        # Chat API models use the requested temperature or default
+        temperature = (
+            anthropic_request.temperature if anthropic_request.temperature is not None else 1.0
+        )
+
     # Initialize the LiteLLM request dict first to ensure we always return the right structure
     litellm_request = {
         "model": anthropic_request.model,  # it understands "anthropic/claude-x" format
         "messages": [],
-        "max_tokens": anthropic_request.max_tokens,
-        "temperature": anthropic_request.temperature,
+        "max_tokens": max_tokens_value,
+        "temperature": temperature,
         "stream": anthropic_request.stream,
     }
 
@@ -1226,13 +1283,68 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         if PASSTHROUGH_MODE and passthrough_handler and clean_model.startswith("claude-"):
             logger.debug("Using passthrough mode for Claude model")
 
+            # Get configured token limits from environment for Azure Responses API
+            import os
+
+            min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+            max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+            # Ensure proper token limits for Azure Responses API
+            max_tokens_value = request.max_tokens
+            if max_tokens_value and max_tokens_value > 1:
+                # Ensure we use at least the minimum configured limit
+                max_tokens_value = max(min_tokens_limit, max_tokens_value)
+                # Cap at maximum configured limit
+                max_tokens_value = min(max_tokens_limit, max_tokens_value)
+            else:
+                # Default to maximum limit for Azure Responses API models
+                max_tokens_value = max_tokens_limit
+
+            # Determine appropriate temperature based on target model type
+            def map_claude_model_to_azure_passthrough(model: str) -> str:
+                """Map Claude model names to Azure deployment names for passthrough."""
+                # Map Claude models to configured Azure models
+                if "sonnet" in model.lower() or "opus" in model.lower():
+                    return BIG_MODEL
+                elif "haiku" in model.lower():
+                    return SMALL_MODEL
+                else:
+                    # Default to big model for unrecognized patterns
+                    return BIG_MODEL
+
+            def should_use_responses_api_for_passthrough(azure_model: str) -> bool:
+                """Check if the Azure model should use Responses API for passthrough."""
+                openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
+                if not (openai_base_url and "/responses" in openai_base_url):
+                    return False
+
+                # Check if model name matches Responses API patterns
+                if (
+                    azure_model.startswith(("o3-", "o4-"))
+                    or azure_model.startswith("gpt-5-code")
+                    or azure_model == "gpt-5"
+                ):
+                    return True
+                return False
+
+            # Map the model to Azure model first to check if it uses Responses API
+            azure_model = map_claude_model_to_azure_passthrough(clean_model)
+
+            # Determine temperature based on API type
+            if should_use_responses_api_for_passthrough(azure_model):
+                # Azure Responses API models always use temperature=1.0 for high creativity
+                temperature = 1.0
+            else:
+                # Chat API models use the requested temperature or default
+                temperature = request.temperature if request.temperature is not None else 1.0
+
             # Prepare request data for passthrough
             request_data = {
                 "model": clean_model,
-                "max_tokens": request.max_tokens,
+                "max_tokens": max_tokens_value,
                 "messages": [],
                 "stream": request.stream,
-                "temperature": request.temperature,
+                "temperature": temperature,
             }
 
             # Add system message if present

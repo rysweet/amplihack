@@ -4,6 +4,7 @@
     "src/amplihack/bundle_generator",
     "src/amplihack/cli_extensions.py",
     "src/amplihack/security/cli.py",
+    "src/amplihack/proxy/responses_api_proxy.py",
     "tests/",
     ".claude/",
     "Specs/",
