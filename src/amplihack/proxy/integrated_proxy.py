@@ -1439,13 +1439,52 @@ def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> 
             else:
                 messages.append({"role": msg.role, "content": "..."})
 
-    return {
+    # Convert tools to Azure Responses API format if present
+    azure_request = {
         "model": model,
         "messages": messages,
         "max_tokens": anthropic_request.max_tokens,
         "temperature": anthropic_request.temperature,
         "stream": anthropic_request.stream,
     }
+
+    # Add tool definitions if present - Azure Responses API format
+    if anthropic_request.tools:
+        azure_tools = []
+        for tool in anthropic_request.tools:
+            # Convert to dict if it's a pydantic model
+            if hasattr(tool, "dict"):
+                tool_dict = tool.dict()
+            else:
+                tool_dict = tool
+
+            # Azure Responses API expects direct fields, not nested under 'function'
+            azure_tool = {
+                "type": "function",
+                "name": tool_dict.get("name", ""),
+                "description": tool_dict.get("description", ""),
+                "parameters": tool_dict.get("input_schema", {}),
+            }
+            azure_tools.append(azure_tool)
+
+        azure_request["tools"] = azure_tools
+
+        # Handle tool_choice if present
+        if anthropic_request.tool_choice:
+            if isinstance(anthropic_request.tool_choice, dict):
+                if anthropic_request.tool_choice.get("type") == "tool":
+                    tool_name = anthropic_request.tool_choice.get("name")
+                    if tool_name:
+                        azure_request["tool_choice"] = {
+                            "type": "function",
+                            "function": {"name": tool_name},
+                        }
+                elif anthropic_request.tool_choice.get("type") == "auto":
+                    azure_request["tool_choice"] = "auto"
+                elif anthropic_request.tool_choice.get("type") == "any":
+                    azure_request["tool_choice"] = "required"
+
+    return azure_request
 
 
 async def make_azure_responses_api_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
