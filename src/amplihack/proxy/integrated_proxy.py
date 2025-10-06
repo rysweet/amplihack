@@ -326,16 +326,18 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         # According to docs, reasoning models support max_output_tokens instead of max_tokens
         max_tokens_value = request.get("max_tokens", 1000)
         if max_tokens_value:
-            # Try both parameter names to be compatible with different models
+            # Ensure minimum value of 16 for Azure Responses API
+            max_tokens_value = max(16, max_tokens_value)
             request_data["max_output_tokens"] = max_tokens_value
 
-        temperature_value = request.get("temperature")
-        if temperature_value is not None:
-            request_data["temperature"] = temperature_value
+        # Temperature is not supported by some models (like gpt-5-codex reasoning models)
+        # Skip temperature parameter to avoid errors
+        # temperature_value = request.get("temperature")
+        # if temperature_value is not None:
+        #     request_data["temperature"] = temperature_value
 
-        # Stream is typically supported
-        if request.get("stream"):
-            request_data["stream"] = request.get("stream")
+        # Stream is typically supported, but disable for now to avoid parsing issues
+        # request_data["stream"] = request.get("stream", False)
 
         return request_data
 
