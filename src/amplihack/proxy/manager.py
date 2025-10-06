@@ -259,13 +259,22 @@ class ProxyManager:
             print("Invalid proxy configuration")
             return False
 
-        # Use our integrated proxy instead of external package
-        print("Starting integrated proxy with Azure Responses API support")
-        return self._start_integrated_proxy()
+        # Try integrated proxy first (if dependencies are available)
+        try:
+            print("Starting integrated proxy with Azure Responses API support")
+            return self._start_integrated_proxy()
+        except ImportError as e:
+            print(f"Integrated proxy dependencies not available: {e}")
+            print("Falling back to external claude-code-proxy")
+            # Continue to original external proxy logic below
+        except Exception as e:
+            print(f"Integrated proxy failed to start: {e}")
+            print("Falling back to external claude-code-proxy")
+            # Continue to original external proxy logic below
 
-        # OLD LOGIC - keeping for reference but not used
-        # if not self.ensure_proxy_installed():
-        #     return False
+        # Fallback to original external proxy logic
+        if not self.ensure_proxy_installed():
+            return False
 
         try:
             # Start the proxy process using uvx (UVX-compatible approach)
