@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Literal, Optional, Union
 import aiohttp
 import certifi
 import litellm
+from litellm import Router
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -19,6 +20,13 @@ from pydantic import BaseModel, field_validator
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Load .azure.env if it exists
+if os.path.exists(".azure.env"):
+    load_dotenv(".azure.env")
+
+# Check if we should use LiteLLM router for Azure
+USE_LITELLM_ROUTER = os.environ.get("AMPLIHACK_USE_LITELLM", "true").lower() == "true"
 
 # Configure logging with file output and rotation
 def setup_logging():
@@ -111,6 +119,74 @@ for handler in logger.handlers:
     if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.handlers.RotatingFileHandler):
         handler.setFormatter(ColorizedFormatter("%(asctime)s - %(levelname)s - %(message)s"))
 
+
+def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Router]:
+    """Set up LiteLLM router for Azure Responses API integration."""
+    if not USE_LITELLM_ROUTER:
+        return None
+
+    # Get configuration
+    if config is None:
+        config = {}
+
+    AZURE_OPENAI_KEY = config.get("AZURE_OPENAI_KEY", os.environ.get("AZURE_OPENAI_KEY"))
+    OPENAI_BASE_URL = config.get("OPENAI_BASE_URL", os.environ.get("OPENAI_BASE_URL"))
+    BIG_MODEL = config.get("BIG_MODEL", os.environ.get("BIG_MODEL", "gpt-5"))
+
+    if not AZURE_OPENAI_KEY or not OPENAI_BASE_URL:
+        logger.warning("LiteLLM router disabled: missing Azure credentials")
+        return None
+
+    # Check if this is Azure Responses API
+    if "/responses" not in OPENAI_BASE_URL:
+        logger.warning("LiteLLM router disabled: not Azure Responses API")
+        return None
+
+    # Parse Azure endpoint URL
+    # Format: https://ai-adapt-oai-eastus2.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
+    try:
+        from urllib.parse import urlparse, parse_qs
+        parsed_url = urlparse(OPENAI_BASE_URL)
+        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        api_version = parse_qs(parsed_url.query).get("api-version", ["2025-04-01-preview"])[0]
+
+        logger.info(f"Parsed Azure base URL: {base_url}, API version: {api_version}")
+    except Exception as e:
+        logger.warning(f"Failed to parse Azure URL {OPENAI_BASE_URL}: {e}")
+        base_url = OPENAI_BASE_URL.split("/openai/")[0] if "/openai/" in OPENAI_BASE_URL else OPENAI_BASE_URL
+        api_version = "2025-04-01-preview"
+
+    # Configure model list for LiteLLM router
+    model_list = [
+        {
+            "model_name": "claude-sonnet",  # What Claude Code sends
+            "litellm_params": {
+                "model": f"azure/{BIG_MODEL}",  # Azure deployment
+                "api_key": AZURE_OPENAI_KEY,
+                "api_base": base_url,
+                "api_version": api_version,
+                "drop_params": True,  # Handle parameter differences
+            }
+        },
+        {
+            "model_name": "claude-haiku",
+            "litellm_params": {
+                "model": f"azure/{BIG_MODEL}",  # Use same model for now
+                "api_key": AZURE_OPENAI_KEY,
+                "api_base": base_url,
+                "api_version": api_version,
+                "drop_params": True,
+            }
+        }
+    ]
+
+    try:
+        router = Router(model_list=model_list)
+        logger.info(f"✅ LiteLLM router initialized with Azure Responses API: {OPENAI_BASE_URL}")
+        return router
+    except Exception as e:
+        logger.error(f"Failed to initialize LiteLLM router: {e}")
+        return None
 
 def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
     """Create FastAPI app with configuration."""
@@ -366,6 +442,181 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
     async def root():
         return {"message": "Integrated Anthropic Proxy with Azure Responses API Support"}
 
+    async def handle_message_with_litellm_router(request: dict) -> Dict[str, Any]:
+        """Handle messages using LiteLLM router for Azure Responses API."""
+        claude_model = request.get("model", "unknown")
+
+        # Map Claude models to router model names
+        router_model = "claude-sonnet"  # Default
+        if "haiku" in claude_model.lower():
+            router_model = "claude-haiku"
+        elif "sonnet" in claude_model.lower() or "opus" in claude_model.lower():
+            router_model = "claude-sonnet"
+
+        # Create LiteLLM-compatible request
+        litellm_request = {
+            "model": router_model,
+            "messages": [],
+            "max_tokens": request.get("max_tokens", 4096),
+            "temperature": request.get("temperature", 1.0),
+            "stream": request.get("stream", False)
+        }
+
+        # Add system message if present
+        system_content = request.get("system")
+        if system_content:
+            if isinstance(system_content, str):
+                litellm_request["messages"].append({"role": "system", "content": system_content})
+            elif isinstance(system_content, list):
+                system_text = ""
+                for block in system_content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        system_text += block.get("text", "") + "\n\n"
+                if system_text:
+                    litellm_request["messages"].append({"role": "system", "content": system_text.strip()})
+
+        # Convert messages
+        for msg in request.get("messages", []):
+            content = msg.get("content", "")
+            if isinstance(content, str):
+                litellm_request["messages"].append({"role": msg.get("role"), "content": content})
+            else:
+                # Extract text content from complex content blocks
+                text_content = ""
+                for block in content:
+                    if isinstance(block, dict):
+                        if block.get("type") == "text":
+                            text_content += block.get("text", "") + "\n"
+                        elif block.get("type") == "tool_result":
+                            result_content = block.get("content", "")
+                            if isinstance(result_content, str):
+                                text_content += result_content + "\n"
+                            elif isinstance(result_content, list):
+                                for item in result_content:
+                                    if isinstance(item, dict) and item.get("type") == "text":
+                                        text_content += item.get("text", "") + "\n"
+                        elif block.get("type") == "tool_use":
+                            # Convert tool_use to text description for now
+                            text_content += f"Tool: {block.get('name', 'unknown')} with input: {block.get('input', {})}\n"
+
+                if text_content.strip():
+                    litellm_request["messages"].append({"role": msg.get("role"), "content": text_content.strip()})
+                else:
+                    litellm_request["messages"].append({"role": msg.get("role"), "content": "..."})
+
+        # Add tool definitions if present
+        if request.get("tools"):
+            openai_tools = []
+            for tool in request["tools"]:
+                openai_tool = {
+                    "type": "function",
+                    "function": {
+                        "name": tool["name"],
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("input_schema", {})
+                    }
+                }
+                openai_tools.append(openai_tool)
+            litellm_request["tools"] = openai_tools
+
+            # Handle tool_choice
+            if request.get("tool_choice"):
+                choice_type = request["tool_choice"].get("type")
+                if choice_type == "auto":
+                    litellm_request["tool_choice"] = "auto"
+                elif choice_type == "tool" and "name" in request["tool_choice"]:
+                    litellm_request["tool_choice"] = {
+                        "type": "function",
+                        "function": {"name": request["tool_choice"]["name"]}
+                    }
+
+        # Make the request using LiteLLM router
+        try:
+            logger.debug(f"Making LiteLLM router request to {router_model}")
+            if litellm_request.get("stream"):
+                # For streaming, we'd need to handle this differently
+                litellm_request["stream"] = False  # Disable for now
+
+            # Use LiteLLM router but handle Azure Responses API specifics
+            logger.debug(f"LiteLLM request: model={litellm_request.get('model')}, tools={len(litellm_request.get('tools', []))}")
+
+            try:
+                response = await litellm_router.acompletion(**litellm_request)
+            except Exception as router_error:
+                logger.warning(f"Router failed, trying direct litellm: {router_error}")
+                # Fallback to direct litellm call - but this won't work for Azure Responses API
+                # So let's raise the error instead
+                raise router_error
+
+            # Convert response to Anthropic format
+            choices = response.choices if hasattr(response, 'choices') else []
+            if not choices:
+                raise ValueError("No choices in LiteLLM response")
+
+            choice = choices[0]
+            message = choice.message if hasattr(choice, 'message') else choice.get('message', {})
+            content_text = message.content if hasattr(message, 'content') else message.get('content', '')
+            finish_reason = choice.finish_reason if hasattr(choice, 'finish_reason') else choice.get('finish_reason', 'stop')
+
+            # Handle tool calls
+            tool_calls = message.tool_calls if hasattr(message, 'tool_calls') else message.get('tool_calls', [])
+            content_blocks = []
+
+            # Always add text content, even if empty (Anthropic format requirement)
+            if content_text:
+                content_blocks.append({"type": "text", "text": content_text})
+            elif not tool_calls:  # Only add empty text if no tool calls
+                content_blocks.append({"type": "text", "text": ""})
+
+            if tool_calls:
+                for tool_call in tool_calls:
+                    function = tool_call.function if hasattr(tool_call, 'function') else tool_call.get('function', {})
+                    name = function.name if hasattr(function, 'name') else function.get('name', '')
+                    arguments = function.arguments if hasattr(function, 'arguments') else function.get('arguments', '{}')
+
+                    # Parse arguments if they're a string
+                    if isinstance(arguments, str):
+                        try:
+                            arguments = json.loads(arguments)
+                        except json.JSONDecodeError:
+                            arguments = {"raw": arguments}
+
+                    content_blocks.append({
+                        "type": "tool_use",
+                        "id": tool_call.id if hasattr(tool_call, 'id') else tool_call.get('id', f"tool_{uuid.uuid4()}"),
+                        "name": name,
+                        "input": arguments
+                    })
+
+            # Extract usage information
+            usage_info = response.usage if hasattr(response, 'usage') else {}
+            input_tokens = usage_info.prompt_tokens if hasattr(usage_info, 'prompt_tokens') else getattr(usage_info, 'prompt_tokens', 0)
+            output_tokens = usage_info.completion_tokens if hasattr(usage_info, 'completion_tokens') else getattr(usage_info, 'completion_tokens', 0)
+
+            # Map finish reason to Anthropic format
+            stop_reason = "end_turn"
+            if finish_reason == "length":
+                stop_reason = "max_tokens"
+            elif finish_reason == "tool_calls":
+                stop_reason = "tool_use"
+
+            # Ensure content_blocks is never empty (Anthropic requirement)
+            if not content_blocks:
+                content_blocks = [{"type": "text", "text": ""}]
+
+            return {
+                "id": response.id if hasattr(response, 'id') else f"msg_{uuid.uuid4()}",
+                "model": claude_model,  # Return original Claude model name
+                "role": "assistant",
+                "content": content_blocks,
+                "stop_reason": stop_reason,
+                "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens}
+            }
+
+        except Exception as e:
+            logger.error(f"LiteLLM router request failed: {e}")
+            raise
+
     # Add message handling with proper model mapping and Azure API integration
     @app.post("/v1/messages")
     async def create_message(request: dict):
@@ -374,7 +625,16 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
             claude_model = request.get("model", "unknown")
             logger.info(f"Processing request for Claude model: {claude_model}")
 
-            # Step 1: Map Claude model to Azure deployment
+            # Check if we should use LiteLLM router
+            if litellm_router and USE_LITELLM_ROUTER and request.get("tools"):
+                logger.info(f"Using LiteLLM router for tool calling with {claude_model}")
+                try:
+                    return await handle_message_with_litellm_router(request)
+                except Exception as e:
+                    logger.warning(f"LiteLLM router failed, falling back to legacy: {e}")
+                    # Fall through to legacy handling
+
+            # Legacy handling - Step 1: Map Claude model to Azure deployment
             azure_model = map_claude_model_to_azure(claude_model)
 
             # Step 2: Check if Azure model uses Responses API
@@ -382,7 +642,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
 
             # Step 3: Handle API routing
             if use_responses_api:
-                logger.info(f"Using Azure Responses API for {azure_model}")
+                logger.info(f"Using legacy Azure Responses API for {azure_model}")
 
                 # Convert Anthropic request to Azure format
                 azure_request = convert_anthropic_to_azure(request)
@@ -462,7 +722,7 @@ The Azure OpenAI integration is working perfectly! Claude models are mapped to *
                     return convert_azure_to_anthropic(azure_response, claude_model)
 
             else:
-                logger.info(f"Using Chat API for {azure_model}")
+                logger.info(f"Using legacy Chat API fallback for {azure_model}")
                 return {
                     "id": f"msg_{uuid.uuid4()}",
                     "model": claude_model,
