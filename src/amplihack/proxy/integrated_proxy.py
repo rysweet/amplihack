@@ -10,14 +10,14 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
-import aiohttp
-import certifi
-import litellm
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse
-from litellm import Router
-from pydantic import BaseModel, field_validator
+import aiohttp  # type: ignore[import-unresolved]
+import certifi  # type: ignore[import-unresolved]
+import litellm  # type: ignore[import-unresolved]
+from dotenv import load_dotenv  # type: ignore[import-unresolved]
+from fastapi import FastAPI, HTTPException, Request  # type: ignore[import-unresolved]
+from fastapi.responses import StreamingResponse  # type: ignore[import-unresolved]
+from litellm import Router  # type: ignore[import-unresolved]
+from pydantic import BaseModel, field_validator  # type: ignore[import-unresolved]
 
 # Load environment variables from .env file
 load_dotenv()
@@ -44,7 +44,7 @@ ENABLE_REASONING_EFFORT = os.environ.get("AMPLIHACK_REASONING_EFFORT", "false").
 class ToolCallError(Exception):
     """Base exception for tool call errors"""
 
-    def __init__(self, message: str, tool_name: str = None, retry_count: int = 0):
+    def __init__(self, message: str, tool_name: Optional[str] = None, retry_count: int = 0):
         super().__init__(message)
         self.tool_name = tool_name
         self.retry_count = retry_count
@@ -53,7 +53,12 @@ class ToolCallError(Exception):
 class ToolValidationError(ToolCallError):
     """Exception for tool schema validation errors"""
 
-    def __init__(self, message: str, tool_name: str = None, schema_errors: List[str] = None):
+    def __init__(
+        self,
+        message: str,
+        tool_name: Optional[str] = None,
+        schema_errors: Optional[List[str]] = None,
+    ):
         super().__init__(message, tool_name)
         self.schema_errors = schema_errors or []
 
@@ -61,7 +66,9 @@ class ToolValidationError(ToolCallError):
 class ToolTimeoutError(ToolCallError):
     """Exception for tool call timeouts"""
 
-    def __init__(self, message: str, tool_name: str = None, timeout_seconds: int = None):
+    def __init__(
+        self, message: str, tool_name: Optional[str] = None, timeout_seconds: Optional[int] = None
+    ):
         super().__init__(message, tool_name)
         self.timeout_seconds = timeout_seconds
 
@@ -69,7 +76,12 @@ class ToolTimeoutError(ToolCallError):
 class ToolStreamingError(ToolCallError):
     """Exception for tool streaming errors"""
 
-    def __init__(self, message: str, tool_name: str = None, chunk_data: Dict[str, Any] = None):
+    def __init__(
+        self,
+        message: str,
+        tool_name: Optional[str] = None,
+        chunk_data: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__(message, tool_name)
         self.chunk_data = chunk_data or {}
 
@@ -77,9 +89,609 @@ class ToolStreamingError(ToolCallError):
 class ConversationStateError(Exception):
     """Exception for conversation state management errors"""
 
-    def __init__(self, message: str, state: str = None):
+    def __init__(self, message: str, state: Optional[str] = None):
         super().__init__(message)
         self.state = state
+
+
+# Azure-Specific Exception Types
+class AzureAPIError(Exception):
+    """Base exception for Azure API errors"""
+
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        error_type: Optional[str] = None,
+        retry_count: int = 0,
+        is_retryable: bool = False,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.error_type = error_type
+        self.retry_count = retry_count
+        self.is_retryable = is_retryable
+
+
+class AzureTransientError(AzureAPIError):
+    """Exception for transient Azure errors that should be retried"""
+
+    def __init__(self, message: str, status_code: Optional[int] = None, retry_count: int = 0):
+        super().__init__(message, status_code, "transient", retry_count, is_retryable=True)
+
+
+class AzureAuthenticationError(AzureAPIError):
+    """Exception for Azure authentication/authorization errors"""
+
+    def __init__(self, message: str, status_code: Optional[int] = None):
+        super().__init__(message, status_code, "authentication", is_retryable=False)
+
+
+class AzureRateLimitError(AzureAPIError):
+    """Exception for Azure rate limiting errors"""
+
+    def __init__(self, message: str, retry_after: Optional[int] = None, retry_count: int = 0):
+        super().__init__(message, 429, "rate_limit", retry_count, is_retryable=True)
+        self.retry_after = retry_after
+
+
+class AzureConfigurationError(AzureAPIError):
+    """Exception for Azure configuration/deployment errors"""
+
+    def __init__(self, message: str, status_code: Optional[int] = None):
+        super().__init__(message, status_code, "configuration", is_retryable=False)
+
+
+class AzureFallbackError(AzureAPIError):
+    """Exception indicating Azure fallback was triggered"""
+
+    def __init__(self, message: str, original_error: Optional[Exception] = None):
+        super().__init__(message, error_type="fallback", is_retryable=False)
+        self.original_error = original_error
+
+
+# Azure Error Classification and Parsing
+def classify_azure_error(status_code: int, error_text: str) -> AzureAPIError:
+    """Classify Azure API errors into specific exception types with enhanced parsing."""
+    import json
+    import re
+
+    # Parse JSON error response if possible
+    error_data = {}
+    try:
+        error_data = json.loads(error_text)
+    except (json.JSONDecodeError, TypeError):
+        # If not JSON, treat as plain text
+        pass
+
+    # Extract common error fields
+    error_code = error_data.get("code", "")
+    error_message = error_data.get("message", error_text)
+    inner_error = error_data.get("innererror", {}) or error_data.get("error", {})
+
+    # Extract more details from inner error if available
+    if inner_error:
+        error_code = inner_error.get("code", error_code)
+        if not error_message or error_message == error_text:
+            error_message = inner_error.get("message", error_text)
+
+    # Create user-friendly message
+    user_message = f"Azure API error: {error_message}"
+
+    # Classify by status code and error patterns
+    if status_code in [401, 403]:
+        if "unauthorized" in error_message.lower() or "authentication" in error_message.lower():
+            return AzureAuthenticationError(
+                f"Authentication failed. Please check your Azure API key and permissions. Details: {error_message}",
+                status_code,
+            )
+        elif "forbidden" in error_message.lower() or "access denied" in error_message.lower():
+            return AzureAuthenticationError(
+                f"Access denied. Your API key may lack required permissions. Details: {error_message}",
+                status_code,
+            )
+        else:
+            return AzureAuthenticationError(user_message, status_code)
+
+    elif status_code == 429:
+        # Extract retry-after header info if available
+        retry_after = None
+        if "retry-after" in error_message.lower():
+            # Try to extract retry-after value
+            retry_match = re.search(r"retry.*?(\d+)", error_message.lower())
+            if retry_match:
+                retry_after = int(retry_match.group(1))
+
+        return AzureRateLimitError(
+            f"Rate limit exceeded. Please wait before retrying. Details: {error_message}",
+            retry_after=retry_after,
+        )
+
+    elif status_code in [500, 502, 503, 504]:
+        # Server errors - usually transient
+        if status_code == 500:
+            message = f"Internal server error on Azure. This is usually temporary. Details: {error_message}"
+        elif status_code == 502:
+            message = f"Bad gateway error. Azure service may be temporarily unavailable. Details: {error_message}"
+        elif status_code == 503:
+            message = (
+                f"Service unavailable. Azure is temporarily overloaded. Details: {error_message}"
+            )
+        else:  # 504
+            message = f"Gateway timeout. Request took too long to process. Details: {error_message}"
+
+        return AzureTransientError(message, status_code)
+
+    elif status_code == 400:
+        # Bad request - could be configuration issue
+        if any(
+            keyword in error_message.lower()
+            for keyword in ["deployment", "model", "endpoint", "not found"]
+        ):
+            return AzureConfigurationError(
+                f"Configuration error. Check your Azure deployment name and endpoint. Details: {error_message}",
+                status_code,
+            )
+        else:
+            return AzureAPIError(
+                f"Bad request. Please check your request format. Details: {error_message}",
+                status_code,
+                "bad_request",
+                is_retryable=False,
+            )
+
+    elif status_code == 404:
+        return AzureConfigurationError(
+            f"Resource not found. Check your Azure endpoint URL and deployment name. Details: {error_message}",
+            status_code,
+        )
+
+    elif status_code == 408:
+        return AzureTransientError(
+            f"Request timeout. The request took too long to process. Details: {error_message}",
+            status_code,
+        )
+
+    else:
+        # Unknown error type
+        is_retryable = status_code >= 500  # Assume server errors are retryable
+        return AzureAPIError(
+            f"Unexpected Azure API error (status {status_code}). Details: {error_message}",
+            status_code,
+            "unknown",
+            is_retryable=is_retryable,
+        )
+
+
+def extract_user_friendly_message(azure_error: AzureAPIError) -> str:
+    """Extract a user-friendly error message from Azure API error."""
+    if isinstance(azure_error, AzureAuthenticationError):
+        return "Authentication issue with Azure API. Please check your credentials and permissions."
+    elif isinstance(azure_error, AzureRateLimitError):
+        retry_msg = (
+            f" Try again in {azure_error.retry_after} seconds."
+            if azure_error.retry_after
+            else " Please wait before retrying."
+        )
+        return f"Rate limit exceeded.{retry_msg}"
+    elif isinstance(azure_error, AzureConfigurationError):
+        return "Configuration issue with Azure deployment. Please check your endpoint and model settings."
+    elif isinstance(azure_error, AzureTransientError):
+        return "Temporary Azure service issue. The request will be retried automatically."
+    elif isinstance(azure_error, AzureFallbackError):
+        return "Azure API unavailable. Using fallback processing mode."
+    else:
+        return f"Azure API error: {str(azure_error)}"
+
+
+# Azure Retry Logic with Exponential Backoff
+async def retry_azure_request(
+    request_func,
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 60.0,
+    backoff_multiplier: float = 2.0,
+    request_name: str = "Azure API",
+) -> Any:
+    """
+    Retry Azure API requests with exponential backoff for transient errors.
+
+    Args:
+        request_func: Async function that makes the Azure API request
+        max_retries: Maximum number of retry attempts
+        base_delay: Initial delay between retries in seconds
+        max_delay: Maximum delay between retries in seconds
+        backoff_multiplier: Multiplier for exponential backoff
+        request_name: Name of the request for logging
+
+    Returns:
+        Result of the successful request
+
+    Raises:
+        AzureAPIError: If all retries fail or error is not retryable
+    """
+    last_error = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            return await request_func()
+
+        except AzureAPIError as azure_error:
+            last_error = azure_error
+            azure_error.retry_count = attempt
+
+            # Don't retry non-retryable errors
+            if not azure_error.is_retryable:
+                logger.error(
+                    f"❌ {request_name} failed with non-retryable error: {azure_error.error_type} - {str(azure_error)}"
+                )
+                raise azure_error
+
+            # Don't retry if this was our last attempt
+            if attempt >= max_retries:
+                logger.error(
+                    f"❌ {request_name} failed after {max_retries + 1} attempts: {str(azure_error)}"
+                )
+                break
+
+            # Calculate delay with exponential backoff
+            if isinstance(azure_error, AzureRateLimitError) and azure_error.retry_after:
+                # Use server-specified retry time for rate limits
+                delay = min(azure_error.retry_after, max_delay)
+            else:
+                # Standard exponential backoff
+                delay = min(base_delay * (backoff_multiplier**attempt), max_delay)
+
+            logger.warning(
+                f"⏳ {request_name} failed (attempt {attempt + 1}/{max_retries + 1}), "
+                f"retrying in {delay:.1f}s: {azure_error.error_type} - {str(azure_error)}"
+            )
+
+            await asyncio.sleep(delay)
+
+        except aiohttp.ClientTimeout as timeout_error:
+            # Treat timeouts as transient errors
+            last_error = AzureTransientError(
+                f"Request timeout after {timeout_error}", status_code=408, retry_count=attempt
+            )
+
+            if attempt >= max_retries:
+                logger.error(f"❌ {request_name} timed out after {max_retries + 1} attempts")
+                break
+
+            delay = min(base_delay * (backoff_multiplier**attempt), max_delay)
+            logger.warning(
+                f"⏳ {request_name} timed out (attempt {attempt + 1}/{max_retries + 1}), "
+                f"retrying in {delay:.1f}s"
+            )
+            await asyncio.sleep(delay)
+
+        except aiohttp.ClientError as client_error:
+            # Treat other client errors as transient
+            last_error = AzureTransientError(
+                f"Network error: {str(client_error)}", status_code=503, retry_count=attempt
+            )
+
+            if attempt >= max_retries:
+                logger.error(
+                    f"❌ {request_name} failed with network error after {max_retries + 1} attempts"
+                )
+                break
+
+            delay = min(base_delay * (backoff_multiplier**attempt), max_delay)
+            logger.warning(
+                f"⏳ {request_name} network error (attempt {attempt + 1}/{max_retries + 1}), "
+                f"retrying in {delay:.1f}s: {str(client_error)}"
+            )
+            await asyncio.sleep(delay)
+
+        except Exception as unexpected_error:
+            # For unexpected errors, don't retry
+            logger.error(
+                f"❌ {request_name} failed with unexpected error: {type(unexpected_error).__name__}: {str(unexpected_error)}"
+            )
+            raise AzureAPIError(
+                f"Unexpected error during {request_name}: {str(unexpected_error)}",
+                error_type="unexpected",
+                is_retryable=False,
+            )
+
+    # All retries failed
+    if last_error:
+        raise last_error
+    else:
+        raise AzureAPIError(
+            f"All retry attempts failed for {request_name}", error_type="retry_exhausted"
+        )
+
+
+# Fallback Mechanisms
+class AzureFallbackManager:
+    """Manages fallback behavior when Azure API consistently fails."""
+
+    def __init__(self):
+        self.failure_count = 0
+        self.consecutive_failures = 0
+        self.last_success_time = None
+        self.fallback_mode = False
+        self.fallback_until = None
+
+    def record_success(self):
+        """Record a successful Azure API call."""
+        self.consecutive_failures = 0
+        self.last_success_time = asyncio.get_event_loop().time()
+
+        # Exit fallback mode on success
+        if self.fallback_mode:
+            logger.info("🎉 Azure API recovered - exiting fallback mode")
+            self.fallback_mode = False
+            self.fallback_until = None
+
+    def record_failure(self, azure_error: AzureAPIError):
+        """Record a failed Azure API call and determine if fallback should be triggered."""
+        self.failure_count += 1
+        self.consecutive_failures += 1
+
+        current_time = asyncio.get_event_loop().time()
+
+        # Determine if we should enter fallback mode
+        should_fallback = False
+        fallback_duration = 300  # 5 minutes default
+
+        if isinstance(azure_error, AzureAuthenticationError):
+            # Authentication errors - longer fallback
+            should_fallback = True
+            fallback_duration = 1800  # 30 minutes
+            logger.error("🔒 Azure authentication error - entering extended fallback mode")
+
+        elif isinstance(azure_error, AzureConfigurationError):
+            # Configuration errors - longer fallback
+            should_fallback = True
+            fallback_duration = 3600  # 1 hour
+            logger.error("⚙️ Azure configuration error - entering extended fallback mode")
+
+        elif self.consecutive_failures >= 3:
+            # Multiple consecutive failures - temporary fallback
+            should_fallback = True
+            fallback_duration = 300  # 5 minutes
+            logger.warning(
+                f"⚠️ {self.consecutive_failures} consecutive Azure failures - entering temporary fallback mode"
+            )
+
+        elif isinstance(azure_error, AzureTransientError) and self.consecutive_failures >= 2:
+            # Multiple transient errors - short fallback
+            should_fallback = True
+            fallback_duration = 120  # 2 minutes
+            logger.warning("⏳ Multiple transient Azure errors - entering short fallback mode")
+
+        if should_fallback and not self.fallback_mode:
+            self.fallback_mode = True
+            self.fallback_until = current_time + fallback_duration
+            logger.warning(
+                f"🔄 Entering Azure fallback mode for {fallback_duration / 60:.1f} minutes "
+                f"(consecutive failures: {self.consecutive_failures})"
+            )
+
+    def should_use_fallback(self) -> bool:
+        """Check if fallback mode should be used."""
+        if not self.fallback_mode:
+            return False
+
+        current_time = asyncio.get_event_loop().time()
+
+        # Check if fallback period has expired
+        if self.fallback_until and current_time >= self.fallback_until:
+            logger.info("⏰ Fallback period expired - attempting Azure API recovery")
+            self.fallback_mode = False
+            self.fallback_until = None
+            return False
+
+        return True
+
+    def get_fallback_reason(self) -> str:
+        """Get a human-readable reason for fallback mode."""
+        if not self.fallback_mode:
+            return ""
+
+        current_time = asyncio.get_event_loop().time()
+        if self.fallback_until:
+            remaining = int(self.fallback_until - current_time)
+            return f"Azure API fallback active (recovery in {remaining // 60}m {remaining % 60}s)"
+        else:
+            return "Azure API fallback active"
+
+
+# Global fallback manager instance
+azure_fallback_manager = AzureFallbackManager()
+
+
+async def create_fallback_response(request: dict, fallback_reason: str) -> dict:
+    """Create a fallback response when Azure API is unavailable."""
+    claude_model = request.get("model", "claude-3-sonnet")
+
+    # Extract user message for context
+    user_message = ""
+    messages = request.get("messages", [])
+    if messages:
+        last_msg = messages[-1]
+        content = last_msg.get("content", "")
+        if isinstance(content, str):
+            user_message = content[:200] + "..." if len(content) > 200 else content
+        elif isinstance(content, list):
+            # Extract text from content blocks
+            text_parts = []
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text_parts.append(block.get("text", ""))
+            user_message = " ".join(text_parts)[:200]
+            if len(user_message) > 200:
+                user_message += "..."
+
+    fallback_message = f"""I apologize, but I'm currently unable to process your request due to Azure API issues ({fallback_reason}).
+
+This is a temporary service interruption. The system will automatically retry Azure API calls when service is restored.
+
+For urgent requests, you may want to:
+1. Wait a few minutes and try again
+2. Check the Azure service status
+3. Contact system administrators if the issue persists
+
+Your request: "{user_message}"
+
+The system is monitoring Azure API health and will resume normal processing once connectivity is restored."""
+
+    return {
+        "id": f"msg_fallback_{uuid.uuid4()}",
+        "model": claude_model,
+        "role": "assistant",
+        "content": [{"type": "text", "text": fallback_message}],
+        "stop_reason": "end_turn",
+        "usage": {
+            "input_tokens": len(user_message.split()),
+            "output_tokens": len(fallback_message.split()),
+        },
+    }
+
+
+# Enhanced Error Logging and Monitoring
+class AzureErrorLogger:
+    """Centralized Azure error logging with metrics and analysis."""
+
+    def __init__(self):
+        self.error_history = []
+        self.error_patterns = {}
+        self.last_health_check = None
+
+    def log_azure_error(self, azure_error: AzureAPIError, request_context: Optional[dict] = None):
+        """Log Azure error with context and update metrics."""
+        error_entry = {
+            "timestamp": asyncio.get_event_loop().time(),
+            "error_type": azure_error.error_type,
+            "status_code": azure_error.status_code,
+            "message": str(azure_error),
+            "retry_count": azure_error.retry_count,
+            "is_retryable": azure_error.is_retryable,
+            "context": request_context or {},
+        }
+
+        self.error_history.append(error_entry)
+
+        # Keep only last 100 errors to prevent memory issues
+        if len(self.error_history) > 100:
+            self.error_history.pop(0)
+
+        # Update error patterns
+        pattern_key = f"{azure_error.error_type}:{azure_error.status_code}"
+        if pattern_key not in self.error_patterns:
+            self.error_patterns[pattern_key] = {
+                "count": 0,
+                "first_seen": error_entry["timestamp"],
+                "last_seen": error_entry["timestamp"],
+            }
+
+        self.error_patterns[pattern_key]["count"] += 1
+        self.error_patterns[pattern_key]["last_seen"] = error_entry["timestamp"]
+
+        # Log with appropriate level based on error type
+        if isinstance(azure_error, AzureAuthenticationError):
+            logger.error(
+                f"🔒 AZURE AUTH ERROR: {str(azure_error)} (Status: {azure_error.status_code})"
+            )
+        elif isinstance(azure_error, AzureConfigurationError):
+            logger.error(
+                f"⚙️ AZURE CONFIG ERROR: {str(azure_error)} (Status: {azure_error.status_code})"
+            )
+        elif isinstance(azure_error, AzureRateLimitError):
+            retry_msg = (
+                f", retry after {azure_error.retry_after}s" if azure_error.retry_after else ""
+            )
+            logger.warning(f"⏱️ AZURE RATE LIMIT: {str(azure_error)}{retry_msg}")
+        elif isinstance(azure_error, AzureTransientError):
+            logger.warning(
+                f"⚠️ AZURE TRANSIENT ERROR: {str(azure_error)} (Status: {azure_error.status_code}, Attempt: {azure_error.retry_count})"
+            )
+        else:
+            logger.error(
+                f"❌ AZURE API ERROR: {str(azure_error)} (Type: {azure_error.error_type}, Status: {azure_error.status_code})"
+            )
+
+        # Log context if available
+        if request_context:
+            model = request_context.get("model", "unknown")
+            user_id = request_context.get("user_id", "unknown")
+            logger.info(f"📊 Error Context: Model={model}, User={user_id}")
+
+    def log_azure_success(self, request_context: Optional[dict] = None):
+        """Log successful Azure API call for health monitoring."""
+        if request_context:
+            model = request_context.get("model", "unknown")
+            response_time = request_context.get("response_time", "unknown")
+            logger.debug(f"✅ AZURE SUCCESS: Model={model}, ResponseTime={response_time}ms")
+
+    def get_error_summary(self) -> dict:
+        """Get a summary of recent Azure errors for monitoring."""
+        current_time = asyncio.get_event_loop().time()
+        recent_errors = [
+            e for e in self.error_history if current_time - e["timestamp"] < 3600
+        ]  # Last hour
+
+        summary = {
+            "total_errors_last_hour": len(recent_errors),
+            "error_patterns": self.error_patterns.copy(),
+            "fallback_active": azure_fallback_manager.fallback_mode,
+            "consecutive_failures": azure_fallback_manager.consecutive_failures,
+            "last_health_check": self.last_health_check,
+        }
+
+        # Count errors by type in last hour
+        error_counts = {}
+        for error in recent_errors:
+            error_type = error["error_type"]
+            error_counts[error_type] = error_counts.get(error_type, 0) + 1
+
+        summary["recent_error_types"] = error_counts
+        return summary
+
+    def should_alert(self) -> bool:
+        """Determine if an alert should be triggered based on error patterns."""
+        current_time = asyncio.get_event_loop().time()
+        recent_errors = [
+            e for e in self.error_history if current_time - e["timestamp"] < 300
+        ]  # Last 5 minutes
+
+        # Alert conditions
+        if len(recent_errors) >= 5:  # 5 errors in 5 minutes
+            return True
+
+        if azure_fallback_manager.consecutive_failures >= 3:  # 3 consecutive failures
+            return True
+
+        # Check for critical error types
+        for error in recent_errors:
+            if error["error_type"] in ["authentication", "configuration"]:
+                return True
+
+        return False
+
+
+# Global error logger instance
+azure_error_logger = AzureErrorLogger()
+
+
+def log_azure_operation(
+    operation_name: str,
+    success: bool,
+    context: Optional[dict] = None,
+    error: Optional[Exception] = None,
+):
+    """Unified logging function for Azure operations."""
+    if success:
+        logger.info(f"✅ {operation_name} succeeded")
+        azure_error_logger.log_azure_success(context)
+    else:
+        logger.error(f"❌ {operation_name} failed: {str(error) if error else 'Unknown error'}")
+        if isinstance(error, AzureAPIError):
+            azure_error_logger.log_azure_error(error, context)
 
 
 # Configure logging with file output and rotation
@@ -353,31 +965,68 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         return is_responses
 
     async def make_azure_api_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Make a direct call to Azure Responses API with proper authentication and SSL context."""
-        headers = {
-            "Content-Type": "application/json",
-            "api-key": AZURE_OPENAI_KEY,
-        }
+        """Make a direct call to Azure Responses API with robust error handling and retry logic."""
 
-        # Create SSL context using certifi certificates to fix SSL verification issues
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        timeout = aiohttp.ClientTimeout(total=120)
+        async def _make_request() -> Dict[str, Any]:
+            """Internal request function for retry logic."""
+            headers = {
+                "Content-Type": "application/json",
+                "api-key": AZURE_OPENAI_KEY,
+            }
 
-        async with aiohttp.ClientSession(
-            timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)
-        ) as session:
-            async with session.post(
-                OPENAI_BASE_URL, json=request_data, headers=headers
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    logger.error(f"Azure Responses API error {response.status}: {error_text}")
-                    raise HTTPException(
-                        status_code=response.status, detail=f"Azure API error: {error_text}"
-                    )
+            # Create SSL context using certifi certificates to fix SSL verification issues
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+            timeout = aiohttp.ClientTimeout(total=120)
 
-                response_data = await response.json()
-                return response_data
+            async with aiohttp.ClientSession(
+                timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)
+            ) as session:
+                async with session.post(
+                    OPENAI_BASE_URL, json=request_data, headers=headers
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        logger.error(f"Azure Responses API error {response.status}: {error_text}")
+                        # Classify and raise appropriate Azure error
+                        azure_error = classify_azure_error(response.status, error_text)
+                        raise azure_error
+
+                    response_data = await response.json()
+                    return response_data
+
+        # Use retry logic with exponential backoff
+        try:
+            start_time = asyncio.get_event_loop().time()
+            result = await retry_azure_request(
+                _make_request, max_retries=3, request_name="Azure Responses API (Legacy)"
+            )
+            end_time = asyncio.get_event_loop().time()
+
+            # Record success for fallback manager and logger
+            azure_fallback_manager.record_success()
+
+            # Log successful operation with context
+            context = {
+                "model": request_data.get("model", "unknown"),
+                "response_time": int((end_time - start_time) * 1000),  # milliseconds
+            }
+            log_azure_operation("Azure Responses API (Legacy)", True, context)
+
+            return result
+
+        except AzureAPIError as azure_error:
+            # Record failure for fallback manager
+            azure_fallback_manager.record_failure(azure_error)
+
+            # Log failed operation with context
+            context = {"model": request_data.get("model", "unknown"), "endpoint": OPENAI_BASE_URL}
+            log_azure_operation("Azure Responses API (Legacy)", False, context, azure_error)
+
+            # Convert to HTTPException for backward compatibility
+            user_friendly_msg = extract_user_friendly_message(azure_error)
+            raise HTTPException(
+                status_code=azure_error.status_code or 500, detail=user_friendly_msg
+            )
 
     def convert_azure_to_anthropic(
         azure_response: Dict[str, Any], claude_model: str
@@ -512,8 +1161,57 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
 
     @app.get("/health")
     async def health():
-        """Health check endpoint."""
-        return {"status": "healthy", "proxy_type": "integrated_azure_responses"}
+        """Enhanced health check endpoint with Azure monitoring."""
+        health_status = {
+            "status": "healthy",
+            "proxy_type": "integrated_azure_responses",
+            "timestamp": asyncio.get_event_loop().time(),
+            "azure": {
+                "fallback_active": azure_fallback_manager.fallback_mode,
+                "consecutive_failures": azure_fallback_manager.consecutive_failures,
+                "total_failures": azure_fallback_manager.failure_count,
+                "last_success": azure_fallback_manager.last_success_time,
+            },
+        }
+
+        # Get error summary
+        error_summary = azure_error_logger.get_error_summary()
+        health_status["azure"]["error_summary"] = error_summary
+
+        # Determine overall health status
+        if azure_fallback_manager.fallback_mode:
+            health_status["status"] = "degraded"
+            health_status["message"] = azure_fallback_manager.get_fallback_reason()
+        elif error_summary["total_errors_last_hour"] > 10:
+            health_status["status"] = "unhealthy"
+            health_status["message"] = (
+                f"High error rate: {error_summary['total_errors_last_hour']} errors in last hour"
+            )
+        elif azure_error_logger.should_alert():
+            health_status["status"] = "warning"
+            health_status["message"] = "Azure API experiencing issues"
+
+        return health_status
+
+    @app.get("/azure/status")
+    async def azure_status():
+        """Detailed Azure API status and error analysis."""
+        status = {
+            "azure_api": {
+                "endpoint": OPENAI_BASE_URL,
+                "fallback_manager": {
+                    "active": azure_fallback_manager.fallback_mode,
+                    "consecutive_failures": azure_fallback_manager.consecutive_failures,
+                    "total_failures": azure_fallback_manager.failure_count,
+                    "last_success": azure_fallback_manager.last_success_time,
+                    "fallback_until": azure_fallback_manager.fallback_until,
+                },
+                "error_patterns": azure_error_logger.error_patterns,
+                "recent_errors": azure_error_logger.error_history[-10:],  # Last 10 errors
+                "should_alert": azure_error_logger.should_alert(),
+            }
+        }
+        return status
 
     @app.get("/")
     async def root():
@@ -624,6 +1322,8 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
             )
 
             try:
+                if litellm_router is None:
+                    raise Exception("LiteLLM router is not initialized")
                 response = await litellm_router.acompletion(**litellm_request)
             except Exception as router_error:
                 logger.debug(
@@ -696,17 +1396,13 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                     )
 
             # Extract usage information
-            usage_info = response.usage if hasattr(response, "usage") else {}
-            input_tokens = (
-                usage_info.prompt_tokens
-                if hasattr(usage_info, "prompt_tokens")
-                else getattr(usage_info, "prompt_tokens", 0)
-            )
-            output_tokens = (
-                usage_info.completion_tokens
-                if hasattr(usage_info, "completion_tokens")
-                else getattr(usage_info, "completion_tokens", 0)
-            )
+            usage_info = getattr(response, "usage", {})
+            if isinstance(usage_info, dict):
+                input_tokens = usage_info.get("prompt_tokens", 0)
+                output_tokens = usage_info.get("completion_tokens", 0)
+            else:
+                input_tokens = getattr(usage_info, "prompt_tokens", 0)
+                output_tokens = getattr(usage_info, "completion_tokens", 0)
 
             # Map finish reason to Anthropic format
             stop_reason = "end_turn"
@@ -1490,29 +2186,65 @@ def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> 
 
 
 async def make_azure_responses_api_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Make a direct call to Azure Responses API."""
-    headers = {
-        "Content-Type": "application/json",
-        "api-key": AZURE_OPENAI_KEY,
-    }
+    """Make a direct call to Azure Responses API with robust error handling and retry logic."""
 
-    # Create SSL context using certifi certificates to fix SSL verification issues
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
-    timeout = aiohttp.ClientTimeout(total=120)
+    async def _make_request() -> Dict[str, Any]:
+        """Internal request function for retry logic."""
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": AZURE_OPENAI_KEY,
+        }
 
-    async with aiohttp.ClientSession(
-        timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)
-    ) as session:
-        async with session.post(OPENAI_BASE_URL, json=request_data, headers=headers) as response:
-            if response.status != 200:
-                error_text = await response.text()
-                logger.error(f"Azure Responses API error {response.status}: {error_text}")
-                raise HTTPException(
-                    status_code=response.status, detail=f"Azure API error: {error_text}"
-                )
+        # Create SSL context using certifi certificates to fix SSL verification issues
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        timeout = aiohttp.ClientTimeout(total=120)
 
-            response_data = await response.json()
-            return response_data
+        async with aiohttp.ClientSession(
+            timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)
+        ) as session:
+            async with session.post(
+                OPENAI_BASE_URL, json=request_data, headers=headers
+            ) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"Azure Responses API error {response.status}: {error_text}")
+                    # Classify and raise appropriate Azure error
+                    azure_error = classify_azure_error(response.status, error_text)
+                    raise azure_error
+
+                response_data = await response.json()
+                return response_data
+
+    # Use retry logic with exponential backoff
+    try:
+        start_time = asyncio.get_event_loop().time()
+        result = await retry_azure_request(
+            _make_request, max_retries=3, request_name="Azure Responses API"
+        )
+        end_time = asyncio.get_event_loop().time()
+
+        # Record success for fallback manager and logger
+        azure_fallback_manager.record_success()
+
+        # Log successful operation with context
+        context = {
+            "model": request_data.get("model", "unknown"),
+            "response_time": int((end_time - start_time) * 1000),  # milliseconds
+        }
+        log_azure_operation("Azure Responses API", True, context)
+
+        return result
+
+    except AzureAPIError as azure_error:
+        # Record failure for fallback manager
+        azure_fallback_manager.record_failure(azure_error)
+
+        # Log failed operation with context
+        context = {"model": request_data.get("model", "unknown"), "endpoint": OPENAI_BASE_URL}
+        log_azure_operation("Azure Responses API", False, context, azure_error)
+
+        # Re-raise the Azure error (will be handled by calling code)
+        raise azure_error
 
 
 def convert_azure_responses_to_anthropic(
@@ -1679,7 +2411,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                             )
                         elif block.type == "tool_result":
                             # Handle different formats of tool result content
-                            processed_content_block = {
+                            processed_content_block: Dict[str, Any] = {
                                 "type": "tool_result",
                                 "tool_use_id": block.tool_use_id
                                 if hasattr(block, "tool_use_id")
@@ -1772,10 +2504,17 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
     # Convert tool_choice to OpenAI format if present
     if anthropic_request.tool_choice:
-        if hasattr(anthropic_request.tool_choice, "dict"):
+        if isinstance(anthropic_request.tool_choice, dict):
+            tool_choice_dict = anthropic_request.tool_choice
+        elif hasattr(anthropic_request.tool_choice, "model_dump"):
+            tool_choice_dict = anthropic_request.tool_choice.model_dump()
+        elif hasattr(anthropic_request.tool_choice, "dict"):
             tool_choice_dict = anthropic_request.tool_choice.dict()
         else:
-            tool_choice_dict = anthropic_request.tool_choice
+            # Fallback to treating it as dict-like
+            tool_choice_dict = (
+                dict(anthropic_request.tool_choice) if anthropic_request.tool_choice else {}
+            )
 
         # Handle Anthropic's tool_choice format
         choice_type = tool_choice_dict.get("type")
@@ -1815,12 +2554,12 @@ def convert_litellm_to_anthropic(
         # Handle ModelResponse object from LiteLLM
         if hasattr(litellm_response, "choices") and hasattr(litellm_response, "usage"):
             # Extract data from ModelResponse object directly
-            choices = litellm_response.choices
+            choices = getattr(litellm_response, "choices", [])
             message = choices[0].message if choices and len(choices) > 0 else None
             content_text = message.content if message and hasattr(message, "content") else ""
             tool_calls = message.tool_calls if message and hasattr(message, "tool_calls") else None
             finish_reason = choices[0].finish_reason if choices and len(choices) > 0 else "stop"
-            usage_info = litellm_response.usage
+            usage_info = getattr(litellm_response, "usage", {})
             response_id = getattr(litellm_response, "id", f"msg_{uuid.uuid4()}")
         else:
             # For backward compatibility - handle dict responses
@@ -1834,11 +2573,13 @@ def convert_litellm_to_anthropic(
             except AttributeError:
                 # If .dict() fails, try to use model_dump or __dict__
                 try:
-                    response_dict = (
-                        litellm_response.model_dump()
-                        if hasattr(litellm_response, "model_dump")
-                        else litellm_response.__dict__
-                    )
+                    if hasattr(litellm_response, "model_dump") and callable(
+                        getattr(litellm_response, "model_dump", None)
+                    ):
+                        # Type: ignore because we've already checked hasattr/callable above
+                        response_dict = litellm_response.model_dump()  # type: ignore[attr-defined]
+                    else:
+                        response_dict = getattr(litellm_response, "__dict__", {})
                 except AttributeError:
                     # Fallback - manually extract attributes
                     response_dict = {
@@ -2002,7 +2743,9 @@ def convert_litellm_to_anthropic(
         )
 
 
-async def retry_tool_call(func, max_attempts: int = None, tool_name: str = None):
+async def retry_tool_call(
+    func, max_attempts: Optional[int] = None, tool_name: Optional[str] = None
+):
     """
     Phase 2: Retry tool calls with exponential backoff.
 
@@ -2362,7 +3105,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of delta content
                     if hasattr(delta, "content"):
-                        delta_content = delta.content
+                        delta_content = getattr(delta, "content", None)
                     elif isinstance(delta, dict) and "content" in delta:
                         delta_content = delta["content"]
 
@@ -2380,7 +3123,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of tool calls
                     if hasattr(delta, "tool_calls"):
-                        delta_tool_calls = delta.tool_calls
+                        delta_tool_calls = getattr(delta, "tool_calls", None)
                     elif isinstance(delta, dict) and "tool_calls" in delta:
                         delta_tool_calls = delta["tool_calls"]
 
@@ -2416,7 +3159,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                             if isinstance(tool_call, dict) and "index" in tool_call:
                                 current_index = tool_call["index"]
                             elif hasattr(tool_call, "index"):
-                                current_index = tool_call.index
+                                current_index = getattr(tool_call, "index", 0)
                             else:
                                 current_index = 0
 
@@ -2592,29 +3335,93 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                 f"🔵 AZURE RESPONSES API SELECTED for model {request.model}: Using direct Azure API call"
             )
 
-            # Convert to Azure Responses format
-            azure_request = convert_anthropic_to_azure_responses(request)
+            # Initialize azure_request to avoid unbound variable errors
+            azure_request = {}
 
-            # Handle streaming mode for Azure (not implemented yet, fall back to non-streaming)
-            if request.stream:
-                logger.warning(
-                    "Azure Responses API streaming not yet implemented, falling back to non-streaming"
+            # Check if we should use fallback mode
+            if azure_fallback_manager.should_use_fallback():
+                logger.warning("🔄 Azure fallback mode active - returning fallback response")
+                fallback_reason = azure_fallback_manager.get_fallback_reason()
+
+                # Create fallback response in the expected format
+                fallback_response = await create_fallback_response(body_json, fallback_reason)
+
+                # Convert to MessagesResponse format
+                anthropic_response = MessagesResponse(
+                    id=fallback_response["id"],
+                    model=fallback_response["model"],
+                    role=fallback_response["role"],
+                    content=fallback_response["content"],
+                    stop_reason=fallback_response["stop_reason"],
+                    usage=Usage(
+                        input_tokens=fallback_response["usage"]["input_tokens"],
+                        output_tokens=fallback_response["usage"]["output_tokens"],
+                    ),
                 )
-                azure_request["stream"] = False
+            else:
+                # Try Azure API with robust error handling
+                try:
+                    # Convert to Azure Responses format
+                    azure_request = convert_anthropic_to_azure_responses(request)
 
-            # Make direct Azure API call
-            azure_response = await make_azure_responses_api_call(azure_request)
+                    # Handle streaming mode for Azure (not implemented yet, fall back to non-streaming)
+                    if request.stream:
+                        logger.warning(
+                            "Azure Responses API streaming not yet implemented, falling back to non-streaming"
+                        )
+                        azure_request["stream"] = False
 
-            # Convert back to Anthropic format
-            anthropic_response = convert_azure_responses_to_anthropic(azure_response, request)
+                    # Make direct Azure API call with robust error handling
+                    azure_response = await make_azure_responses_api_call(azure_request)
+
+                    # Convert back to Anthropic format
+                    anthropic_response = convert_azure_responses_to_anthropic(
+                        azure_response, request
+                    )
+
+                except AzureAPIError as azure_error:
+                    logger.error(
+                        f"❌ Azure API failed: {azure_error.error_type} - {str(azure_error)}"
+                    )
+
+                    # Check if we should immediately enter fallback mode
+                    if isinstance(azure_error, (AzureAuthenticationError, AzureConfigurationError)):
+                        logger.warning("🔄 Critical Azure error - triggering immediate fallback")
+                        fallback_reason = azure_fallback_manager.get_fallback_reason()
+                        if not fallback_reason:
+                            fallback_reason = f"Critical Azure error: {azure_error.error_type}"
+
+                        # Create fallback response
+                        fallback_response = await create_fallback_response(
+                            body_json, fallback_reason
+                        )
+
+                        # Convert to MessagesResponse format
+                        anthropic_response = MessagesResponse(
+                            id=fallback_response["id"],
+                            model=fallback_response["model"],
+                            role=fallback_response["role"],
+                            content=fallback_response["content"],
+                            stop_reason=fallback_response["stop_reason"],
+                            usage=Usage(
+                                input_tokens=fallback_response["usage"]["input_tokens"],
+                                output_tokens=fallback_response["usage"]["output_tokens"],
+                            ),
+                        )
+                    else:
+                        # For other errors, return user-friendly error message
+                        user_friendly_msg = extract_user_friendly_message(azure_error)
+                        raise HTTPException(
+                            status_code=azure_error.status_code or 500, detail=user_friendly_msg
+                        )
 
             num_tools = len(request.tools) if request.tools else 0
             log_request_beautifully(
                 "POST",
                 raw_request.url.path,
                 display_model,
-                azure_request.get("model"),
-                len(azure_request["messages"]),
+                azure_request.get("model", "unknown") if azure_request else "unknown",
+                len(azure_request.get("messages", [])) if azure_request else 0,
                 num_tools,
                 200,
             )
@@ -2983,7 +3790,7 @@ async def count_tokens(request: TokenCountRequest, raw_request: Request):
         # Use LiteLLM's token_counter function
         try:
             # Import token_counter function
-            from litellm import token_counter
+            from litellm import token_counter  # type: ignore[import-unresolved]
 
             # Log the request beautifully
             num_tools = len(request.tools) if request.tools else 0
@@ -3076,3 +3883,97 @@ def log_request_beautifully(
     logger.warning(log_line)  # Use WARNING level to ensure visibility in console
     logger.warning(model_line)
     sys.stdout.flush()
+
+
+# Test endpoint for validating Azure error handling
+@app.get("/azure/test-error-handling")
+async def test_azure_error_handling():
+    """Test endpoint to validate Azure error handling mechanisms."""
+    test_results = {}
+
+    # Test 1: Error classification
+    test_results["error_classification"] = {}
+
+    # Test different error types
+    test_cases = [
+        (401, '{"error": {"message": "Unauthorized access"}}', "authentication"),
+        (403, '{"error": {"message": "Access denied"}}', "authentication"),
+        (429, '{"error": {"message": "Rate limit exceeded", "retry_after": 60}}', "rate_limit"),
+        (500, '{"error": {"message": "Internal server error"}}', "transient"),
+        (502, '{"error": {"message": "Bad gateway"}}', "transient"),
+        (400, '{"error": {"message": "Invalid deployment name"}}', "configuration"),
+        (404, '{"error": {"message": "Resource not found"}}', "configuration"),
+    ]
+
+    for status_code, error_text, expected_type in test_cases:
+        try:
+            azure_error = classify_azure_error(status_code, error_text)
+            test_results["error_classification"][f"status_{status_code}"] = {
+                "expected_type": expected_type,
+                "actual_type": azure_error.error_type,
+                "is_retryable": azure_error.is_retryable,
+                "user_message": extract_user_friendly_message(azure_error),
+                "passed": azure_error.error_type == expected_type,
+            }
+        except Exception as e:
+            test_results["error_classification"][f"status_{status_code}"] = {
+                "error": str(e),
+                "passed": False,
+            }
+
+    # Test 2: Fallback manager
+    test_results["fallback_manager"] = {
+        "initial_state": {
+            "fallback_mode": azure_fallback_manager.fallback_mode,
+            "consecutive_failures": azure_fallback_manager.consecutive_failures,
+            "failure_count": azure_fallback_manager.failure_count,
+        }
+    }
+
+    # Test simulated failures
+    try:
+        # Simulate authentication error
+        auth_error = AzureAuthenticationError("Test auth error", 401)
+        azure_fallback_manager.record_failure(auth_error)
+
+        test_results["fallback_manager"]["after_auth_error"] = {
+            "fallback_mode": azure_fallback_manager.fallback_mode,
+            "consecutive_failures": azure_fallback_manager.consecutive_failures,
+            "should_use_fallback": azure_fallback_manager.should_use_fallback(),
+        }
+
+        # Test recovery
+        azure_fallback_manager.record_success()
+
+        test_results["fallback_manager"]["after_success"] = {
+            "fallback_mode": azure_fallback_manager.fallback_mode,
+            "consecutive_failures": azure_fallback_manager.consecutive_failures,
+            "should_use_fallback": azure_fallback_manager.should_use_fallback(),
+        }
+
+    except Exception as e:
+        fallback_manager_result = test_results.get("fallback_manager", {})
+        if isinstance(fallback_manager_result, dict):
+            fallback_manager_result["error"] = str(e)
+            test_results["fallback_manager"] = fallback_manager_result
+        else:
+            test_results["fallback_manager"] = {"error": str(e)}
+
+    # Test 3: Error logging
+    test_results["error_logging"] = {
+        "error_history_count": len(azure_error_logger.error_history),
+        "error_patterns_count": len(azure_error_logger.error_patterns),
+        "should_alert": azure_error_logger.should_alert(),
+        "error_summary": azure_error_logger.get_error_summary(),
+    }
+
+    return {
+        "message": "Azure error handling validation completed",
+        "timestamp": asyncio.get_event_loop().time(),
+        "test_results": test_results,
+        "system_status": {
+            "fallback_active": azure_fallback_manager.fallback_mode,
+            "error_count": len(azure_error_logger.error_history),
+            "health_check_available": True,
+        },
+    }

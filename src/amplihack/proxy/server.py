@@ -606,7 +606,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                             )
                         elif block.type == "tool_result":
                             # Handle different formats of tool result content
-                            processed_content_block = {
+                            processed_content_block: Dict[str, Any] = {
                                 "type": "tool_result",
                                 "tool_use_id": block.tool_use_id
                                 if hasattr(block, "tool_use_id")
@@ -699,10 +699,17 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
     # Convert tool_choice to OpenAI format if present
     if anthropic_request.tool_choice:
-        if hasattr(anthropic_request.tool_choice, "dict"):
+        if isinstance(anthropic_request.tool_choice, dict):
+            tool_choice_dict = anthropic_request.tool_choice
+        elif hasattr(anthropic_request.tool_choice, "model_dump"):
+            tool_choice_dict = anthropic_request.tool_choice.model_dump()
+        elif hasattr(anthropic_request.tool_choice, "dict"):
             tool_choice_dict = anthropic_request.tool_choice.dict()
         else:
-            tool_choice_dict = anthropic_request.tool_choice
+            # Fallback to treating it as dict-like
+            tool_choice_dict = (
+                dict(anthropic_request.tool_choice) if anthropic_request.tool_choice else {}
+            )
 
         # Handle Anthropic's tool_choice format
         choice_type = tool_choice_dict.get("type")
@@ -742,12 +749,12 @@ def convert_litellm_to_anthropic(
         # Handle ModelResponse object from LiteLLM
         if hasattr(litellm_response, "choices") and hasattr(litellm_response, "usage"):
             # Extract data from ModelResponse object directly
-            choices = litellm_response.choices
+            choices = getattr(litellm_response, "choices", [])
             message = choices[0].message if choices and len(choices) > 0 else None
             content_text = message.content if message and hasattr(message, "content") else ""
             tool_calls = message.tool_calls if message and hasattr(message, "tool_calls") else None
             finish_reason = choices[0].finish_reason if choices and len(choices) > 0 else "stop"
-            usage_info = litellm_response.usage
+            usage_info = getattr(litellm_response, "usage", {})
             response_id = getattr(litellm_response, "id", f"msg_{uuid.uuid4()}")
         else:
             # For backward compatibility - handle dict responses
@@ -761,11 +768,7 @@ def convert_litellm_to_anthropic(
             except AttributeError:
                 # If .dict() fails, try to use model_dump or __dict__
                 try:
-                    response_dict = (
-                        litellm_response.model_dump()
-                        if hasattr(litellm_response, "model_dump")
-                        else litellm_response.__dict__
-                    )
+                    response_dict = getattr(litellm_response, "__dict__", {})
                 except AttributeError:
                     # Fallback - manually extract attributes
                     response_dict = {
@@ -969,6 +972,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
         output_tokens = 0
         has_sent_stop_reason = False
         last_tool_index = 0
+        anthropic_tool_index = 0  # Initialize to prevent unbound variable error
 
         # Process each chunk
         async for chunk in response_generator:
@@ -997,7 +1001,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of delta content
                     if hasattr(delta, "content"):
-                        delta_content = delta.content
+                        delta_content = getattr(delta, "content", None)
                     elif isinstance(delta, dict) and "content" in delta:
                         delta_content = delta["content"]
 
@@ -1015,7 +1019,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of tool calls
                     if hasattr(delta, "tool_calls"):
-                        delta_tool_calls = delta.tool_calls
+                        delta_tool_calls = getattr(delta, "tool_calls", None)
                     elif isinstance(delta, dict) and "tool_calls" in delta:
                         delta_tool_calls = delta["tool_calls"]
 
@@ -1051,7 +1055,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                             if isinstance(tool_call, dict) and "index" in tool_call:
                                 current_index = tool_call["index"]
                             elif hasattr(tool_call, "index"):
-                                current_index = tool_call.index
+                                current_index = getattr(tool_call, "index", 0)
                             else:
                                 current_index = 0
 

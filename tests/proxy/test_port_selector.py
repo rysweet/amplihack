@@ -89,7 +89,7 @@ class TestPortSelector:
         # Find an available port and occupy it
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupied_sock:
             occupied_sock.bind(("localhost", 0))
-            occupied_port = occupied_sock.getsockname()[1]
+            _ = occupied_sock.getsockname()[1]  # occupied_port not used yet
 
             # TODO: Implement fallback strategy
             # from amplihack.proxy.port_selector import PortSelector

@@ -61,7 +61,7 @@ class TestProxyManagerPortIntegration:
             config = ProxyConfig()
             config.config = {"PORT": str(preferred_port)}
 
-            proxy_manager = ProxyManager(config)
+            _ = ProxyManager(config)  # proxy_manager not used yet
 
             # TODO: Implement automatic port conflict resolution
             # with patch.object(proxy_manager, 'ensure_proxy_installed', return_value=True), \
@@ -100,7 +100,7 @@ class TestProxyManagerPortIntegration:
                 config = ProxyConfig()
                 config.config = {"PORT": str(preferred_port)}
 
-                proxy_manager = ProxyManager(config)
+                _ = ProxyManager(config)  # proxy_manager not used yet
 
                 # TODO: Implement environment variable updating with selected port
                 # with patch.object(proxy_manager, 'ensure_proxy_installed', return_value=True), \
@@ -193,7 +193,7 @@ class TestProxyManagerErrorIntegration:
             config = ProxyConfig()
             config.config = {"PORT": str(occupied_port)}
 
-            proxy_manager = ProxyManager(config)
+            _ = ProxyManager(config)  # proxy_manager not used yet
 
             # TODO: Implement user-friendly port conflict reporting
             # from io import StringIO
@@ -223,7 +223,7 @@ class TestProxyManagerErrorIntegration:
         FAILING TEST - Will pass once clear startup failure reporting is implemented.
         """
         config = ProxyConfig()
-        proxy_manager = ProxyManager(config)
+        _ = ProxyManager(config)  # proxy_manager not used yet
 
         # TODO: Implement clear startup failure reporting
         # from io import StringIO
@@ -251,7 +251,7 @@ class TestProxyManagerErrorIntegration:
         FAILING TEST - Will pass once graceful process error handling is implemented.
         """
         config = ProxyConfig()
-        proxy_manager = ProxyManager(config)
+        _ = ProxyManager(config)  # proxy_manager not used yet
 
         # TODO: Implement graceful process error handling
         # from io import StringIO
@@ -296,7 +296,7 @@ class TestLauncherIntegration:
             config.config = {"PORT": str(preferred_port)}
 
             proxy_manager = ProxyManager(config)
-            launcher = ClaudeLauncher(proxy_manager=proxy_manager)
+            _ = ClaudeLauncher(proxy_manager=proxy_manager)  # launcher not used yet
 
             # TODO: Implement launcher dynamic port integration
             # with patch.object(proxy_manager, 'ensure_proxy_installed', return_value=True), \
@@ -328,7 +328,7 @@ class TestLauncherIntegration:
         config.config = {"INVALID_CONFIG": "causes_error"}
 
         proxy_manager = ProxyManager(config)
-        launcher = ClaudeLauncher(proxy_manager=proxy_manager)
+        _ = ClaudeLauncher(proxy_manager=proxy_manager)  # launcher not used yet
 
         # TODO: Implement launcher error propagation
         # from io import StringIO
@@ -372,7 +372,7 @@ class TestEnvironmentIntegration:
                     "ANTHROPIC_API_KEY": "test-key",  # pragma: allowlist secret
                 }
 
-                proxy_manager = ProxyManager(config)
+                _ = ProxyManager(config)  # proxy_manager not used yet
 
                 # TODO: Implement environment variable integration
                 # with patch.object(proxy_manager, 'ensure_proxy_installed', return_value=True), \
@@ -410,7 +410,7 @@ class TestEnvironmentIntegration:
             config = ProxyConfig()
             config.config = {"ANTHROPIC_API_KEY": "test-key"}  # pragma: allowlist secret
 
-            proxy_manager = ProxyManager(config)
+            _ = ProxyManager(config)  # proxy_manager not used yet
 
             # TODO: Implement environment cleanup
             # with patch.object(proxy_manager, 'ensure_proxy_installed', return_value=True), \

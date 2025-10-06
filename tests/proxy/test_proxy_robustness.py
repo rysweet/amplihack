@@ -136,12 +136,12 @@ class TestPortSelectionLogic:
         FAILING TEST - Will pass once implementation exists.
         """
         # This test will fail until port selection logic is implemented
-        preferred_port = PortManager.find_available_port()
+        _preferred_port = PortManager.find_available_port()
 
         # TODO: Implement PortSelector class with find_available_port method
         # port_selector = PortSelector()
-        # selected_port = port_selector.find_available_port(preferred_port)
-        # assert selected_port == preferred_port
+        # selected_port = port_selector.find_available_port(_preferred_port)
+        # assert selected_port == _preferred_port
 
         # Failing assertion until implementation exists
         assert False, "PortSelector.find_available_port not implemented yet"
@@ -337,7 +337,7 @@ class TestProxyManagerIntegration:
             config = ProxyConfig()
             config.config = {"PORT": str(preferred_port)}
 
-            proxy_manager = ProxyManager(config)
+            _ = ProxyManager(config)  # proxy_manager not used yet
 
             # TODO: Implement port conflict handling in ProxyManager
             # This should automatically find an alternative port
@@ -360,7 +360,7 @@ class TestProxyManagerIntegration:
             config = ProxyConfig()
             config.config = {"PORT": str(preferred_port)}
 
-            proxy_manager = ProxyManager(config)
+            _ = ProxyManager(config)  # proxy_manager not used yet
 
             # TODO: Implement environment variable updating
             # proxy_manager.start_proxy()
@@ -383,7 +383,7 @@ class TestProxyManagerIntegration:
         # Intentionally invalid configuration to trigger process error
         config.config = {"INVALID_CONFIG": "invalid_value"}
 
-        proxy_manager = ProxyManager(config)
+        _ = ProxyManager(config)  # proxy_manager not used yet
 
         # TODO: Implement process error surfacing
         # success = proxy_manager.start_proxy()
@@ -402,7 +402,6 @@ class TestProxyManagerIntegration:
 
         FAILING TEST - Will pass once launcher integration is implemented.
         """
-        from amplihack.launcher.core import ClaudeLauncher
 
         preferred_port = PortManager.find_available_port()
 
@@ -410,8 +409,8 @@ class TestProxyManagerIntegration:
             config = ProxyConfig()
             config.config = {"PORT": str(preferred_port)}
 
-            proxy_manager = ProxyManager(config)
-            launcher = ClaudeLauncher(proxy_manager=proxy_manager)
+            _ = ProxyManager(config)  # proxy_manager not used yet
+            # launcher = ClaudeLauncher(proxy_manager=proxy_manager)  # launcher not used yet
 
             # TODO: Implement launcher integration with dynamic ports
             # launcher.prepare_launch()
@@ -436,7 +435,7 @@ class TestErrorFlowIntegration:
         config = ProxyConfig()
         config.config = {"PORT": "99999"}  # Invalid port
 
-        proxy_manager = ProxyManager(config)
+        _ = ProxyManager(config)  # proxy_manager not used yet
 
         # TODO: Implement error propagation system
         # with patch('sys.stderr') as mock_stderr:
@@ -465,7 +464,7 @@ class TestErrorFlowIntegration:
                 "ANTHROPIC_API_KEY": "test-key",  # pragma: allowlist secret
             }
 
-            proxy_manager = ProxyManager(config)
+            _ = ProxyManager(config)  # proxy_manager not used yet
 
             # TODO: Implement error context preservation
             # error_context = proxy_manager.start_proxy_with_context()
@@ -505,7 +504,7 @@ class TestEndToEndScenarios:
                 "ANTHROPIC_API_KEY": "test-key",  # pragma: allowlist secret
             }
 
-            proxy_manager = ProxyManager(config)
+            _ = ProxyManager(config)  # proxy_manager not used yet
 
             # TODO: Implement complete flow with conflicts
             # success = proxy_manager.start_proxy()
@@ -527,7 +526,6 @@ class TestEndToEndScenarios:
 
         FAILING TEST - Will pass once Claude integration is implemented.
         """
-        from amplihack.launcher.core import ClaudeLauncher
 
         preferred_port = PortManager.find_available_port()
 
@@ -535,8 +533,8 @@ class TestEndToEndScenarios:
             config = ProxyConfig()
             config.config = {"PORT": str(preferred_port)}
 
-            proxy_manager = ProxyManager(config)
-            launcher = ClaudeLauncher(proxy_manager=proxy_manager)
+            _ = ProxyManager(config)  # proxy_manager not used yet
+            # launcher = ClaudeLauncher(proxy_manager=proxy_manager)  # launcher not used yet
 
             # TODO: Implement Claude integration with dynamic ports
             # launcher.prepare_launch()
@@ -571,7 +569,7 @@ class TestEndToEndScenarios:
             config = ProxyConfig()
             config.config = {"PORT": str(preferred_port)}
 
-            proxy_manager = ProxyManager(config)
+            _ = ProxyManager(config)  # proxy_manager not used yet
 
             # TODO: Implement comprehensive user error experience
             # with patch('sys.stdout') as mock_stdout, patch('sys.stderr') as mock_stderr:
@@ -648,7 +646,7 @@ class TestEdgeCases:
         config = ProxyConfig()
         config.config = {"PORT": str(privileged_port)}
 
-        proxy_manager = ProxyManager(config)
+        _ = ProxyManager(config)  # proxy_manager not used yet
 
         # TODO: Implement permission denied handling
         # success = proxy_manager.start_proxy()
@@ -672,7 +670,7 @@ class TestEdgeCases:
             "BIND_ADDRESS": "192.168.999.999",  # Invalid IP address
         }
 
-        proxy_manager = ProxyManager(config)
+        _ = ProxyManager(config)  # proxy_manager not used yet
 
         # TODO: Implement network binding failure handling
         # success = proxy_manager.start_proxy()
