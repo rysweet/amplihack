@@ -15,6 +15,51 @@ from .env import ProxyEnvironment
 from .responses_api_proxy import ResponsesAPIProxy, create_responses_api_proxy
 
 
+def find_available_port(preferred_port: int, max_attempts: int = 50) -> int:
+    """Find an available port starting from preferred_port.
+
+    Args:
+        preferred_port: The preferred port to try first
+        max_attempts: Maximum number of ports to try
+
+    Returns:
+        An available port number
+
+    Raises:
+        RuntimeError: If no available port is found within max_attempts
+    """
+    for port_offset in range(max_attempts):
+        port = preferred_port + port_offset
+        try:
+            # Try to bind to the port to check availability
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", port))
+                return port  # Port is available
+        except OSError:
+            continue  # Port is in use, try the next one
+
+    raise RuntimeError(
+        f"No available port found starting from {preferred_port} (tried {max_attempts} ports)"
+    )
+
+
+def is_port_available(port: int) -> bool:
+    """Check if a specific port is available.
+
+    Args:
+        port: Port number to check
+
+    Returns:
+        True if port is available, False otherwise
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", port))
+            return True
+    except OSError:
+        return False
+
+
 class ProxyManager:
     """Manages claude-code-proxy lifecycle."""
 
@@ -39,21 +84,33 @@ class ProxyManager:
         self._api_version_cache = {}
 
     def get_configured_port(self) -> int:
-        """Get the configured port from proxy config, with fallback to default.
+        """Get the configured port from proxy config with dynamic port selection.
 
         Returns:
-            Port number to use for the proxy.
+            Available port number to use for the proxy.
         """
+        preferred_port = 8082  # Default port
+
+        # Check if port is configured
         if self.proxy_config:
             port_str = self.proxy_config.get("PORT")
             if port_str:
                 try:
-                    return int(port_str)
+                    preferred_port = int(port_str)
                 except (ValueError, TypeError):
                     print(f"Invalid PORT value '{port_str}', using default 8082")
+                    preferred_port = 8082
 
-        # Default port if not configured or invalid
-        return 8082
+        # Try to find an available port starting from preferred port
+        try:
+            available_port = find_available_port(preferred_port)
+            if available_port != preferred_port:
+                print(f"Port {preferred_port} is in use, using port {available_port} instead")
+            return available_port
+        except RuntimeError as e:
+            print(f"Error finding available port: {e}")
+            # As a last resort, try to return the preferred port anyway
+            return preferred_port
 
     def is_responses_api(self) -> bool:
         """Check if the configured endpoint uses Azure Responses API.
@@ -466,11 +523,12 @@ class ProxyManager:
             True if proxy is running, False otherwise.
         """
         # Check if integrated proxy (thread-based) is running
-        if hasattr(self, 'server_thread') and self.server_thread is not None:
+        if hasattr(self, "server_thread") and self.server_thread is not None:
             if self.server_thread.is_alive():
                 # Double-check with health check
                 try:
                     import requests
+
                     response = requests.get(f"http://127.0.0.1:{self.proxy_port}/health", timeout=2)
                     return response.status_code == 200
                 except Exception:

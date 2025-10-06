@@ -33,6 +33,13 @@ logging.getLogger("uvicorn").setLevel(logging.WARNING)
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
 
+# Suppress LiteLLM internal logging that appears in UI
+logging.getLogger("litellm").setLevel(logging.ERROR)
+logging.getLogger("litellm.router").setLevel(logging.ERROR)
+logging.getLogger("litellm.utils").setLevel(logging.ERROR)
+logging.getLogger("litellm.cost_calculator").setLevel(logging.ERROR)
+logging.getLogger("litellm.completion").setLevel(logging.ERROR)
+
 
 # Create a filter to block any log messages containing specific strings
 class MessageFilter(logging.Filter):
@@ -1789,12 +1796,52 @@ def log_request_beautifully(
     sys.stdout.flush()
 
 
+def find_available_port(preferred_port: int, max_attempts: int = 50) -> int:
+    """Find an available port starting from preferred_port.
+
+    Args:
+        preferred_port: The preferred port to try first
+        max_attempts: Maximum number of ports to try
+
+    Returns:
+        An available port number
+
+    Raises:
+        RuntimeError: If no available port is found within max_attempts
+    """
+    import socket
+
+    for port_offset in range(max_attempts):
+        port = preferred_port + port_offset
+        try:
+            # Try to bind to the port to check availability
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", port))
+                return port  # Port is available
+        except OSError:
+            continue  # Port is in use, try the next one
+
+    raise RuntimeError(
+        f"No available port found starting from {preferred_port} (tried {max_attempts} ports)"
+    )
+
+
 def run_server(host: str = "127.0.0.1", port: int = 8082):
-    """Run the built-in proxy server."""
+    """Run the built-in proxy server with dynamic port selection."""
     try:
         import uvicorn  # type: ignore
 
-        uvicorn.run(app, host=host, port=port)
+        # Try to find an available port
+        try:
+            available_port = find_available_port(port)
+            if available_port != port:
+                print(f"Port {port} is in use, using port {available_port} instead")
+
+            uvicorn.run(app, host=host, port=available_port)
+        except RuntimeError as e:
+            print(f"Error finding available port: {e}")
+            print(f"Attempting to start on original port {port}")
+            uvicorn.run(app, host=host, port=port)
     except ImportError:
         logger.error("uvicorn not available - cannot run built-in server")
         raise

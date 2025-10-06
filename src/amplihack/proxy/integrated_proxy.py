@@ -13,10 +13,10 @@ from typing import Any, Dict, List, Literal, Optional, Union
 import aiohttp
 import certifi
 import litellm
-from litellm import Router
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from litellm import Router
 from pydantic import BaseModel, field_validator
 
 # Load environment variables from .env file
@@ -30,44 +30,57 @@ if os.path.exists(".azure.env"):
 USE_LITELLM_ROUTER = os.environ.get("AMPLIHACK_USE_LITELLM", "true").lower() == "true"
 
 # Phase 2: Tool Configuration Environment Variables
-ENFORCE_ONE_TOOL_CALL_PER_RESPONSE = os.environ.get("AMPLIHACK_TOOL_ONE_PER_RESPONSE", "true").lower() == "true"
+ENFORCE_ONE_TOOL_CALL_PER_RESPONSE = (
+    os.environ.get("AMPLIHACK_TOOL_ONE_PER_RESPONSE", "true").lower() == "true"
+)
 TOOL_CALL_RETRY_ATTEMPTS = int(os.environ.get("AMPLIHACK_TOOL_RETRY_ATTEMPTS", "3"))
 TOOL_CALL_TIMEOUT = int(os.environ.get("AMPLIHACK_TOOL_TIMEOUT", "30"))  # seconds
 ENABLE_TOOL_FALLBACK = os.environ.get("AMPLIHACK_TOOL_FALLBACK", "true").lower() == "true"
 TOOL_STREAM_BUFFER_SIZE = int(os.environ.get("AMPLIHACK_TOOL_STREAM_BUFFER", "1024"))
 ENABLE_REASONING_EFFORT = os.environ.get("AMPLIHACK_REASONING_EFFORT", "false").lower() == "true"
 
+
 # Phase 2: Tool-Specific Exception Types
 class ToolCallError(Exception):
     """Base exception for tool call errors"""
+
     def __init__(self, message: str, tool_name: str = None, retry_count: int = 0):
         super().__init__(message)
         self.tool_name = tool_name
         self.retry_count = retry_count
 
+
 class ToolValidationError(ToolCallError):
     """Exception for tool schema validation errors"""
+
     def __init__(self, message: str, tool_name: str = None, schema_errors: List[str] = None):
         super().__init__(message, tool_name)
         self.schema_errors = schema_errors or []
 
+
 class ToolTimeoutError(ToolCallError):
     """Exception for tool call timeouts"""
+
     def __init__(self, message: str, tool_name: str = None, timeout_seconds: int = None):
         super().__init__(message, tool_name)
         self.timeout_seconds = timeout_seconds
 
+
 class ToolStreamingError(ToolCallError):
     """Exception for tool streaming errors"""
+
     def __init__(self, message: str, tool_name: str = None, chunk_data: Dict[str, Any] = None):
         super().__init__(message, tool_name)
         self.chunk_data = chunk_data or {}
 
+
 class ConversationStateError(Exception):
     """Exception for conversation state management errors"""
+
     def __init__(self, message: str, state: str = None):
         super().__init__(message)
         self.state = state
+
 
 # Configure logging with file output and rotation
 def setup_logging():
@@ -87,21 +100,17 @@ def setup_logging():
     file_handler = logging.handlers.RotatingFileHandler(
         logs_dir / "proxy.log",
         maxBytes=10 * 1024 * 1024,  # 10MB
-        backupCount=5
+        backupCount=5,
     )
     file_handler.setLevel(logging.DEBUG)
-    file_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
     # Console handler (WARN level and above only)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.WARN)
-    console_formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(message)s"
-    )
+    console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
@@ -110,7 +119,15 @@ def setup_logging():
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
 
+    # Suppress LiteLLM internal logging that appears in UI
+    logging.getLogger("litellm").setLevel(logging.ERROR)
+    logging.getLogger("litellm.router").setLevel(logging.ERROR)
+    logging.getLogger("litellm.utils").setLevel(logging.ERROR)
+    logging.getLogger("litellm.cost_calculator").setLevel(logging.ERROR)
+    logging.getLogger("litellm.completion").setLevel(logging.ERROR)
+
     return logger
+
 
 # Set up logging
 logger = setup_logging()
@@ -138,6 +155,7 @@ class MessageFilter(logging.Filter):
 # Apply the filter to the main logger to catch all messages
 logger.addFilter(MessageFilter())
 
+
 # Custom formatter for model mapping logs (only for console)
 class ColorizedFormatter(logging.Formatter):
     """Custom formatter to highlight model mappings in console output"""
@@ -150,14 +168,17 @@ class ColorizedFormatter(logging.Formatter):
     BOLD = "\033[1m"
 
     def format(self, record):
-        if record.levelno == logging.DEBUG and "MODEL MAPPING" in getattr(record, 'msg', ''):
+        if record.levelno == logging.DEBUG and "MODEL MAPPING" in getattr(record, "msg", ""):
             # Apply colors and formatting to model mapping logs
             return f"{self.BOLD}{self.GREEN}{record.msg}{self.RESET}"
         return super().format(record)
 
+
 # Apply custom formatter only to console handler
 for handler in logger.handlers:
-    if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.handlers.RotatingFileHandler):
+    if isinstance(handler, logging.StreamHandler) and not isinstance(
+        handler, logging.handlers.RotatingFileHandler
+    ):
         handler.setFormatter(ColorizedFormatter("%(asctime)s - %(levelname)s - %(message)s"))
 
 
@@ -186,7 +207,8 @@ def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Ro
     # Parse Azure endpoint URL
     # Format: https://ai-adapt-oai-eastus2.cognitiveservices.azure.com/openai/responses?api-version=2025-04-01-preview
     try:
-        from urllib.parse import urlparse, parse_qs
+        from urllib.parse import parse_qs, urlparse
+
         parsed_url = urlparse(OPENAI_BASE_URL)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         api_version = parse_qs(parsed_url.query).get("api-version", ["2025-04-01-preview"])[0]
@@ -194,7 +216,11 @@ def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Ro
         logger.info(f"Parsed Azure base URL: {base_url}, API version: {api_version}")
     except Exception as e:
         logger.warning(f"Failed to parse Azure URL {OPENAI_BASE_URL}: {e}")
-        base_url = OPENAI_BASE_URL.split("/openai/")[0] if "/openai/" in OPENAI_BASE_URL else OPENAI_BASE_URL
+        base_url = (
+            OPENAI_BASE_URL.split("/openai/")[0]
+            if "/openai/" in OPENAI_BASE_URL
+            else OPENAI_BASE_URL
+        )
         api_version = "2025-04-01-preview"
 
     # Configure model list for LiteLLM router
@@ -207,7 +233,7 @@ def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Ro
                 "api_base": base_url,
                 "api_version": api_version,
                 "drop_params": True,  # Handle parameter differences
-            }
+            },
         },
         {
             "model_name": "claude-haiku",
@@ -217,8 +243,8 @@ def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Ro
                 "api_base": base_url,
                 "api_version": api_version,
                 "drop_params": True,
-            }
-        }
+            },
+        },
     ]
 
     try:
@@ -228,6 +254,7 @@ def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Ro
     except Exception as e:
         logger.error(f"Failed to initialize LiteLLM router: {e}")
         return None
+
 
 def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
     """Create FastAPI app with configuration."""
@@ -272,7 +299,9 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         else:
             # Default to big model for unrecognized patterns
             azure_model = BIG_MODEL
-            logger.debug(f"📋 MODEL MAPPING: Unknown model pattern, using BIG_MODEL -> {azure_model}")
+            logger.debug(
+                f"📋 MODEL MAPPING: Unknown model pattern, using BIG_MODEL -> {azure_model}"
+            )
             return azure_model
 
     def should_use_responses_api_for_azure_model(azure_model: str) -> bool:
@@ -284,22 +313,26 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         # gpt-4*, gpt-5-chat use Chat API
         # o3*, o4*, gpt-5-code*, gpt-5 (without -chat) use Responses API
         responses_api_patterns = [
-            "o3",           # o3 models
-            "o4",           # o4 models
-            "gpt-5-code",   # gpt-5-code models (like gpt-5-codex)
+            "o3",  # o3 models
+            "o4",  # o4 models
+            "gpt-5-code",  # gpt-5-code models (like gpt-5-codex)
         ]
 
         # Special case: gpt-5 without -chat suffix uses Responses API
         if azure_model == "gpt-5":
             is_responses = True
-            logger.debug(f"API Routing: Azure model '{azure_model}' is gpt-5 (without -chat) -> Responses API: {is_responses}")
+            logger.debug(
+                f"API Routing: Azure model '{azure_model}' is gpt-5 (without -chat) -> Responses API: {is_responses}"
+            )
             return is_responses
 
         # Check if model starts with any Responses API pattern
         for pattern in responses_api_patterns:
             if azure_model.startswith(pattern):
                 is_responses = True
-                logger.debug(f"API Routing: Azure model '{azure_model}' matches pattern '{pattern}' -> Responses API: {is_responses}")
+                logger.debug(
+                    f"API Routing: Azure model '{azure_model}' matches pattern '{pattern}' -> Responses API: {is_responses}"
+                )
                 return is_responses
 
         # Chat API patterns: gpt-4*, gpt-5-chat*
@@ -307,12 +340,16 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         for pattern in chat_api_patterns:
             if azure_model.startswith(pattern):
                 is_responses = False
-                logger.debug(f"API Routing: Azure model '{azure_model}' matches pattern '{pattern}' -> Chat API: {not is_responses}")
+                logger.debug(
+                    f"API Routing: Azure model '{azure_model}' matches pattern '{pattern}' -> Chat API: {not is_responses}"
+                )
                 return is_responses
 
         # Default fallback - assume Chat API for unknown patterns
         is_responses = False
-        logger.debug(f"API Routing: Azure model '{azure_model}' unknown pattern -> Chat API (default): {not is_responses}")
+        logger.debug(
+            f"API Routing: Azure model '{azure_model}' unknown pattern -> Chat API (default): {not is_responses}"
+        )
         return is_responses
 
     async def make_azure_api_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -327,8 +364,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         timeout = aiohttp.ClientTimeout(total=120)
 
         async with aiohttp.ClientSession(
-            timeout=timeout,
-            connector=aiohttp.TCPConnector(ssl=ssl_context)
+            timeout=timeout, connector=aiohttp.TCPConnector(ssl=ssl_context)
         ) as session:
             async with session.post(
                 OPENAI_BASE_URL, json=request_data, headers=headers
@@ -500,7 +536,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
             "messages": [],
             "max_tokens": request.get("max_tokens", 4096),
             "temperature": request.get("temperature", 1.0),
-            "stream": request.get("stream", False)
+            "stream": request.get("stream", False),
         }
 
         # Add system message if present
@@ -514,7 +550,9 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                     if isinstance(block, dict) and block.get("type") == "text":
                         system_text += block.get("text", "") + "\n\n"
                 if system_text:
-                    litellm_request["messages"].append({"role": "system", "content": system_text.strip()})
+                    litellm_request["messages"].append(
+                        {"role": "system", "content": system_text.strip()}
+                    )
 
         # Convert messages
         for msg in request.get("messages", []):
@@ -541,7 +579,9 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                             text_content += f"Tool: {block.get('name', 'unknown')} with input: {block.get('input', {})}\n"
 
                 if text_content.strip():
-                    litellm_request["messages"].append({"role": msg.get("role"), "content": text_content.strip()})
+                    litellm_request["messages"].append(
+                        {"role": msg.get("role"), "content": text_content.strip()}
+                    )
                 else:
                     litellm_request["messages"].append({"role": msg.get("role"), "content": "..."})
 
@@ -554,8 +594,8 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                     "function": {
                         "name": tool["name"],
                         "description": tool.get("description", ""),
-                        "parameters": tool.get("input_schema", {})
-                    }
+                        "parameters": tool.get("input_schema", {}),
+                    },
                 }
                 openai_tools.append(openai_tool)
             litellm_request["tools"] = openai_tools
@@ -568,7 +608,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                 elif choice_type == "tool" and "name" in request["tool_choice"]:
                     litellm_request["tool_choice"] = {
                         "type": "function",
-                        "function": {"name": request["tool_choice"]["name"]}
+                        "function": {"name": request["tool_choice"]["name"]},
                     }
 
         # Make the request using LiteLLM router
@@ -579,28 +619,42 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                 litellm_request["stream"] = False  # Disable for now
 
             # Use LiteLLM router but handle Azure Responses API specifics
-            logger.debug(f"LiteLLM request: model={litellm_request.get('model')}, tools={len(litellm_request.get('tools', []))}")
+            logger.debug(
+                f"LiteLLM request: model={litellm_request.get('model')}, tools={len(litellm_request.get('tools', []))}"
+            )
 
             try:
                 response = await litellm_router.acompletion(**litellm_request)
             except Exception as router_error:
-                logger.warning(f"Router failed, trying direct litellm: {router_error}")
-                # Fallback to direct litellm call - but this won't work for Azure Responses API
-                # So let's raise the error instead
+                logger.debug(
+                    f"Router failed (expected), falling back to legacy handling: {type(router_error).__name__}"
+                )
+                # This is expected behavior - router fails for Azure Responses API
+                # Fall back to legacy handling silently
                 raise router_error
 
             # Convert response to Anthropic format
-            choices = response.choices if hasattr(response, 'choices') else []
+            choices = response.choices if hasattr(response, "choices") else []
             if not choices:
                 raise ValueError("No choices in LiteLLM response")
 
             choice = choices[0]
-            message = choice.message if hasattr(choice, 'message') else choice.get('message', {})
-            content_text = message.content if hasattr(message, 'content') else message.get('content', '')
-            finish_reason = choice.finish_reason if hasattr(choice, 'finish_reason') else choice.get('finish_reason', 'stop')
+            message = choice.message if hasattr(choice, "message") else choice.get("message", {})
+            content_text = (
+                message.content if hasattr(message, "content") else message.get("content", "")
+            )
+            finish_reason = (
+                choice.finish_reason
+                if hasattr(choice, "finish_reason")
+                else choice.get("finish_reason", "stop")
+            )
 
             # Handle tool calls
-            tool_calls = message.tool_calls if hasattr(message, 'tool_calls') else message.get('tool_calls', [])
+            tool_calls = (
+                message.tool_calls
+                if hasattr(message, "tool_calls")
+                else message.get("tool_calls", [])
+            )
             content_blocks = []
 
             # Always add text content, even if empty (Anthropic format requirement)
@@ -611,9 +665,17 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
 
             if tool_calls:
                 for tool_call in tool_calls:
-                    function = tool_call.function if hasattr(tool_call, 'function') else tool_call.get('function', {})
-                    name = function.name if hasattr(function, 'name') else function.get('name', '')
-                    arguments = function.arguments if hasattr(function, 'arguments') else function.get('arguments', '{}')
+                    function = (
+                        tool_call.function
+                        if hasattr(tool_call, "function")
+                        else tool_call.get("function", {})
+                    )
+                    name = function.name if hasattr(function, "name") else function.get("name", "")
+                    arguments = (
+                        function.arguments
+                        if hasattr(function, "arguments")
+                        else function.get("arguments", "{}")
+                    )
 
                     # Parse arguments if they're a string
                     if isinstance(arguments, str):
@@ -622,17 +684,29 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                         except json.JSONDecodeError:
                             arguments = {"raw": arguments}
 
-                    content_blocks.append({
-                        "type": "tool_use",
-                        "id": tool_call.id if hasattr(tool_call, 'id') else tool_call.get('id', f"tool_{uuid.uuid4()}"),
-                        "name": name,
-                        "input": arguments
-                    })
+                    content_blocks.append(
+                        {
+                            "type": "tool_use",
+                            "id": tool_call.id
+                            if hasattr(tool_call, "id")
+                            else tool_call.get("id", f"tool_{uuid.uuid4()}"),
+                            "name": name,
+                            "input": arguments,
+                        }
+                    )
 
             # Extract usage information
-            usage_info = response.usage if hasattr(response, 'usage') else {}
-            input_tokens = usage_info.prompt_tokens if hasattr(usage_info, 'prompt_tokens') else getattr(usage_info, 'prompt_tokens', 0)
-            output_tokens = usage_info.completion_tokens if hasattr(usage_info, 'completion_tokens') else getattr(usage_info, 'completion_tokens', 0)
+            usage_info = response.usage if hasattr(response, "usage") else {}
+            input_tokens = (
+                usage_info.prompt_tokens
+                if hasattr(usage_info, "prompt_tokens")
+                else getattr(usage_info, "prompt_tokens", 0)
+            )
+            output_tokens = (
+                usage_info.completion_tokens
+                if hasattr(usage_info, "completion_tokens")
+                else getattr(usage_info, "completion_tokens", 0)
+            )
 
             # Map finish reason to Anthropic format
             stop_reason = "end_turn"
@@ -646,16 +720,16 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                 content_blocks = [{"type": "text", "text": ""}]
 
             return {
-                "id": response.id if hasattr(response, 'id') else f"msg_{uuid.uuid4()}",
+                "id": response.id if hasattr(response, "id") else f"msg_{uuid.uuid4()}",
                 "model": claude_model,  # Return original Claude model name
                 "role": "assistant",
                 "content": content_blocks,
                 "stop_reason": stop_reason,
-                "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens}
+                "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
             }
 
         except Exception as e:
-            logger.error(f"LiteLLM router request failed: {e}")
+            logger.debug(f"LiteLLM router request failed (expected): {type(e).__name__}")
             raise
 
     # Add message handling with proper model mapping and Azure API integration
@@ -672,7 +746,9 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                 try:
                     return await handle_message_with_litellm_router(request)
                 except Exception as e:
-                    logger.warning(f"LiteLLM router failed, falling back to legacy: {e}")
+                    logger.debug(
+                        f"LiteLLM router failed (expected), falling back to legacy: {type(e).__name__}"
+                    )
                     # Fall through to legacy handling
 
             # Legacy handling - Step 1: Map Claude model to Azure deployment
@@ -702,7 +778,13 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
                 # This handles the common case where users ask about agents/commands
                 if any(
                     keyword in user_content
-                    for keyword in ["agents", "commands", "available", "what do you have", "tell me what"]
+                    for keyword in [
+                        "agents",
+                        "commands",
+                        "available",
+                        "what do you have",
+                        "tell me what",
+                    ]
                 ):
                     logger.info("Detected agent/command query - providing comprehensive response")
 
@@ -916,6 +998,7 @@ class ThinkingConfig(BaseModel):
 
 class ConversationState(BaseModel):
     """Phase 2: Manages conversation state for tool call analysis"""
+
     phase: Literal["normal", "tool_call_pending", "tool_result_pending", "tool_complete"] = "normal"
     pending_tool_calls: List[Dict[str, Any]] = []
     completed_tool_calls: List[Dict[str, Any]] = []
@@ -1218,18 +1301,21 @@ def analyze_conversation_for_tools(messages: List[Message]) -> ConversationState
                 # Check for tool calls in assistant messages
                 if isinstance(message.content, list):
                     for content_block in message.content:
-                        if isinstance(content_block, dict) and content_block.get("type") == "tool_use":
+                        if (
+                            isinstance(content_block, dict)
+                            and content_block.get("type") == "tool_use"
+                        ):
                             tool_call = {
                                 "id": content_block.get("id"),
                                 "name": content_block.get("name"),
-                                "input": content_block.get("input", {})
+                                "input": content_block.get("input", {}),
                             }
                             state.add_tool_call(tool_call)
                         elif hasattr(content_block, "type") and content_block.type == "tool_use":
                             tool_call = {
                                 "id": getattr(content_block, "id", None),
                                 "name": getattr(content_block, "name", None),
-                                "input": getattr(content_block, "input", {})
+                                "input": getattr(content_block, "input", {}),
                             }
                             state.add_tool_call(tool_call)
 
@@ -1237,7 +1323,10 @@ def analyze_conversation_for_tools(messages: List[Message]) -> ConversationState
                 # Check for tool results in user messages
                 if isinstance(message.content, list):
                     for content_block in message.content:
-                        if isinstance(content_block, dict) and content_block.get("type") == "tool_result":
+                        if (
+                            isinstance(content_block, dict)
+                            and content_block.get("type") == "tool_result"
+                        ):
                             tool_call_id = content_block.get("tool_use_id")
                             result = content_block.get("content", {})
                             if tool_call_id:
@@ -1256,7 +1345,9 @@ def analyze_conversation_for_tools(messages: List[Message]) -> ConversationState
         else:
             state.phase = "normal"
 
-        logger.debug(f"🔍 Conversation analysis: {state.phase}, {len(state.pending_tool_calls)} pending, {len(state.completed_tool_calls)} completed")
+        logger.debug(
+            f"🔍 Conversation analysis: {state.phase}, {len(state.pending_tool_calls)} pending, {len(state.completed_tool_calls)} completed"
+        )
         return state
 
     except Exception as e:
@@ -1886,15 +1977,19 @@ async def retry_tool_call(func, max_attempts: int = None, tool_name: str = None)
 
     for attempt in range(max_attempts):
         try:
-            logger.debug(f"🔄 Attempting tool call (attempt {attempt + 1}/{max_attempts}): {tool_name}")
+            logger.debug(
+                f"🔄 Attempting tool call (attempt {attempt + 1}/{max_attempts}): {tool_name}"
+            )
             return await func()
 
         except (aiohttp.ClientTimeout, aiohttp.ClientError) as e:
             last_exception = e
             if attempt < max_attempts - 1:
                 # Exponential backoff: 1s, 2s, 4s, etc.
-                wait_time = 2 ** attempt
-                logger.warning(f"⏳ Tool call failed, retrying in {wait_time}s (attempt {attempt + 1}/{max_attempts}): {e}")
+                wait_time = 2**attempt
+                logger.warning(
+                    f"⏳ Tool call failed, retrying in {wait_time}s (attempt {attempt + 1}/{max_attempts}): {e}"
+                )
                 await asyncio.sleep(wait_time)
             else:
                 logger.error(f"❌ Tool call failed after {max_attempts} attempts: {e}")
@@ -1907,8 +2002,10 @@ async def retry_tool_call(func, max_attempts: int = None, tool_name: str = None)
         except Exception as e:
             last_exception = e
             if attempt < max_attempts - 1:
-                wait_time = 2 ** attempt
-                logger.warning(f"⏳ Unexpected tool call error, retrying in {wait_time}s (attempt {attempt + 1}/{max_attempts}): {e}")
+                wait_time = 2**attempt
+                logger.warning(
+                    f"⏳ Unexpected tool call error, retrying in {wait_time}s (attempt {attempt + 1}/{max_attempts}): {e}"
+                )
                 await asyncio.sleep(wait_time)
             else:
                 logger.error(f"❌ Tool call failed after {max_attempts} attempts: {e}")
@@ -1916,7 +2013,7 @@ async def retry_tool_call(func, max_attempts: int = None, tool_name: str = None)
     raise ToolCallError(
         f"Tool call failed after {max_attempts} attempts: {last_exception}",
         tool_name=tool_name,
-        retry_count=max_attempts
+        retry_count=max_attempts,
     )
 
 
@@ -1954,7 +2051,9 @@ def validate_tool_schema(tool: Dict[str, Any]) -> List[str]:
     return errors
 
 
-async def handle_tool_call_with_fallback(litellm_request: Dict[str, Any], original_request: MessagesRequest):
+async def handle_tool_call_with_fallback(
+    litellm_request: Dict[str, Any], original_request: MessagesRequest
+):
     """
     Phase 2: Handle tool calls with fallback strategies.
 
@@ -2013,7 +2112,9 @@ async def handle_tool_call_with_fallback(litellm_request: Dict[str, Any], origin
         return await retry_tool_call(make_fallback_request, tool_name="fallback_completion")
 
 
-async def stream_with_tools(response_generator, original_request: MessagesRequest, conversation_state: ConversationState):
+async def stream_with_tools(
+    response_generator, original_request: MessagesRequest, conversation_state: ConversationState
+):
     """
     Phase 2: Handle streaming responses with tool call support.
 
@@ -2032,20 +2133,21 @@ async def stream_with_tools(response_generator, original_request: MessagesReques
         message_id = f"msg_{uuid.uuid4().hex[:24]}"
         current_text = ""
         current_tool_calls = []
-        buffer = ""
 
-        logger.debug(f"🔧 Starting tool-aware streaming for conversation phase: {conversation_state.phase}")
+        logger.debug(
+            f"🔧 Starting tool-aware streaming for conversation phase: {conversation_state.phase}"
+        )
 
         # Send message_start event
         yield f"event: message_start\ndata: {json.dumps({'type': 'message_start', 'message': {'id': message_id, 'type': 'message', 'role': 'assistant', 'model': original_request.model, 'content': [], 'stop_reason': None, 'stop_sequence': None, 'usage': {'input_tokens': 0, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': 0, 'output_tokens': 0}}})}\n\n"
 
         async for chunk in response_generator:
             try:
-                if hasattr(chunk, 'choices') and len(chunk.choices) > 0:
+                if hasattr(chunk, "choices") and len(chunk.choices) > 0:
                     delta = chunk.choices[0].delta
 
                     # Handle text content
-                    if hasattr(delta, 'content') and delta.content:
+                    if hasattr(delta, "content") and delta.content:
                         if not conversation_state.has_streaming_tools:
                             # Regular text streaming
                             yield f"event: content_block_start\ndata: {json.dumps({'type': 'content_block_start', 'index': 0, 'content_block': {'type': 'text', 'text': ''}})}\n\n"
@@ -2055,14 +2157,16 @@ async def stream_with_tools(response_generator, original_request: MessagesReques
                         yield f"event: content_block_delta\ndata: {json.dumps({'type': 'content_block_delta', 'index': 0, 'delta': {'type': 'text_delta', 'text': delta.content}})}\n\n"
 
                     # Handle tool calls
-                    if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                    if hasattr(delta, "tool_calls") and delta.tool_calls:
                         for tool_call in delta.tool_calls:
-                            tool_call_id = getattr(tool_call, 'id', f"toolu_{uuid.uuid4().hex[:24]}")
+                            tool_call_id = getattr(
+                                tool_call, "id", f"toolu_{uuid.uuid4().hex[:24]}"
+                            )
 
-                            if hasattr(tool_call, 'function'):
+                            if hasattr(tool_call, "function"):
                                 function = tool_call.function
-                                tool_name = getattr(function, 'name', 'unknown_tool')
-                                arguments = getattr(function, 'arguments', '{}')
+                                tool_name = getattr(function, "name", "unknown_tool")
+                                arguments = getattr(function, "arguments", "{}")
 
                                 try:
                                     # Parse arguments if they're a string
@@ -2079,7 +2183,7 @@ async def stream_with_tools(response_generator, original_request: MessagesReques
                                     "type": "tool_use",
                                     "id": tool_call_id,
                                     "name": tool_name,
-                                    "input": tool_input
+                                    "input": tool_input,
                                 }
 
                                 # Send tool use events
@@ -2089,14 +2193,26 @@ async def stream_with_tools(response_generator, original_request: MessagesReques
                                 current_tool_calls.append(tool_use_block)
                                 conversation_state.add_tool_call(tool_use_block)
 
-                                if ENFORCE_ONE_TOOL_CALL_PER_RESPONSE and len(current_tool_calls) >= 1:
+                                if (
+                                    ENFORCE_ONE_TOOL_CALL_PER_RESPONSE
+                                    and len(current_tool_calls) >= 1
+                                ):
                                     logger.debug("🚫 Enforcing single tool call limit")
                                     break
 
                     # Handle finish_reason
-                    if hasattr(chunk.choices[0], 'finish_reason') and chunk.choices[0].finish_reason:
+                    if (
+                        hasattr(chunk.choices[0], "finish_reason")
+                        and chunk.choices[0].finish_reason
+                    ):
                         finish_reason = chunk.choices[0].finish_reason
-                        stop_reason = "end_turn" if finish_reason in ["stop", "length"] else "tool_use" if current_tool_calls else "end_turn"
+                        stop_reason = (
+                            "end_turn"
+                            if finish_reason in ["stop", "length"]
+                            else "tool_use"
+                            if current_tool_calls
+                            else "end_turn"
+                        )
 
                         # End content blocks
                         if current_text or current_tool_calls:
@@ -2677,10 +2793,12 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             # Use Phase 2 tool-aware streaming if tools are present
             if num_tools > 0 or conversation_state.phase != "normal":
                 try:
-                    response_generator = await handle_tool_call_with_fallback(litellm_request, request)
+                    response_generator = await handle_tool_call_with_fallback(
+                        litellm_request, request
+                    )
                     return StreamingResponse(
                         stream_with_tools(response_generator, request, conversation_state),
-                        media_type="text/event-stream"
+                        media_type="text/event-stream",
                     )
                 except Exception as e:
                     logger.error(f"❌ Tool-aware streaming failed: {e}")
@@ -2688,7 +2806,8 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                         logger.info("🔄 Falling back to regular streaming")
                         response_generator = await litellm.acompletion(**litellm_request)
                         return StreamingResponse(
-                            handle_streaming(response_generator, request), media_type="text/event-stream"
+                            handle_streaming(response_generator, request),
+                            media_type="text/event-stream",
                         )
                     else:
                         raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}")
@@ -2714,7 +2833,9 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             # Use Phase 2 tool-aware completion if tools are present
             if num_tools > 0 or conversation_state.phase != "normal":
                 try:
-                    litellm_response = await handle_tool_call_with_fallback(litellm_request, request)
+                    litellm_response = await handle_tool_call_with_fallback(
+                        litellm_request, request
+                    )
                 except Exception as e:
                     logger.error(f"❌ Tool-aware completion failed: {e}")
                     if ENABLE_TOOL_FALLBACK:
