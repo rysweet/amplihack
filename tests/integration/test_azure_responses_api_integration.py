@@ -260,7 +260,7 @@ class TestAzureResponsesAPIIntegration:
 
             # Should handle 401 error gracefully
             # (This would be called via Flask route in actual usage)
-            assert proxy.azure_api_key == "invalid-key"
+            assert proxy.azure_api_key == "invalid-key"  # pragma: allowlist secret
 
     def test_performance_benchmarks(self, azure_config):
         """Basic performance benchmarks for integration components."""
@@ -420,16 +420,18 @@ if __name__ == "__main__":
 
     # Basic environment check
     config = {
-        "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY", "test-key"),
+        "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY", "test-key"),  # pragma: allowlist secret
         "OPENAI_BASE_URL": os.environ.get("OPENAI_BASE_URL", ""),
-        "AZURE_OPENAI_KEY": os.environ.get("AZURE_OPENAI_KEY", "test-key"),
+        "AZURE_OPENAI_KEY": os.environ.get(
+            "AZURE_OPENAI_KEY", "test-key"
+        ),  # pragma: allowlist secret
         "BIG_MODEL": os.environ.get("BIG_MODEL", "gpt-5"),
     }
 
     print("Environment Status:")
     print(f"- OPENAI_BASE_URL: {config['OPENAI_BASE_URL']}")
     print(
-        f"- Has API Key: {'Yes' if config['OPENAI_API_KEY'] != 'test-key' else 'No (using test key)'}"
+        f"- Has API Key: {'Yes' if config['OPENAI_API_KEY'] != 'test-key' else 'No (using test key)'}"  # pragma: allowlist secret
     )
     print(f"- BIG_MODEL: {config['BIG_MODEL']}")
     print(f"- Is Responses API: {'/responses' in config['OPENAI_BASE_URL']}")

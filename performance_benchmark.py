@@ -567,7 +567,7 @@ def main():
     benchmark.benchmark_concurrent_performance = lambda: original_concurrent_func(args.concurrent)
 
     # Run benchmark
-    results = benchmark.run_full_benchmark()
+    benchmark.run_full_benchmark()
 
     # Generate and display report
     report = benchmark.generate_report()

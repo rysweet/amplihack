@@ -72,7 +72,7 @@ class TestNetworkErrorScenarios:
                 import aiohttp
 
                 session = aiohttp.ClientSession()
-                resp = await session.get(f"http://127.0.0.1:{log_port}/stream")
+                await session.get(f"http://127.0.0.1:{log_port}/stream")
 
                 # Wait for timeout to occur
                 await asyncio.sleep(2.0)
@@ -322,11 +322,11 @@ class TestConfigurationErrorScenarios:
             environment_manager["set"]("AMPLIHACK_LOG_STREAM_HOST", "999.999.999.999")
             environment_manager["set"]("AMPLIHACK_LOG_STREAM_MAX_CONNECTIONS", "not_a_number")
 
-            log_port = available_port + 1000
+            # log_port = available_port + 1000  # Unused variable
 
             # Server should handle invalid config gracefully
             try:
-                server = LogStreamServer()
+                LogStreamServer()
                 # Should fall back to defaults or fail gracefully
                 # Don't require it to start successfully, just not crash
                 assert True
@@ -394,11 +394,11 @@ class TestConcurrentErrorScenarios:
                 sessions = []
                 for i in range(3):
                     session = aiohttp.ClientSession()
-                    resp = await session.get(f"http://127.0.0.1:{log_port}/stream")
+                    await session.get(f"http://127.0.0.1:{log_port}/stream")
                     sessions.append(session)
 
                 await asyncio.sleep(0.2)
-                initial_count = log_server.get_client_count()
+                # initial_count = log_server.get_client_count()  # Unused variable
 
                 # Close one session while broadcasting
                 await sessions[1].close()
@@ -421,7 +421,7 @@ class TestConcurrentErrorScenarios:
                 for session in sessions:
                     try:
                         await session.close()
-                    except:
+                    except Exception:
                         pass
 
             finally:

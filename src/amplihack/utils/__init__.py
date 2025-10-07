@@ -2,6 +2,7 @@
 
 from .paths import FrameworkPathResolver
 from .process import ProcessManager
+from .terminal_launcher import TerminalLauncher
 from .uvx_staging import stage_uvx_framework
 
 
@@ -16,6 +17,7 @@ def is_uvx_deployment() -> bool:
 __all__ = [
     "ProcessManager",
     "FrameworkPathResolver",
+    "TerminalLauncher",
     "is_uvx_deployment",
     "stage_uvx_framework",
 ]

@@ -34,7 +34,7 @@ class TestCompleteLogStreamingWorkflow:
             proxy_config = ProxyConfig(
                 {
                     "AZURE_ENDPOINT": "https://test.openai.azure.com",
-                    "AZURE_API_KEY": "test-key",
+                    "AZURE_API_KEY": "test-key",  # pragma: allowlist secret
                     "AZURE_GPT4_DEPLOYMENT": "gpt-4",
                     "PROXY_MODE": "azure",
                     "PORT": str(proxy_port),
@@ -138,7 +138,7 @@ class TestCompleteLogStreamingWorkflow:
             proxy_config = ProxyConfig(
                 {
                     "AZURE_ENDPOINT": "https://test-azure.openai.azure.com",
-                    "AZURE_API_KEY": "test-key-12345",
+                    "AZURE_API_KEY": "test-key-12345",  # pragma: allowlist secret
                     "AZURE_GPT4_DEPLOYMENT": "test-gpt-4",
                     "PROXY_MODE": "azure",
                     "PORT": str(proxy_port),
@@ -226,7 +226,7 @@ class TestCompleteLogStreamingWorkflow:
             proxy_config = ProxyConfig(
                 {
                     "AZURE_ENDPOINT": "https://prod-test.openai.azure.com",
-                    "AZURE_API_KEY": "prod-test-key",
+                    "AZURE_API_KEY": "prod-test-key",  # pragma: allowlist secret
                     "AZURE_GPT4_DEPLOYMENT": "production-gpt-4",
                     "PROXY_MODE": "azure",
                     "PORT": str(proxy_port),
@@ -359,7 +359,7 @@ class TestLogStreamingPerformance:
                     "PORT": str(proxy_port),
                     "PROXY_MODE": "azure",
                     "AZURE_ENDPOINT": "https://test.openai.azure.com",
-                    "AZURE_API_KEY": "test-key",
+                    "AZURE_API_KEY": "test-key",  # pragma: allowlist secret
                 }
             )
 
@@ -400,7 +400,7 @@ class TestLogStreamingPerformance:
                     "PORT": str(proxy_port),
                     "PROXY_MODE": "azure",
                     "AZURE_ENDPOINT": "https://test.openai.azure.com",
-                    "AZURE_API_KEY": "test-key",
+                    "AZURE_API_KEY": "test-key",  # pragma: allowlist secret
                     "ENABLE_LOG_STREAMING": "true",
                 }
             )
@@ -449,7 +449,7 @@ class TestLogStreamingPerformance:
                     "ENABLE_LOG_STREAMING": "true",
                     "PROXY_MODE": "azure",
                     "AZURE_ENDPOINT": "https://stress-test.openai.azure.com",
-                    "AZURE_API_KEY": "stress-test-key",
+                    "AZURE_API_KEY": "stress-test-key",  # pragma: allowlist secret
                 }
             )
 
@@ -593,13 +593,13 @@ class TestLogStreamingPerformance:
                 for session in sessions:
                     try:
                         await session.close()
-                    except:
+                    except Exception:
                         pass
 
             except Exception as e:
                 # Ensure cleanup even on test failure
                 try:
                     proxy_manager.stop_proxy()
-                except:
+                except Exception:
                     pass
                 raise e

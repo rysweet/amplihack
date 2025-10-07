@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
-from .log_streaming import LogStreamingService
+from .file_logging import FileLoggingService
 from .responses_api_proxy import ResponsesAPIProxy, create_responses_api_proxy
 
 
@@ -73,7 +73,7 @@ class ProxyManager:
         self.proxy_config = proxy_config
         self.proxy_process: Optional[subprocess.Popen] = None
         self.responses_api_proxy: Optional[ResponsesAPIProxy] = None
-        self.log_streaming_service: Optional[LogStreamingService] = None
+        self.log_streaming_service: Optional[FileLoggingService] = None
         self.proxy_dir = Path.home() / ".amplihack" / "proxy"
         self.env_manager = ProxyEnvironment()
         # Get port from configuration, default to 8082 if not specified
@@ -256,28 +256,20 @@ class ProxyManager:
             return False
 
     def _start_log_streaming_service(self) -> None:
-        """Start log streaming service in background."""
+        """Start file logging service."""
         try:
             stream_port = self.proxy_port + 1000
-            self.log_streaming_service = LogStreamingService(stream_port)
+            self.log_streaming_service = FileLoggingService(stream_port)
 
-            # Start in background thread with new event loop
-            import threading
+            # Start the service (no background thread needed for file logging)
+            import asyncio
 
-            def run_service():
-                import asyncio
-
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    if self.log_streaming_service:
-                        loop.run_until_complete(self.log_streaming_service.start())
-                        loop.run_forever()
-                except Exception:
-                    pass
-
-            self.stream_thread = threading.Thread(target=run_service, daemon=True)
-            self.stream_thread.start()
+            try:
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(self.log_streaming_service.start())
+            except RuntimeError:
+                # No event loop running, create one temporarily
+                asyncio.run(self.log_streaming_service.start())
 
         except Exception:
             pass
@@ -431,7 +423,16 @@ class ProxyManager:
 
     def stop_proxy(self) -> None:
         """Stop the proxy server."""
-        # Log streaming service stops automatically (daemon thread)
+        # Stop file logging service if running
+        if self.log_streaming_service:
+            import asyncio
+
+            try:
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(self.log_streaming_service.stop())
+            except RuntimeError:
+                # No event loop running, create one temporarily
+                asyncio.run(self.log_streaming_service.stop())
         self.log_streaming_service = None
 
         # Stop responses API proxy if running
@@ -839,10 +840,11 @@ class ProxyManager:
             print("  • Log level can be set via LOG_LEVEL env var")
             print(f"  • Working directory: {os.getcwd()}")
 
-            # Show log streaming info if available
+            # Show file logging info if available
             if self.log_streaming_service:
-                stream_port = self.proxy_port + 1000
-                print(f"\n📡 Log Streaming: http://127.0.0.1:{stream_port}/stream/logs")
+                print(f"\n📝 Log File: {self.log_streaming_service.log_file_path.absolute()}")
+                if self.log_streaming_service.is_running():
+                    print("   Terminal opened for log tailing")
 
             # Show recent stdout if available (external proxy only)
             if self.proxy_process and self.proxy_process.stdout:

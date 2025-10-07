@@ -387,5 +387,7 @@ class TestSSEEventStreaming:
             assert rate_limiter.should_allow_event() is False
 
             # After waiting, should allow events again
+            import time
+
             with patch("time.time", return_value=time.time() + 2):
                 assert rate_limiter.should_allow_event() is True

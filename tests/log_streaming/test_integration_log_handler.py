@@ -296,7 +296,7 @@ class TestMultiLoggerIntegration:
             console_handler = logging.StreamHandler()
 
             stream_events = []
-            console_output = []
+            # console_output = []  # Unused variable
 
             async def capture_stream_event(event):
                 stream_events.append(event)
@@ -357,7 +357,7 @@ class TestMultiLoggerIntegration:
 
                 # Generate exception with traceback
                 try:
-                    result = 1 / 0
+                    1 / 0
                 except ZeroDivisionError:
                     test_logger.exception("Division by zero occurred")
 

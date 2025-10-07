@@ -410,15 +410,13 @@ class TestConnectionStatistics:
         """Test tracking of connection durations."""
         # This should FAIL - no implementation exists yet
         with pytest.raises((ImportError, AttributeError, NotImplementedError)):
-            import time
-
             from amplihack.proxy.log_streaming import ConnectionManager
 
             manager = ConnectionManager()
             client_id = "duration-client"
             mock_client = MockClient(client_id)
 
-            start_time = time.time()
+            # start_time = time.time()  # Unused variable
             await manager.add_client(client_id, mock_client)
 
             # Simulate some connection time

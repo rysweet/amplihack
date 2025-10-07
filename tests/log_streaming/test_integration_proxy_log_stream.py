@@ -121,7 +121,7 @@ class TestProxyLogStreamIntegration:
             # Configure for Azure mode
             proxy_config = {
                 "AZURE_ENDPOINT": "https://test.openai.azure.com",
-                "AZURE_API_KEY": "test-key",
+                "AZURE_API_KEY": "test-key",  # pragma: allowlist secret
                 "PROXY_MODE": "azure",
             }
 
@@ -302,7 +302,7 @@ class TestMultipleClientIntegration:
 
                 # Connect client and then disconnect
                 session = aiohttp.ClientSession()
-                resp = await session.get(f"http://127.0.0.1:{log_port}/stream")
+                await session.get(f"http://127.0.0.1:{log_port}/stream")
 
                 # Verify client is connected
                 assert log_server.get_client_count() == 1
@@ -338,7 +338,7 @@ class TestMultipleClientIntegration:
 
                 # Connect a client
                 session = aiohttp.ClientSession()
-                resp = await session.get(f"http://127.0.0.1:{log_port}/stream")
+                await session.get(f"http://127.0.0.1:{log_port}/stream")
 
                 # Generate high-frequency log events
                 async def generate_high_frequency_logs():
@@ -394,7 +394,7 @@ class TestErrorHandlingIntegration:
 
                 # Connect a client to log stream
                 session = aiohttp.ClientSession()
-                resp = await session.get(f"http://127.0.0.1:{log_port}/stream")
+                await session.get(f"http://127.0.0.1:{log_port}/stream")
 
                 # Restart the proxy
                 proxy_manager.stop_proxy()

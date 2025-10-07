@@ -207,9 +207,9 @@ class TestDataSanitization:
             # Data with sensitive information
             sensitive_log = {
                 "message": "User login with password: secret123",
-                "api_key": "sk-1234567890abcdef",
-                "authorization": "Bearer token123",
-                "secret": "confidential_data",
+                "api_key": "sk-1234567890abcdef",  # pragma: allowlist secret
+                "authorization": "Bearer token123",  # pragma: allowlist secret
+                "secret": "confidential_data",  # pragma: allowlist secret
             }
 
             assert detector.contains_sensitive_data(sensitive_log) is True
@@ -254,7 +254,7 @@ class TestDataSanitization:
 
             log_record = {
                 "message": "Operation completed",
-                "user_password": "secret123",
+                "user_password": "secret123",  # pragma: allowlist secret
                 "api_token": "tk_abcdef123456",
                 "safe_field": "safe_value",
             }
