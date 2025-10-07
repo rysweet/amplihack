@@ -2632,7 +2632,9 @@ def convert_litellm_to_anthropic(
             clean_model = clean_model[len("openai/") :]
 
         # Check if this is a Claude model (which supports content blocks)
-        is_claude_model = clean_model.startswith("claude-")
+        # Use the original model name from Claude Code, not the mapped Azure model
+        original_model = original_request.model
+        is_claude_model = original_model.startswith("claude-")
 
         # Handle ModelResponse object from LiteLLM
         if hasattr(litellm_response, "choices") and hasattr(litellm_response, "usage"):
