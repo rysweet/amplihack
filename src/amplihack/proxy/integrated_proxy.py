@@ -2342,36 +2342,73 @@ def convert_azure_responses_to_anthropic(
 ) -> MessagesResponse:
     """Convert Azure Responses API response to Anthropic format."""
     try:
-        # Extract the response content
-        choices = azure_response.get("choices", [])
-        if not choices:
-            raise ValueError("No choices in Azure response")
+        # Azure Responses API uses 'output' array, not 'choices'
+        output_array = azure_response.get("output", [])
+        if not output_array:
+            raise ValueError("No output in Azure Responses API response")
 
-        choice = choices[0]
-        message = choice.get("message", {})
-        content_text = message.get("content", "")
-        finish_reason = choice.get("finish_reason", "stop")
+        # Find the message output (not reasoning)
+        message_output = None
+        for output_item in output_array:
+            if output_item.get("type") == "message":
+                message_output = output_item
+                break
 
-        # Map finish reasons
-        stop_reason_map = {
-            "stop": "end_turn",
-            "length": "max_tokens",
-            "content_filter": "end_turn",
-            "tool_calls": "tool_use",
-        }
-        stop_reason = stop_reason_map.get(finish_reason, "end_turn")
+        if not message_output:
+            raise ValueError("No message output in Azure Responses API response")
 
-        # Extract usage information
+        # Process content blocks - Azure Responses API format
+        content_blocks = []
+        message_content = message_output.get("content", [])
+
+        for content_item in message_content:
+            content_type = content_item.get("type")
+
+            if content_type == "output_text":
+                # Regular text content
+                text_content = content_item.get("text", "")
+                if text_content.strip():
+                    content_blocks.append({"type": "text", "text": text_content})
+
+            elif content_type == "tool_call":
+                # Tool call - convert to Anthropic format
+                tool_call_data = content_item.get("function", {})
+                tool_name = tool_call_data.get("name", "")
+                tool_args_str = tool_call_data.get("arguments", "{}")
+
+                try:
+                    tool_input = json.loads(tool_args_str) if tool_args_str else {}
+                except json.JSONDecodeError:
+                    tool_input = {"arguments": tool_args_str}
+
+                content_blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": content_item.get("id", f"tool_{uuid.uuid4()}"),
+                        "name": tool_name,
+                        "input": tool_input,
+                    }
+                )
+
+        # If no content blocks, add empty text
+        if not content_blocks:
+            content_blocks = [{"type": "text", "text": ""}]
+
+        # Extract usage information (Azure Responses API format)
         usage_info = azure_response.get("usage", {})
-        input_tokens = usage_info.get("prompt_tokens", 0)
-        output_tokens = usage_info.get("completion_tokens", 0)
+        input_tokens = usage_info.get("input_tokens", 0)
+        output_tokens = usage_info.get("output_tokens", 0)
+
+        # Determine stop reason - check if we have tool calls
+        has_tool_calls = any(block.get("type") == "tool_use" for block in content_blocks)
+        stop_reason = "tool_use" if has_tool_calls else "end_turn"
 
         # Create Anthropic response
         return MessagesResponse(
             id=azure_response.get("id", f"msg_{uuid.uuid4()}"),
             model=original_request.model,
             role="assistant",
-            content=[{"type": "text", "text": content_text}],
+            content=content_blocks,
             stop_reason=stop_reason,
             stop_sequence=None,
             usage=Usage(input_tokens=input_tokens, output_tokens=output_tokens),
