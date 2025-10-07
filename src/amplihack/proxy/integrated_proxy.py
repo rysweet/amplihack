@@ -835,22 +835,47 @@ def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Ro
         )
         api_version = "2025-04-01-preview"
 
-    # Configure model list for LiteLLM router
+    # Configure model list for LiteLLM router - use exact Claude model names
     model_list = [
         {
-            "model_name": "claude-sonnet",  # What Claude Code sends
+            "model_name": "claude-3-5-sonnet-20241022",  # Exact Claude Code model name
             "litellm_params": {
                 "model": f"azure/{BIG_MODEL}",  # Azure deployment
                 "api_key": AZURE_OPENAI_KEY,
                 "api_base": base_url,
                 "api_version": api_version,
                 "drop_params": True,  # Handle parameter differences
+                "max_tokens": 512000,  # Full Claude Code compatibility
+                "temperature": 1.0,  # Required for Azure Responses API
             },
         },
         {
-            "model_name": "claude-haiku",
+            "model_name": "claude-3-5-haiku-20241022",  # Exact Claude Code model name
             "litellm_params": {
                 "model": f"azure/{BIG_MODEL}",  # Use same model for now
+                "api_key": AZURE_OPENAI_KEY,
+                "api_base": base_url,
+                "api_version": api_version,
+                "drop_params": True,
+                "max_tokens": 512000,
+                "temperature": 1.0,
+            },
+        },
+        # Legacy mappings for backward compatibility
+        {
+            "model_name": "claude-sonnet",  # Legacy short name
+            "litellm_params": {
+                "model": f"azure/{BIG_MODEL}",
+                "api_key": AZURE_OPENAI_KEY,
+                "api_base": base_url,
+                "api_version": api_version,
+                "drop_params": True,
+            },
+        },
+        {
+            "model_name": "claude-haiku",  # Legacy short name
+            "litellm_params": {
+                "model": f"azure/{BIG_MODEL}",
                 "api_key": AZURE_OPENAI_KEY,
                 "api_base": base_url,
                 "api_version": api_version,
@@ -1248,12 +1273,20 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
         """Handle messages using LiteLLM router for Azure Responses API."""
         claude_model = request.get("model", "unknown")
 
-        # Map Claude models to router model names
-        router_model = "claude-sonnet"  # Default
-        if "haiku" in claude_model.lower():
-            router_model = "claude-haiku"
-        elif "sonnet" in claude_model.lower() or "opus" in claude_model.lower():
-            router_model = "claude-sonnet"
+        # Use exact model names for direct routing, fallback to legacy names for compatibility
+        router_model = claude_model  # Try exact match first
+
+        # If exact model not found in router, map to legacy names
+        available_models = (
+            [model["model_name"] for model in litellm_router.model_list] if litellm_router else []
+        )
+        if claude_model not in available_models:
+            if "haiku" in claude_model.lower():
+                router_model = "claude-haiku"
+            elif "sonnet" in claude_model.lower() or "opus" in claude_model.lower():
+                router_model = "claude-sonnet"
+            else:
+                router_model = "claude-3-5-sonnet-20241022"  # Default to latest sonnet
 
         # Get configured token limits from environment for Azure Responses API
         min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))

@@ -2,19 +2,44 @@
 # Maintains all user requirements while improving performance
 
 model_list:
+  # Claude Code model mappings - these match what Claude Code sends
+  - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: azure/gpt-5
+      api_base: https://ai-adapt-oai-eastus2.openai.azure.com
+      api_key: ${AZURE_OPENAI_KEY}
+      api_version: preview
+      max_tokens: 512000 # Full token limit for Claude Code compatibility
+      timeout: 60
+      max_retries: 2
+      retry_delay: 1.0
+      stream_timeout: 30
+      connect_timeout: 10
+      temperature: 1.0 # Required for Azure Responses API
+  - model_name: claude-3-5-haiku-20241022
+    litellm_params:
+      model: azure/gpt-5 # Map to same Azure model for now
+      api_base: https://ai-adapt-oai-eastus2.openai.azure.com
+      api_key: ${AZURE_OPENAI_KEY}
+      api_version: preview
+      max_tokens: 512000
+      timeout: 60
+      max_retries: 2
+      retry_delay: 1.0
+      stream_timeout: 30
+      connect_timeout: 10
+      temperature: 1.0
+  # Legacy mappings for backward compatibility
   - model_name: gpt-5
     litellm_params:
       model: azure/gpt-5
       api_base: https://ai-adapt-oai-eastus2.openai.azure.com
       api_key: ${AZURE_OPENAI_KEY}
       api_version: preview
-      # Optimized token settings - use dynamic adjustment based on request
-      max_tokens: 4096 # Reduced from 512k for better performance, can be overridden per request
-      timeout: 60 # Reduced from 300s for faster failover
-      # Connection optimization
-      max_retries: 2 # Reduced retries for faster response
-      retry_delay: 1.0 # Quick retry intervals
-      # Azure-specific optimizations
+      max_tokens: 4096
+      timeout: 60
+      max_retries: 2
+      retry_delay: 1.0
       stream_timeout: 30
       connect_timeout: 10
   - model_name: gpt-4
@@ -23,7 +48,6 @@ model_list:
       api_base: https://ai-adapt-oai-eastus2.openai.azure.com
       api_key: ${AZURE_OPENAI_KEY}
       api_version: preview
-      # Same optimizations for consistency
       max_tokens: 4096
       timeout: 60
       max_retries: 2
