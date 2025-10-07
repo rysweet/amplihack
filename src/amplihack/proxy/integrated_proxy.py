@@ -3186,6 +3186,161 @@ async def stream_with_tools(
             raise ToolStreamingError(f"Tool streaming failed: {e}")
 
 
+def is_azure_responses_api_model(model: str) -> bool:
+    """Check if the model should use Azure Responses API."""
+    # These models use Azure Responses API through our proxy
+    azure_models = [
+        "claude-3-5-sonnet-20241022",
+        "claude-3-5-haiku-20241022",
+        "claude-sonnet",
+        "claude-haiku",
+    ]
+    return model in azure_models or "claude" in model
+
+
+async def handle_azure_streaming_with_tools(
+    azure_request: Dict[str, Any],
+    original_request: MessagesRequest,
+    conversation_state: ConversationState,
+):
+    """
+    Handle Azure Responses API streaming with tool calling support.
+
+    Args:
+        azure_request: The Azure API request payload
+        original_request: The original MessagesRequest
+        conversation_state: Current conversation state
+
+    Yields:
+        Anthropic-formatted streaming events with tool support
+    """
+    try:
+        message_id = f"msg_{uuid.uuid4().hex[:24]}"
+        current_text = ""
+        current_tool_calls = []
+
+        # Send message_start event
+        message_start_event = {
+            "type": "message_start",
+            "message": {
+                "id": message_id,
+                "type": "message",
+                "role": "assistant",
+                "content": [],
+                "model": original_request.model,
+                "stop_reason": None,
+                "stop_sequence": None,
+                "usage": {"input_tokens": 0, "output_tokens": 0},
+            },
+        }
+        yield f"event: message_start\ndata: {json.dumps(message_start_event)}\n\n"
+
+        # Make streaming request to Azure Responses API
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        timeout = aiohttp.ClientTimeout(total=300)
+
+        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+            headers = {
+                "Authorization": f"Bearer {AZURE_OPENAI_KEY}",
+                "Content-Type": "application/json",
+                "Accept": "text/event-stream",
+            }
+
+            # Enable streaming in Azure request
+            azure_request["stream"] = True
+
+            async with session.post(
+                (OPENAI_BASE_URL or "").rstrip("/"),
+                headers=headers,
+                json=azure_request,
+            ) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    raise AzureAPIError(f"Azure streaming failed: {response.status} - {error_text}")
+
+                async for line in response.content:
+                    line_text = line.decode("utf-8").strip()
+                    if not line_text:
+                        continue
+
+                    if line_text.startswith("data: "):
+                        data_content = line_text[6:]  # Remove "data: " prefix
+                        if data_content == "[DONE]":
+                            break
+
+                        try:
+                            chunk = json.loads(data_content)
+
+                            # Azure Responses API format: output[] array
+                            output_array = chunk.get("output", [])
+                            for output_item in output_array:
+                                if output_item.get("type") == "message":
+                                    # Process content blocks
+                                    content_blocks = output_item.get("content", [])
+
+                                    for content_block in content_blocks:
+                                        content_type = content_block.get("type")
+
+                                        if content_type == "output_text":
+                                            # Handle text streaming
+                                            text_content = content_block.get("text", "")
+                                            if text_content:
+                                                current_text += text_content
+
+                                                # Send content_block_delta event
+                                                delta_event = {
+                                                    "type": "content_block_delta",
+                                                    "index": 0,
+                                                    "delta": {
+                                                        "type": "text_delta",
+                                                        "text": text_content,
+                                                    },
+                                                }
+                                                yield f"event: content_block_delta\ndata: {json.dumps(delta_event)}\n\n"
+
+                                        elif content_type == "tool_use":
+                                            # Handle tool calls
+                                            tool_call = {
+                                                "id": content_block.get(
+                                                    "id", f"call_{uuid.uuid4().hex[:8]}"
+                                                ),
+                                                "type": "tool_use",
+                                                "name": content_block.get("name", ""),
+                                                "input": content_block.get("input", {}),
+                                            }
+                                            current_tool_calls.append(tool_call)
+
+                                            # Send tool_use event
+                                            start_event = {
+                                                "type": "content_block_start",
+                                                "index": len(current_tool_calls),
+                                                "content_block": tool_call,
+                                            }
+                                            yield f"event: content_block_start\ndata: {json.dumps(start_event)}\n\n"
+
+                                            stop_event = {
+                                                "type": "content_block_stop",
+                                                "index": len(current_tool_calls),
+                                            }
+                                            yield f"event: content_block_stop\ndata: {json.dumps(stop_event)}\n\n"
+
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"Failed to parse Azure streaming chunk: {e}")
+                            continue
+
+        # Send message_stop event
+        stop_event = {"type": "message_stop"}
+        yield f"event: message_stop\ndata: {json.dumps(stop_event)}\n\n"
+
+    except Exception as e:
+        logger.error(f"❌ Azure streaming with tools failed: {e}")
+        raise ToolStreamingError(f"Azure streaming failed: {e}")
+
+
 async def handle_streaming(response_generator, original_request: MessagesRequest):
     """Handle streaming responses from LiteLLM and convert to Anthropic format."""
     try:
@@ -3519,14 +3674,38 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                     # Convert to Azure Responses format
                     azure_request = convert_anthropic_to_azure_responses(request)
 
-                    # Handle streaming mode for Azure (not implemented yet, fall back to non-streaming)
+                    # Handle streaming mode for Azure
                     if request.stream:
-                        logger.warning(
-                            "Azure Responses API streaming not yet implemented, falling back to non-streaming"
+                        logger.info(
+                            "🚀 Starting Azure Responses API streaming with tool calling support"
                         )
+
+                        # Convert to Azure format for streaming
+                        azure_stream_request = convert_anthropic_to_azure_responses(request)
+
+                        # Phase 2: Tool Call Lifecycle Management for Azure
+                        conversation_state = analyze_conversation_for_tools(request.messages)
+
+                        # Use Azure streaming with tool support
+                        try:
+                            return StreamingResponse(
+                                handle_azure_streaming_with_tools(
+                                    azure_stream_request, request, conversation_state
+                                ),
+                                media_type="text/event-stream",
+                            )
+                        except Exception as e:
+                            logger.error(f"❌ Azure streaming failed: {e}")
+                            if ENABLE_TOOL_FALLBACK:
+                                logger.info("🔄 Falling back to Azure non-streaming")
+                                azure_request["stream"] = False
+                                # Continue with non-streaming below
+                            else:
+                                raise AzureAPIError(f"Azure streaming failed: {e}")
+                    else:
                         azure_request["stream"] = False
 
-                    # Make direct Azure API call with robust error handling
+                    # Make direct Azure API call with robust error handling (non-streaming fallback)
                     azure_response = await make_azure_responses_api_call(azure_request)
 
                     # Convert back to Anthropic format
