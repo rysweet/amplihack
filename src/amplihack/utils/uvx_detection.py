@@ -105,8 +105,7 @@ def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetec
                 environment=env_info,
                 detection_reasons=reasons,
             )
-        else:
-            reasons.append(f"AMPLIHACK_ROOT set but invalid: {env_info.amplihack_root}")
+        reasons.append(f"AMPLIHACK_ROOT set but invalid: {env_info.amplihack_root}")
 
     # Check sys.path for framework installation
     framework_in_path = _find_framework_in_sys_path(env_info.sys_path_entries)

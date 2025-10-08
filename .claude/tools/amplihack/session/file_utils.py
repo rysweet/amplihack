@@ -18,19 +18,13 @@ logger = logging.getLogger(__name__)
 class FileOperationError(Exception):
     """Base exception for file operation errors."""
 
-    pass
-
 
 class RetryExhaustedError(FileOperationError):
     """Raised when retry attempts are exhausted."""
 
-    pass
-
 
 class FileCorruptionError(FileOperationError):
     """Raised when file corruption is detected."""
-
-    pass
 
 
 def retry_file_operation(
@@ -180,7 +174,7 @@ def safe_read_file(
                     f"File checksum mismatch: expected {expected_checksum}, got {actual_checksum}"
                 )
 
-        with open(file_path, "r", encoding=encoding) as f:
+        with open(file_path, encoding=encoding) as f:
             content = f.read()
 
         logger.debug(f"Successfully read file: {file_path} ({len(content)} chars)")

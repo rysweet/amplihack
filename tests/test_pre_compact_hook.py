@@ -17,7 +17,7 @@ project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack" / "hooks"))
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
 
-from pre_compact import PreCompactHook  # noqa: E402
+from pre_compact import PreCompactHook
 
 
 class TestPreCompactHook(unittest.TestCase):
@@ -99,7 +99,7 @@ class TestPreCompactHook(unittest.TestCase):
         self.assertTrue(transcript_file.exists())
 
         # Verify transcript content
-        with open(transcript_file, "r") as f:
+        with open(transcript_file) as f:
             content = f.read()
         self.assertIn("Conversation Transcript", content)
         self.assertIn("**Messages**: 3", content)  # Fixed: Markdown bold format
@@ -132,7 +132,7 @@ class TestPreCompactHook(unittest.TestCase):
         self.assertTrue(original_request_file.exists())
 
         # Verify content
-        with open(original_request_file, "r") as f:
+        with open(original_request_file) as f:
             content = f.read()
         self.assertIn("Context preservation system", content)
 
@@ -155,7 +155,7 @@ class TestPreCompactHook(unittest.TestCase):
         metadata_file = hook.session_dir / "compaction_events.json"
         self.assertTrue(metadata_file.exists())
 
-        with open(metadata_file, "r") as f:
+        with open(metadata_file) as f:
             events = json.load(f)
 
         self.assertEqual(len(events), 2)
@@ -245,7 +245,7 @@ class TestPreCompactHook(unittest.TestCase):
 
         # Read all metrics from JSONL file and verify content
         saved_metrics = {}
-        with open(metrics_file, "r") as f:
+        with open(metrics_file) as f:
             for line in f:
                 metric = json.loads(line.strip())
                 saved_metrics[metric["metric"]] = metric["value"]

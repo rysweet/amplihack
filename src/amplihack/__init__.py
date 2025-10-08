@@ -111,23 +111,27 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
     """Copy all essential directories from repo to destination.
 
     Args:
-        repo_root: Path to the repository root
+        repo_root: Path to the repository root or package directory
         dst: Destination directory (usually ~/.claude)
-        rel_top: Relative path to .claude directory in repo
+        rel_top: Relative path to .claude directory
 
     Returns:
         List of copied directory paths relative to dst
     """
-    # Try multiple locations for .claude directory
-    # 1. repo_root/.claude (old structure - local dev)
-    # 2. repo_root/src/amplihack/.claude (new structure - packaged)
-    base = os.path.join(repo_root, rel_top)
-    if not os.path.exists(base):
-        # Try the new packaged location
-        base = os.path.join(repo_root, "src", "amplihack", rel_top)
-        if not os.path.exists(base):
-            print(f"  ❌ Error: {rel_top} directory not found in {repo_root}")
-            return []
+    # Try two essential locations only:
+    # 1. Direct path (package or repo root)
+    # 2. Parent directory (for src/amplihack case)
+
+    direct_path = os.path.join(repo_root, rel_top)
+    parent_path = os.path.join(repo_root, "..", rel_top)
+
+    if os.path.exists(direct_path):
+        base = direct_path
+    elif os.path.exists(parent_path):
+        base = parent_path
+    else:
+        print(f"  ❌ .claude not found at {direct_path} or {parent_path}")
+        return []
 
     copied = []
 
@@ -321,7 +325,7 @@ def ensure_settings_json():
             if not settings_manager.prompt_user_for_modification():
                 print("  ⚠️  Settings modification declined by user")
                 return False
-            elif is_uvx:
+            if is_uvx:
                 print("  🚀 UVX environment detected - auto-configuring hooks")
 
             # Create backup
@@ -342,7 +346,7 @@ def ensure_settings_json():
     # Load existing settings or use template
     if os.path.exists(settings_path):
         try:
-            with open(settings_path, "r", encoding="utf-8") as f:
+            with open(settings_path, encoding="utf-8") as f:
                 settings = json.load(f)
             print("  📋 Found existing settings.json")
 
@@ -384,14 +388,13 @@ def ensure_settings_json():
     # Ensure permissions are set correctly
     if "permissions" not in settings:
         settings["permissions"] = SETTINGS_TEMPLATE["permissions"].copy()
+    # Ensure additionalDirectories includes .claude and Specs
+    elif "additionalDirectories" not in settings["permissions"]:
+        settings["permissions"]["additionalDirectories"] = [".claude", "Specs"]
     else:
-        # Ensure additionalDirectories includes .claude and Specs
-        if "additionalDirectories" not in settings["permissions"]:
-            settings["permissions"]["additionalDirectories"] = [".claude", "Specs"]
-        else:
-            for dir_name in [".claude", "Specs"]:
-                if dir_name not in settings["permissions"]["additionalDirectories"]:
-                    settings["permissions"]["additionalDirectories"].append(dir_name)
+        for dir_name in [".claude", "Specs"]:
+            if dir_name not in settings["permissions"]["additionalDirectories"]:
+                settings["permissions"]["additionalDirectories"].append(dir_name)
 
     # Write updated settings
     try:

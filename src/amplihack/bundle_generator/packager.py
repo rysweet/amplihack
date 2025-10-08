@@ -117,7 +117,7 @@ class UVXPackager:
 
         except Exception as e:
             raise PackagingError(
-                f"Failed to package bundle: {str(e)}",
+                f"Failed to package bundle: {e!s}",
                 package_format=format,
                 file_path=str(package_path) if "package_path" in locals() else None,
             )
@@ -500,6 +500,4 @@ Bundle ID: {bundle.id}
             return bundle
 
         except Exception as e:
-            raise PackagingError(
-                f"Failed to extract package: {str(e)}", file_path=str(package_path)
-            )
+            raise PackagingError(f"Failed to extract package: {e!s}", file_path=str(package_path))

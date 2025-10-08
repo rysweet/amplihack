@@ -355,7 +355,7 @@ class TestRequirementPreservation:
             transcript_path = preserver.export_conversation_transcript(conversation_data)
 
             # Step 4: Verify requirements are preserved in transcript
-            with open(transcript_path, "r") as f:
+            with open(transcript_path) as f:
                 transcript_content = f.read()
 
             assert "ALL service endpoints" in transcript_content
@@ -366,7 +366,7 @@ class TestRequirementPreservation:
             original_request_file = session_dir / "ORIGINAL_REQUEST.md"
             assert original_request_file.exists()
 
-            with open(original_request_file, "r") as f:
+            with open(original_request_file) as f:
                 request_content = f.read()
 
             assert "ALL service endpoints" in request_content

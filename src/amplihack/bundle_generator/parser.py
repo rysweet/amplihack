@@ -392,7 +392,6 @@ class PromptParser:
 
         if total_requirements <= 2:
             return "simple"
-        elif total_requirements <= 5:
+        if total_requirements <= 5:
             return "standard"
-        else:
-            return "advanced"
+        return "advanced"

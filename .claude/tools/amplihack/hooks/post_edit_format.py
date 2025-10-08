@@ -188,7 +188,7 @@ def format_file(file_path: Path) -> Tuple[bool, Optional[str]]:
             if formatter_name == "jq":
                 # Use shell=False to prevent injection
                 result = subprocess.run(
-                    command, capture_output=True, text=True, timeout=10, shell=False
+                    command, check=False, capture_output=True, text=True, timeout=10, shell=False
                 )
                 if result.returncode == 0:
                     # Write formatted output back to file
@@ -199,7 +199,7 @@ def format_file(file_path: Path) -> Tuple[bool, Optional[str]]:
             else:
                 # Run formatter with shell=False to prevent injection
                 result = subprocess.run(
-                    command, capture_output=True, text=True, timeout=10, shell=False
+                    command, check=False, capture_output=True, text=True, timeout=10, shell=False
                 )
 
                 if result.returncode != 0:
@@ -211,9 +211,8 @@ def format_file(file_path: Path) -> Tuple[bool, Optional[str]]:
             if original_hash and new_hash and original_hash != new_hash:
                 log(f"File formatted with {formatter_name}: {file_path}")
                 return True, formatter_name
-            else:
-                log(f"No changes needed by {formatter_name}: {file_path}")
-                return True, formatter_name
+            log(f"No changes needed by {formatter_name}: {file_path}")
+            return True, formatter_name
 
         except subprocess.TimeoutExpired:
             log(f"{formatter_name} timed out", "WARNING")

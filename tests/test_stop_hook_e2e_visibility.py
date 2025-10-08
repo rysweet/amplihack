@@ -22,7 +22,7 @@ project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack" / "hooks"))
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
 
-from stop import StopHook  # noqa: E402
+from stop import StopHook
 
 
 class TestStopHookE2EVisibility(unittest.TestCase):

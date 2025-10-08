@@ -118,43 +118,40 @@ def test_install_claude_trace_no_npm():
 
 def test_install_claude_trace_success():
     """Test successful installation of claude-trace."""
-    with patch("shutil.which") as mock_which:
-        with patch("subprocess.run") as mock_run:
-            mock_which.return_value = "/usr/local/bin/npm"
-            mock_run.return_value = MagicMock(returncode=0)
+    with patch("shutil.which") as mock_which, patch("subprocess.run") as mock_run:
+        mock_which.return_value = "/usr/local/bin/npm"
+        mock_run.return_value = MagicMock(returncode=0)
 
-            result = _install_claude_trace()
-            assert result is True
+        result = _install_claude_trace()
+        assert result is True
 
-            # Verify correct npm command was called
-            mock_run.assert_called_once_with(
-                ["npm", "install", "-g", "@mariozechner/claude-trace"],
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
+        # Verify correct npm command was called
+        mock_run.assert_called_once_with(
+            ["npm", "install", "-g", "@mariozechner/claude-trace"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
 
 
 def test_install_claude_trace_failure():
     """Test handling of installation failure."""
-    with patch("shutil.which") as mock_which:
-        with patch("subprocess.run") as mock_run:
-            mock_which.return_value = "/usr/local/bin/npm"
-            mock_run.return_value = MagicMock(returncode=1)
+    with patch("shutil.which") as mock_which, patch("subprocess.run") as mock_run:
+        mock_which.return_value = "/usr/local/bin/npm"
+        mock_run.return_value = MagicMock(returncode=1)
 
-            result = _install_claude_trace()
-            assert result is False
+        result = _install_claude_trace()
+        assert result is False
 
 
 def test_install_claude_trace_timeout():
     """Test handling of installation timeout."""
-    with patch("shutil.which") as mock_which:
-        with patch("subprocess.run") as mock_run:
-            mock_which.return_value = "/usr/local/bin/npm"
-            mock_run.side_effect = subprocess.TimeoutExpired("npm", 60)
+    with patch("shutil.which") as mock_which, patch("subprocess.run") as mock_run:
+        mock_which.return_value = "/usr/local/bin/npm"
+        mock_run.side_effect = subprocess.TimeoutExpired("npm", 60)
 
-            result = _install_claude_trace()
-            assert result is False
+        result = _install_claude_trace()
+        assert result is False
 
 
 if __name__ == "__main__":

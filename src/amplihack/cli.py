@@ -226,84 +226,81 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Stage framework files to the temp .claude directory
         # Use the built-in _local_install function to copy framework files
         # Find the amplihack package location
+        # Find amplihack package location for .claude files
+        import amplihack
+
         from . import copytree_manifest
 
-        amplihack_src = None
-        for path in sys.path:
-            test_path = os.path.join(path, "amplihack", ".claude")
-            if os.path.exists(test_path):
-                amplihack_src = os.path.join(path, "amplihack")
-                break
+        amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
-        if amplihack_src:
-            # Copy .claude contents to temp .claude directory
-            # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-            copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+        # Copy .claude contents to temp .claude directory
+        # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
+        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
-            # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
-            # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
-            if copied:
-                settings_path = os.path.join(temp_claude_dir, "settings.json")
-                import json
+        # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
+        # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
+        if copied:
+            settings_path = os.path.join(temp_claude_dir, "settings.json")
+            import json
 
-                # Create minimal settings.json with just amplihack hooks
-                settings = {
-                    "hooks": {
-                        "SessionStart": [
-                            {
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/session_start.py",
-                                        "timeout": 10000,
-                                    }
-                                ]
-                            }
-                        ],
-                        "Stop": [
-                            {
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/stop.py",
-                                        "timeout": 30000,
-                                    }
-                                ]
-                            }
-                        ],
-                        "PostToolUse": [
-                            {
-                                "matcher": "*",
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/post_tool_use.py",
-                                    }
-                                ],
-                            }
-                        ],
-                        "PreCompact": [
-                            {
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/pre_compact.py",
-                                        "timeout": 30000,
-                                    }
-                                ]
-                            }
-                        ],
-                    }
+            # Create minimal settings.json with just amplihack hooks
+            settings = {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+                                    "timeout": 10000,
+                                }
+                            ]
+                        }
+                    ],
+                    "Stop": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+                                    "timeout": 30000,
+                                }
+                            ]
+                        }
+                    ],
+                    "PostToolUse": [
+                        {
+                            "matcher": "*",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
+                                }
+                            ],
+                        }
+                    ],
+                    "PreCompact": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+                                    "timeout": 30000,
+                                }
+                            ]
+                        }
+                    ],
                 }
+            }
 
-                # Write settings.json
-                os.makedirs(temp_claude_dir, exist_ok=True)
-                with open(settings_path, "w") as f:
-                    json.dump(settings, f, indent=2)
+            # Write settings.json
+            os.makedirs(temp_claude_dir, exist_ok=True)
+            with open(settings_path, "w") as f:
+                json.dump(settings, f, indent=2)
 
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"UVX staging completed to {temp_claude_dir}")
-                    print("Created settings.json with relative hook paths")
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"UVX staging completed to {temp_claude_dir}")
+                print("Created settings.json with relative hook paths")
 
     args, claude_args = parse_args_with_passthrough(argv)
 
@@ -326,9 +323,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
             launcher = ClaudeLauncher(claude_args=claude_args)
             return launcher.launch_interactive()
-        else:
-            create_parser().print_help()
-            return 1
+        create_parser().print_help()
+        return 1
 
     # Import the original functions for backward compatibility
     from . import _local_install, uninstall
@@ -374,19 +370,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             if path:
                 print(str(path))
                 return 0
-            else:
-                print("UVX installation path not found", file=sys.stderr)
-                return 1
-        elif args.info:
+            print("UVX installation path not found", file=sys.stderr)
+            return 1
+        if args.info:
             # Show UVX staging information
             print("\nUVX Information:")
             print(f"  Is UVX: {is_uvx_deployment()}")
             print("\nEnvironment Variables:")
             print(f"  AMPLIHACK_ROOT={os.environ.get('AMPLIHACK_ROOT', '(not set)')}")
             return 0
-        else:
-            print_uvx_usage_instructions()
-            return 0
+        print_uvx_usage_instructions()
+        return 0
 
     else:
         create_parser().print_help()

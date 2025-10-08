@@ -320,7 +320,7 @@ class TestSecurityEdgeCases:
                 result = SecurityValidator.sanitize_input(test_input)
                 assert isinstance(result, str)
             except Exception as e:
-                pytest.fail(f"Unicode input '{repr(test_input)}' caused exception: {e}")
+                pytest.fail(f"Unicode input '{test_input!r}' caused exception: {e}")
 
 
 class TestPerformanceAndDoSProtection:

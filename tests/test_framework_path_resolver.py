@@ -99,16 +99,14 @@ class TestFrameworkPathResolver:
             with patch(
                 "src.amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
                 return_value=True,
-            ):
-                with patch(
-                    "src.amplihack.utils.uvx_staging.stage_uvx_framework", return_value=True
-                ):
-                    with patch("pathlib.Path.cwd", return_value=temp_path):
-                        # Create .claude directory to simulate successful staging
-                        (temp_path / ".claude").mkdir()
+            ), patch(
+                "src.amplihack.utils.uvx_staging.stage_uvx_framework", return_value=True
+            ), patch("pathlib.Path.cwd", return_value=temp_path):
+                # Create .claude directory to simulate successful staging
+                (temp_path / ".claude").mkdir()
 
-                        result = FrameworkPathResolver.find_framework_root()
-                        assert result == temp_path
+                result = FrameworkPathResolver.find_framework_root()
+                assert result == temp_path
 
     def test_find_framework_root_uvx_staging_failure(self):
         """Test framework root discovery with failed UVX staging."""
@@ -119,13 +117,11 @@ class TestFrameworkPathResolver:
             with patch(
                 "src.amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
                 return_value=True,
-            ):
-                with patch(
-                    "src.amplihack.utils.uvx_staging.stage_uvx_framework", return_value=False
-                ):
-                    with patch("pathlib.Path.cwd", return_value=temp_path):
-                        result = FrameworkPathResolver.find_framework_root()
-                        assert result is None
+            ), patch(
+                "src.amplihack.utils.uvx_staging.stage_uvx_framework", return_value=False
+            ), patch("pathlib.Path.cwd", return_value=temp_path):
+                result = FrameworkPathResolver.find_framework_root()
+                assert result is None
 
     def test_is_uvx_deployment_with_staging_module(self):
         """Test UVX deployment detection using staging module."""

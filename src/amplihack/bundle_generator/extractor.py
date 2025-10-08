@@ -97,7 +97,7 @@ class IntentExtractor:
             )
 
         except Exception as e:
-            raise ExtractionError(f"Failed to extract intent: {str(e)}", confidence_score=0.0)
+            raise ExtractionError(f"Failed to extract intent: {e!s}", confidence_score=0.0)
 
     def _determine_action(self, parsed: ParsedPrompt) -> str:
         """Determine the primary action requested."""
@@ -106,11 +106,11 @@ class IntentExtractor:
         # Check for explicit action keywords
         if any(word in tokens for word in ["create", "generate", "build", "make"]):
             return "create"
-        elif any(word in tokens for word in ["modify", "update", "change", "edit"]):
+        if any(word in tokens for word in ["modify", "update", "change", "edit"]):
             return "modify"
-        elif any(word in tokens for word in ["combine", "merge", "integrate", "join"]):
+        if any(word in tokens for word in ["combine", "merge", "integrate", "join"]):
             return "combine"
-        elif any(word in tokens for word in ["specialize", "customize", "adapt", "tailor"]):
+        if any(word in tokens for word in ["specialize", "customize", "adapt", "tailor"]):
             return "specialize"
 
         # Default to create
@@ -136,7 +136,7 @@ class IntentExtractor:
             capabilities = parsed.entities["capabilities"]
             if any(cap in ["validate", "check", "verify"] for cap in capabilities):
                 return "validation"
-            elif any(cap in ["analyze", "process", "transform"] for cap in capabilities):
+            if any(cap in ["analyze", "process", "transform"] for cap in capabilities):
                 return "data-processing"
 
         # Default to general data processing
@@ -334,10 +334,9 @@ class IntentExtractor:
 
         if agent_count > 5 or total_capabilities > 15:
             return "advanced"
-        elif agent_count > 2 or total_capabilities > 8:
+        if agent_count > 2 or total_capabilities > 8:
             return "standard"
-        else:
-            return base_complexity
+        return base_complexity
 
     def _extract_constraints(self, parsed: ParsedPrompt) -> List[str]:
         """Extract constraints from parsed prompt."""

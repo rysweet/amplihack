@@ -134,13 +134,14 @@ class GitHubDistributor:
         # Check if using gh CLI (simplified implementation)
         if self._has_gh_cli():
             return self._prepare_with_gh(repository, package, options)
-        else:
-            return self._prepare_with_git(repository, package, options)
+        return self._prepare_with_git(repository, package, options)
 
     def _has_gh_cli(self) -> bool:
         """Check if GitHub CLI is available."""
         try:
-            result = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run(
+                ["gh", "--version"], check=False, capture_output=True, text=True, timeout=5
+            )
             return result.returncode == 0
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
@@ -155,7 +156,9 @@ class GitHubDistributor:
             if self.organization:
                 check_cmd.extend(["--json", "name"])
 
-            result = subprocess.run(check_cmd, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                check_cmd, check=False, capture_output=True, text=True, timeout=30
+            )
 
             if result.returncode != 0:
                 # Create repository
@@ -172,7 +175,9 @@ class GitHubDistributor:
                     ]
                 )
 
-                result = subprocess.run(create_cmd, capture_output=True, text=True, timeout=60)
+                result = subprocess.run(
+                    create_cmd, check=False, capture_output=True, text=True, timeout=60
+                )
 
                 if result.returncode != 0:
                     raise DistributionError(
@@ -188,6 +193,7 @@ class GitHubDistributor:
                 # Get current user
                 user_result = subprocess.run(
                     ["gh", "api", "user", "--jq", ".login"],
+                    check=False,
                     capture_output=True,
                     text=True,
                     timeout=10,
@@ -227,7 +233,9 @@ class GitHubDistributor:
             try:
                 # Clone repository
                 clone_cmd = ["git", "clone", repo_url, str(temp_path / "repo")]
-                result = subprocess.run(clone_cmd, capture_output=True, text=True, timeout=120)
+                result = subprocess.run(
+                    clone_cmd, check=False, capture_output=True, text=True, timeout=120
+                )
 
                 if result.returncode != 0:
                     # Try to initialize if clone failed
@@ -253,18 +261,17 @@ class GitHubDistributor:
                             shutil.copytree(item, repo_path / item.name, dirs_exist_ok=True)
                         else:
                             shutil.copy2(item, repo_path)
-                else:
-                    # Extract archive to repo
-                    if package.format == "zip":
-                        import zipfile
+                # Extract archive to repo
+                elif package.format == "zip":
+                    import zipfile
 
-                        with zipfile.ZipFile(package.package_path, "r") as zipf:
-                            zipf.extractall(repo_path)
-                    elif package.format in ["tar.gz", "uvx"]:
-                        import tarfile
+                    with zipfile.ZipFile(package.package_path, "r") as zipf:
+                        zipf.extractall(repo_path)
+                elif package.format in ["tar.gz", "uvx"]:
+                    import tarfile
 
-                        with tarfile.open(package.package_path, "r:*") as tar:
-                            tar.extractall(repo_path)
+                    with tarfile.open(package.package_path, "r:*") as tar:
+                        tar.extractall(repo_path)
 
                 # Create or update README
                 readme_path = repo_path / "README.md"
@@ -283,6 +290,7 @@ class GitHubDistributor:
                 # Get commit SHA
                 result = subprocess.run(
                     ["git", "rev-parse", "HEAD"],
+                    check=False,
                     cwd=repo_path,
                     capture_output=True,
                     text=True,
@@ -341,7 +349,9 @@ class GitHubDistributor:
                 if package.package_path.is_file():
                     release_cmd.append(str(package.package_path))
 
-                result = subprocess.run(release_cmd, capture_output=True, text=True, timeout=120)
+                result = subprocess.run(
+                    release_cmd, check=False, capture_output=True, text=True, timeout=120
+                )
 
                 if result.returncode != 0:
                     logger.warning(f"Failed to create release: {result.stderr}")
@@ -467,7 +477,9 @@ Generated on {package.created_at.isoformat()}
 
                 list_cmd.extend(["--json", "name,description,url,updatedAt"])
 
-                result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=30)
+                result = subprocess.run(
+                    list_cmd, check=False, capture_output=True, text=True, timeout=30
+                )
 
                 if result.returncode == 0:
                     repos = json.loads(result.stdout)
@@ -520,7 +532,9 @@ Generated on {package.created_at.isoformat()}
 
                 download_cmd.extend(["--repo", repository, "--dir", str(target_path)])
 
-                result = subprocess.run(download_cmd, capture_output=True, text=True, timeout=300)
+                result = subprocess.run(
+                    download_cmd, check=False, capture_output=True, text=True, timeout=300
+                )
 
                 if result.returncode != 0:
                     raise DistributionError(

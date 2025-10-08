@@ -50,6 +50,7 @@ class DockerManager:
                     str(dockerfile),
                     str(project_root),
                 ],
+                check=False,
                 capture_output=True,
                 text=True,
             )
@@ -115,7 +116,7 @@ class DockerManager:
 
         # Run the container
         try:
-            return subprocess.run(docker_cmd).returncode
+            return subprocess.run(docker_cmd, check=False).returncode
         except subprocess.SubprocessError as e:
             print(f"Error running Docker container: {e}", file=sys.stderr)
             return 1
@@ -136,10 +137,10 @@ class DockerManager:
         if key_name == "ANTHROPIC_API_KEY":
             # Anthropic keys typically start with sk- and have alphanumeric chars
             return bool(re.match(r"^sk-[a-zA-Z0-9\-_]+$", value))
-        elif key_name in ["OPENAI_API_KEY"]:
+        if key_name in ["OPENAI_API_KEY"]:
             # OpenAI keys typically start with sk- and have alphanumeric chars
             return bool(re.match(r"^sk-[a-zA-Z0-9\-_]+$", value))
-        elif key_name in ["GITHUB_TOKEN", "GH_TOKEN"]:
+        if key_name in ["GITHUB_TOKEN", "GH_TOKEN"]:
             # GitHub tokens have various formats (ghp_, ghs_, github_pat_, etc.)
             return bool(
                 re.match(r"^(ghp_|ghs_|github_pat_|gho_|ghu_)[a-zA-Z0-9_]+$", value)

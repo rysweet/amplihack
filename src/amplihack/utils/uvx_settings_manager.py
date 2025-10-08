@@ -33,7 +33,7 @@ class UVXSettingsManager:
 
         # Check if existing settings.json lacks bypass permissions
         try:
-            with open(target_settings_path, "r", encoding="utf-8") as f:
+            with open(target_settings_path, encoding="utf-8") as f:
                 existing_settings = json.load(f)
 
             permissions = existing_settings.get("permissions", {})
@@ -64,7 +64,7 @@ class UVXSettingsManager:
                 shutil.copy2(target_path, backup_path)
 
             # Load the UVX template
-            with open(self._template_path, "r", encoding="utf-8") as f:
+            with open(self._template_path, encoding="utf-8") as f:
                 uvx_template = json.load(f)
 
             # Write the UVX-optimized settings
@@ -95,7 +95,7 @@ class UVXSettingsManager:
         """
         try:
             # Load the UVX template
-            with open(self._template_path, "r", encoding="utf-8") as f:
+            with open(self._template_path, encoding="utf-8") as f:
                 uvx_template = json.load(f)
 
             # Merge settings, prioritizing UVX template for permissions and core tools
@@ -147,7 +147,7 @@ class UVXSettingsManager:
             Dictionary containing UVX template settings, or None if failed to load
         """
         try:
-            with open(self._template_path, "r", encoding="utf-8") as f:
+            with open(self._template_path, encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             return None
