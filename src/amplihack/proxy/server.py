@@ -555,20 +555,20 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                             if hasattr(block, "content"):
                                 if isinstance(block.content, str):
                                     # If it's a simple string, create a text block for it
-                                    processed_content_block["content"] = [
+                                    processed_content_block["content"] = [  # type: ignore[assignment]
                                         {"type": "text", "text": block.content}
                                     ]
                                 elif isinstance(block.content, list):
                                     # If it's already a list of blocks, keep it
-                                    processed_content_block["content"] = block.content
+                                    processed_content_block["content"] = block.content  # type: ignore[assignment]
                                 else:
                                     # Default fallback
-                                    processed_content_block["content"] = [
+                                    processed_content_block["content"] = [  # type: ignore[assignment]
                                         {"type": "text", "text": str(block.content)}
                                     ]
                             else:
                                 # Default empty content
-                                processed_content_block["content"] = [{"type": "text", "text": ""}]
+                                processed_content_block["content"] = [{"type": "text", "text": ""}]  # type: ignore[assignment]
 
                             processed_content.append(processed_content_block)
 
@@ -638,7 +638,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     # Convert tool_choice to OpenAI format if present
     if anthropic_request.tool_choice:
         if hasattr(anthropic_request.tool_choice, "dict"):
-            tool_choice_dict = anthropic_request.tool_choice.dict()
+            tool_choice_dict = anthropic_request.tool_choice.dict()  # type: ignore[union-attr]
         else:
             tool_choice_dict = anthropic_request.tool_choice
 
@@ -680,12 +680,12 @@ def convert_litellm_to_anthropic(
         # Handle ModelResponse object from LiteLLM
         if hasattr(litellm_response, "choices") and hasattr(litellm_response, "usage"):
             # Extract data from ModelResponse object directly
-            choices = litellm_response.choices
+            choices = litellm_response.choices  # type: ignore[union-attr]
             message = choices[0].message if choices and len(choices) > 0 else None
             content_text = message.content if message and hasattr(message, "content") else ""
             tool_calls = message.tool_calls if message and hasattr(message, "tool_calls") else None
             finish_reason = choices[0].finish_reason if choices and len(choices) > 0 else "stop"
-            usage_info = litellm_response.usage
+            usage_info = litellm_response.usage  # type: ignore[union-attr]
             response_id = getattr(litellm_response, "id", f"msg_{uuid.uuid4()}")
         else:
             # For backward compatibility - handle dict responses
@@ -694,15 +694,15 @@ def convert_litellm_to_anthropic(
                 response_dict = (
                     litellm_response
                     if isinstance(litellm_response, dict)
-                    else litellm_response.dict()
+                    else litellm_response.dict()  # type: ignore[union-attr]
                 )
             except AttributeError:
                 # If .dict() fails, try to use model_dump or __dict__
                 try:
                     response_dict = (
-                        litellm_response.model_dump()
+                        litellm_response.model_dump()  # type: ignore[union-attr]
                         if hasattr(litellm_response, "model_dump")
-                        else litellm_response.__dict__
+                        else litellm_response.__dict__  # type: ignore[union-attr]
                     )
                 except AttributeError:
                     # Fallback - manually extract attributes
@@ -907,6 +907,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
         output_tokens = 0
         has_sent_stop_reason = False
         last_tool_index = 0
+        anthropic_tool_index = 0  # Initialize to avoid unbound variable error
 
         # Process each chunk
         async for chunk in response_generator:
@@ -935,7 +936,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of delta content
                     if hasattr(delta, "content"):
-                        delta_content = delta.content
+                        delta_content = delta.content  # type: ignore[union-attr]
                     elif isinstance(delta, dict) and "content" in delta:
                         delta_content = delta["content"]
 
@@ -953,7 +954,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of tool calls
                     if hasattr(delta, "tool_calls"):
-                        delta_tool_calls = delta.tool_calls
+                        delta_tool_calls = delta.tool_calls  # type: ignore[union-attr]
                     elif isinstance(delta, dict) and "tool_calls" in delta:
                         delta_tool_calls = delta["tool_calls"]
 
@@ -989,7 +990,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                             if isinstance(tool_call, dict) and "index" in tool_call:
                                 current_index = tool_call["index"]
                             elif hasattr(tool_call, "index"):
-                                current_index = tool_call.index
+                                current_index = tool_call.index  # type: ignore[union-attr]
                             else:
                                 current_index = 0
 

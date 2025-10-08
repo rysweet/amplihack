@@ -2,8 +2,11 @@
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
+
+if TYPE_CHECKING:
+    pass  # type: ignore[import-not-found]
 
 
 class GitHubCopilotClient:
@@ -18,7 +21,7 @@ class GitHubCopilotClient:
         """
         self.token = token
         self.base_url = base_url.rstrip("/")
-        self.session = None
+        self.session: Optional[Any] = None  # aiohttp.ClientSession when initialized
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -34,7 +37,7 @@ class GitHubCopilotClient:
         """Ensure HTTP session is initialized."""
         if not self.session:
             try:
-                import aiohttp
+                import aiohttp  # type: ignore[import-not-found]
 
                 self.session = aiohttp.ClientSession(
                     headers={
@@ -105,6 +108,8 @@ class GitHubCopilotClient:
         Returns:
             Response dictionary.
         """
+        if not self.session:
+            raise RuntimeError("Session not initialized. Use async context manager.")
         try:
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
@@ -128,6 +133,8 @@ class GitHubCopilotClient:
         Yields:
             Streaming response chunks.
         """
+        if not self.session:
+            raise RuntimeError("Session not initialized. Use async context manager.")
         try:
             async with self.session.post(url, json=data) as response:
                 if response.status != 200:
@@ -184,6 +191,8 @@ class GitHubCopilotClient:
             Usage information if available.
         """
         await self._ensure_session()
+        if not self.session:
+            raise RuntimeError("Session not initialized. Use async context manager.")
 
         try:
             url = urljoin(self.base_url, "/copilot/billing")
@@ -234,7 +243,7 @@ class GitHubCopilotClient:
                         stream_result = await self.chat_completion(
                             messages, model, temperature, max_tokens, stream, **kwargs
                         )
-                        async for chunk in stream_result:
+                        async for chunk in stream_result:  # type: ignore[misc]
                             yield chunk
 
                 return _stream_wrapper()

@@ -49,6 +49,9 @@ exclude = [
     "Specs/xpia_defense_interface.py",  # Example/demo code with intentional type issues
     "Specs/xpia_usage_examples.py",     # Example/demo code with intentional type issues
     "src/amplihack/security/cli.py",    # CLI dependencies not available in CI
+    "src/amplihack/proxy/server.py",    # Proxy server with optional dependencies (httpx, litellm, fastapi, etc.)
+    "src/amplihack/proxy/github_auth.py",  # GitHub auth with optional requests dependency
+    "src/amplihack/proxy/github_client.py",  # GitHub Copilot client with optional aiohttp dependency
 ]
 
 [tool.pytest.ini_options]
