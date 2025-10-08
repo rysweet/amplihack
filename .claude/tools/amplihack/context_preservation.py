@@ -235,7 +235,7 @@ All agents should receive this context to ensure user requirements are preserved
             return None
 
         try:
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 return json.load(f)
         except Exception:
             return None

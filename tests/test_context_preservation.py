@@ -15,7 +15,7 @@ project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
 sys.path.insert(0, str(project_root / "src"))
 
-from context_preservation import ContextPreserver  # noqa: E402
+from context_preservation import ContextPreserver
 
 
 class TestContextPreserver(unittest.TestCase):
@@ -154,7 +154,7 @@ Implement conversation transcript and original request preservation for amplihac
         transcript_path = self.preserver.export_conversation_transcript(conversation_data)
 
         self.assertTrue(Path(transcript_path).exists())
-        with open(transcript_path, "r") as f:
+        with open(transcript_path) as f:
             content = f.read()
         self.assertIn("Conversation Transcript", content)
 

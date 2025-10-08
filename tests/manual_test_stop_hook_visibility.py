@@ -276,9 +276,8 @@ def main():
     if failed == 0:
         print("\n🎉 ALL TESTS PASSED! The visibility fix is working correctly.")
         return 0
-    else:
-        print(f"\n⚠️  {failed} TEST(S) FAILED. Please review the output above.")
-        return 1
+    print(f"\n⚠️  {failed} TEST(S) FAILED. Please review the output above.")
+    return 1
 
 
 if __name__ == "__main__":

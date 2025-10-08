@@ -172,13 +172,12 @@ def process_tool_use_request(tool_name: str, parameters: Dict[str, Any]) -> Dict
                 "message": f"Command blocked due to security risk: {validation_result['risk_level']}",
                 "validation": validation_result,
             }
-        else:
-            return {
-                "status": "success",
-                "action": "allow",
-                "message": f"Command validated (risk: {validation_result['risk_level']})",
-                "validation": validation_result,
-            }
+        return {
+            "status": "success",
+            "action": "allow",
+            "message": f"Command validated (risk: {validation_result['risk_level']})",
+            "validation": validation_result,
+        }
 
     except Exception as e:
         # Log error but allow command execution

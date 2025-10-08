@@ -59,8 +59,6 @@ class MergeResult:
 class SettingsJsonError(Exception):
     """Error in settings.json processing"""
 
-    pass
-
 
 class HookMergeUtility:
     """
@@ -159,7 +157,7 @@ class HookMergeUtility:
             return self._create_default_settings()
 
         try:
-            with open(self.settings_path, "r") as f:
+            with open(self.settings_path) as f:
                 settings = json.load(f)
 
             # Ensure hooks section exists
@@ -168,7 +166,7 @@ class HookMergeUtility:
 
             return settings
 
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             logger.warning(f"Failed to load settings.json: {e}, creating new configuration")
             return self._create_default_settings()
 
@@ -304,9 +302,9 @@ class HookMergeUtility:
     async def _verify_saved_settings(self) -> None:
         """Verify that saved settings file is valid JSON"""
         try:
-            with open(self.settings_path, "r") as f:
+            with open(self.settings_path) as f:
                 json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             raise SettingsJsonError(f"Saved settings file is invalid: {e}")
 
     async def _restore_settings(self, backup_path: str) -> None:

@@ -238,7 +238,7 @@ def check_duplicate_issue(
             is_duplicate=False,
             similar_issues=[],
             confidence=0.0,
-            reason=f"Detection error: {str(e)}",
+            reason=f"Detection error: {e!s}",
         )
 
 
@@ -257,7 +257,6 @@ def store_new_issue(
     """
     # For now, this is a no-op as we don't maintain persistent storage
     # Could be extended to store in a file or database
-    pass
 
 
 def get_performance_stats() -> Dict:
@@ -271,8 +270,8 @@ def get_performance_stats() -> Dict:
 
 # Maintain compatibility with existing interface
 __all__ = [
-    "check_duplicate_issue",
-    "store_new_issue",
-    "get_performance_stats",
     "DuplicateDetectionResult",
+    "check_duplicate_issue",
+    "get_performance_stats",
+    "store_new_issue",
 ]

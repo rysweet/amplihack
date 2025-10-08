@@ -109,9 +109,8 @@ class TestClaudeSession:
         with patch.object(session, "_simulate_command_execution") as mock_exec:
             mock_exec.side_effect = lambda *args, **kwargs: time.sleep(10)
 
-            with session:
-                with pytest.raises(TimeoutError):
-                    session.execute_command("slow_command", timeout=0.1)
+            with session, pytest.raises(TimeoutError):
+                session.execute_command("slow_command", timeout=0.1)
 
     def test_command_error_handling(self, session):
         """Test command error handling."""

@@ -64,7 +64,7 @@ class ReflectionStateMachine:
                 data = json.load(f)
                 data["state"] = ReflectionState(data["state"])
                 return ReflectionStateData(**data)
-        except (IOError, OSError, json.JSONDecodeError, TypeError, ValueError, KeyError):
+        except (OSError, json.JSONDecodeError, TypeError, ValueError, KeyError):
             # Corrupt state file (missing fields), reset to IDLE
             return ReflectionStateData(state=ReflectionState.IDLE, session_id=self.session_id)
 
@@ -76,7 +76,7 @@ class ReflectionStateMachine:
         try:
             with open(self.state_file, "w") as f:
                 json.dump(data, f, indent=2)
-        except (IOError, OSError):
+        except OSError:
             pass  # Failed to write, will retry next time
 
     def detect_user_intent(self, message: str) -> Optional[str]:
@@ -146,5 +146,5 @@ class ReflectionStateMachine:
         if self.state_file.exists():
             try:
                 self.state_file.unlink()
-            except (IOError, OSError):
+            except OSError:
                 pass

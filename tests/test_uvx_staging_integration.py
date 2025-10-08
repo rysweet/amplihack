@@ -80,7 +80,7 @@ class TestUVXStagingIntegration(unittest.TestCase):
         self.assertTrue(target_settings.exists(), "settings.json should exist")
 
         # Verify enhanced settings content
-        with open(target_settings, "r", encoding="utf-8") as f:
+        with open(target_settings, encoding="utf-8") as f:
             settings = json.load(f)
 
         # Should have bypass permissions
@@ -135,7 +135,7 @@ class TestUVXStagingIntegration(unittest.TestCase):
         self.assertTrue(result, "Should successfully stage .claude directory")
 
         # Verify that existing settings were preserved (copied from source)
-        with open(target_settings, "r", encoding="utf-8") as f:
+        with open(target_settings, encoding="utf-8") as f:
             final_settings = json.load(f)
 
         # Should still have bypass permissions
@@ -165,7 +165,7 @@ class TestUVXStagingIntegration(unittest.TestCase):
         self.assertTrue(result, "Should successfully stage .claude directory")
 
         # Verify that settings were enhanced with UVX template
-        with open(target_settings, "r", encoding="utf-8") as f:
+        with open(target_settings, encoding="utf-8") as f:
             enhanced_settings = json.load(f)
 
         # Should now have bypass permissions
@@ -198,7 +198,7 @@ class TestUVXStagingIntegration(unittest.TestCase):
         self.assertTrue(backup_file.exists(), "Backup file should be created")
 
         # Verify backup contains original settings
-        with open(backup_file, "r", encoding="utf-8") as f:
+        with open(backup_file, encoding="utf-8") as f:
             backup_settings = json.load(f)
 
         self.assertEqual(
@@ -249,7 +249,7 @@ class TestUVXStagingIntegration(unittest.TestCase):
             self.assertTrue(target_settings.exists(), "Settings file should exist")
 
             # Should contain source settings (not UVX enhanced)
-            with open(target_settings, "r", encoding="utf-8") as f:
+            with open(target_settings, encoding="utf-8") as f:
                 settings = json.load(f)
 
             # Should match source settings structure

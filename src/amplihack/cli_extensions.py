@@ -20,7 +20,6 @@ from .bundle_generator.models import DistributionMethod, PackageFormat
 @click.group()
 def bundle():
     """Agent Bundle Generator commands."""
-    pass
 
 
 @bundle.command()

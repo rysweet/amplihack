@@ -255,8 +255,7 @@ class MemoryBackend:
                 # Deserialize based on type
                 if memory_type == "json":
                     return json.loads(value)
-                else:
-                    return value
+                return value
 
             except (sqlite3.Error, json.JSONDecodeError) as e:
                 print(f"Warning: Memory retrieve failed: {e}")

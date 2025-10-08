@@ -325,7 +325,7 @@ def ensure_settings_json():
             if not settings_manager.prompt_user_for_modification():
                 print("  ⚠️  Settings modification declined by user")
                 return False
-            elif is_uvx:
+            if is_uvx:
                 print("  🚀 UVX environment detected - auto-configuring hooks")
 
             # Create backup
@@ -346,7 +346,7 @@ def ensure_settings_json():
     # Load existing settings or use template
     if os.path.exists(settings_path):
         try:
-            with open(settings_path, "r", encoding="utf-8") as f:
+            with open(settings_path, encoding="utf-8") as f:
                 settings = json.load(f)
             print("  📋 Found existing settings.json")
 
@@ -388,14 +388,13 @@ def ensure_settings_json():
     # Ensure permissions are set correctly
     if "permissions" not in settings:
         settings["permissions"] = SETTINGS_TEMPLATE["permissions"].copy()
+    # Ensure additionalDirectories includes .claude and Specs
+    elif "additionalDirectories" not in settings["permissions"]:
+        settings["permissions"]["additionalDirectories"] = [".claude", "Specs"]
     else:
-        # Ensure additionalDirectories includes .claude and Specs
-        if "additionalDirectories" not in settings["permissions"]:
-            settings["permissions"]["additionalDirectories"] = [".claude", "Specs"]
-        else:
-            for dir_name in [".claude", "Specs"]:
-                if dir_name not in settings["permissions"]["additionalDirectories"]:
-                    settings["permissions"]["additionalDirectories"].append(dir_name)
+        for dir_name in [".claude", "Specs"]:
+            if dir_name not in settings["permissions"]["additionalDirectories"]:
+                settings["permissions"]["additionalDirectories"].append(dir_name)
 
     # Write updated settings
     try:

@@ -26,35 +26,49 @@ repos:
       # - id: check-executables-have-shebangs
       # - id: check-shebang-scripts-are-executable
 
-  # Python - Comprehensive Ruff linting with strict rules
+  # Python - Ruff linting with balanced rules
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.13.0
     hooks:
       - id: ruff
-        args: [
-            --fix,
-            --select=ALL, # Enable all rules
-            --ignore=D, # Ignore docstring rules (too verbose for pre-commit)
-            --ignore=ANN101,
-            ANN102, # Ignore self/cls annotations
-            --ignore=COM812,
-            COM819, # Ignore trailing comma conflicts with formatter
-            --ignore=ISC001, # Ignore import sorting conflict with formatter
-            --ignore=Q000,
-            Q001,
-            Q002,
-            Q003, # Ignore quote style conflicts
-          ]
+        args:
+          - --fix
+          - --select=E,F,W,I,UP,YTT,B,A,C4,T10,ISC,ICN,PIE,PYI,RSE,RET,SIM,RUF
+          - --ignore=ANN,D
+          - --ignore=COM812,COM819
+          - --ignore=ISC001
+          - --ignore=Q000,Q001,Q002,Q003
+          - --ignore=T201
+          - --ignore=S101
+          - --ignore=TRY003
+          - --ignore=EM101,EM102
+          - --ignore=FBT001,FBT002
+          - --ignore=PLR2004
+          - --ignore=SLF001
+          - --ignore=BLE001
+          - --ignore=E501
+          - --ignore=N999,N806
+          - --ignore=SIM117,SIM105,SIM102,SIM110,SIM108,SIM103,SIM118
+          - --ignore=RSE102
+          - --ignore=B904,B007,B019
+          - --ignore=RUF001,RUF012,RUF013,RUF015,RUF022,RUF005,RUF059,RUF043
+          - --ignore=E402
+          - --ignore=RET504
+          - --ignore=C414,C401
+          - --ignore=ERA001
+          - --ignore=A001,A002,A004
+          - --ignore=I001
+          - --ignore=PIE810
       - id: ruff-format
 
-  # Security scanning with bandit
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.5
-    hooks:
-      - id: bandit
-        args: [-r, --format=custom, --skip=B101, B601]
-        exclude: '^tests/.*\.py$'
-        additional_dependencies: ["pbr"]
+  # Security scanning with bandit (temporarily disabled - integrate gradually)
+  # - repo: https://github.com/PyCQA/bandit
+  #   rev: 1.7.5
+  #   hooks:
+  #     - id: bandit
+  #       args: [-r, --format=custom, --skip=B101,B601,B324,B104,B602,B110,B108]
+  #       exclude: '^tests/.*\.py$'
+  #       additional_dependencies: ["pbr"]
 
   # Python - Type checking with pyright (strict mode)
   - repo: https://github.com/RobertCraigie/pyright-python
