@@ -564,9 +564,8 @@ async def main():
     if total_failed > 0:
         print(f"{total_failed} tests failed")
         return 1
-    else:
-        print("All XPIA Defense tests passed!")
-        return 0
+    print("All XPIA Defense tests passed!")
+    return 0
 
 
 if __name__ == "__main__":

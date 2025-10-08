@@ -31,7 +31,7 @@ class TestMemoryPersistence:
         """Create a persistent database path for cross-session testing."""
         temp_dir = tempfile.mkdtemp()
         db_path = Path(temp_dir) / "persistent_memory.db"
-        yield str(db_path)
+        return str(db_path)
         # Cleanup is handled by each test method
 
     def test_memory_survives_database_restart(self, persistent_db_path):

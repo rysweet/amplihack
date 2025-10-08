@@ -120,6 +120,7 @@ class ProxyManager:
                 for pip_cmd in pip_commands:
                     install_result = subprocess.run(
                         pip_cmd,
+                        check=False,
                         cwd=str(proxy_repo),
                         capture_output=True,
                         text=True,
@@ -139,7 +140,11 @@ class ProxyManager:
                 if not node_modules.exists():
                     print("Installing npm proxy dependencies...")
                     install_result = subprocess.run(
-                        ["npm", "install"], cwd=str(proxy_repo), capture_output=True, text=True
+                        ["npm", "install"],
+                        check=False,
+                        cwd=str(proxy_repo),
+                        capture_output=True,
+                        text=True,
                     )
                     if install_result.returncode != 0:
                         print(f"Failed to install npm dependencies: {install_result.stderr}")
@@ -161,14 +166,18 @@ class ProxyManager:
             if (proxy_repo / "start_proxy.py").exists():
                 # It's a Python project - try uv run first, fall back to python
                 # Check if uv is available
-                uv_check = subprocess.run(["which", "uv"], capture_output=True, shell=True)
+                uv_check = subprocess.run(
+                    ["which", "uv"], check=False, capture_output=True, shell=True
+                )
                 if uv_check.returncode == 0:
                     start_command = ["uv", "run", "python", "start_proxy.py"]
                 else:
                     start_command = ["python", "start_proxy.py"]
             elif (proxy_repo / "src" / "proxy.py").exists():
                 # Alternative Python structure
-                uv_check = subprocess.run(["which", "uv"], capture_output=True, shell=True)
+                uv_check = subprocess.run(
+                    ["which", "uv"], check=False, capture_output=True, shell=True
+                )
                 if uv_check.returncode == 0:
                     start_command = ["uv", "run", "python", "-m", "src.proxy"]
                 else:

@@ -119,6 +119,7 @@ def test_real_e2e_complete_workflow():
         # REAL script execution
         result = subprocess.run(
             [str(repackage_script)],
+            check=False,
             cwd=complete_bundle_path,
             capture_output=True,
             text=True,
@@ -333,6 +334,7 @@ def test_real_e2e_repackage_workflow():
         repackage_script = complete_bundle_path / "repackage.sh"
         result = subprocess.run(
             [str(repackage_script)],
+            check=False,
             cwd=complete_bundle_path,
             capture_output=True,
             text=True,

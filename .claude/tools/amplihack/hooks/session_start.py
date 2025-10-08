@@ -133,7 +133,7 @@ class SessionStartHook(HookProcessor):
 
         if preferences_file and preferences_file.exists():
             try:
-                with open(preferences_file, "r") as f:
+                with open(preferences_file) as f:
                     prefs_content = f.read()
                 self.log(f"Successfully read preferences from: {preferences_file}")
 

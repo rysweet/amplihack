@@ -186,7 +186,6 @@ class TestUVXStager:
 
         # Note: Cleanup removed in simplified implementation
         # Should not raise exception with non-existent files
-        pass
 
 
 class TestConvenienceFunctions:

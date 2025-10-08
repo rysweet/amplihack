@@ -50,7 +50,6 @@ def fallback_store_new_issue(
     issue_id, title, body, pattern_type=None, priority="medium", repository="current"
 ):
     """Fallback - no storage."""
-    pass
 
 
 # Import semantic duplicate detection system
@@ -232,6 +231,7 @@ def create_github_issue(pattern: Dict) -> Optional[str]:
         try:
             check_result = subprocess.run(
                 ["gh", "--version"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=5,
@@ -286,7 +286,7 @@ This improvement was identified by AI analysis. Please review and implement as a
 
                 return None
 
-            elif duplicate_result.similar_issues:
+            if duplicate_result.similar_issues:
                 # Found similar but not duplicate - inform user
                 similar_count = len(duplicate_result.similar_issues)
                 print(
@@ -308,6 +308,7 @@ This improvement was identified by AI analysis. Please review and implement as a
                     "--label",
                     f"ai-improvement,{safe_type},{safe_priority}-priority",
                 ],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,  # Reduced timeout to 10 seconds
@@ -327,37 +328,37 @@ This improvement was identified by AI analysis. Please review and implement as a
 
             show_issue_created(issue_url, pattern["type"])
             return issue_url  # Return URL instead of just ID for better visibility
-        else:
-            # Check if error is due to labels - try without labels
-            error_msg = result.stderr.lower()
-            if "label" in error_msg or "not found" in error_msg:
-                print("⚠️  Label issue detected - retrying without labels...")
-                try:
-                    result_no_labels = subprocess.run(
-                        [
-                            "gh",
-                            "issue",
-                            "create",
-                            "--title",
-                            title,
-                            "--body",
-                            body,
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=10,
-                    )
-                    if result_no_labels.returncode == 0:
-                        issue_url = result_no_labels.stdout.strip()
-                        show_issue_created(issue_url, pattern["type"])
-                        return issue_url
-                except subprocess.TimeoutExpired:
-                    print("⚠️  GitHub issue creation timed out on retry - skipping")
-                    return None
+        # Check if error is due to labels - try without labels
+        error_msg = result.stderr.lower()
+        if "label" in error_msg or "not found" in error_msg:
+            print("⚠️  Label issue detected - retrying without labels...")
+            try:
+                result_no_labels = subprocess.run(
+                    [
+                        "gh",
+                        "issue",
+                        "create",
+                        "--title",
+                        title,
+                        "--body",
+                        body,
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result_no_labels.returncode == 0:
+                    issue_url = result_no_labels.stdout.strip()
+                    show_issue_created(issue_url, pattern["type"])
+                    return issue_url
+            except subprocess.TimeoutExpired:
+                print("⚠️  GitHub issue creation timed out on retry - skipping")
+                return None
 
-            # Generic failure
-            print(f"⚠️  Failed to create GitHub issue: {result.stderr[:100]}")
-            return None
+        # Generic failure
+        print(f"⚠️  Failed to create GitHub issue: {result.stderr[:100]}")
+        return None
 
     except Exception as e:
         # Log but don't crash - reflection should continue even if GitHub fails
@@ -371,7 +372,7 @@ def delegate_to_ultrathink(issue_number: str, pattern: Dict) -> bool:
         task = f"Fix GitHub issue #{issue_number}: {pattern['suggestion']}"
 
         result = subprocess.run(
-            ["claude", "ultrathink", task], capture_output=True, text=True, timeout=300
+            ["claude", "ultrathink", task], check=False, capture_output=True, text=True, timeout=300
         )
 
         success = result.returncode == 0

@@ -188,6 +188,7 @@ class UpdateManager:
         """Get current framework version from git."""
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
+            check=False,
             cwd=self.framework_repo,
             capture_output=True,
             text=True,
@@ -203,6 +204,7 @@ class UpdateManager:
         """Get changelog between versions."""
         result = subprocess.run(
             ["git", "log", f"{old_version}..{new_version}", "--oneline"],
+            check=False,
             cwd=self.framework_repo,
             capture_output=True,
             text=True,

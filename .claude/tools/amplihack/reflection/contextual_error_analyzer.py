@@ -322,20 +322,19 @@ Return ONLY the JSON response, no additional text."""
                 patterns=[f"Pattern: {' OR '.join(matched_patterns)}"],
                 confidence=confidence,
             )
-        else:
-            # Generic fallback analysis
-            return ErrorAnalysis(
-                root_cause="Generic error detected - requires manual investigation",
-                category="general_error",
-                severity="warning",
-                suggestions=[
-                    "Add detailed error logging to identify specific issue",
-                    "Review error context and stack traces",
-                    "Implement proper exception handling",
-                ],
-                patterns=["Generic error pattern"],
-                confidence=0.3,
-            )
+        # Generic fallback analysis
+        return ErrorAnalysis(
+            root_cause="Generic error detected - requires manual investigation",
+            category="general_error",
+            severity="warning",
+            suggestions=[
+                "Add detailed error logging to identify specific issue",
+                "Review error context and stack traces",
+                "Implement proper exception handling",
+            ],
+            patterns=["Generic error pattern"],
+            confidence=0.3,
+        )
 
     def _create_empty_analysis(self) -> ErrorAnalysis:
         """Create empty analysis for invalid input."""

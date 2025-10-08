@@ -23,7 +23,7 @@ class ProxyConfig:
         if not self.config_path or not self.config_path.exists():
             return
 
-        with open(self.config_path, "r") as f:
+        with open(self.config_path) as f:
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
@@ -79,5 +79,4 @@ class ProxyConfig:
         """
         target_path.parent.mkdir(parents=True, exist_ok=True)
         with open(target_path, "w") as f:
-            for key, value in self.config.items():
-                f.write(f"{key}={value}\n")
+            f.writelines(f"{key}={value}\n" for key, value in self.config.items())
