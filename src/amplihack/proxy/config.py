@@ -50,7 +50,7 @@ class ProxyConfig:
             return
 
         # Read entire file at once for better I/O performance
-        with open(self.config_path, "r") as f:
+        with open(self.config_path) as f:
             content = f.read()
 
         # Process lines more efficiently
@@ -85,9 +85,9 @@ class ProxyConfig:
                         value = value[:comment_index].strip()
 
                 # Remove quotes more efficiently
-                if value.startswith('"') and value.endswith('"'):
-                    value = value[1:-1]
-                elif value.startswith("'") and value.endswith("'"):
+                if (value.startswith('"') and value.endswith('"')) or (
+                    value.startswith("'") and value.endswith("'")
+                ):
                     value = value[1:-1]
 
                 self.config[key] = value
@@ -148,17 +148,16 @@ class ProxyConfig:
         """
         if self.is_azure_endpoint():
             return self.validate_azure_config()
-        elif self.is_github_endpoint():
+        if self.is_github_endpoint():
             return self.validate_github_config()
-        else:
-            # For standard OpenAI proxy configuration
-            # ANTHROPIC_API_KEY is optional - only needed if you want to validate clients
-            required_keys = ["OPENAI_API_KEY"]  # The actual API key for the backend
-            for key in required_keys:
-                if key not in self.config or not self.config[key]:
-                    print(f"Missing required configuration: {key}")
-                    return False
-            return True
+        # For standard OpenAI proxy configuration
+        # ANTHROPIC_API_KEY is optional - only needed if you want to validate clients
+        required_keys = ["OPENAI_API_KEY"]  # The actual API key for the backend
+        for key in required_keys:
+            if key not in self.config or not self.config[key]:
+                print(f"Missing required configuration: {key}")
+                return False
+        return True
 
     def get(self, key: str, default: str = "") -> str:
         """Get configuration value.

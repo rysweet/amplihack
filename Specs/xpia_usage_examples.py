@@ -28,7 +28,6 @@ try:
     async def create_xpia_defense_client(base_url: str, api_key: str = None):
         """Example XPIA client factory function."""
         # This would be implemented in the actual XPIA Defense library
-        pass
 except ImportError:
     # For demonstration purposes when XPIA Defense is not available
     class MockEnum:

@@ -76,4 +76,4 @@ def get_amplihack_src_dir() -> Path:
 _initialize_paths()
 
 # Re-export commonly used modules for convenience
-__all__ = ["get_project_root", "get_amplihack_tools_dir", "get_amplihack_src_dir"]
+__all__ = ["get_amplihack_src_dir", "get_amplihack_tools_dir", "get_project_root"]

@@ -161,7 +161,7 @@ class FilesystemPackager:
         except Exception as e:
             logger.error(f"Failed to create filesystem package: {e}")
             raise PackagingError(
-                f"Failed to create filesystem package: {str(e)}. Check file permissions and disk space."
+                f"Failed to create filesystem package: {e!s}. Check file permissions and disk space."
             )
 
     def _create_directory_structure(self, package_path: Path) -> None:
@@ -557,6 +557,7 @@ Bundle ID: {bundle.id}
             # Try building with setup.py
             result = subprocess.run(
                 [sys.executable, "setup.py", "sdist", f"--dist-dir={dist_dir}"],
+                check=False,
                 cwd=package_path,
                 capture_output=True,
                 text=True,

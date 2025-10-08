@@ -3,4 +3,4 @@
 from .config import ProxyConfig
 from .manager import ProxyManager
 
-__all__ = ["ProxyManager", "ProxyConfig"]
+__all__ = ["ProxyConfig", "ProxyManager"]

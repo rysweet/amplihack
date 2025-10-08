@@ -43,7 +43,7 @@ class ProcessManager:
             import subprocess
 
             if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
-                popen_args["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP")
+                popen_args["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
         else:
             popen_args["preexec_fn"] = os.setsid
         return popen_args

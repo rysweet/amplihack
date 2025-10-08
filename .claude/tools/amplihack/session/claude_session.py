@@ -38,13 +38,9 @@ class SessionState:
 class TimeoutError(Exception):
     """Raised when session operations timeout."""
 
-    pass
-
 
 class SessionError(Exception):
     """Base exception for session-related errors."""
-
-    pass
 
 
 class ClaudeSession:

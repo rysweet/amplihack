@@ -153,9 +153,7 @@ class PreCommitWorkflow:
             command = self.AUTO_FIX_COMMANDS[tool]
 
             # Add file patterns based on tool
-            if tool in ["prettier"]:
-                command += " ."
-            elif tool in ["black", "ruff"]:
+            if tool in ["prettier"] or tool in ["black", "ruff"]:
                 command += " ."
             elif tool == "ruff-fix":
                 command = "ruff --fix ."
@@ -249,15 +247,14 @@ class PreCommitWorkflow:
         if returncode == 0:
             print("✅ All pre-commit checks passed!")
             return True
-        else:
-            print("❌ Pre-commit checks failed")
-            print("\nOutput:")
-            print(stdout)
-            if stderr:
-                print("\nErrors:")
-                print(stderr)
-            print("\nRun 'python -m claude.tools.precommit_workflow analyze' for details")
-            return False
+        print("❌ Pre-commit checks failed")
+        print("\nOutput:")
+        print(stdout)
+        if stderr:
+            print("\nErrors:")
+            print(stderr)
+        print("\nRun 'python -m claude.tools.precommit_workflow analyze' for details")
+        return False
 
 
 def main():
@@ -306,20 +303,20 @@ Examples:
         result = workflow.analyze_failures()
         return 0 if result["success"] else 1
 
-    elif args.command == "auto-fix":
+    if args.command == "auto-fix":
         tools = None
         if args.tools:
             tools = [t.strip() for t in args.tools.split(",")]
         success = workflow.auto_fix(tools)
         return 0 if success else 1
 
-    elif args.command == "verify-env":
+    if args.command == "verify-env":
         checks = workflow.verify_environment()
         essential = ["pre-commit_installed", "config_exists", "hooks_installed"]
         success = all(checks.get(check, False) for check in essential)
         return 0 if success else 1
 
-    elif args.command == "verify-success":
+    if args.command == "verify-success":
         success = workflow.verify_success()
         return 0 if success else 1
 

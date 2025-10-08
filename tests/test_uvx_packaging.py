@@ -27,6 +27,7 @@ class TestUVXPackaging:
         # This test should fail initially due to problematic data-files config
         result = subprocess.run(
             ["python", "-m", "build", "--wheel"],
+            check=False,
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,
@@ -46,6 +47,7 @@ class TestUVXPackaging:
         with tempfile.TemporaryDirectory() as temp_dir:
             result = subprocess.run(
                 ["python", "-m", "build", "--wheel", "--outdir", temp_dir],
+                check=False,
                 capture_output=True,
                 text=True,
                 cwd=Path(__file__).parent.parent,
@@ -98,6 +100,7 @@ class TestUVXPackaging:
                     "amplihack",
                     "--help",
                 ],
+                check=False,
                 capture_output=True,
                 text=True,
                 cwd=temp_dir,
