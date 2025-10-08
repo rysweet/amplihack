@@ -7,3 +7,6 @@ root_dir = Path(__file__).parent
 src_dir = root_dir / "src"
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
+
+# Enable pytest-asyncio plugin for async test support
+pytest_plugins = ("pytest_asyncio",)

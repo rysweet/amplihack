@@ -23,8 +23,8 @@ from amplihack.auto_mode.quality_gates import QualityGateEvaluator
 from amplihack.auto_mode.sdk_integration import ClaudeAgentSDKClient
 from amplihack.auto_mode.session import SessionManager, SessionState
 
-# Use pytest-asyncio's built-in event loop fixture
-pytest_plugins = ("pytest_asyncio",)
+# Note: pytest_plugins should be defined in root conftest.py, not here
+# It's handled by the root conftest.py to avoid pytest deprecation warnings
 
 
 # Set the default fixture loop scope to function to avoid deprecation warnings
