@@ -40,7 +40,7 @@ def run_command(cmd: List[str], timeout: int = 30) -> Tuple[int, str, str]:
         Tuple of (return_code, stdout, stderr)
     """
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=timeout)
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return 1, "", f"Command timed out after {timeout} seconds"
@@ -145,7 +145,7 @@ def diagnose_ci(pr_number: Optional[int] = None, branch: Optional[str] = None) -
                 result = future.result(timeout=180)
                 diagnostics[check_name] = result
             except Exception as e:
-                diagnostics["errors"].append(f"{check_name}: {str(e)}")
+                diagnostics["errors"].append(f"{check_name}: {e!s}")
                 diagnostics[check_name] = {"success": False, "error": str(e)}
 
     # Analyze results
@@ -172,18 +172,17 @@ def analyze_diagnostics(diagnostics: Dict) -> str:
     # Check for critical failures
     if ci_status.get("status") == "FAILING":
         return "CI_FAILING"
-    elif not test_check.get("success"):
+    if not test_check.get("success"):
         return "TESTS_FAILING"
-    elif not lint_check.get("success"):
+    if not lint_check.get("success"):
         return "LINT_FAILING"
-    elif not build_check.get("success"):
+    if not build_check.get("success"):
         return "BUILD_FAILING"
-    elif ci_status.get("status") == "PENDING":
+    if ci_status.get("status") == "PENDING":
         return "CI_PENDING"
-    elif ci_status.get("status") == "PASSING":
+    if ci_status.get("status") == "PASSING":
         return "ALL_PASSING"
-    else:
-        return "UNKNOWN"
+    return "UNKNOWN"
 
 
 def iterate_fixes(max_attempts: int = 5, pr_number: Optional[int] = None) -> Dict:

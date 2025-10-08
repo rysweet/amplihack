@@ -686,7 +686,7 @@ class SafeCleanupOrchestrator:
                 response = input("    Execute this action? (y/N/a for all): ").strip().lower()
                 if response == "n":
                     continue
-                elif response == "a":
+                if response == "a":
                     interactive = False  # Execute all remaining
 
             success = await self.execute_action(action, dry_run)

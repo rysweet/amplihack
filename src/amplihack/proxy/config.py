@@ -50,7 +50,7 @@ class ProxyConfig:
             return
 
         # Read entire file at once for better I/O performance
-        with open(self.config_path, "r") as f:
+        with open(self.config_path) as f:
             content = f.read()
 
         # Process lines more efficiently
@@ -85,9 +85,9 @@ class ProxyConfig:
                         value = value[:comment_index].strip()
 
                 # Remove quotes more efficiently
-                if value.startswith('"') and value.endswith('"'):
-                    value = value[1:-1]
-                elif value.startswith("'") and value.endswith("'"):
+                if (value.startswith('"') and value.endswith('"')) or (
+                    value.startswith("'") and value.endswith("'")
+                ):
                     value = value[1:-1]
 
                 self.config[key] = value
@@ -110,6 +110,8 @@ class ProxyConfig:
             "GITHUB_TOKEN",
             "GITHUB_COPILOT_ENABLED",
             "GITHUB_COPILOT_MODEL",
+            "GITHUB_COPILOT_LITELLM_ENABLED",  # New LiteLLM integration flag
+            "GITHUB_COPILOT_ENDPOINT",  # GitHub Copilot API endpoint
             "PROXY_TYPE",
             "PROXY_MODE",
             "PORT",
@@ -146,17 +148,16 @@ class ProxyConfig:
         """
         if self.is_azure_endpoint():
             return self.validate_azure_config()
-        elif self.is_github_endpoint():
+        if self.is_github_endpoint():
             return self.validate_github_config()
-        else:
-            # For standard OpenAI proxy configuration
-            # ANTHROPIC_API_KEY is optional - only needed if you want to validate clients
-            required_keys = ["OPENAI_API_KEY"]  # The actual API key for the backend
-            for key in required_keys:
-                if key not in self.config or not self.config[key]:
-                    print(f"Missing required configuration: {key}")
-                    return False
-            return True
+        # For standard OpenAI proxy configuration
+        # ANTHROPIC_API_KEY is optional - only needed if you want to validate clients
+        required_keys = ["OPENAI_API_KEY"]  # The actual API key for the backend
+        for key in required_keys:
+            if key not in self.config or not self.config[key]:
+                print(f"Missing required configuration: {key}")
+                return False
+        return True
 
     def get(self, key: str, default: str = "") -> str:
         """Get configuration value.
@@ -444,6 +445,30 @@ class ProxyConfig:
         """
         enabled = self.config.get("GITHUB_COPILOT_ENABLED", "false").lower()
         return enabled in ("true", "1", "yes", "on")
+
+    def is_github_copilot_litellm_enabled(self) -> bool:
+        """Check if GitHub Copilot LiteLLM provider is enabled.
+
+        Returns:
+            True if LiteLLM provider is enabled, False otherwise.
+        """
+        return self._github_detector.is_litellm_provider_enabled(self.config)
+
+    def get_github_copilot_endpoint(self) -> Optional[str]:
+        """Get GitHub Copilot API endpoint.
+
+        Returns:
+            GitHub Copilot endpoint if configured, None otherwise.
+        """
+        return self.config.get("GITHUB_COPILOT_ENDPOINT", "https://api.github.com")
+
+    def get_litellm_github_config(self) -> Dict[str, str]:
+        """Get configuration for LiteLLM GitHub Copilot provider.
+
+        Returns:
+            Configuration dictionary for LiteLLM GitHub provider.
+        """
+        return self._github_detector.prepare_litellm_config(self.config)
 
     def _validate_github_token_format(self, token: str) -> bool:
         """Validate GitHub token format.

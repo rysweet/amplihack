@@ -114,7 +114,7 @@ def validate_cs_syntax(filepath: str) -> Tuple[bool, List[str]]:
     Returns (is_valid, list_of_errors)
     """
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             content = f.read()
     except Exception as e:
         return False, [f"Failed to read file: {e}"]
@@ -158,9 +158,8 @@ def main():
     if all_passed:
         print(f"✓ Syntax validation passed for {len(files)} file(s)")
         return 0
-    else:
-        print(f"\n✗ Syntax validation failed: {total_errors} error(s) found", file=sys.stderr)
-        return 1
+    print(f"\n✗ Syntax validation failed: {total_errors} error(s) found", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":

@@ -106,7 +106,7 @@ class ProxyEnvironment:
         }
 
         for config_key, env_key in azure_mappings.items():
-            if config_key in config and config[config_key]:
+            if config.get(config_key):
                 sanitized_value = self._sanitize_env_value(config[config_key])
                 if sanitized_value:  # Only set if sanitization didn't remove everything
                     os.environ[env_key] = sanitized_value
@@ -123,7 +123,7 @@ class ProxyEnvironment:
         }
 
         for config_key, env_key in performance_mappings.items():
-            if config_key in config and config[config_key]:
+            if config.get(config_key):
                 # These values should be clean already from our config parser
                 os.environ[env_key] = config[config_key]
 

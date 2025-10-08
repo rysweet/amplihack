@@ -303,11 +303,10 @@ class DebugContext:
                 if test_result.get("status") == "success":
                     self.logger.success(f"Fix '{fix_description}' successful")
                     return True
-                else:
-                    self.logger.warning(f"Fix '{fix_description}' failed verification")
-                    # Restore to pre-fix state
-                    self.session.restore_checkpoint(pre_fix_checkpoint)
-                    return False
+                self.logger.warning(f"Fix '{fix_description}' failed verification")
+                # Restore to pre-fix state
+                self.session.restore_checkpoint(pre_fix_checkpoint)
+                return False
 
             except Exception as e:
                 self.logger.error(f"Fix '{fix_description}' caused error: {e}")

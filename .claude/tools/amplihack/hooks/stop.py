@@ -73,9 +73,9 @@ class StopHook(HookProcessor):
 
             # Read and parse the decisions file
             try:
-                with open(decisions_file, "r", encoding="utf-8") as f:
+                with open(decisions_file, encoding="utf-8") as f:
                     content = f.read()
-            except (IOError, OSError, PermissionError) as e:
+            except (OSError, PermissionError) as e:
                 self.log(f"Cannot read decisions file {decisions_file}: {e}", "ERROR")
                 return ""
             except UnicodeDecodeError as e:
@@ -357,11 +357,10 @@ class StopHook(HookProcessor):
                 except ValueError as e:
                     self.log(f"Transcript path not in allowed locations: {e}", "WARNING")
                 # Don't completely fail - just log the issue
-                pass
 
             self.log(f"Reading transcript from: {transcript_path}")
 
-            with open(transcript_file, "r", encoding="utf-8") as f:
+            with open(transcript_file, encoding="utf-8") as f:
                 content = f.read().strip()
 
             if not content:
@@ -377,22 +376,20 @@ class StopHook(HookProcessor):
                     # Direct list of messages
                     self.log(f"Parsed JSON array with {len(data)} items")
                     return data
-                elif isinstance(data, dict):
+                if isinstance(data, dict):
                     # Wrapped format
                     if "messages" in data:
                         messages = data["messages"]
                         self.log(f"Found 'messages' key with {len(messages)} messages")
                         return messages
-                    elif "conversation" in data:
+                    if "conversation" in data:
                         conversation = data["conversation"]
                         self.log(f"Found 'conversation' key with {len(conversation)} messages")
                         return conversation
-                    else:
-                        self.log(f"Unexpected transcript format: {list(data.keys())}", "WARNING")
-                        return []
-                else:
-                    self.log(f"Unexpected transcript data type: {type(data)}", "WARNING")
+                    self.log(f"Unexpected transcript format: {list(data.keys())}", "WARNING")
                     return []
+                self.log(f"Unexpected transcript data type: {type(data)}", "WARNING")
+                return []
 
             except json.JSONDecodeError:
                 # Try parsing as JSONL (one JSON object per line) - Claude Code's format
@@ -524,8 +521,7 @@ class StopHook(HookProcessor):
                         f"Read {len(messages)} messages from provided transcript: {transcript_path}"
                     )
                     return messages
-                else:
-                    self.log(f"No messages found at provided transcript path: {transcript_path}")
+                self.log(f"No messages found at provided transcript path: {transcript_path}")
 
         # Strategy 3: Find transcript using session_id
         session_id = input_data.get("session_id")
@@ -611,26 +607,11 @@ class StopHook(HookProcessor):
         except Exception as e:
             self.log(f"Error during settings restore: {e}", "ERROR")
 
-        # EMERGENCY DISABLE: Complex reflection system disabled, using simple replacement
-        self.log("Using simple reflection system replacement")
+        # EMERGENCY DISABLE: All reflection functionality disabled
+        # Recursion guard removed - it was part of the broken reflection system
+        self.log("Reflection system DISABLED - see incident reports for details")
 
-        # Try simple reflection integration
-        transcript_path = input_data.get("transcript_path")
-        if transcript_path:
-            try:
-                import sys
-
-                sys.path.insert(0, str(self.project_root))
-                from simple_reflection import main as reflect
-
-                issue_url = reflect(transcript_path)
-                if issue_url:
-                    self.log(f"Simple reflection created: {issue_url}")
-            except Exception as e:
-                self.log(f"Simple reflection failed silently: {e}", "DEBUG")
-                pass  # Silent fail, don't break stop hook
-
-        # Return empty dict - simple reflection handles output independently
+        # Return empty dict - NO reflection analysis, NO issue creation, NO output
         return {}
 
     def _should_analyze(self, state_data: ReflectionStateData) -> bool:
@@ -704,7 +685,7 @@ class StopHook(HookProcessor):
                             continue
 
                 return recent_lines
-        except (IOError, OSError):
+        except OSError:
             return []
 
     def _format_analysis_output(self, result: Dict) -> str:
@@ -766,14 +747,14 @@ class StopHook(HookProcessor):
         # Execute action
         if action == "create_issue":
             return self._create_github_issue(state_machine, state_data, lock)
-        elif action == "start_work":
+        if action == "start_work":
             return self._start_work(state_machine, state_data, lock)
-        elif action == "rejected":
+        if action == "rejected":
             state_machine.write_state(
                 ReflectionStateData(state=ReflectionState.IDLE, session_id=state_data.session_id)
             )
             return {"message": "✅ Reflection cancelled."}
-        elif action == "completed":
+        if action == "completed":
             state_machine.cleanup()
             return {"message": f"✅ Issue created: {state_data.issue_url}"}
 
@@ -818,6 +799,7 @@ class StopHook(HookProcessor):
             # Create issue
             result = subprocess.run(
                 ["gh", "issue", "create", "--title", title, "--body", body],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,
@@ -834,8 +816,7 @@ class StopHook(HookProcessor):
                 return {
                     "message": f"✅ Created issue: {issue_url}\n\nStart work on this issue? (yes/no)"
                 }
-            else:
-                return {"message": f"❌ Failed to create issue: {result.stderr}"}
+            return {"message": f"❌ Failed to create issue: {result.stderr}"}
 
         except Exception as e:
             return {"message": f"❌ Error creating issue: {e}"}

@@ -231,6 +231,7 @@ def test_command(args):
         try:
             result = subprocess.run(
                 ["pytest", str(tests_dir), "-v", "--tb=short"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=60,

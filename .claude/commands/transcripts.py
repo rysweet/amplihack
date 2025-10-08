@@ -62,7 +62,7 @@ def get_session_summary(session_id: str) -> Dict[str, str]:
     if original_request_file.exists():
         summary["original_request_exists"] = True
         try:
-            with open(original_request_file, "r") as f:
+            with open(original_request_file) as f:
                 data = json.load(f)
                 summary["target"] = data.get("target", "Unknown")
                 summary["timestamp"] = data.get("timestamp", "Unknown")
@@ -135,9 +135,9 @@ def restore_session_context(session_id: str) -> None:
             if line.startswith("## Raw Request"):
                 in_request = True
                 continue
-            elif line.startswith("## ") and in_request:
+            if line.startswith("## ") and in_request:
                 break
-            elif in_request and not line.startswith("```"):
+            if in_request and not line.startswith("```"):
                 print(line)
         print()
 
@@ -163,7 +163,7 @@ def restore_session_context(session_id: str) -> None:
     compaction_file = session_dir / "compaction_events.json"
     if compaction_file.exists():
         try:
-            with open(compaction_file, "r") as f:
+            with open(compaction_file) as f:
                 events = json.load(f)
             print(f"🔄 COMPACTION EVENTS ({len(events)})")
             print("━" * 40)

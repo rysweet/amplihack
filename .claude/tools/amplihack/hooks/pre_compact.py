@@ -83,7 +83,7 @@ class PreCompactHook(HookProcessor):
             )
 
             try:
-                with open(transcript_path, "r") as src, open(transcript_copy, "w") as dst:
+                with open(transcript_path) as src, open(transcript_copy, "w") as dst:
                     dst.write(src.read())
                 self.log(f"Transcript copy created in: {transcript_copy}")
             except Exception as e:
@@ -104,7 +104,7 @@ class PreCompactHook(HookProcessor):
             events = []
             if metadata_file.exists():
                 try:
-                    with open(metadata_file, "r") as f:
+                    with open(metadata_file) as f:
                         events = json.load(f)
                 except Exception:
                     events = []

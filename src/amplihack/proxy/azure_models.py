@@ -7,7 +7,7 @@ class AzureModelMapper:
     """Maps OpenAI model names to Azure deployment names."""
 
     # Use __slots__ to reduce memory usage and improve attribute access speed
-    __slots__ = ("config", "_deployment_cache", "_normalized_name_cache")
+    __slots__ = ("_deployment_cache", "_normalized_name_cache", "config")
 
     # Default model mappings for common patterns
     DEFAULT_MODEL_MAPPINGS = {

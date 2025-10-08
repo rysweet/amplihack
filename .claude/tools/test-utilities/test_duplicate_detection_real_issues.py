@@ -292,7 +292,7 @@ class DuplicateDetectionTester:
                 print(f"  ❌ Error during detection: {e}")
                 is_duplicate = False
                 confidence = 0.0
-                reason = f"Detection error: {str(e)}"
+                reason = f"Detection error: {e!s}"
 
         execution_time = time.time() - start_time
 

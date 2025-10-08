@@ -38,9 +38,8 @@ Login should work with all allowed password characters.
     if result["success"]:
         print(f"✓ Created bug report: {result['issue_url']}")
         return result["issue_number"]
-    else:
-        print(f"✗ Failed to create bug report: {result['error']}")
-        return None
+    print(f"✗ Failed to create bug report: {result['error']}")
+    return None
 
 
 def create_feature_request():
@@ -68,9 +67,8 @@ Medium - requested by 50+ users
     if result["success"]:
         print(f"✓ Created feature request: {result['issue_url']}")
         return result["issue_number"]
-    else:
-        print(f"✗ Failed to create feature request: {result['error']}")
-        return None
+    print(f"✗ Failed to create feature request: {result['error']}")
+    return None
 
 
 def create_task_list(tasks):

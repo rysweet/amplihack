@@ -471,12 +471,11 @@ class ProxyManager:
         # Check for valid start methods in priority order
         if (proxy_repo / "start_proxy.py").exists():
             return ["python", "start_proxy.py"]
-        elif (proxy_repo / "src" / "proxy.py").exists():
+        if (proxy_repo / "src" / "proxy.py").exists():
             return ["python", "-m", "src.proxy"]
-        elif (proxy_repo / "package.json").exists():
+        if (proxy_repo / "package.json").exists():
             return ["npm", "start"]
-        else:
-            return None
+        return None
 
     def _display_log_locations(self) -> None:
         """Display proxy log file locations."""

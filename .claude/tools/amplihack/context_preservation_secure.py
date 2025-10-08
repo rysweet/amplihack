@@ -60,13 +60,9 @@ class SecurityConfig:
 class RegexTimeoutError(Exception):
     """Raised when regex operation times out."""
 
-    pass
-
 
 class InputValidationError(Exception):
     """Raised when input validation fails."""
-
-    pass
 
 
 class SecurityValidator:
@@ -695,7 +691,7 @@ All agents should receive this context to ensure user requirements are preserved
             return None
 
         try:
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 return json.load(f)
         except Exception:
             return None

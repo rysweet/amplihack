@@ -51,8 +51,7 @@ def get_claude_command() -> str:
         if claude_trace_path:
             print(f"Claude-trace installed successfully: {claude_trace_path}")
             return "claude-trace"
-        else:
-            print("Claude-trace installation completed but binary validation failed")
+        print("Claude-trace installation completed but binary validation failed")
 
     # Fall back to claude
     print("Could not install claude-trace, falling back to standard claude")
@@ -150,6 +149,7 @@ def _test_claude_trace_execution(path: str) -> bool:
         # Use a short timeout to avoid hanging
         result = subprocess.run(
             [path, "--version"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=5,
@@ -235,6 +235,7 @@ def _install_claude_trace() -> bool:
         # Install claude-trace globally
         result = subprocess.run(
             ["npm", "install", "-g", "@mariozechner/claude-trace"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=60,
@@ -252,7 +253,7 @@ def _install_claude_trace() -> bool:
         print("  npm install -g @mariozechner/claude-trace")
         return False
     except subprocess.SubprocessError as e:
-        print(f"\nError installing claude-trace: {str(e)}")
+        print(f"\nError installing claude-trace: {e!s}")
         print("\nYou can try installing manually:")
         print("  npm install -g @mariozechner/claude-trace")
         return False

@@ -139,7 +139,7 @@ class GitHubIssueCreator:
         except subprocess.TimeoutExpired:
             return {"success": False, "error": "Command timed out after 30 seconds"}
         except Exception as e:
-            return {"success": False, "error": f"Unexpected error: {str(e)}"}
+            return {"success": False, "error": f"Unexpected error: {e!s}"}
 
 
 def create_issue(
@@ -229,9 +229,8 @@ def main():
         print(f"✓ Created issue #{result['issue_number']}")
         print(f"  URL: {result['issue_url']}")
         return 0
-    else:
-        print(f"✗ Failed to create issue: {result['error']}")
-        return 1
+    print(f"✗ Failed to create issue: {result['error']}")
+    return 1
 
 
 if __name__ == "__main__":

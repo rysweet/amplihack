@@ -78,7 +78,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
             return 1
 
         # Check if built-in proxy should be used
-        # Note: use_builtin_proxy was removed from ProxyManager.__init__ signature
+        use_builtin_proxy = getattr(args, "builtin_proxy", False)  # noqa: F841
         proxy_manager = ProxyManager(proxy_config)
 
         # When using proxy, automatically use Azure persistence prompt
@@ -330,9 +330,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
             launcher = ClaudeLauncher(claude_args=claude_args)
             return launcher.launch_interactive()
-        else:
-            create_parser().print_help()
-            return 1
+        create_parser().print_help()
+        return 1
 
     # Import the original functions for backward compatibility
     from . import _local_install, uninstall
@@ -378,19 +377,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             if path:
                 print(str(path))
                 return 0
-            else:
-                print("UVX installation path not found", file=sys.stderr)
-                return 1
-        elif args.info:
+            print("UVX installation path not found", file=sys.stderr)
+            return 1
+        if args.info:
             # Show UVX staging information
             print("\nUVX Information:")
             print(f"  Is UVX: {is_uvx_deployment()}")
             print("\nEnvironment Variables:")
             print(f"  AMPLIHACK_ROOT={os.environ.get('AMPLIHACK_ROOT', '(not set)')}")
             return 0
-        else:
-            print_uvx_usage_instructions()
-            return 0
+        print_uvx_usage_instructions()
+        return 0
 
     else:
         create_parser().print_help()

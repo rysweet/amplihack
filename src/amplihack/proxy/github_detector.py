@@ -159,3 +159,57 @@ class GitHubEndpointDetector:
             "requests_per_hour": 5000,
             "tokens_per_minute": 50000,
         }
+
+    def is_litellm_provider_enabled(self, config: Dict[str, str]) -> bool:
+        """Check if LiteLLM GitHub Copilot provider is enabled.
+
+        Args:
+            config: Configuration dictionary
+
+        Returns:
+            True if LiteLLM provider is enabled, False otherwise.
+        """
+        # Check explicit LiteLLM integration flag
+        litellm_enabled = config.get("GITHUB_COPILOT_LITELLM_ENABLED", "false").lower()
+        if litellm_enabled in ("true", "1", "yes", "on"):
+            return True
+
+        # Auto-enable if GitHub Copilot is enabled and we have necessary config
+        github_enabled = config.get("GITHUB_COPILOT_ENABLED", "false").lower()
+        has_token = bool(config.get("GITHUB_TOKEN"))
+
+        return github_enabled in ("true", "1", "yes", "on") and has_token
+
+    def get_litellm_model_prefix(self) -> str:
+        """Get the LiteLLM model prefix for GitHub Copilot models.
+
+        Returns:
+            LiteLLM model prefix for GitHub Copilot.
+        """
+        return "github/"
+
+    def prepare_litellm_config(self, config: Dict[str, str]) -> Dict[str, str]:
+        """Prepare configuration for LiteLLM GitHub Copilot provider.
+
+        Args:
+            config: Original configuration dictionary
+
+        Returns:
+            Configuration dictionary for LiteLLM GitHub provider.
+        """
+        litellm_config = {}
+
+        # GitHub token for authentication
+        github_token = config.get("GITHUB_TOKEN")
+        if github_token:
+            litellm_config["GITHUB_TOKEN"] = github_token
+
+        # GitHub Copilot API endpoint
+        github_endpoint = config.get("GITHUB_COPILOT_ENDPOINT", "https://api.github.com")
+        litellm_config["GITHUB_API_BASE"] = github_endpoint
+
+        # Model configuration
+        default_model = config.get("GITHUB_COPILOT_MODEL", "copilot-gpt-4")
+        litellm_config["GITHUB_COPILOT_MODEL"] = default_model
+
+        return litellm_config
