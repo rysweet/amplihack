@@ -221,9 +221,7 @@ class MessagesRequest(BaseModel):
         clean_v = v
         if clean_v.startswith("anthropic/"):
             clean_v = clean_v[10:]
-        elif clean_v.startswith("openai/"):
-            clean_v = clean_v[7:]
-        elif clean_v.startswith("gemini/"):
+        elif clean_v.startswith("openai/") or clean_v.startswith("gemini/"):
             clean_v = clean_v[7:]
 
         # --- Mapping Logic --- START ---
@@ -302,9 +300,7 @@ class TokenCountRequest(BaseModel):
         clean_v = v
         if clean_v.startswith("anthropic/"):
             clean_v = clean_v[10:]
-        elif clean_v.startswith("openai/"):
-            clean_v = clean_v[7:]
-        elif clean_v.startswith("gemini/"):
+        elif clean_v.startswith("openai/") or clean_v.startswith("gemini/"):
             clean_v = clean_v[7:]
 
         # --- Mapping Logic --- START ---
@@ -858,7 +854,7 @@ def convert_litellm_to_anthropic(
         import traceback
 
         error_traceback = traceback.format_exc()
-        error_message = f"Error converting response: {str(e)}\n\nFull traceback:\n{error_traceback}"
+        error_message = f"Error converting response: {e!s}\n\nFull traceback:\n{error_traceback}"
         logger.error(error_message)
 
         # In case of any error, create a fallback response
@@ -869,7 +865,7 @@ def convert_litellm_to_anthropic(
             content=[
                 {
                     "type": "text",
-                    "text": f"Error converting response: {str(e)}. Please check server logs.",
+                    "text": f"Error converting response: {e!s}. Please check server logs.",
                 }
             ],
             stop_reason="end_turn",
@@ -1104,7 +1100,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                         return
             except Exception as e:
                 # Log error but continue processing other chunks
-                logger.error(f"Error processing chunk: {str(e)}")
+                logger.error(f"Error processing chunk: {e!s}")
                 continue
 
         # If we didn't get a finish reason, close any open blocks
@@ -1132,7 +1128,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
         import traceback
 
         error_traceback = traceback.format_exc()
-        error_message = f"Error in streaming: {str(e)}\n\nFull traceback:\n{error_traceback}"
+        error_message = f"Error in streaming: {e!s}\n\nFull traceback:\n{error_traceback}"
         logger.error(error_message)
 
         # Send error message_delta
@@ -1378,29 +1374,28 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             return StreamingResponse(
                 handle_streaming(response_generator, request), media_type="text/event-stream"
             )
-        else:
-            # Use LiteLLM for regular completion
-            num_tools = len(request.tools) if request.tools else 0
+        # Use LiteLLM for regular completion
+        num_tools = len(request.tools) if request.tools else 0
 
-            log_request_beautifully(
-                "POST",
-                raw_request.url.path,
-                display_model,
-                litellm_request.get("model"),
-                len(litellm_request["messages"]),
-                num_tools,
-                200,  # Assuming success at this point
-            )
-            start_time = time.time()
-            litellm_response = litellm.completion(**litellm_request)
-            logger.debug(
-                f"✅ RESPONSE RECEIVED: Model={litellm_request.get('model')}, Time={time.time() - start_time:.2f}s"
-            )
+        log_request_beautifully(
+            "POST",
+            raw_request.url.path,
+            display_model,
+            litellm_request.get("model"),
+            len(litellm_request["messages"]),
+            num_tools,
+            200,  # Assuming success at this point
+        )
+        start_time = time.time()
+        litellm_response = litellm.completion(**litellm_request)
+        logger.debug(
+            f"✅ RESPONSE RECEIVED: Model={litellm_request.get('model')}, Time={time.time() - start_time:.2f}s"
+        )
 
-            # Convert LiteLLM response to Anthropic format
-            anthropic_response = convert_litellm_to_anthropic(litellm_response, request)
+        # Convert LiteLLM response to Anthropic format
+        anthropic_response = convert_litellm_to_anthropic(litellm_response, request)
 
-            return anthropic_response
+        return anthropic_response
 
     except Exception as e:
         import traceback
@@ -1433,10 +1428,10 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         logger.error(f"Error processing request: {json.dumps(error_details, indent=2)}")
 
         # Format error for response
-        error_message = f"Error: {str(e)}"
-        if "message" in error_details and error_details["message"]:
+        error_message = f"Error: {e!s}"
+        if error_details.get("message"):
             error_message += f"\nMessage: {error_details['message']}"
-        if "response" in error_details and error_details["response"]:
+        if error_details.get("response"):
             error_message += f"\nResponse: {error_details['response']}"
 
         # Return detailed error
@@ -1511,8 +1506,8 @@ async def count_tokens(request: TokenCountRequest, raw_request: Request):
         import traceback
 
         error_traceback = traceback.format_exc()
-        logger.error(f"Error counting tokens: {str(e)}\n{error_traceback}")
-        raise HTTPException(status_code=500, detail=f"Error counting tokens: {str(e)}")
+        logger.error(f"Error counting tokens: {e!s}\n{error_traceback}")
+        raise HTTPException(status_code=500, detail=f"Error counting tokens: {e!s}")
 
 
 @app.post("/openai/responses")
@@ -1573,22 +1568,21 @@ async def openai_responses(request: OpenAIResponsesRequest, raw_request: Request
                 )
 
                 return response_data
-            else:
-                error_text = azure_response.text
-                logger.error(f"Azure API error {azure_response.status_code}: {error_text}")
-                raise HTTPException(
-                    status_code=azure_response.status_code, detail=f"Azure API error: {error_text}"
-                )
+            error_text = azure_response.text
+            logger.error(f"Azure API error {azure_response.status_code}: {error_text}")
+            raise HTTPException(
+                status_code=azure_response.status_code, detail=f"Azure API error: {error_text}"
+            )
 
     except httpx.RequestError as e:
-        logger.error(f"Request error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Request error: {str(e)}")
+        logger.error(f"Request error: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Request error: {e!s}")
     except Exception as e:
         import traceback
 
         error_traceback = traceback.format_exc()
-        logger.error(f"Error in responses endpoint: {str(e)}\n{error_traceback}")
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+        logger.error(f"Error in responses endpoint: {e!s}\n{error_traceback}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {e!s}")
 
 
 @app.get("/")

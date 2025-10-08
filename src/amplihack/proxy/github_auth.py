@@ -130,12 +130,12 @@ class GitHubAuthManager:
                         # Continue polling
                         time.sleep(interval)
                         continue
-                    elif error_type == "slow_down":
+                    if error_type == "slow_down":
                         # Increase polling interval
                         interval += 5
                         time.sleep(interval)
                         continue
-                    elif error_type in ("expired_token", "access_denied"):
+                    if error_type in ("expired_token", "access_denied"):
                         raise RuntimeError(f"Authorization failed: {error_type}")
 
                 # Unexpected response

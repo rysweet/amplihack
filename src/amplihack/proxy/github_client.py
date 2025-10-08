@@ -92,8 +92,7 @@ class GitHubCopilotClient:
 
         if stream:
             return self._stream_completion(url, data)
-        else:
-            return await self._create_completion(url, data)
+        return await self._create_completion(url, data)
 
     async def _create_completion(self, url: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Create non-streaming completion.
@@ -110,9 +109,8 @@ class GitHubCopilotClient:
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     return await response.json()
-                else:
-                    error_text = await response.text()
-                    raise RuntimeError(f"GitHub Copilot API error {response.status}: {error_text}")
+                error_text = await response.text()
+                raise RuntimeError(f"GitHub Copilot API error {response.status}: {error_text}")
 
         except Exception as e:
             if "aiohttp" in str(type(e)):
@@ -193,9 +191,8 @@ class GitHubCopilotClient:
             async with self.session.get(url) as response:
                 if response.status == 200:
                     return await response.json()
-                else:
-                    # Return empty usage if not available
-                    return {"usage": {}}
+                # Return empty usage if not available
+                return {"usage": {}}
 
         except Exception:
             return {"usage": {}}
@@ -243,15 +240,15 @@ class GitHubCopilotClient:
                 return _stream_wrapper()
 
             return _stream_generator
-        else:
-            # For non-streaming, run in event loop
-            async def _completion_wrapper():
-                async with self:
-                    return await self.chat_completion(
-                        messages, model, temperature, max_tokens, stream, **kwargs
-                    )
 
-            return loop.run_until_complete(_completion_wrapper())
+        # For non-streaming, run in event loop
+        async def _completion_wrapper():
+            async with self:
+                return await self.chat_completion(
+                    messages, model, temperature, max_tokens, stream, **kwargs
+                )
+
+        return loop.run_until_complete(_completion_wrapper())
 
     def transform_openai_request(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Transform OpenAI request format to GitHub Copilot format.

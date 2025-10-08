@@ -9,7 +9,7 @@ class AzureEndpointDetector:
     """Detects and validates Azure OpenAI endpoints."""
 
     # Use __slots__ to reduce memory usage
-    __slots__ = ("_azure_regex", "_openai_regex", "_validation_cache", "_cache_size")
+    __slots__ = ("_azure_regex", "_cache_size", "_openai_regex", "_validation_cache")
 
     # Azure OpenAI endpoint patterns
     AZURE_PATTERNS = [
