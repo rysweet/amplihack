@@ -115,13 +115,12 @@ class SimpleTUITester:
                             duration,
                             f"gadugi-test completed successfully: {result.stdout.strip()}",
                         )
-                    else:
-                        return TestResult(
-                            test_id,
-                            "failed",
-                            duration,
-                            f"gadugi-test failed: {result.stderr.strip()}",
-                        )
+                    return TestResult(
+                        test_id,
+                        "failed",
+                        duration,
+                        f"gadugi-test failed: {result.stderr.strip()}",
+                    )
 
                 except subprocess.TimeoutExpired:
                     duration = time.time() - start_time
@@ -212,7 +211,7 @@ class SimpleTUITester:
                             test_id,
                             "failed",
                             duration,
-                            f"Command '{command}' failed with error: {str(e)}",
+                            f"Command '{command}' failed with error: {e!s}",
                         )
 
                 # All commands succeeded
@@ -226,7 +225,7 @@ class SimpleTUITester:
 
         except Exception as e:
             duration = time.time() - start_time
-            return TestResult(test_id, "failed", duration, f"Test execution failed: {str(e)}")
+            return TestResult(test_id, "failed", duration, f"Test execution failed: {e!s}")
 
     async def run_all(self) -> Dict[str, TestResult]:
         """Run all tests"""

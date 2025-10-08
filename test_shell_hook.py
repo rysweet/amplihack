@@ -129,9 +129,8 @@ def run_tests():
     if passed == total:
         print("🎉 All tests passed! Shell command hook is working correctly.")
         return True
-    else:
-        print("❌ Some tests failed. Please review the implementation.")
-        return False
+    print("❌ Some tests failed. Please review the implementation.")
+    return False
 
 
 if __name__ == "__main__":
