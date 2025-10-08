@@ -55,7 +55,29 @@ def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetec
     env_info = _get_cached_environment_info()
     reasons = []
 
-    # Check if running from UV cache (strongest UVX indicator)
+    # Check if .claude directory exists in working directory (highest priority - most specific)
+    # This is the strongest indicator of local deployment, even if running via UV
+    # Use Path.cwd() directly here to ensure we check the ACTUAL current directory,
+    # not the cached one, which is important for tests that mock cwd
+    current_working_dir = Path.cwd()
+    claude_dir = current_working_dir / ".claude"
+    if claude_dir.exists():
+        reasons.append(f"Local .claude directory found: {claude_dir}")
+        # Update env_info with the actual working directory for consistency
+        env_info = UVXEnvironmentInfo(
+            uv_python_path=env_info.uv_python_path,
+            amplihack_root=env_info.amplihack_root,
+            sys_path_entries=env_info.sys_path_entries,
+            working_directory=current_working_dir,
+            python_executable=env_info.python_executable,
+        )
+        return UVXDetectionState(
+            result=UVXDetectionResult.LOCAL_DEPLOYMENT,
+            environment=env_info,
+            detection_reasons=reasons,
+        )
+
+    # Check if running from UV cache (UVX indicator)
     if env_info.is_uv_cache_execution:
         reasons.append(f"Python executable in UV cache: {env_info.python_executable}")
         return UVXDetectionState(
@@ -69,16 +91,6 @@ def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetec
         reasons.append(f"UV_PYTHON environment variable present: {env_info.uv_python_path}")
         return UVXDetectionState(
             result=UVXDetectionResult.UVX_DEPLOYMENT,
-            environment=env_info,
-            detection_reasons=reasons,
-        )
-
-    # Check if .claude directory exists in working directory (local deployment indicator)
-    claude_dir = env_info.working_directory / ".claude"
-    if claude_dir.exists():
-        reasons.append(f"Local .claude directory found: {claude_dir}")
-        return UVXDetectionState(
-            result=UVXDetectionResult.LOCAL_DEPLOYMENT,
             environment=env_info,
             detection_reasons=reasons,
         )
