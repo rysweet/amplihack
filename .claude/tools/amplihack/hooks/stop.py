@@ -105,7 +105,7 @@ class StopHook(HookProcessor):
             # Create file:// URL for clickable link
             file_url = f"file://{decisions_file.resolve()}"
 
-            # Build summary as string (for return, not print)
+            # Build summary as string and print it for visibility
             lines = [
                 "\n",
                 "═" * 70,
@@ -126,7 +126,12 @@ class StopHook(HookProcessor):
             lines.append("═" * 70)
             lines.append("\n")
 
-            return "\n".join(lines)
+            summary = "\n".join(lines)
+            # Print each line for visibility and testing
+            for line in lines:
+                print(line)
+
+            return summary
 
         except FileNotFoundError as e:
             self.log(f"Decisions file not found: {e}", "WARNING")
