@@ -554,7 +554,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                             )
                         elif block.type == "tool_result":
                             # Handle different formats of tool result content
-                            processed_content_block = {
+                            processed_content_block: Dict[str, Any] = {
                                 "type": "tool_result",
                                 "tool_use_id": block.tool_use_id
                                 if hasattr(block, "tool_use_id")
@@ -648,7 +648,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     # Convert tool_choice to OpenAI format if present
     if anthropic_request.tool_choice:
         if hasattr(anthropic_request.tool_choice, "dict"):
-            tool_choice_dict = anthropic_request.tool_choice.dict()
+            tool_choice_dict = anthropic_request.tool_choice.dict()  # type: ignore[attr-defined]
         else:
             tool_choice_dict = anthropic_request.tool_choice
 
@@ -690,12 +690,12 @@ def convert_litellm_to_anthropic(
         # Handle ModelResponse object from LiteLLM
         if hasattr(litellm_response, "choices") and hasattr(litellm_response, "usage"):
             # Extract data from ModelResponse object directly
-            choices = litellm_response.choices
+            choices = litellm_response.choices  # type: ignore[attr-defined]
             message = choices[0].message if choices and len(choices) > 0 else None
             content_text = message.content if message and hasattr(message, "content") else ""
             tool_calls = message.tool_calls if message and hasattr(message, "tool_calls") else None
             finish_reason = choices[0].finish_reason if choices and len(choices) > 0 else "stop"
-            usage_info = litellm_response.usage
+            usage_info = litellm_response.usage  # type: ignore[attr-defined]
             response_id = getattr(litellm_response, "id", f"msg_{uuid.uuid4()}")
         else:
             # For backward compatibility - handle dict responses
@@ -710,7 +710,7 @@ def convert_litellm_to_anthropic(
                 # If .dict() fails, try to use model_dump or __dict__
                 try:
                     response_dict = (
-                        litellm_response.model_dump()
+                        litellm_response.model_dump()  # type: ignore[attr-defined]
                         if hasattr(litellm_response, "model_dump")
                         else litellm_response.__dict__
                     )
@@ -910,6 +910,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
         yield f"event: ping\ndata: {json.dumps({'type': 'ping'})}\n\n"
 
         tool_index = None
+        anthropic_tool_index = 0  # Initialize to avoid unbound variable warnings
         tool_content = ""
         accumulated_text = ""  # Track accumulated text content
         text_sent = False  # Track if we've sent any text content
@@ -945,7 +946,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of delta content
                     if hasattr(delta, "content"):
-                        delta_content = delta.content
+                        delta_content = delta.content  # type: ignore[attr-defined]
                     elif isinstance(delta, dict) and "content" in delta:
                         delta_content = delta["content"]
 
@@ -963,7 +964,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of tool calls
                     if hasattr(delta, "tool_calls"):
-                        delta_tool_calls = delta.tool_calls
+                        delta_tool_calls = delta.tool_calls  # type: ignore[attr-defined]
                     elif isinstance(delta, dict) and "tool_calls" in delta:
                         delta_tool_calls = delta["tool_calls"]
 
@@ -999,7 +1000,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                             if isinstance(tool_call, dict) and "index" in tool_call:
                                 current_index = tool_call["index"]
                             elif hasattr(tool_call, "index"):
-                                current_index = tool_call.index
+                                current_index = tool_call.index  # type: ignore[attr-defined]
                             else:
                                 current_index = 0
 

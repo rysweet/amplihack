@@ -106,6 +106,7 @@ class GitHubCopilotClient:
             Response dictionary.
         """
         try:
+            assert self.session is not None  # Ensured by _ensure_session()
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     return await response.json()
@@ -129,6 +130,7 @@ class GitHubCopilotClient:
             Streaming response chunks.
         """
         try:
+            assert self.session is not None  # Ensured by _ensure_session()
             async with self.session.post(url, json=data) as response:
                 if response.status != 200:
                     error_text = await response.text()
@@ -184,6 +186,7 @@ class GitHubCopilotClient:
             Usage information if available.
         """
         await self._ensure_session()
+        assert self.session is not None  # Ensured by _ensure_session()
 
         try:
             url = urljoin(self.base_url, "/copilot/billing")
@@ -234,7 +237,7 @@ class GitHubCopilotClient:
                         stream_result = await self.chat_completion(
                             messages, model, temperature, max_tokens, stream, **kwargs
                         )
-                        async for chunk in stream_result:
+                        async for chunk in stream_result:  # type: ignore[misc]
                             yield chunk
 
                 return _stream_wrapper()

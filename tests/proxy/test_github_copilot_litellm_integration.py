@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.amplihack.proxy.config import ProxyConfig
-from src.amplihack.proxy.github_detector import GitHubEndpointDetector
+from amplihack.proxy.config import ProxyConfig
+from amplihack.proxy.github_detector import GitHubEndpointDetector
 
 
 class TestGitHubCopilotLiteLLMIntegration:

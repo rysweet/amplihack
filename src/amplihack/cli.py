@@ -78,8 +78,8 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
             return 1
 
         # Check if built-in proxy should be used
-        use_builtin_proxy = getattr(args, "builtin_proxy", False)
-        proxy_manager = ProxyManager(proxy_config, use_builtin=use_builtin_proxy)
+        use_builtin_proxy = getattr(args, "builtin_proxy", False)  # noqa: F841
+        proxy_manager = ProxyManager(proxy_config)
 
         # When using proxy, automatically use Azure persistence prompt
         default_prompt = Path(__file__).parent / "prompts" / "azure_persistence.md"
