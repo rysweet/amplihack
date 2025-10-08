@@ -61,13 +61,17 @@ class TestUVXDetection:
             claude_dir = framework_root / ".claude"
             claude_dir.mkdir()
 
-            with patch.dict(os.environ, {"AMPLIHACK_ROOT": str(framework_root)}):
-                with patch("pathlib.Path.cwd", return_value=Path("/different/working")):
-                    detection = detect_uvx_deployment()
+            # Mock sys.executable to NOT be in UV cache so we test AMPLIHACK_ROOT detection
+            with patch("sys.executable", "/usr/bin/python3"):
+                with patch.dict(os.environ, {"AMPLIHACK_ROOT": str(framework_root)}, clear=True):
+                    with patch("pathlib.Path.cwd", return_value=Path("/different/working")):
+                        detection = detect_uvx_deployment()
 
-                    assert detection.result == UVXDetectionResult.UVX_DEPLOYMENT
-                    assert detection.is_uvx_deployment is True
-                    assert any("AMPLIHACK_ROOT" in reason for reason in detection.detection_reasons)
+                        assert detection.result == UVXDetectionResult.UVX_DEPLOYMENT
+                        assert detection.is_uvx_deployment is True
+                        assert any(
+                            "AMPLIHACK_ROOT" in reason for reason in detection.detection_reasons
+                        )
 
     def test_detect_uvx_with_sys_path_framework(self):
         """Test UVX detection by finding framework in sys.path."""
