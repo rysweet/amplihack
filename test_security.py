@@ -159,9 +159,8 @@ def run_security_tests():
     if passed == total:
         print("🛡️  All security tests passed! Shell command hook is secure.")
         return True
-    else:
-        print("❌ Some security tests failed. Review the implementation.")
-        return False
+    print("❌ Some security tests failed. Review the implementation.")
+    return False
 
 
 if __name__ == "__main__":
