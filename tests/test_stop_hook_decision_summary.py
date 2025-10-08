@@ -427,7 +427,7 @@ class TestStopHookProcessExecutionOrder(unittest.TestCase):
         hook.session_dir.mkdir(parents=True, exist_ok=True)
         return hook
 
-    @unittest.skip("Test requires active reflection system - currently disabled")
+    @unittest.skip("Test requires full reflection flow - save_session_analysis no longer called")
     def test_display_decision_summary_called_at_end_of_process(self):
         """Test that display_decision_summary() is called at the END of process()."""
         hook = self._create_hook_with_mocked_paths()

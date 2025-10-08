@@ -620,8 +620,21 @@ class StopHook(HookProcessor):
         # Recursion guard removed - it was part of the broken reflection system
         self.log("Reflection system DISABLED - see incident reports for details")
 
-        # Return empty dict - NO reflection analysis, NO issue creation, NO output
-        return {}
+        # However, displaying decision summaries is safe (no GitHub API calls)
+        # This just reads DECISIONS.md and returns formatted text
+        output = {}
+        try:
+            session_id = input_data.get("session_id")
+            if session_id:
+                decision_summary = self.display_decision_summary(session_id)
+                if decision_summary:
+                    output["message"] = decision_summary
+        except Exception as e:
+            self.log(f"Error displaying decision summary: {e}", "WARNING")
+            # Don't fail the hook if decision display fails
+            pass
+
+        return output
 
     def _should_analyze(self, state_data: ReflectionStateData) -> bool:
         """Check if enough time has passed since last analysis."""
