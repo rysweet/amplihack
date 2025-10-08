@@ -684,7 +684,7 @@ class XPIADefenseEngine:
         """Generate cache key for validation result"""
         import hashlib
 
-        content_hash = hashlib.md5(content.encode()).hexdigest()
+        content_hash = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()
         return f"{content_hash}_{content_type.value}_{security_level.value}"
 
     def _get_context_string(

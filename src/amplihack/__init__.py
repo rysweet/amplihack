@@ -5,16 +5,16 @@ from pathlib import Path
 
 HOME = str(Path.home())
 CLAUDE_DIR = os.path.join(HOME, ".claude")
-CLI_NAME = "amplihack_cli.py"  # noqa
+CLI_NAME = "amplihack_cli.py"
 CLI_SRC = os.path.abspath(__file__)
 
-MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")  # noqa
+MANIFEST_JSON = os.path.join(CLAUDE_DIR, "install", "amplihack-manifest.json")
 
 # Essential directories that must be copied during installation
 ESSENTIAL_DIRS = [
-    "agents/amplihack",  # Specialized agents  # noqa
-    "commands/amplihack",  # Slash commands  # noqa
-    "tools/amplihack",  # Hooks and utilities  # noqa
+    "agents/amplihack",  # Specialized agents
+    "commands/amplihack",  # Slash commands
+    "tools/amplihack",  # Hooks and utilities
     "tools/xpia",  # XPIA security hooks (Issue #458)
     "context",  # Philosophy, patterns, project info
     "workflow",  # DEFAULT_WORKFLOW.md
@@ -32,7 +32,7 @@ RUNTIME_DIRS = [
 # Settings.json template with proper hook configuration
 SETTINGS_TEMPLATE = {
     "permissions": {
-        "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],  # noqa
+        "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
         "deny": [],
         "defaultMode": "bypassPermissions",
         "additionalDirectories": [".claude", "Specs"],
@@ -45,7 +45,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/session_start.py",  # noqa
+                        "command": "$HOME/.claude/tools/amplihack/hooks/session_start.py",
                         "timeout": 10000,
                     }
                 ]
@@ -56,7 +56,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/stop.py",  # noqa
+                        "command": "$HOME/.claude/tools/amplihack/hooks/stop.py",
                         "timeout": 30000,
                     }
                 ]
@@ -68,7 +68,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/post_tool_use.py",  # noqa
+                        "command": "$HOME/.claude/tools/amplihack/hooks/post_tool_use.py",
                     }
                 ],
             }
@@ -78,7 +78,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/pre_compact.py",  # noqa
+                        "command": "$HOME/.claude/tools/amplihack/hooks/pre_compact.py",
                         "timeout": 30000,
                     }
                 ]
@@ -89,7 +89,7 @@ SETTINGS_TEMPLATE = {
 
 # Hook configurations for amplihack and xpia systems
 HOOK_CONFIGS = {
-    "amplihack": [  # noqa
+    "amplihack": [
         {"type": "SessionStart", "file": "session_start.py", "timeout": 10000},
         {"type": "Stop", "file": "stop.py", "timeout": 30000},
         {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
@@ -130,7 +130,7 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
     elif os.path.exists(parent_path):
         base = parent_path
     else:
-        print(f"  ❌ .claude not found at {direct_path} or {parent_path}")  # noqa: T201 (print)
+        print(f"  ❌ .claude not found at {direct_path} or {parent_path}")
         return []
 
     copied = []
@@ -140,7 +140,7 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
 
         # Skip if source doesn't exist
         if not os.path.exists(source_dir):
-            print(f"  ⚠️  Warning: {dir_path} not found in source, skipping")  # noqa: T201 (print)
+            print(f"  ⚠️  Warning: {dir_path} not found in source, skipping")
             continue
 
         target_dir = os.path.join(dst, dir_path)
@@ -156,9 +156,9 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
         try:
             shutil.copytree(source_dir, target_dir)
             copied.append(dir_path)
-            print(f"  ✅ Copied {dir_path}")  # noqa: T201 (print)
+            print(f"  ✅ Copied {dir_path}")
         except Exception as e:
-            print(f"  ❌ Failed to copy {dir_path}: {e}")  # noqa: T201 (print)
+            print(f"  ❌ Failed to copy {dir_path}: {e}")
 
     # Also copy settings.json if it exists and target doesn't have one
     settings_src = os.path.join(base, "settings.json")
@@ -167,9 +167,9 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
     if os.path.exists(settings_src) and not os.path.exists(settings_dst):
         try:
             shutil.copy2(settings_src, settings_dst)
-            print("  ✅ Copied settings.json")  # noqa: T201 (print)
+            print("  ✅ Copied settings.json")
         except Exception as e:
-            print(f"  ⚠️  Could not copy settings.json: {e}")  # noqa: T201 (print)
+            print(f"  ⚠️  Could not copy settings.json: {e}")
 
     return copied
 
@@ -213,11 +213,11 @@ def all_rel_dirs(base):
 
 
 def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
-    """Update hook paths for a given hook system (amplihack or xpia).  # noqa
+    """Update hook paths for a given hook system (amplihack or xpia).
 
     Args:
         settings: Settings dictionary to update
-        hook_system: Name of the hook system (e.g., "amplihack", "xpia")  # noqa
+        hook_system: Name of the hook system (e.g., "amplihack", "xpia")
         hooks_to_update: List of dicts with keys: type, file, timeout (optional), matcher (optional)
         hooks_dir_path: Relative path to hooks directory (e.g., ".claude/tools/xpia/hooks")
 
@@ -270,7 +270,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
                                 if timeout and "timeout" not in hook:
                                     hook["timeout"] = timeout
                                 hooks_updated += 1
-                                print(f"  🔄 Updated {hook_type} hook path")  # noqa: T201 (print)
+                                print(f"  🔄 Updated {hook_type} hook path")
 
     return hooks_updated
 
@@ -297,7 +297,7 @@ def ensure_settings_json():
     try:
         # Try different import methods
         try:
-            from amplihack.launcher.settings_manager import SettingsManager  # noqa
+            from amplihack.launcher.settings_manager import SettingsManager
         except ImportError:
             try:
                 from .launcher.settings_manager import SettingsManager
@@ -307,7 +307,7 @@ def ensure_settings_json():
 
                 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 try:
-                    from amplihack.launcher.settings_manager import SettingsManager  # noqa
+                    from amplihack.launcher.settings_manager import SettingsManager
                 except ImportError:
                     SettingsManager = None
                 finally:
@@ -318,37 +318,37 @@ def ensure_settings_json():
             settings_manager = SettingsManager(
                 settings_path=Path(settings_path),
                 session_id=f"install_{int(__import__('time').time())}",
-                non_interactive=os.getenv("AMPLIHACK_YES", "0") == "1" or is_uvx,  # noqa
+                non_interactive=os.getenv("AMPLIHACK_YES", "0") == "1" or is_uvx,
             )
 
             # Prompt user for modification (or auto-approve if UVX/non-interactive)
             if not settings_manager.prompt_user_for_modification():
-                print("  ⚠️  Settings modification declined by user")  # noqa: T201 (print)
+                print("  ⚠️  Settings modification declined by user")
                 return False
             if is_uvx:
-                print("  🚀 UVX environment detected - auto-configuring hooks")  # noqa: T201 (print)
+                print("  🚀 UVX environment detected - auto-configuring hooks")
 
             # Create backup
             success, backup_path = settings_manager.create_backup()
             if not success:
                 # Continue without backup rather than failing
-                print("  ⚠️  Could not create backup - continuing anyway")  # noqa: T201 (print)
+                print("  ⚠️  Could not create backup - continuing anyway")
                 backup_path = None
             elif backup_path:
-                print(f"  💾 Backup created at {backup_path}")  # noqa: T201 (print)
+                print(f"  💾 Backup created at {backup_path}")
 
     except Exception as e:
         # If SettingsManager fails for any reason, continue without it
-        print(f"  ⚠️  Settings manager unavailable - continuing without backup: {e}")  # noqa: T201 (print)
+        print(f"  ⚠️  Settings manager unavailable - continuing without backup: {e}")
         if is_uvx:
-            print("  🚀 UVX environment detected - auto-configuring hooks")  # noqa: T201 (print)
+            print("  🚀 UVX environment detected - auto-configuring hooks")
 
     # Load existing settings or use template
     if os.path.exists(settings_path):
         try:
             with open(settings_path, encoding="utf-8") as f:
                 settings = json.load(f)
-            print("  📋 Found existing settings.json")  # noqa: T201 (print)
+            print("  📋 Found existing settings.json")
 
             # Back up existing settings
             import time
@@ -356,34 +356,34 @@ def ensure_settings_json():
             backup_name = f"settings.json.backup.{int(time.time())}"
             backup_path = os.path.join(CLAUDE_DIR, backup_name)
             shutil.copy2(settings_path, backup_path)
-            print(f"  💾 Backed up to {backup_name}")  # noqa: T201 (print)
+            print(f"  💾 Backed up to {backup_name}")
         except Exception as e:
-            print(f"  ⚠️  Could not read existing settings.json: {e}")  # noqa: T201 (print)
-            print("  🔧 Creating new settings.json from template")  # noqa: T201 (print)
+            print(f"  ⚠️  Could not read existing settings.json: {e}")
+            print("  🔧 Creating new settings.json from template")
             settings = SETTINGS_TEMPLATE.copy()
     else:
-        print("  🔧 Creating new settings.json")  # noqa: T201 (print)
+        print("  🔧 Creating new settings.json")
         settings = SETTINGS_TEMPLATE.copy()
 
     # Update amplihack hook paths (relative paths for cross-platform compatibility)
     hooks_updated = 0
-    amplihack_hooks_rel = ".claude/tools/amplihack/hooks"  # noqa
+    amplihack_hooks_rel = ".claude/tools/amplihack/hooks"
 
     hooks_updated += update_hook_paths(
-        settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_rel  # noqa
+        settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_rel
     )
 
     # Update XPIA hook paths if XPIA hooks directory exists
     xpia_hooks_abs = os.path.join(HOME, ".claude", "tools", "xpia", "hooks")
     if os.path.exists(xpia_hooks_abs):
-        print("  🔒 XPIA security hooks directory found")  # noqa: T201 (print)
+        print("  🔒 XPIA security hooks directory found")
 
         xpia_hooks_rel = ".claude/tools/xpia/hooks"
         xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_rel)
         hooks_updated += xpia_updated
 
         if xpia_updated > 0:
-            print(f"  🔒 XPIA security hooks configured ({xpia_updated} hooks)")  # noqa: T201 (print)
+            print(f"  🔒 XPIA security hooks configured ({xpia_updated} hooks)")
 
     # Ensure permissions are set correctly
     if "permissions" not in settings:
@@ -400,10 +400,10 @@ def ensure_settings_json():
     try:
         with open(settings_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
-        print(f"  ✅ Settings updated ({hooks_updated} hooks configured)")  # noqa: T201 (print)
+        print(f"  ✅ Settings updated ({hooks_updated} hooks configured)")
         return True
     except Exception as e:
-        print(f"  ❌ Failed to write settings.json: {e}")  # noqa: T201 (print)
+        print(f"  ❌ Failed to write settings.json: {e}")
         return False
 
 
@@ -416,30 +416,30 @@ def verify_hooks():
 
         # Skip XPIA if directory doesn't exist (optional feature)
         if hook_system == "xpia" and not os.path.exists(hooks_dir):
-            print("  ℹ️  XPIA security hooks not installed (optional feature)")  # noqa: T201 (print)
+            print("  ℹ️  XPIA security hooks not installed (optional feature)")
             continue
 
         # Print header with appropriate icon
         icon = "🔒" if hook_system == "xpia" else "📋"
-        print(f"  {icon} {hook_system.capitalize()} hooks:")  # noqa: T201 (print)
+        print(f"  {icon} {hook_system.capitalize()} hooks:")
 
         system_all_exist = True
         for hook_info in hooks:
             hook_file = hook_info["file"]
             hook_path = os.path.join(hooks_dir, hook_file)
             if os.path.exists(hook_path):
-                print(f"    ✅ {hook_file} found")  # noqa: T201 (print)
+                print(f"    ✅ {hook_file} found")
             else:
-                print(f"    ❌ {hook_file} missing")  # noqa: T201 (print)
+                print(f"    ❌ {hook_file} missing")
                 system_all_exist = False
 
         # Only mark all_exist as False if amplihack hooks are missing
-        if hook_system == "amplihack" and not system_all_exist:  # noqa
+        if hook_system == "amplihack" and not system_all_exist:
             all_exist = False
 
         # Additional message for XPIA if all hooks found
         if hook_system == "xpia" and system_all_exist:
-            print("  🔒 XPIA security hooks configured")  # noqa: T201 (print)
+            print("  🔒 XPIA security hooks configured")
 
     return all_exist
 
@@ -451,21 +451,21 @@ def create_runtime_dirs():
         try:
             os.makedirs(full_path, exist_ok=True)
             if not os.path.exists(full_path):
-                print(f"  ❌ Failed to create {dir_path}")  # noqa: T201 (print)
+                print(f"  ❌ Failed to create {dir_path}")
             else:
-                print(f"  ✅ Runtime directory {dir_path} ready")  # noqa: T201 (print)
+                print(f"  ✅ Runtime directory {dir_path} ready")
         except Exception as e:
-            print(f"  ❌ Error creating {dir_path}: {e}")  # noqa: T201 (print)
+            print(f"  ❌ Error creating {dir_path}: {e}")
 
 
 def _local_install(repo_root):
     """
-    Install amplihack files from the given repo_root directory.  # noqa
+    Install amplihack files from the given repo_root directory.
     This provides a comprehensive installation that mirrors the shell script.
     """
-    print("\n🚀 Starting amplihack installation...")  # noqa: T201 (print)
-    print(f"   Source: {repo_root}")  # noqa: T201 (print)
-    print(f"   Target: {CLAUDE_DIR}\n")  # noqa: T201 (print)
+    print("\n🚀 Starting amplihack installation...")
+    print(f"   Source: {repo_root}")
+    print(f"   Target: {CLAUDE_DIR}\n")
 
     # Step 1: Ensure base directory exists
     ensure_dirs()
@@ -474,28 +474,28 @@ def _local_install(repo_root):
     pre_dirs = all_rel_dirs(CLAUDE_DIR)
 
     # Step 3: Copy all essential directories
-    print("📁 Copying essential directories:")  # noqa: T201 (print)
+    print("📁 Copying essential directories:")
     copied_dirs = copytree_manifest(repo_root, CLAUDE_DIR)
 
     if not copied_dirs:
-        print("\n❌ No directories were copied. Installation may be incomplete.")  # noqa: T201 (print)
-        print("   Please check that the source repository is valid.\n")  # noqa: T201 (print)
+        print("\n❌ No directories were copied. Installation may be incomplete.")
+        print("   Please check that the source repository is valid.\n")
         return
 
     # Step 4: Create runtime directories
-    print("\n📂 Creating runtime directories:")  # noqa: T201 (print)
+    print("\n📂 Creating runtime directories:")
     create_runtime_dirs()
 
     # Step 5: Configure settings.json
-    print("\n⚙️  Configuring settings.json:")  # noqa: T201 (print)
+    print("\n⚙️  Configuring settings.json:")
     settings_ok = ensure_settings_json()
 
     # Step 6: Verify hook files exist
-    print("\n🔍 Verifying hook files:")  # noqa: T201 (print)
+    print("\n🔍 Verifying hook files:")
     hooks_ok = verify_hooks()
 
     # Step 7: Generate manifest for uninstall
-    print("\n📝 Generating uninstall manifest:")  # noqa: T201 (print)
+    print("\n📝 Generating uninstall manifest:")
 
     # Build list of all directories to track
     all_essential = []
@@ -513,37 +513,37 @@ def _local_install(repo_root):
     files, post_dirs = get_all_files_and_dirs(all_essential)
     new_dirs = sorted(set(post_dirs) - pre_dirs)
     write_manifest(files, new_dirs)
-    print(f"   Manifest written to {MANIFEST_JSON}")  # noqa: T201 (print)
+    print(f"   Manifest written to {MANIFEST_JSON}")
 
     # Step 8: Final summary
-    print("\n" + "=" * 60)  # noqa: T201 (print)
+    print("\n" + "=" * 60)
     if settings_ok and hooks_ok and len(copied_dirs) > 0:
-        print("✅ Amplihack installation completed successfully!")  # noqa: T201 (print)
-        print(f"\n📍 Installed to: {CLAUDE_DIR}")  # noqa: T201 (print)
-        print("\n📦 Components installed:")  # noqa: T201 (print)
+        print("✅ Amplihack installation completed successfully!")
+        print(f"\n📍 Installed to: {CLAUDE_DIR}")
+        print("\n📦 Components installed:")
         for dir_path in sorted(copied_dirs):
-            print(f"   • {dir_path}")  # noqa: T201 (print)
-        print("\n🎯 Features enabled:")  # noqa: T201 (print)
-        print("   • Session start hook")  # noqa: T201 (print)
-        print("   • Stop hook")  # noqa: T201 (print)
-        print("   • Post-tool-use hook")  # noqa: T201 (print)
-        print("   • Pre-compact hook")  # noqa: T201 (print)
-        print("   • Runtime logging and metrics")  # noqa: T201 (print)
-        print("\n💡 To uninstall: amplihack uninstall")  # noqa: T201 (print)
+            print(f"   • {dir_path}")
+        print("\n🎯 Features enabled:")
+        print("   • Session start hook")
+        print("   • Stop hook")
+        print("   • Post-tool-use hook")
+        print("   • Pre-compact hook")
+        print("   • Runtime logging and metrics")
+        print("\n💡 To uninstall: amplihack uninstall")
     else:
-        print("⚠️  Installation completed with warnings")  # noqa: T201 (print)
+        print("⚠️  Installation completed with warnings")
         if not settings_ok:
-            print("   • Settings.json configuration had issues")  # noqa: T201 (print)
+            print("   • Settings.json configuration had issues")
         if not hooks_ok:
-            print("   • Some hook files are missing")  # noqa: T201 (print)
+            print("   • Some hook files are missing")
         if len(copied_dirs) == 0:
-            print("   • No directories were copied")  # noqa: T201 (print)
-        print("\n💡 You may need to manually verify the installation")  # noqa: T201 (print)
-    print("=" * 60 + "\n")  # noqa: T201 (print)
+            print("   • No directories were copied")
+        print("\n💡 You may need to manually verify the installation")
+    print("=" * 60 + "\n")
 
 
 def uninstall():
-    """Uninstall amplihack components from ~/.claude."""  # noqa
+    """Uninstall amplihack components from ~/.claude."""
     removed_any = False
     files, dirs = read_manifest()
 
@@ -557,7 +557,7 @@ def uninstall():
                 removed_files += 1
                 removed_any = True
             except Exception as e:
-                print(f"  ⚠️  Could not remove file {f}: {e}")  # noqa: T201 (print)
+                print(f"  ⚠️  Could not remove file {f}: {e}")
 
     # Remove directories from manifest (if any)
     for d in sorted(dirs, key=lambda x: -x.count(os.sep)):
@@ -567,26 +567,26 @@ def uninstall():
                 shutil.rmtree(target, ignore_errors=True)
                 removed_any = True
             except Exception as e:
-                print(f"  ⚠️  Could not remove directory {d}: {e}")  # noqa: T201 (print)
+                print(f"  ⚠️  Could not remove directory {d}: {e}")
 
     # Always try to remove the main amplihack directories
     # This handles cases where the manifest might not track directories properly
-    amplihack_dirs = [  # noqa
-        os.path.join(CLAUDE_DIR, "agents", "amplihack"),  # noqa
-        os.path.join(CLAUDE_DIR, "commands", "amplihack"),  # noqa
-        os.path.join(CLAUDE_DIR, "tools", "amplihack"),  # noqa
+    amplihack_dirs = [
+        os.path.join(CLAUDE_DIR, "agents", "amplihack"),
+        os.path.join(CLAUDE_DIR, "commands", "amplihack"),
+        os.path.join(CLAUDE_DIR, "tools", "amplihack"),
         # Don't remove context, workflow, or runtime as they might be shared
     ]
 
     removed_dirs = 0
-    for dir_path in amplihack_dirs:  # noqa
+    for dir_path in amplihack_dirs:
         if os.path.exists(dir_path):
             try:
                 shutil.rmtree(dir_path)
                 removed_dirs += 1
                 removed_any = True
             except Exception as e:
-                print(f"  ⚠️  Could not remove {dir_path}: {e}")  # noqa: T201 (print)
+                print(f"  ⚠️  Could not remove {dir_path}: {e}")
 
     # Remove manifest file
     try:
@@ -596,13 +596,13 @@ def uninstall():
 
     # Report results
     if removed_any:
-        print(f"✅ Uninstalled amplihack from {CLAUDE_DIR}")  # noqa: T201 (print)
+        print(f"✅ Uninstalled amplihack from {CLAUDE_DIR}")
         if removed_files > 0:
-            print(f"   • Removed {removed_files} files")  # noqa: T201 (print)
+            print(f"   • Removed {removed_files} files")
         if removed_dirs > 0:
-            print(f"   • Removed {removed_dirs} amplihack directories")  # noqa: T201 (print)
+            print(f"   • Removed {removed_dirs} amplihack directories")
     else:
-        print("Nothing to uninstall.")  # noqa: T201 (print)
+        print("Nothing to uninstall.")
 
 
 def filecmp(f1, f2):

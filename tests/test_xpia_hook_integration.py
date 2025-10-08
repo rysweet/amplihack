@@ -25,8 +25,8 @@ sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "Specs"))
 
 # Imports after path modification
-from amplihack.security.xpia_health import check_xpia_health  # noqa: E402
-from amplihack.utils.hook_merge_utility import (  # noqa: E402
+from amplihack.security.xpia_health import check_xpia_health
+from amplihack.utils.hook_merge_utility import (
     HookMergeUtility,
     get_required_xpia_hooks,
 )

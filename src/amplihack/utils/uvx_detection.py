@@ -84,16 +84,16 @@ def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetec
         )
 
     # If no local .claude but AMPLIHACK_ROOT set, likely UVX
-    if env_info.amplihack_root:  # noqa
-        root_path = Path(env_info.amplihack_root)  # noqa
+    if env_info.amplihack_root:
+        root_path = Path(env_info.amplihack_root)
         if root_path.exists() and (root_path / ".claude").exists():
-            reasons.append(f"AMPLIHACK_ROOT points to valid framework: {env_info.amplihack_root}")  # noqa
+            reasons.append(f"AMPLIHACK_ROOT points to valid framework: {env_info.amplihack_root}")
             return UVXDetectionState(
                 result=UVXDetectionResult.UVX_DEPLOYMENT,
                 environment=env_info,
                 detection_reasons=reasons,
             )
-        reasons.append(f"AMPLIHACK_ROOT set but invalid: {env_info.amplihack_root}")  # noqa
+        reasons.append(f"AMPLIHACK_ROOT set but invalid: {env_info.amplihack_root}")
 
     # Check sys.path for framework installation
     framework_in_path = _find_framework_in_sys_path(env_info.sys_path_entries)
@@ -147,8 +147,8 @@ def resolve_framework_paths(
             return PathResolutionResult(location=location, attempts=result.attempts)
 
     # Strategy 2: Environment variable (AMPLIHACK_ROOT)
-    if detection_state.environment.amplihack_root:  # noqa
-        env_path = Path(detection_state.environment.amplihack_root)  # noqa
+    if detection_state.environment.amplihack_root:
+        env_path = Path(detection_state.environment.amplihack_root)
         location = FrameworkLocation(
             root_path=env_path, strategy=PathResolutionStrategy.ENVIRONMENT_VARIABLE
         ).validate()
@@ -157,7 +157,7 @@ def resolve_framework_paths(
             PathResolutionStrategy.ENVIRONMENT_VARIABLE,
             env_path,
             success=location.is_valid,
-            notes=f"AMPLIHACK_ROOT={detection_state.environment.amplihack_root}",  # noqa
+            notes=f"AMPLIHACK_ROOT={detection_state.environment.amplihack_root}",
         )
 
         if location.is_valid:
@@ -241,7 +241,7 @@ def _find_framework_in_sys_path(sys_path_entries: List[str]) -> Optional[Path]:
     for path_str in sys_path_entries:
         try:
             # Look for amplihack package with .claude directory
-            candidate = Path(path_str) / "amplihack"  # noqa
+            candidate = Path(path_str) / "amplihack"
             if candidate.exists() and (candidate / ".claude").exists():
                 return candidate
         except OSError:

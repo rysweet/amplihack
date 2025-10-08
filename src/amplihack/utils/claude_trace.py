@@ -13,7 +13,7 @@ def should_use_trace() -> bool:
     Default behavior: Always prefer claude-trace unless explicitly disabled.
     """
     # Check if explicitly disabled
-    use_trace_env = os.getenv("AMPLIHACK_USE_TRACE", "").lower()  # noqa
+    use_trace_env = os.getenv("AMPLIHACK_USE_TRACE", "").lower()
     if use_trace_env in ("0", "false", "no"):
         return False
 
@@ -34,27 +34,27 @@ def get_claude_command() -> str:
         May attempt to install claude-trace via npm if not found
     """
     if not should_use_trace():
-        print("Claude-trace explicitly disabled via AMPLIHACK_USE_TRACE=0")  # noqa: T201 (print)
+        print("Claude-trace explicitly disabled via AMPLIHACK_USE_TRACE=0")
         return "claude"
 
     # Smart detection of valid claude-trace binary
     claude_trace_path = _find_valid_claude_trace()
     if claude_trace_path:
-        print(f"Using claude-trace for enhanced debugging: {claude_trace_path}")  # noqa: T201 (print)
+        print(f"Using claude-trace for enhanced debugging: {claude_trace_path}")
         return "claude-trace"
 
     # Try to install claude-trace
-    print("Claude-trace not found, attempting to install...")  # noqa: T201 (print)
+    print("Claude-trace not found, attempting to install...")
     if _install_claude_trace():
         # Verify installation worked
         claude_trace_path = _find_valid_claude_trace()
         if claude_trace_path:
-            print(f"Claude-trace installed successfully: {claude_trace_path}")  # noqa: T201 (print)
+            print(f"Claude-trace installed successfully: {claude_trace_path}")
             return "claude-trace"
-        print("Claude-trace installation completed but binary validation failed")  # noqa: T201 (print)
+        print("Claude-trace installation completed but binary validation failed")
 
     # Fall back to claude
-    print("Could not install claude-trace, falling back to standard claude")  # noqa: T201 (print)
+    print("Could not install claude-trace, falling back to standard claude")
     return "claude"
 
 
@@ -224,12 +224,12 @@ def _install_claude_trace() -> bool:
     try:
         # Check if npm is available
         if not shutil.which("npm"):
-            print("\nNPM not found - required to install claude-trace")  # noqa: T201 (print)
-            print("\nTo install npm:")  # noqa: T201 (print)
-            print("  macOS:    brew install node")  # noqa: T201 (print)
-            print("  Linux:    sudo apt install npm  # or your package manager")  # noqa: T201 (print) (print)
-            print("  Windows:  winget install OpenJS.NodeJS")  # noqa: T201 (print)
-            print("\nFor more information, see docs/PREREQUISITES.md")  # noqa: T201 (print)
+            print("\nNPM not found - required to install claude-trace")
+            print("\nTo install npm:")
+            print("  macOS:    brew install node")
+            print("  Linux:    sudo apt install npm  # or your package manager")
+            print("  Windows:  winget install OpenJS.NodeJS")
+            print("\nFor more information, see docs/PREREQUISITES.md")
             return False
 
         # Install claude-trace globally
@@ -242,18 +242,18 @@ def _install_claude_trace() -> bool:
         )
 
         if result.returncode != 0:
-            print(f"\nFailed to install claude-trace: {result.stderr}")  # noqa: T201 (print)
-            print("\nYou can try installing manually:")  # noqa: T201 (print)
-            print("  npm install -g @mariozechner/claude-trace")  # noqa: T201 (print)
+            print(f"\nFailed to install claude-trace: {result.stderr}")
+            print("\nYou can try installing manually:")
+            print("  npm install -g @mariozechner/claude-trace")
 
         return result.returncode == 0
 
     except subprocess.TimeoutExpired:
-        print("\nInstallation timed out. You can try installing manually:")  # noqa: T201 (print)
-        print("  npm install -g @mariozechner/claude-trace")  # noqa: T201 (print)
+        print("\nInstallation timed out. You can try installing manually:")
+        print("  npm install -g @mariozechner/claude-trace")
         return False
     except subprocess.SubprocessError as e:
-        print(f"\nError installing claude-trace: {e!s}")  # noqa: T201 (print)
-        print("\nYou can try installing manually:")  # noqa: T201 (print)
-        print("  npm install -g @mariozechner/claude-trace")  # noqa: T201 (print)
+        print(f"\nError installing claude-trace: {e!s}")
+        print("\nYou can try installing manually:")
+        print("  npm install -g @mariozechner/claude-trace")
         return False

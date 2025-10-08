@@ -1,4 +1,4 @@
-"""Enhanced CLI for amplihack with proxy and launcher support."""  # noqa
+"""Enhanced CLI for amplihack with proxy and launcher support."""
 
 import argparse
 import os
@@ -26,12 +26,12 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
 
     if use_docker:
-        print(  # noqa: T201 (print)
+        print(
             "Docker mode enabled"
             + (
                 " via --docker flag"
                 if getattr(args, "docker", False)
-                else " via AMPLIHACK_USE_DOCKER"  # noqa
+                else " via AMPLIHACK_USE_DOCKER"
             )
         )
         docker_manager = DockerManager()
@@ -51,7 +51,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
     if is_uvx_deployment():
         # Get the original directory (before we changed to temp)
-        original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())  # noqa
+        original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
         # Add --add-dir to claude_args if not already present
         if claude_args and "--add-dir" not in claude_args:
             claude_args = ["--add-dir", original_cwd] + claude_args
@@ -65,14 +65,14 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     if args.with_proxy_config:
         config_path = Path(args.with_proxy_config).resolve()
         if not config_path.exists():
-            print(f"Error: Proxy configuration file not found: {config_path}")  # noqa: T201 (print)
+            print(f"Error: Proxy configuration file not found: {config_path}")
             return 1
 
-        print(f"Loading proxy configuration from: {config_path}")  # noqa: T201 (print)
+        print(f"Loading proxy configuration from: {config_path}")
         proxy_config = ProxyConfig(config_path)
 
         if not proxy_config.validate():
-            print(  # noqa: T201 (print)
+            print(
                 "Error: Invalid proxy configuration. Check that OPENAI_API_KEY is set in your .env file"
             )
             return 1
@@ -83,7 +83,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         default_prompt = Path(__file__).parent / "prompts" / "azure_persistence.md"
         if default_prompt.exists():
             system_prompt_path = default_prompt
-            print("Auto-appending Azure persistence prompt for proxy integration")  # noqa: T201 (print)
+            print("Auto-appending Azure persistence prompt for proxy integration")
 
     # Launch Claude with checkout repo if specified
     launcher = ClaudeLauncher(
@@ -113,52 +113,52 @@ def parse_args_with_passthrough(
     # Split arguments on -- separator
     try:
         separator_index = argv.index("--")
-        amplihack_args = argv[:separator_index]  # noqa
+        amplihack_args = argv[:separator_index]
         claude_args = argv[separator_index + 1 :]
     except ValueError:
         # No -- separator found
-        amplihack_args = argv  # noqa
+        amplihack_args = argv
         claude_args = []
 
     parser = create_parser()
 
     # If no amplihack command specified and we have claude_args, default to launch
-    if not amplihack_args and claude_args:  # noqa
-        amplihack_args = ["launch"]  # noqa
-    elif not amplihack_args:  # noqa
+    if not amplihack_args and claude_args:
+        amplihack_args = ["launch"]
+    elif not amplihack_args:
         # No command and no claude args - show help
         pass
 
-    args = parser.parse_args(amplihack_args)  # noqa
+    args = parser.parse_args(amplihack_args)
     return args, claude_args
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Create the argument parser for amplihack CLI.  # noqa
+    """Create the argument parser for amplihack CLI.
 
     Returns:
         Configured argument parser.
     """
     parser = argparse.ArgumentParser(
-        prog="amplihack",  # noqa
-        description="Amplihack CLI - Enhanced tools for Claude Code development",  # noqa
+        prog="amplihack",
+        description="Amplihack CLI - Enhanced tools for Claude Code development",
         epilog="""Examples:
-  amplihack                                    # Launch Claude directly  # noqa
-  amplihack -- --model claude-3-opus-20240229 # Forward model argument to Claude  # noqa
-  amplihack -- --verbose                      # Forward verbose flag to Claude  # noqa
-  amplihack launch -- --help                  # Get Claude help  # noqa
-  amplihack install                           # Install amplihack (no forwarding)  # noqa
-  amplihack install -- --verbose             # Install with Claude args forwarded""",  # noqa
+  amplihack                                    # Launch Claude directly
+  amplihack -- --model claude-3-opus-20240229 # Forward model argument to Claude
+  amplihack -- --verbose                      # Forward verbose flag to Claude
+  amplihack launch -- --help                  # Get Claude help
+  amplihack install                           # Install amplihack (no forwarding)
+  amplihack install -- --verbose             # Install with Claude args forwarded""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Install command (existing)
-    subparsers.add_parser("install", help="Install amplihack agents and tools to ~/.claude")  # noqa
+    subparsers.add_parser("install", help="Install amplihack agents and tools to ~/.claude")
 
     # Uninstall command (existing)
-    subparsers.add_parser("uninstall", help="Remove amplihack agents and tools from ~/.claude")  # noqa
+    subparsers.add_parser("uninstall", help="Remove amplihack agents and tools from ~/.claude")
 
     # Launch command (new)
     launch_parser = subparsers.add_parser(
@@ -177,21 +177,8 @@ def create_parser() -> argparse.ArgumentParser:
     launch_parser.add_argument(
         "--docker",
         action="store_true",
-        help="Run amplihack in Docker container for isolated execution",  # noqa
+        help="Run amplihack in Docker container for isolated execution",
     )
-
-    # Auto-mode command (imported dynamically to avoid circular imports)
-    try:
-        from .commands.auto_mode_cli import AutoModeCLI
-
-        auto_cli = AutoModeCLI()
-        auto_cli.create_auto_parser(subparsers)
-    except ImportError:
-        # Auto-mode not available - create placeholder
-        auto_parser = subparsers.add_parser(
-            "auto", help="Auto-mode (requires auto-mode components)"
-        )
-        auto_parser.add_argument("auto_action", nargs="?", help="Auto-mode action")
 
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
@@ -206,7 +193,7 @@ def create_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """Main entry point for amplihack CLI.  # noqa
+    """Main entry point for amplihack CLI.
 
     Args:
         argv: Command line arguments. Uses sys.argv if None.
@@ -220,35 +207,35 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Create temporary Claude environment for UVX zero-install
         import tempfile
 
-        temp_dir = tempfile.mkdtemp(prefix="amplihack_uvx_")  # noqa
+        temp_dir = tempfile.mkdtemp(prefix="amplihack_uvx_")
         temp_claude_dir = os.path.join(temp_dir, ".claude")
 
         # Save original directory - we'll use this for --add-dir
         original_cwd = os.getcwd()
 
         # Store it for later use in --add-dir
-        os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd  # noqa
+        os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
         # Change to temp directory - this sets CLAUDE_PROJECT_DIR
         os.chdir(temp_dir)
 
-        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":  # noqa
-            print(f"UVX mode: Created temp Claude environment at {temp_dir}")  # noqa: T201 (print)
-            print(f"Changed working directory to {temp_dir}")  # noqa: T201 (print)
+        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+            print(f"UVX mode: Created temp Claude environment at {temp_dir}")
+            print(f"Changed working directory to {temp_dir}")
 
         # Stage framework files to the temp .claude directory
         # Use the built-in _local_install function to copy framework files
         # Find the amplihack package location
         # Find amplihack package location for .claude files
-        import amplihack  # noqa
+        import amplihack
 
         from . import copytree_manifest
 
-        amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))  # noqa
+        amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")  # noqa
+        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
         # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
@@ -264,7 +251,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",  # noqa
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
                                     "timeout": 10000,
                                 }
                             ]
@@ -275,7 +262,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",  # noqa
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
                                     "timeout": 30000,
                                 }
                             ]
@@ -287,7 +274,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",  # noqa
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
                                 }
                             ],
                         }
@@ -297,7 +284,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",  # noqa
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
                                     "timeout": 30000,
                                 }
                             ]
@@ -311,9 +298,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             with open(settings_path, "w") as f:
                 json.dump(settings, f, indent=2)
 
-            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":  # noqa
-                print(f"UVX staging completed to {temp_claude_dir}")  # noqa: T201 (print)
-                print("Created settings.json with relative hook paths")  # noqa: T201 (print)
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"UVX staging completed to {temp_claude_dir}")
+                print("Created settings.json with relative hook paths")
 
     args, claude_args = parse_args_with_passthrough(argv)
 
@@ -323,13 +310,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
             if is_uvx_deployment():
                 # Get the original directory (before we changed to temp)
-                original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())  # noqa
+                original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
                 if "--add-dir" not in claude_args:
                     claude_args = ["--add-dir", original_cwd] + claude_args
 
             # Check if Docker should be used for direct launch
             if DockerManager.should_use_docker():
-                print("Docker mode enabled via AMPLIHACK_USE_DOCKER")  # noqa: T201 (print)
+                print("Docker mode enabled via AMPLIHACK_USE_DOCKER")
                 docker_manager = DockerManager()
                 docker_args = ["launch", "--"] + claude_args
                 return docker_manager.run_command(docker_args)
@@ -348,13 +335,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
-            repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"  # noqa
+            repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
             try:
                 subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
                 _local_install(tmp)
                 return 0
             except subprocess.CalledProcessError as e:
-                print(f"Failed to install: {e}")  # noqa: T201 (print)
+                print(f"Failed to install: {e}")
                 return 1
 
     elif args.command == "uninstall":
@@ -369,24 +356,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
         if is_uvx_deployment():
             # Get the original directory (before we changed to temp)
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())  # noqa
+            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
             # Add --add-dir to claude_args if not already present
             if "--add-dir" not in claude_args:
                 claude_args = ["--add-dir", original_cwd] + (claude_args or [])
         return launch_command(args, claude_args)
-
-    elif args.command == "auto":
-        try:
-            from .commands.auto_mode_cli import auto_command_handler
-
-            return auto_command_handler(args)
-        except ImportError:
-            print("Error: Auto-mode components not available", file=sys.stderr)  # noqa: T201 (print)
-            print("Please ensure auto-mode is properly installed", file=sys.stderr)  # noqa: T201 (print)
-            return 1
-        except Exception as e:
-            print(f"Error running auto-mode: {e}", file=sys.stderr)  # noqa: T201 (print)
-            return 1
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
@@ -394,16 +368,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.find_path:
             path = find_uvx_installation_path()
             if path:
-                print(str(path))  # noqa: T201 (print)
+                print(str(path))
                 return 0
-            print("UVX installation path not found", file=sys.stderr)  # noqa: T201 (print)
+            print("UVX installation path not found", file=sys.stderr)
             return 1
         if args.info:
             # Show UVX staging information
-            print("\nUVX Information:")  # noqa: T201 (print)
-            print(f"  Is UVX: {is_uvx_deployment()}")  # noqa: T201 (print)
-            print("\nEnvironment Variables:")  # noqa: T201 (print)
-            print(f"  AMPLIHACK_ROOT={os.environ.get('AMPLIHACK_ROOT', '(not set)')}")  # noqa: T201 (print)
+            print("\nUVX Information:")
+            print(f"  Is UVX: {is_uvx_deployment()}")
+            print("\nEnvironment Variables:")
+            print(f"  AMPLIHACK_ROOT={os.environ.get('AMPLIHACK_ROOT', '(not set)')}")
             return 0
         print_uvx_usage_instructions()
         return 0
