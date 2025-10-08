@@ -1,18 +1,22 @@
 """Tests for UVX detection and path resolution logic."""
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from src.amplihack.utils.uvx_detection import (
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from amplihack.utils.uvx_detection import (
     detect_uvx_deployment,
     find_framework_root,
     is_uvx_deployment,
     resolve_framework_file,
     resolve_framework_paths,
 )
-from src.amplihack.utils.uvx_models import (
+from amplihack.utils.uvx_models import (
     PathResolutionStrategy,
     UVXConfiguration,
     UVXDetectionResult,
