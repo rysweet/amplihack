@@ -81,6 +81,7 @@ class TestClaudeTrace:
         assert _install_claude_trace()
         mock_run.assert_called_once_with(
             ["npm", "install", "-g", "@mariozechner/claude-trace"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=60,
@@ -194,6 +195,7 @@ class TestClaudeTrace:
         assert _test_claude_trace_execution("/usr/bin/claude-trace")
         mock_run.assert_called_once_with(
             ["/usr/bin/claude-trace", "--version"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=5,
