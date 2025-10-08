@@ -3,6 +3,9 @@ Auto-Mode CLI Command Implementation
 
 Provides CLI interface for auto-mode functionality through `amplihack auto` command.
 Integrates with the core auto-mode orchestrator and provides user-friendly interface.
+
+# noqa: print - CLI code legitimately uses print statements for user interaction
+# noqa - "amplihack" is the project name, not a development artifact
 """
 
 import argparse
@@ -460,9 +463,8 @@ def auto_command_handler(args: argparse.Namespace) -> int:
     if not hasattr(args, "auto_action") or not args.auto_action:
         # Interactive mode
         return asyncio.run(cli.run_interactive_mode(args))
-    else:
-        # Single command mode
-        return asyncio.run(cli.handle_auto_command(args))
+    # Single command mode
+    return asyncio.run(cli.handle_auto_command(args))
 
 
 # Export for CLI integration

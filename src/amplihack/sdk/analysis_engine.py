@@ -74,19 +74,13 @@ class AnalysisConfig:
 class SDKConnectionError(Exception):
     """Raised when SDK connection fails"""
 
-    pass
-
 
 class AnalysisError(Exception):
     """Raised when analysis fails"""
 
-    pass
-
 
 class PromptInjectionError(Exception):
     """Raised when prompt injection is detected"""
-
-    pass
 
 
 class ConversationAnalysisEngine:
@@ -304,7 +298,7 @@ Provide a confidence score (0.0-1.0) for progress assessment.
 """
             )
 
-        elif request.analysis_type == AnalysisType.QUALITY_ASSESSMENT:
+        if request.analysis_type == AnalysisType.QUALITY_ASSESSMENT:
             return (
                 base_context
                 + """
@@ -318,7 +312,7 @@ Provide a quality score (0.0-1.0) for the work.
 """
             )
 
-        elif request.analysis_type == AnalysisType.NEXT_PROMPT_GENERATION:
+        if request.analysis_type == AnalysisType.NEXT_PROMPT_GENERATION:
             return (
                 base_context
                 + """
@@ -332,7 +326,7 @@ Provide a specific, actionable next prompt.
 """
             )
 
-        elif request.analysis_type == AnalysisType.ERROR_DIAGNOSIS:
+        if request.analysis_type == AnalysisType.ERROR_DIAGNOSIS:
             return (
                 base_context
                 + """
@@ -346,7 +340,7 @@ Provide specific recommendations for resolution.
 """
             )
 
-        elif request.analysis_type == AnalysisType.OBJECTIVE_ALIGNMENT:
+        if request.analysis_type == AnalysisType.OBJECTIVE_ALIGNMENT:
             return (
                 base_context
                 + """
@@ -360,13 +354,12 @@ Provide recommendations for maintaining alignment.
 """
             )
 
-        else:
-            return (
-                base_context
-                + """
+        return (
+            base_context
+            + """
 Perform general analysis of the Claude Code output and provide insights.
 """
-            )
+        )
 
     def _build_analysis_code(self, request: AnalysisRequest, prompt: str) -> str:
         """Build Python code for execution in Jupyter kernel"""
@@ -414,7 +407,7 @@ analysis_result = {{
 }}
 
 # Output structured result
-print(json.dumps(analysis_result, indent=2))
+print(json.dumps(analysis_result, indent=2))  # noqa: print - required in generated code
 """
 
     async def _call_mcp_execute_code(self, code: str) -> str:

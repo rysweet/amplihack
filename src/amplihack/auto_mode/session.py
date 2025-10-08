@@ -3,6 +3,8 @@ Session Management for Auto-Mode
 
 Handles session state, persistence, and lifecycle management.
 Provides secure session isolation and data persistence.
+
+# noqa - "amplihack" in paths is the project name, not a development artifact
 """
 
 import asyncio
@@ -15,9 +17,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .config import (
-    DEFAULT_SESSION_TIMEOUT_MINUTES,
-    DEFAULT_MAX_SESSIONS_PER_USER,
     DEFAULT_CLEANUP_INTERVAL_MINUTES,
+    DEFAULT_MAX_SESSIONS_PER_USER,
+    DEFAULT_SESSION_TIMEOUT_MINUTES,
     SECONDS_PER_MINUTE,
 )
 
@@ -153,7 +155,7 @@ class SessionStorage:
             if not session_file.exists():
                 return None
 
-            with open(session_file, "r") as f:
+            with open(session_file) as f:
                 session_data = json.load(f)
 
             return SessionState.from_dict(session_data)
@@ -199,7 +201,7 @@ class SessionStorage:
         try:
             for session_file in self.storage_dir.glob("session_*.json"):
                 try:
-                    with open(session_file, "r") as f:
+                    with open(session_file) as f:
                         session_data = json.load(f)
 
                     # Filter by user_id if specified

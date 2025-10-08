@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 from .analysis import ConversationAnalysis, ConversationSignal
 from .config import (
-    DEFAULT_MIN_CONFIDENCE_THRESHOLD,
     DEFAULT_COOLDOWN_MINUTES,
-    DEFAULT_MAX_TRIGGERS_PER_SESSION,
     DEFAULT_FRUSTRATION_COOLDOWN_MINUTES,
+    DEFAULT_MAX_TRIGGERS_PER_SESSION,
+    DEFAULT_MIN_CONFIDENCE_THRESHOLD,
     DEFAULT_QUALITY_THRESHOLD,
-    SECONDS_PER_MINUTE,
     SECONDS_PER_DAY,
+    SECONDS_PER_MINUTE,
 )
 from .session import SessionState
 
@@ -137,7 +137,6 @@ class QualityGateEvaluator:
 
     async def initialize(self):
         """Initialize the quality gate evaluator"""
-        pass
 
     def _load_default_gates(self):
         """Load default quality gate definitions"""
@@ -287,7 +286,8 @@ class QualityGateEvaluator:
                     action_type=InterventionType.ERROR_RESOLUTION,
                     title="Address Frustration",
                     description="Acknowledge frustration and provide alternative approaches",
-                    confidence_boost=DEFAULT_MIN_CONFIDENCE_THRESHOLD * 0.6,  # 60% of base threshold
+                    confidence_boost=DEFAULT_MIN_CONFIDENCE_THRESHOLD
+                    * 0.6,  # 60% of base threshold
                 )
             ],
             cooldown_minutes=DEFAULT_FRUSTRATION_COOLDOWN_MINUTES,  # Longer cooldown for frustration gates
@@ -323,7 +323,7 @@ class QualityGateEvaluator:
         try:
             config_file = Path(config_path)
             if config_file.exists():
-                with open(config_file, "r") as f:
+                with open(config_file) as f:
                     config_data = yaml.safe_load(f)
 
                 custom_gates = config_data.get("quality_gates", {})
@@ -370,9 +370,13 @@ class QualityGateEvaluator:
                 priority=GatePriority(config.get("priority", "medium")),
                 conditions=conditions,
                 actions=actions,
-                min_confidence_threshold=config.get("min_confidence_threshold", DEFAULT_MIN_CONFIDENCE_THRESHOLD),
+                min_confidence_threshold=config.get(
+                    "min_confidence_threshold", DEFAULT_MIN_CONFIDENCE_THRESHOLD
+                ),
                 cooldown_minutes=config.get("cooldown_minutes", DEFAULT_COOLDOWN_MINUTES),
-                max_triggers_per_session=config.get("max_triggers_per_session", DEFAULT_MAX_TRIGGERS_PER_SESSION),
+                max_triggers_per_session=config.get(
+                    "max_triggers_per_session", DEFAULT_MAX_TRIGGERS_PER_SESSION
+                ),
             )
 
             self.gates[gate_id] = gate
@@ -529,12 +533,15 @@ class QualityGateEvaluator:
                 confidence = 0.8 if met else 0.0
 
             elif condition.operator == "not_empty":
-                met = bool(value) and len(value) > 0
+                met = bool(value) and (hasattr(value, "__len__") and len(value) > 0)  # type: ignore[arg-type]
                 confidence = 0.9 if met else 0.0
 
             elif condition.operator == "dimension_score_lt":
                 # Special operator for quality dimensions
-                met, confidence = self._evaluate_dimension_condition(value, condition.threshold)
+                if isinstance(value, list):
+                    met, confidence = self._evaluate_dimension_condition(value, condition.threshold)
+                else:
+                    met, confidence = False, 0.0
 
             elif condition.operator == "pattern_type_exists":
                 # Special operator for pattern existence

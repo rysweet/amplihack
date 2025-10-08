@@ -3,6 +3,9 @@ Auto-Mode Slash Command Implementation
 
 Provides the /amplihack:auto-mode command for persistent analysis and
 autonomous progression through objectives using Claude Agent SDK.
+
+# noqa: print - CLI/slash command code uses print for output
+# noqa - "amplihack" is the project name, not a development artifact
 """
 
 import asyncio
@@ -44,29 +47,28 @@ class AutoModeCommand:
         try:
             if command == "start":
                 return await self._start_command(args[1:])
-            elif command == "process":
+            if command == "process":
                 return await self._process_command(args[1:])
-            elif command == "status":
+            if command == "status":
                 return await self._status_command(args[1:])
-            elif command == "pause":
+            if command == "pause":
                 return await self._pause_command(args[1:])
-            elif command == "resume":
+            if command == "resume":
                 return await self._resume_command(args[1:])
-            elif command == "stop":
+            if command == "stop":
                 return await self._stop_command(args[1:])
-            elif command == "help":
+            if command == "help":
                 return self._show_help()
-            else:
-                return {
-                    "success": False,
-                    "error": f"Unknown command: {command}",
-                    "help": "Use '/amplihack:auto-mode help' for usage information",
-                }
+            return {
+                "success": False,
+                "error": f"Unknown command: {command}",
+                "help": "Use '/amplihack:auto-mode help' for usage information",
+            }
 
         except Exception as e:
             return {
                 "success": False,
-                "error": f"Command execution failed: {str(e)}",
+                "error": f"Command execution failed: {e!s}",
                 "type": type(e).__name__,
             }
 
@@ -123,7 +125,7 @@ class AutoModeCommand:
         except StateIntegrationError as e:
             return {
                 "success": False,
-                "error": f"Failed to start session: {str(e)}",
+                "error": f"Failed to start session: {e!s}",
                 "type": "StateIntegrationError",
             }
 
@@ -191,7 +193,7 @@ class AutoModeCommand:
         except StateIntegrationError as e:
             return {
                 "success": False,
-                "error": f"Processing failed: {str(e)}",
+                "error": f"Processing failed: {e!s}",
                 "type": "StateIntegrationError",
             }
 
@@ -244,7 +246,7 @@ class AutoModeCommand:
         except Exception as e:
             return {
                 "success": False,
-                "error": f"Status check failed: {str(e)}",
+                "error": f"Status check failed: {e!s}",
                 "type": type(e).__name__,
             }
 
@@ -258,7 +260,7 @@ class AutoModeCommand:
             return {"success": True, "message": "Auto-mode session paused", "state": "paused"}
 
         except Exception as e:
-            return {"success": False, "error": f"Failed to pause: {str(e)}"}
+            return {"success": False, "error": f"Failed to pause: {e!s}"}
 
     async def _resume_command(self, args: List[str]) -> Dict[str, Any]:
         """Resume auto-mode session"""
@@ -270,7 +272,7 @@ class AutoModeCommand:
             return {"success": True, "message": "Auto-mode session resumed", "state": "active"}
 
         except Exception as e:
-            return {"success": False, "error": f"Failed to resume: {str(e)}"}
+            return {"success": False, "error": f"Failed to resume: {e!s}"}
 
     async def _stop_command(self, args: List[str]) -> Dict[str, Any]:
         """Stop auto-mode session"""
@@ -299,7 +301,7 @@ class AutoModeCommand:
             }
 
         except Exception as e:
-            return {"success": False, "error": f"Failed to stop: {str(e)}"}
+            return {"success": False, "error": f"Failed to stop: {e!s}"}
 
     def _show_help(self) -> Dict[str, Any]:
         """Show help information for auto-mode command"""

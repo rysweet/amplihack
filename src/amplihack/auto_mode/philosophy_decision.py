@@ -8,6 +8,8 @@ most compatible with amplihack philosophy principles:
 - Ruthless Simplicity
 - Modular Design (Bricks & Studs)
 - Zero-BS Implementation
+
+# noqa - "amplihack" is the project name, "hack" in "quick hack" is legitimate terminology
 """
 
 import logging
@@ -831,6 +833,7 @@ def demonstrate_philosophy_framework():
     """Demonstrate the philosophy decision framework with various scenarios"""
 
     import logging
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -854,7 +857,9 @@ def demonstrate_philosophy_framework():
     logger.info("3. Cleanup Timing Decision:")
     cleanup_decision = create_example_cleanup_timing_decision()
     logger.info(f"   Selected: {cleanup_decision.selected_option.description}")
-    logger.info(f"   Score: {cleanup_decision.selected_option.philosophy_scores.total_score:.1f}/100")
+    logger.info(
+        f"   Score: {cleanup_decision.selected_option.philosophy_scores.total_score:.1f}/100"
+    )
     logger.info(f"   Rationale: {cleanup_decision.decision_rationale}")
 
     # Example 4: Implementation Approach
@@ -868,7 +873,9 @@ def demonstrate_philosophy_framework():
     logger.info("5. Integration Strategy Decision:")
     integration_decision = create_example_integration_strategy_decision()
     logger.info(f"   Selected: {integration_decision.selected_option.description}")
-    logger.info(f"   Score: {integration_decision.selected_option.philosophy_scores.total_score:.1f}/100")
+    logger.info(
+        f"   Score: {integration_decision.selected_option.philosophy_scores.total_score:.1f}/100"
+    )
     logger.info(f"   Rationale: {integration_decision.decision_rationale}")
 
 
