@@ -221,7 +221,7 @@ class ProviderSwitcher:
             return
 
         try:
-            with open(self.state_file, "r") as f:
+            with open(self.state_file) as f:
                 state = json.load(f)
                 self.current_provider = state.get("current_provider", "anthropic")
                 self.last_switch_time = state.get("last_switch_time", 0)
@@ -256,15 +256,14 @@ class ProviderSwitcher:
                 "base_url": self.config.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com"),
                 "provider": "anthropic",
             }
-        elif provider == "azure":
+        if provider == "azure":
             return {
                 "api_key": self.config.get("AZURE_OPENAI_API_KEY", ""),
                 "base_url": self.config.get("AZURE_OPENAI_ENDPOINT", ""),
                 "api_version": self.config.get("AZURE_OPENAI_API_VERSION", "2024-02-01"),
                 "provider": "azure",
             }
-        else:
-            raise ValueError(f"Unknown provider: {provider}")
+        raise ValueError(f"Unknown provider: {provider}")
 
 
 __all__ = ["PassthroughProvider", "ProviderSwitcher", "PassthroughResponse"]

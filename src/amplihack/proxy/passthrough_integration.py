@@ -158,12 +158,11 @@ class PassthroughHandler:
                 status_code=passthrough_response.status_code,
                 headers=passthrough_response.headers,
             )
-        else:
-            return Response(
-                content=str(passthrough_response.content),
-                status_code=passthrough_response.status_code,
-                headers=passthrough_response.headers,
-            )
+        return Response(
+            content=str(passthrough_response.content),
+            status_code=passthrough_response.status_code,
+            headers=passthrough_response.headers,
+        )
 
     async def get_provider_status(self) -> Dict[str, Any]:
         """Get current provider status information.

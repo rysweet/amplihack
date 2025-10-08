@@ -53,7 +53,7 @@ class PassthroughConfig:
         if not self.config_path or not self.config_path.exists():
             return
 
-        with open(self.config_path, "r") as f:
+        with open(self.config_path) as f:
             content = f.read()
 
         for line in content.splitlines():
@@ -67,9 +67,9 @@ class PassthroughConfig:
                 value = line[eq_index + 1 :].strip()
 
                 # Remove quotes
-                if value.startswith('"') and value.endswith('"'):
-                    value = value[1:-1]
-                elif value.startswith("'") and value.endswith("'"):
+                if (value.startswith('"') and value.endswith('"')) or (
+                    value.startswith("'") and value.endswith("'")
+                ):
                     value = value[1:-1]
 
                 self.config[key] = value
@@ -206,15 +206,14 @@ class PassthroughConfig:
                 "base_url": self.get_anthropic_base_url(),
                 "provider": "anthropic",
             }
-        elif provider == "azure":
+        if provider == "azure":
             return {
                 "api_key": self.get_azure_key() or "",
                 "base_url": self.get_azure_endpoint() or "",
                 "api_version": self.get_azure_api_version(),
                 "provider": "azure",
             }
-        else:
-            raise ValueError(f"Unknown provider: {provider}")
+        raise ValueError(f"Unknown provider: {provider}")
 
 
 __all__ = ["PassthroughConfig", "ValidationResult"]

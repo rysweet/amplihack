@@ -227,10 +227,10 @@ class TestIntegration:
         # EXPLICIT USER REQUIREMENT: Integration with existing proxy system and Azure foundation
         # This test will verify end-to-end integration
         # Will be implemented with actual proxy integration
-        pass  # Placeholder for integration test
+        # Placeholder for integration test
 
     def test_existing_proxy_system_integration(self):
         """Test integration with existing proxy system (EXPLICIT REQUIREMENT)."""
         # EXPLICIT USER REQUIREMENT: Integration with existing proxy system and Azure foundation
         # This will test that passthrough mode works with the existing FastAPI proxy
-        pass  # Placeholder for proxy integration test
+        # Placeholder for proxy integration test
