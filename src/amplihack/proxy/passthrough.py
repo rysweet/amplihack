@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-import httpx
+import httpx  # type: ignore[import-not-found]
 
 logger = logging.getLogger(__name__)
 

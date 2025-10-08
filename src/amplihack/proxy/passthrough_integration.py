@@ -13,8 +13,8 @@ Public API:
 import logging
 from typing import Any, Dict, Optional
 
-from fastapi import HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi import HTTPException, Request, Response  # type: ignore[import-not-found]
+from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 
 from .passthrough import PassthroughProvider, PassthroughResponse, ProviderSwitcher
 from .passthrough_config import PassthroughConfig

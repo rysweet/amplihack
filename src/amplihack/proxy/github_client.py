@@ -34,7 +34,7 @@ class GitHubCopilotClient:
         """Ensure HTTP session is initialized."""
         if not self.session:
             try:
-                import aiohttp
+                import aiohttp  # type: ignore[import-not-found]
 
                 self.session = aiohttp.ClientSession(
                     headers={
@@ -106,6 +106,8 @@ class GitHubCopilotClient:
             Response dictionary.
         """
         try:
+            if not self.session:
+                raise RuntimeError("Session not initialized. Call ensure_session() first.")
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     return await response.json()
@@ -129,6 +131,8 @@ class GitHubCopilotClient:
             Streaming response chunks.
         """
         try:
+            if not self.session:
+                raise RuntimeError("Session not initialized. Call ensure_session() first.")
             async with self.session.post(url, json=data) as response:
                 if response.status != 200:
                     error_text = await response.text()
@@ -186,6 +190,8 @@ class GitHubCopilotClient:
         await self._ensure_session()
 
         try:
+            if not self.session:
+                raise RuntimeError("Session not initialized. Call ensure_session() first.")
             url = urljoin(self.base_url, "/copilot/billing")
             async with self.session.get(url) as response:
                 if response.status == 200:
@@ -234,7 +240,7 @@ class GitHubCopilotClient:
                         stream_result = await self.chat_completion(
                             messages, model, temperature, max_tokens, stream, **kwargs
                         )
-                        async for chunk in stream_result:
+                        async for chunk in stream_result:  # type: ignore[misc]
                             yield chunk
 
                 return _stream_wrapper()

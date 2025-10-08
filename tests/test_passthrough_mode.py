@@ -134,7 +134,10 @@ class TestProviderSwitcher:
 
     def test_provider_state_persistence(self):
         """Test provider state persists across restarts."""
-        config = {"ANTHROPIC_API_KEY": "test-key", "AZURE_OPENAI_API_KEY": "test-azure"}
+        config = {
+            "ANTHROPIC_API_KEY": "test-key",  # pragma: allowlist secret
+            "AZURE_OPENAI_API_KEY": "test-azure",  # pragma: allowlist secret
+        }
 
         # Create switcher and change state
         switcher1 = ProviderSwitcher(config, state_file="test_state.json")
