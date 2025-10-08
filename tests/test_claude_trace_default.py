@@ -128,6 +128,7 @@ def test_install_claude_trace_success():
         # Verify correct npm command was called
         mock_run.assert_called_once_with(
             ["npm", "install", "-g", "@mariozechner/claude-trace"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=60,
