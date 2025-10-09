@@ -6,7 +6,7 @@ from .simple_tui import (
     TUITestCase,
     create_amplihack_test,
     create_tui_tester,
-    test_amplihack_basics,
+    run_amplihack_basics,
 )
 
 __all__ = [
@@ -15,5 +15,5 @@ __all__ = [
     "TestResult",
     "create_tui_tester",
     "create_amplihack_test",
-    "test_amplihack_basics",
+    "run_amplihack_basics",
 ]

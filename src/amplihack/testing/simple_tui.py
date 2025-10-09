@@ -247,7 +247,7 @@ def create_amplihack_test(test_id: str, args: str) -> TUITestCase:
     return TUITestCase(test_id=test_id, name=f"AmplIHack {args}", commands=[f"amplihack {args}"])
 
 
-async def test_amplihack_basics() -> Dict[str, TestResult]:
+async def run_amplihack_basics() -> Dict[str, TestResult]:
     """Test basic AmplIHack commands"""
     tester = create_tui_tester()
 

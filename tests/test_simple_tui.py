@@ -8,7 +8,7 @@ from amplihack.testing import (
     TUITestCase,
     create_amplihack_test,
     create_tui_tester,
-    test_amplihack_basics,
+    run_amplihack_basics,
 )
 
 
@@ -87,7 +87,7 @@ async def test_amplihack_cli_tests():
 )
 async def test_basic_amplihack_suite():
     """Test the basic AmplIHack test suite"""
-    results = await test_amplihack_basics()
+    results = await run_amplihack_basics()
 
     assert "help" in results
     assert "install_help" in results

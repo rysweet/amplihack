@@ -314,8 +314,18 @@ class TestConvenienceFunctions:
 
     def test_is_uvx_deployment_convenience(self):
         """Test is_uvx_deployment convenience function."""
+        # Clear cached environment info before test
+        from amplihack.utils.uvx_detection import _get_cached_environment_info
+
+        _get_cached_environment_info.cache_clear()
+
+        # Mock cwd to avoid .claude detection in test directory
         with patch.dict(os.environ, {"UV_PYTHON": "/path"}):
-            assert is_uvx_deployment() is True
+            with patch("pathlib.Path.cwd", return_value=Path("/no/claude/here")):
+                assert is_uvx_deployment() is True
+
+        # Clear cache again for second part of test
+        _get_cached_environment_info.cache_clear()
 
         with tempfile.TemporaryDirectory() as temp_dir:
             working_dir = Path(temp_dir)
