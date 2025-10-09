@@ -85,17 +85,16 @@ class TestUVXDetection:
 
     def test_detect_detection_failed(self):
         """Test detection failure when no indicators found."""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("sys.path", ["/normal/path"]):
-                with patch("pathlib.Path.cwd", return_value=Path("/no/claude/here")):
-                    detection = detect_uvx_deployment()
+        with patch.dict(os.environ, {}, clear=True), patch("sys.path", ["/normal/path"]):
+            with patch("pathlib.Path.cwd", return_value=Path("/no/claude/here")):
+                detection = detect_uvx_deployment()
 
-                    assert detection.result == UVXDetectionResult.DETECTION_FAILED
-                    assert detection.is_detection_successful is False
-                    assert any(
-                        "No clear deployment indicators" in reason
-                        for reason in detection.detection_reasons
-                    )
+                assert detection.result == UVXDetectionResult.DETECTION_FAILED
+                assert detection.is_detection_successful is False
+                assert any(
+                    "No clear deployment indicators" in reason
+                    for reason in detection.detection_reasons
+                )
 
     def test_detect_with_custom_config(self):
         """Test detection with custom configuration."""
@@ -329,11 +328,10 @@ class TestConvenienceFunctions:
 
     def test_resolve_framework_file_no_framework(self):
         """Test resolve_framework_file when no framework found."""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("sys.path", ["/normal/path"]):
-                with patch("pathlib.Path.cwd", return_value=Path("/no/claude")):
-                    resolved = resolve_framework_file(".claude/test.md")
-                    assert resolved is None
+        with patch.dict(os.environ, {}, clear=True), patch("sys.path", ["/normal/path"]):
+            with patch("pathlib.Path.cwd", return_value=Path("/no/claude")):
+                resolved = resolve_framework_file(".claude/test.md")
+                assert resolved is None
 
 
 class TestPrivateFunctions:

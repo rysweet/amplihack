@@ -184,7 +184,6 @@ class HookProcessor(ABC):
         Returns:
             Output data to return to Claude Code
         """
-        pass
 
     def run(self):
         """Main entry point for the hook processor.

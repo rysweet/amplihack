@@ -29,6 +29,10 @@ htmlcov/
 test_requirements*.md
 test_sample_project/
 
+# Environment files with secrets (catch ALL .env files)
+*.env
+.azure.env
+
 # Build
 build/
 dist/
@@ -99,3 +103,16 @@ ai_working/tmp
 
 # Smoke test runtime logs
 .smoke_test_data/data
+
+# LiteLLM Proxy Security
+.claude/runtime/proxy/litellm_config.yaml
+.claude/runtime/proxy/.env.litellm
+.claude/runtime/proxy/litellm_proxy.log
+.claude/runtime/proxy/litellm_proxy.pid
+.claude/runtime/proxy/litellm.db
+*.env.litellm
+.claude/runtime/proxy/litellm_config.yaml
+.claude/runtime/proxy/.env.litellm
+.claude/runtime/proxy/litellm_simple_config.yaml
+.claude/runtime/proxy/litellm_proxy.log
+.claude/runtime/proxy/litellm_proxy.pid

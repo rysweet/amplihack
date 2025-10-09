@@ -87,7 +87,7 @@ class XPIAConfig:
 
         # Load whitelist from file
         if self.whitelist_file and Path(self.whitelist_file).exists():
-            with open(self.whitelist_file, "r") as f:
+            with open(self.whitelist_file) as f:
                 self.whitelist_domains.extend(
                     line.strip() for line in f if line.strip() and not line.startswith("#")
                 )
@@ -101,7 +101,7 @@ class XPIAConfig:
 
         # Load blacklist from file
         if self.blacklist_file and Path(self.blacklist_file).exists():
-            with open(self.blacklist_file, "r") as f:
+            with open(self.blacklist_file) as f:
                 self.blacklist_domains.extend(
                     line.strip() for line in f if line.strip() and not line.startswith("#")
                 )

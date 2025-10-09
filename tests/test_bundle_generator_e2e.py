@@ -169,6 +169,7 @@ def test_e2e_repackage_scripts_work(generated_bundle, mock_env):
     # Act - Execute repackage script
     result = subprocess.run(
         [str(repackage_script)],
+        check=False,
         cwd=generated_bundle,
         capture_output=True,
         text=False,  # Get bytes

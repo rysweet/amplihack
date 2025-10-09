@@ -107,8 +107,7 @@ class FileRotatingHandler(logging.Handler):
         if self.rotate_daily:
             date_str = datetime.now().strftime("%Y%m%d")
             return self.base_path.parent / f"{self.base_path.stem}_{date_str}.log"
-        else:
-            return self.base_path
+        return self.base_path
 
     def _should_rotate(self, log_file: Path) -> bool:
         """Check if log rotation is needed."""
@@ -360,7 +359,7 @@ class ToolkitLogger:
 
         try:
             logs = []
-            with open(log_file, "r") as f:
+            with open(log_file) as f:
                 for line in f:
                     line = line.strip()
                     if line:

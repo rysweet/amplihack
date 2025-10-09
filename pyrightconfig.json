@@ -4,13 +4,17 @@
     "src/amplihack/bundle_generator",
     "src/amplihack/cli_extensions.py",
     "src/amplihack/security/cli.py",
+    "src/amplihack/proxy/responses_api_proxy.py",
+    "proxy/",
     "tests/",
     ".claude/",
     "Specs/",
     "scripts/"
   ],
+  "typeCheckingMode": "basic",
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,
+  "reportOptionalMemberAccess": "error",
   "pythonVersion": "3.11",
   "pythonPlatform": "All"
 }

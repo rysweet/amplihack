@@ -11,7 +11,7 @@ from .models import MemoryEntry, MemoryType, SessionInfo
 __all__ = [
     "MemoryDatabase",
     "MemoryEntry",
+    "MemoryManager",
     "MemoryType",
     "SessionInfo",
-    "MemoryManager",
 ]

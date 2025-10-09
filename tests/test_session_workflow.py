@@ -17,8 +17,8 @@ sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack" / "hooks"))
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
 
-from context_preservation import ContextPreserver  # noqa: E402
-from session_start import SessionStartHook  # noqa: E402
+from context_preservation import ContextPreserver
+from session_start import SessionStartHook
 
 
 class TestSessionWorkflow:

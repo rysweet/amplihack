@@ -46,12 +46,11 @@ class TestClaudeTrace:
 
     def test_get_claude_command_with_trace_available(self):
         """Should return 'claude-trace' when available and requested."""
-        with patch.dict(os.environ, {"AMPLIHACK_USE_TRACE": "1"}):
-            with patch(
-                "amplihack.utils.claude_trace._find_valid_claude_trace",
-                return_value="/usr/bin/claude-trace",
-            ):
-                assert get_claude_command() == "claude-trace"
+        with patch.dict(os.environ, {"AMPLIHACK_USE_TRACE": "1"}), patch(
+            "amplihack.utils.claude_trace._find_valid_claude_trace",
+            return_value="/usr/bin/claude-trace",
+        ):
+            assert get_claude_command() == "claude-trace"
 
     def test_get_claude_command_with_trace_unavailable(self):
         """Should fallback to 'claude' when trace unavailable."""
@@ -64,13 +63,11 @@ class TestClaudeTrace:
 
     def test_get_claude_command_with_successful_install(self):
         """Should return 'claude-trace' after successful installation."""
-        with patch.dict(os.environ, {"AMPLIHACK_USE_TRACE": "1"}):
-            with patch(
-                "amplihack.utils.claude_trace._find_valid_claude_trace",
-                side_effect=[None, "/usr/bin/claude-trace"],
-            ):
-                with patch("amplihack.utils.claude_trace._install_claude_trace", return_value=True):
-                    assert get_claude_command() == "claude-trace"
+        with patch.dict(os.environ, {"AMPLIHACK_USE_TRACE": "1"}), patch(
+            "amplihack.utils.claude_trace._find_valid_claude_trace",
+            side_effect=[None, "/usr/bin/claude-trace"],
+        ), patch("amplihack.utils.claude_trace._install_claude_trace", return_value=True):
+            assert get_claude_command() == "claude-trace"
 
     @patch("subprocess.run")
     @patch("shutil.which")
