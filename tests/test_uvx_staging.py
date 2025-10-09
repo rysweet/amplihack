@@ -222,6 +222,9 @@ class TestIntegration:
         with tempfile.TemporaryDirectory() as target_dir:
             target_path = Path(target_dir)
 
+            # Clear the cache to ensure we don't use a cached result from previous tests
+            FrameworkPathResolver._cached_root = None
+
             # Mock to simulate UVX environment
             with patch("src.amplihack.utils.uvx_staging.is_uvx_deployment", return_value=True):
                 with patch(
