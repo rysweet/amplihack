@@ -56,6 +56,11 @@ class TestUVXDetection:
 
     def test_detect_uvx_with_amplihack_root(self):
         """Test UVX detection with AMPLIHACK_ROOT environment variable."""
+        # Clear cached environment info before test
+        from amplihack.utils.uvx_detection import _get_cached_environment_info
+
+        _get_cached_environment_info.cache_clear()
+
         with tempfile.TemporaryDirectory() as temp_dir:
             framework_root = Path(temp_dir)
             claude_dir = framework_root / ".claude"
@@ -63,18 +68,27 @@ class TestUVXDetection:
 
             # Mock sys.executable to NOT be in UV cache so we test AMPLIHACK_ROOT detection
             with patch("sys.executable", "/usr/bin/python3"):
-                with patch.dict(os.environ, {"AMPLIHACK_ROOT": str(framework_root)}, clear=True):
-                    with patch("pathlib.Path.cwd", return_value=Path("/different/working")):
-                        detection = detect_uvx_deployment()
+                # Mock sys.path to NOT contain the framework to force AMPLIHACK_ROOT detection
+                with patch("sys.path", ["/normal/path"]):
+                    with patch.dict(
+                        os.environ, {"AMPLIHACK_ROOT": str(framework_root)}, clear=True
+                    ):
+                        with patch("pathlib.Path.cwd", return_value=Path("/different/working")):
+                            detection = detect_uvx_deployment()
 
-                        assert detection.result == UVXDetectionResult.UVX_DEPLOYMENT
-                        assert detection.is_uvx_deployment is True
-                        assert any(
-                            "AMPLIHACK_ROOT" in reason for reason in detection.detection_reasons
-                        )
+                            assert detection.result == UVXDetectionResult.UVX_DEPLOYMENT
+                            assert detection.is_uvx_deployment is True
+                            assert any(
+                                "AMPLIHACK_ROOT" in reason for reason in detection.detection_reasons
+                            )
 
     def test_detect_uvx_with_sys_path_framework(self):
         """Test UVX detection by finding framework in sys.path."""
+        # Clear cached environment info before test
+        from amplihack.utils.uvx_detection import _get_cached_environment_info
+
+        _get_cached_environment_info.cache_clear()
+
         with tempfile.TemporaryDirectory() as temp_dir:
             package_parent = Path(temp_dir)
             package_dir = package_parent / "amplihack"
@@ -82,27 +96,38 @@ class TestUVXDetection:
             claude_dir = package_dir / ".claude"
             claude_dir.mkdir()
 
-            with patch.dict(os.environ, {}, clear=True):
-                with patch("sys.path", [str(package_parent)]):
-                    with patch("pathlib.Path.cwd", return_value=Path("/working")):
-                        detection = detect_uvx_deployment()
+            # Mock sys.executable to NOT be in UV cache
+            with patch("sys.executable", "/usr/bin/python3"):
+                with patch.dict(os.environ, {}, clear=True):
+                    with patch("sys.path", [str(package_parent)]):
+                        with patch("pathlib.Path.cwd", return_value=Path("/working")):
+                            detection = detect_uvx_deployment()
 
-                        assert detection.result == UVXDetectionResult.UVX_DEPLOYMENT
-                        assert detection.is_uvx_deployment is True
-                        assert any("sys.path" in reason for reason in detection.detection_reasons)
+                            assert detection.result == UVXDetectionResult.UVX_DEPLOYMENT
+                            assert detection.is_uvx_deployment is True
+                            assert any(
+                                "sys.path" in reason for reason in detection.detection_reasons
+                            )
 
     def test_detect_detection_failed(self):
         """Test detection failure when no indicators found."""
-        with patch.dict(os.environ, {}, clear=True), patch("sys.path", ["/normal/path"]):
-            with patch("pathlib.Path.cwd", return_value=Path("/no/claude/here")):
-                detection = detect_uvx_deployment()
+        # Clear cached environment info before test
+        from amplihack.utils.uvx_detection import _get_cached_environment_info
 
-                assert detection.result == UVXDetectionResult.DETECTION_FAILED
-                assert detection.is_detection_successful is False
-                assert any(
-                    "No clear deployment indicators" in reason
-                    for reason in detection.detection_reasons
-                )
+        _get_cached_environment_info.cache_clear()
+
+        # Mock sys.executable to NOT be in UV cache
+        with patch("sys.executable", "/usr/bin/python3"):
+            with patch.dict(os.environ, {}, clear=True), patch("sys.path", ["/normal/path"]):
+                with patch("pathlib.Path.cwd", return_value=Path("/no/claude/here")):
+                    detection = detect_uvx_deployment()
+
+                    assert detection.result == UVXDetectionResult.DETECTION_FAILED
+                    assert detection.is_detection_successful is False
+                    assert any(
+                        "No clear deployment indicators" in reason
+                        for reason in detection.detection_reasons
+                    )
 
     def test_detect_with_custom_config(self):
         """Test detection with custom configuration."""
