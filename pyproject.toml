@@ -81,4 +81,5 @@ markers = [
     "integration: marks tests as integration tests",
     "performance: marks tests as performance tests",
     "e2e: marks tests as end-to-end tests",
+    "asyncio: marks tests as async tests that require asyncio",
 ]
