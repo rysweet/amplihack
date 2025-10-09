@@ -51,16 +51,17 @@ def test_get_claude_command_when_disabled():
 
 def test_get_claude_command_when_trace_available():
     """Test that claude-trace is used when available."""
-    with patch.dict(os.environ, {}, clear=True), patch("shutil.which") as mock_which:
-        with patch("builtins.print") as mock_print:
-            mock_which.return_value = "/usr/local/bin/claude-trace"
+    with patch.dict(os.environ, {}, clear=True):
+        with patch("amplihack.utils.claude_trace._find_valid_claude_trace") as mock_find:
+            with patch("builtins.print") as mock_print:
+                mock_find.return_value = "/usr/local/bin/claude-trace"
 
-            cmd = get_claude_command()
-            assert cmd == "claude-trace"
-            # Check that the message starts with the expected prefix (path may vary)
-            assert len(mock_print.call_args_list) == 1
-            call_arg = mock_print.call_args_list[0][0][0]
-            assert call_arg.startswith("Using claude-trace for enhanced debugging:")
+                cmd = get_claude_command()
+                assert cmd == "claude-trace"
+                # Check that the message starts with the expected prefix (path may vary)
+                assert len(mock_print.call_args_list) == 1
+                call_arg = mock_print.call_args_list[0][0][0]
+                assert call_arg.startswith("Using claude-trace for enhanced debugging:")
 
 
 def test_get_claude_command_install_success():
