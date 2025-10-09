@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 
@@ -18,7 +18,7 @@ class GitHubCopilotClient:
         """
         self.token = token
         self.base_url = base_url.rstrip("/")
-        self.session = None
+        self.session: Optional[Any] = None  # aiohttp.ClientSession when initialized
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -57,7 +57,7 @@ class GitHubCopilotClient:
         max_tokens: Optional[int] = None,
         stream: bool = False,
         **kwargs,
-    ) -> Union[Dict[str, Any], Any]:
+    ) -> Union[Dict[str, Any], AsyncGenerator[Dict[str, Any], None]]:
         """Create chat completion using GitHub Copilot.
 
         Args:
@@ -105,7 +105,9 @@ class GitHubCopilotClient:
             Response dictionary.
         """
         try:
-            assert self.session is not None  # Ensured by _ensure_session()
+            await self._ensure_session()
+            if self.session is None:
+                raise RuntimeError("HTTP session not initialized")
             async with self.session.post(url, json=data) as response:
                 if response.status == 200:
                     return await response.json()
@@ -128,7 +130,9 @@ class GitHubCopilotClient:
             Streaming response chunks.
         """
         try:
-            assert self.session is not None  # Ensured by _ensure_session()
+            await self._ensure_session()
+            if self.session is None:
+                raise RuntimeError("HTTP session not initialized")
             async with self.session.post(url, json=data) as response:
                 if response.status != 200:
                     error_text = await response.text()
@@ -184,10 +188,12 @@ class GitHubCopilotClient:
             Usage information if available.
         """
         await self._ensure_session()
-        assert self.session is not None  # Ensured by _ensure_session()
 
         try:
             url = urljoin(self.base_url, "/copilot/billing")
+            await self._ensure_session()
+            if self.session is None:
+                raise RuntimeError("HTTP session not initialized")
             async with self.session.get(url) as response:
                 if response.status == 200:
                     return await response.json()
@@ -234,8 +240,23 @@ class GitHubCopilotClient:
                         stream_result = await self.chat_completion(
                             messages, model, temperature, max_tokens, stream, **kwargs
                         )
-                        async for chunk in stream_result:  # type: ignore[misc]
-                            yield chunk
+                        # Type check: ensure stream_result is an async generator when streaming
+                        from typing import TYPE_CHECKING
+
+                        if TYPE_CHECKING:
+                            # Type hint for the checker
+                            assert hasattr(stream_result, "__aiter__"), (
+                                "Stream result should be async iterable"
+                            )
+
+                        if hasattr(stream_result, "__aiter__"):
+                            # Safe to iterate since we checked for __aiter__
+                            async_iter = stream_result
+                            async for chunk in async_iter:  # type: ignore[misc]
+                                yield chunk
+                        else:
+                            # Fallback for non-streaming response
+                            yield stream_result
 
                 return _stream_wrapper()
 

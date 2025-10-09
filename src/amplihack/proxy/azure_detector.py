@@ -16,6 +16,7 @@ class AzureEndpointDetector:
         r"https://.*\.openai\.azure\.com",
         r"https://.*\.openai\.azure\.us",
         r"https://.*\.openai\.azure\.cn",
+        r"https://.*\.cognitiveservices\.azure\.com",  # Alternative Azure endpoint format
     ]
 
     # OpenAI official patterns
@@ -185,5 +186,9 @@ class AzureEndpointDetector:
 
             return True
 
-        except Exception:
+        except Exception as e:
+            # Log at debug level since this is a validation check
+            import logging
+
+            logging.getLogger(__name__).debug(f"Endpoint security validation failed: {e}")
             return False

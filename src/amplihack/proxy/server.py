@@ -15,6 +15,9 @@ from fastapi import FastAPI, HTTPException, Request  # type: ignore
 from fastapi.responses import StreamingResponse  # type: ignore
 from pydantic import BaseModel, field_validator  # type: ignore
 
+from .github_auth import GitHubAuthManager
+from .passthrough import PassthroughHandler
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -29,6 +32,13 @@ logger = logging.getLogger(__name__)
 logging.getLogger("uvicorn").setLevel(logging.WARNING)
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+
+# Suppress LiteLLM internal logging that appears in UI
+logging.getLogger("litellm").setLevel(logging.ERROR)
+logging.getLogger("litellm.router").setLevel(logging.ERROR)
+logging.getLogger("litellm.utils").setLevel(logging.ERROR)
+logging.getLogger("litellm.cost_calculator").setLevel(logging.ERROR)
+logging.getLogger("litellm.completion").setLevel(logging.ERROR)
 
 
 # Create a filter to block any log messages containing specific strings
@@ -89,6 +99,15 @@ GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 # Get preferred provider (default to openai)
 PREFERRED_PROVIDER = os.environ.get("PREFERRED_PROVIDER", "openai").lower()
 
+# Initialize passthrough handler
+PASSTHROUGH_MODE = os.environ.get("PASSTHROUGH_MODE", "false").lower() == "true"
+passthrough_handler = PassthroughHandler() if PASSTHROUGH_MODE else None
+
+if PASSTHROUGH_MODE:
+    logger.info(
+        "Passthrough mode enabled - will try Anthropic API first, fallback to Azure on 429 errors"
+    )
+
 # Get model mapping configuration from environment
 # Default to latest OpenAI models if not set
 BIG_MODEL = os.environ.get("BIG_MODEL", "gpt-4.1")
@@ -115,6 +134,39 @@ GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
 
 # List of GitHub Copilot models
 GITHUB_COPILOT_MODELS = ["copilot-gpt-4", "copilot-gpt-3.5-turbo"]
+
+# Configure LiteLLM for GitHub Copilot
+GITHUB_COPILOT_ENABLED = os.environ.get("GITHUB_COPILOT_ENABLED", "false").lower() == "true"
+
+# Initialize GitHub authentication if needed
+if not GITHUB_TOKEN:
+    try:
+        # Try to get existing GitHub token from gh CLI
+        auth_manager = GitHubAuthManager()
+        existing_token = auth_manager.get_existing_token()
+        if existing_token:
+            GITHUB_TOKEN = existing_token
+            os.environ["GITHUB_TOKEN"] = existing_token
+            logger.info("Using existing GitHub token from gh CLI")
+        else:
+            logger.warning("No GitHub token found. GitHub Copilot features will be unavailable.")
+            logger.info("To enable GitHub Copilot, run: gh auth login --scopes copilot")
+    except Exception as e:
+        logger.warning(f"Failed to check for existing GitHub token: {e}")
+
+if GITHUB_TOKEN and GITHUB_COPILOT_ENABLED:
+    # Set up LiteLLM environment variables for GitHub Copilot provider
+    os.environ["GITHUB_TOKEN"] = GITHUB_TOKEN
+    if not os.environ.get("GITHUB_API_BASE"):
+        os.environ["GITHUB_API_BASE"] = "https://api.github.com"
+    logger.info("GitHub Copilot LiteLLM integration enabled")
+elif GITHUB_TOKEN and not GITHUB_COPILOT_ENABLED:
+    # Auto-enable if we have a token but flag is not explicitly set
+    os.environ["GITHUB_TOKEN"] = GITHUB_TOKEN
+    if not os.environ.get("GITHUB_API_BASE"):
+        os.environ["GITHUB_API_BASE"] = "https://api.github.com"
+    logger.info("GitHub Copilot LiteLLM integration auto-enabled (GITHUB_TOKEN detected)")
+    GITHUB_COPILOT_ENABLED = True
 
 
 # Helper function to clean schema for Gemini
@@ -445,12 +497,68 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
     # So we just need to convert our Pydantic model to a dict in the expected format
 
+    # Get configured token limits from environment for Azure Responses API
+    import os
+
+    min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+    max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+    # Ensure proper token limits for Azure Responses API
+    max_tokens_value = anthropic_request.max_tokens
+    if max_tokens_value and max_tokens_value > 1:
+        # Ensure we use at least the minimum configured limit
+        max_tokens_value = max(min_tokens_limit, max_tokens_value)
+        # Cap at maximum configured limit
+        max_tokens_value = min(max_tokens_limit, max_tokens_value)
+    else:
+        # Default to maximum limit for Azure Responses API models when request has low/no max_tokens
+        max_tokens_value = max_tokens_limit
+
+    # Determine appropriate temperature based on target model type
+    def map_claude_model_to_azure_local(model: str) -> str:
+        """Map Claude model names to Azure deployment names based on configuration."""
+        # Map Claude models to configured Azure models
+        if "sonnet" in model.lower() or "opus" in model.lower():
+            return BIG_MODEL
+        if "haiku" in model.lower():
+            return SMALL_MODEL
+        # Default to big model for unrecognized patterns
+        return BIG_MODEL
+
+    def should_use_responses_api_for_azure_model_local(azure_model: str) -> bool:
+        """Check if the Azure model should use Responses API based on model type."""
+        openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
+        if not (openai_base_url and "/responses" in openai_base_url):
+            return False
+
+        # Check if model name matches Responses API patterns
+        if (
+            azure_model.startswith(("o3-", "o4-"))
+            or azure_model.startswith("gpt-5-code")
+            or azure_model == "gpt-5"
+        ):
+            return True
+        return False
+
+    # Map the model to Azure model first to check if it uses Responses API
+    azure_model = map_claude_model_to_azure_local(anthropic_request.model)
+
+    # Determine temperature based on API type
+    if should_use_responses_api_for_azure_model_local(azure_model):
+        # Azure Responses API models always use temperature=1.0 for high creativity
+        temperature = 1.0
+    else:
+        # Chat API models use the requested temperature or default
+        temperature = (
+            anthropic_request.temperature if anthropic_request.temperature is not None else 1.0
+        )
+
     # Initialize the LiteLLM request dict first to ensure we always return the right structure
     litellm_request = {
         "model": anthropic_request.model,  # it understands "anthropic/claude-x" format
         "messages": [],
-        "max_tokens": anthropic_request.max_tokens,
-        "temperature": anthropic_request.temperature,
+        "max_tokens": max_tokens_value,
+        "temperature": temperature,
         "stream": anthropic_request.stream,
     }
 
@@ -643,10 +751,17 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
     # Convert tool_choice to OpenAI format if present
     if anthropic_request.tool_choice:
-        if hasattr(anthropic_request.tool_choice, "dict"):
-            tool_choice_dict = anthropic_request.tool_choice.dict()  # type: ignore[attr-defined]
-        else:
+        if isinstance(anthropic_request.tool_choice, dict):
             tool_choice_dict = anthropic_request.tool_choice
+        elif hasattr(anthropic_request.tool_choice, "model_dump"):
+            tool_choice_dict = anthropic_request.tool_choice.model_dump()
+        elif hasattr(anthropic_request.tool_choice, "dict"):
+            tool_choice_dict = anthropic_request.tool_choice.dict()
+        else:
+            # Fallback to treating it as dict-like
+            tool_choice_dict = (
+                dict(anthropic_request.tool_choice) if anthropic_request.tool_choice else {}
+            )
 
         # Handle Anthropic's tool_choice format
         choice_type = tool_choice_dict.get("type")
@@ -686,12 +801,12 @@ def convert_litellm_to_anthropic(
         # Handle ModelResponse object from LiteLLM
         if hasattr(litellm_response, "choices") and hasattr(litellm_response, "usage"):
             # Extract data from ModelResponse object directly
-            choices = litellm_response.choices  # type: ignore[attr-defined]
+            choices = getattr(litellm_response, "choices", [])
             message = choices[0].message if choices and len(choices) > 0 else None
             content_text = message.content if message and hasattr(message, "content") else ""
             tool_calls = message.tool_calls if message and hasattr(message, "tool_calls") else None
             finish_reason = choices[0].finish_reason if choices and len(choices) > 0 else "stop"
-            usage_info = litellm_response.usage  # type: ignore[attr-defined]
+            usage_info = getattr(litellm_response, "usage", {})
             response_id = getattr(litellm_response, "id", f"msg_{uuid.uuid4()}")
         else:
             # For backward compatibility - handle dict responses
@@ -705,11 +820,7 @@ def convert_litellm_to_anthropic(
             except AttributeError:
                 # If .dict() fails, try to use model_dump or __dict__
                 try:
-                    response_dict = (
-                        litellm_response.model_dump()  # type: ignore[attr-defined]
-                        if hasattr(litellm_response, "model_dump")
-                        else litellm_response.__dict__
-                    )
+                    response_dict = getattr(litellm_response, "__dict__", {})
                 except AttributeError:
                     # Fallback - manually extract attributes
                     response_dict = {
@@ -906,7 +1017,6 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
         yield f"event: ping\ndata: {json.dumps({'type': 'ping'})}\n\n"
 
         tool_index = None
-        anthropic_tool_index = 0  # Initialize to avoid unbound variable warnings
         tool_content = ""
         accumulated_text = ""  # Track accumulated text content
         text_sent = False  # Track if we've sent any text content
@@ -914,6 +1024,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
         output_tokens = 0
         has_sent_stop_reason = False
         last_tool_index = 0
+        anthropic_tool_index = 0  # Initialize to prevent unbound variable error
 
         # Process each chunk
         async for chunk in response_generator:
@@ -942,7 +1053,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of delta content
                     if hasattr(delta, "content"):
-                        delta_content = delta.content  # type: ignore[attr-defined]
+                        delta_content = getattr(delta, "content", None)
                     elif isinstance(delta, dict) and "content" in delta:
                         delta_content = delta["content"]
 
@@ -960,7 +1071,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 
                     # Handle different formats of tool calls
                     if hasattr(delta, "tool_calls"):
-                        delta_tool_calls = delta.tool_calls  # type: ignore[attr-defined]
+                        delta_tool_calls = getattr(delta, "tool_calls", None)
                     elif isinstance(delta, dict) and "tool_calls" in delta:
                         delta_tool_calls = delta["tool_calls"]
 
@@ -996,7 +1107,7 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                             if isinstance(tool_call, dict) and "index" in tool_call:
                                 current_index = tool_call["index"]
                             elif hasattr(tool_call, "index"):
-                                current_index = tool_call.index  # type: ignore[attr-defined]
+                                current_index = getattr(tool_call, "index", 0)
                             else:
                                 current_index = 0
 
@@ -1144,10 +1255,8 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
 @app.post("/v1/messages")
 async def create_message(request: MessagesRequest, raw_request: Request):
     try:
-        # print the body here
+        # Get request body for logging and passthrough mode
         body = await raw_request.body()
-
-        # Parse the raw body as JSON since it's bytes
         body_json = json.loads(body.decode("utf-8"))
         original_model = body_json.get("model", "unknown")
 
@@ -1164,6 +1273,135 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             clean_model = clean_model[len("openai/") :]
 
         logger.debug(f"📊 PROCESSING REQUEST: Model={request.model}, Stream={request.stream}")
+
+        # Check if this is a Claude model and passthrough mode is enabled
+        if PASSTHROUGH_MODE and passthrough_handler and clean_model.startswith("claude-"):
+            logger.debug("Using passthrough mode for Claude model")
+
+            # Get configured token limits from environment for Azure Responses API
+            import os
+
+            min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
+            max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
+
+            # Ensure proper token limits for Azure Responses API
+            max_tokens_value = request.max_tokens
+            if max_tokens_value and max_tokens_value > 1:
+                # Ensure we use at least the minimum configured limit
+                max_tokens_value = max(min_tokens_limit, max_tokens_value)
+                # Cap at maximum configured limit
+                max_tokens_value = min(max_tokens_limit, max_tokens_value)
+            else:
+                # Default to maximum limit for Azure Responses API models
+                max_tokens_value = max_tokens_limit
+
+            # Determine appropriate temperature based on target model type
+            def map_claude_model_to_azure_passthrough(model: str) -> str:
+                """Map Claude model names to Azure deployment names for passthrough."""
+                # Map Claude models to configured Azure models
+                if "sonnet" in model.lower() or "opus" in model.lower():
+                    return BIG_MODEL
+                if "haiku" in model.lower():
+                    return SMALL_MODEL
+                # Default to big model for unrecognized patterns
+                return BIG_MODEL
+
+            def should_use_responses_api_for_passthrough(azure_model: str) -> bool:
+                """Check if the Azure model should use Responses API for passthrough."""
+                openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
+                if not (openai_base_url and "/responses" in openai_base_url):
+                    return False
+
+                # Check if model name matches Responses API patterns
+                if (
+                    azure_model.startswith(("o3-", "o4-"))
+                    or azure_model.startswith("gpt-5-code")
+                    or azure_model == "gpt-5"
+                ):
+                    return True
+                return False
+
+            # Map the model to Azure model first to check if it uses Responses API
+            azure_model = map_claude_model_to_azure_passthrough(clean_model)
+
+            # Determine temperature based on API type
+            if should_use_responses_api_for_passthrough(azure_model):
+                # Azure Responses API models always use temperature=1.0 for high creativity
+                temperature = 1.0
+            else:
+                # Chat API models use the requested temperature or default
+                temperature = request.temperature if request.temperature is not None else 1.0
+
+            # Prepare request data for passthrough
+            request_data = {
+                "model": clean_model,
+                "max_tokens": max_tokens_value,
+                "messages": [],
+                "stream": request.stream,
+                "temperature": temperature,
+            }
+
+            # Add system message if present
+            if request.system:
+                request_data["system"] = request.system
+
+            # Convert messages to the format expected by Anthropic API
+            for msg in request.messages:
+                passthrough_msg = {"role": msg.role, "content": msg.content}
+                request_data["messages"].append(passthrough_msg)
+
+            # Add tools if present
+            if request.tools:
+                request_data["tools"] = [
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "input_schema": tool.input_schema,
+                    }
+                    for tool in request.tools
+                ]
+
+            # Add tool_choice if present
+            if request.tool_choice:
+                request_data["tool_choice"] = request.tool_choice
+
+            # Add optional parameters
+            if request.stop_sequences:
+                request_data["stop_sequences"] = request.stop_sequences
+            if request.top_p:
+                request_data["top_p"] = request.top_p
+            if request.top_k:
+                request_data["top_k"] = request.top_k
+
+            try:
+                # Use passthrough handler
+                async with passthrough_handler:
+                    passthrough_response = await passthrough_handler.handle_request(request_data)
+
+                # Log the request
+                num_tools = len(request.tools) if request.tools else 0
+                log_request_beautifully(
+                    "POST",
+                    raw_request.url.path,
+                    display_model,
+                    f"passthrough/{clean_model}",
+                    len(request.messages),
+                    num_tools,
+                    200,
+                )
+
+                # Handle streaming response
+                if request.stream:
+                    raise HTTPException(
+                        status_code=501, detail="Streaming not supported in passthrough mode"
+                    )
+                return passthrough_response
+
+            except Exception as e:
+                logger.error(f"Passthrough mode failed: {e}")
+                # Fall back to normal LiteLLM processing
+                logger.info("Falling back to LiteLLM processing")
+                # Continue with normal processing below
 
         # Convert Anthropic request to LiteLLM format
         litellm_request = convert_anthropic_to_litellm(request)
@@ -1590,6 +1828,27 @@ async def root():
     return {"message": "Anthropic Proxy for LiteLLM with OpenAI Responses API"}
 
 
+@app.get("/status")
+async def status():
+    """Get proxy status including passthrough mode and GitHub Copilot information."""
+    status_info = {
+        "proxy_active": True,
+        "anthropic_api_key_configured": bool(ANTHROPIC_API_KEY),
+        "openai_api_key_configured": bool(OPENAI_API_KEY),
+        "gemini_api_key_configured": bool(GEMINI_API_KEY),
+        "github_token_configured": bool(GITHUB_TOKEN),
+        "github_copilot_enabled": GITHUB_COPILOT_ENABLED,
+        "github_copilot_models": GITHUB_COPILOT_MODELS,
+        "preferred_provider": PREFERRED_PROVIDER,
+        "passthrough_mode": PASSTHROUGH_MODE,
+    }
+
+    if PASSTHROUGH_MODE and passthrough_handler:
+        status_info["passthrough_status"] = passthrough_handler.get_status()
+
+    return status_info
+
+
 # Define ANSI color codes for terminal output
 class Colors:
     CYAN = "\033[96m"
@@ -1643,12 +1902,52 @@ def log_request_beautifully(
     sys.stdout.flush()
 
 
+def find_available_port(preferred_port: int, max_attempts: int = 50) -> int:
+    """Find an available port starting from preferred_port.
+
+    Args:
+        preferred_port: The preferred port to try first
+        max_attempts: Maximum number of ports to try
+
+    Returns:
+        An available port number
+
+    Raises:
+        RuntimeError: If no available port is found within max_attempts
+    """
+    import socket
+
+    for port_offset in range(max_attempts):
+        port = preferred_port + port_offset
+        try:
+            # Try to bind to the port to check availability
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(("127.0.0.1", port))
+                return port  # Port is available
+        except OSError:
+            continue  # Port is in use, try the next one
+
+    raise RuntimeError(
+        f"No available port found starting from {preferred_port} (tried {max_attempts} ports)"
+    )
+
+
 def run_server(host: str = "127.0.0.1", port: int = 8082):
-    """Run the built-in proxy server."""
+    """Run the built-in proxy server with dynamic port selection."""
     try:
         import uvicorn  # type: ignore
 
-        uvicorn.run(app, host=host, port=port)
+        # Try to find an available port
+        try:
+            available_port = find_available_port(port)
+            if available_port != port:
+                print(f"Port {port} is in use, using port {available_port} instead")
+
+            uvicorn.run(app, host=host, port=available_port)
+        except RuntimeError as e:
+            print(f"Error finding available port: {e}")
+            print(f"Attempting to start on original port {port}")
+            uvicorn.run(app, host=host, port=port)
     except ImportError:
         logger.error("uvicorn not available - cannot run built-in server")
         raise

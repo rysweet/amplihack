@@ -10,8 +10,8 @@ This implements Option A: Dual-location strategy
 import shutil
 from pathlib import Path
 
-from setuptools import setup
-from setuptools.command.build_py import build_py
+from setuptools import setup  # type: ignore
+from setuptools.command.build_py import build_py  # type: ignore
 
 
 class BuildPyWithClaude(build_py):

@@ -191,9 +191,16 @@ class ClaudeLauncher:
             True if proxy started successfully or not needed, False otherwise.
         """
         if self.proxy_manager:
+            print("Starting proxy and waiting for readiness...")
             if not self.proxy_manager.start_proxy():
                 print("Failed to start proxy")
                 return False
+
+            # Verify proxy is actually ready before proceeding
+            if not self.proxy_manager.is_running():
+                print("Proxy is not running after startup")
+                return False
+
             print(f"Proxy running at: {self.proxy_manager.get_proxy_url()}")
 
         return True
@@ -370,6 +377,10 @@ class ClaudeLauncher:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
             # Launch Claude with direct I/O (interactive mode)
+            print("Starting Claude...")
+            print(
+                f"If Claude appears to hang, check proxy connection at: {self.proxy_manager.get_proxy_url() if self.proxy_manager else 'N/A'}"
+            )
             exit_code = subprocess.call(cmd, env=env)
 
             return exit_code

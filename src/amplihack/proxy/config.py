@@ -16,7 +16,8 @@ class ProxyConfig:
     """Manages proxy configuration from .env files."""
 
     # Compile regex patterns once at class level for performance
-    _API_VERSION_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    # Azure API versions: YYYY-MM-DD or YYYY-MM-DD-preview
+    _API_VERSION_REGEX = re.compile(r"^\d{4}-\d{2}-\d{2}(-preview)?$")
     _API_KEY_REGEX = re.compile(r"[a-zA-Z0-9\-_]{20,}")
     _DEPLOYMENT_NAME_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{1,64}$")
 

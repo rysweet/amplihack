@@ -5,7 +5,6 @@ This test validates that the proxy correctly handles OpenAI Responses API
 requests and provides proper responses.
 """
 
-import shutil
 import subprocess
 import time
 
@@ -25,10 +24,6 @@ class TestOpenAIResponsesAPI:
     def proxy_process(self, proxy_port):
         """Start a proxy process for testing."""
         import os
-
-        # Check if uvx is available
-        if not shutil.which("uvx"):
-            pytest.skip("uvx not available - required to run proxy tests")
 
         env = os.environ.copy()
         env.update({"OPENAI_API_KEY": "test-key-for-responses-api", "PORT": str(proxy_port)})
