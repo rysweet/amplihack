@@ -116,3 +116,4 @@ ai_working/tmp
 .claude/runtime/proxy/litellm_simple_config.yaml
 .claude/runtime/proxy/litellm_proxy.log
 .claude/runtime/proxy/litellm_proxy.pid
+amplihack_litellm_proxy.env
