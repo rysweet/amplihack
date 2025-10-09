@@ -5,11 +5,17 @@ This test validates that the proxy correctly handles OpenAI Responses API
 requests and provides proper responses.
 """
 
+import shutil
 import subprocess
 import time
 
 import pytest
 import requests
+
+# Skip all tests in this module if uvx is not available
+pytestmark = pytest.mark.skipif(
+    shutil.which("uvx") is None, reason="uvx command not available (required for proxy testing)"
+)
 
 
 class TestOpenAIResponsesAPI:
