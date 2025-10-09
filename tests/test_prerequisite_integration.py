@@ -96,30 +96,22 @@ class TestClaudeTraceIntegration:
             result = get_claude_command()
             assert result in ["claude", "claude-trace"]
 
-    def test_npm_install_error_provides_guidance(self):
-        """Test that npm install errors provide installation guidance."""
-        from amplihack.utils.claude_trace import _install_claude_trace
+    def test_claude_trace_is_hard_dependency(self):
+        """Test that claude-trace is treated as a hard dependency."""
+        from amplihack.utils.claude_trace import get_claude_command
 
-        with patch("shutil.which", return_value=None):
-            # npm not available
-            result = _install_claude_trace()
+        # Claude-trace is now a hard dependency, not dynamically installed
+        # The module only controls whether to use 'claude-trace' or 'claude'
+        result = get_claude_command()
+        assert result in ["claude", "claude-trace"]
 
-            # Should fail gracefully
-            assert result is False
+    def test_claude_trace_env_var_disable(self):
+        """Test that AMPLIHACK_USE_TRACE=0 disables claude-trace."""
+        from amplihack.utils.claude_trace import get_claude_command
 
-    def test_claude_trace_installation_subprocess_errors(self):
-        """Test that subprocess errors during claude-trace installation are handled."""
-        from amplihack.utils.claude_trace import _install_claude_trace
-
-        with patch("shutil.which", return_value="/usr/bin/npm"):
-            with patch("subprocess.run", side_effect=PermissionError("permission denied")):
-                # Should handle permission errors gracefully without raising
-                try:
-                    result = _install_claude_trace()
-                    assert result is False
-                except PermissionError:
-                    # If it propagates, that's also acceptable for this error scenario
-                    pass
+        with patch.dict("os.environ", {"AMPLIHACK_USE_TRACE": "0"}):
+            result = get_claude_command()
+            assert result == "claude"
 
 
 class TestWorkflowIntegration:
