@@ -14,6 +14,9 @@ from unittest.mock import patch
 
 import pytest
 
+# Mark all tests in this file as requiring SDK (skip in CI)
+pytestmark = pytest.mark.requires_sdk
+
 from src.amplihack.sdk import (
     SDKSessionManager,
     SessionConfig,
@@ -437,17 +440,17 @@ class TestErrorHandlingManager:
         assert result == "success"
 
         # Trigger failures to open circuit
-        with pytest.raises(Exception):
-            await circuit_breaker.call(lambda: (_ for _ in ()).throw(Exception("fail")))
+        with pytest.raises((Exception, RuntimeError)):
+            await circuit_breaker.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
 
-        with pytest.raises(Exception):
-            await circuit_breaker.call(lambda: (_ for _ in ()).throw(Exception("fail")))
+        with pytest.raises((Exception, RuntimeError)):
+            await circuit_breaker.call(lambda: (_ for _ in ()).throw(RuntimeError("fail")))
 
         # Circuit should now be open
         assert circuit_breaker.state.state == "open"
 
         # Should reject calls when open
-        with pytest.raises(Exception):
+        with pytest.raises((Exception, RuntimeError)):
             await circuit_breaker.call(lambda: "should_fail")
 
     @pytest.mark.asyncio
@@ -571,7 +574,7 @@ class TestIntegrationScenarios:
                 mock_analyze.side_effect = ConnectionError("SDK connection failed")
 
                 # Should handle error gracefully
-                with pytest.raises(Exception):  # Error should propagate but be handled
+                with pytest.raises((Exception, ConnectionError)):
                     await orchestrator.process_claude_output("Test output")
 
                 # Error count should increase
