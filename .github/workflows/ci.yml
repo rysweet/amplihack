@@ -19,7 +19,7 @@ jobs:
   validate:
     name: Validate Code
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout code
