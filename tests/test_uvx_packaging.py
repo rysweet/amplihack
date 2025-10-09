@@ -6,6 +6,7 @@ with all required files accessible.
 """
 
 import subprocess
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -26,7 +27,7 @@ class TestUVXPackaging:
         """
         # This test should fail initially due to problematic data-files config
         result = subprocess.run(
-            ["python", "-m", "build", "--wheel"],
+            [sys.executable, "-m", "build", "--wheel"],
             check=False,
             capture_output=True,
             text=True,
@@ -46,7 +47,7 @@ class TestUVXPackaging:
         # Build package first
         with tempfile.TemporaryDirectory() as temp_dir:
             result = subprocess.run(
-                ["python", "-m", "build", "--wheel", "--outdir", temp_dir],
+                [sys.executable, "-m", "build", "--wheel", "--outdir", temp_dir],
                 check=False,
                 capture_output=True,
                 text=True,

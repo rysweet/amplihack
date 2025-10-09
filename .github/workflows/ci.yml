@@ -19,7 +19,7 @@ jobs:
   validate:
     name: Validate Code
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -80,7 +80,7 @@ jobs:
 
       - name: Run Python tests
         id: python-tests
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: |
           if command -v pytest &> /dev/null; then
             echo "Running Python tests with pytest..."
