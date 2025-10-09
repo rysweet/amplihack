@@ -1,0 +1,27 @@
+# GitGuardian configuration
+# https://docs.gitguardian.com/ggshield-docs/reference/ggshield-configuration
+
+version: 2
+
+paths-ignore:
+  # Example configuration files
+  - "examples/**/*.yaml"
+  - "examples/**/*.yml"
+  - "examples/**/*.env"
+  - "examples/example.*.env"
+
+  # Template and example .env files
+  - "*.env.example"
+  - ".env.*.example"
+  - ".env.*-template"
+  - ".env.security-template"
+  - ".github.copilot.env"
+  - "proxy_config_*.env.example"
+  - "amplihack_litellm_proxy.env" # Historical - removed in commit 34f3a6e, now in .gitignore
+
+  # Test files with mock credentials
+  - "tests/**/*.py"
+  - "scripts/testing/**/*.py"
+
+  # Documentation
+  - "**/*.md"

@@ -439,7 +439,7 @@ class ThreatPatternLibrary:
             try:
                 self._compiled_patterns[name] = re.compile(pattern_def.pattern)
             except re.error as e:
-                logging.error(f"Failed to compile pattern {name}: {e}")
+                logging.exception(f"Failed to compile pattern {name}: {e}")
 
     def scan_content(self, content: str, context: str = "general") -> List[ThreatDetection]:
         """
@@ -617,7 +617,7 @@ class XPIADefenseEngine:
                     ThreatDetection(
                         threat_type=ThreatType.MALICIOUS_CODE,
                         severity=RiskLevel.CRITICAL,
-                        description=f"Validation failed: {str(e)}",
+                        description=f"Validation failed: {e!s}",
                         mitigation="Block content due to validation failure",
                     )
                 ],
@@ -684,7 +684,7 @@ class XPIADefenseEngine:
         """Generate cache key for validation result"""
         import hashlib
 
-        content_hash = hashlib.md5(content.encode()).hexdigest()
+        content_hash = hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()
         return f"{content_hash}_{content_type.value}_{security_level.value}"
 
     def _get_context_string(
@@ -772,21 +772,21 @@ class XPIADefenseEngine:
         """Filter threats based on security level"""
         if security_level == SecurityLevel.LOW:
             return [t for t in threats if t.severity in [RiskLevel.HIGH, RiskLevel.CRITICAL]]
-        elif security_level == SecurityLevel.MEDIUM:
+        if security_level == SecurityLevel.MEDIUM:
             return [
                 t
                 for t in threats
                 if t.severity in [RiskLevel.MEDIUM, RiskLevel.HIGH, RiskLevel.CRITICAL]
             ]
-        elif security_level == SecurityLevel.HIGH:
+        if security_level == SecurityLevel.HIGH:
             return [
                 t
                 for t in threats
                 if t.severity
                 in [RiskLevel.LOW, RiskLevel.MEDIUM, RiskLevel.HIGH, RiskLevel.CRITICAL]
             ]
-        else:  # STRICT
-            return threats
+        # STRICT
+        return threats
 
     def _calculate_risk_level(self, threats: List[ThreatDetection]) -> RiskLevel:
         """Calculate overall risk level from threats"""
@@ -952,7 +952,7 @@ class SecurityValidator(XPIADefenseInterface):  # type: ignore
 
         except Exception as e:
             self.logger.error(f"Content validation failed: {e}")
-            raise ValidationError(f"Validation failed: {str(e)}")
+            raise ValidationError(f"Validation failed: {e!s}")
 
     async def validate_bash_command(  # type: ignore
         self,
@@ -1059,7 +1059,7 @@ class SecurityValidator(XPIADefenseInterface):  # type: ignore
 
         except Exception as e:
             self.logger.error(f"Failed to update configuration: {e}")
-            raise ConfigurationError(f"Configuration update failed: {str(e)}")
+            raise ConfigurationError(f"Configuration update failed: {e!s}")
 
     def register_hook(self, registration: HookRegistration) -> str:  # type: ignore
         """Register a security hook, returns hook ID"""
@@ -1069,7 +1069,7 @@ class SecurityValidator(XPIADefenseInterface):  # type: ignore
             return hook_id
         except Exception as e:
             self.logger.error(f"Failed to register hook {registration.name}: {e}")
-            raise HookError(f"Hook registration failed: {str(e)}")
+            raise HookError(f"Hook registration failed: {e!s}")
 
     def unregister_hook(self, hook_id: str) -> bool:
         """Unregister a security hook"""
@@ -1080,7 +1080,7 @@ class SecurityValidator(XPIADefenseInterface):  # type: ignore
             return success
         except Exception as e:
             self.logger.error(f"Failed to unregister hook {hook_id}: {e}")
-            raise HookError(f"Hook unregistration failed: {str(e)}")
+            raise HookError(f"Hook unregistration failed: {e!s}")
 
     async def health_check(self) -> Dict[str, Any]:
         """Perform health check and return status"""
@@ -1247,9 +1247,8 @@ def pre_validate_user_input(content: str, context: str = "user") -> str:
     if not result.is_safe:
         if result.threat_level == ThreatLevel.CRITICAL:
             raise ValidationError(f"Critical threat detected: {result.threats_detected}")
-        else:
-            # Return sanitized content for lower-level threats
-            return result.sanitized_content
+        # Return sanitized content for lower-level threats
+        return result.sanitized_content
 
     return content
 

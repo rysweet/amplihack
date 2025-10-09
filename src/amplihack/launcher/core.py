@@ -121,7 +121,7 @@ class ClaudeLauncher:
             print(f"Successfully checked out repository to: {repo_path}")
             return True
         except Exception as e:
-            print(f"Repository checkout failed: {str(e)}")
+            print(f"Repository checkout failed: {e!s}")
             return False
 
     def _find_target_directory(self) -> Optional[Path]:
@@ -141,12 +141,10 @@ class ClaudeLauncher:
             project_root = self.detector.get_project_root(claude_dir)
             if project_root.exists() and project_root.is_dir():
                 return project_root
-            else:
-                print(f"Project root is not accessible: {project_root}")
-                return None
-        else:
-            # No .claude directory found - use current directory
-            return Path.cwd()
+            print(f"Project root is not accessible: {project_root}")
+            return None
+        # No .claude directory found - use current directory
+        return Path.cwd()
 
     def _handle_directory_change(self, target_dir: Path) -> bool:
         """Handle directory change based on execution mode.
@@ -193,9 +191,16 @@ class ClaudeLauncher:
             True if proxy started successfully or not needed, False otherwise.
         """
         if self.proxy_manager:
+            print("Starting proxy and waiting for readiness...")
             if not self.proxy_manager.start_proxy():
                 print("Failed to start proxy")
                 return False
+
+            # Verify proxy is actually ready before proceeding
+            if not self.proxy_manager.is_running():
+                print("Proxy is not running after startup")
+                return False
+
             print(f"Proxy running at: {self.proxy_manager.get_proxy_url()}")
 
         return True
@@ -261,24 +266,23 @@ class ClaudeLauncher:
                 cmd.extend(["--run-with"] + claude_args)
 
             return cmd
-        else:
-            # Standard claude command
-            cmd = [claude_binary, "--dangerously-skip-permissions"]
+        # Standard claude command
+        cmd = [claude_binary, "--dangerously-skip-permissions"]
 
-            # Add system prompt if provided
-            if self.append_system_prompt and self.append_system_prompt.exists():
-                cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
+        # Add system prompt if provided
+        if self.append_system_prompt and self.append_system_prompt.exists():
+            cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
 
-            # Add --add-dir arguments if UVX mode and we have a target directory
-            # Use cached decision to avoid re-checking
-            if self._target_directory and self._cached_uvx_decision:
-                cmd.extend(["--add-dir", str(self._target_directory)])
+        # Add --add-dir arguments if UVX mode and we have a target directory
+        # Use cached decision to avoid re-checking
+        if self._target_directory and self._cached_uvx_decision:
+            cmd.extend(["--add-dir", str(self._target_directory)])
 
-            # Add forwarded Claude arguments
-            if self.claude_args:
-                cmd.extend(self.claude_args)
+        # Add forwarded Claude arguments
+        if self.claude_args:
+            cmd.extend(self.claude_args)
 
-            return cmd
+        return cmd
 
     def launch(self) -> int:
         """Launch Claude Code with configuration.
@@ -373,6 +377,10 @@ class ClaudeLauncher:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
             # Launch Claude with direct I/O (interactive mode)
+            print("Starting Claude...")
+            print(
+                f"If Claude appears to hang, check proxy connection at: {self.proxy_manager.get_proxy_url() if self.proxy_manager else 'N/A'}"
+            )
             exit_code = subprocess.call(cmd, env=env)
 
             return exit_code

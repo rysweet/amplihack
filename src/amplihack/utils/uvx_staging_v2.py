@@ -374,11 +374,10 @@ class UVXStager:
                 return uvx_settings_manager.create_uvx_settings(
                     target_settings, preserve_existing=True
                 )
-            else:
-                # Settings already exist and have proper permissions, just copy
-                self._debug_log("Existing settings.json has bypass permissions, copying source")
-                shutil.copy2(source_settings, target_settings)
-                return True
+            # Settings already exist and have proper permissions, just copy
+            self._debug_log("Existing settings.json has bypass permissions, copying source")
+            shutil.copy2(source_settings, target_settings)
+            return True
 
         except Exception as e:
             self._debug_log(f"Error applying UVX settings optimizations: {e}")

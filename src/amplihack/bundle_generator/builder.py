@@ -281,7 +281,7 @@ Confidence: {intent.confidence:.1%}
 
         except Exception as e:
             raise GenerationError(
-                f"Failed to write bundle: {str(e)}",
+                f"Failed to write bundle: {e!s}",
                 generation_stage="bundle_writing",
                 partial_content=str(bundle_dir),
             )

@@ -1,0 +1,52 @@
+# LiteLLM Configuration Example: Azure Chat API
+# This config works with Chat API endpoints (/chat/completions)
+# URL-based detection: Proxy detects "/chat" and routes through LiteLLM
+
+model_list:
+  - model_name: gpt-5
+    litellm_params:
+      model: azure/gpt-5
+      # Chat API endpoint - deployment-based URL structure
+      api_base: https://your-resource.cognitiveservices.azure.com/openai/deployments/gpt-5
+      api_key: your-azure-api-key-here # pragma: allowlist secret
+      api_version: 2025-01-01-preview
+      max_tokens: 512000
+      timeout: 300
+
+  # Alternative model configurations for Chat API
+  - model_name: gpt-4o
+    litellm_params:
+      model: azure/gpt-4o
+      api_base: https://your-resource.cognitiveservices.azure.com/openai/deployments/gpt-4o
+      api_key: your-azure-api-key-here # pragma: allowlist secret
+      api_version: 2025-01-01-preview
+      max_tokens: 128000
+      timeout: 300
+
+general_settings:
+  # Disable database features for simplified setup
+  store_model_in_db: false
+
+  # Authentication settings
+  disable_auth: true
+
+  # Health check
+  health_check_api: true
+
+  # Disable telemetry for performance
+  disable_spend_logs: true
+  disable_key_name_checks: true
+
+litellm_settings:
+  # Core settings
+  telemetry: false
+  set_verbose: false
+  drop_params: true
+
+  # Disable callbacks for simplicity
+  success_callback: []
+  failure_callback: []
+# Usage:
+# 1. Replace "your-resource" with your Azure resource name
+# 2. Replace "your-azure-api-key-here" with your actual API key
+# 3. Run: litellm --config litellm-chat-api-config.yaml --host 127.0.0.1 --port 9001

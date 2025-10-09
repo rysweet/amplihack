@@ -95,7 +95,7 @@ class XPIADefender(XPIADefenseInterface):
         # Load from file if exists
         whitelist_file = os.getenv("XPIA_WHITELIST_FILE", ".xpia_whitelist")
         if os.path.exists(whitelist_file):
-            with open(whitelist_file, "r") as f:
+            with open(whitelist_file) as f:
                 whitelist.update(line.strip() for line in f if line.strip())
 
         # Default safe domains
@@ -128,7 +128,7 @@ class XPIADefender(XPIADefenseInterface):
         # Load from file if exists
         blacklist_file = os.getenv("XPIA_BLACKLIST_FILE", ".xpia_blacklist")
         if os.path.exists(blacklist_file):
-            with open(blacklist_file, "r") as f:
+            with open(blacklist_file) as f:
                 blacklist.update(line.strip() for line in f if line.strip())
 
         return blacklist
@@ -426,14 +426,13 @@ class XPIADefender(XPIADefenseInterface):
 
         if RiskLevel.CRITICAL in severities:
             return RiskLevel.CRITICAL
-        elif RiskLevel.HIGH in severities:
+        if RiskLevel.HIGH in severities:
             return RiskLevel.HIGH
-        elif RiskLevel.MEDIUM in severities:
+        if RiskLevel.MEDIUM in severities:
             return RiskLevel.MEDIUM
-        elif RiskLevel.LOW in severities:
+        if RiskLevel.LOW in severities:
             return RiskLevel.LOW
-        else:
-            return RiskLevel.NONE
+        return RiskLevel.NONE
 
     def _generate_recommendations(
         self, threats: List[ThreatDetection], security_level: SecurityLevel
@@ -618,7 +617,7 @@ class WebFetchXPIADefender(XPIADefender):
                 ThreatDetection(
                     threat_type=ThreatType.MALICIOUS_CODE,
                     severity=RiskLevel.MEDIUM,
-                    description=f"Invalid URL format: {str(e)}",
+                    description=f"Invalid URL format: {e!s}",
                     mitigation="Validate URL format",
                 )
             )

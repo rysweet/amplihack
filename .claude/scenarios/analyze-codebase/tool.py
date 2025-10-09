@@ -156,7 +156,7 @@ class CodebaseAnalyzer:
         for files in content_map.values():
             for file_path in files[:10]:  # Sample for performance
                 try:
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(file_path, encoding="utf-8", errors="ignore") as f:
                         total_lines += len(f.readlines())
                 except (OSError, PermissionError):
                     total_lines += 50  # Estimate
@@ -218,11 +218,10 @@ def main():
                 else:
                     f.write(result)
             print(f"Analysis saved to: {args.output}")
+        elif args.format == "json":
+            print(json.dumps(result, indent=2))
         else:
-            if args.format == "json":
-                print(json.dumps(result, indent=2))
-            else:
-                print(result)
+            print(result)
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

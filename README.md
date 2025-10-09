@@ -88,13 +88,68 @@ capabilities, you can configure Azure OpenAI integration.
 
 ### Azure OpenAI
 
-Create `azure.env` with your credentials:
+# Create `azure.env` with your credentials:
+
+### Azure OpenAI Integration
+
+Use Azure OpenAI models with Claude Code interface through automatic proxy
+setup.
+
+#### Quick Setup (< 5 minutes)
+
+```bash
+# 1. Copy and edit example configuration
+cp examples/example.azure.env .azure.env
+# Edit .azure.env with your Azure credentials
+
+# 2. Launch with Azure integration
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --with-proxy-config ./.azure.env
+```
+
+#### Key Features
+
+- 🔄 **Automatic Proxy**: claude-code-proxy starts automatically with proper
+  configuration
+- 🗝️ **Model Mapping**: OpenAI model names → your Azure deployment names
+- 💾 **Azure Persistence**: Persistence prompt automatically appended for better
+  context
+- ⚡ **Performance Optimized**: 512k context window support with proper timeouts
+- 🔒 **Secure**: Localhost-only proxy with credential protection
+
+#### Recent Fixes (PR #679)
+
+- ✅ **Fixed REQUEST_TIMEOUT parsing**: No more startup failures from inline
+  comments
+- ✅ **Enhanced config parser**: Properly handles .env file formatting
+- ✅ **Improved error messages**: Clear troubleshooting guidance
+- ✅ **Cross-platform support**: Works on macOS, Linux, and Windows
+
+#### Known Issues (External Dependencies)
+
+- ⚠️ **Internal Server Error**: The external `claude-code-proxy` package has
+  bugs causing JSON serialization errors during request processing
+- ⚠️ **Missing log output**: Proxy doesn't show log file locations during
+  startup
+- ⚠️ **Model mapping warnings**: Azure deployment mapping needs upstream fixes
+
+#### Example Configuration
+
+> > > > > > > origin/feat/issue-676-azure-openai-proxy
 
 ```env
-AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+# Required: Azure credentials and endpoint
+OPENAI_API_KEY="your-azure-api-key"  # pragma: allowlist secret
+OPENAI_BASE_URL="https://myai.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2025-01-01-preview"
+
+# Model mapping to your Azure deployments
+BIG_MODEL="gpt-4"
+MIDDLE_MODEL="gpt-4"
+SMALL_MODEL="gpt-4o-mini"
+
+# Performance settings for large context
+REQUEST_TIMEOUT="300"
+MAX_TOKENS_LIMIT="512000"
+MAX_RETRIES="2"
 ```
 
 **Security Warning**: Never commit API keys to version control. Use environment
@@ -140,6 +195,9 @@ cd MicrosoftHackathon2025-AgenticCoding
 uv pip install -e .
 uvx amplihack launch
 ```
+
+For complete setup instructions, troubleshooting, and advanced configuration,
+see **[Azure Integration Guide](docs/AZURE_INTEGRATION.md)**
 
 ### Testing
 
