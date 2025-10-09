@@ -57,7 +57,10 @@ def test_get_claude_command_when_trace_available():
 
             cmd = get_claude_command()
             assert cmd == "claude-trace"
-            mock_print.assert_called_with("Using claude-trace for enhanced debugging")
+            # Check that the message starts with the expected prefix (path may vary)
+            assert len(mock_print.call_args_list) == 1
+            call_arg = mock_print.call_args_list[0][0][0]
+            assert call_arg.startswith("Using claude-trace for enhanced debugging:")
 
 
 def test_get_claude_command_install_success():
