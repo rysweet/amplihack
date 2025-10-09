@@ -514,7 +514,7 @@ class TestMockAnalysisGeneration:
         """Test mock analysis result generation"""
         client, session = client_with_session
 
-        analysis = client._generate_mock_analysis(session)
+        analysis = client._generate_analysis_results(session)
 
         assert analysis["session_id"] == session.claude_session_id
         assert "analysis_timestamp" in analysis
