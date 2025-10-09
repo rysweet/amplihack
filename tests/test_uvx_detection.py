@@ -5,14 +5,14 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from src.amplihack.utils.uvx_detection import (
+from amplihack.utils.uvx_detection import (
     detect_uvx_deployment,
     find_framework_root,
     is_uvx_deployment,
     resolve_framework_file,
     resolve_framework_paths,
 )
-from src.amplihack.utils.uvx_models import (
+from amplihack.utils.uvx_models import (
     PathResolutionStrategy,
     UVXConfiguration,
     UVXDetectionResult,
@@ -131,7 +131,7 @@ class TestPathResolution:
 
             env_info = UVXEnvironmentInfo(working_directory=working_dir)
             detection = UVXDetectionResult.LOCAL_DEPLOYMENT
-            from src.amplihack.utils.uvx_models import UVXDetectionState
+            from amplihack.utils.uvx_models import UVXDetectionState
 
             detection_state = UVXDetectionState(result=detection, environment=env_info)
 
@@ -152,7 +152,7 @@ class TestPathResolution:
             env_info = UVXEnvironmentInfo(
                 amplihack_root=str(framework_root), working_directory=Path("/different/working")
             )
-            from src.amplihack.utils.uvx_models import UVXDetectionState
+            from amplihack.utils.uvx_models import UVXDetectionState
 
             detection_state = UVXDetectionState(
                 result=UVXDetectionResult.UVX_DEPLOYMENT, environment=env_info
@@ -176,7 +176,7 @@ class TestPathResolution:
             env_info = UVXEnvironmentInfo(
                 sys_path_entries=[str(package_parent)], working_directory=Path("/working")
             )
-            from src.amplihack.utils.uvx_models import UVXDetectionState
+            from amplihack.utils.uvx_models import UVXDetectionState
 
             detection_state = UVXDetectionState(
                 result=UVXDetectionResult.UVX_DEPLOYMENT, environment=env_info
@@ -200,7 +200,7 @@ class TestPathResolution:
             subdir.mkdir(parents=True)
 
             env_info = UVXEnvironmentInfo(working_directory=subdir)
-            from src.amplihack.utils.uvx_models import UVXDetectionState
+            from amplihack.utils.uvx_models import UVXDetectionState
 
             detection_state = UVXDetectionState(
                 result=UVXDetectionResult.LOCAL_DEPLOYMENT, environment=env_info
@@ -215,7 +215,7 @@ class TestPathResolution:
     def test_resolve_staging_required(self):
         """Test path resolution that requires staging."""
         env_info = UVXEnvironmentInfo(working_directory=Path("/working"))
-        from src.amplihack.utils.uvx_models import UVXDetectionState
+        from amplihack.utils.uvx_models import UVXDetectionState
 
         detection_state = UVXDetectionState(
             result=UVXDetectionResult.UVX_DEPLOYMENT, environment=env_info
@@ -232,7 +232,7 @@ class TestPathResolution:
         env_info = UVXEnvironmentInfo(
             sys_path_entries=["/invalid/path"], working_directory=Path("/no/claude")
         )
-        from src.amplihack.utils.uvx_models import UVXDetectionState
+        from amplihack.utils.uvx_models import UVXDetectionState
 
         detection_state = UVXDetectionState(
             result=UVXDetectionResult.UVX_DEPLOYMENT, environment=env_info
@@ -254,7 +254,7 @@ class TestPathResolution:
         )
 
         env_info = UVXEnvironmentInfo(working_directory=Path("/working"))
-        from src.amplihack.utils.uvx_models import UVXDetectionState
+        from amplihack.utils.uvx_models import UVXDetectionState
 
         detection_state = UVXDetectionState(
             result=UVXDetectionResult.UVX_DEPLOYMENT, environment=env_info
@@ -339,7 +339,7 @@ class TestPrivateFunctions:
 
     def test_find_framework_in_sys_path_success(self):
         """Test finding framework in sys.path."""
-        from src.amplihack.utils.uvx_detection import _find_framework_in_sys_path
+        from amplihack.utils.uvx_detection import _find_framework_in_sys_path
 
         with tempfile.TemporaryDirectory() as temp_dir:
             package_parent = Path(temp_dir)
@@ -355,7 +355,7 @@ class TestPrivateFunctions:
 
     def test_find_framework_in_sys_path_not_found(self):
         """Test framework not found in sys.path."""
-        from src.amplihack.utils.uvx_detection import _find_framework_in_sys_path
+        from amplihack.utils.uvx_detection import _find_framework_in_sys_path
 
         sys_path_entries = ["/path1", "/path2"]
         result = _find_framework_in_sys_path(sys_path_entries)
@@ -364,7 +364,7 @@ class TestPrivateFunctions:
 
     def test_find_framework_in_sys_path_invalid_path(self):
         """Test handling invalid paths in sys.path."""
-        from src.amplihack.utils.uvx_detection import _find_framework_in_sys_path
+        from amplihack.utils.uvx_detection import _find_framework_in_sys_path
 
         # Include an invalid path that will cause OSError
         sys_path_entries = ["\x00invalid\x00path", "/normal/path"]
@@ -375,7 +375,7 @@ class TestPrivateFunctions:
 
     def test_search_parent_directories_success(self):
         """Test successful parent directory search."""
-        from src.amplihack.utils.uvx_detection import _search_parent_directories
+        from amplihack.utils.uvx_detection import _search_parent_directories
 
         with tempfile.TemporaryDirectory() as temp_dir:
             framework_root = Path(temp_dir)
@@ -390,7 +390,7 @@ class TestPrivateFunctions:
 
     def test_search_parent_directories_max_levels(self):
         """Test parent directory search respects max_levels."""
-        from src.amplihack.utils.uvx_detection import _search_parent_directories
+        from amplihack.utils.uvx_detection import _search_parent_directories
 
         with tempfile.TemporaryDirectory() as temp_dir:
             framework_root = Path(temp_dir)
@@ -411,7 +411,7 @@ class TestPrivateFunctions:
 
     def test_search_parent_directories_not_found(self):
         """Test parent directory search when no framework found."""
-        from src.amplihack.utils.uvx_detection import _search_parent_directories
+        from amplihack.utils.uvx_detection import _search_parent_directories
 
         with tempfile.TemporaryDirectory() as temp_dir:
             subdir = Path(temp_dir) / "no" / "framework" / "here"

@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from src.amplihack.utils.uvx_models import (
+from amplihack.utils.uvx_models import (
     FrameworkLocation,
     PathResolutionStrategy,
     UVXConfiguration,
@@ -13,7 +13,7 @@ from src.amplihack.utils.uvx_models import (
     UVXEnvironmentInfo,
     UVXSessionState,
 )
-from src.amplihack.utils.uvx_staging_v2 import (
+from amplihack.utils.uvx_staging_v2 import (
     UVXStager,
     create_uvx_session,
     stage_uvx_framework,
@@ -91,7 +91,7 @@ class TestUVXStager:
                 mock_detect.return_value = detection_state
 
                 # Mock failed path resolution
-                from src.amplihack.utils.uvx_models import PathResolutionResult
+                from amplihack.utils.uvx_models import PathResolutionResult
 
                 failed_resolution = PathResolutionResult(location=None)
                 mock_resolve.return_value = failed_resolution
@@ -133,7 +133,7 @@ class TestUVXStager:
             location = FrameworkLocation(
                 root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
             )
-            from src.amplihack.utils.uvx_models import PathResolutionResult
+            from amplihack.utils.uvx_models import PathResolutionResult
 
             resolution = PathResolutionResult(location=location)
 
@@ -181,7 +181,7 @@ class TestUVXStager:
             location = FrameworkLocation(
                 root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
             )
-            from src.amplihack.utils.uvx_models import PathResolutionResult
+            from amplihack.utils.uvx_models import PathResolutionResult
 
             resolution = PathResolutionResult(location=location)
 
@@ -224,7 +224,7 @@ class TestUVXStager:
             location = FrameworkLocation(
                 root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
             )
-            from src.amplihack.utils.uvx_models import PathResolutionResult
+            from amplihack.utils.uvx_models import PathResolutionResult
 
             resolution = PathResolutionResult(location=location)
 
@@ -266,7 +266,7 @@ class TestUVXStager:
                 location = FrameworkLocation(
                     root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
                 )
-                from src.amplihack.utils.uvx_models import PathResolutionResult
+                from amplihack.utils.uvx_models import PathResolutionResult
 
                 resolution = PathResolutionResult(location=location)
 
@@ -293,7 +293,7 @@ class TestUVXStager:
             test_dir.mkdir()
 
             # Create staging result with successful operations
-            from src.amplihack.utils.uvx_models import StagingResult
+            from amplihack.utils.uvx_models import StagingResult
 
             result = StagingResult()
             result.successful.add(test_file)
@@ -314,7 +314,7 @@ class TestUVXStager:
             test_file = Path(temp_dir) / "test.txt"
             test_file.write_text("test")
 
-            from src.amplihack.utils.uvx_models import StagingResult
+            from amplihack.utils.uvx_models import StagingResult
 
             result = StagingResult()
             result.successful.add(test_file)
@@ -330,7 +330,7 @@ class TestUVXStager:
         stager = UVXStager(config)
 
         # Create staging result with non-existent files
-        from src.amplihack.utils.uvx_models import StagingResult
+        from amplihack.utils.uvx_models import StagingResult
 
         result = StagingResult()
         result.successful.add(Path("/non/existent/file"))
@@ -395,7 +395,7 @@ class TestConvenienceFunctions:
                     location = FrameworkLocation(
                         root_path=working_dir, strategy=PathResolutionStrategy.WORKING_DIRECTORY
                     ).validate()
-                    from src.amplihack.utils.uvx_models import PathResolutionResult
+                    from amplihack.utils.uvx_models import PathResolutionResult
 
                     resolution = PathResolutionResult(location=location)
                     mock_resolve.return_value = resolution
@@ -435,7 +435,7 @@ class TestConvenienceFunctions:
                     location = FrameworkLocation(
                         root_path=working_dir, strategy=PathResolutionStrategy.STAGING_REQUIRED
                     )
-                    from src.amplihack.utils.uvx_models import PathResolutionResult
+                    from amplihack.utils.uvx_models import PathResolutionResult
 
                     resolution = PathResolutionResult(location=location)
                     mock_resolve.return_value = resolution

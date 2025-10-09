@@ -10,9 +10,9 @@ import json
 import tempfile
 from pathlib import Path
 
-from src.amplihack.utils.uvx_models import UVXConfiguration
-from src.amplihack.utils.uvx_settings_manager import uvx_settings_manager
-from src.amplihack.utils.uvx_staging_v2 import UVXStager
+from amplihack.utils.uvx_models import UVXConfiguration
+from amplihack.utils.uvx_settings_manager import uvx_settings_manager
+from amplihack.utils.uvx_staging_v2 import UVXStager
 
 
 def simulate_fresh_uvx_installation():

@@ -74,8 +74,8 @@ addopts = [
     "--strict-markers",
     "--tb=short",
 ]
-# Exclude standalone test scripts from collection
-norecursedirs = [".git", ".tox", "dist", "build", "*.egg"]
+# Exclude standalone test scripts and other directories from collection
+norecursedirs = [".git", ".tox", "dist", "build", "*.egg", "scripts"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",

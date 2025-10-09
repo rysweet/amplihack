@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from src.amplihack.utils.paths import FrameworkPathResolver
+from amplihack.utils.paths import FrameworkPathResolver
 
 
 class TestFrameworkPathResolver:
@@ -134,7 +134,7 @@ class TestFrameworkPathResolver:
             # This will trigger the ImportError path
             def side_effect():
                 try:
-                    from src.amplihack.utils.uvx_staging import is_uvx_deployment
+                    from amplihack.utils.uvx_staging import is_uvx_deployment
 
                     return is_uvx_deployment()
                 except ImportError:

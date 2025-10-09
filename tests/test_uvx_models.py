@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from src.amplihack.utils.uvx_models import (
+from amplihack.utils.uvx_models import (
     FrameworkLocation,
     PathResolutionResult,
     PathResolutionStrategy,

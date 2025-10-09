@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from src.amplihack.utils.uvx_staging import UVXStager, is_uvx_deployment, stage_uvx_framework
+from amplihack.utils.uvx_staging import UVXStager, is_uvx_deployment, stage_uvx_framework
 
 
 class TestUVXStager:
@@ -217,7 +217,7 @@ class TestIntegration:
 
     def test_framework_path_resolver_triggers_staging(self):
         """Test that FrameworkPathResolver triggers UVX staging when needed."""
-        from src.amplihack.utils.paths import FrameworkPathResolver
+        from amplihack.utils.paths import FrameworkPathResolver
 
         with tempfile.TemporaryDirectory() as source_dir:
             with tempfile.TemporaryDirectory() as target_dir:
