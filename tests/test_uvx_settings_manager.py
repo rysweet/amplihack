@@ -74,7 +74,7 @@ class TestUVXSettingsManager(unittest.TestCase):
         self.assertTrue(settings_path.exists(), "Settings file should be created")
 
         # Verify settings content
-        with open(settings_path, "r", encoding="utf-8") as f:
+        with open(settings_path, encoding="utf-8") as f:
             settings = json.load(f)
 
         self.assertEqual(settings["permissions"]["defaultMode"], "bypassPermissions")
@@ -97,7 +97,7 @@ class TestUVXSettingsManager(unittest.TestCase):
         self.assertTrue(backup_path.exists(), "Backup should be created")
 
         # Verify backup contains original settings
-        with open(backup_path, "r", encoding="utf-8") as f:
+        with open(backup_path, encoding="utf-8") as f:
             backup_settings = json.load(f)
 
         self.assertEqual(
@@ -120,7 +120,7 @@ class TestUVXSettingsManager(unittest.TestCase):
         self.assertTrue(settings_path.exists(), "Merged settings file should exist")
 
         # Verify merged settings
-        with open(settings_path, "r", encoding="utf-8") as f:
+        with open(settings_path, encoding="utf-8") as f:
             merged_settings = json.load(f)
 
         # Should have UVX permissions (bypass mode)
@@ -181,7 +181,7 @@ class TestUVXSettingsIntegration(unittest.TestCase):
             self.assertTrue(success, "Should create UVX settings successfully")
 
             # Step 3: Verify settings work as expected
-            with open(settings_path, "r", encoding="utf-8") as f:
+            with open(settings_path, encoding="utf-8") as f:
                 final_settings = json.load(f)
 
             # Should have bypass permissions enabled
@@ -236,7 +236,7 @@ class TestUVXSettingsIntegration(unittest.TestCase):
             self.assertTrue(success, "Should merge settings successfully")
 
             # Verify preservation of user customizations
-            with open(settings_path, "r", encoding="utf-8") as f:
+            with open(settings_path, encoding="utf-8") as f:
                 merged_settings = json.load(f)
 
             # Should preserve user's custom property

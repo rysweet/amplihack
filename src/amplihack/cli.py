@@ -48,22 +48,21 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
 
         return docker_manager.run_command(docker_args)
 
-    # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
-    if is_uvx_deployment():
-        # Get the original directory (before we changed to temp)
-        original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-        # Add --add-dir to claude_args if not already present
-        if claude_args and "--add-dir" not in claude_args:
-            claude_args = ["--add-dir", original_cwd] + claude_args
-        elif not claude_args:
-            claude_args = ["--add-dir", original_cwd]
+    # In UVX mode, Claude now runs from the current directory so no --add-dir needed
 
     proxy_manager = None
     system_prompt_path = None
 
     # Set up proxy if configuration provided
     if args.with_proxy_config:
-        config_path = Path(args.with_proxy_config).resolve()
+        # For UVX mode, resolve relative paths from original directory
+        if not Path(args.with_proxy_config).is_absolute():
+            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+            config_path = Path(original_cwd) / args.with_proxy_config
+            config_path = config_path.resolve()
+        else:
+            config_path = Path(args.with_proxy_config).resolve()
+
         if not config_path.exists():
             print(f"Error: Proxy configuration file not found: {config_path}")
             return 1
@@ -77,6 +76,8 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
             )
             return 1
 
+        # Check if built-in proxy should be used
+        use_builtin_proxy = getattr(args, "builtin_proxy", False)  # noqa: F841
         proxy_manager = ProxyManager(proxy_config)
 
         # When using proxy, automatically use Azure persistence prompt
@@ -93,6 +94,10 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         claude_args=claude_args,
     )
 
+    # Check if claude_args contains a prompt (-p) - if so, use non-interactive mode
+    has_prompt = claude_args and ("-p" in claude_args)
+    if has_prompt:
+        return launcher.launch()
     return launcher.launch_interactive()
 
 
@@ -170,6 +175,11 @@ def create_parser() -> argparse.ArgumentParser:
         help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
     )
     launch_parser.add_argument(
+        "--builtin-proxy",
+        action="store_true",
+        help="Use built-in proxy server with OpenAI Responses API support instead of external claude-code-proxy",
+    )
+    launch_parser.add_argument(
         "--checkout-repo",
         metavar="GITHUB_URI",
         help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
@@ -204,27 +214,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Initialize UVX staging if needed (before parsing args)
     temp_claude_dir = None
     if is_uvx_deployment():
-        # Create temporary Claude environment for UVX zero-install
-        import tempfile
+        # Stage Claude environment in current directory for UVX zero-install
 
-        temp_dir = tempfile.mkdtemp(prefix="amplihack_uvx_")
-        temp_claude_dir = os.path.join(temp_dir, ".claude")
-
-        # Save original directory - we'll use this for --add-dir
+        # Save original directory (which is now also the working directory)
         original_cwd = os.getcwd()
 
-        # Store it for later use in --add-dir
+        # Store it for later use (though now it's the same as current directory)
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
-        # Change to temp directory - this sets CLAUDE_PROJECT_DIR
-        os.chdir(temp_dir)
+        # Use .claude directory in current working directory instead of temp
+        temp_claude_dir = os.path.join(original_cwd, ".claude")
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"UVX mode: Created temp Claude environment at {temp_dir}")
-            print(f"Changed working directory to {temp_dir}")
+            print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")
+            print(f"Working directory remains: {original_cwd}")
 
-        # Stage framework files to the temp .claude directory
-        # Use the built-in _local_install function to copy framework files
+        # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
         # Find amplihack package location for .claude files
         import amplihack
@@ -323,9 +328,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
             launcher = ClaudeLauncher(claude_args=claude_args)
             return launcher.launch_interactive()
-        else:
-            create_parser().print_help()
-            return 1
+        create_parser().print_help()
+        return 1
 
     # Import the original functions for backward compatibility
     from . import _local_install, uninstall
@@ -359,8 +363,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             # Get the original directory (before we changed to temp)
             original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
             # Add --add-dir to claude_args if not already present
-            if "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + (claude_args or [])
+            if claude_args and "--add-dir" not in claude_args:
+                claude_args = ["--add-dir", original_cwd] + claude_args
+            elif not claude_args:
+                claude_args = ["--add-dir", original_cwd]
         return launch_command(args, claude_args)
 
     elif args.command == "uvx-help":
@@ -371,19 +377,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             if path:
                 print(str(path))
                 return 0
-            else:
-                print("UVX installation path not found", file=sys.stderr)
-                return 1
-        elif args.info:
+            print("UVX installation path not found", file=sys.stderr)
+            return 1
+        if args.info:
             # Show UVX staging information
             print("\nUVX Information:")
             print(f"  Is UVX: {is_uvx_deployment()}")
             print("\nEnvironment Variables:")
             print(f"  AMPLIHACK_ROOT={os.environ.get('AMPLIHACK_ROOT', '(not set)')}")
             return 0
-        else:
-            print_uvx_usage_instructions()
-            return 0
+        print_uvx_usage_instructions()
+        return 0
 
     else:
         create_parser().print_help()

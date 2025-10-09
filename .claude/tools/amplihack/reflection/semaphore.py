@@ -63,7 +63,7 @@ class ReflectionLock:
             with open(self.lock_file, "w") as f:
                 json.dump(asdict(lock_data), f, indent=2)
             return True
-        except (IOError, OSError):
+        except OSError:
             return False
 
     def release(self):
@@ -71,7 +71,7 @@ class ReflectionLock:
         if self.lock_file.exists():
             try:
                 self.lock_file.unlink()
-            except (IOError, OSError):
+            except OSError:
                 pass  # Already removed or permission error
 
     def is_locked(self) -> bool:
@@ -99,5 +99,5 @@ class ReflectionLock:
             with open(self.lock_file) as f:
                 data = json.load(f)
                 return LockData(**data)
-        except (IOError, OSError, json.JSONDecodeError, TypeError):
+        except (OSError, json.JSONDecodeError, TypeError):
             return None  # Corrupt or unreadable

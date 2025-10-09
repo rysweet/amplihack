@@ -25,8 +25,8 @@ sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "Specs"))
 
 # Imports after path modification
-from amplihack.security.xpia_health import check_xpia_health  # noqa: E402
-from amplihack.utils.hook_merge_utility import (  # noqa: E402
+from amplihack.security.xpia_health import check_xpia_health
+from amplihack.utils.hook_merge_utility import (
     HookMergeUtility,
     get_required_xpia_hooks,
 )
@@ -365,7 +365,11 @@ class TestXPIAHookExecution(unittest.TestCase):
         # Run the hook
         try:
             result = subprocess.run(
-                [sys.executable, str(hook_path)], capture_output=True, text=True, timeout=10
+                [sys.executable, str(hook_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
 
             # Should exit successfully
@@ -396,6 +400,7 @@ class TestXPIAHookExecution(unittest.TestCase):
         try:
             result = subprocess.run(
                 [sys.executable, str(hook_path)],
+                check=False,
                 input=json.dumps(test_input),
                 capture_output=True,
                 text=True,
@@ -426,6 +431,7 @@ class TestXPIAHookExecution(unittest.TestCase):
         try:
             result = subprocess.run(
                 [sys.executable, str(hook_path)],
+                check=False,
                 input=json.dumps(test_input),
                 capture_output=True,
                 text=True,
@@ -551,9 +557,8 @@ def main():
     if result.wasSuccessful():
         print("\n🎉 All XPIA integration tests passed!")
         return 0
-    else:
-        print(f"\n❌ {len(result.failures)} test(s) failed, {len(result.errors)} error(s)")
-        return 1
+    print(f"\n❌ {len(result.failures)} test(s) failed, {len(result.errors)} error(s)")
+    return 1
 
 
 if __name__ == "__main__":

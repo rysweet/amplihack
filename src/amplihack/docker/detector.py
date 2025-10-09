@@ -19,7 +19,11 @@ class DockerDetector:
 
         try:
             result = subprocess.run(
-                ["docker", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5
+                ["docker", "info"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, subprocess.SubprocessError):
@@ -50,7 +54,7 @@ class DockerDetector:
 
         # Check cgroup for docker
         try:
-            with open("/proc/1/cgroup", "r") as f:
+            with open("/proc/1/cgroup") as f:
                 if "docker" in f.read():
                     return True
         except (FileNotFoundError, PermissionError):
@@ -65,7 +69,11 @@ class DockerDetector:
 
         try:
             result = subprocess.run(
-                ["docker", "images", "-q", image_name], capture_output=True, text=True, timeout=5
+                ["docker", "images", "-q", image_name],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             return bool(result.stdout.strip())
         except (subprocess.TimeoutExpired, subprocess.SubprocessError):

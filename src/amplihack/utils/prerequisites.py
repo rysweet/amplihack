@@ -87,6 +87,7 @@ def safe_subprocess_call(
     try:
         result = subprocess.run(
             cmd,
+            check=False,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -123,7 +124,7 @@ def safe_subprocess_call(
     except OSError as e:
         # Generic OS error
         cmd_name = cmd[0] if cmd else "command"
-        error_msg = f"OS error running {cmd_name}: {str(e)}\n"
+        error_msg = f"OS error running {cmd_name}: {e!s}\n"
         if context:
             error_msg += f"Context: {context}\n"
         return 1, "", error_msg
@@ -131,7 +132,7 @@ def safe_subprocess_call(
     except Exception as e:
         # Catch-all for unexpected errors
         cmd_name = cmd[0] if cmd else "command"
-        error_msg = f"Unexpected error running {cmd_name}: {str(e)}\n"
+        error_msg = f"Unexpected error running {cmd_name}: {e!s}\n"
         if context:
             error_msg += f"Context: {context}\n"
         return 1, "", error_msg
@@ -220,15 +221,14 @@ class PrerequisiteChecker:
 
         if system == "Darwin":
             return Platform.MACOS
-        elif system == "Linux":
+        if system == "Linux":
             # Check if running under WSL
             if self._is_wsl():
                 return Platform.WSL
             return Platform.LINUX
-        elif system == "Windows":
+        if system == "Windows":
             return Platform.WINDOWS
-        else:
-            return Platform.UNKNOWN
+        return Platform.UNKNOWN
 
     def _is_wsl(self) -> bool:
         """Check if running under Windows Subsystem for Linux.
@@ -415,9 +415,9 @@ def check_prerequisites() -> bool:
 
 __all__ = [
     "Platform",
-    "ToolCheckResult",
-    "PrerequisiteResult",
     "PrerequisiteChecker",
-    "safe_subprocess_call",
+    "PrerequisiteResult",
+    "ToolCheckResult",
     "check_prerequisites",
+    "safe_subprocess_call",
 ]

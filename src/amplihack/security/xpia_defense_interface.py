@@ -369,25 +369,17 @@ def get_threat_summary(validation_result: ValidationResult) -> str:
 class XPIADefenseError(Exception):
     """Base exception for XPIA Defense errors"""
 
-    pass
-
 
 class ValidationError(XPIADefenseError):
     """Error during validation process"""
-
-    pass
 
 
 class ConfigurationError(XPIADefenseError):
     """Error in security configuration"""
 
-    pass
-
 
 class HookError(XPIADefenseError):
     """Error in hook system"""
-
-    pass
 
 
 # Factory Functions

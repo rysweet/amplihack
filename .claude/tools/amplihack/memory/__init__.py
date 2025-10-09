@@ -272,12 +272,12 @@ def search_memories(
 
 # Export public interface
 __all__ = [
-    "get_memory_manager",
-    "activate_memory",
-    "store_agent_memory",
-    "retrieve_agent_memories",
-    "search_memories",
+    "MemoryEntry",
     "MemoryManager",
     "MemoryType",
-    "MemoryEntry",
+    "activate_memory",
+    "get_memory_manager",
+    "retrieve_agent_memories",
+    "search_memories",
+    "store_agent_memory",
 ]

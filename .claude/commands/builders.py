@@ -160,7 +160,7 @@ def build_comprehensive_codex(
 
         if verbose:
             # Show some statistics
-            with open(codex_path, "r") as f:
+            with open(codex_path) as f:
                 codex_data = json.load(f)
                 metadata = codex_data.get("metadata", {})
                 print(f"📊 Sessions processed: {metadata.get('sessions_processed', 0)}")
@@ -186,7 +186,7 @@ def extract_learning_corpus(
         print(f"📄 Location: {corpus_path}")
 
         if verbose:
-            with open(corpus_path, "r") as f:
+            with open(corpus_path) as f:
                 corpus_data = json.load(f)
                 metadata = corpus_data.get("metadata", {})
                 print(f"📊 Sessions processed: {metadata.get('sessions_count', 0)}")

@@ -225,7 +225,7 @@ class CodexTranscriptsBuilder:
         transcript_file = session_dir / "conversation_transcript.json"
         if transcript_file.exists():
             try:
-                with open(transcript_file, "r") as f:
+                with open(transcript_file) as f:
                     session_data["transcript"] = json.load(f)
             except (json.JSONDecodeError, OSError):
                 pass
@@ -234,7 +234,7 @@ class CodexTranscriptsBuilder:
         codex_file = session_dir / "codex_export.json"
         if codex_file.exists():
             try:
-                with open(codex_file, "r") as f:
+                with open(codex_file) as f:
                     session_data["codex_export"] = json.load(f)
             except (json.JSONDecodeError, OSError):
                 pass
@@ -243,7 +243,7 @@ class CodexTranscriptsBuilder:
         summary_file = session_dir / "session_summary.json"
         if summary_file.exists():
             try:
-                with open(summary_file, "r") as f:
+                with open(summary_file) as f:
                     session_data["summary"] = json.load(f)
             except (json.JSONDecodeError, OSError):
                 pass
@@ -252,7 +252,7 @@ class CodexTranscriptsBuilder:
         original_request_file = session_dir / "original_request.json"
         if original_request_file.exists():
             try:
-                with open(original_request_file, "r") as f:
+                with open(original_request_file) as f:
                     session_data["original_request"] = json.load(f)
             except (json.JSONDecodeError, OSError):
                 pass

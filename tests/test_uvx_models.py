@@ -26,25 +26,23 @@ class TestUVXEnvironmentInfo:
         """Test creating UVXEnvironmentInfo from current environment."""
         with patch.dict(
             os.environ, {"UV_PYTHON": "/path/to/uv/python", "AMPLIHACK_ROOT": "/path/to/framework"}
-        ):
-            with patch("sys.path", ["/path1", "/path2"]):
-                with patch("pathlib.Path.cwd", return_value=Path("/working")):
-                    env_info = UVXEnvironmentInfo.from_current_environment()
+        ), patch("sys.path", ["/path1", "/path2"]):
+            with patch("pathlib.Path.cwd", return_value=Path("/working")):
+                env_info = UVXEnvironmentInfo.from_current_environment()
 
-                    assert env_info.uv_python_path == "/path/to/uv/python"
-                    assert env_info.amplihack_root == "/path/to/framework"
-                    assert env_info.sys_path_entries == ["/path1", "/path2"]
-                    assert env_info.working_directory == Path("/working")
+                assert env_info.uv_python_path == "/path/to/uv/python"
+                assert env_info.amplihack_root == "/path/to/framework"
+                assert env_info.sys_path_entries == ["/path1", "/path2"]
+                assert env_info.working_directory == Path("/working")
 
     def test_from_current_environment_minimal(self):
         """Test creating UVXEnvironmentInfo with minimal environment."""
-        with patch.dict(os.environ, {}, clear=True):
-            with patch("sys.path", []):
-                env_info = UVXEnvironmentInfo.from_current_environment()
+        with patch.dict(os.environ, {}, clear=True), patch("sys.path", []):
+            env_info = UVXEnvironmentInfo.from_current_environment()
 
-                assert env_info.uv_python_path is None
-                assert env_info.amplihack_root is None
-                assert env_info.sys_path_entries == []
+            assert env_info.uv_python_path is None
+            assert env_info.amplihack_root is None
+            assert env_info.sys_path_entries == []
 
 
 class TestUVXDetectionState:

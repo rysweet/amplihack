@@ -31,7 +31,6 @@ if click is not None:
     @click.group()
     def xpia():
         """XPIA Defense System CLI"""
-        pass
 
 
 @xpia.command()
@@ -85,7 +84,7 @@ def validate(url: str, prompt: str, security_level: str, verbose: bool, output_j
             _display_validation_result(result, url, prompt, verbose)
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         sys.exit(1)
     finally:
         loop.close()
@@ -117,7 +116,7 @@ def validate_bash(command: str, security_level: str, verbose: bool):
         _display_bash_validation_result(result, command, verbose)
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         sys.exit(1)
     finally:
         loop.close()
@@ -165,7 +164,7 @@ def validate_content(text: str, type: str, security_level: str, verbose: bool):
         _display_content_validation_result(result, text[:100], type, verbose)
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         sys.exit(1)
     finally:
         loop.close()
@@ -280,7 +279,7 @@ def health():
         console.print(panel)
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        console.print(f"[red]Error: {e!s}[/red]")
         sys.exit(1)
     finally:
         loop.close()
