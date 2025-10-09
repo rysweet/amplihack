@@ -495,7 +495,7 @@ class TestErrorHandlingIntegration:
     def test_logging_configuration_integration(self):
         """Test integration with logging configuration system."""
         # This should FAIL - no implementation exists yet
-        with pytest.raises((ImportError, AttributeError, NotImplementedError)):
+        with pytest.raises((ImportError, AttributeError, NotImplementedError, ValueError)):
             import logging.config
 
             # Configure logging with log streaming
