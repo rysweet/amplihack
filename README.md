@@ -43,6 +43,8 @@ Code to `cd /path/to/my/project` and
 - `/amplihack:analyze <path>` - Review code quality
 - `/amplihack:improve [target]` - Capture learnings
 - `/amplihack:fix [pattern]` - Fix common errors
+- `/amplihack:auto-mode <command>` - Persistent analysis and autonomous
+  progression
 
 ## Core Concepts
 
@@ -185,6 +187,115 @@ pytest tests/
 | With repo   | Add `--checkout-repo owner/repo`                                                                  |
 | From branch | Use `@branch-name` after URL                                                                      |
 | Uninstall   | `uvx [...] amplihack uninstall`                                                                   |
+
+## Auto-Mode
+
+Auto-Mode provides persistent conversation analysis and autonomous progression
+through complex objectives using the Claude Agent SDK for real-time analysis.
+
+### What is Auto-Mode?
+
+Auto-Mode monitors your Claude Code sessions, analyzes progress toward user
+objectives, and automatically generates next prompts to maintain momentum and
+ensure completion of complex tasks. It uses real Claude AI (via the Claude Agent
+SDK) to understand context, evaluate progress, and make informed
+recommendations.
+
+### CLI Usage
+
+The `amplihack auto` command provides CLI access to auto-mode functionality:
+
+```sh
+# Start auto-mode session
+amplihack auto start
+
+# Start with specific configuration
+amplihack auto start --config learning_mode
+
+# Check current status
+amplihack auto status
+
+# Check detailed status
+amplihack auto status --detailed
+
+# Request immediate analysis
+amplihack auto analyze --type comprehensive --output json
+
+# Configure settings
+amplihack auto configure analysis_frequency high
+
+# Stop auto-mode
+amplihack auto stop
+```
+
+### Slash Command Usage
+
+Within Claude Code sessions, use the `/amplihack:auto-mode` slash command:
+
+```
+# Start an auto-mode session with an objective
+/amplihack:auto-mode start "Build a REST API with authentication and user management"
+
+# Process Claude's output and get next steps
+/amplihack:auto-mode process "I've implemented the authentication system with JWT tokens"
+
+# Check progress
+/amplihack:auto-mode status
+
+# Pause/resume session
+/amplihack:auto-mode pause
+/amplihack:auto-mode resume
+
+# Stop session
+/amplihack:auto-mode stop
+```
+
+### Common Examples
+
+**CLI - Start and Monitor:**
+
+```sh
+# Start with aggressive analysis configuration
+amplihack auto start --config aggressive_analysis
+
+# Monitor progress
+amplihack auto status --detailed
+
+# Get comprehensive analysis as JSON
+amplihack auto analyze --type comprehensive --output json
+```
+
+**Slash Command - Autonomous Development:**
+
+```
+# Start objective-driven development
+/amplihack:auto-mode start "Implement user authentication with OAuth2 and JWT" --max-iterations 50
+
+# Auto-mode will analyze each response and suggest next steps
+# It maintains context and ensures objective completion
+```
+
+### Configuration Options
+
+Auto-mode supports multiple configuration presets:
+
+- `default` - Balanced analysis and intervention (threshold: 0.7)
+- `aggressive_analysis` - High-frequency analysis (threshold: 0.5)
+- `minimal_intervention` - Low-frequency, high-confidence only (threshold: 0.9)
+- `learning_mode` - Educational focus with adaptive analysis (threshold: 0.6)
+- `privacy_focused` - Strict privacy, no background mode (threshold: 0.8)
+
+### Key Features
+
+- **Real-Time Analysis** - Uses Claude Agent SDK for genuine AI understanding
+- **Progress Evaluation** - Measures advancement toward objectives
+- **Quality Assessment** - Reviews code quality and best practices
+- **Next Prompt Generation** - Creates specific, actionable next steps
+- **Session Management** - Persistent state that survives restarts
+- **TDD Integration** - Monitors test implementation and coverage
+
+For complete documentation, see
+[.claude/commands/amplihack/auto_mode.md](.claude/commands/amplihack/auto_mode.md).
 
 ## License
 
