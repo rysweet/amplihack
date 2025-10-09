@@ -253,6 +253,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
+        #  copytree_manifest now automatically sets execute permissions on hook files
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)

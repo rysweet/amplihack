@@ -5,7 +5,6 @@ These tests validate that the framework can be packaged and deployed via UVX
 with all required files accessible.
 """
 
-import shutil
 import subprocess
 import sys
 import tempfile
