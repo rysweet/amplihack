@@ -15,6 +15,15 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+# Import Claude Agent SDK
+try:
+    from claude_agent_sdk import query as claude_query  # type: ignore
+
+    CLAUDE_SDK_AVAILABLE = True
+except ImportError:
+    CLAUDE_SDK_AVAILABLE = False
+    claude_query = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 
@@ -96,8 +105,14 @@ class ConversationAnalysisEngine:
         self.config = config or AnalysisConfig()
         self.analysis_cache: Dict[str, AnalysisResult] = {}
         self.analysis_history: List[AnalysisResult] = []
-        self._mcp_available = False
-        self._validate_sdk_connection()
+
+        # Validate SDK is available
+        if not CLAUDE_SDK_AVAILABLE:
+            raise SDKConnectionError(
+                "Claude Agent SDK not available. Install with: pip install claude-agent-sdk"
+            )
+
+        logger.info("Claude Agent SDK initialized successfully")
 
         # Security validation patterns
         self._dangerous_patterns = [
@@ -115,17 +130,6 @@ class ConversationAnalysisEngine:
             r"data:.*base64",
         ]
 
-    def _validate_sdk_connection(self) -> None:
-        """Validate that MCP functions are available"""
-        try:
-            # In real implementation, this would test mcp__ide__executeCode
-            # For now, we'll simulate the validation
-            self._mcp_available = True
-            logger.info("Claude Agent SDK connection validated")
-        except Exception as e:
-            logger.error(f"SDK connection validation failed: {e}")
-            self._mcp_available = False
-
     async def analyze_conversation(
         self,
         session_id: str,
@@ -135,7 +139,7 @@ class ConversationAnalysisEngine:
         context: Optional[Dict[str, Any]] = None,
     ) -> AnalysisResult:
         """
-        Analyze Claude Code output for insights and next steps.
+        Analyze Claude Code output for insights and next steps using REAL Claude AI.
 
         Args:
             session_id: Session identifier
@@ -151,9 +155,6 @@ class ConversationAnalysisEngine:
             SDKConnectionError: If SDK is unavailable
             AnalysisError: If analysis fails
         """
-        if not self._mcp_available:
-            raise SDKConnectionError("Claude Agent SDK not available")
-
         # Validate inputs for security
         self._validate_prompt_content(claude_output)
         self._validate_prompt_content(user_objective)
@@ -177,8 +178,8 @@ class ConversationAnalysisEngine:
                     logger.info(f"Returning cached analysis for {request.id}")
                     return cached_result
 
-            # Perform real analysis using Claude Agent SDK
-            result = await self._perform_sdk_analysis(request)
+            # Perform REAL analysis using Claude Agent SDK
+            result = await self._perform_real_sdk_analysis(request)
 
             # Cache result
             if self.config.enable_caching:
@@ -194,6 +195,244 @@ class ConversationAnalysisEngine:
             logger.error(f"Analysis failed for request {request.id}: {e}")
             raise AnalysisError(f"Analysis failed: {e}")
 
+    async def _perform_real_sdk_analysis(self, request: AnalysisRequest) -> AnalysisResult:
+        """
+        Perform analysis using REAL Claude Agent SDK.
+
+        This sends the analysis prompt to Claude and gets back AI-generated insights.
+        NO HEURISTICS. NO TEMPLATES. REAL AI ANALYSIS.
+        """
+        # Build analysis prompt based on type
+        analysis_prompt = self._build_analysis_prompt(request)
+
+        try:
+            # Call REAL Claude Agent SDK
+            response_text = await self._call_claude_sdk(analysis_prompt)
+
+            # Parse AI response
+            result = self._parse_ai_response(request, response_text)
+
+            return result
+
+        except Exception as e:
+            raise AnalysisError(f"SDK analysis failed: {e}")
+
+    async def _call_claude_sdk(self, prompt: str) -> str:
+        """
+        Call REAL Claude Agent SDK to analyze content.
+
+        Uses claude_agent_sdk.query() to send prompt and get AI response.
+        """
+        try:
+            # Collect all response chunks from Claude
+            response_chunks = []
+
+            async for message in claude_query(prompt=prompt):  # type: ignore
+                response_chunks.append(str(message))
+
+            # Combine all chunks into full response
+            full_response = "".join(response_chunks)
+
+            logger.info(f"Received Claude SDK response: {len(full_response)} chars")
+            return full_response
+
+        except Exception as e:
+            logger.error(f"Claude SDK call failed: {e}")
+            raise SDKConnectionError(f"Failed to call Claude Agent SDK: {e}")
+
+    def _build_analysis_prompt(self, request: AnalysisRequest) -> str:
+        """Build analysis prompt for Claude AI"""
+
+        # Sanitize inputs
+        safe_objective = self._sanitize_input(request.user_objective)
+        safe_output = self._sanitize_input(request.claude_output)
+        safe_session_id = re.sub(r"[^a-zA-Z0-9\-_]", "", request.session_id)
+
+        base_context = f"""You are analyzing Claude Code session output to evaluate progress toward a user's objective.
+
+User Objective: {safe_objective}
+
+Claude Code Output to Analyze:
+{safe_output}
+
+Session ID: {safe_session_id}
+Analysis Type: {request.analysis_type.value}
+
+"""
+
+        if request.analysis_type == AnalysisType.PROGRESS_EVALUATION:
+            return (
+                base_context
+                + """Evaluate the progress toward the user's objective. Analyze:
+1. What has been accomplished so far?
+2. What remains to be done?
+3. Are we on the right track?
+4. What obstacles or blockers exist?
+
+Provide your analysis in the following JSON format:
+{
+  "confidence": <float 0.0-1.0>,
+  "findings": [<list of key findings>],
+  "recommendations": [<list of recommendations>],
+  "next_prompt": "<specific next prompt to continue progress>",
+  "quality_score": <float 0.0-1.0>,
+  "progress_indicators": {
+    "completion_percentage": <int 0-100>,
+    "blockers_identified": <int>,
+    "objectives_met": <int>
+  },
+  "ai_reasoning": "<your detailed reasoning about the analysis>"
+}
+"""
+            )
+
+        if request.analysis_type == AnalysisType.QUALITY_ASSESSMENT:
+            return (
+                base_context
+                + """Assess the quality of the work done. Consider:
+1. Code quality and best practices
+2. Completeness of implementation
+3. Potential issues or bugs
+4. Alignment with objectives
+
+Provide your analysis in JSON format with fields: confidence, findings, recommendations, next_prompt, quality_score, progress_indicators, ai_reasoning.
+"""
+            )
+
+        if request.analysis_type == AnalysisType.NEXT_ACTION_PLANNING:
+            return (
+                base_context
+                + """Plan the next action to take toward the objective. Consider:
+1. What is the most important next step?
+2. What blockers need to be addressed?
+3. How to maintain momentum?
+4. What would provide the most value?
+
+Provide a specific, actionable next prompt for Claude in JSON format with all required fields.
+"""
+            )
+
+        if request.analysis_type == AnalysisType.ERROR_DIAGNOSIS:
+            return (
+                base_context
+                + """Diagnose any errors or issues in the output. Consider:
+1. What went wrong?
+2. Root cause analysis
+3. How to fix the problem?
+4. Prevention strategies
+
+Provide your diagnosis in JSON format with all required fields.
+"""
+            )
+
+        if request.analysis_type == AnalysisType.OBJECTIVE_ALIGNMENT:
+            return (
+                base_context
+                + """Evaluate alignment with the user's objective. Consider:
+1. Is the work moving toward the goal?
+2. Are we solving the right problem?
+3. Should we adjust course?
+4. Are there better approaches?
+
+Provide your evaluation in JSON format with all required fields.
+"""
+            )
+
+        return (
+            base_context
+            + """Perform general analysis of the Claude Code output and provide insights in JSON format with all required fields.
+"""
+        )
+
+    def _parse_ai_response(self, request: AnalysisRequest, response: str) -> AnalysisResult:
+        """Parse Claude AI response into structured AnalysisResult"""
+        try:
+            # Try to extract JSON from response
+            # Claude might wrap JSON in markdown code blocks
+            json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                # Try to find JSON object directly
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                else:
+                    raise AnalysisError("No JSON found in Claude response")
+
+            data = json.loads(json_str)
+
+            return AnalysisResult(
+                request_id=request.id,
+                session_id=request.session_id,
+                analysis_type=request.analysis_type,
+                confidence=float(data.get("confidence", 0.5)),
+                findings=data.get("findings", []),
+                recommendations=data.get("recommendations", []),
+                next_prompt=data.get("next_prompt"),
+                quality_score=float(data.get("quality_score", 0.5)),
+                progress_indicators=data.get("progress_indicators", {}),
+                ai_reasoning=data.get("ai_reasoning", ""),
+                metadata=data.get("metadata", {}),
+                timestamp=datetime.now(),
+            )
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON from Claude response: {e}")
+            logger.error(f"Response was: {response}")
+            raise AnalysisError(f"Failed to parse AI response as JSON: {e}")
+        except Exception as e:
+            logger.error(f"Failed to parse AI response: {e}")
+            raise AnalysisError(f"Failed to parse AI response: {e}")
+
+    async def synthesize_response(
+        self,
+        session_id: str,
+        prompt: str,
+        user_objective: str,
+        context: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Generate Claude's response to a prompt using REAL Claude Agent SDK.
+
+        This sends the prompt to Claude and gets back the AI-generated response.
+        NO TEMPLATES. REAL AI RESPONSE.
+
+        Args:
+            session_id: Session identifier
+            prompt: The prompt to send to Claude
+            user_objective: User's stated objective
+            context: Additional context
+
+        Returns:
+            Dictionary with 'response' key containing Claude's actual response
+        """
+        try:
+            # Validate inputs
+            self._validate_prompt_content(prompt)
+            self._validate_prompt_content(user_objective)
+
+            # Build full prompt with context
+            full_prompt = f"""User Objective: {user_objective}
+
+Context: {json.dumps(context, indent=2)}
+
+{prompt}"""
+
+            # Call REAL Claude Agent SDK
+            response_text = await self._call_claude_sdk(full_prompt)
+
+            return {
+                "response": response_text,
+                "session_id": session_id,
+                "prompt_length": len(prompt),
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to synthesize response: {e}")
+            return None
+
     def _truncate_output(self, output: str) -> str:
         """Truncate output to maximum analysis length"""
         if len(output) <= self.config.max_analysis_length:
@@ -207,27 +446,6 @@ class ConversationAnalysisEngine:
 
         truncated += "\n[...output truncated for analysis...]"
         return truncated
-
-    async def _perform_sdk_analysis(self, request: AnalysisRequest) -> AnalysisResult:
-        """Perform analysis using Claude Agent SDK via mcp__ide__executeCode"""
-
-        # Build analysis prompt based on type
-        analysis_prompt = self._build_analysis_prompt(request)
-
-        # Create Python code to execute in Jupyter kernel
-        analysis_code = self._build_analysis_code(request, analysis_prompt)
-
-        try:
-            # Call Claude Agent SDK (simulated for now)
-            raw_response = await self._call_mcp_execute_code(analysis_code)
-
-            # Parse AI response
-            result = self._parse_analysis_response(request, raw_response)
-
-            return result
-
-        except Exception as e:
-            raise AnalysisError(f"SDK analysis failed: {e}")
 
     def _validate_prompt_content(self, content: str) -> None:
         """Validate content for prompt injection attempts"""
@@ -265,297 +483,6 @@ class ConversationAnalysisEngine:
             text = text[:10000] + "...[truncated for security]"
 
         return text
-
-    def _build_analysis_prompt(self, request: AnalysisRequest) -> str:
-        """Build analysis prompt based on request type with sanitized inputs"""
-
-        # Double-sanitize critical inputs
-        safe_objective = self._sanitize_input(request.user_objective)
-        safe_output = self._sanitize_input(request.claude_output)
-        safe_session_id = re.sub(r"[^a-zA-Z0-9\-_]", "", request.session_id)
-
-        base_context = f"""
-You are analyzing Claude Code session output to help with auto-mode operation.
-
-User Objective: {safe_objective}
-Analysis Type: {request.analysis_type.value}
-Session ID: {safe_session_id}
-
-Claude Code Output to Analyze:
-{safe_output}
-"""
-
-        if request.analysis_type == AnalysisType.PROGRESS_EVALUATION:
-            return (
-                base_context
-                + """
-Evaluate the progress toward the user's objective. Consider:
-1. What has been accomplished so far?
-2. What remains to be done?
-3. Are we on the right track?
-4. What obstacles or blockers exist?
-
-Provide a confidence score (0.0-1.0) for progress assessment.
-"""
-            )
-
-        if request.analysis_type == AnalysisType.QUALITY_ASSESSMENT:
-            return (
-                base_context
-                + """
-Assess the quality of the work done. Consider:
-1. Code quality and best practices
-2. Completeness of implementation
-3. Potential issues or bugs
-4. Alignment with objectives
-
-Provide a quality score (0.0-1.0) for the work.
-"""
-            )
-
-        if request.analysis_type == AnalysisType.NEXT_PROMPT_GENERATION:
-            return (
-                base_context
-                + """
-Generate the next prompt to continue toward the objective. Consider:
-1. What should be done next?
-2. What information or clarification is needed?
-3. How to build on current progress?
-4. What would be most valuable to focus on?
-
-Provide a specific, actionable next prompt.
-"""
-            )
-
-        if request.analysis_type == AnalysisType.NEXT_ACTION_PLANNING:
-            return (
-                base_context
-                + """
-Plan the next action to take toward the objective. Consider:
-1. What is the most important next step?
-2. What blockers need to be addressed?
-3. How to maintain momentum?
-4. What would provide the most value?
-
-Provide a specific, actionable next prompt for Claude.
-"""
-            )
-
-        if request.analysis_type == AnalysisType.ERROR_DIAGNOSIS:
-            return (
-                base_context
-                + """
-Diagnose any errors or issues in the output. Consider:
-1. What went wrong?
-2. Root cause analysis
-3. How to fix the problem?
-4. Prevention strategies
-
-Provide specific recommendations for resolution.
-"""
-            )
-
-        if request.analysis_type == AnalysisType.OBJECTIVE_ALIGNMENT:
-            return (
-                base_context
-                + """
-Evaluate alignment with the user's objective. Consider:
-1. Is the work moving toward the goal?
-2. Are we solving the right problem?
-3. Should we adjust course?
-4. Are there better approaches?
-
-Provide recommendations for maintaining alignment.
-"""
-            )
-
-        return (
-            base_context
-            + """
-Perform general analysis of the Claude Code output and provide insights.
-"""
-        )
-
-    def _build_analysis_code(self, request: AnalysisRequest, prompt: str) -> str:
-        """Build Python code for execution in Jupyter kernel"""
-
-        # Escape strings for Python code
-        escaped_prompt = json.dumps(prompt)
-        escaped_output = json.dumps(request.claude_output)
-        escaped_objective = json.dumps(request.user_objective)
-
-        return f"""
-import json
-from datetime import datetime
-
-# Analysis data
-analysis_prompt = {escaped_prompt}
-claude_output = {escaped_output}
-user_objective = {escaped_objective}
-analysis_type = "{request.analysis_type.value}"
-
-# Perform AI analysis
-# This is where Claude AI analyzes the content and provides insights
-analysis_result = {{
-    "confidence": 0.8,  # AI-determined confidence
-    "findings": [
-        "Analysis finding 1",
-        "Analysis finding 2"
-    ],
-    "recommendations": [
-        "Recommendation 1",
-        "Recommendation 2"
-    ],
-    "next_prompt": "Suggested next prompt based on analysis",
-    "quality_score": 0.85,
-    "progress_indicators": {{
-        "completion_percentage": 60,
-        "blockers_identified": 1,
-        "objectives_met": 3
-    }},
-    "ai_reasoning": "AI's detailed reasoning about the analysis",
-    "metadata": {{
-        "analysis_type": analysis_type,
-        "timestamp": datetime.now().isoformat(),
-        "tokens_analyzed": len(claude_output)
-    }}
-}}
-
-# Output structured result
-print(json.dumps(analysis_result, indent=2))  # noqa: print - required in generated code
-"""
-
-    async def _call_mcp_execute_code(self, code: str) -> str:
-        """
-        Execute analysis using built-in heuristics.
-
-        When running inside Claude Code, we use pattern-based analysis
-        rather than calling Claude to analyze itself.
-        """
-        try:
-            # Extract analysis inputs from code
-            prompt_match = re.search(r'analysis_prompt = "(.*?)"', code, re.DOTALL)
-            output_match = re.search(r'claude_output = "(.*?)"', code, re.DOTALL)
-            objective_match = re.search(r'user_objective = "(.*?)"', code, re.DOTALL)
-
-            analysis_prompt = prompt_match.group(1) if prompt_match else ""
-            claude_output = output_match.group(1) if output_match else ""
-            user_objective = objective_match.group(1) if objective_match else ""
-
-            # Perform heuristic analysis
-            analysis_result = self._perform_heuristic_analysis(
-                claude_output, user_objective, analysis_prompt
-            )
-
-            return json.dumps(analysis_result, indent=2)
-
-        except Exception as e:
-            raise SDKConnectionError(f"Analysis execution failed: {e}")
-
-    def _perform_heuristic_analysis(
-        self, claude_output: str, user_objective: str, analysis_prompt: str
-    ) -> Dict[str, Any]:
-        """
-        Perform pattern-based heuristic analysis of Claude output.
-
-        This uses simple heuristics to evaluate progress without requiring
-        an external Claude API call.
-        """
-        # Calculate confidence based on output characteristics
-        confidence = 0.5  # Base confidence
-
-        # Increase confidence if output is substantial
-        if len(claude_output) > 500:
-            confidence += 0.1
-
-        # Check for completion indicators
-        completion_keywords = ["complete", "finished", "done", "implemented", "added"]
-        if any(keyword in claude_output.lower() for keyword in completion_keywords):
-            confidence += 0.2
-
-        # Check for error indicators
-        error_keywords = ["error", "failed", "issue", "problem", "bug"]
-        if any(keyword in claude_output.lower() for keyword in error_keywords):
-            confidence -= 0.1
-
-        # Ensure confidence is in valid range
-        confidence = max(0.0, min(1.0, confidence))
-
-        # Generate findings based on output analysis
-        findings = []
-        if "test" in claude_output.lower():
-            findings.append("Tests mentioned in output")
-        if "implement" in claude_output.lower():
-            findings.append("Implementation discussed")
-        if "function" in claude_output.lower() or "class" in claude_output.lower():
-            findings.append("Code structure present")
-
-        # Generate recommendations
-        recommendations = []
-        if confidence < 0.6:
-            recommendations.append("Consider clarifying the requirements")
-        if "test" not in claude_output.lower():
-            recommendations.append("Add test coverage")
-        if len(claude_output) < 200:
-            recommendations.append("Provide more detailed implementation")
-
-        # Calculate quality score
-        quality_score = confidence * 0.9  # Slightly lower than confidence
-
-        # Estimate completion percentage
-        completion_percentage = int(confidence * 100)
-
-        return {
-            "confidence": confidence,
-            "findings": findings if findings else ["Analysis in progress"],
-            "recommendations": recommendations
-            if recommendations
-            else ["Continue with current approach"],
-            "next_prompt": self._generate_next_prompt(confidence, user_objective),
-            "quality_score": quality_score,
-            "progress_indicators": {
-                "completion_percentage": completion_percentage,
-                "blockers_identified": 1 if confidence < 0.5 else 0,
-                "objectives_met": 1 if confidence > 0.7 else 0,
-            },
-            "ai_reasoning": f"Heuristic analysis based on output characteristics. Confidence: {confidence:.2f}",
-            "metadata": {
-                "analysis_type": "heuristic",
-                "timestamp": datetime.now().isoformat(),
-                "tokens_analyzed": len(claude_output),
-            },
-        }
-
-    def _generate_next_prompt(self, confidence: float, user_objective: str) -> str:
-        """Generate next prompt based on confidence level"""
-        if confidence < 0.5:
-            return f"Please clarify the approach for: {user_objective[:100]}"
-        if confidence < 0.7:
-            return f"Please continue implementing: {user_objective[:100]}"
-        return f"Please add tests and documentation for: {user_objective[:100]}"
-
-    def _parse_analysis_response(self, request: AnalysisRequest, response: str) -> AnalysisResult:
-        """Parse the AI response into structured AnalysisResult"""
-        try:
-            data = json.loads(response)
-
-            return AnalysisResult(
-                request_id=request.id,
-                session_id=request.session_id,
-                analysis_type=request.analysis_type,
-                confidence=data.get("confidence", 0.0),
-                findings=data.get("findings", []),
-                recommendations=data.get("recommendations", []),
-                next_prompt=data.get("next_prompt"),
-                quality_score=data.get("quality_score", 0.0),
-                progress_indicators=data.get("progress_indicators", {}),
-                ai_reasoning=data.get("ai_reasoning", ""),
-                metadata=data.get("metadata", {}),
-                timestamp=datetime.now(),
-            )
-
-        except json.JSONDecodeError as e:
-            raise AnalysisError(f"Failed to parse AI response: {e}")
 
     def _generate_cache_key(self, request: AnalysisRequest) -> str:
         """Generate cache key for request"""
@@ -646,106 +573,3 @@ print(json.dumps(analysis_result, indent=2))  # noqa: print - required in genera
             "analysis_types": type_counts,
             "cache_hit_rate": len(self.analysis_cache) / total if total > 0 else 0,
         }
-
-    async def synthesize_response(
-        self,
-        session_id: str,
-        prompt: str,
-        user_objective: str,
-        context: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Synthesize a Claude response to a prompt.
-
-        This method simulates Claude's response to an auto-mode generated prompt.
-        In a real implementation, this would call the Claude Agent SDK directly.
-
-        Args:
-            session_id: Session identifier
-            prompt: The prompt to respond to
-            user_objective: User's stated objective
-            context: Additional context
-
-        Returns:
-            Dictionary with 'response' key containing Claude's response text
-        """
-        try:
-            # Validate inputs
-            self._validate_prompt_content(prompt)
-            self._validate_prompt_content(user_objective)
-
-            # Build response synthesis code
-            synthesis_code = self._build_synthesis_code(prompt, user_objective, context)
-
-            # Call MCP function (simulated)
-            response_text = await self._call_mcp_synthesize(synthesis_code)
-
-            return {
-                "response": response_text,
-                "session_id": session_id,
-                "prompt_length": len(prompt),
-                "timestamp": datetime.now().isoformat(),
-            }
-
-        except Exception as e:
-            logger.error(f"Failed to synthesize response: {e}")
-            return None
-
-    def _build_synthesis_code(
-        self, prompt: str, user_objective: str, context: Dict[str, Any]
-    ) -> str:
-        """Build code for response synthesis"""
-        escaped_prompt = json.dumps(prompt)
-        escaped_objective = json.dumps(user_objective)
-        escaped_context = json.dumps(context)
-
-        return f"""
-import json
-
-# Synthesis inputs
-prompt = {escaped_prompt}
-user_objective = {escaped_objective}
-context = {escaped_context}
-
-# Simulate Claude's response to the prompt
-# In real implementation, this would be Claude Agent SDK
-response = f"I understand you want me to work on: {{prompt[:100]}}... " + \\
-    f"Let me help you achieve the objective: {{user_objective[:50]}}... " + \\
-    "I'll start by analyzing the requirements and creating an implementation plan."
-
-print(json.dumps({{"response": response}}))  # noqa: print - required in generated code
-"""
-
-    async def _call_mcp_synthesize(self, code: str) -> str:
-        """
-        Generate synthetic response for testing.
-
-        When running inside Claude Code, synthesis would happen naturally
-        through conversation continuation. This method provides a template
-        response for testing purposes.
-        """
-        try:
-            # Extract prompt from code
-            prompt_match = re.search(r'prompt = "(.*?)"', code, re.DOTALL)
-            objective_match = re.search(r'user_objective = "(.*?)"', code, re.DOTALL)
-
-            prompt = prompt_match.group(1) if prompt_match else "Continue with the objective"
-            objective = objective_match.group(1) if objective_match else "Unknown objective"
-
-            # Generate template response
-            response = (
-                f"I understand the objective: {objective[:100]}\n\n"
-                f"Regarding the task: {prompt[:100]}\n\n"
-                "I'll proceed with a systematic approach:\n"
-                "1. Analyze the requirements\n"
-                "2. Design the solution\n"
-                "3. Implement the code\n"
-                "4. Test the implementation\n"
-                "5. Document the changes\n\n"
-                "Let me know if you'd like me to focus on any specific aspect."
-            )
-
-            return response
-
-        except Exception as e:
-            raise SDKConnectionError(f"Synthesis execution failed: {e}")
