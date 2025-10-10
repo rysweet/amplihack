@@ -529,6 +529,46 @@ def parse_tool_result_content(content):
         return "Unparseable content"
 
 
+def validate_request_tools(request: MessagesRequest) -> bool:
+    """
+    Validate tools in the request before processing to prevent Azure API errors.
+
+    Args:
+        request: The Anthropic request to validate
+
+    Returns:
+        True if tools are valid or not present, False if there are validation errors
+    """
+    if not request.tools:
+        return True  # No tools to validate
+
+    try:
+        for i, tool in enumerate(request.tools):
+            # Check if tool has required attributes
+            if not hasattr(tool, "name") or not tool.name:
+                logger.error(f"Tool {i} missing required 'name' attribute")
+                return False
+
+            if not isinstance(tool.name, str) or not tool.name.strip():
+                logger.error(f"Tool {i} has invalid name: {tool.name}")
+                return False
+
+            # Check for input_schema if it exists
+            if hasattr(tool, "input_schema") and tool.input_schema is not None:
+                if not isinstance(tool.input_schema, dict):
+                    logger.error(
+                        f"Tool {tool.name} has invalid input_schema type: {type(tool.input_schema)}"
+                    )
+                    return False
+
+        logger.debug(f"Validated {len(request.tools)} tools successfully")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error validating tools: {e}")
+        return False
+
+
 def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str, Any]:
     """Convert Anthropic API request format to LiteLLM format (which follows OpenAI)."""
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
@@ -750,70 +790,165 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     if anthropic_request.top_k:
         litellm_request["top_k"] = anthropic_request.top_k
 
-    # Convert tools to OpenAI format
+    # Convert tools to OpenAI format with enhanced validation
     if anthropic_request.tools:
         openai_tools = []
         is_gemini_model = anthropic_request.model.startswith("gemini/")
+        is_azure_model = anthropic_request.model.startswith("azure/")
 
-        for tool in anthropic_request.tools:
-            # Convert to dict if it's a pydantic model
-            if hasattr(tool, "dict"):
-                tool_dict = tool.dict()
-            else:
-                # Ensure tool_dict is a dictionary, handle potential errors if 'tool' isn't dict-like
-                try:
-                    tool_dict = dict(tool) if not isinstance(tool, dict) else tool
-                except (TypeError, ValueError):
-                    logger.error(f"Could not convert tool to dict: {tool}")
-                    continue  # Skip this tool if conversion fails
+        logger.debug(
+            f"Processing {len(anthropic_request.tools)} tools for model {anthropic_request.model}"
+        )
 
-            # Clean the schema if targeting a Gemini model
-            input_schema = tool_dict.get("input_schema", {})
-            if is_gemini_model:
-                logger.debug(f"Cleaning schema for Gemini tool: {tool_dict.get('name')}")
-                input_schema = clean_gemini_schema(input_schema)
+        for i, tool in enumerate(anthropic_request.tools):
+            try:
+                # Convert to dict if it's a pydantic model
+                if hasattr(tool, "dict"):
+                    tool_dict = tool.dict()
+                elif hasattr(tool, "model_dump"):
+                    tool_dict = tool.model_dump()
+                else:
+                    # Ensure tool_dict is a dictionary, handle potential errors if 'tool' isn't dict-like
+                    try:
+                        tool_dict = dict(tool) if not isinstance(tool, dict) else tool
+                    except (TypeError, ValueError):
+                        logger.error(f"Could not convert tool {i} to dict: {tool}")
+                        continue  # Skip this tool if conversion fails
 
-            # Create OpenAI-compatible function tool
-            openai_tool = {
-                "type": "function",
-                "function": {
-                    "name": tool_dict["name"],
-                    "description": tool_dict.get("description", ""),
-                    "parameters": input_schema,  # Use potentially cleaned schema
-                },
-            }
-            openai_tools.append(openai_tool)
+                # Validate required fields before processing
+                tool_name = tool_dict.get("name")
+                if not tool_name or not isinstance(tool_name, str) or not tool_name.strip():
+                    logger.error(f"Tool {i} missing or invalid required 'name' field: {tool_dict}")
+                    continue  # Skip tools without valid names
 
-        litellm_request["tools"] = openai_tools
+                # Validate tool structure
+                if not isinstance(tool_dict, dict):
+                    logger.error(f"Tool {i} is not a valid dictionary: {tool_dict}")
+                    continue
 
-    # Convert tool_choice to OpenAI format if present
-    if anthropic_request.tool_choice:
-        if isinstance(anthropic_request.tool_choice, dict):
-            tool_choice_dict = anthropic_request.tool_choice
-        elif hasattr(anthropic_request.tool_choice, "model_dump"):
-            tool_choice_dict = anthropic_request.tool_choice.model_dump()
-        elif hasattr(anthropic_request.tool_choice, "dict"):
-            tool_choice_dict = anthropic_request.tool_choice.dict()
-        else:
-            # Fallback to treating it as dict-like
-            tool_choice_dict = (
-                dict(anthropic_request.tool_choice) if anthropic_request.tool_choice else {}
+                # Clean the schema if targeting a Gemini model
+                input_schema = tool_dict.get("input_schema", {})
+                if is_gemini_model:
+                    logger.debug(f"Cleaning schema for Gemini tool: {tool_name}")
+                    input_schema = clean_gemini_schema(input_schema)
+
+                # Ensure input_schema is a valid dictionary
+                if not isinstance(input_schema, dict):
+                    logger.warning(f"Tool {tool_name} has invalid input_schema, using empty schema")
+                    input_schema = {}
+
+                # Create OpenAI-compatible function tool with enhanced validation
+                openai_tool = {
+                    "type": "function",
+                    "function": {
+                        "name": tool_name.strip(),  # Ensure no whitespace issues
+                        "description": str(tool_dict.get("description", "")).strip()
+                        or f"Tool: {tool_name}",
+                        "parameters": input_schema,  # Use potentially cleaned schema
+                    },
+                }
+
+                # Additional validation for Azure models
+                if is_azure_model:
+                    # Azure requires certain parameter structure
+                    if not input_schema.get("type"):
+                        input_schema["type"] = "object"
+                    if not input_schema.get("properties"):
+                        input_schema["properties"] = {}
+
+                # Final validation of the constructed tool
+                if not openai_tool["function"]["name"]:
+                    logger.error(f"Tool {i} resulted in empty name after processing")
+                    continue
+
+                openai_tools.append(openai_tool)
+                logger.debug(f"Successfully processed tool {i}: {tool_name}")
+
+            except Exception as e:
+                logger.error(f"Error processing tool {i}: {e}")
+                continue  # Skip problematic tools
+
+        # Final validation: ensure we don't send empty tools array to Azure
+        if openai_tools:
+            litellm_request["tools"] = openai_tools
+            logger.debug(
+                f"Converted {len(openai_tools)} valid tools for model {anthropic_request.model}"
             )
 
-        # Handle Anthropic's tool_choice format
-        choice_type = tool_choice_dict.get("type")
-        if choice_type == "auto":
-            litellm_request["tool_choice"] = "auto"
-        elif choice_type == "any":
-            litellm_request["tool_choice"] = "any"
-        elif choice_type == "tool" and "name" in tool_choice_dict:
-            litellm_request["tool_choice"] = {
-                "type": "function",
-                "function": {"name": tool_choice_dict["name"]},
-            }
+            # Additional logging for Azure models to help debug
+            if is_azure_model:
+                for i, tool in enumerate(openai_tools):
+                    logger.debug(
+                        f"Azure tool {i}: name='{tool['function']['name']}', "
+                        f"has_params={bool(tool['function']['parameters'])}"
+                    )
         else:
-            # Default to auto if we can't determine
-            litellm_request["tool_choice"] = "auto"
+            # Don't include tools parameter if no valid tools
+            logger.warning(
+                "No valid tools found after conversion - omitting tools parameter entirely"
+            )
+            # Ensure tools key is not present to avoid Azure API errors
+            litellm_request.pop("tools", None)
+
+    # Convert tool_choice to OpenAI format if present (with validation)
+    if anthropic_request.tool_choice:
+        # Only process tool_choice if we have valid tools
+        if litellm_request.get("tools"):
+            try:
+                if isinstance(anthropic_request.tool_choice, dict):
+                    tool_choice_dict = anthropic_request.tool_choice
+                elif hasattr(anthropic_request.tool_choice, "model_dump"):
+                    tool_choice_dict = anthropic_request.tool_choice.model_dump()
+                elif hasattr(anthropic_request.tool_choice, "dict"):
+                    tool_choice_dict = anthropic_request.tool_choice.dict()
+                else:
+                    # Fallback to treating it as dict-like
+                    tool_choice_dict = (
+                        dict(anthropic_request.tool_choice) if anthropic_request.tool_choice else {}
+                    )
+
+                # Handle Anthropic's tool_choice format
+                choice_type = tool_choice_dict.get("type")
+                if choice_type == "auto":
+                    litellm_request["tool_choice"] = "auto"
+                elif choice_type == "any":
+                    litellm_request["tool_choice"] = "any"
+                elif choice_type == "tool" and "name" in tool_choice_dict:
+                    # Validate that the specified tool exists in our tools list
+                    tool_name = tool_choice_dict["name"]
+                    tool_exists = False
+                    for tool in litellm_request["tools"]:
+                        if tool.get("function", {}).get("name") == tool_name:
+                            tool_exists = True
+                            break
+
+                    if tool_exists:
+                        litellm_request["tool_choice"] = {
+                            "type": "function",
+                            "function": {"name": tool_name},
+                        }
+                        logger.debug(f"Set tool_choice to specific tool: {tool_name}")
+                    else:
+                        logger.warning(
+                            f"Tool choice specifies non-existent tool '{tool_name}', defaulting to auto"
+                        )
+                        litellm_request["tool_choice"] = "auto"
+                else:
+                    # Default to auto if we can't determine or invalid format
+                    logger.warning(
+                        f"Invalid tool_choice format: {tool_choice_dict}, defaulting to auto"
+                    )
+                    litellm_request["tool_choice"] = "auto"
+
+            except Exception as e:
+                logger.error(f"Error processing tool_choice: {e}, defaulting to auto")
+                litellm_request["tool_choice"] = "auto"
+        else:
+            # If no tools are present but tool_choice is specified, log warning and omit
+            logger.warning(
+                "tool_choice specified but no valid tools present - omitting tool_choice"
+            )
+            # Don't include tool_choice if no tools
 
     return litellm_request
 
@@ -1310,6 +1445,13 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             clean_model = clean_model[len("openai/") :]
 
         logger.debug(f"📊 PROCESSING REQUEST: Model={request.model}, Stream={request.stream}")
+
+        # Validate tools before processing to prevent Azure API errors
+        if not validate_request_tools(request):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid tools in request. All tools must have a valid 'name' field.",
+            )
 
         # Check if this is a Claude model and passthrough mode is enabled
         if PASSTHROUGH_MODE and passthrough_handler and clean_model.startswith("claude-"):
