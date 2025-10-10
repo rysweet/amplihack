@@ -52,7 +52,7 @@ def check_settings_json_hooks(settings_path: Optional[Path] = None) -> Dict[str,
         return {"status": "no_settings", "message": "No settings.json found"}
 
     try:
-        with open(settings_path, "r") as f:
+        with open(settings_path) as f:
             settings = json.load(f)
 
         hooks = settings.get("hooks", {})

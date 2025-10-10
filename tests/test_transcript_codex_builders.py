@@ -62,7 +62,7 @@ class TestClaudeTranscriptBuilder(unittest.TestCase):
         self.assertTrue(Path(transcript_path).exists())
 
         # Check content
-        with open(transcript_path, "r") as f:
+        with open(transcript_path) as f:
             content = f.read()
             self.assertIn(self.test_session_id, content)
             self.assertIn("Hello, can you help me with Python?", content)
@@ -107,7 +107,7 @@ class TestClaudeTranscriptBuilder(unittest.TestCase):
         self.assertTrue(Path(codex_path).exists())
 
         # Check content structure
-        with open(codex_path, "r") as f:
+        with open(codex_path) as f:
             codex_data = json.load(f)
 
             self.assertIn("session_metadata", codex_data)
@@ -233,7 +233,7 @@ class TestCodexTranscriptsBuilder(unittest.TestCase):
         self.assertTrue(Path(codex_path).exists())
 
         # Check content structure
-        with open(codex_path, "r") as f:
+        with open(codex_path) as f:
             codex_data = json.load(f)
 
             self.assertIn("metadata", codex_data)
@@ -248,7 +248,7 @@ class TestCodexTranscriptsBuilder(unittest.TestCase):
         self.assertTrue(Path(corpus_path).exists())
 
         # Check content structure
-        with open(corpus_path, "r") as f:
+        with open(corpus_path) as f:
             corpus_data = json.load(f)
 
             self.assertIn("metadata", corpus_data)
@@ -262,7 +262,7 @@ class TestCodexTranscriptsBuilder(unittest.TestCase):
         self.assertTrue(Path(report_path).exists())
 
         # Check content structure
-        with open(report_path, "r") as f:
+        with open(report_path) as f:
             report_data = json.load(f)
 
             self.assertIn("executive_summary", report_data)
@@ -275,7 +275,7 @@ class TestCodexTranscriptsBuilder(unittest.TestCase):
         tools_codex_path = self.builder.build_focused_codex("tools")
         self.assertTrue(Path(tools_codex_path).exists())
 
-        with open(tools_codex_path, "r") as f:
+        with open(tools_codex_path) as f:
             tools_data = json.load(f)
             self.assertEqual(tools_data["focus"], "tools")
 
@@ -344,24 +344,22 @@ class TestExportOnCompactIntegration(unittest.TestCase):
             self.integration.transcript_builder,
             "build_session_transcript",
             return_value="transcript_path",
+        ), patch.object(
+            self.integration.transcript_builder,
+            "build_session_summary",
+            return_value={"message_count": 1},
+        ), patch.object(
+            self.integration.transcript_builder,
+            "export_for_codex",
+            return_value="codex_path",
         ):
-            with patch.object(
-                self.integration.transcript_builder,
-                "build_session_summary",
-                return_value={"message_count": 1},
-            ):
-                with patch.object(
-                    self.integration.transcript_builder,
-                    "export_for_codex",
-                    return_value="codex_path",
-                ):
-                    result = self.integration.process(test_input)
+            result = self.integration.process(test_input)
 
-                    self.assertEqual(result["status"], "success")
-                    self.assertIn("exports", result)
-                    self.assertIn("transcript", result["exports"])
-                    self.assertIn("summary", result["exports"])
-                    self.assertIn("codex_export", result["exports"])
+            self.assertEqual(result["status"], "success")
+            self.assertIn("exports", result)
+            self.assertIn("transcript", result["exports"])
+            self.assertIn("summary", result["exports"])
+            self.assertIn("codex_export", result["exports"])
 
     def test_list_available_sessions(self):
         """Test listing available sessions."""
@@ -431,7 +429,7 @@ class TestIntegrationFlow(unittest.TestCase):
             self.assertTrue(Path(codex_path).exists())
 
             # Verify files exist and have correct structure
-            with open(codex_path, "r") as f:
+            with open(codex_path) as f:
                 codex_data = json.load(f)
                 self.assertIn("session_metadata", codex_data)
                 self.assertIn("raw_messages", codex_data)

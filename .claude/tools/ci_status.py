@@ -25,7 +25,9 @@ def run_gh_command(args: List[str], timeout: int = 30) -> Tuple[int, str, str]:
         Tuple of (return_code, stdout, stderr)
     """
     try:
-        result = subprocess.run(["gh"] + args, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(
+            ["gh"] + args, check=False, capture_output=True, text=True, timeout=timeout
+        )
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return 1, "", "Command timed out after 30 seconds"
@@ -39,7 +41,11 @@ def get_current_branch() -> Optional[str]:
     """Get the current git branch name."""
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True, timeout=5
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -314,9 +320,7 @@ def main():
         print(format_summary(result))
 
     # Exit code based on status
-    if not result.get("success"):
-        sys.exit(1)
-    elif result.get("status") == "FAILING":
+    if not result.get("success") or result.get("status") == "FAILING":
         sys.exit(1)
     else:
         sys.exit(0)

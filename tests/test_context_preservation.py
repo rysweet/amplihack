@@ -154,7 +154,7 @@ Implement conversation transcript and original request preservation for amplihac
         transcript_path = self.preserver.export_conversation_transcript(conversation_data)
 
         self.assertTrue(Path(transcript_path).exists())
-        with open(transcript_path, "r") as f:
+        with open(transcript_path) as f:
             content = f.read()
         self.assertIn("Conversation Transcript", content)
 

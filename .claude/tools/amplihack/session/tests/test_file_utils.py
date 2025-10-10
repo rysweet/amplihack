@@ -107,9 +107,8 @@ class TestFileLock:
         # Create lock file manually
         lock_file.touch()
 
-        with pytest.raises(TimeoutError):
-            with file_lock(lock_file, timeout=0.1):
-                pass
+        with pytest.raises(TimeoutError), file_lock(lock_file, timeout=0.1):
+            pass
 
     def test_lock_cleanup_on_error(self, temp_dir):
         """Test lock cleanup on exception."""

@@ -45,6 +45,7 @@ class RepositoryCreator:
             # Check if gh is installed
             result = subprocess.run(
                 ["gh", "--version"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=5,
@@ -56,6 +57,7 @@ class RepositoryCreator:
             # Check authentication status
             auth_result = subprocess.run(
                 ["gh", "auth", "status"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=5,
@@ -187,6 +189,7 @@ class RepositoryCreator:
             # Create repository
             result = subprocess.run(
                 gh_command,
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=60,
@@ -206,6 +209,7 @@ class RepositoryCreator:
                 # Try to get URL from git remote
                 remote_result = subprocess.run(
                     ["git", "remote", "get-url", "origin"],
+                    check=False,
                     cwd=bundle_path,
                     capture_output=True,
                     text=True,
@@ -221,6 +225,7 @@ class RepositoryCreator:
                 # Get current user
                 user_result = subprocess.run(
                     ["gh", "api", "user", "--jq", ".login"],
+                    check=False,
                     capture_output=True,
                     text=True,
                     timeout=5,
@@ -279,6 +284,7 @@ class RepositoryCreator:
         try:
             result = subprocess.run(
                 command,
+                check=False,
                 cwd=cwd,
                 capture_output=True,
                 text=True,
@@ -327,6 +333,7 @@ class RepositoryCreator:
 
             result = subprocess.run(
                 ["gh", "repo", "delete", repository, "--yes"],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=30,
@@ -369,6 +376,7 @@ class RepositoryCreator:
         try:
             result = subprocess.run(
                 ["gh", "repo", "view", repository],
+                check=False,
                 capture_output=True,
                 text=True,
                 timeout=10,

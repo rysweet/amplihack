@@ -18,23 +18,23 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "tools" / "amplihack" / "r
 def get_session_messages(input_data: Dict[str, Any]) -> List[Dict]:
     """Extract session messages from input."""
     # Direct messages have highest priority
-    if "messages" in input_data and input_data["messages"]:
+    if input_data.get("messages"):
         return input_data["messages"]
 
     # Try reading from transcript if provided
     transcript_path = input_data.get("transcript_path")
     if transcript_path and os.path.exists(transcript_path):
         try:
-            with open(transcript_path, "r") as f:
+            with open(transcript_path) as f:
                 content = f.read().strip()
                 if content:
                     # Try parsing as JSON
                     data = json.loads(content)
                     if isinstance(data, list):
                         return data
-                    elif isinstance(data, dict) and "messages" in data:
+                    if isinstance(data, dict) and "messages" in data:
                         return data["messages"]
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
 
     return []

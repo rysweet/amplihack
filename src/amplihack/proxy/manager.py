@@ -3,6 +3,7 @@
 import atexit
 import os
 import signal
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -27,7 +28,11 @@ class ProxyManager:
         self.env_manager = ProxyEnvironment()
         # Read PORT from proxy_config if available, otherwise use default
         if proxy_config and proxy_config.get("PORT"):
-            self.proxy_port = int(proxy_config.get("PORT"))
+            port_str = proxy_config.get("PORT")
+            # Handle quoted port values
+            if isinstance(port_str, str):
+                port_str = port_str.strip('"').strip("'")
+            self.proxy_port = int(port_str)
             print(f"Using proxy port from config: {self.proxy_port}")
         else:
             self.proxy_port = 8080  # Default port
@@ -77,11 +82,29 @@ class ProxyManager:
 
         # Copy .env file to proxy directory
         try:
+            # Log what we're writing for debugging
+            print(f"Writing proxy configuration to {target_env}")
+            print(f"Configuration keys: {list(self.proxy_config.config.keys())}")
+            if "PORT" in self.proxy_config.config:
+                print(f"PORT configuration: {self.proxy_config.config['PORT']}")
+
             self.proxy_config.save_to(target_env)
-            print(f"Copied proxy configuration to {target_env}")
+
+            # Verify the file was written correctly
+            if target_env.exists():
+                with open(target_env, "r") as f:
+                    content = f.read()
+                    if "PORT=" in content:
+                        print(f"Successfully wrote PORT configuration to {target_env}")
+                    else:
+                        print("WARNING: PORT not found in written .env file")
+
             return True
         except Exception as e:
             print(f"Failed to copy proxy configuration: {e}")
+            import traceback
+
+            traceback.print_exc()
             return False
 
     def start_proxy(self) -> bool:
@@ -110,27 +133,54 @@ class ProxyManager:
             # Install Python dependencies if needed
             if requirements_txt.exists():
                 print("Installing Python proxy dependencies...")
-                # Try uv first (preferred in uvx context), fall back to pip
+                # Try uv first (preferred in uvx context), fall back to pip3/pip
+                # Note: uv needs --system flag to install outside a virtual environment
                 pip_commands = [
-                    ["uv", "pip", "install", "-r", "requirements.txt"],
+                    ["uv", "pip", "install", "--system", "-r", "requirements.txt"],
+                    ["python3", "-m", "pip", "install", "-r", "requirements.txt"],
+                    ["pip3.13", "install", "-r", "requirements.txt"],
+                    ["pip3", "install", "-r", "requirements.txt"],
                     ["pip", "install", "-r", "requirements.txt"],
                 ]
 
                 install_result = None
+                install_success = False
                 for pip_cmd in pip_commands:
-                    install_result = subprocess.run(
-                        pip_cmd,
-                        cwd=str(proxy_repo),
-                        capture_output=True,
-                        text=True,
-                    )
-                    if install_result.returncode == 0:
-                        print("Python dependencies installed successfully")
-                        break
-                else:
-                    print("Failed to install Python dependencies")
-                    if install_result:
-                        print(f"Error: {install_result.stderr}")
+                    try:
+                        print(f"  Trying: {' '.join(pip_cmd)}")
+                        # First check if the command exists
+                        which_result = subprocess.run(
+                            ["which", pip_cmd[0]], capture_output=True, text=True
+                        )
+                        if which_result.returncode != 0:
+                            print(f"  {pip_cmd[0]} not found, trying next option...")
+                            continue
+
+                        install_result = subprocess.run(
+                            pip_cmd,
+                            check=False,
+                            cwd=str(proxy_repo),
+                            capture_output=True,
+                            text=True,
+                        )
+                        if install_result.returncode == 0:
+                            print("  ✓ Python dependencies installed successfully")
+                            install_success = True
+                            break
+                        else:
+                            if install_result.stderr and "not found" not in install_result.stderr:
+                                print(f"  Failed: {install_result.stderr[:200]}")
+                    except FileNotFoundError:
+                        print(f"  {pip_cmd[0]} not found, trying next option...")
+                        continue
+                    except Exception as e:
+                        print(f"  Error: {e}")
+                        continue
+
+                if not install_success:
+                    print("Failed to install Python dependencies with any method")
+                    if install_result and install_result.stderr:
+                        print(f"Last error: {install_result.stderr}")
                     return False
 
             # Install npm dependencies if needed
@@ -139,7 +189,11 @@ class ProxyManager:
                 if not node_modules.exists():
                     print("Installing npm proxy dependencies...")
                     install_result = subprocess.run(
-                        ["npm", "install"], cwd=str(proxy_repo), capture_output=True, text=True
+                        ["npm", "install"],
+                        check=False,
+                        cwd=str(proxy_repo),
+                        capture_output=True,
+                        text=True,
                     )
                     if install_result.returncode != 0:
                         print(f"Failed to install npm dependencies: {install_result.stderr}")
@@ -152,27 +206,49 @@ class ProxyManager:
             # Create environment for the proxy process
             proxy_env = os.environ.copy()
             if self.proxy_config:
-                proxy_env.update(self.proxy_config.to_env_dict())
-            # Ensure PORT is set for the proxy process
+                # Add all config values to environment
+                config_dict = self.proxy_config.to_env_dict()
+                proxy_env.update(config_dict)
+                print(f"Added {len(config_dict)} configuration values to proxy environment")
+            # Ensure PORT is set for the proxy process (override any existing value)
             proxy_env["PORT"] = str(self.proxy_port)
+            print(f"Proxy environment PORT set to: {proxy_env.get('PORT')}")
 
             # Check if we should use 'npm start' or 'python' based on project structure
             start_command = ["npm", "start"]
             if (proxy_repo / "start_proxy.py").exists():
-                # It's a Python project - try uv run first, fall back to python
+                # It's a Python project - try uv run first, fall back to python3/python
                 # Check if uv is available
-                uv_check = subprocess.run(["which", "uv"], capture_output=True, shell=True)
+                uv_check = subprocess.run(
+                    ["which", "uv"], check=False, capture_output=True, shell=True
+                )
                 if uv_check.returncode == 0:
                     start_command = ["uv", "run", "python", "start_proxy.py"]
                 else:
-                    start_command = ["python", "start_proxy.py"]
+                    # Try python3 first, then python
+                    python3_check = subprocess.run(
+                        ["which", "python3"], check=False, capture_output=True, shell=True
+                    )
+                    if python3_check.returncode == 0:
+                        start_command = ["python3", "start_proxy.py"]
+                    else:
+                        start_command = ["python", "start_proxy.py"]
             elif (proxy_repo / "src" / "proxy.py").exists():
                 # Alternative Python structure
-                uv_check = subprocess.run(["which", "uv"], capture_output=True, shell=True)
+                uv_check = subprocess.run(
+                    ["which", "uv"], check=False, capture_output=True, shell=True
+                )
                 if uv_check.returncode == 0:
                     start_command = ["uv", "run", "python", "-m", "src.proxy"]
                 else:
-                    start_command = ["python", "-m", "src.proxy"]
+                    # Try python3 first, then python
+                    python3_check = subprocess.run(
+                        ["which", "python3"], check=False, capture_output=True, shell=True
+                    )
+                    if python3_check.returncode == 0:
+                        start_command = ["python3", "-m", "src.proxy"]
+                    else:
+                        start_command = ["python", "-m", "src.proxy"]
 
             self.proxy_process = subprocess.Popen(
                 start_command,
@@ -195,9 +271,28 @@ class ProxyManager:
             if self.proxy_process.poll() is not None:
                 stdout, stderr = self.proxy_process.communicate(timeout=0.1)
                 print(f"Proxy failed to start. Exit code: {self.proxy_process.returncode}")
+                if stdout:
+                    print(f"Standard output: {stdout}")
                 if stderr:
                     print(f"Error output: {stderr}")
                 return False
+
+            # Verify the proxy is listening on the expected port
+            max_attempts = 5
+            for attempt in range(max_attempts):
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.settimeout(1)
+                        result = s.connect_ex(("127.0.0.1", self.proxy_port))
+                        if result == 0:
+                            print(f"✓ Verified proxy is listening on port {self.proxy_port}")
+                            break
+                except Exception:
+                    pass
+                if attempt < max_attempts - 1:
+                    time.sleep(1)
+            else:
+                print(f"WARNING: Could not verify proxy is listening on port {self.proxy_port}")
 
             # Set up environment variables
             api_key = self.proxy_config.get("ANTHROPIC_API_KEY") if self.proxy_config else None

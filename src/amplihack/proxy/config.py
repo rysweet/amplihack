@@ -23,7 +23,7 @@ class ProxyConfig:
         if not self.config_path or not self.config_path.exists():
             return
 
-        with open(self.config_path, "r") as f:
+        with open(self.config_path) as f:
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
@@ -33,7 +33,22 @@ class ProxyConfig:
                 if "=" in line:
                     key, value = line.split("=", 1)
                     key = key.strip()
-                    value = value.strip().strip('"').strip("'")
+                    # Strip quotes but preserve any inline comments
+                    value = value.strip()
+                    # Remove outer quotes if they exist
+                    if value.startswith('"') and '"' in value[1:]:
+                        # Find the closing quote
+                        end_quote = value.index('"', 1)
+                        value = value[1:end_quote]
+                    elif value.startswith("'") and "'" in value[1:]:
+                        # Find the closing quote
+                        end_quote = value.index("'", 1)
+                        value = value[1:end_quote]
+                    else:
+                        # No quotes, strip any trailing comments if present
+                        if "#" in value:
+                            value = value.split("#")[0].strip()
+                        value = value.strip('"').strip("'")
                     self.config[key] = value
 
     def validate(self) -> bool:
@@ -79,5 +94,13 @@ class ProxyConfig:
         """
         target_path.parent.mkdir(parents=True, exist_ok=True)
         with open(target_path, "w") as f:
+            # Write all configuration values, properly handling quotes
             for key, value in self.config.items():
-                f.write(f"{key}={value}\n")
+                # Remove any extra quotes that may have been added during parsing
+                value = value.strip('"').strip("'")
+                # Check if value needs quotes (contains spaces or special chars)
+                if " " in value or "\t" in value or "\n" in value or "#" in value:
+                    f.write(f'{key}="{value}"\n')
+                else:
+                    f.write(f"{key}={value}\n")
+        print(f"Wrote {len(self.config)} configuration values to {target_path}")

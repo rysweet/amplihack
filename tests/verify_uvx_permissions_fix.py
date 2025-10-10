@@ -84,7 +84,7 @@ def simulate_fresh_uvx_installation():
             print("❌ settings.json was not created!")
             return False
 
-        with open(settings_path, "r") as f:
+        with open(settings_path) as f:
             final_settings = json.load(f)
 
         print("\n🔍 Verifying UVX permissions configuration...")
@@ -176,7 +176,7 @@ def demonstrate_existing_settings_preservation():
             return False
 
         # Verify preservation
-        with open(settings_path, "r") as f:
+        with open(settings_path) as f:
             merged_settings = json.load(f)
 
         # Should preserve user customizations
@@ -249,9 +249,8 @@ def validate_permission_coverage():
             f"\n🎯 All {len([tool for tools in tool_categories.values() for tool in tools])} essential tools are pre-approved"
         )
         return True
-    else:
-        print("\n❌ Some essential tools are missing from the allowlist")
-        return False
+    print("\n❌ Some essential tools are missing from the allowlist")
+    return False
 
 
 def main():
@@ -305,10 +304,9 @@ def main():
         print("   • Amplihack hooks are automatically configured")
         print("\n🚀 UVX users will now have a smooth, permission-dialog-free experience!")
         return 0
-    else:
-        print("❌ SOME TESTS FAILED - Fix needs more work")
-        print("=" * 70)
-        return 1
+    print("❌ SOME TESTS FAILED - Fix needs more work")
+    print("=" * 70)
+    return 1
 
 
 if __name__ == "__main__":

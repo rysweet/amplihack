@@ -18,7 +18,7 @@ def _load_stagers():
     """Load UVX stager classes dynamically."""
     try:
         from amplihack.utils.uvx_staging import UVXStager  # noqa: I001
-        from amplihack.utils.uvx_staging_enhanced import EnhancedUVXStager  # noqa: I001
+        from amplihack.utils.uvx_staging_enhanced import EnhancedUVXStager
 
         return UVXStager, EnhancedUVXStager
     except ImportError:

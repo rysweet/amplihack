@@ -121,7 +121,7 @@ class ClaudeLauncher:
             print(f"Successfully checked out repository to: {repo_path}")
             return True
         except Exception as e:
-            print(f"Repository checkout failed: {str(e)}")
+            print(f"Repository checkout failed: {e!s}")
             return False
 
     def _find_target_directory(self) -> Optional[Path]:
@@ -141,12 +141,10 @@ class ClaudeLauncher:
             project_root = self.detector.get_project_root(claude_dir)
             if project_root.exists() and project_root.is_dir():
                 return project_root
-            else:
-                print(f"Project root is not accessible: {project_root}")
-                return None
-        else:
-            # No .claude directory found - use current directory
-            return Path.cwd()
+            print(f"Project root is not accessible: {project_root}")
+            return None
+        # No .claude directory found - use current directory
+        return Path.cwd()
 
     def _handle_directory_change(self, target_dir: Path) -> bool:
         """Handle directory change based on execution mode.
@@ -261,24 +259,23 @@ class ClaudeLauncher:
                 cmd.extend(["--run-with"] + claude_args)
 
             return cmd
-        else:
-            # Standard claude command
-            cmd = [claude_binary, "--dangerously-skip-permissions"]
+        # Standard claude command
+        cmd = [claude_binary, "--dangerously-skip-permissions"]
 
-            # Add system prompt if provided
-            if self.append_system_prompt and self.append_system_prompt.exists():
-                cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
+        # Add system prompt if provided
+        if self.append_system_prompt and self.append_system_prompt.exists():
+            cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
 
-            # Add --add-dir arguments if UVX mode and we have a target directory
-            # Use cached decision to avoid re-checking
-            if self._target_directory and self._cached_uvx_decision:
-                cmd.extend(["--add-dir", str(self._target_directory)])
+        # Add --add-dir arguments if UVX mode and we have a target directory
+        # Use cached decision to avoid re-checking
+        if self._target_directory and self._cached_uvx_decision:
+            cmd.extend(["--add-dir", str(self._target_directory)])
 
-            # Add forwarded Claude arguments
-            if self.claude_args:
-                cmd.extend(self.claude_args)
+        # Add forwarded Claude arguments
+        if self.claude_args:
+            cmd.extend(self.claude_args)
 
-            return cmd
+        return cmd
 
     def launch(self) -> int:
         """Launch Claude Code with configuration.
@@ -313,6 +310,21 @@ class ClaudeLauncher:
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+            # Include proxy environment variables if proxy is configured
+            if self.proxy_manager and self.proxy_manager.is_running():
+                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
+                    proxy_port=self.proxy_manager.proxy_port,
+                    config=self.proxy_manager.proxy_config.to_env_dict()
+                    if self.proxy_manager.proxy_config
+                    else None,
+                )
+                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
+                if proxy_env.get("ANTHROPIC_BASE_URL"):
+                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
+                if proxy_env.get("ANTHROPIC_API_KEY"):
+                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
+                print(f"✓ Configured Claude to use proxy at {proxy_env.get('ANTHROPIC_BASE_URL')}")
 
             # Launch Claude
             self.claude_process = subprocess.Popen(cmd, env=env)
@@ -371,6 +383,21 @@ class ClaudeLauncher:
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+            # Include proxy environment variables if proxy is configured
+            if self.proxy_manager and self.proxy_manager.is_running():
+                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
+                    proxy_port=self.proxy_manager.proxy_port,
+                    config=self.proxy_manager.proxy_config.to_env_dict()
+                    if self.proxy_manager.proxy_config
+                    else None,
+                )
+                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
+                if proxy_env.get("ANTHROPIC_BASE_URL"):
+                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
+                if proxy_env.get("ANTHROPIC_API_KEY"):
+                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
+                print(f"✓ Configured Claude to use proxy at {proxy_env.get('ANTHROPIC_BASE_URL')}")
 
             # Launch Claude with direct I/O (interactive mode)
             exit_code = subprocess.call(cmd, env=env)

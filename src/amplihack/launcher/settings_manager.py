@@ -206,7 +206,7 @@ class SettingsManager:
                 return False
 
             # Read session state
-            with open(self.session_state_file, "r") as f:
+            with open(self.session_state_file) as f:
                 state_data = json.load(f)
 
             # Validate state data

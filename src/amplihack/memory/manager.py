@@ -94,8 +94,7 @@ class MemoryManager:
         # Store in database
         if self.db.store_memory(memory):
             return memory_id
-        else:
-            raise RuntimeError(f"Failed to store memory: {title}")
+        raise RuntimeError(f"Failed to store memory: {title}")
 
     def retrieve(
         self,
