@@ -13,9 +13,6 @@ import pytest
 
 from amplihack.security.xpia_hooks import ClaudeCodeXPIAHook, XPIAHookAdapter
 
-# Skip all async tests for now to prevent CI timeout
-pytestmark = pytest.mark.skip(reason="Async tests cause CI timeout - needs pytest-asyncio fix")
-
 
 class TestXPIAHookAdapter:
     """Test suite for XPIAHookAdapter"""

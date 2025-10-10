@@ -22,11 +22,6 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-# Skip all tests in this file to prevent CI timeout
-pytestmark = pytest.mark.skip(
-    reason="Async tests cause CI timeout at 91% - needs pytest-asyncio fix"
-)
-
 # Import XPIA Defense components
 from Specs.xpia_defense_interface import (
     AgentCommunicationSecurity,

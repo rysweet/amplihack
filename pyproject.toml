@@ -85,9 +85,6 @@ addopts = [
     "--strict-markers",
     "--tb=short",
 ]
-# Async test configuration
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
 # Add src directory to Python path for module discovery
 pythonpath = ["src"]
 # Exclude standalone test scripts from collection
