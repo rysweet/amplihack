@@ -222,6 +222,8 @@ class ConversationAnalysisEngine:
         Call REAL Claude Agent SDK to analyze content.
 
         Uses claude_agent_sdk.query() to send prompt and get AI response.
+
+        Note: Requires Claude Code CLI version 2.0.0 or higher.
         """
         try:
             # Collect all response chunks from Claude
@@ -238,6 +240,22 @@ class ConversationAnalysisEngine:
 
         except Exception as e:
             logger.error(f"Claude SDK call failed: {e}")
+
+            # Check if error is due to version incompatibility
+            error_str = str(e)
+            if "unsupported" in error_str.lower() or "version" in error_str.lower():
+                raise SDKConnectionError(
+                    f"Claude Agent SDK failed due to version incompatibility. "
+                    f"Claude Code CLI version 2.0.0+ is required. "
+                    f"Error: {e}"
+                )
+            if "unknown option" in error_str.lower():
+                raise SDKConnectionError(
+                    f"Claude Agent SDK failed due to CLI incompatibility. "
+                    f"Please upgrade Claude Code CLI to version 2.0.0+. "
+                    f"Error: {e}"
+                )
+
             raise SDKConnectionError(f"Failed to call Claude Agent SDK: {e}")
 
     def _build_analysis_prompt(self, request: AnalysisRequest) -> str:
