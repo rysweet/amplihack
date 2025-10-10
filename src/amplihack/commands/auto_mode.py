@@ -93,23 +93,44 @@ class AutoModeCommand:
                 print(f"Progress: {progress.get('progress_percentage', 0)}%")
                 print(f"Confidence: {current_state.get('confidence', 0.0):.2f}")
 
-                # TODO(PR #695): Complete SDK integration for autonomous execution
-                # Current implementation structure is in place, but needs:
-                # 1. Generate next prompt from AI analysis (via orchestrator.get_next_action())
-                # 2. Execute prompt via Claude SDK (mcp__ide__executeCode)
-                # 3. Process Claude's output (via orchestrator.process_claude_output())
-                # 4. Loop until objective achieved
-                #
-                # The simplified interface is complete - this is the implementation gap.
-                # See: src/amplihack/sdk/state_integration.py for SDK integration details
+                # Get next action from orchestrator
+                next_action_result = await self.orchestrator.get_next_action(current_state)
 
-                print("\n⚠️  Implementation Note:")
-                print("The simplified auto-mode interface is complete, but SDK integration")
-                print("for autonomous execution is still in progress (PR #695).")
+                if not next_action_result:
+                    # No next action means objective complete or stuck
+                    print("\n✅ Objective complete or no further actions available")
+                    return 0
+
+                # Send prompt to Claude via SDK
+                prompt = next_action_result.get("prompt", "")
+                if not prompt:
+                    print("\n⚠️  No prompt generated - manual intervention may be needed")
+                    return 1
+
+                print(f"\n📤 Sending to Claude: {prompt[:150]}...")
+
+                # Execute via SDK and get response
+                response = await self.orchestrator.send_prompt_to_claude(prompt)
+
+                if not response:
+                    print("\n❌ Failed to get response from Claude")
+                    return 1
+
+                print(f"📥 Received response ({len(response)} chars)")
+
+                # Process response and update state
+                process_result = await self.orchestrator.process_claude_output(response)
+
+                # Check if we should continue
+                if not process_result.get("should_continue", True):
+                    print("\n✅ Objective achieved!")
+                    print(f"Final confidence: {process_result.get('confidence', 0.0):.2f}")
+                    return 0
+
+                # Show iteration summary
                 print(
-                    "\nCurrent status: Interface defined, orchestrator integrated, SDK connection pending"
+                    f"✓ Iteration complete - confidence: {process_result.get('confidence', 0.0):.2f}"
                 )
-                return 1  # Return error code to indicate incomplete implementation
 
             if iteration >= max_iterations:
                 print(f"\n⏱️  Max iterations ({max_iterations}) reached")
