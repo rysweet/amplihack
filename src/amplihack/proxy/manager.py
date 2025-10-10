@@ -471,25 +471,19 @@ class ProxyManager:
             List of command arguments, or None if unable to determine.
         """
         # Method 1: Try import-based detection (fastest and most reliable)
-        try:
-            # Try to import from installed package first (pip/uvx scenario)
-            import amplihack.proxy.server
+        import importlib.util
+
+        # Try to find installed package first (pip/uvx scenario)
+        if importlib.util.find_spec("amplihack.proxy.server"):
             module_path = "amplihack.proxy.server"
             print(f"Detected installed package, using module: {module_path}")
             return [sys.executable, "-m", module_path]
-        except (ImportError, SyntaxError) as e:
-            # SyntaxError can occur if there are merge conflicts in the imported files
-            pass
 
-        try:
-            # Try to import from source directory (development scenario)
-            import src.amplihack.proxy.server
+        # Try to find source directory (development scenario)
+        if importlib.util.find_spec("src.amplihack.proxy.server"):
             module_path = "src.amplihack.proxy.server"
             print(f"Detected source directory, using module: {module_path}")
             return [sys.executable, "-m", module_path]
-        except (ImportError, SyntaxError) as e:
-            # SyntaxError can occur if there are merge conflicts in the imported files
-            pass
 
         # Method 2: File-based execution as fallback
         # This works universally but requires locating the actual file
@@ -503,9 +497,21 @@ class ProxyManager:
             # One level up in src structure
             current_file.parent.parent / "proxy" / "server.py",
             # Check common installation locations
-            Path(sys.prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages" / "amplihack" / "proxy" / "server.py",
+            Path(sys.prefix)
+            / "lib"
+            / f"python{sys.version_info.major}.{sys.version_info.minor}"
+            / "site-packages"
+            / "amplihack"
+            / "proxy"
+            / "server.py",
             # Also check site-packages directly in case of virtual environment
-            Path(sys.executable).parent.parent / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages" / "amplihack" / "proxy" / "server.py",
+            Path(sys.executable).parent.parent
+            / "lib"
+            / f"python{sys.version_info.major}.{sys.version_info.minor}"
+            / "site-packages"
+            / "amplihack"
+            / "proxy"
+            / "server.py",
         ]
 
         for server_path in server_candidates:
@@ -538,15 +544,12 @@ except Exception:
     sys.exit(1)
 """
                 test_result = subprocess.run(
-                    [sys.executable, "-c", test_code],
-                    capture_output=True,
-                    text=True,
-                    timeout=5
+                    [sys.executable, "-c", test_code], capture_output=True, text=True, timeout=5
                 )
                 if test_result.returncode == 0 and "OK" in test_result.stdout:
                     print(f"Module {module_path} is executable via subprocess")
                     return [sys.executable, "-m", module_path]
-            except (subprocess.TimeoutExpired, Exception) as e:
+            except (subprocess.TimeoutExpired, Exception):
                 continue
 
         # Method 4: Try to determine if we're in a uvx environment and adjust accordingly
