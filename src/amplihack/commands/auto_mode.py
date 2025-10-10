@@ -93,16 +93,23 @@ class AutoModeCommand:
                 print(f"Progress: {progress.get('progress_percentage', 0)}%")
                 print(f"Confidence: {current_state.get('confidence', 0.0):.2f}")
 
-                # In a real implementation, this would:
-                # 1. Generate next prompt from AI analysis
-                # 2. Execute it via Claude SDK
-                # 3. Process the output
-                # 4. Loop
+                # TODO(PR #695): Complete SDK integration for autonomous execution
+                # Current implementation structure is in place, but needs:
+                # 1. Generate next prompt from AI analysis (via orchestrator.get_next_action())
+                # 2. Execute prompt via Claude SDK (mcp__ide__executeCode)
+                # 3. Process Claude's output (via orchestrator.process_claude_output())
+                # 4. Loop until objective achieved
+                #
+                # The simplified interface is complete - this is the implementation gap.
+                # See: src/amplihack/sdk/state_integration.py for SDK integration details
 
-                # For now, print status
-                print("\n⚠️  Note: Full auto-mode implementation requires Claude SDK integration")
-                print("This simplified version shows the structure but needs SDK connection.")
-                break
+                print("\n⚠️  Implementation Note:")
+                print("The simplified auto-mode interface is complete, but SDK integration")
+                print("for autonomous execution is still in progress (PR #695).")
+                print(
+                    "\nCurrent status: Interface defined, orchestrator integrated, SDK connection pending"
+                )
+                return 1  # Return error code to indicate incomplete implementation
 
             if iteration >= max_iterations:
                 print(f"\n⏱️  Max iterations ({max_iterations}) reached")
