@@ -301,6 +301,12 @@ class ClaudeLauncher:
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
+            # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
+            user_npm_bin = str(Path.home() / ".npm-global" / "bin")
+            current_path = env.get("PATH", "")
+            if user_npm_bin not in current_path:
+                env["PATH"] = f"{user_npm_bin}:{current_path}"
+
             # Include proxy environment variables if proxy is configured
             if self.proxy_manager and self.proxy_manager.is_running():
                 proxy_env = self.proxy_manager.env_manager.get_proxy_env(
@@ -373,6 +379,12 @@ class ClaudeLauncher:
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+            # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
+            user_npm_bin = str(Path.home() / ".npm-global" / "bin")
+            current_path = env.get("PATH", "")
+            if user_npm_bin not in current_path:
+                env["PATH"] = f"{user_npm_bin}:{current_path}"
 
             # Include proxy environment variables if proxy is configured
             if self.proxy_manager and self.proxy_manager.is_running():
