@@ -262,26 +262,33 @@ git config --list
 
 ---
 
-## Optional Tools
+## Required Tools (After Prerequisites)
 
 ### claude-trace
 
 **Purpose:** Enhanced debugging and traffic logging for Claude Code
 
-**Installation:**
+**Installation (Required):**
 
 ```bash
 npm install -g @mariozechner/claude-trace
 ```
 
-**Note:** AmplihHack can automatically install claude-trace if npm is available
+**Note:** This is a **required dependency** as of the simplified implementation. Install it during initial setup.
 
-**Documentation:** Part of claude-code ecosystem
+**Documentation:** Part of claude-code ecosystem (https://github.com/mariozechner/claude-trace)
 
 **Usage:**
 
-- Automatically used when `AMPLIHACK_USE_TRACE=1` (default)
-- Disable with `AMPLIHACK_USE_TRACE=0`
+- Enabled by default (`AMPLIHACK_USE_TRACE=1`)
+- To temporarily disable and use plain `claude`: `export AMPLIHACK_USE_TRACE=0`
+
+**Verification:**
+
+```bash
+claude-trace --version
+# Should show version information
+```
 
 ---
 

@@ -121,10 +121,17 @@ class AzureEndpointDetector:
 
         parsed = urlparse(endpoint)
         if parsed.hostname:
-            # Extract from hostname like "myresource.openai.azure.com"
+            # Extract from hostname like "myresource.openai.azure.com" or "myresource.cognitiveservices.azure.com"
             parts = parsed.hostname.split(".")
-            if len(parts) >= 4 and parts[-3:] == ["openai", "azure", "com"]:
-                return parts[0]
+
+            # Handle both *.openai.azure.com and *.cognitiveservices.azure.com patterns
+            if len(parts) >= 4:
+                if parts[-3:] == ["openai", "azure", "com"] or parts[-3:] == [
+                    "cognitiveservices",
+                    "azure",
+                    "com",
+                ]:
+                    return parts[0]
 
         return None
 
@@ -138,7 +145,12 @@ class AzureEndpointDetector:
 
     def _has_azure_config_vars(self, config: Dict[str, str]) -> bool:
         """Check if config has Azure-specific variables."""
-        azure_vars = ["AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_BASE_URL", "AZURE_OPENAI_API_KEY"]
+        azure_vars = [
+            "AZURE_OPENAI_ENDPOINT",
+            "AZURE_OPENAI_BASE_URL",
+            "AZURE_OPENAI_API_KEY",
+            "AZURE_OPENAI_KEY",  # Alternative Azure key variable name
+        ]
         return any(var in config and config[var] for var in azure_vars)
 
     def _validate_endpoint_security(self, endpoint: str) -> bool:

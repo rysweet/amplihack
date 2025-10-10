@@ -109,10 +109,19 @@ class SecurityValidator:
             text: Input text to sanitize
 
         Returns:
-            Sanitized text with only allowed characters
+            Sanitized text with only allowed characters and HTML tags removed
         """
         # Normalize unicode to prevent encoding attacks
         text = unicodedata.normalize("NFKC", text)
+
+        # Remove HTML tags first (security: prevent XSS)
+        # Remove entire dangerous tag blocks including content
+        dangerous_tag_pattern = r"<(?:script|style)[^>]*>.*?</(?:script|style)>"
+        text = re.sub(dangerous_tag_pattern, " ", text, flags=re.IGNORECASE | re.DOTALL)
+
+        # Remove self-closing dangerous tags
+        self_closing_pattern = r"<(?:img|iframe|svg|object|embed|link|meta)[^>]*/?>"
+        text = re.sub(self_closing_pattern, " ", text, flags=re.IGNORECASE)
 
         # Remove characters not in whitelist
         sanitized_chars = []

@@ -6,8 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.amplihack.utils.uvx_models import UVXConfiguration
-from src.amplihack.utils.uvx_staging_v2 import UVXStager
+from amplihack.utils.uvx_models import UVXConfiguration
+from amplihack.utils.uvx_staging_v2 import UVXStager
 
 
 class TestUVXStagingIntegration(unittest.TestCase):
@@ -233,7 +233,7 @@ class TestUVXStagingIntegration(unittest.TestCase):
     def test_error_handling_fallback_to_source_settings(self):
         """Test that if UVX settings creation fails, source settings are used as fallback."""
         # Mock the UVX settings manager to fail
-        with patch("src.amplihack.utils.uvx_staging_v2.uvx_settings_manager") as mock_manager:
+        with patch("amplihack.utils.uvx_staging_v2.uvx_settings_manager") as mock_manager:
             mock_manager.should_use_uvx_template.return_value = True
             mock_manager.create_uvx_settings.return_value = False  # Simulate failure
 
@@ -261,7 +261,7 @@ class TestUVXPermissionValidation(unittest.TestCase):
 
     def test_comprehensive_tool_allowlist(self):
         """Test that UVX template includes comprehensive tool allowlist."""
-        from src.amplihack.utils.uvx_settings_manager import uvx_settings_manager
+        from amplihack.utils.uvx_settings_manager import uvx_settings_manager
 
         template = uvx_settings_manager.get_template_settings()
         self.assertIsNotNone(template)
@@ -294,7 +294,7 @@ class TestUVXPermissionValidation(unittest.TestCase):
 
     def test_bypass_permissions_enabled(self):
         """Test that UVX template has bypass permissions enabled."""
-        from src.amplihack.utils.uvx_settings_manager import uvx_settings_manager
+        from amplihack.utils.uvx_settings_manager import uvx_settings_manager
 
         template = uvx_settings_manager.get_template_settings()
         self.assertEqual(template["permissions"]["defaultMode"], "bypassPermissions")
@@ -302,7 +302,7 @@ class TestUVXPermissionValidation(unittest.TestCase):
 
     def test_comprehensive_directory_access(self):
         """Test that UVX template includes comprehensive directory access."""
-        from src.amplihack.utils.uvx_settings_manager import uvx_settings_manager
+        from amplihack.utils.uvx_settings_manager import uvx_settings_manager
 
         template = uvx_settings_manager.get_template_settings()
         additional_dirs = template["permissions"]["additionalDirectories"]

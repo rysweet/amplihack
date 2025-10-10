@@ -328,8 +328,8 @@ class TestPerformanceAndDoSProtection:
 
     def test_large_valid_input_performance(self):
         """Test that large but valid input is processed efficiently."""
-        # Create large but valid input (under size limit)
-        large_input = "Normal text. " * 1000  # Under 50KB limit
+        # Create large but valid input (under size limit and with proper line breaks)
+        large_input = "Normal text.\n" * 1000  # Under 50KB limit, valid line lengths
 
         start_time = time.time()
         preserver = ContextPreserver("test_session")

@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from src.amplihack.utils.uvx_models import (
+from amplihack.utils.uvx_models import (
     FrameworkLocation,
     PathResolutionStrategy,
     UVXConfiguration,
@@ -13,7 +13,7 @@ from src.amplihack.utils.uvx_models import (
     UVXEnvironmentInfo,
     UVXSessionState,
 )
-from src.amplihack.utils.uvx_staging_v2 import (
+from amplihack.utils.uvx_staging_v2 import (
     UVXStager,
     create_uvx_session,
     stage_uvx_framework,
@@ -80,10 +80,8 @@ class TestUVXStager:
         stager = UVXStager()
 
         # Create session with UVX deployment but invalid paths
-        with patch("src.amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
-            with patch(
-                "src.amplihack.utils.uvx_staging_v2.resolve_framework_paths"
-            ) as mock_resolve:
+        with patch("amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
+            with patch("amplihack.utils.uvx_staging_v2.resolve_framework_paths") as mock_resolve:
                 env_info = UVXEnvironmentInfo()
                 detection_state = UVXDetectionState(
                     result=UVXDetectionResult.UVX_DEPLOYMENT, environment=env_info
@@ -91,7 +89,7 @@ class TestUVXStager:
                 mock_detect.return_value = detection_state
 
                 # Mock failed path resolution
-                from src.amplihack.utils.uvx_models import PathResolutionResult
+                from amplihack.utils.uvx_models import PathResolutionResult
 
                 failed_resolution = PathResolutionResult(location=None)
                 mock_resolve.return_value = failed_resolution
@@ -133,7 +131,7 @@ class TestUVXStager:
             location = FrameworkLocation(
                 root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
             )
-            from src.amplihack.utils.uvx_models import PathResolutionResult
+            from amplihack.utils.uvx_models import PathResolutionResult
 
             resolution = PathResolutionResult(location=location)
 
@@ -181,7 +179,7 @@ class TestUVXStager:
             location = FrameworkLocation(
                 root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
             )
-            from src.amplihack.utils.uvx_models import PathResolutionResult
+            from amplihack.utils.uvx_models import PathResolutionResult
 
             resolution = PathResolutionResult(location=location)
 
@@ -224,7 +222,7 @@ class TestUVXStager:
             location = FrameworkLocation(
                 root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
             )
-            from src.amplihack.utils.uvx_models import PathResolutionResult
+            from amplihack.utils.uvx_models import PathResolutionResult
 
             resolution = PathResolutionResult(location=location)
 
@@ -266,7 +264,7 @@ class TestUVXStager:
                 location = FrameworkLocation(
                     root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
                 )
-                from src.amplihack.utils.uvx_models import PathResolutionResult
+                from amplihack.utils.uvx_models import PathResolutionResult
 
                 resolution = PathResolutionResult(location=location)
 
@@ -293,7 +291,7 @@ class TestUVXStager:
             test_dir.mkdir()
 
             # Create staging result with successful operations
-            from src.amplihack.utils.uvx_models import StagingResult
+            from amplihack.utils.uvx_models import StagingResult
 
             result = StagingResult()
             result.successful.add(test_file)
@@ -314,7 +312,7 @@ class TestUVXStager:
             test_file = Path(temp_dir) / "test.txt"
             test_file.write_text("test")
 
-            from src.amplihack.utils.uvx_models import StagingResult
+            from amplihack.utils.uvx_models import StagingResult
 
             result = StagingResult()
             result.successful.add(test_file)
@@ -330,7 +328,7 @@ class TestUVXStager:
         stager = UVXStager(config)
 
         # Create staging result with non-existent files
-        from src.amplihack.utils.uvx_models import StagingResult
+        from amplihack.utils.uvx_models import StagingResult
 
         result = StagingResult()
         result.successful.add(Path("/non/existent/file"))
@@ -346,7 +344,7 @@ class TestConvenienceFunctions:
 
     def test_stage_uvx_framework_default_stager(self):
         """Test stage_uvx_framework with default stager."""
-        with patch("src.amplihack.utils.uvx_staging_v2._default_stager") as mock_stager:
+        with patch("amplihack.utils.uvx_staging_v2._default_stager") as mock_stager:
             mock_result = Mock()
             mock_result.is_successful = True
             mock_stager.stage_framework_files.return_value = mock_result
@@ -360,7 +358,7 @@ class TestConvenienceFunctions:
         """Test stage_uvx_framework with custom configuration."""
         config = UVXConfiguration(debug_enabled=True)
 
-        with patch("src.amplihack.utils.uvx_staging_v2.UVXStager") as mock_stager_class:
+        with patch("amplihack.utils.uvx_staging_v2.UVXStager") as mock_stager_class:
             mock_stager = Mock()
             mock_result = Mock()
             mock_result.is_successful = False
@@ -380,9 +378,9 @@ class TestConvenienceFunctions:
             claude_dir = working_dir / ".claude"
             claude_dir.mkdir()
 
-            with patch("src.amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
+            with patch("amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
                 with patch(
-                    "src.amplihack.utils.uvx_staging_v2.resolve_framework_paths"
+                    "amplihack.utils.uvx_staging_v2.resolve_framework_paths"
                 ) as mock_resolve:
                     # Mock detection
                     env_info = UVXEnvironmentInfo(working_directory=working_dir)
@@ -395,7 +393,7 @@ class TestConvenienceFunctions:
                     location = FrameworkLocation(
                         root_path=working_dir, strategy=PathResolutionStrategy.WORKING_DIRECTORY
                     ).validate()
-                    from src.amplihack.utils.uvx_models import PathResolutionResult
+                    from amplihack.utils.uvx_models import PathResolutionResult
 
                     resolution = PathResolutionResult(location=location)
                     mock_resolve.return_value = resolution
@@ -418,9 +416,9 @@ class TestConvenienceFunctions:
             claude_dir = amplihack_source / ".claude"
             claude_dir.mkdir()
 
-            with patch("src.amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
+            with patch("amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
                 with patch(
-                    "src.amplihack.utils.uvx_staging_v2.resolve_framework_paths"
+                    "amplihack.utils.uvx_staging_v2.resolve_framework_paths"
                 ) as mock_resolve:
                     # Mock UVX deployment detection
                     env_info = UVXEnvironmentInfo(
@@ -435,7 +433,7 @@ class TestConvenienceFunctions:
                     location = FrameworkLocation(
                         root_path=working_dir, strategy=PathResolutionStrategy.STAGING_REQUIRED
                     )
-                    from src.amplihack.utils.uvx_models import PathResolutionResult
+                    from amplihack.utils.uvx_models import PathResolutionResult
 
                     resolution = PathResolutionResult(location=location)
                     mock_resolve.return_value = resolution
@@ -449,7 +447,7 @@ class TestConvenienceFunctions:
 
     def test_create_uvx_session_detection_failed(self):
         """Test creating UVX session when detection fails."""
-        with patch("src.amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
+        with patch("amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
             # Mock failed detection
             env_info = UVXEnvironmentInfo()
             detection_state = UVXDetectionState(

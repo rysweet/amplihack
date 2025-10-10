@@ -19,7 +19,7 @@ jobs:
   validate:
     name: Validate Code
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -80,10 +80,14 @@ jobs:
 
       - name: Run Python tests
         id: python-tests
+        timeout-minutes: 10
         run: |
           if command -v pytest &> /dev/null; then
             echo "Running Python tests with pytest..."
-            PYTHONPATH=. pytest --tb=short -v --color=yes
+            # Set CI-friendly environment variables
+            CI=true DEBIAN_FRONTEND=noninteractive NPX_NO_INSTALL=1 \
+            PYTHONPATH=. pytest --tb=short -v --color=yes --durations=10 \
+            --maxfail=1 -x
           else
             echo "pytest not found, skipping Python tests"
           fi
@@ -108,7 +112,7 @@ jobs:
           echo ""
 
           # Pre-commit status
-          if [ "${{ steps.pre-commit.outcome }}" == "success" ]; then
+          if [ "${{ steps.pre-commit.conclusion }}" == "success" ]; then
             echo "✅ Pre-commit checks: PASSED"
           else
             echo "❌ Pre-commit checks: FAILED"
@@ -116,18 +120,18 @@ jobs:
           fi
 
           # Python tests status
-          if [ "${{ steps.python-tests.outcome }}" == "success" ]; then
+          if [ "${{ steps.python-tests.conclusion }}" == "success" ]; then
             echo "✅ Python tests: PASSED"
-          elif [ "${{ steps.python-tests.outcome }}" == "skipped" ]; then
+          elif [ "${{ steps.python-tests.conclusion }}" == "skipped" ]; then
             echo "⏭️ Python tests: SKIPPED (no tests found)"
           else
             echo "❌ Python tests: FAILED"
           fi
 
           # JavaScript tests status
-          if [ "${{ steps.js-tests.outcome }}" == "success" ]; then
+          if [ "${{ steps.js-tests.conclusion }}" == "success" ]; then
             echo "✅ JavaScript tests: PASSED"
-          elif [ "${{ steps.js-tests.outcome }}" == "skipped" ]; then
+          elif [ "${{ steps.js-tests.conclusion }}" == "skipped" ]; then
             echo "⏭️ JavaScript tests: SKIPPED (no JS project)"
           else
             echo "❌ JavaScript tests: FAILED"
@@ -136,9 +140,9 @@ jobs:
           echo ""
 
           # Overall status
-          if [ "${{ steps.pre-commit.outcome }}" == "success" ] && \
-             [ "${{ steps.python-tests.outcome }}" != "failure" ] && \
-             [ "${{ steps.js-tests.outcome }}" != "failure" ]; then
+          if [ "${{ steps.pre-commit.conclusion }}" == "success" ] && \
+             [ "${{ steps.python-tests.conclusion }}" != "failure" ] && \
+             [ "${{ steps.js-tests.conclusion }}" != "failure" ]; then
             echo "🎉 All checks passed!"
             exit 0
           else

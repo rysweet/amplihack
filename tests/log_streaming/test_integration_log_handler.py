@@ -17,7 +17,7 @@ class TestLoggingHandlerIntegration:
     """Test integration of log streaming handler with Python logging system."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_log_handler_captures_proxy_logs(self, available_port):
         """Test that log handler captures logs from proxy components."""
         # This should FAIL - no implementation exists yet
@@ -72,7 +72,7 @@ class TestLoggingHandlerIntegration:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_azure_component_log_integration(self, available_port):
         """Test log handler integration with Azure-related components."""
         # This should FAIL - no implementation exists yet
@@ -227,7 +227,7 @@ class TestMultiLoggerIntegration:
     """Test integration with multiple loggers and complex logging hierarchies."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_hierarchical_logger_integration(self, available_port):
         """Test integration with hierarchical logger structures."""
         # This should FAIL - no implementation exists yet
@@ -281,7 +281,7 @@ class TestMultiLoggerIntegration:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_multiple_handlers_integration(self, available_port):
         """Test integration when multiple handlers are configured."""
         # This should FAIL - no implementation exists yet
@@ -330,7 +330,7 @@ class TestMultiLoggerIntegration:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_exception_logging_integration(self, available_port):
         """Test integration with exception logging and tracebacks."""
         # This should FAIL - no implementation exists yet
@@ -379,7 +379,7 @@ class TestPerformanceIntegration:
     """Test performance aspects of log handler integration."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_high_throughput_logging_integration(self, available_port, performance_monitor):
         """Test handler performance under high logging throughput."""
         # This should FAIL - no implementation exists yet
@@ -470,7 +470,7 @@ class TestPerformanceIntegration:
                 asyncio.run(log_server.stop())
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_concurrent_logging_integration(self, available_port):
         """Test concurrent logging from multiple threads/tasks."""
         # This should FAIL - no implementation exists yet

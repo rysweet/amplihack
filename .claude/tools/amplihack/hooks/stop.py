@@ -105,7 +105,7 @@ class StopHook(HookProcessor):
             # Create file:// URL for clickable link
             file_url = f"file://{decisions_file.resolve()}"
 
-            # Build summary as string (for return, not print)
+            # Build summary as string and print it for visibility
             lines = [
                 "\n",
                 "═" * 70,
@@ -126,7 +126,12 @@ class StopHook(HookProcessor):
             lines.append("═" * 70)
             lines.append("\n")
 
-            return "\n".join(lines)
+            summary = "\n".join(lines)
+            # Print each line for visibility and testing
+            for line in lines:
+                print(line)
+
+            return summary
 
         except FileNotFoundError as e:
             self.log(f"Decisions file not found: {e}", "WARNING")
@@ -611,8 +616,20 @@ class StopHook(HookProcessor):
         # Recursion guard removed - it was part of the broken reflection system
         self.log("Reflection system DISABLED - see incident reports for details")
 
-        # Return empty dict - NO reflection analysis, NO issue creation, NO output
-        return {}
+        # However, displaying decision summaries is safe (no GitHub API calls)
+        # This just reads DECISIONS.md and returns formatted text
+        output = {}
+        try:
+            session_id = input_data.get("session_id")
+            if session_id:
+                decision_summary = self.display_decision_summary(session_id)
+                if decision_summary:
+                    output["message"] = decision_summary
+        except Exception as e:
+            self.log(f"Error displaying decision summary: {e}", "WARNING")
+            # Don't fail the hook if decision display fails
+
+        return output
 
     def _should_analyze(self, state_data: ReflectionStateData) -> bool:
         """Check if enough time has passed since last analysis."""

@@ -40,7 +40,7 @@ class TestConnectionManager:
             assert manager.get_connected_clients() == set()
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_add_client_connection(self):
         """Test adding a new client connection."""
         # This should FAIL - no implementation exists yet
@@ -58,7 +58,7 @@ class TestConnectionManager:
             assert manager.is_client_connected(client_id)
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_remove_client_connection(self):
         """Test removing a client connection."""
         # This should FAIL - no implementation exists yet
@@ -77,7 +77,7 @@ class TestConnectionManager:
             assert not manager.is_client_connected(client_id)
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_multiple_client_connections(self):
         """Test managing multiple concurrent client connections."""
         # This should FAIL - no implementation exists yet
@@ -97,7 +97,7 @@ class TestConnectionManager:
             assert all(client_id in connected_clients for client_id in client_ids)
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_client_connection_limit(self):
         """Test enforcement of maximum client connection limit."""
         # This should FAIL - no implementation exists yet
@@ -119,7 +119,7 @@ class TestConnectionManager:
                 await manager.add_client("overflow-client", overflow_client)
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_duplicate_client_handling(self):
         """Test handling of duplicate client connection attempts."""
         # This should FAIL - no implementation exists yet
@@ -147,7 +147,7 @@ class TestConnectionManager:
                 assert manager.is_client_connected(client_id)
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_client_heartbeat_tracking(self):
         """Test tracking of client heartbeat/ping timestamps."""
         # This should FAIL - no implementation exists yet
@@ -171,7 +171,7 @@ class TestConnectionManager:
             assert last_heartbeat == heartbeat_time
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_stale_connection_detection(self):
         """Test detection and cleanup of stale connections."""
         # This should FAIL - no implementation exists yet
@@ -196,7 +196,7 @@ class TestConnectionManager:
             assert client_id in stale_clients
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_cleanup_on_error(self):
         """Test automatic cleanup of connections on error."""
         # This should FAIL - no implementation exists yet
@@ -221,7 +221,7 @@ class TestConnectionLifecycle:
     """Test connection lifecycle event handling."""
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_opened_event(self):
         """Test connection opened lifecycle event."""
         # This should FAIL - no implementation exists yet
@@ -242,7 +242,7 @@ class TestConnectionLifecycle:
             on_connect.assert_called_once_with(client_id, mock_client)
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_closed_event(self):
         """Test connection closed lifecycle event."""
         # This should FAIL - no implementation exists yet
@@ -265,7 +265,7 @@ class TestConnectionLifecycle:
             on_disconnect.assert_called_once_with(client_id, mock_client)
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_error_event(self):
         """Test connection error lifecycle event."""
         # This should FAIL - no implementation exists yet
@@ -293,7 +293,7 @@ class TestConnectionSecurity:
     """Test connection security and validation."""
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_client_id_validation(self):
         """Test validation of client IDs."""
         # This should FAIL - no implementation exists yet
@@ -311,7 +311,7 @@ class TestConnectionSecurity:
                     await manager.add_client(invalid_id, mock_client)
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_origin_validation(self):
         """Test validation of connection origins (localhost only)."""
         # This should FAIL - no implementation exists yet
@@ -331,7 +331,7 @@ class TestConnectionSecurity:
                 assert manager.is_valid_origin(origin) is False
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_rate_limiting(self):
         """Test rate limiting of new connections."""
         # This should FAIL - no implementation exists yet
@@ -377,7 +377,7 @@ class TestConnectionStatistics:
     """Test connection statistics and monitoring."""
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_count_tracking(self):
         """Test accurate tracking of connection counts."""
         # This should FAIL - no implementation exists yet
@@ -405,7 +405,7 @@ class TestConnectionStatistics:
             assert stats["current_connections"] == 2
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_duration_tracking(self):
         """Test tracking of connection durations."""
         # This should FAIL - no implementation exists yet
