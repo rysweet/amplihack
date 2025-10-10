@@ -177,40 +177,9 @@ class AzureUnifiedProvider:
         if request.get("stream"):
             chat_request["stream"] = True
 
-        # Handle tools (Chat API uses nested function structure) with validation
+        # Handle tools (Chat API uses nested function structure)
         if request.get("tools"):
-            tools_list = request["tools"]
-
-            # Validate tools array before including
-            if isinstance(tools_list, list) and tools_list:
-                # Additional validation for Chat API tools
-                valid_tools = []
-                for i, tool in enumerate(tools_list):
-                    if isinstance(tool, dict) and tool.get("type") == "function":
-                        # Check if it has the required function structure
-                        if "function" in tool:
-                            func_def = tool["function"]
-                            if isinstance(func_def, dict) and func_def.get("name"):
-                                valid_tools.append(tool)
-                                logger.debug(f"Chat API valid tool {i}: {func_def.get('name')}")
-                            else:
-                                logger.error(
-                                    f"Chat API tool {i} has invalid function definition: {func_def}"
-                                )
-                        else:
-                            logger.error(f"Chat API tool {i} missing 'function' field: {tool}")
-                    else:
-                        logger.error(f"Chat API tool {i} has invalid structure: {tool}")
-
-                if valid_tools:
-                    chat_request["tools"] = valid_tools
-                    logger.debug(f"Included {len(valid_tools)} valid tools for Chat API")
-                else:
-                    logger.warning("No valid tools found for Chat API - omitting tools parameter")
-            else:
-                logger.warning(
-                    "Invalid or empty tools array for Chat API - omitting tools parameter"
-                )
+            chat_request["tools"] = request["tools"]
 
         if request.get("tool_choice"):
             chat_request["tool_choice"] = request["tool_choice"]
@@ -267,130 +236,24 @@ class AzureUnifiedProvider:
         if request.get("stream"):
             responses_request["stream"] = True
 
-        # Handle tools (Responses API has different schema requirements) with enhanced validation
+        # Handle tools (Responses API has different schema requirements)
         if request.get("tools"):
-            # Transform tools for Responses API format with comprehensive error handling
+            # Transform tools for Responses API format
             responses_tools = []
-            tools_list = request["tools"]
-
-            logger.debug(f"Processing {len(tools_list)} tools for Azure Responses API")
-
-            for i, tool in enumerate(tools_list):
-                try:
-                    # Validate tool structure
-                    if not isinstance(tool, dict):
-                        logger.error(f"Responses API tool {i} is not a dictionary: {tool}")
-                        continue
-
-                    # Initialize response tool structure
+            for tool in request["tools"]:
+                if tool.get("type") == "function" and "function" in tool:
+                    func_def = tool["function"]
+                    # Responses API expects flatter structure
                     responses_tool = {
                         "type": "function",
-                        "name": "",
-                        "description": "",
-                        "parameters": {},
+                        "name": func_def.get("name", ""),
+                        "description": func_def.get("description", ""),
+                        "parameters": func_def.get("parameters", {}),
                     }
-
-                    # Handle nested function structure (OpenAI format)
-                    if tool.get("type") == "function" and "function" in tool:
-                        func_def = tool["function"]
-                        if not isinstance(func_def, dict):
-                            logger.error(
-                                f"Responses API tool {i} function definition is not a dictionary: {func_def}"
-                            )
-                            continue
-
-                        tool_name = func_def.get("name", "").strip()
-                        if not tool_name:
-                            logger.error(
-                                f"Responses API tool {i} missing required 'name' in function definition: {func_def}"
-                            )
-                            continue
-
-                        responses_tool.update(
-                            {
-                                "name": tool_name,
-                                "description": str(func_def.get("description", "")).strip()
-                                or f"Tool: {tool_name}",
-                                "parameters": func_def.get("parameters", {})
-                                if isinstance(func_def.get("parameters"), dict)
-                                else {},
-                            }
-                        )
-
-                    # Handle flattened structure (already flat)
-                    elif tool.get("type") == "function":
-                        tool_name = tool.get("name", "").strip()
-                        if not tool_name:
-                            logger.error(
-                                f"Responses API tool {i} missing required 'name' field: {tool}"
-                            )
-                            continue
-
-                        responses_tool.update(
-                            {
-                                "name": tool_name,
-                                "description": str(tool.get("description", "")).strip()
-                                or f"Tool: {tool_name}",
-                                "parameters": tool.get("parameters", {})
-                                if isinstance(tool.get("parameters"), dict)
-                                else {},
-                            }
-                        )
-
-                    else:
-                        # Log unhandled tool format to help with debugging
-                        logger.warning(f"Unhandled tool format for Responses API tool {i}: {tool}")
-                        continue
-
-                    # Validate the final tool structure
-                    if not responses_tool["name"]:
-                        logger.error(
-                            f"Responses API tool {i} resulted in empty name after processing"
-                        )
-                        continue
-
-                    # Ensure parameters has proper structure for Azure Responses API
-                    if not isinstance(responses_tool["parameters"], dict):
-                        logger.warning(
-                            f"Responses API tool {tool_name} has invalid parameters, using empty object"
-                        )
-                        responses_tool["parameters"] = {}
-
-                    # Add required parameter structure if missing
-                    if not responses_tool["parameters"].get("type"):
-                        responses_tool["parameters"]["type"] = "object"
-                    if not responses_tool["parameters"].get("properties"):
-                        responses_tool["parameters"]["properties"] = {}
-
                     responses_tools.append(responses_tool)
-                    logger.debug(
-                        f"Successfully processed Responses API tool {i}: {responses_tool['name']}"
-                    )
 
-                except Exception as e:
-                    logger.error(f"Error processing Responses API tool {i}: {e}")
-                    continue
-
-            # Final validation: only include tools if we have valid ones
             if responses_tools:
                 responses_request["tools"] = responses_tools
-                logger.debug(
-                    f"Converted {len(responses_tools)} valid tools for Azure Responses API"
-                )
-
-                # Additional validation logging for Azure Responses API
-                for i, tool in enumerate(responses_tools):
-                    logger.debug(
-                        f"Responses API tool {i}: name='{tool['name']}', "
-                        f"has_params={bool(tool['parameters'])}, "
-                        f"param_type={tool['parameters'].get('type', 'unknown')}"
-                    )
-            else:
-                logger.warning(
-                    "No valid tools found after transformation for Responses API - omitting tools parameter"
-                )
-                # Ensure tools key is not present to avoid Azure API errors
-                responses_request.pop("tools", None)
 
         if request.get("tool_choice"):
             responses_request["tool_choice"] = request["tool_choice"]
@@ -588,10 +451,7 @@ def _get_cached_model_list_template(
         responses_api_version = "2025-03-01-preview"  # Responses API minimum version
 
         # LiteLLM handles endpoint routing - just provide base URL without path
-        # First remove any query parameters (api-version)
-        clean_base_url = base_url.split("?")[0] if "?" in base_url else base_url
-        # Then remove the /openai/responses path
-        clean_base_url = clean_base_url.replace("/openai/responses", "")
+        clean_base_url = base_url.replace("/openai/responses", "")
 
         # Create model list with Claude model names mapped to user's deployment names
         # All Claude models route to the BIG_MODEL deployment for Responses API
