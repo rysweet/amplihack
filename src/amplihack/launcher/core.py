@@ -209,6 +209,9 @@ class ClaudeLauncher:
     def build_claude_command(self) -> List[str]:
         """Build the Claude command with arguments.
 
+        Note: Prerequisites have already been validated before this is called,
+        so Claude CLI is guaranteed to be available.
+
         Returns:
             List of command arguments for subprocess.
         """
@@ -219,16 +222,12 @@ class ClaudeLauncher:
             # claude-trace requires --run-with before Claude arguments
             cmd = [claude_binary]
 
-            # Get claude binary path, auto-installing if needed
-            claude_path = get_claude_cli_path(auto_install=True)
+            # Get claude binary path (already validated by prerequisites check)
+            claude_path = get_claude_cli_path(auto_install=False)
 
-            # Add --claude-path if we found/installed a claude binary
+            # Add --claude-path if we have a claude binary
             if claude_path:
                 cmd.extend(["--claude-path", claude_path])
-            else:
-                print("ERROR: Claude CLI not available and auto-installation failed")
-                print("Please install manually: npm install -g @anthropic-ai/claude-code")
-                sys.exit(1)
 
             claude_args = ["--dangerously-skip-permissions"]
 
@@ -302,6 +301,12 @@ class ClaudeLauncher:
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
+            # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
+            user_npm_bin = str(Path.home() / ".npm-global" / "bin")
+            current_path = env.get("PATH", "")
+            if user_npm_bin not in current_path:
+                env["PATH"] = f"{user_npm_bin}:{current_path}"
+
             # Include proxy environment variables if proxy is configured
             if self.proxy_manager and self.proxy_manager.is_running():
                 proxy_env = self.proxy_manager.env_manager.get_proxy_env(
@@ -374,6 +379,12 @@ class ClaudeLauncher:
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+            # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
+            user_npm_bin = str(Path.home() / ".npm-global" / "bin")
+            current_path = env.get("PATH", "")
+            if user_npm_bin not in current_path:
+                env["PATH"] = f"{user_npm_bin}:{current_path}"
 
             # Include proxy environment variables if proxy is configured
             if self.proxy_manager and self.proxy_manager.is_running():

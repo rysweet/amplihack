@@ -31,9 +31,15 @@ def _is_uvx_mode() -> bool:
     """Check if running in UVX mode.
 
     Returns:
-        True if AMPLIHACK_UVX_MODE environment variable is set to a truthy value.
+        True if running via UVX deployment (detected by UVX detection module).
     """
-    return os.getenv("AMPLIHACK_UVX_MODE", "").lower() in ("1", "true", "yes")
+    try:
+        from .uvx_detection import is_uvx_deployment
+
+        return is_uvx_deployment()
+    except ImportError:
+        # Fallback to environment variable check if uvx_detection not available
+        return os.getenv("AMPLIHACK_UVX_MODE", "").lower() in ("1", "true", "yes")
 
 
 def _configure_user_local_npm() -> dict[str, str]:

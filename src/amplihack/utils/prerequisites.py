@@ -26,6 +26,15 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+# Lazy import to avoid circular dependencies
+# claude_cli imports prerequisites, so we import it only when needed
+try:
+    from .claude_cli import get_claude_cli_path
+except ImportError:
+    # Fallback if import fails
+    def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
+        return None
+
 
 class Platform(Enum):
     """Supported platforms for prerequisite checking."""
@@ -158,12 +167,12 @@ class PrerequisiteChecker:
     """
 
     # Required tools with their version check arguments
+    # Note: Claude CLI is checked separately with auto-installation support
     REQUIRED_TOOLS = {
         "node": "--version",
         "npm": "--version",
         "uv": "--version",
         "git": "--version",
-        "claude": "--version",
     }
 
     # Installation commands by platform and tool
@@ -292,7 +301,7 @@ class PrerequisiteChecker:
         )
 
     def check_all_prerequisites(self) -> PrerequisiteResult:
-        """Check all required prerequisites.
+        """Check all required prerequisites including Claude CLI with auto-install.
 
         Returns:
             PrerequisiteResult with complete status
@@ -300,6 +309,7 @@ class PrerequisiteChecker:
         missing_tools = []
         available_tools = []
 
+        # Check standard required tools
         for tool, version_arg in self.REQUIRED_TOOLS.items():
             result = self.check_tool(tool, version_arg)
 
@@ -307,6 +317,51 @@ class PrerequisiteChecker:
                 available_tools.append(result)
             else:
                 missing_tools.append(result)
+
+        # Special handling for Claude CLI with auto-installation support
+        claude_path = get_claude_cli_path(auto_install=True)
+
+        if claude_path:
+            # Claude CLI is available (found or auto-installed)
+            # Get version using safe_subprocess_call
+            returncode, stdout, stderr = safe_subprocess_call(
+                [claude_path, "--version"],
+                context="checking claude version",
+                timeout=5,
+            )
+            version = stdout.strip().split("\n")[0] if returncode == 0 and stdout else None
+
+            available_tools.append(
+                ToolCheckResult(
+                    tool="claude",
+                    available=True,
+                    path=claude_path,
+                    version=version,
+                )
+            )
+        else:
+            # Claude CLI not available
+            # Distinguish between "auto-install disabled" vs "installation failed"
+            import os
+
+            auto_install_enabled = os.getenv("AMPLIHACK_AUTO_INSTALL", "").lower() in (
+                "1",
+                "true",
+                "yes",
+            )
+
+            if auto_install_enabled:
+                error_msg = "Auto-installation failed. Please install manually: npm install -g @anthropic-ai/claude-code"
+            else:
+                error_msg = "Not found. Enable auto-install with AMPLIHACK_AUTO_INSTALL=1 or install manually: npm install -g @anthropic-ai/claude-code"
+
+            missing_tools.append(
+                ToolCheckResult(
+                    tool="claude",
+                    available=False,
+                    error=error_msg,
+                )
+            )
 
         return PrerequisiteResult(
             all_available=len(missing_tools) == 0,
