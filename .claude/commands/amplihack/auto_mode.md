@@ -1,271 +1,89 @@
 # Auto-Mode Command
 
-Auto-mode provides persistent analysis and autonomous progression through objectives using the Claude Agent SDK for real-time conversation analysis.
+Auto-mode provides autonomous progression through objectives using the Claude Agent SDK for real-time conversation analysis. Give it an objective and it runs until completion.
 
 ## Purpose
 
-Auto-mode monitors Claude Code sessions, analyzes progress toward user objectives, and automatically generates next prompts to maintain momentum and ensure completion of complex tasks.
+Auto-mode takes a clear objective, analyzes progress, and automatically generates next prompts to maintain momentum and ensure completion. It runs synchronously in the foreground until the objective is achieved or you interrupt it (Ctrl+C).
 
 ## Command Usage
 
 ```
-/amplihack:auto-mode <command> [options]
+/amplihack:auto "Your objective description"
 ```
 
-### Commands
+Or from the command line:
 
-**Start Auto-Mode Session:**
-
-```
-/amplihack:auto-mode start "Objective description" [--working-dir /path] [--max-iterations 50]
-```
-
-**Process Claude Output:**
-
-```
-/amplihack:auto-mode process "Claude output text" [--session-id <id>]
-```
-
-**Check Progress:**
-
-```
-/amplihack:auto-mode status [--session-id <id>]
-```
-
-**Pause/Resume:**
-
-```
-/amplihack:auto-mode pause [--session-id <id>]
-/amplihack:auto-mode resume [--session-id <id>]
-```
-
-**Stop Session:**
-
-```
-/amplihack:auto-mode stop [--session-id <id>]
+```bash
+amplihack auto "Your objective description"
 ```
 
 ## Examples
 
-### Starting Auto-Mode
+**Objective: Build a REST API with authentication**
 
 ```
-/amplihack:auto-mode start "Build a REST API with authentication, user management, and data persistence"
-```
-
-### Processing Progress
-
-When Claude Code produces output, auto-mode analyzes it:
-
-```
-/amplihack:auto-mode process "I've implemented the authentication system with JWT tokens and password hashing."
+/amplihack:auto "Build a REST API with authentication, user management, and data persistence"
 ```
 
 Auto-mode will:
 
-1. Analyze the progress toward the objective
-2. Evaluate code quality and completeness
-3. Generate the next logical prompt
-4. Provide confidence scores and recommendations
+1. Break down the objective into tasks
+2. Implement each component
+3. Test and verify functionality
+4. Continue until the objective is fully achieved
+5. Stop automatically when complete, or when you press Ctrl+C
 
-### Checking Status
+**Objective: Refactor module for better performance**
 
 ```
-/amplihack:auto-mode status
+/amplihack:auto "Refactor the data processing module to improve performance by 50%"
 ```
 
-Returns:
+**Objective: Add comprehensive test coverage**
 
-- Current iteration and progress percentage
-- Confidence in current approach
-- Milestones achieved
-- Next recommended actions
-- Session health metrics
-
-## Core Features
-
-### Real-Time Analysis
-
-- **Progress Evaluation**: Measures advancement toward objectives
-- **Quality Assessment**: Reviews code quality and best practices
-- **Next Prompt Generation**: Creates specific, actionable next steps
-- **Error Diagnosis**: Identifies and suggests fixes for issues
-- **Objective Alignment**: Ensures work stays focused on goals
-
-### Intelligent Prompt Templates
-
-- **Objective Clarification**: When goals are unclear
-- **Progress Assessment**: Regular progress check-ins
-- **Next Action**: Specific implementation steps
-- **Error Resolution**: Debugging and problem-solving
-- **Quality Review**: Code review and improvement
-
-### Session Management
-
-- **Persistent State**: Sessions survive restarts
-- **Conversation History**: Full context preservation
-- **Milestone Tracking**: Progress checkpoint recording
-- **Error Recovery**: Graceful handling of failures
-- **Resource Management**: Automatic cleanup and optimization
-
-### Error Handling & Security
-
-- **Circuit Breakers**: Protect against cascade failures
-- **Retry Logic**: Automatic recovery from transient errors
-- **Security Validation**: Input sanitization and threat detection
-- **Rate Limiting**: Prevent abuse and resource exhaustion
+```
+/amplihack:auto "Add comprehensive unit and integration tests for the authentication system with 90%+ coverage"
+```
 
 ## Configuration
 
-### Auto-Mode Config
+Auto-mode uses sensible defaults and requires minimal configuration:
 
 ```python
 AutoModeConfig(
-    max_iterations=50,              # Maximum analysis iterations
-    iteration_timeout_seconds=300,  # Timeout per iteration
-    min_confidence_threshold=0.6,   # Minimum confidence to continue
-    auto_progression_enabled=True,  # DEFAULT: Enables automatic progression (the core purpose of auto-mode)
-    persistence_enabled=True,       # Session state persistence
-    state_sync_interval_seconds=30  # Background sync frequency
+    max_iterations=50,              # Maximum attempts before stopping (prevents infinite loops)
+    iteration_timeout_seconds=300,  # Maximum time per iteration (5 minutes)
+    min_confidence_threshold=0.6    # Minimum confidence to continue working
 )
 ```
 
-**Note**: `auto_progression_enabled=True` is the default and core behavior - disabling it defeats the purpose of auto-mode.
+**Default behavior**: Auto-mode automatically progresses through your objective without manual intervention. That's the whole point.
 
-### Analysis Engine Config
+## How It Works
 
-```python
-AnalysisConfig(
-    batch_size=10,                  # Entries per SDK call
-    max_analysis_length=8000,       # Max chars to analyze
-    confidence_threshold=0.6,       # Minimum result confidence
-    enable_caching=True,            # Cache analysis results
-    analysis_timeout_seconds=60     # SDK call timeout
-)
-```
+Auto-mode uses the Claude Agent SDK (`mcp__ide__executeCode`) for real AI analysis:
 
-## Integration Points
+1. **Analyzes your objective** - Breaks it down into actionable tasks
+2. **Executes tasks** - Follows DEFAULT_WORKFLOW.md and coordinates with amplihack agents
+3. **Evaluates progress** - Continuously assesses quality and completion
+4. **Generates next steps** - Automatically creates the next prompt
+5. **Repeats** - Continues until objective is achieved or interrupted
 
-### Claude Agent SDK
+## Writing Effective Objectives
 
-- Uses `mcp__ide__executeCode` for real AI analysis
-- Persistent conversation management
-- Session recovery and state synchronization
-- Secure authentication and error handling
+Good objectives are **specific and measurable**:
 
-### Workflow Integration
+✅ **Good**: "Build a REST API with JWT authentication, user CRUD operations, and PostgreSQL persistence"
 
-- Follows DEFAULT_WORKFLOW.md steps automatically
-- Coordinates with amplihack agents at each stage
-- Maintains compliance with project philosophy
-- Integrates with existing slash commands
+✅ **Good**: "Refactor the data processing module to use async/await and improve performance by 50%"
 
-### TDD Integration
+✅ **Good**: "Add comprehensive unit tests for the authentication system with 90%+ coverage"
 
-- Monitors test implementation progress
-- Ensures test-first development practices
-- Validates test coverage and quality
-- Suggests additional test scenarios
+❌ **Too vague**: "Make the code better"
 
-## Output Format
-
-### Progress Analysis
-
-```json
-{
-  "iteration": 5,
-  "confidence": 0.85,
-  "progress_percentage": 60,
-  "findings": [
-    "Authentication system implemented successfully",
-    "Database schema needs optimization",
-    "Missing input validation in user endpoints"
-  ],
-  "recommendations": [
-    "Add comprehensive input validation",
-    "Optimize database queries for user lookup",
-    "Implement rate limiting for auth endpoints"
-  ],
-  "next_prompt": "Please add input validation to the user management endpoints with proper error handling and security checks.",
-  "quality_score": 0.78,
-  "milestones_achieved": 3,
-  "estimated_completion": "70%"
-}
-```
-
-### Session Status
-
-```json
-{
-  "session_id": "uuid-here",
-  "state": "active",
-  "current_iteration": 12,
-  "total_iterations": 50,
-  "objective": "Build a REST API...",
-  "working_directory": "/project",
-  "uptime": "45 minutes",
-  "milestones": [
-    {
-      "iteration": 5,
-      "description": "Authentication system completed",
-      "confidence": 0.9,
-      "timestamp": "2025-01-15T10:30:00Z"
-    }
-  ],
-  "error_count": 0,
-  "last_analysis": {
-    "confidence": 0.85,
-    "quality_score": 0.78,
-    "timestamp": "2025-01-15T10:45:00Z"
-  }
-}
-```
-
-## Best Practices
-
-### Effective Objectives
-
-- **Specific**: Clear, detailed requirements
-- **Measurable**: Observable completion criteria
-- **Achievable**: Realistic scope and timeline
-- **Relevant**: Aligned with project goals
-- **Time-bound**: Defined completion expectations
-
-### Monitoring Progress
-
-- Check status regularly during development
-- Review milestone achievements for quality
-- Monitor confidence scores for potential issues
-- Use error analysis for improvement opportunities
-
-### Troubleshooting
-
-- Low confidence scores may indicate unclear objectives
-- High error counts suggest environmental issues
-- Slow progress might need objective refinement
-- Quality issues may require architecture review
-
-## Implementation Details
-
-### Real AI Analysis
-
-Auto-mode uses the Claude Agent SDK to perform genuine AI analysis of Claude Code output. This is not pattern matching or simulation - it's real Claude AI understanding context, evaluating progress, and making informed recommendations.
-
-### Security & Reliability
-
-- All inputs are validated and sanitized
-- Circuit breakers prevent cascade failures
-- Retry logic handles transient errors
-- Session state is persisted securely
-- Rate limiting prevents abuse
-
-### Performance Optimization
-
-- Analysis results are cached intelligently
-- Batch processing reduces SDK calls
-- Background tasks handle maintenance
-- Resource cleanup prevents memory leaks
+❌ **Too vague**: "Add some tests"
 
 ---
 
-**Note**: Auto-mode requires Claude Agent SDK access via `mcp__ide__executeCode`. Ensure proper authentication and network connectivity for optimal operation.
+**Note**: Auto-mode requires Claude Agent SDK access via `mcp__ide__executeCode`. Ensure proper authentication and network connectivity.
