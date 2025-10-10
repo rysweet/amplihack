@@ -31,6 +31,7 @@ class ProxyEnvironment:
 
         # Store Azure environment variables if they exist
         azure_vars = [
+            "AZURE_ENDPOINT",
             "AZURE_OPENAI_ENDPOINT",
             "AZURE_OPENAI_BASE_URL",
             "AZURE_OPENAI_API_KEY",
@@ -161,7 +162,11 @@ class ProxyEnvironment:
         """
         # Check for required fields - be lenient for backward compatibility
         has_api_key = config.get("AZURE_OPENAI_API_KEY")
-        has_endpoint = config.get("AZURE_OPENAI_ENDPOINT") or config.get("AZURE_OPENAI_BASE_URL")
+        has_endpoint = (
+            config.get("AZURE_OPENAI_ENDPOINT")
+            or config.get("AZURE_ENDPOINT")
+            or config.get("AZURE_OPENAI_BASE_URL")
+        )
 
         if not (has_api_key and has_endpoint):
             return False
@@ -172,7 +177,11 @@ class ProxyEnvironment:
             return False
 
         # Validate endpoint URL
-        endpoint = config.get("AZURE_OPENAI_ENDPOINT") or config.get("AZURE_OPENAI_BASE_URL")
+        endpoint = (
+            config.get("AZURE_OPENAI_ENDPOINT")
+            or config.get("AZURE_ENDPOINT")
+            or config.get("AZURE_OPENAI_BASE_URL")
+        )
         if endpoint and not self._validate_endpoint_url(endpoint):
             return False
 

@@ -5,6 +5,7 @@ import os
 import re
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -40,36 +41,15 @@ class ProxyManager:
         self._api_version_cache = {}
 
     def ensure_proxy_installed(self) -> bool:
-        """Ensure claude-code-proxy is available via uvx.
-
-        For UVX environments, we use the PyPI package directly instead of
-        cloning and manually installing dependencies.
+        """Ensure the proxy server can be run.
 
         Returns:
             True if proxy is ready to use, False otherwise.
         """
-        # Check if uvx is available
-        try:
-            result = subprocess.run(
-                ["uvx", "--version"], capture_output=True, text=True, timeout=10
-            )
-            if result.returncode == 0:
-                print("Using claude-code-proxy via uvx (PyPI package)")
-                return True
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-            pass
-
-        # Fallback: check if uv is available for direct package management
-        try:
-            result = subprocess.run(["uv", "--version"], capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                print("UV available for claude-code-proxy management")
-                return True
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-            pass
-
-        print("Neither uvx nor uv available - cannot run claude-code-proxy in this environment")
-        return False
+        # We're using the built-in proxy server from src/amplihack/proxy/server.py
+        # Just check that Python is available (which it must be since we're running)
+        print("Using built-in proxy server from src/amplihack/proxy/server.py")
+        return True
 
     def setup_proxy_config(self) -> bool:
         """Set up proxy configuration.
@@ -111,8 +91,8 @@ class ProxyManager:
             return False
 
         try:
-            # Start the proxy process using uvx (UVX-compatible approach)
-            print(f"Starting claude-code-proxy on port {self.proxy_port} via uvx...")
+            # Start the proxy process using the built-in server
+            print(f"Starting built-in proxy server on port {self.proxy_port}...")
 
             # Create environment for the proxy process
             proxy_env = os.environ.copy()
@@ -121,8 +101,8 @@ class ProxyManager:
             # Ensure PORT is set for the proxy process
             proxy_env["PORT"] = str(self.proxy_port)
 
-            # Use uvx to run claude-code-proxy directly from PyPI
-            start_command = ["uvx", "claude-code-proxy"]
+            # Run the local proxy server directly
+            start_command = [sys.executable, "-m", "src.amplihack.proxy.server"]
 
             self.proxy_process = subprocess.Popen(
                 start_command,
