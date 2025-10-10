@@ -113,6 +113,21 @@ if PASSTHROUGH_MODE:
 BIG_MODEL = os.environ.get("BIG_MODEL", "gpt-4.1")
 SMALL_MODEL = os.environ.get("SMALL_MODEL", "gpt-4.1-mini")
 
+# Configure LiteLLM for Azure if Azure endpoint is present
+AZURE_BASE_URL = os.environ.get("OPENAI_BASE_URL", "")
+if AZURE_BASE_URL:
+    # Extract clean base URL without query parameters
+    clean_azure_base = AZURE_BASE_URL.split("?")[0] if "?" in AZURE_BASE_URL else AZURE_BASE_URL
+    # Remove /openai/responses if present (for Responses API URLs)
+    clean_azure_base = clean_azure_base.replace("/openai/responses", "")
+
+    # Set LiteLLM environment variables for Azure
+    os.environ["AZURE_API_BASE"] = clean_azure_base
+    os.environ["AZURE_API_KEY"] = OPENAI_API_KEY or ""
+    os.environ["AZURE_API_VERSION"] = "2025-01-01-preview"
+
+    logger.info(f"Configured LiteLLM for Azure: {clean_azure_base}")
+
 # List of OpenAI models
 OPENAI_MODELS = [
     "o3-mini",
@@ -278,10 +293,17 @@ class MessagesRequest(BaseModel):
 
         # --- Mapping Logic --- START ---
         mapped = False
+        # Check if we're using Azure by looking for Azure endpoint configuration
+        is_azure = bool(os.environ.get("OPENAI_BASE_URL", ""))
+
         # Map Haiku to SMALL_MODEL based on provider preference
         if "haiku" in clean_v.lower():
             if PREFERRED_PROVIDER == "google" and SMALL_MODEL in GEMINI_MODELS:
                 new_model = f"gemini/{SMALL_MODEL}"
+                mapped = True
+            elif is_azure:
+                # Use azure/ prefix for Azure deployments
+                new_model = f"azure/{SMALL_MODEL}"
                 mapped = True
             else:
                 new_model = f"openai/{SMALL_MODEL}"
@@ -291,6 +313,10 @@ class MessagesRequest(BaseModel):
         elif "sonnet" in clean_v.lower():
             if PREFERRED_PROVIDER == "google" and BIG_MODEL in GEMINI_MODELS:
                 new_model = f"gemini/{BIG_MODEL}"
+                mapped = True
+            elif is_azure:
+                # Use azure/ prefix for Azure deployments
+                new_model = f"azure/{BIG_MODEL}"
                 mapped = True
             else:
                 new_model = f"openai/{BIG_MODEL}"
@@ -357,10 +383,17 @@ class TokenCountRequest(BaseModel):
 
         # --- Mapping Logic --- START ---
         mapped = False
+        # Check if we're using Azure by looking for Azure endpoint configuration
+        is_azure = bool(os.environ.get("OPENAI_BASE_URL", ""))
+
         # Map Haiku to SMALL_MODEL based on provider preference
         if "haiku" in clean_v.lower():
             if PREFERRED_PROVIDER == "google" and SMALL_MODEL in GEMINI_MODELS:
                 new_model = f"gemini/{SMALL_MODEL}"
+                mapped = True
+            elif is_azure:
+                # Use azure/ prefix for Azure deployments
+                new_model = f"azure/{SMALL_MODEL}"
                 mapped = True
             else:
                 new_model = f"openai/{SMALL_MODEL}"
@@ -370,6 +403,10 @@ class TokenCountRequest(BaseModel):
         elif "sonnet" in clean_v.lower():
             if PREFERRED_PROVIDER == "google" and BIG_MODEL in GEMINI_MODELS:
                 new_model = f"gemini/{BIG_MODEL}"
+                mapped = True
+            elif is_azure:
+                # Use azure/ prefix for Azure deployments
+                new_model = f"azure/{BIG_MODEL}"
                 mapped = True
             else:
                 new_model = f"openai/{BIG_MODEL}"
@@ -1407,7 +1444,10 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         litellm_request = convert_anthropic_to_litellm(request)
 
         # Determine which API key to use based on the model
-        if request.model.startswith("openai/"):
+        if request.model.startswith("azure/"):
+            litellm_request["api_key"] = OPENAI_API_KEY  # Azure uses the OpenAI API key
+            logger.debug(f"Using Azure API key for model: {request.model}")
+        elif request.model.startswith("openai/"):
             litellm_request["api_key"] = OPENAI_API_KEY
             logger.debug(f"Using OpenAI API key for model: {request.model}")
         elif request.model.startswith("gemini/"):
@@ -1420,8 +1460,10 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             litellm_request["api_key"] = ANTHROPIC_API_KEY
             logger.debug(f"Using Anthropic API key for model: {request.model}")
 
-        # For OpenAI models - modify request format to work with limitations
-        if "openai" in litellm_request["model"] and "messages" in litellm_request:
+        # For OpenAI/Azure models - modify request format to work with limitations
+        if (
+            "openai" in litellm_request["model"] or "azure" in litellm_request["model"]
+        ) and "messages" in litellm_request:
             logger.debug(f"Processing OpenAI model request: {litellm_request['model']}")
 
             # For OpenAI models, we need to convert content blocks to simple strings
@@ -1954,4 +1996,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8082):
 
 
 if __name__ == "__main__":
-    run_server()
+    # Read host and port from environment variables
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "8082"))
+    run_server(host=host, port=port)
