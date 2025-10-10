@@ -152,6 +152,9 @@ customization instructions.
 - [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agents
 - [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles
 - [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Process customization
+- [Azure Integration](docs/AZURE_INTEGRATION.md) - Azure OpenAI setup
+- [Integration Summary](docs/INTEGRATION_SUMMARY.md) - Auto-mode technical
+  architecture
 
 ## Development
 
@@ -294,8 +297,12 @@ Auto-mode supports multiple configuration presets:
 - **Session Management** - Persistent state that survives restarts
 - **TDD Integration** - Monitors test implementation and coverage
 
-For complete documentation, see
-[.claude/commands/amplihack/auto_mode.md](.claude/commands/amplihack/auto_mode.md).
+For complete documentation, see:
+
+- [Auto-Mode Command Reference](.claude/commands/amplihack/auto_mode.md) -
+  Command usage and examples
+- [Integration Summary](docs/INTEGRATION_SUMMARY.md) - Technical architecture
+  and implementation details
 
 ## License
 
