@@ -124,11 +124,13 @@ AutoModeConfig(
     max_iterations=50,              # Maximum analysis iterations
     iteration_timeout_seconds=300,  # Timeout per iteration
     min_confidence_threshold=0.6,   # Minimum confidence to continue
-    auto_progression_enabled=True,  # Automatic prompt generation
+    auto_progression_enabled=True,  # DEFAULT: Enables automatic progression (the core purpose of auto-mode)
     persistence_enabled=True,       # Session state persistence
     state_sync_interval_seconds=30  # Background sync frequency
 )
 ```
+
+**Note**: `auto_progression_enabled=True` is the default and core behavior - disabling it defeats the purpose of auto-mode.
 
 ### Analysis Engine Config
 
