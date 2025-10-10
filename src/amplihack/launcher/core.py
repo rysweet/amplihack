@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from ..proxy.manager import ProxyManager
+from ..utils.claude_cli import get_claude_cli_path
 from ..utils.claude_trace import get_claude_command
 from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
@@ -218,33 +219,16 @@ class ClaudeLauncher:
             # claude-trace requires --run-with before Claude arguments
             cmd = [claude_binary]
 
-            # Find the correct claude binary (prefer homebrew over pnpm)
-            import shutil
+            # Get claude binary path, auto-installing if needed
+            claude_path = get_claude_cli_path(auto_install=True)
 
-            claude_path = None
-
-            # Priority order for finding claude binary:
-            # 1. Homebrew on macOS (most reliable)
-            # 2. Standard system locations
-            # 3. Fall back to PATH search (may include problematic wrappers)
-            preferred_paths = [
-                "/opt/homebrew/bin/claude",  # macOS homebrew
-                "/usr/local/bin/claude",  # Linux/WSL standard location
-                "/usr/bin/claude",  # System-wide installation
-            ]
-
-            for path in preferred_paths:
-                if Path(path).exists():
-                    claude_path = path
-                    break
-
-            if not claude_path:
-                # Fall back to any claude in PATH
-                claude_path = shutil.which("claude")
-
-            # Add --claude-path if we found a claude binary
+            # Add --claude-path if we found/installed a claude binary
             if claude_path:
                 cmd.extend(["--claude-path", claude_path])
+            else:
+                print("ERROR: Claude CLI not available and auto-installation failed")
+                print("Please install manually: npm install -g @anthropic-ai/claude-code")
+                sys.exit(1)
 
             claude_args = ["--dangerously-skip-permissions"]
 
