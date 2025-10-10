@@ -212,10 +212,9 @@ class SDKSessionManager:
             RuntimeError: If SDK is not available
         """
         try:
-            # Test if mcp__ide__executeCode is available
+            # Test if Claude Agent SDK is available
             # This is a basic connectivity test
-            # Note: In real implementation, this would call the actual MCP function with:
-            # test_code = "print('SDK connectivity test')"
+            # Note: In real implementation, this would verify claude_agent_sdk.query is available
             # For now, we'll simulate the check
             logger.info("SDK availability validated")
         except Exception as e:
@@ -379,7 +378,7 @@ class SDKSessionManager:
                 return f.read()
         else:
             # Generate new key
-            key = Fernet.generate_key()
+            key = Fernet.generate_key()  # type: ignore
             with open(key_file, "wb") as f:
                 f.write(key)
             # Set restrictive permissions
@@ -392,7 +391,7 @@ class SDKSessionManager:
             return data.encode()
 
         key = self._get_encryption_key()
-        fernet = Fernet(key)
+        fernet = Fernet(key)  # type: ignore
         return fernet.encrypt(data.encode())
 
     def _decrypt_session_data(self, encrypted_data: bytes) -> str:
@@ -401,5 +400,5 @@ class SDKSessionManager:
             return encrypted_data.decode()
 
         key = self._get_encryption_key()
-        fernet = Fernet(key)
+        fernet = Fernet(key)  # type: ignore
         return fernet.decrypt(encrypted_data).decode()
