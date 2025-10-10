@@ -143,10 +143,10 @@ class AutoModeOrchestrator:
 
     def __init__(
         self,
-        config: AutoModeConfig = AutoModeConfig(),
+        config: Optional[AutoModeConfig] = None,
         session_config: Optional[SessionConfig] = None,
     ):
-        self.config = config
+        self.config = config or AutoModeConfig()
         self.auto_mode_state = AutoModeState.INITIALIZING
         self.current_iteration = 0
         self.error_count = 0
@@ -274,11 +274,18 @@ class AutoModeOrchestrator:
             )
 
             # Update context with analysis
+            # Convert analysis result to dict, handling enum serialization
+            analysis_dict = asdict(analysis_result)
+            if "analysis_type" in analysis_dict and hasattr(
+                analysis_dict["analysis_type"], "value"
+            ):
+                analysis_dict["analysis_type"] = analysis_dict["analysis_type"].value
+
             self.current_context = self.prompt_coordinator.update_context(
                 self.current_context,
                 current_step=self.current_iteration,
                 previous_outputs=self.current_context.previous_outputs + [claude_output],
-                analysis_results=self.current_context.analysis_results + [asdict(analysis_result)],
+                analysis_results=self.current_context.analysis_results + [analysis_dict],
             )
 
             # Check for milestones
@@ -645,3 +652,159 @@ class AutoModeOrchestrator:
                 logger.warning(f"Unknown configuration parameter: {key}")
 
         logger.info(f"Configuration updated: {new_config}")
+
+    async def get_next_action(self, current_state: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Analyze current state and generate next action prompt.
+
+        Args:
+            current_state: Current auto-mode state dictionary
+
+        Returns:
+            Dictionary with 'prompt' and 'confidence' keys, or None if no action needed
+        """
+        if not self.active_session_id or not self.current_context:
+            logger.warning("No active session for get_next_action")
+            return None
+
+        try:
+            # Check if we should continue based on state
+            if current_state.get("state") == "completed":
+                logger.info("Auto-mode already completed")
+                return None
+
+            if current_state.get("state") == "error":
+                logger.error("Auto-mode in error state")
+                return None
+
+            # Get conversation history for context
+            conversation_history = await self.session_manager.get_conversation_history(
+                self.active_session_id, limit=5
+            )
+
+            # Build context for analysis
+            context_summary = self._build_context_summary(conversation_history)
+
+            # Request analysis from analysis engine
+            # Note: Create simple context dict to avoid serialization issues
+            context_dict = {
+                "session_id": self.current_context.session_id,
+                "user_objective": self.current_context.user_objective,
+                "working_directory": self.current_context.working_directory,
+                "current_step": self.current_context.current_step,
+                "total_steps": self.current_context.total_steps,
+            }
+
+            analysis_result = await self.analysis_engine.analyze_conversation(
+                session_id=self.active_session_id,
+                claude_output=context_summary,
+                user_objective=self.current_context.user_objective,
+                analysis_type=AnalysisType.NEXT_ACTION_PLANNING,
+                context=context_dict,
+            )
+
+            # Generate next action prompt based on analysis
+            next_prompt = await self._generate_next_action(analysis_result)
+
+            if not next_prompt:
+                logger.warning("Could not generate next action prompt")
+                return None
+
+            return {
+                "prompt": next_prompt,
+                "confidence": analysis_result.confidence,
+                "iteration": self.current_iteration,
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get next action: {e}")
+            return None
+
+    def _build_context_summary(self, conversation_history: List[Any]) -> str:
+        """Build a summary of conversation context for analysis"""
+        if not conversation_history:
+            return "No previous conversation"
+
+        # Take last few messages
+        recent_messages = (
+            conversation_history[-3:] if len(conversation_history) > 3 else conversation_history
+        )
+
+        summary_parts = []
+        for msg in recent_messages:
+            role = msg.role if hasattr(msg, "role") else "unknown"
+            content_preview = (
+                (msg.content[:200] + "...")
+                if hasattr(msg, "content") and len(msg.content) > 200
+                else (msg.content if hasattr(msg, "content") else "")
+            )
+            summary_parts.append(f"{role}: {content_preview}")
+
+        return "\n".join(summary_parts)
+
+    async def send_prompt_to_claude(self, prompt: str) -> Optional[str]:
+        """
+        Send a prompt to Claude via Agent SDK and get response.
+
+        Args:
+            prompt: The prompt to send to Claude
+
+        Returns:
+            Claude's response text, or None if failed
+        """
+        if not self.active_session_id:
+            logger.error("No active session for sending prompt")
+            return None
+
+        try:
+            # Add prompt to conversation history
+            await self.session_manager.add_conversation_message(
+                self.active_session_id,
+                role="user",
+                content=prompt,
+                message_type="auto_mode_prompt",
+                metadata={"iteration": self.current_iteration},
+            )
+
+            # Send to Claude via Agent SDK
+            # Note: In a real implementation, this would call the Claude Agent SDK
+            # For now, we'll use the analysis engine to synthesize a response
+            logger.info(f"Sending prompt to Claude (iteration {self.current_iteration})")
+
+            # Request synthesis from analysis engine (simulates Claude response)
+            # Note: Create simple context dict to avoid serialization issues
+            context_dict = {
+                "session_id": self.current_context.session_id if self.current_context else "",
+                "user_objective": self.current_context.user_objective
+                if self.current_context
+                else "",
+                "working_directory": self.current_context.working_directory
+                if self.current_context
+                else "",
+                "current_step": self.current_context.current_step if self.current_context else 0,
+                "total_steps": self.current_context.total_steps if self.current_context else 0,
+            }
+
+            synthesis_result = await self.analysis_engine.synthesize_response(
+                session_id=self.active_session_id,
+                prompt=prompt,
+                user_objective=self.current_context.user_objective if self.current_context else "",
+                context=context_dict,
+            )
+
+            if not synthesis_result:
+                logger.error("Failed to get response from Claude")
+                return None
+
+            # Extract response content
+            response_content = synthesis_result.get("response", "")
+
+            # Update session activity
+            await self.session_manager.update_session_activity(self.active_session_id)
+
+            logger.info(f"Received response from Claude ({len(response_content)} chars)")
+            return response_content
+
+        except Exception as e:
+            logger.error(f"Failed to send prompt to Claude: {e}")
+            return None

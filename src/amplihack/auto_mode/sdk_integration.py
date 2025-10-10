@@ -1,240 +1,177 @@
 """
-Claude Agent SDK Integration for Auto-Mode
+Claude Session Continuation for Auto-Mode
 
-Handles integration with the Claude Agent SDK for persistent session management,
-conversation analysis, and multi-turn conversation coordination.
+Uses the current Claude Code session for conversation continuation
+instead of creating separate API connections.
 """
 
-import asyncio
-import hashlib
 import logging
-import os
 import time
-import uuid
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from .config import (
-    DEFAULT_API_KEY_MIN_LENGTH,
-    DEFAULT_CONNECTION_TIMEOUT_SECONDS,
-    DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
-    DEFAULT_RETRY_ATTEMPTS,
-    DEFAULT_RETRY_DELAY_SECONDS,
-    DEFAULT_SYNTHESIS_SIMULATION_DELAY,
-)
-
-# Set up logger
 logger = logging.getLogger(__name__)
 
 
-class SDKConnectionState(Enum):
-    """States of the SDK connection"""
+@dataclass
+class ClaudeMessage:
+    """Message in Claude conversation"""
 
-    DISCONNECTED = "disconnected"
-    CONNECTING = "connecting"
-    CONNECTED = "connected"
-    AUTHENTICATED = "authenticated"
-    ERROR = "error"
+    role: str  # "user" or "assistant"
+    content: str
 
 
 @dataclass
-class SDKMessage:
-    """Message for SDK communication"""
-
-    message_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: float = field(default_factory=time.time)
-    message_type: str = ""
-    content: Dict[str, Any] = field(default_factory=dict)
-    response_to: Optional[str] = None
-
-
-@dataclass
-class SDKSession:
-    """SDK session information"""
+class ClaudeSession:
+    """Claude session information - manages conversation history"""
 
     session_id: str
-    claude_session_id: str
     user_id: str
+    messages: List[ClaudeMessage] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
     last_activity: float = field(default_factory=time.time)
-    conversation_context: Dict[str, Any] = field(default_factory=dict)
-    analysis_state: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-class ClaudeAgentSDKClient:
+class ClaudeSessionContinuation:
     """
-    Client for integrating with Claude Agent SDK.
+    Uses current Claude Code session for auto-mode analysis.
 
-    Provides a compatible interface for SDK integration with simulation capabilities
-    for development and testing environments.
+    This class generates prompts for Claude Code to execute within the
+    current conversation rather than creating separate API connections.
     """
 
     def __init__(self):
-        self.connection_state = SDKConnectionState.DISCONNECTED
-        self.api_key: Optional[str] = None
-        self.base_url: str = "https://api.anthropic.com"  # SDK endpoint
+        # Session management - keyed by session_id
+        self.active_sessions: Dict[str, ClaudeSession] = {}
 
-        # Connection management
-        self.connection_timeout = DEFAULT_CONNECTION_TIMEOUT_SECONDS
-        self.retry_attempts = DEFAULT_RETRY_ATTEMPTS
-        self.retry_delay = DEFAULT_RETRY_DELAY_SECONDS
-
-        # Session management
-        self.active_sessions: Dict[str, SDKSession] = {}
-        self.message_handlers: Dict[str, Callable] = {}
-
-        # Metrics and monitoring
-        self.connection_attempts = 0
+        # Metrics
         self.successful_requests = 0
         self.failed_requests = 0
-        self.last_heartbeat = 0.0
-        self._heartbeat_task: Optional[asyncio.Task] = None
 
-    async def initialize(
-        self,
-        timeout: float = DEFAULT_CONNECTION_TIMEOUT_SECONDS,
-        retry_attempts: int = DEFAULT_RETRY_ATTEMPTS,
-    ) -> bool:
+        # Mode indicator
+        self.mode = "session_continuation"
+
+    async def initialize(self) -> bool:
         """
-        Initialize the SDK client and establish connection.
+        Initialize session continuation mode.
+
+        No API key or HTTP client needed - we use the current Claude session.
+        """
+        logger.info("Initialized Claude session continuation mode")
+        return True
+
+    def prepare_continuation_prompt(
+        self, session_id: str, user_message: str, max_tokens: int = 4096
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Prepare a prompt for execution in the current Claude Code session.
 
         Args:
-            timeout: Connection timeout in seconds
-            retry_attempts: Number of retry attempts
+            session_id: Session ID to maintain conversation context
+            user_message: Message from the user
+            max_tokens: Maximum tokens in response (informational)
 
         Returns:
-            bool: True if initialization successful, False otherwise
+            Dictionary with prompt and continuation metadata, or None on failure
         """
-        self.connection_timeout = timeout
-        self.retry_attempts = retry_attempts
+        if session_id not in self.active_sessions:
+            logger.error(f"Session {session_id} not found")
+            return None
 
         try:
-            # Get API key from environment securely
-            self.api_key = self._get_secure_api_key()
-            if not self.api_key:
-                # In test/CI environment without API key, use mock mode
-                logger.warning("CLAUDE_API_KEY not found - using mock mode for testing")
-                self.api_key = "mock_api_key"  # pragma: allowlist secret
+            session = self.active_sessions[session_id]
 
-            # Attempt to connect
-            connected = await self._establish_connection()
+            # Add user message to conversation history
+            session.messages.append(ClaudeMessage(role="user", content=user_message))
+            session.last_activity = time.time()
 
-            if connected:
-                # Start background tasks
-                self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-                logger.info("Claude Agent SDK client initialized successfully")
-                return True
-            logger.error("Failed to establish connection to Claude Agent SDK")
-            return False
+            # Return prompt for Claude Code to execute in current session
+            return {
+                "prompt": user_message,
+                "session_id": session_id,
+                "continuation_mode": True,
+                "max_tokens": max_tokens,
+                "conversation_history": [
+                    {"role": msg.role, "content": msg.content}
+                    for msg in session.messages[-5:]  # Last 5 messages for context
+                ],
+            }
 
         except Exception as e:
-            logger.error(f"Failed to initialize Claude Agent SDK client: {e}")
-            self.connection_state = SDKConnectionState.ERROR
-            return False
+            logger.error(f"Error preparing continuation prompt: {e}")
+            self.failed_requests += 1
+            return None
 
-    async def _establish_connection(self) -> bool:
-        """Establish connection to Claude Agent SDK"""
-        self.connection_state = SDKConnectionState.CONNECTING
-        self.connection_attempts += 1
+    def record_response(self, session_id: str, assistant_response: str) -> bool:
+        """
+        Record Claude's response to maintain conversation history.
+
+        Args:
+            session_id: Session ID
+            assistant_response: Response from Claude
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if session_id not in self.active_sessions:
+            logger.error(f"Session {session_id} not found")
+            return False
 
         try:
-            # Establish connection to SDK
-            # Implementation establishes WebSocket or HTTP connection as appropriate
-            await asyncio.sleep(0.1)  # Simulate connection time
+            session = self.active_sessions[session_id]
+            session.messages.append(ClaudeMessage(role="assistant", content=assistant_response))
+            session.last_activity = time.time()
 
-            # Authenticate with SDK
-            auth_success = await self._authenticate()
-
-            if auth_success:
-                self.connection_state = SDKConnectionState.AUTHENTICATED
-                self.last_heartbeat = time.time()
-                return True
-            self.connection_state = SDKConnectionState.ERROR
-            return False
-
-        except Exception as e:
-            logger.error(f"Connection establishment failed: {type(e).__name__}")
-            self.connection_state = SDKConnectionState.ERROR
-            return False
-
-    async def _authenticate(self) -> bool:
-        """Authenticate with Claude Agent SDK"""
-        try:
-            # In production, would send authentication request with:
-            # - api_key_present: bool(self.api_key)
-            # - client_type: "auto_mode"
-            # - client_version: "1.0.0"
-
-            # In production, send actual authentication request
-            await asyncio.sleep(0.1)  # Simulate auth time
-
-            # Authentication successful
+            self.successful_requests += 1
+            logger.info(f"Recorded response for session {session_id}")
             return True
 
         except Exception as e:
-            logger.error(f"Authentication failed: {e}")
+            logger.error(f"Error recording response: {e}")
+            self.failed_requests += 1
             return False
 
     async def create_persistent_session(
         self, auto_mode_session_id: str, user_id: str, initial_context: Dict[str, Any]
-    ) -> Optional[SDKSession]:
+    ) -> Optional[ClaudeSession]:
         """
-        Create a persistent session with Claude Agent SDK.
+        Create a new conversation session.
 
         Args:
             auto_mode_session_id: Auto-mode session identifier
             user_id: User identifier
-            initial_context: Initial conversation context
+            initial_context: Initial conversation context (stored in metadata)
 
         Returns:
-            Optional[SDKSession]: Created SDK session or None on failure
+            Optional[ClaudeSession]: Created session or None on failure
         """
         try:
-            if self.connection_state != SDKConnectionState.AUTHENTICATED:
-                logger.error("SDK not authenticated - cannot create session")
-                return None
-
-            # Generate Claude session ID
-            claude_session_id = self._generate_claude_session_id(auto_mode_session_id, user_id)
-
-            # In production, would create session request with:
-            # - session_id: claude_session_id
-            # - user_id: user_id
-            # - initial_context: initial_context
-            # - capabilities: conversation_analysis, quality_assessment, etc.
-
-            # Create new session
-            await asyncio.sleep(0.1)  # Simulate API call
-
-            # Create SDK session object
-            sdk_session = SDKSession(
+            # Create session object
+            session = ClaudeSession(
                 session_id=auto_mode_session_id,
-                claude_session_id=claude_session_id,
                 user_id=user_id,
-                conversation_context=initial_context.copy(),
+                messages=[],
+                metadata=initial_context.copy(),
             )
 
-            self.active_sessions[auto_mode_session_id] = sdk_session
-            self.successful_requests += 1
-
-            logger.info("Created persistent session successfully")
-            return sdk_session
+            self.active_sessions[auto_mode_session_id] = session
+            logger.info(f"Created session: {auto_mode_session_id}")
+            return session
 
         except Exception as e:
-            logger.error(f"Failed to create persistent session: {type(e).__name__}")
-            self.failed_requests += 1
+            logger.error(f"Failed to create session: {e}")
             return None
 
     async def update_conversation_context(
         self, session_id: str, conversation_update: Dict[str, Any]
     ) -> bool:
         """
-        Update conversation context for an existing session.
+        Update conversation metadata for an existing session.
 
         Args:
             session_id: Auto-mode session ID
-            conversation_update: New conversation data
+            conversation_update: New metadata to add
 
         Returns:
             bool: True if update successful, False otherwise
@@ -244,135 +181,20 @@ class ClaudeAgentSDKClient:
                 logger.warning("Session not found for conversation update")
                 return False
 
-            sdk_session = self.active_sessions[session_id]
+            session = self.active_sessions[session_id]
+            session.metadata.update(conversation_update)
+            session.last_activity = time.time()
 
-            # In production, would prepare update request with:
-            # - session_id: sdk_session.claude_session_id
-            # - update_type: "conversation_context"
-            # - data: conversation_update
-            # - timestamp: time.time()
-
-            # Update conversation context
-            await asyncio.sleep(0.05)  # Simulate API call
-
-            # Update local session
-            sdk_session.conversation_context.update(conversation_update)
-            sdk_session.last_activity = time.time()
-
-            self.successful_requests += 1
+            logger.debug(f"Updated conversation context for session {session_id}")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to update conversation context: {type(e).__name__}")
-            self.failed_requests += 1
+            logger.error(f"Failed to update conversation context: {e}")
             return False
-
-    async def request_analysis(
-        self, session_id: str, analysis_type: str = "comprehensive"
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Request conversation analysis from Claude Agent SDK.
-
-        Args:
-            session_id: Auto-mode session ID
-            analysis_type: Type of analysis to perform
-
-        Returns:
-            Optional[Dict]: Analysis results or None on failure
-        """
-        try:
-            if session_id not in self.active_sessions:
-                logger.warning("Session not found")
-                return None
-
-            sdk_session = self.active_sessions[session_id]
-
-            # In production, would prepare analysis request with:
-            # - session_id: sdk_session.claude_session_id
-            # - analysis_type: analysis_type
-            # - context_window: sdk_session.conversation_context
-            # - requested_insights: conversation_quality, user_satisfaction, etc.
-
-            # Request conversation analysis
-            await asyncio.sleep(0.2)  # Simulate analysis time
-
-            # Generate analysis results
-            analysis_results = self._generate_analysis_results(sdk_session)
-
-            # Update session analysis state
-            sdk_session.analysis_state.update(
-                {
-                    "last_analysis": time.time(),
-                    "analysis_count": sdk_session.analysis_state.get("analysis_count", 0) + 1,
-                }
-            )
-
-            self.successful_requests += 1
-            return analysis_results
-
-        except Exception as e:
-            logger.error(f"Failed to request analysis: {type(e).__name__}")
-            self.failed_requests += 1
-            return None
-
-    async def synthesize_conversation(
-        self, session_id: str, synthesis_params: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Request conversation synthesis from Claude Agent SDK.
-
-        Args:
-            session_id: Auto-mode session ID
-            synthesis_params: Parameters for synthesis
-
-        Returns:
-            Optional[Dict]: Synthesis results or None on failure
-        """
-        try:
-            if session_id not in self.active_sessions:
-                logger.warning("Session not found")
-                return None
-
-            # In production, would prepare synthesis request with:
-            # - session_id: sdk_session.claude_session_id
-            # - synthesis_type: synthesis_params.get("type", "summary")
-            # - scope: synthesis_params.get("scope", "full_conversation")
-            # - format: synthesis_params.get("format", "structured")
-
-            # Request conversation synthesis
-            await asyncio.sleep(DEFAULT_SYNTHESIS_SIMULATION_DELAY)  # Simulate synthesis time
-
-            # Generate synthesis results
-            synthesis_results = {
-                "summary": "Conversation focused on implementing auto-mode functionality with good progress on core components.",
-                "key_insights": [
-                    "User is implementing a complex feature systematically",
-                    "Good use of TDD approach and modular design",
-                    "Strong focus on security and user preferences",
-                ],
-                "recommendations": [
-                    "Continue with current structured approach",
-                    "Consider adding more comprehensive error handling",
-                    "Plan for user feedback integration",
-                ],
-                "quality_metrics": {
-                    "overall_satisfaction": 0.8,
-                    "goal_achievement": 0.7,
-                    "conversation_efficiency": 0.8,
-                },
-            }
-
-            self.successful_requests += 1
-            return synthesis_results
-
-        except Exception as e:
-            logger.error(f"Failed to synthesize conversation: {type(e).__name__}")
-            self.failed_requests += 1
-            return None
 
     async def close_session(self, session_id: str) -> bool:
         """
-        Close a persistent session.
+        Close a session.
 
         Args:
             session_id: Auto-mode session ID
@@ -385,142 +207,35 @@ class ClaudeAgentSDKClient:
                 logger.warning("Session not found")
                 return False
 
-            # In production, would prepare session close request with:
-            # - session_id: self.active_sessions[session_id].claude_session_id
-            # - close_reason: "user_ended"
-            # - final_state: self.active_sessions[session_id].conversation_context
-
-            # Close session
-            await asyncio.sleep(0.1)  # Simulate API call
-
-            # Remove from active sessions
             del self.active_sessions[session_id]
-
-            self.successful_requests += 1
-            logger.info("Closed persistent session successfully")
+            logger.info(f"Closed session: {session_id}")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to close session: {type(e).__name__}")
-            self.failed_requests += 1
+            logger.error(f"Failed to close session: {e}")
             return False
-
-    async def _heartbeat_loop(self):
-        """Background heartbeat loop to maintain connection"""
-        while self.connection_state == SDKConnectionState.AUTHENTICATED:
-            try:
-                await asyncio.sleep(DEFAULT_HEARTBEAT_INTERVAL_SECONDS)  # Heartbeat interval
-
-                # Send heartbeat
-                heartbeat_success = await self._send_heartbeat()
-
-                if heartbeat_success:
-                    self.last_heartbeat = time.time()
-                else:
-                    logger.warning("Heartbeat failed - attempting reconnection")
-                    await self._attempt_reconnection()
-
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f"Heartbeat loop error: {type(e).__name__}")
-
-    async def _send_heartbeat(self) -> bool:
-        """Send heartbeat to maintain connection"""
-        try:
-            # Send heartbeat
-            await asyncio.sleep(0.01)
-            return True
-
-        except Exception as e:
-            logger.error(f"Heartbeat failed: {type(e).__name__}")
-            return False
-
-    async def _attempt_reconnection(self):
-        """Attempt to reconnect to SDK"""
-        if self.connection_state != SDKConnectionState.ERROR:
-            self.connection_state = SDKConnectionState.DISCONNECTED
-
-        for attempt in range(self.retry_attempts):
-            logger.info(f"Reconnection attempt {attempt + 1}/{self.retry_attempts}")
-
-            if await self._establish_connection():
-                logger.info("Reconnection successful")
-                return
-
-            await asyncio.sleep(self.retry_delay * (attempt + 1))
-
-        logger.error("Reconnection failed - entering error state")
-        self.connection_state = SDKConnectionState.ERROR
-
-    def _generate_claude_session_id(self, auto_mode_session_id: str, user_id: str) -> str:
-        """Generate Claude session ID from auto-mode session ID"""
-        combined = f"{auto_mode_session_id}:{user_id}:{time.time()}"
-        session_hash = hashlib.sha256(combined.encode()).hexdigest()[:16]
-        return f"claude_session_{session_hash}"
-
-    def _generate_analysis_results(self, sdk_session: SDKSession) -> Dict[str, Any]:
-        """Generate analysis results based on session context"""
-        return {
-            "session_id": sdk_session.claude_session_id,
-            "analysis_timestamp": time.time(),
-            "quality_assessment": {
-                "overall_score": 0.75,
-                "dimensions": {
-                    "clarity": 0.8,
-                    "effectiveness": 0.7,
-                    "engagement": 0.8,
-                    "satisfaction": 0.7,
-                },
-            },
-            "detected_patterns": [
-                {
-                    "pattern_type": "systematic_implementation",
-                    "confidence": 0.9,
-                    "description": "User following systematic implementation approach",
-                }
-            ],
-            "improvement_opportunities": [
-                {
-                    "area": "error_handling",
-                    "priority": "medium",
-                    "description": "Consider adding more comprehensive error handling",
-                }
-            ],
-            "user_insights": {
-                "expertise_level": "advanced",
-                "communication_style": "technical",
-                "preferred_detail_level": "high",
-            },
-        }
 
     async def shutdown(self):
-        """Shutdown the SDK client"""
+        """Shutdown the session continuation manager"""
         try:
-            logger.info("Shutting down Claude Agent SDK client")
+            logger.info("Shutting down Claude session continuation")
 
             # Close all active sessions
             for session_id in list(self.active_sessions.keys()):
                 await self.close_session(session_id)
 
-            # Disconnect
-            self.connection_state = SDKConnectionState.DISCONNECTED
-
-            logger.info("Claude Agent SDK client shutdown complete")
+            logger.info("Claude session continuation shutdown complete")
 
         except Exception as e:
-            logger.error(f"Error during SDK client shutdown: {type(e).__name__}")
+            logger.error(f"Error during shutdown: {e}")
 
     def get_connection_status(self) -> Dict[str, Any]:
         """Get current connection status and metrics"""
         return {
-            "connection_state": self.connection_state.value,
+            "mode": self.mode,
             "active_sessions": len(self.active_sessions),
-            "connection_attempts": self.connection_attempts,
             "successful_requests": self.successful_requests,
             "failed_requests": self.failed_requests,
-            "last_heartbeat": self.last_heartbeat,
-            "uptime_seconds": time.time() - self.last_heartbeat if self.last_heartbeat > 0 else 0,
         }
 
     def get_session_info(self, session_id: str) -> Optional[Dict[str, Any]]:
@@ -528,54 +243,12 @@ class ClaudeAgentSDKClient:
         if session_id not in self.active_sessions:
             return None
 
-        sdk_session = self.active_sessions[session_id]
+        session = self.active_sessions[session_id]
         return {
-            "session_id": sdk_session.session_id,
-            "claude_session_id": sdk_session.claude_session_id,
-            "user_id": sdk_session.user_id,
-            "created_at": sdk_session.created_at,
-            "last_activity": sdk_session.last_activity,
-            "analysis_count": sdk_session.analysis_state.get("analysis_count", 0),
-            "last_analysis": sdk_session.analysis_state.get("last_analysis", 0),
+            "session_id": session.session_id,
+            "user_id": session.user_id,
+            "created_at": session.created_at,
+            "last_activity": session.last_activity,
+            "message_count": len(session.messages),
+            "mode": self.mode,
         }
-
-    def _get_secure_api_key(self) -> Optional[str]:
-        """Securely get API key from environment without logging it"""
-        api_key = os.getenv("CLAUDE_API_KEY")
-
-        if api_key:
-            # Validate API key format without logging it
-            if len(api_key) < DEFAULT_API_KEY_MIN_LENGTH:
-                logger.error("API key appears to be invalid (too short)")
-                return None
-
-            # Don't log the actual key - just confirm it exists
-            logger.info("API key loaded from environment")
-            return api_key
-
-        # Check for alternative environment variables
-        alt_keys = ["ANTHROPIC_API_KEY", "CLAUDE_AI_KEY"]
-        for alt_key in alt_keys:
-            api_key = os.getenv(alt_key)
-            if api_key and len(api_key) >= DEFAULT_API_KEY_MIN_LENGTH:
-                logger.info(f"API key loaded from {alt_key} environment variable")
-                return api_key
-
-        return None
-
-    def _validate_api_key_format(self, api_key: str) -> bool:
-        """Validate API key format without logging sensitive data"""
-        if not api_key:
-            return False
-
-        # Basic format validation for Claude API keys
-        # Typically start with 'sk-ant-' prefix
-        if api_key.startswith("sk-ant-") and len(api_key) > 20:  # pragma: allowlist secret
-            return True
-
-        # Accept development keys for testing environments
-        if api_key.startswith("test-") or api_key == "mock_api_key":  # pragma: allowlist secret
-            logger.warning("Using development API key - not for production use")
-            return True
-
-        return False
