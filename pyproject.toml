@@ -99,7 +99,6 @@ markers = [
     "slow_tui: marks tests as slow TUI tests (takes >30 seconds)",
     "asyncio: marks tests as async tests",
 ]
-timeout = 300
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
