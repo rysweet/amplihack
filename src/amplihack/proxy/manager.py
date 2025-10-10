@@ -101,8 +101,12 @@ class ProxyManager:
             # Ensure PORT is set for the proxy process
             proxy_env["PORT"] = str(self.proxy_port)
 
-            # Run the local proxy server directly
-            start_command = [sys.executable, "-m", "src.amplihack.proxy.server"]
+            # Determine the correct way to start the proxy server
+            start_command = self._get_proxy_start_command()
+
+            if not start_command:
+                print("Failed to determine proxy start command")
+                return False
 
             self.proxy_process = subprocess.Popen(
                 start_command,
@@ -455,6 +459,115 @@ class ProxyManager:
             return ["python", "-m", "src.proxy"]
         if (proxy_repo / "package.json").exists():
             return ["npm", "start"]
+        return None
+
+    def _get_proxy_start_command(self) -> Optional[List[str]]:
+        """Determine the correct command to start the proxy server.
+
+        This method handles both development (running from source) and
+        installed (pip/uvx) scenarios robustly.
+
+        Returns:
+            List of command arguments, or None if unable to determine.
+        """
+        # Method 1: Try import-based detection (fastest and most reliable)
+        try:
+            # Try to import from installed package first (pip/uvx scenario)
+            import amplihack.proxy.server
+            module_path = "amplihack.proxy.server"
+            print(f"Detected installed package, using module: {module_path}")
+            return [sys.executable, "-m", module_path]
+        except (ImportError, SyntaxError) as e:
+            # SyntaxError can occur if there are merge conflicts in the imported files
+            pass
+
+        try:
+            # Try to import from source directory (development scenario)
+            import src.amplihack.proxy.server
+            module_path = "src.amplihack.proxy.server"
+            print(f"Detected source directory, using module: {module_path}")
+            return [sys.executable, "-m", module_path]
+        except (ImportError, SyntaxError) as e:
+            # SyntaxError can occur if there are merge conflicts in the imported files
+            pass
+
+        # Method 2: File-based execution as fallback
+        # This works universally but requires locating the actual file
+        # This is especially important when imports fail due to syntax errors
+
+        # First, try to find server.py relative to this file
+        current_file = Path(__file__).resolve()
+        server_candidates = [
+            # In same directory structure
+            current_file.parent / "server.py",
+            # One level up in src structure
+            current_file.parent.parent / "proxy" / "server.py",
+            # Check common installation locations
+            Path(sys.prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages" / "amplihack" / "proxy" / "server.py",
+            # Also check site-packages directly in case of virtual environment
+            Path(sys.executable).parent.parent / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages" / "amplihack" / "proxy" / "server.py",
+        ]
+
+        for server_path in server_candidates:
+            if server_path.exists():
+                print(f"Found proxy server file at: {server_path}")
+                return [sys.executable, str(server_path)]
+
+        # Method 3: Try both module paths with subprocess (last resort)
+        # This catches edge cases where imports fail but modules work
+        # Enhanced to handle uvx scenarios better
+        module_paths = [
+            "amplihack.proxy.server",  # Standard installed package
+            "src.amplihack.proxy.server",  # Development structure
+        ]
+
+        # Also try without the src prefix in case we're in a different context
+        # This helps with uvx where the package might be installed differently
+        for module_path in module_paths:
+            try:
+                # Test if the module can be executed
+                # Use a more robust test that actually imports and checks the module
+                test_code = f"""
+import sys
+try:
+    import {module_path}
+    # Verify the module has expected content
+    if hasattr({module_path}, '__file__'):
+        print('OK')
+except Exception:
+    sys.exit(1)
+"""
+                test_result = subprocess.run(
+                    [sys.executable, "-c", test_code],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if test_result.returncode == 0 and "OK" in test_result.stdout:
+                    print(f"Module {module_path} is executable via subprocess")
+                    return [sys.executable, "-m", module_path]
+            except (subprocess.TimeoutExpired, Exception) as e:
+                continue
+
+        # Method 4: Try to determine if we're in a uvx environment and adjust accordingly
+        # Check if we're running from a uvx cache directory
+        exe_path = Path(sys.executable).resolve()
+        if "uvx" in str(exe_path) or ".local/bin" in str(exe_path):
+            # We're likely in a uvx environment
+            print("Detected uvx environment, trying amplihack.proxy.server directly")
+            # In uvx, the package should be available as amplihack
+            return [sys.executable, "-m", "amplihack.proxy.server"]
+
+        # If all methods fail, provide helpful error message
+        print("ERROR: Unable to locate proxy server module.")
+        print("Attempted methods:")
+        print("  1. Import 'amplihack.proxy.server' (installed package)")
+        print("  2. Import 'src.amplihack.proxy.server' (development)")
+        print(f"  3. File-based execution from: {current_file.parent}")
+        print("  4. Subprocess module execution test")
+        print(f"  5. uvx environment detection (executable: {sys.executable})")
+        print("\nPlease ensure the proxy server module is properly installed or available.")
+
         return None
 
     def _display_log_locations(self) -> None:
