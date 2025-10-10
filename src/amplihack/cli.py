@@ -190,6 +190,29 @@ def create_parser() -> argparse.ArgumentParser:
         help="Run amplihack in Docker container for isolated execution",
     )
 
+    # Auto command - simplified autonomous objective execution
+    auto_parser = subparsers.add_parser(
+        "auto",
+        help="Run an objective autonomously until completion",
+        description="Auto-mode takes an objective and runs it to completion, analyzing progress and generating next steps automatically.",
+    )
+    auto_parser.add_argument(
+        "objective",
+        nargs="+",
+        help='Objective to achieve (e.g., "Build a REST API with authentication")',
+    )
+    auto_parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=50,
+        help="Maximum iterations before stopping (default: 50)",
+    )
+    auto_parser.add_argument(
+        "--working-dir",
+        metavar="PATH",
+        help="Working directory for the objective (default: current directory)",
+    )
+
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
     uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
@@ -368,6 +391,32 @@ def main(argv: Optional[List[str]] = None) -> int:
             elif not claude_args:
                 claude_args = ["--add-dir", original_cwd]
         return launch_command(args, claude_args)
+
+    elif args.command == "auto":
+        # Simplified auto-mode: takes objective, runs until done
+        objective = " ".join(args.objective)
+        working_dir = args.working_dir or os.getcwd()
+        max_iterations = args.max_iterations
+
+        print("🤖 Auto-mode starting...")
+        print(f"Objective: {objective}")
+        print(f"Working directory: {working_dir}")
+        print(f"Max iterations: {max_iterations}")
+        print("\nPress Ctrl+C to stop at any time.\n")
+
+        # Import and run the simplified auto mode
+        try:
+            from .commands.auto_mode import AutoModeCommand
+
+            command = AutoModeCommand()
+            # Run synchronously until done or interrupted
+            return command.run_objective(objective, working_dir, max_iterations)
+        except KeyboardInterrupt:
+            print("\n\n⏹️  Auto-mode stopped by user")
+            return 0
+        except Exception as e:
+            print(f"\n❌ Auto-mode error: {e}", file=sys.stderr)
+            return 1
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
