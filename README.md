@@ -57,7 +57,7 @@ Code to `cd /path/to/my/project` and
 
 ### Workflow
 
-14-step development process:
+14-step development process (customizeable via DEFAULT_WORKLOFW.md)
 
 1. Clarify requirements
 2. Create issue
@@ -106,32 +106,6 @@ cp examples/example.azure.env .azure.env
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --with-proxy-config ./.azure.env
 ```
 
-#### Key Features
-
-- 🔄 **Automatic Proxy**: claude-code-proxy starts automatically with proper
-  configuration
-- 🗝️ **Model Mapping**: OpenAI model names → your Azure deployment names
-- 💾 **Azure Persistence**: Persistence prompt automatically appended for better
-  context
-- ⚡ **Performance Optimized**: 512k context window support with proper timeouts
-- 🔒 **Secure**: Localhost-only proxy with credential protection
-
-#### Recent Fixes (PR #679)
-
-- ✅ **Fixed REQUEST_TIMEOUT parsing**: No more startup failures from inline
-  comments
-- ✅ **Enhanced config parser**: Properly handles .env file formatting
-- ✅ **Improved error messages**: Clear troubleshooting guidance
-- ✅ **Cross-platform support**: Works on macOS, Linux, and Windows
-
-#### Known Issues (External Dependencies)
-
-- ⚠️ **Internal Server Error**: The external `claude-code-proxy` package has
-  bugs causing JSON serialization errors during request processing
-- ⚠️ **Missing log output**: Proxy doesn't show log file locations during
-  startup
-- ⚠️ **Model mapping warnings**: Azure deployment mapping needs upstream fixes
-
 #### Example Configuration
 
 > > > > > > > origin/feat/issue-676-azure-openai-proxy
@@ -151,9 +125,6 @@ REQUEST_TIMEOUT="300"
 MAX_TOKENS_LIMIT="512000"
 MAX_RETRIES="2"
 ```
-
-**Security Warning**: Never commit API keys to version control. Use environment
-variables or secure key management systems.
 
 ### Custom Workflows
 
