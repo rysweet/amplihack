@@ -104,6 +104,7 @@ class ProxyConfig:
             "OPENAI_API_KEY",
             "OPENAI_BASE_URL",
             "ANTHROPIC_API_KEY",
+            "AZURE_ENDPOINT",
             "AZURE_OPENAI_ENDPOINT",
             "AZURE_OPENAI_BASE_URL",
             "AZURE_OPENAI_API_KEY",
@@ -259,11 +260,13 @@ class ProxyConfig:
             print(error_msg)
 
         # Check for endpoint - at least one should be provided
-        endpoint = self.config.get("AZURE_OPENAI_ENDPOINT") or self.config.get(
-            "AZURE_OPENAI_BASE_URL"
+        endpoint = (
+            self.config.get("AZURE_OPENAI_ENDPOINT")
+            or self.config.get("AZURE_ENDPOINT")
+            or self.config.get("AZURE_OPENAI_BASE_URL")
         )
         if not endpoint:
-            error_msg = "Missing required Azure endpoint configuration: AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_BASE_URL"
+            error_msg = "Missing required Azure endpoint configuration: AZURE_ENDPOINT, AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_BASE_URL"
             self.validation_errors.append(error_msg)
             print(error_msg)
         elif not self.validate_azure_endpoint_format():
@@ -310,7 +313,11 @@ class ProxyConfig:
         Returns:
             Azure endpoint URL if configured, None otherwise.
         """
-        return self.config.get("AZURE_OPENAI_ENDPOINT") or self.config.get("AZURE_OPENAI_BASE_URL")
+        return (
+            self.config.get("AZURE_OPENAI_ENDPOINT")
+            or self.config.get("AZURE_ENDPOINT")
+            or self.config.get("AZURE_OPENAI_BASE_URL")
+        )
 
     def get_azure_api_version(self) -> Optional[str]:
         """Get Azure API version.
