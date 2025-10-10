@@ -291,6 +291,7 @@ class TestStopHookE2EMultipleScenarios(unittest.TestCase):
         self.assertIn("Kubernetes", message)
         self.assertIn("event-driven", message)
 
+    @unittest.skip("Test requires extract_learnings and learnings display - reflection disabled")
     def test_e2e_scenario_no_decisions_but_has_learnings(self):
         """
         E2E SCENARIO: Session has learnings but no explicit decisions.

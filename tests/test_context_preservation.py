@@ -24,22 +24,21 @@ class TestContextPreserver(unittest.TestCase):
     def setUp(self):
         """Set up test environment."""
         self.temp_dir = tempfile.mkdtemp()
-        self.original_root = ContextPreserver.__init__.__globals__.get("project_root")
-        # Monkey patch the project root for testing
-        ContextPreserver.__init__.__globals__["project_root"] = Path(self.temp_dir)
 
         # Create required directory structure
         (Path(self.temp_dir) / ".claude" / "runtime" / "logs").mkdir(parents=True)
 
-        # Create test preserver
-        self.session_id = "test_20250923_120000"
-        self.preserver = ContextPreserver(self.session_id)
+        # Create test preserver with mocked project root
+        import unittest.mock
+
+        self.session_id = "20250101_120000"  # Use a session ID that matches the pattern
+        with unittest.mock.patch(
+            "context_preservation.get_project_root", return_value=Path(self.temp_dir)
+        ):
+            self.preserver = ContextPreserver(self.session_id)
 
     def tearDown(self):
         """Clean up test environment."""
-        # Restore original project root
-        if self.original_root:
-            ContextPreserver.__init__.__globals__["project_root"] = self.original_root
         # Clean up temp directory
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
@@ -161,9 +160,26 @@ Implement conversation transcript and original request preservation for amplihac
     def test_get_latest_session_id(self):
         """Test getting the latest session ID."""
         logs_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs"
+
+        # Clear any existing session directories to avoid test pollution
+        import shutil
+
+        if logs_dir.exists():
+            shutil.rmtree(logs_dir)
+        logs_dir.mkdir(parents=True)
+
+        # Create test session directories with specific IDs
+        (logs_dir / "20250101_120000").mkdir(parents=True)
         (logs_dir / "20250923_120000").mkdir(parents=True)
 
-        latest = self.preserver.get_latest_session_id()
+        # Mock get_project_root for the method call - patch where it's imported
+        import unittest.mock
+
+        with unittest.mock.patch(
+            "context_preservation.get_project_root", return_value=Path(self.temp_dir)
+        ):
+            latest = self.preserver.get_latest_session_id()
+        # Should find the latest session (20250923_120000 is later than 20250101_120000)
         self.assertEqual(latest, "20250923_120000")
 
     def test_requirement_preservation(self):
@@ -193,7 +209,13 @@ Process ALL file types without exception.
     def test_session_directory_creation(self):
         """Test that session directories are created properly."""
         session_id = "test_20250923_150000"
-        ContextPreserver(session_id)
+        # Mock get_project_root for this test too
+        import unittest.mock
+
+        with unittest.mock.patch(
+            "context_preservation.get_project_root", return_value=Path(self.temp_dir)
+        ):
+            ContextPreserver(session_id)
         session_dir = Path(self.temp_dir) / ".claude" / "runtime" / "logs" / session_id
         self.assertTrue(session_dir.exists())
 

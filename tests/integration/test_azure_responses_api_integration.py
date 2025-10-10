@@ -39,6 +39,9 @@ class TestAzureResponsesAPIIntegration:
             "MIDDLE_MODEL": "gpt-5",
             "SMALL_MODEL": "gpt-5",
             "USE_LITELLM_ROUTER": "true",
+            # Azure deployment mappings required by AzureModelMapper
+            "AZURE_GPT4_DEPLOYMENT": "gpt-4-deployment",
+            "AZURE_BIG_MODEL_DEPLOYMENT": "gpt-5-deployment",
         }
 
     @pytest.fixture
@@ -350,8 +353,23 @@ class TestIntegrationDiagnostics:
         if config["OPENAI_BASE_URL"]:
             assert "/responses" in config["OPENAI_BASE_URL"], "Should be Azure Responses API URL"
 
-    def test_integration_health_check(self, azure_config):
+    def test_integration_health_check(self):
         """Comprehensive health check for integration components."""
+        # Create azure_config directly for this test class
+        azure_config = {
+            "OPENAI_API_KEY": "test-key",  # pragma: allowlist secret
+            "AZURE_OPENAI_KEY": "test-key",  # pragma: allowlist secret
+            "OPENAI_BASE_URL": "https://ai-adapt-oai-eastus2.openai.azure.com/openai/v1/responses?api-version=preview",
+            "AZURE_API_VERSION": "preview",
+            "BIG_MODEL": "gpt-5",
+            "MIDDLE_MODEL": "gpt-5",
+            "SMALL_MODEL": "gpt-5",
+            "USE_LITELLM_ROUTER": "true",
+            # Azure deployment mappings required by AzureModelMapper
+            "AZURE_GPT4_DEPLOYMENT": "gpt-4-deployment",
+            "AZURE_BIG_MODEL_DEPLOYMENT": "gpt-5-deployment",
+        }
+
         health_report = {
             "litellm_router": False,
             "responses_api_proxy": False,

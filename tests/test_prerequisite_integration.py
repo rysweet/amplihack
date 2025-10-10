@@ -96,30 +96,22 @@ class TestClaudeTraceIntegration:
             result = get_claude_command()
             assert result in ["claude", "claude-trace"]
 
-    def test_npm_install_error_provides_guidance(self):
-        """Test that npm install errors provide installation guidance."""
-        from amplihack.utils.claude_trace import _install_claude_trace
+    def test_claude_trace_is_hard_dependency(self):
+        """Test that claude-trace is treated as a hard dependency."""
+        from amplihack.utils.claude_trace import get_claude_command
 
-        with patch("shutil.which", return_value=None):
-            # npm not available
-            result = _install_claude_trace()
+        # Claude-trace is now a hard dependency, not dynamically installed
+        # The module only controls whether to use 'claude-trace' or 'claude'
+        result = get_claude_command()
+        assert result in ["claude", "claude-trace"]
 
-            # Should fail gracefully
-            assert result is False
+    def test_claude_trace_env_var_disable(self):
+        """Test that AMPLIHACK_USE_TRACE=0 disables claude-trace."""
+        from amplihack.utils.claude_trace import get_claude_command
 
-    def test_claude_trace_installation_subprocess_errors(self):
-        """Test that subprocess errors during claude-trace installation are handled."""
-        from amplihack.utils.claude_trace import _install_claude_trace
-
-        with patch("shutil.which", return_value="/usr/bin/npm"):
-            with patch("subprocess.run", side_effect=PermissionError("permission denied")):
-                # Should handle permission errors gracefully without raising
-                try:
-                    result = _install_claude_trace()
-                    assert result is False
-                except PermissionError:
-                    # If it propagates, that's also acceptable for this error scenario
-                    pass
+        with patch.dict("os.environ", {"AMPLIHACK_USE_TRACE": "0"}):
+            result = get_claude_command()
+            assert result == "claude"
 
 
 class TestWorkflowIntegration:
@@ -129,15 +121,22 @@ class TestWorkflowIntegration:
         """E2E: Complete launch workflow when all prerequisites present."""
         launcher = ClaudeLauncher()
 
-        with patch("shutil.which") as mock_which, patch(
-            "subprocess.Popen"
-        ) as mock_popen, patch.object(
-            launcher.detector, "find_claude_directory", return_value=None
-        ):
+        with patch("shutil.which") as mock_which, patch("subprocess.Popen") as mock_popen, patch(
+            "subprocess.run"
+        ) as mock_run, patch.object(launcher.detector, "find_claude_directory", return_value=None):
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
             mock_process = Mock()
             mock_process.wait.return_value = 0
+            mock_process.__enter__ = Mock(return_value=mock_process)
+            mock_process.__exit__ = Mock(return_value=None)
             mock_popen.return_value = mock_process
+
+            # Mock subprocess.run for claude-trace installation and prerequisite checks
+            mock_run_result = Mock()
+            mock_run_result.returncode = 0
+            mock_run_result.stdout = "1.0.0"  # Mock version output
+            mock_run_result.stderr = ""
+            mock_run.return_value = mock_run_result
 
             exit_code = launcher.launch()
 

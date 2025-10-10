@@ -15,6 +15,20 @@ dependencies = [
     "aiohttp>=3.8.0",
     "litellm>=1.0.0",
     "python-dotenv>=0.19.0",
+    "pathlib2>=2.3.0; python_version<'3.6'",
+]
+
+[project.optional-dependencies]
+tui-testing = [
+    "pytest-asyncio>=0.21.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=22.0.0",
+    "ruff>=0.1.0",
+    "build>=1.0.0",  # Required for test_uvx_packaging.py
 ]
 
 [project.scripts]
@@ -71,6 +85,8 @@ addopts = [
     "--strict-markers",
     "--tb=short",
 ]
+# Add src directory to Python path for module discovery
+pythonpath = ["src"]
 # Exclude standalone test scripts from collection
 norecursedirs = [".git", ".tox", "dist", "build", "*.egg"]
 markers = [
@@ -78,4 +94,12 @@ markers = [
     "integration: marks tests as integration tests",
     "performance: marks tests as performance tests",
     "e2e: marks tests as end-to-end tests",
+    "tui: marks tests as TUI/interactive tests",
+    "gadugi: marks tests as requiring gadugi-agentic-test",
+    "slow_tui: marks tests as slow TUI tests (takes >30 seconds)",
+    "asyncio: marks tests as async tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
 ]

@@ -19,7 +19,7 @@ class TestCompleteLogStreamingWorkflow:
 
     @pytest.mark.e2e
     @pytest.mark.slow
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_full_proxy_to_client_log_streaming(self, available_port):
         """Test complete workflow: Proxy start -> Log streaming -> Client receives logs."""
         # This should FAIL - no implementation exists yet
@@ -124,6 +124,7 @@ class TestCompleteLogStreamingWorkflow:
     @pytest.mark.e2e
     @pytest.mark.slow
     @pytest.mark.network
+    @pytest.mark.asyncio
     async def test_azure_api_integration_with_log_streaming(self, available_port):
         """Test log streaming during actual Azure API integration."""
         # This should FAIL - no implementation exists yet
@@ -211,6 +212,7 @@ class TestCompleteLogStreamingWorkflow:
 
     @pytest.mark.e2e
     @pytest.mark.slow
+    @pytest.mark.asyncio
     async def test_production_like_log_streaming_scenario(
         self, available_port, performance_monitor
     ):
@@ -342,7 +344,7 @@ class TestLogStreamingPerformance:
 
     @pytest.mark.e2e
     @pytest.mark.slow
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_log_streaming_does_not_impact_proxy_performance(
         self, available_port, performance_monitor
     ):
@@ -430,7 +432,7 @@ class TestLogStreamingPerformance:
 
     @pytest.mark.e2e
     @pytest.mark.slow
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_log_streaming_system_stability_under_load(self, available_port):
         """Test system stability under sustained load."""
         # This should FAIL - no implementation exists yet
@@ -544,6 +546,7 @@ class TestLogStreamingPerformance:
 
     @pytest.mark.e2e
     @pytest.mark.slow
+    @pytest.mark.asyncio
     async def test_graceful_shutdown_with_active_clients(self, available_port):
         """Test graceful shutdown of the system with active log streaming clients."""
         # This should FAIL - no implementation exists yet

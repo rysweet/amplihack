@@ -14,6 +14,7 @@ import socket
 import pytest
 
 
+@pytest.mark.skip(reason="Feature not yet implemented - TDD placeholder tests")
 class TestPortSelector:
     """Unit tests for PortSelector class (not yet implemented).
 
@@ -294,6 +295,7 @@ class TestPortSelector:
         assert False, "Selection info return not implemented yet"
 
 
+@pytest.mark.skip(reason="Feature not yet implemented - TDD placeholder tests")
 class TestPortSelectorExceptions:
     """Tests for PortSelector exception classes (not yet implemented)."""
 

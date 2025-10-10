@@ -1,10 +1,10 @@
 """
-Custom setup.py to handle .claude/ directory packaging.
+Custom setup.py to handle framework files packaging.
 
 This implements Option A: Dual-location strategy
-- .claude/ lives at repo root for local Claude Code
-- Custom build command copies .claude/ into package during wheel build
-- Ensures both local and UVX scenarios work correctly
+- Framework files (.claude/, CLAUDE.md, docs, examples, Specs) live at repo root
+- Custom build command copies framework files into package during wheel build
+- Ensures both local and UVX scenarios work correctly with all framework files
 """
 
 import shutil
@@ -15,39 +15,49 @@ from setuptools.command.build_py import build_py  # type: ignore
 
 
 class BuildPyWithClaude(build_py):
-    """Custom build command that copies .claude/ into the package."""
+    """Custom build command that copies framework files into the package."""
 
     def run(self):
-        """Run the standard build, then copy .claude/ directory."""
+        """Run the standard build, then copy framework files."""
         # Run standard build first
         super().run()
 
-        # Copy .claude/ from repo root to built package
+        # Define framework files/directories to copy
         repo_root = Path(__file__).parent
-        claude_src = repo_root / ".claude"
-
-        if not claude_src.exists():
-            print(f"Warning: .claude/ directory not found at {claude_src}")
-            return
-
-        # Find the build directory for our package
         build_lib = Path(self.build_lib)
-        claude_dest = build_lib / "amplihack" / ".claude"
+        package_dir = build_lib / "amplihack"
 
-        # Copy the entire .claude/ directory
-        if claude_dest.exists():
-            shutil.rmtree(claude_dest)
+        framework_items = [
+            (".claude", ".claude"),
+            ("CLAUDE.md", "CLAUDE.md"),
+            ("docs", "docs"),
+            ("examples", "examples"),
+            ("Specs", "Specs"),
+        ]
 
-        print(f"Copying .claude/ from {claude_src} to {claude_dest}")
-        shutil.copytree(claude_src, claude_dest, dirs_exist_ok=True)
+        # Copy each framework item
+        for src_name, dest_name in framework_items:
+            src_path = repo_root / src_name
+            dest_path = package_dir / dest_name
 
-        # Ensure Python recognizes it as package data
-        # by creating __init__.py files where needed
-        for dirpath in claude_dest.rglob("*"):
-            if dirpath.is_dir() and not (dirpath / "__init__.py").exists():
-                # Don't create __init__.py in every directory, only where it makes sense
-                # for Python to traverse. Most .claude/ content is data, not code.
-                pass
+            if not src_path.exists():
+                print(f"Warning: {src_name} not found at {src_path}")
+                continue
+
+            # Remove existing destination if present
+            if dest_path.exists():
+                if dest_path.is_dir():
+                    shutil.rmtree(dest_path)
+                else:
+                    dest_path.unlink()
+
+            # Copy file or directory
+            if src_path.is_dir():
+                print(f"Copying {src_name}/ from {src_path} to {dest_path}")
+                shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
+            else:
+                print(f"Copying {src_name} from {src_path} to {dest_path}")
+                shutil.copy2(src_path, dest_path)
 
 
 if __name__ == "__main__":
