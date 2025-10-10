@@ -275,7 +275,7 @@ git config --list
 npm install -g @anthropic-ai/claude-code
 ```
 
-**Note:** This is **automatically installed** when missing. The framework will attempt to install it on first run if not found.
+**Note:** Auto-installation available with explicit opt-in for security.
 
 **Documentation:** https://docs.claude.com/en/docs/claude-code/setup
 
@@ -292,11 +292,13 @@ claude --version
 # Should show version information
 ```
 
-**Disable Auto-Installation:**
+**Enable Auto-Installation (Opt-In for Security):**
 
 ```bash
-export AMPLIHACK_NO_AUTO_INSTALL=1
+export AMPLIHACK_AUTO_INSTALL=1
 ```
+
+The framework will automatically install Claude CLI if missing when `AMPLIHACK_AUTO_INSTALL=1` is set. This requires explicit user consent for security.
 
 **Manual Installation for User-Local (without sudo):**
 

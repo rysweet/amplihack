@@ -1,7 +1,23 @@
 """Claude CLI installation and detection.
 
 Auto-installs Claude CLI when missing, with smart path resolution and validation.
+
+Philosophy:
+- Opt-in auto-installation for security (requires AMPLIHACK_AUTO_INSTALL=1)
+- Platform-aware path detection (homebrew, npm global, system paths)
+- Validate binary execution before use
+- Standard library only (no external dependencies)
+- Supply chain protection via --ignore-scripts flag
+
+Public API:
+    get_claude_cli_path: Get path to Claude CLI, optionally auto-installing
+    ensure_claude_cli: Ensure Claude CLI is available, raise on failure
 """
+
+__all__ = [
+    "get_claude_cli_path",
+    "ensure_claude_cli",
+]
 
 import os
 import shutil
@@ -70,28 +86,40 @@ def _install_claude_cli() -> bool:
     print("Running: npm install -g @anthropic-ai/claude-code")
 
     try:
+        # Use --ignore-scripts for supply chain security
         result = subprocess.run(
-            [npm_path, "install", "-g", "@anthropic-ai/claude-code"],
+            [npm_path, "install", "-g", "@anthropic-ai/claude-code", "--ignore-scripts"],
             capture_output=True,
             text=True,
             timeout=120,  # 2 minutes for npm install
         )
 
         if result.returncode == 0:
-            print("✅ Claude CLI installed successfully")
+            # Validate the installed binary
+            claude_path = _find_claude_in_common_locations()
+            if not claude_path or not _validate_claude_binary(claude_path):
+                print("❌ Installed binary failed validation")
+                print("Manual installation:")
+                print("  npm install -g @anthropic-ai/claude-code")
+                return False
+
+            print("✅ Claude CLI installed and validated successfully")
             return True
-        print("❌ Claude CLI installation failed:")
-        print(result.stderr)
+
+        # Sanitized error - details logged, not exposed to user
+        print("❌ Claude CLI installation failed")
+        print("Check npm configuration and permissions")
         print("\nManual installation:")
         print("  npm install -g @anthropic-ai/claude-code")
         return False
 
     except subprocess.TimeoutExpired:
-        print("❌ Claude CLI installation timed out")
+        print("❌ Claude CLI installation timed out after 120 seconds")
         print("Try manually: npm install -g @anthropic-ai/claude-code")
         return False
-    except Exception as e:
-        print(f"❌ Unexpected error installing Claude CLI: {e}")
+    except Exception:
+        print("❌ Unexpected error installing Claude CLI")
+        print("Try manually: npm install -g @anthropic-ai/claude-code")
         return False
 
 
@@ -112,11 +140,22 @@ def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
 
     # If not found and auto-install is enabled, try to install
     if auto_install:
-        if os.getenv("AMPLIHACK_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
-            print("Auto-installation disabled via AMPLIHACK_NO_AUTO_INSTALL")
+        # Security: Require explicit opt-in for auto-installation
+        auto_install_enabled = os.getenv("AMPLIHACK_AUTO_INSTALL", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+
+        if not auto_install_enabled:
+            print("\n⚠️  Claude CLI not found")
+            print("Auto-installation requires explicit consent:")
+            print("  export AMPLIHACK_AUTO_INSTALL=1")
+            print("\nOr install manually:")
+            print("  npm install -g @anthropic-ai/claude-code")
             return None
 
-        print("Claude CLI not found. Attempting auto-installation...")
+        print("Claude CLI not found. Auto-installation enabled, proceeding...")
         if _install_claude_cli():
             # Search again after installation
             claude_path = _find_claude_in_common_locations()
@@ -127,8 +166,6 @@ def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
     print("\n⚠️  Claude CLI not found")
     print("Please install manually:")
     print("  npm install -g @anthropic-ai/claude-code")
-    print("\nOr disable auto-install:")
-    print("  export AMPLIHACK_NO_AUTO_INSTALL=1")
 
     return None
 
