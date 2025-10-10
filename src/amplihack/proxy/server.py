@@ -1954,4 +1954,7 @@ def run_server(host: str = "127.0.0.1", port: int = 8082):
 
 
 if __name__ == "__main__":
-    run_server()
+    # Read host and port from environment variables
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "8082"))
+    run_server(host=host, port=port)
