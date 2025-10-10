@@ -318,6 +318,21 @@ class ClaudeLauncher:
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
+            # Include proxy environment variables if proxy is configured
+            if self.proxy_manager and self.proxy_manager.is_running():
+                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
+                    proxy_port=self.proxy_manager.proxy_port,
+                    config=self.proxy_manager.proxy_config.to_env_dict()
+                    if self.proxy_manager.proxy_config
+                    else None,
+                )
+                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
+                if proxy_env.get("ANTHROPIC_BASE_URL"):
+                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
+                    print(f"✓ Configured Claude to use proxy at {proxy_env['ANTHROPIC_BASE_URL']}")
+                if proxy_env.get("ANTHROPIC_API_KEY"):
+                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
+
             # Launch Claude
             self.claude_process = subprocess.Popen(cmd, env=env)
 
@@ -375,6 +390,21 @@ class ClaudeLauncher:
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+            # Include proxy environment variables if proxy is configured
+            if self.proxy_manager and self.proxy_manager.is_running():
+                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
+                    proxy_port=self.proxy_manager.proxy_port,
+                    config=self.proxy_manager.proxy_config.to_env_dict()
+                    if self.proxy_manager.proxy_config
+                    else None,
+                )
+                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
+                if proxy_env.get("ANTHROPIC_BASE_URL"):
+                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
+                    print(f"✓ Configured Claude to use proxy at {proxy_env['ANTHROPIC_BASE_URL']}")
+                if proxy_env.get("ANTHROPIC_API_KEY"):
+                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
 
             # Launch Claude with direct I/O (interactive mode)
             print("Starting Claude...")
