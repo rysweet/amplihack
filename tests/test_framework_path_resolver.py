@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from src.amplihack.utils.paths import FrameworkPathResolver
+from amplihack.utils.paths import FrameworkPathResolver
 
 
 class TestFrameworkPathResolver:
@@ -84,7 +84,7 @@ class TestFrameworkPathResolver:
             with patch.dict(os.environ, {}, clear=True):
                 # Mock UVX staging to avoid triggering it
                 with patch(
-                    "src.amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
+                    "amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
                     return_value=False,
                 ):
                     result = FrameworkPathResolver.resolve_framework_file(".claude/test.md")
@@ -97,11 +97,11 @@ class TestFrameworkPathResolver:
 
             # Mock UVX environment
             with patch(
-                "src.amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
+                "amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
                 return_value=True,
-            ), patch(
-                "src.amplihack.utils.uvx_staging.stage_uvx_framework", return_value=True
-            ), patch("pathlib.Path.cwd", return_value=temp_path):
+            ), patch("amplihack.utils.uvx_staging.stage_uvx_framework", return_value=True), patch(
+                "pathlib.Path.cwd", return_value=temp_path
+            ):
                 # Create .claude directory to simulate successful staging
                 (temp_path / ".claude").mkdir()
 
@@ -115,30 +115,28 @@ class TestFrameworkPathResolver:
 
             # Mock UVX environment with staging failure
             with patch(
-                "src.amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
+                "amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
                 return_value=True,
-            ), patch(
-                "src.amplihack.utils.uvx_staging.stage_uvx_framework", return_value=False
-            ), patch("pathlib.Path.cwd", return_value=temp_path):
+            ), patch("amplihack.utils.uvx_staging.stage_uvx_framework", return_value=False), patch(
+                "pathlib.Path.cwd", return_value=temp_path
+            ):
                 result = FrameworkPathResolver.find_framework_root()
                 assert result is None
 
     def test_is_uvx_deployment_with_staging_module(self):
         """Test UVX deployment detection using staging module."""
-        with patch("src.amplihack.utils.uvx_staging.is_uvx_deployment", return_value=True):
+        with patch("amplihack.utils.uvx_staging.is_uvx_deployment", return_value=True):
             result = FrameworkPathResolver.is_uvx_deployment()
             assert result is True
 
     def test_is_uvx_deployment_fallback(self):
         """Test UVX deployment detection fallback when staging module unavailable."""
         # Mock ImportError for uvx_staging module
-        with patch(
-            "src.amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment"
-        ) as mock_method:
+        with patch("amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment") as mock_method:
             # This will trigger the ImportError path
             def side_effect():
                 try:
-                    from src.amplihack.utils.uvx_staging import is_uvx_deployment
+                    from amplihack.utils.uvx_staging import is_uvx_deployment
 
                     return is_uvx_deployment()
                 except ImportError:

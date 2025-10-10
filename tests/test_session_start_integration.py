@@ -54,7 +54,7 @@ Accuracy over speed
             mock_resolve.return_value.parents = [None, None, None, None, temp_project_root]
 
             # Mock FrameworkPathResolver
-            with patch("src.amplihack.utils.paths.FrameworkPathResolver") as mock_resolver:
+            with patch("amplihack.utils.paths.FrameworkPathResolver") as mock_resolver:
                 mock_resolver.resolve_preferences_file.return_value = (
                     temp_project_root / ".claude" / "context" / "USER_PREFERENCES.md"
                 )

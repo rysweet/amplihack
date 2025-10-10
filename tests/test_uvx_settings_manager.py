@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.amplihack.utils.uvx_settings_manager import UVXSettingsManager
+from amplihack.utils.uvx_settings_manager import UVXSettingsManager
 
 
 class TestUVXSettingsManager(unittest.TestCase):
