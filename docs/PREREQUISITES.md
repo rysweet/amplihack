@@ -6,10 +6,11 @@ This document provides detailed installation instructions for all required tools
 
 The AmplihHack framework requires the following tools to be installed:
 
-1. **Node.js** (v18 or higher) - Required for claude-trace
+1. **Node.js** (v18 or higher) - Required for Claude CLI and claude-trace
 2. **npm** (comes with Node.js) - Package manager for Node.js
 3. **uv** - Fast Python package installer and resolver
 4. **git** - Version control system
+5. **claude** - Claude Code CLI (auto-installed if missing)
 
 ## Quick Check
 
@@ -262,26 +263,83 @@ git config --list
 
 ---
 
-## Optional Tools
+## Required Tools (After Prerequisites)
+
+### Claude CLI
+
+**Purpose:** Official Claude Code command-line interface
+
+**Installation (Required):**
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+**Note:** Auto-installation available with explicit opt-in for security.
+
+**Documentation:** https://docs.claude.com/en/docs/claude-code/setup
+
+**Usage:**
+
+- The `claude` command provides the core CLI functionality
+- Used by claude-trace for enhanced debugging
+- Essential for all UVX deployments
+
+**Verification:**
+
+```bash
+claude --version
+# Should show version information
+```
+
+**Enable Auto-Installation (Opt-In for Security):**
+
+```bash
+export AMPLIHACK_AUTO_INSTALL=1
+```
+
+The framework will automatically install Claude CLI if missing when `AMPLIHACK_AUTO_INSTALL=1` is set. This requires explicit user consent for security.
+
+**Manual Installation for User-Local (without sudo):**
+
+```bash
+# Configure npm for user-local installations (if needed)
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.profile
+source ~/.profile
+
+# Then install Claude CLI
+npm install -g @anthropic-ai/claude-code
+```
+
+---
 
 ### claude-trace
 
 **Purpose:** Enhanced debugging and traffic logging for Claude Code
 
-**Installation:**
+**Installation (Required):**
 
 ```bash
 npm install -g @mariozechner/claude-trace
 ```
 
-**Note:** AmplihHack can automatically install claude-trace if npm is available
+**Note:** This is a **required dependency** as of the simplified implementation. Install it during initial setup.
 
-**Documentation:** Part of claude-code ecosystem
+**Documentation:** Part of claude-code ecosystem (https://github.com/mariozechner/claude-trace)
 
 **Usage:**
 
-- Automatically used when `AMPLIHACK_USE_TRACE=1` (default)
-- Disable with `AMPLIHACK_USE_TRACE=0`
+- Enabled by default (`AMPLIHACK_USE_TRACE=1`)
+- To temporarily disable and use plain `claude`: `export AMPLIHACK_USE_TRACE=0`
+
+**Verification:**
+
+```bash
+claude-trace --version
+# Should show version information
+```
 
 ---
 
@@ -439,6 +497,13 @@ if command -v git &> /dev/null; then
     echo "✓ git: $(git --version)"
 else
     echo "✗ git: Not found"
+fi
+
+# Check claude
+if command -v claude &> /dev/null; then
+    echo "✓ claude: $(claude --version)"
+else
+    echo "✗ claude: Not found"
 fi
 
 echo

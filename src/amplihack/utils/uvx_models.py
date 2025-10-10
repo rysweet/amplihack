@@ -31,7 +31,7 @@ class PathResolutionStrategy(Enum):
     """Strategy used for path resolution."""
 
     WORKING_DIRECTORY = auto()  # Found framework files in working directory
-    ENVIRONMENT_VARIABLE = auto()  # Using AMPLIHACK_ROOT environment variable  # noqa
+    ENVIRONMENT_VARIABLE = auto()  # Using AMPLIHACK_ROOT environment variable
     SYSTEM_PATH_SEARCH = auto()  # Found via sys.path search
     STAGING_REQUIRED = auto()  # Need to stage files from UVX installation
     RESOLUTION_FAILED = auto()  # Could not resolve framework location
@@ -42,7 +42,7 @@ class UVXEnvironmentInfo:
     """Information about the UVX environment."""
 
     uv_python_path: Optional[str] = None
-    amplihack_root: Optional[str] = None  # noqa
+    amplihack_root: Optional[str] = None
     sys_path_entries: List[str] = field(default_factory=list)
     working_directory: Path = field(default_factory=Path.cwd)
     python_executable: str = field(default_factory=str)
@@ -54,7 +54,7 @@ class UVXEnvironmentInfo:
 
         return cls(
             uv_python_path=os.environ.get("UV_PYTHON"),
-            amplihack_root=os.environ.get("AMPLIHACK_ROOT"),  # noqa
+            amplihack_root=os.environ.get("AMPLIHACK_ROOT"),
             sys_path_entries=sys.path.copy(),
             working_directory=Path.cwd(),
             python_executable=sys.executable,
@@ -214,8 +214,8 @@ class UVXConfiguration:
 
     # Environment variables to check
     uv_python_env_var: str = "UV_PYTHON"
-    amplihack_root_env_var: str = "AMPLIHACK_ROOT"  # noqa
-    debug_env_var: str = "AMPLIHACK_DEBUG"  # noqa
+    amplihack_root_env_var: str = "AMPLIHACK_ROOT"
+    debug_env_var: str = "AMPLIHACK_DEBUG"
 
     # Path resolution settings
     max_parent_traversal: int = 10
@@ -243,7 +243,7 @@ class UVXConfiguration:
         """Return new configuration with debug setting."""
         return UVXConfiguration(
             uv_python_env_var=self.uv_python_env_var,
-            amplihack_root_env_var=self.amplihack_root_env_var,  # noqa
+            amplihack_root_env_var=self.amplihack_root_env_var,
             debug_env_var=self.debug_env_var,
             max_parent_traversal=self.max_parent_traversal,
             validate_framework_structure=self.validate_framework_structure,

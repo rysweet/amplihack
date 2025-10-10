@@ -258,7 +258,7 @@ class UVXManager:
         # Only set environment variables if we have a valid framework path
         framework_path = self.get_framework_path()
         if framework_path:
-            env_vars["AMPLIHACK_PROJECT_ROOT"] = str(framework_path)  # noqa
-            logger.debug(f"Set AMPLIHACK_PROJECT_ROOT={framework_path}")  # noqa
+            env_vars["AMPLIHACK_PROJECT_ROOT"] = str(framework_path)
+            logger.debug(f"Set AMPLIHACK_PROJECT_ROOT={framework_path}")
 
         return env_vars

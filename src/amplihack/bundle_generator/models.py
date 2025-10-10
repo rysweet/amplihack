@@ -163,7 +163,7 @@ class PackagedBundle:
             self.uvx_metadata = {
                 "version": "1.0.0",
                 "python_requirement": ">=3.11",
-                "entry_point": f"amplihack.bundle_generator.{self.bundle.name}",  # noqa
+                "entry_point": f"amplihack.bundle_generator.{self.bundle.name}",
             }
 
 

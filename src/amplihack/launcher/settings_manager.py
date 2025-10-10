@@ -75,7 +75,7 @@ class SettingsManager:
             return response in ("", "y", "yes")
         except (EOFError, KeyboardInterrupt):
             # Handle Ctrl+C or EOF gracefully
-            print("\nOperation cancelled by user")  # noqa: T201 (print)
+            print("\nOperation cancelled by user")
             return False
 
     def create_backup(self) -> Tuple[bool, Optional[Path]]:
@@ -112,10 +112,10 @@ class SettingsManager:
             return (True, backup_path)
 
         except PermissionError as e:
-            print(f"Permission error creating backup: {e}")  # noqa: T201 (print)
+            print(f"Permission error creating backup: {e}")
             return (False, None)
         except Exception as e:
-            print(f"Error creating backup: {e}")  # noqa: T201 (print)
+            print(f"Error creating backup: {e}")
             return (False, None)
 
     def restore_backup(self) -> bool:
@@ -138,7 +138,7 @@ class SettingsManager:
 
             # Check if backup exists
             if not self.backup_path.exists():
-                print(f"Backup file not found: {self.backup_path}")  # noqa: T201 (print)
+                print(f"Backup file not found: {self.backup_path}")
                 return False
 
             # Restore from backup
@@ -153,10 +153,10 @@ class SettingsManager:
             return True
 
         except PermissionError as e:
-            print(f"Permission error restoring backup: {e}")  # noqa: T201 (print)
+            print(f"Permission error restoring backup: {e}")
             return False
         except Exception as e:
-            print(f"Error restoring backup: {e}")  # noqa: T201 (print)
+            print(f"Error restoring backup: {e}")
             return False
 
     def save_session_state(self) -> bool:
@@ -186,10 +186,10 @@ class SettingsManager:
             return True
 
         except PermissionError as e:
-            print(f"Permission error saving session state: {e}")  # noqa: T201 (print)
+            print(f"Permission error saving session state: {e}")
             return False
         except Exception as e:
-            print(f"Error saving session state: {e}")  # noqa: T201 (print)
+            print(f"Error saving session state: {e}")
             return False
 
     def load_session_state(self) -> bool:
@@ -221,10 +221,10 @@ class SettingsManager:
             return True
 
         except json.JSONDecodeError as e:
-            print(f"Invalid session state file: {e}")  # noqa: T201 (print)
+            print(f"Invalid session state file: {e}")
             return False
         except Exception as e:
-            print(f"Error loading session state: {e}")  # noqa: T201 (print)
+            print(f"Error loading session state: {e}")
             return False
 
     def cleanup_session_state(self) -> bool:
@@ -240,5 +240,5 @@ class SettingsManager:
                 self.session_state_file.unlink()
             return True
         except Exception as e:
-            print(f"Error cleaning up session state: {e}")  # noqa: T201 (print)
+            print(f"Error cleaning up session state: {e}")
             return False

@@ -13,8 +13,8 @@ def find_uvx_installation_path() -> Optional[Path]:
         Path to UVX installation with .claude directory, None if not found.
     """
     # Strategy 1: Check environment variable
-    if "AMPLIHACK_ROOT" in os.environ:  # noqa
-        env_path = Path(os.environ["AMPLIHACK_ROOT"])  # noqa
+    if "AMPLIHACK_ROOT" in os.environ:
+        env_path = Path(os.environ["AMPLIHACK_ROOT"])
         if env_path.exists() and (env_path / ".claude").exists():
             return env_path
 
@@ -29,8 +29,8 @@ def find_uvx_installation_path() -> Optional[Path]:
             for _ in range(10):  # Limit search depth
                 if (current / ".claude").exists():
                     return current
-                if (current / "MicrosoftHackathon2025-AgenticCoding").exists():  # noqa
-                    repo_path = current / "MicrosoftHackathon2025-AgenticCoding"  # noqa
+                if (current / "MicrosoftHackathon2025-AgenticCoding").exists():
+                    repo_path = current / "MicrosoftHackathon2025-AgenticCoding"
                     if (repo_path / ".claude").exists():
                         return repo_path
                 current = current.parent
@@ -64,7 +64,7 @@ def find_uvx_installation_path() -> Optional[Path]:
             continue
 
         # Search for our repository
-        for repo_path in cache_dir.rglob("MicrosoftHackathon2025-AgenticCoding"):  # noqa
+        for repo_path in cache_dir.rglob("MicrosoftHackathon2025-AgenticCoding"):
             if (repo_path / ".claude").exists():
                 return repo_path
 
@@ -73,31 +73,31 @@ def find_uvx_installation_path() -> Optional[Path]:
 
 def print_uvx_usage_instructions():
     """Print instructions for using UVX deployment."""
-    print("🚀 AmplifyHack UVX Deployment Guide")  # noqa: T201 (print)
-    print("=" * 50)  # noqa: T201 (print)
+    print("🚀 AmplifyHack UVX Deployment Guide")
+    print("=" * 50)
 
-    print("\n📋 Quick Start:")  # noqa: T201 (print)
-    print(  # noqa: T201 (print)
-        "uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch"  # noqa
+    print("\n📋 Quick Start:")
+    print(
+        "uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch"
     )
 
-    print("\n⚠️  If @ imports don't work, use --add-dir:")  # noqa: T201 (print)
+    print("\n⚠️  If @ imports don't work, use --add-dir:")
     uvx_path = find_uvx_installation_path()
 
     if uvx_path:
-        print(f"✅ Found UVX installation: {uvx_path}")  # noqa: T201 (print)
-        print("\n📁 Use this command:")  # noqa: T201 (print)
-        print(f"uvx --from git+... amplihack launch --add-dir {uvx_path}")  # noqa: T201 (print)
+        print(f"✅ Found UVX installation: {uvx_path}")
+        print("\n📁 Use this command:")
+        print(f"uvx --from git+... amplihack launch --add-dir {uvx_path}")
     else:
-        print("❌ UVX installation not found")  # noqa: T201 (print)
-        print("\n🔍 To find your UVX path manually:")  # noqa: T201 (print)
-        print('1. Run: uvx --from git+... python -c "import amplihack; print(amplihack.__file__)"')  # noqa: T201 (print)
-        print("2. Navigate up from that path until you find .claude directory")  # noqa: T201 (print)
-        print("3. Use that path with --add-dir")  # noqa: T201 (print)
+        print("❌ UVX installation not found")
+        print("\n🔍 To find your UVX path manually:")
+        print('1. Run: uvx --from git+... python -c "import amplihack; print(amplihack.__file__)"')
+        print("2. Navigate up from that path until you find .claude directory")
+        print("3. Use that path with --add-dir")
 
-    print("\n💡 Alternatively, install locally:")  # noqa: T201 (print)
-    print("amplihack install  # Installs to ~/.claude")  # noqa: T201 (print) (print)
-    print("claude launch      # Uses local installation")  # noqa: T201 (print) (print)
+    print("\n💡 Alternatively, install locally:")
+    print("amplihack install  # Installs to ~/.claude")
+    print("claude launch      # Uses local installation")
 
 
 def main():
@@ -113,9 +113,9 @@ def main():
     if args.find_path:
         path = find_uvx_installation_path()
         if path:
-            print(str(path))  # noqa: T201 (print)
+            print(str(path))
         else:
-            print("UVX installation path not found", file=sys.stderr)  # noqa: T201 (print)
+            print("UVX installation path not found", file=sys.stderr)
             sys.exit(1)
     elif args.usage:
         print_uvx_usage_instructions()

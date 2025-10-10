@@ -65,7 +65,7 @@ class CleanupRegistry:
         if registry_path is None:
             # Use system temp directory (cross-platform)
             temp_dir = Path(tempfile.gettempdir())
-            registry_path = temp_dir / f"amplihack-cleanup-{self.session_id}.json"  # noqa
+            registry_path = temp_dir / f"amplihack-cleanup-{self.session_id}.json"
 
         data = {
             "session_id": self.session_id,

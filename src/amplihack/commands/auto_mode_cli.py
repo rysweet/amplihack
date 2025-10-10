@@ -50,7 +50,7 @@ class AutoModeCLI:
   amplihack auto configure --show                  # Show current configuration  # noqa
   amplihack auto configure analysis_frequency high # Configure analysis frequency  # noqa
   amplihack auto analyze --output json             # Request immediate analysis (JSON output)  # noqa
-  amplihack auto summary                           # Generate session summary""",  # noqa
+  amplihack auto summary                           # Generate session summary""",
         )
 
         # Create subcommands for auto-mode
@@ -202,8 +202,8 @@ class AutoModeCLI:
         """
         try:
             if not args.auto_action:
-                print(  # noqa: T201 (print)
-                    "Error: No auto-mode action specified. Use 'amplihack auto --help' for available actions."  # noqa
+                print(
+                    "Error: No auto-mode action specified. Use 'amplihack auto --help' for available actions."
                 )
                 return 1
 
@@ -268,7 +268,7 @@ class AutoModeCLI:
             return self._handle_command_result(result, args)
 
         except Exception as e:
-            print(f"Error executing auto-mode command: {e}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"Error executing auto-mode command: {e}", file=sys.stderr)
             return 1
 
     def _handle_command_result(self, result, args: argparse.Namespace) -> int:
@@ -284,14 +284,14 @@ class AutoModeCLI:
         """
         try:
             if not result.success:
-                print(f"Error: {result.message}", file=sys.stderr)  # noqa: T201 (print)
+                print(f"Error: {result.message}", file=sys.stderr)
                 if result.error_code:
-                    print(f"Error code: {result.error_code}", file=sys.stderr)  # noqa: T201 (print)
+                    print(f"Error code: {result.error_code}", file=sys.stderr)
                 return 1
 
             # Handle JSON output for status command
             if hasattr(args, "json") and args.json and args.auto_action == "status" and result.data:
-                print(json.dumps(result.data, indent=2))  # noqa: T201 (print)
+                print(json.dumps(result.data, indent=2))
                 return 0
 
             # Handle JSON output for analyze command
@@ -301,18 +301,18 @@ class AutoModeCLI:
                 and args.auto_action == "analyze"
                 and result.data
             ):
-                print(json.dumps(result.data, indent=2))  # noqa: T201 (print)
+                print(json.dumps(result.data, indent=2))
                 return 0
 
             # Default text output
-            print(result.message)  # noqa: T201 (print)
+            print(result.message)
 
             # Print additional data if available
             if result.data and not (hasattr(args, "json") and args.json):
                 if args.auto_action == "start":
-                    print(f"Session ID: {result.data.get('session_id', 'unknown')}")  # noqa: T201 (print)
-                    print(f"Configuration: {result.data.get('config', 'default')}")  # noqa: T201 (print)
-                    print(f"Status: {result.data.get('status', 'unknown')}")  # noqa: T201 (print)
+                    print(f"Session ID: {result.data.get('session_id', 'unknown')}")
+                    print(f"Configuration: {result.data.get('config', 'default')}")
+                    print(f"Status: {result.data.get('status', 'unknown')}")
 
                 elif args.auto_action == "status":
                     self._print_status_info(result.data)
@@ -323,38 +323,38 @@ class AutoModeCLI:
             return 0
 
         except Exception as e:
-            print(f"Error formatting command output: {e}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"Error formatting command output: {e}", file=sys.stderr)
             return 1
 
     def _print_status_info(self, status_data: Dict[str, Any]):
         """Print formatted status information."""
-        print("\nAuto-Mode Status:")  # noqa: T201 (print)
-        print(f"  Status: {status_data.get('status', 'unknown')}")  # noqa: T201 (print)
-        print(f"  Active Sessions: {status_data.get('active_sessions', 0)}")  # noqa: T201 (print)
+        print("\nAuto-Mode Status:")
+        print(f"  Status: {status_data.get('status', 'unknown')}")
+        print(f"  Active Sessions: {status_data.get('active_sessions', 0)}")
 
         if status_data.get("total_sessions", 0) > 0:
-            print(f"  Total Sessions: {status_data.get('total_sessions')}")  # noqa: T201 (print)
-            print(f"  Analysis Cycles: {status_data.get('analysis_cycles', 0)}")  # noqa: T201 (print)
-            print(f"  Interventions: {status_data.get('interventions', 0)}")  # noqa: T201 (print)
-            print(f"  Average Quality: {status_data.get('average_quality', 0):.2f}")  # noqa: T201 (print)
-            print(f"  Uptime: {status_data.get('uptime', '0s')}")  # noqa: T201 (print)
+            print(f"  Total Sessions: {status_data.get('total_sessions')}")
+            print(f"  Analysis Cycles: {status_data.get('analysis_cycles', 0)}")
+            print(f"  Interventions: {status_data.get('interventions', 0)}")
+            print(f"  Average Quality: {status_data.get('average_quality', 0):.2f}")
+            print(f"  Uptime: {status_data.get('uptime', '0s')}")
 
-        print(f"  SDK Connection: {status_data.get('sdk_connection', 'unknown')}")  # noqa: T201 (print)
+        print(f"  SDK Connection: {status_data.get('sdk_connection', 'unknown')}")
 
         # Print detailed info if available
         if "detailed_metrics" in status_data:
-            print("\nDetailed Metrics:")  # noqa: T201 (print)
+            print("\nDetailed Metrics:")
             metrics = status_data["detailed_metrics"]
             for key, value in metrics.items():
                 if key not in ["uptime_seconds"]:  # Skip already shown items
-                    print(f"  {key.replace('_', ' ').title()}: {value}")  # noqa: T201 (print)
+                    print(f"  {key.replace('_', ' ').title()}: {value}")
 
     def _print_configuration(self, config_data: Dict[str, Any]):
         """Print formatted configuration information."""
-        print("\nCurrent Configuration:")  # noqa: T201 (print)
+        print("\nCurrent Configuration:")
         for key, value in config_data.items():
             formatted_key = key.replace("_", " ").title()
-            print(f"  {formatted_key}: {value}")  # noqa: T201 (print)
+            print(f"  {formatted_key}: {value}")
 
     async def run_interactive_mode(self, args: argparse.Namespace) -> int:
         """
@@ -366,8 +366,8 @@ class AutoModeCLI:
         Returns:
             int: Exit code
         """
-        print("🤖 Auto-Mode Interactive Session")  # noqa: T201 (print)
-        print("Type 'help' for available commands, 'quit' to exit")  # noqa: T201 (print)
+        print("🤖 Auto-Mode Interactive Session")
+        print("Type 'help' for available commands, 'quit' to exit")
 
         try:
             while True:
@@ -378,7 +378,7 @@ class AutoModeCLI:
                         continue
 
                     if command_input.lower() in ["quit", "exit"]:
-                        print("Goodbye!")  # noqa: T201 (print)
+                        print("Goodbye!")
                         break
 
                     if command_input.lower() == "help":
@@ -409,19 +409,19 @@ class AutoModeCLI:
                     result_code = await self.handle_auto_command(mock_args)
 
                     if result_code != 0:
-                        print(f"Command failed with exit code: {result_code}")  # noqa: T201 (print)
+                        print(f"Command failed with exit code: {result_code}")
 
                 except KeyboardInterrupt:
-                    print("\nUse 'quit' to exit auto-mode")  # noqa: T201 (print)
+                    print("\nUse 'quit' to exit auto-mode")
                     continue
                 except Exception as e:
-                    print(f"Error: {e}")  # noqa: T201 (print)
+                    print(f"Error: {e}")
                     continue
 
             return 0
 
         except KeyboardInterrupt:
-            print("\nGoodbye!")  # noqa: T201 (print)
+            print("\nGoodbye!")
             return 0
 
     def _print_interactive_help(self):

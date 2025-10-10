@@ -77,7 +77,7 @@ def checkout_repository(repo_uri: str, base_dir: Optional[Path] = None) -> Optio
 
         # Use existing if valid
         if target_dir.exists() and (target_dir / ".git").exists():
-            print(f"Using existing repository: {target_dir}")  # noqa: T201 (print)
+            print(f"Using existing repository: {target_dir}")
             return target_dir
 
         # Remove invalid directory
@@ -96,12 +96,12 @@ def checkout_repository(repo_uri: str, base_dir: Optional[Path] = None) -> Optio
         )
 
         if result.returncode == 0:
-            print(f"Cloned repository to: {target_dir}")  # noqa: T201 (print)
+            print(f"Cloned repository to: {target_dir}")
             return target_dir
 
-        print(f"Clone failed: {result.stderr}")  # noqa: T201 (print)
+        print(f"Clone failed: {result.stderr}")
         return None
 
     except Exception as e:
-        print(f"Checkout error: {e}")  # noqa: T201 (print)
+        print(f"Checkout error: {e}")
         return None

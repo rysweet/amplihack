@@ -79,7 +79,7 @@ def main():
         output = {"decision": "block", "reason": "Command timed out (5 second limit)"}
         print(json.dumps(output))
     except Exception as e:
-        output = {"decision": "block", "reason": f"Error: {str(e)}"}
+        output = {"decision": "block", "reason": f"Error: {e!s}"}
         print(json.dumps(output))
 
 

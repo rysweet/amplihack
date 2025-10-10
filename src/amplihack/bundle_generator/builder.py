@@ -147,7 +147,7 @@ Confidence: {intent.confidence:.1%}
             "tags": self._generate_tags(intent, agents),
             "requirements": {
                 "python": ">=3.11",
-                "amplihack": ">=1.0.0",  # noqa
+                "amplihack": ">=1.0.0",
             },
         }
 

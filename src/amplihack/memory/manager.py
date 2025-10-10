@@ -254,7 +254,7 @@ class MemoryManager:
                 memory_id = self.store(**memory_data)
                 memory_ids.append(memory_id)
             except Exception as e:
-                print(f"Failed to store memory '{memory_data.get('title', 'Unknown')}': {e}")  # noqa: T201 (print)
+                print(f"Failed to store memory '{memory_data.get('title', 'Unknown')}': {e}")
                 memory_ids.append(None)
 
         return memory_ids

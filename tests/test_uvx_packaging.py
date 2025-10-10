@@ -5,10 +5,14 @@ These tests validate that the framework can be packaged and deployed via UVX
 with all required files accessible.
 """
 
+import shutil
 import subprocess
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
+
+import pytest
 
 # Note: This test file is designed to work with or without pytest
 # When pytest is available, tests can be run via pytest
@@ -26,7 +30,7 @@ class TestUVXPackaging:
         """
         # This test should fail initially due to problematic data-files config
         result = subprocess.run(
-            ["python", "-m", "build", "--wheel"],
+            [sys.executable, "-m", "build", "--wheel"],
             check=False,
             capture_output=True,
             text=True,
@@ -46,7 +50,7 @@ class TestUVXPackaging:
         # Build package first
         with tempfile.TemporaryDirectory() as temp_dir:
             result = subprocess.run(
-                ["python", "-m", "build", "--wheel", "--outdir", temp_dir],
+                [sys.executable, "-m", "build", "--wheel", "--outdir", temp_dir],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -82,6 +86,7 @@ class TestUVXPackaging:
                 assert found, f"Required file/directory not found in package: {expected_file}"
 
     # Note: This test may take time as it involves UVX installation
+    @pytest.mark.skipif(shutil.which("uvx") is None, reason="uvx command not available")
     def test_uvx_installation_succeeds(self):
         """Test that UVX can install the package from git.
 

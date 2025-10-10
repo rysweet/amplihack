@@ -58,13 +58,43 @@ def get_claude_command() -> str:
     return "claude"
 
 
+def _configure_user_local_npm() -> dict[str, str]:
+    """Configure npm to use user-local installation paths.
+
+    Sets up environment variables to install npm packages in ~/.npm-global
+    instead of requiring sudo/root access.
+
+    Returns:
+        Dictionary of environment variables for npm user-local installation.
+    """
+    user_npm_dir = Path.home() / ".npm-global"
+    user_npm_bin = user_npm_dir / "bin"
+
+    # Create directory if it doesn't exist
+    user_npm_dir.mkdir(parents=True, exist_ok=True)
+    user_npm_bin.mkdir(parents=True, exist_ok=True)
+
+    # Create environment with npm prefix for user-local installation
+    env = os.environ.copy()
+    env["NPM_CONFIG_PREFIX"] = str(user_npm_dir)
+
+    # Add user npm bin to PATH if not already there
+    current_path = env.get("PATH", "")
+    user_bin_str = str(user_npm_bin)
+    if user_bin_str not in current_path:
+        env["PATH"] = f"{user_bin_str}:{current_path}"
+
+    return env
+
+
 def _find_valid_claude_trace() -> Optional[str]:
     """Find a valid claude-trace binary using smart detection.
 
     Searches for claude-trace binaries in order of preference:
-    1. Homebrew installations (most reliable)
-    2. Global npm installations
-    3. Other PATH locations
+    1. User-local npm installations (highest priority)
+    2. Homebrew installations (most reliable)
+    3. Global npm installations
+    4. Other PATH locations
 
     Validates each candidate to ensure it's Node.js compatible.
 
@@ -72,7 +102,12 @@ def _find_valid_claude_trace() -> Optional[str]:
         Path to valid claude-trace binary, or None if not found
     """
     # Define search paths in preference order
+    user_npm_bin = Path.home() / ".npm-global" / "bin" / "claude-trace"
+
     search_paths = [
+        # User-local npm (highest priority)
+        str(user_npm_bin),
+        str(Path.home() / ".local" / "bin" / "claude-trace"),
         # Homebrew locations (most reliable)
         "/opt/homebrew/bin/claude-trace",
         "/usr/local/bin/claude-trace",
@@ -84,7 +119,7 @@ def _find_valid_claude_trace() -> Optional[str]:
     which_result = shutil.which("claude-trace")
     if which_result:
         # Insert after homebrew paths but before fallbacks
-        search_paths[2] = which_result
+        search_paths[4] = which_result
     else:
         search_paths.pop()  # Remove placeholder
 
@@ -213,7 +248,7 @@ def _test_claude_trace_execution(path: str) -> bool:
 
 
 def _install_claude_trace() -> bool:
-    """Attempt to install claude-trace via npm.
+    """Attempt to install claude-trace via npm using user-local installation.
 
     Returns:
         True if installation succeeded, False otherwise
@@ -232,9 +267,18 @@ def _install_claude_trace() -> bool:
             print("\nFor more information, see docs/PREREQUISITES.md")
             return False
 
-        # Install claude-trace globally
+        # Configure user-local npm environment
+        env = _configure_user_local_npm()
+        user_npm_bin = Path.home() / ".npm-global" / "bin"
+
+        print("Installing claude-trace via npm (user-local)...")
+        print(f"Target directory: {user_npm_bin}")
+        print("Running: npm install -g @mariozechner/claude-trace --ignore-scripts")
+
+        # Install claude-trace with user-local npm and --ignore-scripts for security
         result = subprocess.run(
-            ["npm", "install", "-g", "@mariozechner/claude-trace"],
+            ["npm", "install", "-g", "@mariozechner/claude-trace", "--ignore-scripts"],
+            env=env,
             check=False,
             capture_output=True,
             text=True,
@@ -244,16 +288,29 @@ def _install_claude_trace() -> bool:
         if result.returncode != 0:
             print(f"\nFailed to install claude-trace: {result.stderr}")
             print("\nYou can try installing manually:")
-            print("  npm install -g @mariozechner/claude-trace")
+            print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
+            print("  npm install -g @mariozechner/claude-trace --ignore-scripts")
+            print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+            return False
 
-        return result.returncode == 0
+        # Check if user needs to add to PATH
+        print("✅ Claude-trace installed successfully")
+        if not shutil.which("claude-trace"):
+            print("\n⚠️  Add to your shell profile for future sessions:")
+            print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+
+        return True
 
     except subprocess.TimeoutExpired:
         print("\nInstallation timed out. You can try installing manually:")
-        print("  npm install -g @mariozechner/claude-trace")
+        print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
+        print("  npm install -g @mariozechner/claude-trace --ignore-scripts")
+        print('  export PATH="$HOME/.npm-global/bin:$PATH"')
         return False
     except subprocess.SubprocessError as e:
         print(f"\nError installing claude-trace: {e!s}")
         print("\nYou can try installing manually:")
-        print("  npm install -g @mariozechner/claude-trace")
+        print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
+        print("  npm install -g @mariozechner/claude-trace --ignore-scripts")
+        print('  export PATH="$HOME/.npm-global/bin:$PATH"')
         return False

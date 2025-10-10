@@ -1,4 +1,4 @@
-"""Docker container manager for amplihack."""  # noqa
+"""Docker container manager for amplihack."""
 
 import os
 import re
@@ -11,9 +11,9 @@ from .detector import DockerDetector
 
 
 class DockerManager:
-    """Manages Docker containers for amplihack execution."""  # noqa
+    """Manages Docker containers for amplihack execution."""
 
-    IMAGE_NAME = "amplihack:latest"  # noqa
+    IMAGE_NAME = "amplihack:latest"
 
     def __init__(self):
         """Initialize DockerManager."""
@@ -22,21 +22,21 @@ class DockerManager:
     def build_image(self) -> bool:
         """Build the Docker image if it doesn't exist."""
         if not self.detector.is_running():
-            print("Docker is not running.", file=sys.stderr)  # noqa: T201 (print)
+            print("Docker is not running.", file=sys.stderr)
             return False
 
         # Check if image already exists
         if self.detector.check_image_exists(self.IMAGE_NAME):
             return True
 
-        print(f"Building Docker image: {self.IMAGE_NAME}")  # noqa: T201 (print)
+        print(f"Building Docker image: {self.IMAGE_NAME}")
 
         # Find Dockerfile at project root
         project_root = Path(__file__).parent.parent.parent.parent
         dockerfile = project_root / "Dockerfile"
 
         if not dockerfile.exists():
-            print(f"Dockerfile not found at {dockerfile}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"Dockerfile not found at {dockerfile}", file=sys.stderr)
             return False
 
         try:
@@ -56,25 +56,25 @@ class DockerManager:
             )
 
             if result.returncode != 0:
-                print(f"Docker build failed: {result.stderr}", file=sys.stderr)  # noqa: T201 (print)
+                print(f"Docker build failed: {result.stderr}", file=sys.stderr)
                 return False
 
-            print(f"Successfully built Docker image: {self.IMAGE_NAME}")  # noqa: T201 (print)
+            print(f"Successfully built Docker image: {self.IMAGE_NAME}")
             return True
 
         except subprocess.SubprocessError as e:
-            print(f"Error building Docker image: {e}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"Error building Docker image: {e}", file=sys.stderr)
             return False
 
     def run_command(self, args: List[str], cwd: Optional[str] = None) -> int:
-        """Run amplihack command in Docker container."""  # noqa
+        """Run amplihack command in Docker container."""
         if not self.detector.is_running():
-            print("Docker is not running.", file=sys.stderr)  # noqa: T201 (print)
+            print("Docker is not running.", file=sys.stderr)
             return 1
 
         # Ensure image exists
         if not self.build_image():
-            print("Failed to build Docker image.", file=sys.stderr)  # noqa: T201 (print)
+            print("Failed to build Docker image.", file=sys.stderr)
             return 1
 
         # Mount working directory
@@ -118,7 +118,7 @@ class DockerManager:
         try:
             return subprocess.run(docker_cmd, check=False).returncode
         except subprocess.SubprocessError as e:
-            print(f"Error running Docker container: {e}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"Error running Docker container: {e}", file=sys.stderr)
             return 1
 
     def _sanitize_env_value(self, value: str) -> str:
@@ -160,11 +160,11 @@ class DockerManager:
                 if self._validate_api_key(key, sanitized):
                     env_vars[key] = sanitized
                 else:
-                    print(f"Warning: Invalid format for {key}, skipping", file=sys.stderr)  # noqa: T201 (print)
+                    print(f"Warning: Invalid format for {key}, skipping", file=sys.stderr)
 
         # Amplihack vars (except Docker trigger)
         for key, value in os.environ.items():
-            if key.startswith("AMPLIHACK_") and key != "AMPLIHACK_USE_DOCKER":  # noqa
+            if key.startswith("AMPLIHACK_") and key != "AMPLIHACK_USE_DOCKER":
                 env_vars[key] = self._sanitize_env_value(value)
 
         # Terminal settings

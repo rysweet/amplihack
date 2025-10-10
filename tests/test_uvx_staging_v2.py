@@ -80,10 +80,8 @@ class TestUVXStager:
         stager = UVXStager()
 
         # Create session with UVX deployment but invalid paths
-        with patch("src.amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
-            with patch(
-                "src.amplihack.utils.uvx_staging_v2.resolve_framework_paths"
-            ) as mock_resolve:
+        with patch("amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
+            with patch("amplihack.utils.uvx_staging_v2.resolve_framework_paths") as mock_resolve:
                 env_info = UVXEnvironmentInfo()
                 detection_state = UVXDetectionState(
                     result=UVXDetectionResult.UVX_DEPLOYMENT, environment=env_info
@@ -346,7 +344,7 @@ class TestConvenienceFunctions:
 
     def test_stage_uvx_framework_default_stager(self):
         """Test stage_uvx_framework with default stager."""
-        with patch("src.amplihack.utils.uvx_staging_v2._default_stager") as mock_stager:
+        with patch("amplihack.utils.uvx_staging_v2._default_stager") as mock_stager:
             mock_result = Mock()
             mock_result.is_successful = True
             mock_stager.stage_framework_files.return_value = mock_result
@@ -360,7 +358,7 @@ class TestConvenienceFunctions:
         """Test stage_uvx_framework with custom configuration."""
         config = UVXConfiguration(debug_enabled=True)
 
-        with patch("src.amplihack.utils.uvx_staging_v2.UVXStager") as mock_stager_class:
+        with patch("amplihack.utils.uvx_staging_v2.UVXStager") as mock_stager_class:
             mock_stager = Mock()
             mock_result = Mock()
             mock_result.is_successful = False
@@ -380,9 +378,9 @@ class TestConvenienceFunctions:
             claude_dir = working_dir / ".claude"
             claude_dir.mkdir()
 
-            with patch("src.amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
+            with patch("amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
                 with patch(
-                    "src.amplihack.utils.uvx_staging_v2.resolve_framework_paths"
+                    "amplihack.utils.uvx_staging_v2.resolve_framework_paths"
                 ) as mock_resolve:
                     # Mock detection
                     env_info = UVXEnvironmentInfo(working_directory=working_dir)
@@ -418,9 +416,9 @@ class TestConvenienceFunctions:
             claude_dir = amplihack_source / ".claude"
             claude_dir.mkdir()
 
-            with patch("src.amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
+            with patch("amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
                 with patch(
-                    "src.amplihack.utils.uvx_staging_v2.resolve_framework_paths"
+                    "amplihack.utils.uvx_staging_v2.resolve_framework_paths"
                 ) as mock_resolve:
                     # Mock UVX deployment detection
                     env_info = UVXEnvironmentInfo(
@@ -449,7 +447,7 @@ class TestConvenienceFunctions:
 
     def test_create_uvx_session_detection_failed(self):
         """Test creating UVX session when detection fails."""
-        with patch("src.amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
+        with patch("amplihack.utils.uvx_staging_v2.detect_uvx_deployment") as mock_detect:
             # Mock failed detection
             env_info = UVXEnvironmentInfo()
             detection_state = UVXDetectionState(

@@ -16,9 +16,9 @@ from .parser import PromptParser
 
 def example_simple_generation():
     """Example: Generate a simple agent bundle."""
-    print("=" * 60)  # noqa: T201 (print)
-    print("Example 1: Simple Agent Generation")  # noqa: T201 (print)
-    print("=" * 60)  # noqa: T201 (print)
+    print("=" * 60)
+    print("Example 1: Simple Agent Generation")
+    print("=" * 60)
 
     # Natural language prompt
     prompt = """
@@ -35,41 +35,41 @@ def example_simple_generation():
 
     # Parse and extract
     parsed = parser.parse(prompt)
-    print(f"\n✓ Parsed prompt (confidence: {parsed.confidence:.1%})")  # noqa: T201 (print)
-    print(f"  - Sentences: {len(parsed.sentences)}")  # noqa: T201 (print)
-    print(f"  - Key phrases: {parsed.key_phrases[:3]}")  # noqa: T201 (print)
+    print(f"\n✓ Parsed prompt (confidence: {parsed.confidence:.1%})")
+    print(f"  - Sentences: {len(parsed.sentences)}")
+    print(f"  - Key phrases: {parsed.key_phrases[:3]}")
 
     intent = extractor.extract(parsed)
-    print("\n✓ Extracted intent")  # noqa: T201 (print)
-    print(f"  - Action: {intent.action}")  # noqa: T201 (print)
-    print(f"  - Domain: {intent.domain}")  # noqa: T201 (print)
-    print(f"  - Complexity: {intent.complexity}")  # noqa: T201 (print)
-    print(f"  - Agents: {len(intent.agent_requirements)}")  # noqa: T201 (print)
+    print("\n✓ Extracted intent")
+    print(f"  - Action: {intent.action}")
+    print(f"  - Domain: {intent.domain}")
+    print(f"  - Complexity: {intent.complexity}")
+    print(f"  - Agents: {len(intent.agent_requirements)}")
 
     # Generate agents
     agents = generator.generate(intent)
-    print(f"\n✓ Generated {len(agents)} agent(s)")  # noqa: T201 (print)
+    print(f"\n✓ Generated {len(agents)} agent(s)")
     for agent in agents:
-        print(f"  - {agent.name}: {agent.role} ({agent.file_size_kb:.1f} KB)")  # noqa: T201 (print)
+        print(f"  - {agent.name}: {agent.role} ({agent.file_size_kb:.1f} KB)")
 
     # Build bundle
     bundle = builder.build(agents, intent, name="json_validator_bundle")
-    print(f"\n✓ Built bundle: {bundle.name}")  # noqa: T201 (print)
-    print(f"  - Version: {bundle.version}")  # noqa: T201 (print)
-    print(f"  - Total size: {bundle.total_size_kb:.1f} KB")  # noqa: T201 (print)
+    print(f"\n✓ Built bundle: {bundle.name}")
+    print(f"  - Version: {bundle.version}")
+    print(f"  - Total size: {bundle.total_size_kb:.1f} KB")
 
     # Write to disk
     bundle_path = builder.write_bundle(bundle)
-    print(f"\n✓ Bundle written to: {bundle_path}")  # noqa: T201 (print)
+    print(f"\n✓ Bundle written to: {bundle_path}")
 
     return bundle
 
 
 def example_multi_agent_bundle():
     """Example: Generate a multi-agent bundle."""
-    print("\n" + "=" * 60)  # noqa: T201 (print)
-    print("Example 2: Multi-Agent Bundle Generation")  # noqa: T201 (print)
-    print("=" * 60)  # noqa: T201 (print)
+    print("\n" + "=" * 60)
+    print("Example 2: Multi-Agent Bundle Generation")
+    print("=" * 60)
 
     prompt = """
     Create a comprehensive security analysis suite with the following agents:
@@ -93,30 +93,30 @@ def example_multi_agent_bundle():
     parsed = parser.parse(prompt)
     intent = extractor.extract(parsed)
 
-    print(f"\n✓ Detected {len(intent.agent_requirements)} agents to generate:")  # noqa: T201 (print)
+    print(f"\n✓ Detected {len(intent.agent_requirements)} agents to generate:")
     for req in intent.agent_requirements:
-        print(f"  - {req.name}: {req.purpose}")  # noqa: T201 (print)
+        print(f"  - {req.name}: {req.purpose}")
 
     agents = generator.generate(intent, {"include_tests": True, "include_docs": True})
     bundle = builder.build(agents, intent, name="security_suite")
 
-    print(f"\n✓ Generated bundle with {len(bundle.agents)} agents")  # noqa: T201 (print)
+    print(f"\n✓ Generated bundle with {len(bundle.agents)} agents")
 
     # Package for distribution
     package = packager.package(bundle, format="uvx")
-    print("\n✓ Packaged bundle:")  # noqa: T201 (print)
-    print(f"  - Format: {package.format}")  # noqa: T201 (print)
-    print(f"  - Size: {package.size_bytes / 1024:.1f} KB")  # noqa: T201 (print)
-    print(f"  - Path: {package.package_path}")  # noqa: T201 (print)
+    print("\n✓ Packaged bundle:")
+    print(f"  - Format: {package.format}")
+    print(f"  - Size: {package.size_bytes / 1024:.1f} KB")
+    print(f"  - Path: {package.package_path}")
 
     return package
 
 
 def example_complete_pipeline():
     """Example: Complete pipeline from prompt to distribution."""
-    print("\n" + "=" * 60)  # noqa: T201 (print)
-    print("Example 3: Complete Pipeline")  # noqa: T201 (print)
-    print("=" * 60)  # noqa: T201 (print)
+    print("\n" + "=" * 60)
+    print("Example 3: Complete Pipeline")
+    print("=" * 60)
 
     prompt = """
     Create a performance monitoring agent that tracks application metrics,
@@ -134,66 +134,66 @@ def example_complete_pipeline():
         GitHubDistributor()
 
         # Stage 1: Parse and Extract
-        print("\n[Stage 1] Parsing and extracting requirements...")  # noqa: T201 (print)
+        print("\n[Stage 1] Parsing and extracting requirements...")
         parsed = parser.parse(prompt)
         intent = extractor.extract(parsed)
-        print(f"✓ Extracted {intent.action} request in {intent.domain} domain")  # noqa: T201 (print)
+        print(f"✓ Extracted {intent.action} request in {intent.domain} domain")
 
         # Stage 2: Generate Agents
-        print("\n[Stage 2] Generating agents...")  # noqa: T201 (print)
+        print("\n[Stage 2] Generating agents...")
         agents = generator.generate(intent)
-        print(f"✓ Generated {len(agents)} agent(s)")  # noqa: T201 (print)
+        print(f"✓ Generated {len(agents)} agent(s)")
 
         # Stage 3: Build Bundle
-        print("\n[Stage 3] Building bundle...")  # noqa: T201 (print)
+        print("\n[Stage 3] Building bundle...")
         bundle = builder.build(agents, intent)
         bundle_path = builder.write_bundle(bundle)
-        print(f"✓ Bundle written to: {bundle_path}")  # noqa: T201 (print)
+        print(f"✓ Bundle written to: {bundle_path}")
 
         # Stage 4: Test (simplified)
-        print("\n[Stage 4] Testing bundle...")  # noqa: T201 (print)
+        print("\n[Stage 4] Testing bundle...")
         issues = builder.validate_bundle(bundle)
         if issues:
-            print(f"⚠ Validation issues: {issues}")  # noqa: T201 (print)
+            print(f"⚠ Validation issues: {issues}")
         else:
-            print("✓ Bundle validation passed")  # noqa: T201 (print)
+            print("✓ Bundle validation passed")
 
         # Stage 5: Package
-        print("\n[Stage 5] Packaging for distribution...")  # noqa: T201 (print)
+        print("\n[Stage 5] Packaging for distribution...")
         package = packager.package(bundle, format="uvx")
-        print(f"✓ Created {package.format} package: {package.package_path}")  # noqa: T201 (print)
+        print(f"✓ Created {package.format} package: {package.package_path}")
 
         # Stage 6: Distribute (optional)
-        print("\n[Stage 6] Distribution (simulated)...")  # noqa: T201 (print)
-        print("✓ Ready for distribution to GitHub/PyPI")  # noqa: T201 (print)
+        print("\n[Stage 6] Distribution (simulated)...")
+        print("✓ Ready for distribution to GitHub/PyPI")
         # Actual distribution would require credentials:
         # result = distributor.distribute(package, repository="my-agent-bundle")
 
-        print("\n" + "=" * 60)  # noqa: T201 (print)
-        print("🎉 Pipeline Complete!")  # noqa: T201 (print)
-        print(f"Bundle: {bundle.name}")  # noqa: T201 (print)
-        print(f"Agents: {len(bundle.agents)}")  # noqa: T201 (print)
-        print(f"Package: {package.package_path}")  # noqa: T201 (print)
-        print("=" * 60)  # noqa: T201 (print)
+        print("\n" + "=" * 60)
+        print("🎉 Pipeline Complete!")
+        print(f"Bundle: {bundle.name}")
+        print(f"Agents: {len(bundle.agents)}")
+        print(f"Package: {package.package_path}")
+        print("=" * 60)
 
         return bundle, package
 
     except Exception as e:
-        print(f"\n❌ Pipeline failed: {e}")  # noqa: T201 (print)
+        print(f"\n❌ Pipeline failed: {e}")
         return None, None
 
 
 def example_test_existing_bundle():
     """Example: Test an existing bundle."""
-    print("\n" + "=" * 60)  # noqa: T201 (print)
-    print("Example 4: Testing Existing Bundle")  # noqa: T201 (print)
-    print("=" * 60)  # noqa: T201 (print)
+    print("\n" + "=" * 60)
+    print("Example 4: Testing Existing Bundle")
+    print("=" * 60)
 
     # Assume we have a bundle at this path
     bundle_path = Path("./bundles/json_validator_bundle")
 
     if not bundle_path.exists():
-        print("⚠ No existing bundle found. Run example_simple_generation() first.")  # noqa: T201 (print)
+        print("⚠ No existing bundle found. Run example_simple_generation() first.")
         return
 
     # Load and validate bundle
@@ -206,8 +206,8 @@ def example_test_existing_bundle():
     with open(manifest_path) as f:
         manifest = json.load(f)
 
-    print(f"✓ Loaded bundle: {manifest['bundle']['name']}")  # noqa: T201 (print)
-    print(f"  Agents: {len(manifest['agents'])}")  # noqa: T201 (print)
+    print(f"✓ Loaded bundle: {manifest['bundle']['name']}")
+    print(f"  Agents: {len(manifest['agents'])}")
 
     # Validate structure
     from .models import AgentBundle
@@ -222,17 +222,17 @@ def example_test_existing_bundle():
 
     issues = builder.validate_bundle(bundle)
     if issues:
-        print("\n⚠ Validation issues found:")  # noqa: T201 (print)
+        print("\n⚠ Validation issues found:")
         for issue in issues:
-            print(f"  - {issue}")  # noqa: T201 (print)
+            print(f"  - {issue}")
     else:
-        print("\n✅ Bundle validation passed!")  # noqa: T201 (print)
+        print("\n✅ Bundle validation passed!")
 
 
 def main():
     """Run all examples."""
-    print("Agent Bundle Generator - Examples")  # noqa: T201 (print)
-    print("=" * 60)  # noqa: T201 (print)
+    print("Agent Bundle Generator - Examples")
+    print("=" * 60)
 
     # Example 1: Simple generation
     bundle = example_simple_generation()
@@ -246,10 +246,10 @@ def main():
     # Example 4: Test existing bundle
     example_test_existing_bundle()
 
-    print("\n" + "=" * 60)  # noqa: T201 (print)
-    print("All examples completed!")  # noqa: T201 (print)
-    print("Check the ./bundles and ./packages directories for output.")  # noqa: T201 (print)
-    print("=" * 60)  # noqa: T201 (print)
+    print("\n" + "=" * 60)
+    print("All examples completed!")
+    print("Check the ./bundles and ./packages directories for output.")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

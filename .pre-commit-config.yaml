@@ -50,7 +50,7 @@ repos:
           - --ignore=N999,N806
           - --ignore=SIM117,SIM105,SIM102,SIM110,SIM108,SIM103,SIM118
           - --ignore=RSE102
-          - --ignore=B904,B007,B019
+          - --ignore=B904,B007,B019,B011
           - --ignore=RUF001,RUF012,RUF013,RUF015,RUF022,RUF005,RUF059,RUF043
           - --ignore=E402
           - --ignore=RET504

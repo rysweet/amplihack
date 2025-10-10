@@ -110,7 +110,7 @@ class CleanupHandler:
 
         # Clean up registry file (use tempfile.gettempdir for cross-platform)
         temp_dir = Path(tempfile.gettempdir())
-        registry_path = temp_dir / f"amplihack-cleanup-{self.registry.session_id}.json"  # noqa
+        registry_path = temp_dir / f"amplihack-cleanup-{self.registry.session_id}.json"
         try:
             if registry_path.exists():
                 registry_path.unlink()

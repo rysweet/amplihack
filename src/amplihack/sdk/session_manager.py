@@ -23,7 +23,7 @@ try:
 
     ENCRYPTION_AVAILABLE = True
 except ImportError:
-    Fernet = None  # type: ignore  # noqa
+    Fernet = None  # type: ignore
     ENCRYPTION_AVAILABLE = False
     logger.warning("Cryptography package not available - session encryption disabled")
 
@@ -81,8 +81,8 @@ class SDKSessionManager:
     with secure token handling and conversation persistence.
     """
 
-    def __init__(self, config: SessionConfig = SessionConfig()):
-        self.config = config
+    def __init__(self, config: Optional[SessionConfig] = None):
+        self.config = config or SessionConfig()
         self.sessions: Dict[str, SessionState] = {}
         self.conversations: Dict[str, List[ConversationMessage]] = {}
         self._ensure_persistence_dir()

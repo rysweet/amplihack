@@ -228,7 +228,7 @@ class PhilosophyDecisionFramework:
         # Quality heuristics
         if any(word in combined for word in ["separate", "focused", "clean", "quality"]):
             scores.quality += 5
-        if any(word in combined for word in ["mixed", "combined", "quick", "hack"]):  # noqa
+        if any(word in combined for word in ["mixed", "combined", "quick", "hack"]):
             scores.quality -= 3
         scores.quality = max(0, min(20, scores.quality + 10))  # Base score 10
 
@@ -308,7 +308,7 @@ class PhilosophyDecisionFramework:
 
         rationale_parts = [
             f"Selected '{selected.description}' with philosophy score {total:.1f}/100.",
-            f"This option best aligns with amplihack principles, particularly {strongest[0]} ({strongest[1]:.1f}/20).",  # noqa
+            f"This option best aligns with amplihack principles, particularly {strongest[0]} ({strongest[1]:.1f}/20).",
         ]
 
         # Add comparison to alternatives

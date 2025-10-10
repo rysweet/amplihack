@@ -174,7 +174,7 @@ class HookMergeUtility:
         """Create default settings.json with basic structure"""
         return {
             "permissions": {
-                "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],  # noqa
+                "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
                 "deny": [],
                 "defaultMode": "bypassPermissions",
                 "additionalDirectories": [".claude", "Specs"],
@@ -384,24 +384,24 @@ async def main():
     xpia_hooks = get_required_xpia_hooks()
 
     if args.dry_run:
-        print("DRY RUN: Would merge the following XPIA hooks:")  # noqa: T201 (print)
+        print("DRY RUN: Would merge the following XPIA hooks:")
         for hook in xpia_hooks:
-            print(f"  - {hook.hook_type}: {hook.command}")  # noqa: T201 (print)
+            print(f"  - {hook.hook_type}: {hook.command}")
         return
 
     # Perform merge
     result = await merger.merge_hooks(xpia_hooks)
 
     if result.success:
-        print("✅ Successfully merged XPIA hooks:")  # noqa: T201 (print)
-        print(f"   Added: {result.hooks_added}")  # noqa: T201 (print)
-        print(f"   Updated: {result.hooks_updated}")  # noqa: T201 (print)
+        print("✅ Successfully merged XPIA hooks:")
+        print(f"   Added: {result.hooks_added}")
+        print(f"   Updated: {result.hooks_updated}")
         if result.backup_path:
-            print(f"   Backup: {result.backup_path}")  # noqa: T201 (print)
+            print(f"   Backup: {result.backup_path}")
     else:
-        print(f"❌ Hook merge failed: {result.error_message}")  # noqa: T201 (print)
+        print(f"❌ Hook merge failed: {result.error_message}")
         if result.rollback_performed:
-            print("   Rollback was performed successfully")  # noqa: T201 (print)
+            print("   Rollback was performed successfully")
         exit(1)
 
 

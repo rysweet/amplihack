@@ -14,7 +14,7 @@ class UVXStager:
 
     def __init__(self):
         self._staged_files: Set[Path] = set()
-        self._debug_enabled = os.environ.get("AMPLIHACK_DEBUG", "").lower() in (  # noqa
+        self._debug_enabled = os.environ.get("AMPLIHACK_DEBUG", "").lower() in (
             "true",
             "1",
             "yes",
@@ -27,7 +27,7 @@ class UVXStager:
         if self._debug_enabled:
             import sys
 
-            print(f"[AMPLIHACK DEBUG] {message}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"[AMPLIHACK DEBUG] {message}", file=sys.stderr)
 
     def detect_uvx_deployment(self) -> bool:
         """Detect if running in UVX deployment mode."""
@@ -35,13 +35,13 @@ class UVXStager:
 
     def _find_uvx_framework_root(self) -> Optional[Path]:
         """Find framework root in UVX installation."""
-        if "AMPLIHACK_ROOT" in os.environ:  # noqa
-            env_path = Path(os.environ["AMPLIHACK_ROOT"])  # noqa
+        if "AMPLIHACK_ROOT" in os.environ:
+            env_path = Path(os.environ["AMPLIHACK_ROOT"])
             if env_path.exists() and (env_path / ".claude").exists():
                 return env_path
 
         for path_str in sys.path:
-            candidate = Path(path_str) / "amplihack"  # noqa
+            candidate = Path(path_str) / "amplihack"
             if candidate.exists() and (candidate / ".claude").exists():
                 return candidate
 

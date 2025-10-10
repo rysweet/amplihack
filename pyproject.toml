@@ -8,6 +8,14 @@ version = "0.1.0"
 description = "Agentic Coding Framework for Microsoft Hackathon 2025"
 requires-python = ">=3.8"
 dependencies = [
+    "flask>=2.0.0",
+    "requests>=2.25.0",
+    "fastapi>=0.68.0",
+    "uvicorn>=0.15.0",
+    "aiohttp>=3.8.0",
+    "litellm>=1.0.0",
+    "python-dotenv>=0.19.0",
+    "pathlib2>=2.3.0; python_version<'3.6'",
     "pytest-asyncio>=0.21.0",
     "cryptography>=3.4.8",
     "jinja2>=3.0.0",
@@ -18,6 +26,17 @@ dependencies = [
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+]
+tui-testing = [
+    "pytest-asyncio>=0.21.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=22.0.0",
+    "ruff>=0.1.0",
+    "build>=1.0.0",  # Required for test_uvx_packaging.py
 ]
 
 [project.scripts]
@@ -55,6 +74,7 @@ exclude = [
     "**/venv",
     "**/.venv",
     "tests/**",
+    "examples/**/*.py",  # Example/demo code may have missing dependencies
     ".claude/tools/test-utilities/**/*.py",  # Test utilities with missing dependencies
     "scripts/**/*.py",  # Exclude scripts from type checking
     "src/amplihack/.claude/tools/amplihack/memory/tests/test_interface.py",  # TDD tests - expected to fail
@@ -74,6 +94,8 @@ addopts = [
     "--strict-markers",
     "--tb=short",
 ]
+# Add src directory to Python path for module discovery
+pythonpath = ["src"]
 # Exclude standalone test scripts and other directories from collection
 norecursedirs = [".git", ".tox", "dist", "build", "*.egg", "scripts"]
 markers = [
@@ -81,6 +103,13 @@ markers = [
     "integration: marks tests as integration tests",
     "performance: marks tests as performance tests",
     "e2e: marks tests as end-to-end tests",
+    "tui: marks tests as TUI/interactive tests",
+    "gadugi: marks tests as requiring gadugi-agentic-test",
+    "slow_tui: marks tests as slow TUI tests (takes >30 seconds)",
     "asyncio: marks tests as async tests that require asyncio",
     "requires_sdk: marks tests that require Claude Code SDK (skip in CI)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
 ]

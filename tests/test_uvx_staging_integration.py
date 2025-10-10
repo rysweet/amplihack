@@ -233,7 +233,7 @@ class TestUVXStagingIntegration(unittest.TestCase):
     def test_error_handling_fallback_to_source_settings(self):
         """Test that if UVX settings creation fails, source settings are used as fallback."""
         # Mock the UVX settings manager to fail
-        with patch("src.amplihack.utils.uvx_staging_v2.uvx_settings_manager") as mock_manager:
+        with patch("amplihack.utils.uvx_staging_v2.uvx_settings_manager") as mock_manager:
             mock_manager.should_use_uvx_template.return_value = True
             mock_manager.create_uvx_settings.return_value = False  # Simulate failure
 

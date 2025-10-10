@@ -78,7 +78,7 @@ class UVXSettingsManager:
             # Log error but don't crash the staging process
             import sys
 
-            print(f"[UVX Settings] Warning: Failed to create UVX settings: {e}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"[UVX Settings] Warning: Failed to create UVX settings: {e}", file=sys.stderr)
             return False
 
     def merge_with_existing_settings(
@@ -137,7 +137,7 @@ class UVXSettingsManager:
         except Exception as e:
             import sys
 
-            print(f"[UVX Settings] Warning: Failed to merge settings: {e}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"[UVX Settings] Warning: Failed to merge settings: {e}", file=sys.stderr)
             return False
 
     def get_template_settings(self) -> Optional[Dict[str, Any]]:

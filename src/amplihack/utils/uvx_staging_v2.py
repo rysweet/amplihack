@@ -44,7 +44,7 @@ class UVXStager:
         if self._debug_enabled:
             import sys
 
-            print(f"[UVX STAGING DEBUG] {message}", file=sys.stderr)  # noqa: T201 (print)
+            print(f"[UVX STAGING DEBUG] {message}", file=sys.stderr)
 
     def stage_framework_files(
         self, session_state: Optional[UVXSessionState] = None
@@ -135,7 +135,7 @@ class UVXStager:
             return result
 
         for path_str in session_state.detection_state.environment.sys_path_entries:
-            candidate = Path(path_str) / "amplihack"  # noqa
+            candidate = Path(path_str) / "amplihack"
             if candidate.exists() and (candidate / ".claude").exists():
                 source_root = candidate
                 break

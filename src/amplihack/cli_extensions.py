@@ -1,4 +1,4 @@
-"""CLI extensions for amplihack to support bundle generation."""  # noqa
+"""CLI extensions for amplihack to support bundle generation."""
 
 from pathlib import Path
 from typing import Optional
@@ -48,8 +48,8 @@ def generate(prompt: str, output: str, validate: bool, test: bool):
         # Test agent if requested
         if test:
             click.echo("🧪 Testing agent before bundling...")
-            # TODO: Implement agent testing
-            click.echo("✅ Agent tests passed")
+            click.echo("⚠️  Agent testing not implemented - skipping validation")
+            click.echo("✅ Agent tests skipped (no implementation)")
 
         # Generate agents
         generator = AgentGenerator()

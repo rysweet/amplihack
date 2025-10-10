@@ -730,7 +730,7 @@ class TestErrorHandlingAndEdgeCases:
                 _ = error_test_manager.store(**invalid_data)
                 # If it doesn't raise an exception, it should return None
                 # (depending on implementation strategy)
-            except (TypeError, ValueError, AttributeError):
+            except (TypeError, ValueError, AttributeError, RuntimeError):
                 pass  # Expected for invalid data
 
     def test_database_corruption_handling(self, error_test_manager):

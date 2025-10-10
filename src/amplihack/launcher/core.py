@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from ..proxy.manager import ProxyManager
+from ..utils.claude_cli import get_claude_cli_path
 from ..utils.claude_trace import get_claude_command
 from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
@@ -191,9 +192,16 @@ class ClaudeLauncher:
             True if proxy started successfully or not needed, False otherwise.
         """
         if self.proxy_manager:
+            print("Starting proxy and waiting for readiness...")
             if not self.proxy_manager.start_proxy():
                 print("Failed to start proxy")
                 return False
+
+            # Verify proxy is actually ready before proceeding
+            if not self.proxy_manager.is_running():
+                print("Proxy is not running after startup")
+                return False
+
             print(f"Proxy running at: {self.proxy_manager.get_proxy_url()}")
 
         return True
@@ -211,33 +219,16 @@ class ClaudeLauncher:
             # claude-trace requires --run-with before Claude arguments
             cmd = [claude_binary]
 
-            # Find the correct claude binary (prefer homebrew over pnpm)
-            import shutil
+            # Get claude binary path, auto-installing if needed
+            claude_path = get_claude_cli_path(auto_install=True)
 
-            claude_path = None
-
-            # Priority order for finding claude binary:
-            # 1. Homebrew on macOS (most reliable)
-            # 2. Standard system locations
-            # 3. Fall back to PATH search (may include problematic wrappers)
-            preferred_paths = [
-                "/opt/homebrew/bin/claude",  # macOS homebrew
-                "/usr/local/bin/claude",  # Linux/WSL standard location
-                "/usr/bin/claude",  # System-wide installation
-            ]
-
-            for path in preferred_paths:
-                if Path(path).exists():
-                    claude_path = path
-                    break
-
-            if not claude_path:
-                # Fall back to any claude in PATH
-                claude_path = shutil.which("claude")
-
-            # Add --claude-path if we found a claude binary
+            # Add --claude-path if we found/installed a claude binary
             if claude_path:
                 cmd.extend(["--claude-path", claude_path])
+            else:
+                print("ERROR: Claude CLI not available and auto-installation failed")
+                print("Please install manually: npm install -g @anthropic-ai/claude-code")
+                sys.exit(1)
 
             claude_args = ["--dangerously-skip-permissions"]
 
@@ -311,6 +302,21 @@ class ClaudeLauncher:
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
+            # Include proxy environment variables if proxy is configured
+            if self.proxy_manager and self.proxy_manager.is_running():
+                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
+                    proxy_port=self.proxy_manager.proxy_port,
+                    config=self.proxy_manager.proxy_config.to_env_dict()
+                    if self.proxy_manager.proxy_config
+                    else None,
+                )
+                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
+                if proxy_env.get("ANTHROPIC_BASE_URL"):
+                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
+                    print(f"✓ Configured Claude to use proxy at {proxy_env['ANTHROPIC_BASE_URL']}")
+                if proxy_env.get("ANTHROPIC_API_KEY"):
+                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
+
             # Launch Claude
             self.claude_process = subprocess.Popen(cmd, env=env)
 
@@ -369,7 +375,26 @@ class ClaudeLauncher:
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
+            # Include proxy environment variables if proxy is configured
+            if self.proxy_manager and self.proxy_manager.is_running():
+                proxy_env = self.proxy_manager.env_manager.get_proxy_env(
+                    proxy_port=self.proxy_manager.proxy_port,
+                    config=self.proxy_manager.proxy_config.to_env_dict()
+                    if self.proxy_manager.proxy_config
+                    else None,
+                )
+                # Update env with proxy settings, especially ANTHROPIC_BASE_URL
+                if proxy_env.get("ANTHROPIC_BASE_URL"):
+                    env["ANTHROPIC_BASE_URL"] = proxy_env["ANTHROPIC_BASE_URL"]
+                    print(f"✓ Configured Claude to use proxy at {proxy_env['ANTHROPIC_BASE_URL']}")
+                if proxy_env.get("ANTHROPIC_API_KEY"):
+                    env["ANTHROPIC_API_KEY"] = proxy_env["ANTHROPIC_API_KEY"]
+
             # Launch Claude with direct I/O (interactive mode)
+            print("Starting Claude...")
+            print(
+                f"If Claude appears to hang, check proxy connection at: {self.proxy_manager.get_proxy_url() if self.proxy_manager else 'N/A'}"
+            )
             exit_code = subprocess.call(cmd, env=env)
 
             return exit_code

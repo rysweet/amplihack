@@ -122,7 +122,7 @@ class UpdateManager:
             # Create backup if requested
             if backup:
                 backup_path = self._create_backup(bundle_path)
-                print(f"Created backup: {backup_path}")  # noqa: T201 (print)
+                print(f"Created backup: {backup_path}")
 
             # Load manifest and checksums
             manifest_path = bundle_path / "manifest.json"
@@ -136,7 +136,7 @@ class UpdateManager:
             if preserve_edits:
                 customized_files = self._detect_customizations(bundle_path, checksums)
                 if customized_files:
-                    print(f"\nFound {len(customized_files)} user-modified file(s)")  # noqa: T201 (print)
+                    print(f"\nFound {len(customized_files)} user-modified file(s)")
 
             # NOTE: Actual file update implementation coming in future PR
             # For now, update is detection-only

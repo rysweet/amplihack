@@ -1,4 +1,4 @@
-"""Docker availability detection for amplihack."""  # noqa
+"""Docker availability detection for amplihack."""
 
 import os
 import shutil
@@ -32,7 +32,7 @@ class DockerDetector:
     def should_use_docker(self) -> bool:
         """Determine if Docker should be used."""
         # Check environment variable
-        if os.getenv("AMPLIHACK_USE_DOCKER", "").lower() not in ("1", "true", "yes"):  # noqa
+        if os.getenv("AMPLIHACK_USE_DOCKER", "").lower() not in ("1", "true", "yes"):
             return False
 
         # Don't use Docker if already in Docker
@@ -45,7 +45,7 @@ class DockerDetector:
     def is_in_docker(self) -> bool:
         """Check if running inside a Docker container."""
         # Check environment variable we set
-        if os.getenv("AMPLIHACK_IN_DOCKER") == "1":  # noqa
+        if os.getenv("AMPLIHACK_IN_DOCKER") == "1":
             return True
 
         # Check for Docker-specific files

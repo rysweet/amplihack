@@ -102,7 +102,7 @@ class SessionStorage:
             self.storage_dir = Path(storage_dir)
         else:
             home = Path.home()
-            self.storage_dir = home / ".amplihack" / "auto-mode" / "sessions"  # noqa
+            self.storage_dir = home / ".amplihack" / "auto-mode" / "sessions"
 
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 

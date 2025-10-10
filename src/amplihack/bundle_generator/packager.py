@@ -167,10 +167,10 @@ class UVXPackager:
             "version": bundle.version,
             "description": bundle.description,
             "type": "agent-bundle",
-            "entry_point": f"amplihack.bundles.{bundle.name}",  # noqa
+            "entry_point": f"amplihack.bundles.{bundle.name}",
             "python_requirement": ">=3.11",
             "dependencies": {
-                "amplihack": ">=1.0.0",  # noqa
+                "amplihack": ">=1.0.0",
             },
             "agents": [
                 {
@@ -418,8 +418,8 @@ Bundle ID: {bundle.id}
             "bundle_name": bundle.name,
             "bundle_version": bundle.version,
             "python_requirement": ">=3.11",
-            "amplihack_requirement": ">=1.0.0",  # noqa
-            "entry_point": f"amplihack.bundles.{bundle.name}",  # noqa
+            "amplihack_requirement": ">=1.0.0",
+            "entry_point": f"amplihack.bundles.{bundle.name}",
             "install_command": f"uvx install {bundle.name}",
             "agent_count": len(bundle.agents),
             "created_at": datetime.utcnow().isoformat(),

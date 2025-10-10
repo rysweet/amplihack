@@ -19,11 +19,11 @@ from typing import Any, Dict, List, Optional
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from amplihack.sdk import AutoModeConfig, AutoModeOrchestrator, StateIntegrationError  # noqa
+from amplihack.sdk import AutoModeConfig, AutoModeOrchestrator, StateIntegrationError
 
 
 class AutoModeCommand:
-    """Implementation of the /amplihack:auto-mode slash command"""  # noqa
+    """Implementation of the /amplihack:auto-mode slash command"""
 
     def __init__(self):
         self.orchestrator: Optional[AutoModeOrchestrator] = None
@@ -62,7 +62,7 @@ class AutoModeCommand:
             return {
                 "success": False,
                 "error": f"Unknown command: {command}",
-                "help": "Use '/amplihack:auto-mode help' for usage information",  # noqa
+                "help": "Use '/amplihack:auto-mode help' for usage information",
             }
 
         except Exception as e:
@@ -78,7 +78,7 @@ class AutoModeCommand:
             return {
                 "success": False,
                 "error": "Objective is required",
-                "usage": '/amplihack:auto-mode start "Objective description"',  # noqa
+                "usage": '/amplihack:auto-mode start "Objective description"',
             }
 
         # Parse arguments
@@ -135,14 +135,14 @@ class AutoModeCommand:
             return {
                 "success": False,
                 "error": "Claude output is required",
-                "usage": '/amplihack:auto-mode process "Claude output text"',  # noqa
+                "usage": '/amplihack:auto-mode process "Claude output text"',
             }
 
         if not self.orchestrator or not self.active_session_id:
             return {
                 "success": False,
                 "error": "No active auto-mode session. Start one with 'auto-mode start'",
-                "suggestion": "Use '/amplihack:auto-mode start \"Your objective\"' first",  # noqa
+                "suggestion": "Use '/amplihack:auto-mode start \"Your objective\"' first",
             }
 
         claude_output = args[0]
@@ -203,7 +203,7 @@ class AutoModeCommand:
             return {
                 "success": False,
                 "error": "No auto-mode session active",
-                "suggestion": "Start a session with '/amplihack:auto-mode start'",  # noqa
+                "suggestion": "Start a session with '/amplihack:auto-mode start'",
             }
 
         try:
@@ -307,33 +307,33 @@ class AutoModeCommand:
         """Show help information for auto-mode command"""
         return {
             "success": True,
-            "command": "/amplihack:auto-mode",  # noqa
+            "command": "/amplihack:auto-mode",
             "description": "Persistent analysis and autonomous progression through objectives",
             "usage": {
                 "start": {
-                    "syntax": '/amplihack:auto-mode start "Objective" [--working-dir /path] [--max-iterations 50]',  # noqa
+                    "syntax": '/amplihack:auto-mode start "Objective" [--working-dir /path] [--max-iterations 50]',
                     "description": "Start new auto-mode session",
-                    "example": '/amplihack:auto-mode start "Build a REST API with authentication"',  # noqa
+                    "example": '/amplihack:auto-mode start "Build a REST API with authentication"',
                 },
                 "process": {
-                    "syntax": '/amplihack:auto-mode process "Claude output"',  # noqa
+                    "syntax": '/amplihack:auto-mode process "Claude output"',
                     "description": "Process Claude Code output through analysis",
-                    "example": '/amplihack:auto-mode process "I\'ve implemented the user authentication system."',  # noqa
+                    "example": '/amplihack:auto-mode process "I\'ve implemented the user authentication system."',
                 },
                 "status": {
-                    "syntax": "/amplihack:auto-mode status",  # noqa
+                    "syntax": "/amplihack:auto-mode status",
                     "description": "Check current session status and progress",
                 },
                 "pause": {
-                    "syntax": "/amplihack:auto-mode pause",  # noqa
+                    "syntax": "/amplihack:auto-mode pause",
                     "description": "Pause the current session",
                 },
                 "resume": {
-                    "syntax": "/amplihack:auto-mode resume",  # noqa
+                    "syntax": "/amplihack:auto-mode resume",
                     "description": "Resume a paused session",
                 },
                 "stop": {
-                    "syntax": "/amplihack:auto-mode stop",  # noqa
+                    "syntax": "/amplihack:auto-mode stop",
                     "description": "Stop and cleanup current session",
                 },
             },
@@ -354,13 +354,13 @@ async def main():
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python auto_mode.py <command> [args...]")  # noqa: T201 (print)
+        print("Usage: python auto_mode.py <command> [args...]")
         return
 
     command = AutoModeCommand()
     result = await command.execute(sys.argv[1:])
 
-    print(json.dumps(result, indent=2))  # noqa: T201 (print)
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

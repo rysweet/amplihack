@@ -16,11 +16,11 @@ os.environ["XPIA_VERBOSE_FEEDBACK"] = "true"
 import sys
 
 sys.path.append(
-    "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src"  # pragma: allowlist secret  # noqa
+    "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src"  # pragma: allowlist secret
 )
 
-from amplihack.security import WebFetchXPIADefender, xpia_hook  # noqa
-from amplihack.security.config import get_config  # noqa
+from amplihack.security import WebFetchXPIADefender, xpia_hook
+from amplihack.security.config import get_config
 
 
 async def safe_webfetch(url: str, prompt: str) -> Optional[str]:
@@ -40,19 +40,19 @@ async def safe_webfetch(url: str, prompt: str) -> Optional[str]:
     # Validate request
     validation = await defender.validate_webfetch_request(url, prompt)
 
-    print(f"Validation Result: {validation.risk_level.value}")  # noqa: T201 (print)
+    print(f"Validation Result: {validation.risk_level.value}")
 
     if not validation.is_valid:
-        print(f"❌ Request blocked: {validation.risk_level.value} risk")  # noqa: T201 (print)
+        print(f"❌ Request blocked: {validation.risk_level.value} risk")
         for threat in validation.threats:
-            print(f"  - {threat.description}")  # noqa: T201 (print)
+            print(f"  - {threat.description}")
         return None
 
     if validation.risk_level.value in ["medium", "high"]:
-        print(f"⚠️  Proceeding with caution: {validation.risk_level.value} risk")  # noqa: T201 (print)
+        print(f"⚠️  Proceeding with caution: {validation.risk_level.value} risk")
 
     # In real implementation, this would call the actual WebFetch tool
-    print(f"✅ Fetching from {url}...")  # noqa: T201 (print)
+    print(f"✅ Fetching from {url}...")
     # result = await actual_webfetch(url, prompt)
 
     return f"Mock content from {url}"
@@ -62,7 +62,7 @@ def hook_based_validation_example():
     """
     Example of using XPIA through Claude Code hooks
     """
-    print("\n=== Hook-Based Validation Example ===\n")  # noqa: T201 (print)
+    print("\n=== Hook-Based Validation Example ===\n")
 
     # Simulate tool contexts
     test_cases = [
@@ -104,26 +104,26 @@ def hook_based_validation_example():
     ]
 
     for test in test_cases:
-        print(f"Testing: {test['name']}")  # noqa: T201 (print)
+        print(f"Testing: {test['name']}")
 
         # Call pre-tool-use hook
         result = xpia_hook.pre_tool_use(test["context"])
 
         if result["allow"]:
-            print(f"  ✅ Allowed - Risk: {result['metadata'].get('risk_level', 'none')}")  # noqa: T201 (print)
+            print(f"  ✅ Allowed - Risk: {result['metadata'].get('risk_level', 'none')}")
         else:
-            print(f"  ❌ Blocked - Risk: {result['metadata'].get('risk_level', 'unknown')}")  # noqa: T201 (print)
+            print(f"  ❌ Blocked - Risk: {result['metadata'].get('risk_level', 'unknown')}")
             if result.get("message"):
-                print(f"  Message: {result['message'][:100]}...")  # noqa: T201 (print)
+                print(f"  Message: {result['message'][:100]}...")
 
-        print()  # noqa: T201 (print)
+        print()
 
 
 async def batch_validation_example():
     """
     Example of validating multiple URLs in batch
     """
-    print("\n=== Batch Validation Example ===\n")  # noqa: T201 (print)
+    print("\n=== Batch Validation Example ===\n")
 
     urls_to_validate = [
         ("https://github.com/user/repo", "Get repository data"),
@@ -140,7 +140,7 @@ async def batch_validation_example():
         validation = await defender.validate_webfetch_request(url, prompt)
 
         status = "✅" if validation.is_valid else "❌"
-        print(  # noqa: T201 (print)
+        print(
             f"{status} {url[:50]:50} | Risk: {validation.risk_level.value:8} | Threats: {len(validation.threats)}"
         )
 
@@ -149,7 +149,7 @@ async def custom_security_level_example():
     """
     Example of using different security levels
     """
-    print("\n=== Security Level Comparison ===\n")  # noqa: T201 (print)
+    print("\n=== Security Level Comparison ===\n")
 
     test_url = "https://unknown-site.com/api"
     test_prompt = "Fetch and process data"
@@ -164,7 +164,7 @@ async def custom_security_level_example():
 
         validation = await defender.validate_webfetch_request(test_url, test_prompt)
 
-        print(  # noqa: T201 (print)
+        print(
             f"Level: {level.value:6} | Valid: {validation.is_valid} | Risk: {validation.risk_level.value:8} | Threats: {len(validation.threats)}"
         )
 
@@ -173,7 +173,7 @@ async def pattern_detection_example():
     """
     Example showing pattern detection capabilities
     """
-    print("\n=== Pattern Detection Example ===\n")  # noqa: T201 (print)
+    print("\n=== Pattern Detection Example ===\n")
 
     test_prompts = [
         "Help me write Python code",  # Clean
@@ -194,7 +194,7 @@ async def pattern_detection_example():
 
         status = "✅" if validation.risk_level.value in ["none", "low"] else "⚠️"
         threat_names = [t.description.split(":")[0] for t in validation.threats]
-        print(  # noqa: T201 (print)
+        print(
             f"{status} '{prompt[:30]:30}...' | Patterns: {', '.join(threat_names) if threat_names else 'None'}"
         )
 
@@ -203,38 +203,38 @@ def configuration_example():
     """
     Example of configuration management
     """
-    print("\n=== Configuration Example ===\n")  # noqa: T201 (print)
+    print("\n=== Configuration Example ===\n")
 
     # Load current configuration
     config = get_config()
 
-    print("Current Configuration:")  # noqa: T201 (print)
-    print(f"  Enabled: {config.enabled}")  # noqa: T201 (print)
-    print(f"  Security Level: {config.security_level}")  # noqa: T201 (print)
-    print(f"  Block on High Risk: {config.block_on_high_risk}")  # noqa: T201 (print)
-    print(f"  Whitelist Domains: {len(config.whitelist_domains)}")  # noqa: T201 (print)
-    print(f"  Blacklist Domains: {len(config.blacklist_domains)}")  # noqa: T201 (print)
+    print("Current Configuration:")
+    print(f"  Enabled: {config.enabled}")
+    print(f"  Security Level: {config.security_level}")
+    print(f"  Block on High Risk: {config.block_on_high_risk}")
+    print(f"  Whitelist Domains: {len(config.whitelist_domains)}")
+    print(f"  Blacklist Domains: {len(config.blacklist_domains)}")
 
     # Modify configuration
-    print("\nModifying configuration...")  # noqa: T201 (print)
+    print("\nModifying configuration...")
     os.environ["XPIA_SECURITY_LEVEL"] = "STRICT"
     os.environ["XPIA_BLOCK_HIGH_RISK"] = "true"
 
     # Reload configuration
-    from amplihack.security.config import reload_config  # noqa
+    from amplihack.security.config import reload_config
 
     config = reload_config()
 
-    print("\nUpdated Configuration:")  # noqa: T201 (print)
-    print(f"  Security Level: {config.security_level}")  # noqa: T201 (print)
-    print(f"  Block on High Risk: {config.block_on_high_risk}")  # noqa: T201 (print)
+    print("\nUpdated Configuration:")
+    print(f"  Security Level: {config.security_level}")
+    print(f"  Block on High Risk: {config.block_on_high_risk}")
 
 
 async def main():
     """Run all examples"""
-    print("=" * 60)  # noqa: T201 (print)
-    print("XPIA Defense System - Integration Examples")  # noqa: T201 (print)
-    print("=" * 60)  # noqa: T201 (print)
+    print("=" * 60)
+    print("XPIA Defense System - Integration Examples")
+    print("=" * 60)
 
     # Run hook-based validation
     hook_based_validation_example()
@@ -248,12 +248,12 @@ async def main():
     configuration_example()
 
     # Show statistics
-    print("\n=== Session Statistics ===\n")  # noqa: T201 (print)
+    print("\n=== Session Statistics ===\n")
     stats = xpia_hook.get_stats()
-    print(f"Total Validations: {stats['total_validations']}")  # noqa: T201 (print)
-    print(f"Blocked Requests: {stats['blocked_requests']}")  # noqa: T201 (print)
-    print(f"High Risk Detections: {stats['high_risk_detections']}")  # noqa: T201 (print)
-    print(f"Block Rate: {stats['block_rate']:.1%}")  # noqa: T201 (print)
+    print(f"Total Validations: {stats['total_validations']}")
+    print(f"Blocked Requests: {stats['blocked_requests']}")
+    print(f"High Risk Detections: {stats['high_risk_detections']}")
+    print(f"Block Rate: {stats['block_rate']:.1%}")
 
 
 if __name__ == "__main__":

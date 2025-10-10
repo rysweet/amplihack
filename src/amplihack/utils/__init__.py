@@ -1,4 +1,4 @@
-"""Utility functions for amplihack."""  # noqa
+"""Utility functions for amplihack."""
 
 from .paths import FrameworkPathResolver
 from .process import ProcessManager

@@ -550,7 +550,7 @@ Common issues and solutions:
                 issues.append(f"Missing required section: {section}")
 
         # Check for placeholders
-        if "TODO" in agent.content or "PLACEHOLDER" in agent.content:  # noqa
+        if "TODO" in agent.content or "PLACEHOLDER" in agent.content:
             issues.append("Content contains placeholders")
 
         return issues

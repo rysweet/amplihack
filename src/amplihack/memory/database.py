@@ -21,7 +21,7 @@ class MemoryDatabase:
             db_path: Path to SQLite database file. Defaults to ~/.amplihack/memory.db  # noqa
         """
         if db_path is None:
-            db_path = Path.home() / ".amplihack" / "memory.db"  # noqa
+            db_path = Path.home() / ".amplihack" / "memory.db"
         elif isinstance(db_path, str):
             db_path = Path(db_path)
 
@@ -178,7 +178,7 @@ class MemoryDatabase:
                     return True
 
             except sqlite3.Error as e:
-                print(f"Database error storing memory {memory.id}: {e}")  # noqa: T201 (print)
+                print(f"Database error storing memory {memory.id}: {e}")
                 return False
 
     def retrieve_memories(self, query: MemoryQuery) -> List[MemoryEntry]:
@@ -235,7 +235,7 @@ class MemoryDatabase:
                     return memories
 
             except sqlite3.Error as e:
-                print(f"Database error retrieving memories: {e}")  # noqa: T201 (print)
+                print(f"Database error retrieving memories: {e}")
                 return []
 
     def get_memory_by_id(self, memory_id: str) -> Optional[MemoryEntry]:
@@ -278,7 +278,7 @@ class MemoryDatabase:
                         return memory
 
             except sqlite3.Error as e:
-                print(f"Database error retrieving memory {memory_id}: {e}")  # noqa: T201 (print)
+                print(f"Database error retrieving memory {memory_id}: {e}")
 
         return None
 
@@ -299,7 +299,7 @@ class MemoryDatabase:
                     return cursor.rowcount > 0
 
             except sqlite3.Error as e:
-                print(f"Database error deleting memory {memory_id}: {e}")  # noqa: T201 (print)
+                print(f"Database error deleting memory {memory_id}: {e}")
                 return False
 
     def cleanup_expired(self) -> int:
@@ -322,7 +322,7 @@ class MemoryDatabase:
                     return cursor.rowcount
 
             except sqlite3.Error as e:
-                print(f"Database error during cleanup: {e}")  # noqa: T201 (print)
+                print(f"Database error during cleanup: {e}")
                 return 0
 
     def get_session_info(self, session_id: str) -> Optional[SessionInfo]:
@@ -380,7 +380,7 @@ class MemoryDatabase:
                     )
 
             except sqlite3.Error as e:
-                print(f"Database error getting session info: {e}")  # noqa: T201 (print)
+                print(f"Database error getting session info: {e}")
 
         return None
 
@@ -444,7 +444,7 @@ class MemoryDatabase:
                     return sessions
 
             except sqlite3.Error as e:
-                print(f"Database error listing sessions: {e}")  # noqa: T201 (print)
+                print(f"Database error listing sessions: {e}")
                 return []
 
     def get_stats(self) -> Dict[str, Any]:
@@ -490,7 +490,7 @@ class MemoryDatabase:
                     return stats
 
             except sqlite3.Error as e:
-                print(f"Database error getting stats: {e}")  # noqa: T201 (print)
+                print(f"Database error getting stats: {e}")
                 return {}
 
     def _update_session(self, conn: sqlite3.Connection, session_id: str, agent_id: str) -> None:
@@ -534,5 +534,5 @@ class MemoryDatabase:
                 parent_id=row[12],
             )
         except (ValueError, TypeError, json.JSONDecodeError) as e:
-            print(f"Error converting row to memory: {e}")  # noqa: T201 (print)
+            print(f"Error converting row to memory: {e}")
             return None

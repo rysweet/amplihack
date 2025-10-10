@@ -163,6 +163,7 @@ class PrerequisiteChecker:
         "npm": "--version",
         "uv": "--version",
         "git": "--version",
+        "claude": "--version",
     }
 
     # Installation commands by platform and tool
@@ -172,30 +173,35 @@ class PrerequisiteChecker:
             "npm": "brew install node  # npm comes with Node.js",
             "uv": "brew install uv",
             "git": "brew install git",
+            "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.LINUX: {
             "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs\n# Arch:\nsudo pacman -S nodejs",
             "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm\n# Arch:\nsudo pacman -S npm",
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "# Ubuntu/Debian:\nsudo apt install git\n# Fedora/RHEL:\nsudo dnf install git\n# Arch:\nsudo pacman -S git",
+            "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.WSL: {
             "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs",
             "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm",
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "sudo apt install git  # or your WSL distro's package manager",
+            "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.WINDOWS: {
             "node": "winget install OpenJS.NodeJS\n# Or: choco install nodejs",
             "npm": "winget install OpenJS.NodeJS  # npm comes with Node.js\n# Or: choco install nodejs",
             "uv": 'powershell -c "irm https://astral.sh/uv/install.ps1 | iex"',
             "git": "winget install Git.Git\n# Or: choco install git",
+            "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.UNKNOWN: {
             "node": "Please install Node.js from https://nodejs.org/",
             "npm": "Please install npm (usually comes with Node.js)",
             "uv": "Please install uv from https://docs.astral.sh/uv/",
             "git": "Please install git from https://git-scm.com/",
+            "claude": "npm install -g @anthropic-ai/claude-code",
         },
     }
 
@@ -205,6 +211,7 @@ class PrerequisiteChecker:
         "npm": "https://www.npmjs.com/",
         "uv": "https://docs.astral.sh/uv/",
         "git": "https://git-scm.com/",
+        "claude": "https://docs.claude.com/en/docs/claude-code/setup",
     }
 
     def __init__(self):
@@ -391,7 +398,7 @@ class PrerequisiteChecker:
             return True
 
         # Print detailed report
-        print(self.format_missing_prerequisites(result.missing_tools))  # noqa: T201 (print)
+        print(self.format_missing_prerequisites(result.missing_tools))
         return False
 
 

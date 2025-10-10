@@ -295,32 +295,32 @@ def print_health_report(health_report: Dict[str, Any], verbose: bool = False) ->
     overall_status = health_report.get("overall_status", "unknown")
     emoji = status_emoji.get(overall_status, "❓")
 
-    print("\nXPIA Security Health Check")  # noqa: T201 (print)
-    print("=" * 50)  # noqa: T201 (print)
-    print(f"Overall Status: {emoji} {overall_status.replace('_', ' ').title()}")  # noqa: T201 (print)
-    print(f"Timestamp: {health_report.get('timestamp', 'unknown')}")  # noqa: T201 (print)
+    print("\nXPIA Security Health Check")
+    print("=" * 50)
+    print(f"Overall Status: {emoji} {overall_status.replace('_', ' ').title()}")
+    print(f"Timestamp: {health_report.get('timestamp', 'unknown')}")
 
     summary = health_report.get("summary", {})
-    print(  # noqa: T201 (print)
+    print(
         f"\nSummary: {summary.get('passed_checks', 0)}/{summary.get('total_checks', 0)} checks passed"
     )
 
     if verbose:
-        print("\nComponent Details:")  # noqa: T201 (print)
+        print("\nComponent Details:")
         components = health_report.get("components", {})
 
         for component_name, component_data in components.items():
             status = component_data.get("status", "unknown")
             message = component_data.get("message", "No details")
-            print(f"  {component_name}: {status} - {message}")  # noqa: T201 (print)
+            print(f"  {component_name}: {status} - {message}")
 
     recommendations = health_report.get("recommendations", [])
     if recommendations:
-        print("\nRecommendations:")  # noqa: T201 (print)
+        print("\nRecommendations:")
         for i, rec in enumerate(recommendations, 1):
-            print(f"  {i}. {rec}")  # noqa: T201 (print)
+            print(f"  {i}. {rec}")
 
-    print()  # noqa: T201 (print)
+    print()
 
 
 def main():
@@ -341,7 +341,7 @@ def main():
     health_report = check_xpia_health(settings_path)
 
     if args.json:
-        print(json.dumps(health_report, indent=2))  # noqa: T201 (print)
+        print(json.dumps(health_report, indent=2))
     else:
         print_health_report(health_report, verbose=args.verbose)
 
