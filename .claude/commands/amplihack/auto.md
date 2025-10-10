@@ -8,15 +8,19 @@ Auto-mode takes a clear objective, analyzes progress, and automatically generate
 
 ## Command Usage
 
-```
-/amplihack:auto "Your objective description"
-```
-
-Or from the command line:
+**Primary Interface (CLI):**
 
 ```bash
 amplihack auto "Your objective description"
 ```
+
+**Slash Command (Claude Code):**
+
+```
+/amplihack:auto "Your objective description"
+```
+
+**Note**: Both interfaces share the same simplified design. The slash command `/amplihack:auto` maps to the old `/amplihack:auto-mode` but uses the new simplified interface. Complex commands (start/stop/process/status/pause/resume) have been removed.
 
 ## Examples
 
