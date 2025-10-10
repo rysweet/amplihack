@@ -257,7 +257,7 @@ class TestSSEEventStreaming:
     """Test SSE event streaming functionality."""
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_sse_event_queue(self):
         """Test SSE event queueing for streaming."""
         # This should FAIL - no implementation exists yet
@@ -281,7 +281,7 @@ class TestSSEEventStreaming:
             assert received2 == event2
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_sse_event_queue_overflow(self):
         """Test SSE event queue overflow handling."""
         # This should FAIL - no implementation exists yet
@@ -305,7 +305,7 @@ class TestSSEEventStreaming:
                 assert queue.qsize() <= 2
 
     @pytest.mark.unit
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_sse_event_broadcasting(self):
         """Test broadcasting events to multiple clients."""
         # This should FAIL - no implementation exists yet

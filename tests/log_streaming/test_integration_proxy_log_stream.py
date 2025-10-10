@@ -18,7 +18,7 @@ class TestProxyLogStreamIntegration:
     """Test integration between proxy server and log streaming."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_proxy_and_log_stream_startup(self, available_port):
         """Test that both proxy and log stream servers can start together."""
         # This should FAIL - no implementation exists yet
@@ -68,7 +68,7 @@ class TestProxyLogStreamIntegration:
             assert log_config.port == expected_log_port
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_proxy_logs_stream_to_clients(self, available_port):
         """Test that proxy log events are streamed to connected clients."""
         # This should FAIL - no implementation exists yet
@@ -107,7 +107,7 @@ class TestProxyLogStreamIntegration:
                 proxy_manager.stop_proxy()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_azure_request_logging_integration(self, available_port):
         """Test that Azure API requests generate appropriate log events."""
         # This should FAIL - no implementation exists yet
@@ -219,7 +219,7 @@ class TestMultipleClientIntegration:
     """Test log streaming with multiple concurrent clients."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_multiple_clients_receive_same_logs(self, available_port):
         """Test that multiple clients receive the same log events."""
         # This should FAIL - no implementation exists yet
@@ -287,7 +287,7 @@ class TestMultipleClientIntegration:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_client_disconnect_handling(self, available_port):
         """Test graceful handling of client disconnections."""
         # This should FAIL - no implementation exists yet
@@ -323,7 +323,7 @@ class TestMultipleClientIntegration:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_high_frequency_logging_performance(self, available_port, performance_monitor):
         """Test performance with high-frequency log events."""
         # This should FAIL - no implementation exists yet
@@ -373,7 +373,7 @@ class TestErrorHandlingIntegration:
     """Test error handling in integrated scenarios."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_log_server_resilience_to_proxy_restart(self, available_port):
         """Test that log server continues working when proxy restarts."""
         # This should FAIL - no implementation exists yet
@@ -421,7 +421,7 @@ class TestErrorHandlingIntegration:
                 proxy_manager.stop_proxy()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_port_conflict_resolution(self, available_port, port_manager):
         """Test handling of port conflicts during startup."""
         # This should FAIL - no implementation exists yet
@@ -448,7 +448,7 @@ class TestErrorHandlingIntegration:
                     await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_malformed_log_event_handling(self, available_port):
         """Test handling of malformed log events."""
         # This should FAIL - no implementation exists yet

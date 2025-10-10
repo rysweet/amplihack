@@ -15,7 +15,7 @@ class TestNetworkErrorScenarios:
     """Test handling of network-related errors."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_client_connection_dropped(self, available_port):
         """Test handling of abruptly dropped client connections."""
         # This should FAIL - no implementation exists yet
@@ -50,7 +50,7 @@ class TestNetworkErrorScenarios:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_network_timeout_handling(self, available_port):
         """Test handling of network timeouts."""
         # This should FAIL - no implementation exists yet
@@ -89,7 +89,7 @@ class TestNetworkErrorScenarios:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_partial_message_handling(self, available_port):
         """Test handling of partial/corrupted messages."""
         # This should FAIL - no implementation exists yet
@@ -126,7 +126,7 @@ class TestResourceExhaustionScenarios:
     """Test handling of resource exhaustion conditions."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_memory_pressure_handling(self, available_port):
         """Test handling of memory pressure from large log volumes."""
         # This should FAIL - no implementation exists yet
@@ -164,7 +164,7 @@ class TestResourceExhaustionScenarios:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_connection_limit_exhaustion(self, available_port):
         """Test handling when connection limit is reached."""
         # This should FAIL - no implementation exists yet
@@ -215,7 +215,7 @@ class TestResourceExhaustionScenarios:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_disk_space_exhaustion_simulation(self, available_port):
         """Test handling of disk space exhaustion (if logging to disk)."""
         # This should FAIL - no implementation exists yet
@@ -254,7 +254,7 @@ class TestConfigurationErrorScenarios:
     """Test handling of configuration errors and invalid settings."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_invalid_bind_address_recovery(self, available_port):
         """Test recovery from invalid bind address configuration."""
         # This should FAIL - no implementation exists yet
@@ -281,7 +281,7 @@ class TestConfigurationErrorScenarios:
                 await valid_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_port_conflict_resolution_integration(self, available_port, port_manager):
         """Test handling of port conflicts during startup."""
         # This should FAIL - no implementation exists yet
@@ -339,7 +339,7 @@ class TestConcurrentErrorScenarios:
     """Test error handling under concurrent conditions."""
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_concurrent_client_failures(self, available_port):
         """Test handling of multiple client failures simultaneously."""
         # This should FAIL - no implementation exists yet
@@ -375,7 +375,7 @@ class TestConcurrentErrorScenarios:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_error_during_message_broadcasting(self, available_port):
         """Test error handling during message broadcasting to clients."""
         # This should FAIL - no implementation exists yet
@@ -428,7 +428,7 @@ class TestConcurrentErrorScenarios:
                 await log_server.stop()
 
     @pytest.mark.integration
-    @pytest.mark.async_test
+    @pytest.mark.asyncio
     async def test_server_restart_under_load(self, available_port):
         """Test server restart behavior under active load."""
         # This should FAIL - no implementation exists yet
