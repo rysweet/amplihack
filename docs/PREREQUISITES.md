@@ -6,10 +6,11 @@ This document provides detailed installation instructions for all required tools
 
 The AmplihHack framework requires the following tools to be installed:
 
-1. **Node.js** (v18 or higher) - Required for claude-trace
+1. **Node.js** (v18 or higher) - Required for Claude CLI and claude-trace
 2. **npm** (comes with Node.js) - Package manager for Node.js
 3. **uv** - Fast Python package installer and resolver
 4. **git** - Version control system
+5. **claude** - Claude Code CLI (auto-installed if missing)
 
 ## Quick Check
 
@@ -264,6 +265,54 @@ git config --list
 
 ## Required Tools (After Prerequisites)
 
+### Claude CLI
+
+**Purpose:** Official Claude Code command-line interface
+
+**Installation (Required):**
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+**Note:** This is **automatically installed** when missing. The framework will attempt to install it on first run if not found.
+
+**Documentation:** https://docs.claude.com/en/docs/claude-code/setup
+
+**Usage:**
+
+- The `claude` command provides the core CLI functionality
+- Used by claude-trace for enhanced debugging
+- Essential for all UVX deployments
+
+**Verification:**
+
+```bash
+claude --version
+# Should show version information
+```
+
+**Disable Auto-Installation:**
+
+```bash
+export AMPLIHACK_NO_AUTO_INSTALL=1
+```
+
+**Manual Installation for User-Local (without sudo):**
+
+```bash
+# Configure npm for user-local installations (if needed)
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.profile
+source ~/.profile
+
+# Then install Claude CLI
+npm install -g @anthropic-ai/claude-code
+```
+
+---
+
 ### claude-trace
 
 **Purpose:** Enhanced debugging and traffic logging for Claude Code
@@ -446,6 +495,13 @@ if command -v git &> /dev/null; then
     echo "✓ git: $(git --version)"
 else
     echo "✗ git: Not found"
+fi
+
+# Check claude
+if command -v claude &> /dev/null; then
+    echo "✓ claude: $(claude --version)"
+else
+    echo "✗ claude: Not found"
 fi
 
 echo

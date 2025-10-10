@@ -103,7 +103,7 @@ class TestToolChecking:
             result = checker.check_all_prerequisites()
             assert result.all_available is True
             assert len(result.missing_tools) == 0
-            assert len(result.available_tools) == 4  # node, npm, uv, git
+            assert len(result.available_tools) == 5  # node, npm, uv, git, claude
 
 
 class TestInstallationCommands:
@@ -224,21 +224,22 @@ class TestPrerequisiteIntegration:
             result = checker.check_all_prerequisites()
 
             assert result.all_available is True
-            assert len(result.available_tools) == 4
+            assert len(result.available_tools) == 5
             assert len(result.missing_tools) == 0
 
     def test_full_check_workflow_some_missing(self):
         """Test complete prerequisite check with some tools missing."""
         checker = PrerequisiteChecker()
         with patch("shutil.which") as mock_which:
-            # node and npm missing, uv and git present
+            # node, npm, and claude missing; uv and git present
             mock_which.side_effect = lambda x: (f"/usr/bin/{x}" if x in ["uv", "git"] else None)
             result = checker.check_all_prerequisites()
 
             assert result.all_available is False
-            assert len(result.missing_tools) == 2
+            assert len(result.missing_tools) == 3
             assert any(t.tool == "node" for t in result.missing_tools)
             assert any(t.tool == "npm" for t in result.missing_tools)
+            assert any(t.tool == "claude" for t in result.missing_tools)
 
     def test_format_and_display_missing(self):
         """Test formatting and displaying missing prerequisites."""
@@ -252,6 +253,7 @@ class TestPrerequisiteIntegration:
             assert "npm" in message.lower()
             assert "uv" in message.lower()
             assert "git" in message.lower()
+            assert "claude" in message.lower()
 
     def test_prerequisite_check_with_real_subprocess(self):
         """Test prerequisite checking with real subprocess calls."""
@@ -359,7 +361,9 @@ class TestEndToEnd:
 
                 # Message should contain:
                 # 1. All missing tools
-                assert all(tool in message.lower() for tool in ["node", "npm", "uv", "git"])
+                assert all(
+                    tool in message.lower() for tool in ["node", "npm", "uv", "git", "claude"]
+                )
                 # 2. Installation commands
                 assert "brew install" in message
                 # 3. Helpful context
@@ -378,13 +382,14 @@ class TestEndToEnd:
 
                 result = checker.check_all_prerequisites()
                 assert result.all_available is False
-                assert len(result.missing_tools) == 2  # node and npm
+                assert len(result.missing_tools) == 3  # node, npm, and claude
 
                 message = checker.format_missing_prerequisites(result.missing_tools)
 
                 # Should only mention missing tools
                 assert "node" in message.lower()
                 assert "npm" in message.lower()
+                assert "claude" in message.lower()
                 # Should not mention available tools
                 assert message.count("git") <= 1  # May appear in install command
                 assert message.count("uv") <= 1  # May appear in install command
