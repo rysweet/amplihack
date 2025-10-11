@@ -589,6 +589,7 @@ class AutoModeOrchestrator:
         # Close session if active
         if self.active_session_id:
             await self.session_manager.close_session(self.active_session_id)
+            self.active_session_id = None
 
         logger.info("Auto-mode stopped")
 
