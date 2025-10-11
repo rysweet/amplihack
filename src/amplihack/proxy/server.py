@@ -1954,4 +1954,19 @@ def run_server(host: str = "127.0.0.1", port: int = 8082):
 
 
 if __name__ == "__main__":
-    run_server()
+    import os
+
+    # Read PORT from environment with error handling
+    port = 8082  # Default port
+    port_env = os.environ.get("PORT")
+    if port_env:
+        try:
+            port = int(port_env)
+            if not (1 <= port <= 65535):
+                print(f"Warning: PORT={port_env} is invalid (must be 1-65535), using default 8082")
+                port = 8082
+        except ValueError:
+            print(f"Warning: PORT={port_env} is not a valid number, using default 8082")
+            port = 8082
+
+    run_server(port=port)
