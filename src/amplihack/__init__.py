@@ -155,6 +155,26 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
         # Copy the directory
         try:
             shutil.copytree(source_dir, target_dir)
+
+            # Fix: Set execute permissions on hook Python files
+            # This fixes the "Permission denied" error when hooks are copied
+            # to other directories (e.g., project .claude dirs)
+            if dir_path.startswith("tools/"):
+                import stat
+
+                for root, _dirs, files in os.walk(target_dir):
+                    # Only set execute on files in hooks subdirectories
+                    if "hooks" in root:
+                        for file in files:
+                            if file.endswith(".py"):
+                                file_path = os.path.join(root, file)
+                                # Add execute permission for user, group, and other
+                                current_perms = os.stat(file_path).st_mode
+                                os.chmod(
+                                    file_path,
+                                    current_perms | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH,
+                                )
+
             copied.append(dir_path)
             print(f"  ✅ Copied {dir_path}")
         except Exception as e:
