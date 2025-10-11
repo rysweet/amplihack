@@ -227,13 +227,32 @@ class ConversationAnalysisEngine:
         """
         try:
             # Collect all response chunks from Claude
-            response_chunks = []
+            response_texts = []
 
             async for message in claude_query(prompt=prompt):  # type: ignore
-                response_chunks.append(str(message))
+                # Extract text from Message objects
+                # Messages can be SystemMessage, AssistantMessage, ResultMessage, etc.
+                # We want the content from AssistantMessage objects
+                if (
+                    hasattr(message, "__class__")
+                    and "AssistantMessage" in message.__class__.__name__
+                ):
+                    # AssistantMessage has content attribute with TextBlock objects
+                    if hasattr(message, "content") and isinstance(message.content, list):
+                        for content_block in message.content:
+                            if hasattr(content_block, "text"):
+                                response_texts.append(content_block.text)
+                elif hasattr(message, "result"):
+                    # ResultMessage may contain the final result
+                    response_texts.append(str(message.result))
 
-            # Combine all chunks into full response
-            full_response = "".join(response_chunks)
+            # Combine all text chunks into full response
+            full_response = "".join(response_texts)
+
+            if not full_response:
+                # Fallback: if no text was extracted, log warning
+                logger.warning("No text content extracted from Claude SDK response")
+                raise SDKConnectionError("No text content in Claude SDK response")
 
             logger.info(f"Received Claude SDK response: {len(full_response)} chars")
             return full_response
@@ -380,15 +399,37 @@ Provide your evaluation in JSON format with all required fields.
 
             data = json.loads(json_str)
 
+            # Helper to convert qualitative values to floats
+            def to_float(value, default=0.5):
+                if isinstance(value, (int, float)):
+                    return float(value)
+                if isinstance(value, str):
+                    value_lower = value.lower()
+                    # Map qualitative terms to numeric values
+                    qualitative_map = {
+                        "very high": 0.9,
+                        "high": 0.75,
+                        "medium": 0.5,
+                        "moderate": 0.5,
+                        "low": 0.25,
+                        "very low": 0.1,
+                        "excellent": 0.95,
+                        "good": 0.75,
+                        "fair": 0.5,
+                        "poor": 0.25,
+                    }
+                    return qualitative_map.get(value_lower, default)
+                return default
+
             return AnalysisResult(
                 request_id=request.id,
                 session_id=request.session_id,
                 analysis_type=request.analysis_type,
-                confidence=float(data.get("confidence", 0.5)),
+                confidence=to_float(data.get("confidence"), 0.5),
                 findings=data.get("findings", []),
                 recommendations=data.get("recommendations", []),
                 next_prompt=data.get("next_prompt"),
-                quality_score=float(data.get("quality_score", 0.5)),
+                quality_score=to_float(data.get("quality_score"), 0.5),
                 progress_indicators=data.get("progress_indicators", {}),
                 ai_reasoning=data.get("ai_reasoning", ""),
                 metadata=data.get("metadata", {}),
