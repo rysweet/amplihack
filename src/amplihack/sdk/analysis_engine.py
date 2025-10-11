@@ -305,6 +305,7 @@ Analysis Type: {request.analysis_type.value}
 2. What remains to be done?
 3. Are we on the right track?
 4. What obstacles or blockers exist?
+5. CRITICAL: Did you actually test all of the changes that were made? Verify test evidence in the output.
 
 Provide your analysis in the following JSON format:
 {
@@ -316,7 +317,8 @@ Provide your analysis in the following JSON format:
   "progress_indicators": {
     "completion_percentage": <int 0-100>,
     "blockers_identified": <int>,
-    "objectives_met": <int>
+    "objectives_met": <int>,
+    "testing_validated": <bool - whether testing was performed>
   },
   "ai_reasoning": "<your detailed reasoning about the analysis>"
 }
@@ -331,19 +333,27 @@ Provide your analysis in the following JSON format:
 2. Completeness of implementation
 3. Potential issues or bugs
 4. Alignment with objectives
+5. CRITICAL: Were the changes actually tested? Check for test execution evidence.
+6. Technical debt: Are we maintaining zero technical debt?
 
-Provide your analysis in JSON format with fields: confidence, findings, recommendations, next_prompt, quality_score, progress_indicators, ai_reasoning.
+Provide your analysis in JSON format with fields: confidence, findings, recommendations, next_prompt, quality_score, progress_indicators (include testing_validated and technical_debt_score), ai_reasoning.
 """
             )
 
         if request.analysis_type == AnalysisType.NEXT_ACTION_PLANNING:
             return (
                 base_context
-                + """Plan the next action to take toward the objective. Consider:
+                + """Plan the next action to take toward the objective.
+
+IMPORTANT: You must persist in pursuing the objective independently, making decisions as needed to most effectively pursue quality, zero technical debt, and achievement of the user's objective. Continue this pursuit until the objective is achieved and there are no more next steps.
+
+Consider:
 1. What is the most important next step?
 2. What blockers need to be addressed?
 3. How to maintain momentum?
 4. What would provide the most value?
+5. Are we maintaining quality and zero technical debt?
+6. Did we test the last changes before moving forward?
 
 Provide a specific, actionable next prompt for Claude in JSON format with all required fields.
 """
