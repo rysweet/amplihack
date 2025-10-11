@@ -1883,6 +1883,169 @@ tests/
 
 From PR #457: Prerequisites module can be used by any part of the system without worrying about internal implementation details. Clear **all** makes public API obvious.
 
+## Pattern: Real SDK Testing Without Mocks
+
+### Challenge
+
+Mock-heavy tests don't validate real SDK integration. Tests pass but production code fails because mocks don't match actual SDK behavior.
+
+### Solution
+
+Test the real SDK implementation directly, using configuration to make tests deterministic.
+
+```python
+# WRONG - Mock-heavy testing
+@pytest.fixture
+def mock_sdk_client():
+    return Mock(spec=SDKClient)
+
+async def test_with_mock(mock_sdk_client):
+    mock_sdk_client.analyze.return_value = {"result": "mocked"}
+    # Tests mock behavior, not real SDK
+
+# RIGHT - Real SDK testing
+@pytest_asyncio.fixture
+async def analysis_engine():
+    """Create real analysis engine with test-friendly config"""
+    config = AnalysisConfig(
+        enable_caching=False,  # Deterministic tests
+        timeout_seconds=5,      # Fast test execution
+    )
+    engine = ConversationAnalysisEngine(config)
+    return engine
+
+async def test_with_real_sdk(analysis_engine):
+    """Tests actual SDK behavior"""
+    result = await analysis_engine.analyze(...)
+    # Validates real integration
+```
+
+### Test Organization by Component
+
+Organize test classes by component responsibility for clarity:
+
+```python
+"""Test suite organization example"""
+
+class TestAnalysisEngine:
+    """Tests for ConversationAnalysisEngine"""
+
+    @pytest_asyncio.fixture
+    async def analysis_engine(self):
+        config = AnalysisConfig(enable_caching=False)
+        return ConversationAnalysisEngine(config)
+
+    async def test_engine_initialization(self, analysis_engine):
+        assert analysis_engine is not None
+
+    async def test_build_analysis_prompt(self, analysis_engine):
+        # Test prompt building logic
+        pass
+
+class TestSessionManager:
+    """Tests for SDKSessionManager"""
+
+    @pytest_asyncio.fixture
+    async def session_manager(self):
+        manager = SDKSessionManager()
+        yield manager
+        # Cleanup sessions
+        for sid in list(manager.sessions.keys()):
+            await manager.close_session(sid)
+
+    async def test_session_creation(self, session_manager):
+        # Test session lifecycle
+        pass
+
+class TestIntegration:
+    """Integration tests for complete workflows"""
+
+    async def test_complete_workflow(self):
+        # End-to-end workflow testing
+        pass
+```
+
+### Key Points
+
+- **Use real SDK with test-friendly config** - Disable caching, reduce timeouts
+- **Organize tests by component** - AnalysisEngine, SessionManager, Orchestrator, Integration
+- **Integration tests validate workflows** - Test complete paths through system
+- **Proper async fixture cleanup** - Use yield to clean up resources
+- **No mocking SDK internals** - Only mock external dependencies
+
+### Benefits
+
+- Tests catch real integration bugs
+- Clear separation of concerns
+- Easy to find tests for specific components
+- Integration tests clearly separated
+
+### Real Impact
+
+From PR #685: Replaced 543 lines of mock tests with 241 lines of real SDK tests. Found actual integration bugs that mocks missed.
+
+## Pattern: Async Resource Cleanup in Session Management
+
+### Challenge
+
+Async resources (sessions, background tasks, connections) leak if not properly cleaned up. Tests may pass but production shows resource exhaustion.
+
+### Solution
+
+Implement explicit cleanup methods that handle all resource types in correct order.
+
+```python
+class AutoModeOrchestrator:
+    def __init__(self):
+        self._background_tasks: List[asyncio.Task] = []
+        self._shutdown_event = asyncio.Event()
+        self.active_session_id: Optional[str] = None
+
+    async def stop_auto_mode(self) -> None:
+        """Stop auto-mode operation and cleanup"""
+        # Step 1: Transition state (signals shutdown intent)
+        await self._transition_state(AutoModeState.STOPPED)
+
+        # Step 2: Signal background tasks to stop
+        self._shutdown_event.set()
+
+        # Step 3: Cancel all background tasks
+        for task in self._background_tasks:
+            task.cancel()
+
+        # Wait for cancellation to complete
+        await asyncio.gather(*self._background_tasks, return_exceptions=True)
+
+        # Step 4: Close session last (tasks may depend on it)
+        if self.active_session_id:
+            await self.session_manager.close_session(self.active_session_id)
+            self.active_session_id = None
+```
+
+### Test Pattern
+
+```python
+@pytest_asyncio.fixture
+async def orchestrator():
+    """Orchestrator with proper cleanup"""
+    orch = AutoModeOrchestrator(config)
+    yield orch
+    # Cleanup after test
+    await orch.stop_auto_mode()
+```
+
+### Key Points
+
+- **Cleanup order matters** - Signal intent, cancel tasks, close sessions
+- **Use shutdown event** - Background tasks check this for graceful exit
+- **Cancel tasks explicitly** - Don't rely on garbage collection
+- **Gather with return_exceptions** - Handle cancellation errors gracefully
+- **Clear session ID last** - After all cleanup completes
+
+### Real Impact
+
+From PR #685: Fixed session cleanup bug that left background tasks running after stop_auto_mode(). Prevented resource leaks in long-running sessions.
+
 ## Remember
 
 These patterns represent hard-won knowledge from real development challenges. When facing similar problems:
