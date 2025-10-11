@@ -252,3 +252,7 @@ class ClaudeSessionContinuation:
             "message_count": len(session.messages),
             "mode": self.mode,
         }
+
+
+# Alias for backwards compatibility with tests
+ClaudeAgentSDKClient = ClaudeSessionContinuation
