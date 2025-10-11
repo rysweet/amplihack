@@ -90,6 +90,27 @@ for handler in logger.handlers:
 
 app = FastAPI()
 
+# Load environment variables from .azure.env if it exists (with security validation)
+try:
+    # Only load from current directory if it's within the project structure
+    from pathlib import Path
+
+    current_dir = Path.cwd()
+    azure_env_path = current_dir / ".azure.env"
+
+    # Security: Only load if file exists and is in expected location
+    # Prevent path traversal by ensuring it's a direct child of cwd
+    if azure_env_path.exists() and azure_env_path.parent == current_dir:
+        # Validate file permissions (optional but recommended)
+        logger.debug(f"Loading Azure environment from: {azure_env_path}")
+        load_dotenv(azure_env_path, override=True)
+        logger.debug("Azure environment variables loaded successfully")
+    else:
+        logger.debug("No .azure.env file found in current directory")
+except Exception as e:
+    logger.warning(f"Failed to load .azure.env: {e}")
+    # Continue without .azure.env - not a critical failure
+
 # Get API keys from environment
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -112,6 +133,30 @@ if PASSTHROUGH_MODE:
 # Default to latest OpenAI models if not set
 BIG_MODEL = os.environ.get("BIG_MODEL", "gpt-4.1")
 SMALL_MODEL = os.environ.get("SMALL_MODEL", "gpt-4.1-mini")
+
+# Configure LiteLLM for Azure if Azure endpoint is present
+AZURE_BASE_URL = os.environ.get("OPENAI_BASE_URL", "")
+if AZURE_BASE_URL:
+    # For Azure Responses API, keep the full path
+    # Extract clean base URL without query parameters
+    clean_azure_base = AZURE_BASE_URL.split("?")[0] if "?" in AZURE_BASE_URL else AZURE_BASE_URL
+
+    # Check if this is Responses API
+    is_responses_api = "/openai/responses" in clean_azure_base
+
+    # For regular Chat API, remove the path; for Responses API, keep it
+    if not is_responses_api:
+        # Only strip for regular Chat API endpoints
+        clean_azure_base = clean_azure_base.replace("/openai/deployments", "")
+    # For Responses API, keep the /openai/responses path
+
+    # Set LiteLLM environment variables for Azure
+    os.environ["AZURE_API_BASE"] = clean_azure_base
+    os.environ["AZURE_API_KEY"] = OPENAI_API_KEY or ""
+    # Use the correct API version from environment or default to user's version
+    os.environ["AZURE_API_VERSION"] = os.environ.get("AZURE_API_VERSION", "2025-04-01-preview")
+
+    logger.info(f"Configured LiteLLM for Azure: {clean_azure_base}")
 
 # List of OpenAI models
 OPENAI_MODELS = [
@@ -514,44 +559,32 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
         # Default to maximum limit for Azure Responses API models when request has low/no max_tokens
         max_tokens_value = max_tokens_limit
 
-    # Determine appropriate temperature based on target model type
-    def map_claude_model_to_azure_local(model: str) -> str:
-        """Map Claude model names to Azure deployment names based on configuration."""
-        # Map Claude models to configured Azure models
-        if "sonnet" in model.lower() or "opus" in model.lower():
-            return BIG_MODEL
-        if "haiku" in model.lower():
-            return SMALL_MODEL
-        # Default to big model for unrecognized patterns
-        return BIG_MODEL
+    # Map the model to Azure model to check if it uses Responses API
+    model_lower = anthropic_request.model.lower()
+    azure_model = (
+        BIG_MODEL
+        if "sonnet" in model_lower or "opus" in model_lower
+        else (SMALL_MODEL if "haiku" in model_lower else BIG_MODEL)
+    )
 
-    def should_use_responses_api_for_azure_model_local(azure_model: str) -> bool:
-        """Check if the Azure model should use Responses API based on model type."""
-        openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
-        if not (openai_base_url and "/responses" in openai_base_url):
-            return False
-
-        # Check if model name matches Responses API patterns
-        if (
+    # Check if this should use Responses API
+    openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
+    use_responses_api = (
+        openai_base_url
+        and "/responses" in openai_base_url
+        and (
             azure_model.startswith(("o3-", "o4-"))
             or azure_model.startswith("gpt-5-code")
             or azure_model == "gpt-5"
-        ):
-            return True
-        return False
-
-    # Map the model to Azure model first to check if it uses Responses API
-    azure_model = map_claude_model_to_azure_local(anthropic_request.model)
+        )
+    )
 
     # Determine temperature based on API type
-    if should_use_responses_api_for_azure_model_local(azure_model):
-        # Azure Responses API models always use temperature=1.0 for high creativity
-        temperature = 1.0
-    else:
-        # Chat API models use the requested temperature or default
-        temperature = (
-            anthropic_request.temperature if anthropic_request.temperature is not None else 1.0
-        )
+    temperature = (
+        1.0
+        if use_responses_api
+        else (anthropic_request.temperature if anthropic_request.temperature is not None else 1.0)
+    )
 
     # Initialize the LiteLLM request dict first to ensure we always return the right structure
     litellm_request = {
@@ -714,7 +747,28 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
         litellm_request["top_k"] = anthropic_request.top_k
 
     # Convert tools to OpenAI format
-    if anthropic_request.tools:
+    # Skip tools for Azure Responses API models (they don't support tools)
+    is_responses_api_model = False
+    if anthropic_request.model.startswith("azure/"):
+        # Check if this is a Responses API model
+        model_name = anthropic_request.model.split("/")[-1]
+        responses_api_models = {
+            "o3-mini",
+            "o3-small",
+            "o3-medium",
+            "o3-large",
+            "o4-mini",
+            "o4-small",
+            "o4-medium",
+            "o4-large",
+            "gpt-5-code",
+            "gpt-5-codex",
+        }
+        if model_name in responses_api_models:
+            is_responses_api_model = True
+            logger.info(f"Skipping tools for Azure Responses API model: {model_name}")
+
+    if anthropic_request.tools and not is_responses_api_model:
         openai_tools = []
         is_gemini_model = anthropic_request.model.startswith("gemini/")
 
@@ -749,8 +803,8 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
         litellm_request["tools"] = openai_tools
 
-    # Convert tool_choice to OpenAI format if present
-    if anthropic_request.tool_choice:
+    # Convert tool_choice to OpenAI format if present (skip for Responses API)
+    if anthropic_request.tool_choice and not is_responses_api_model:
         if isinstance(anthropic_request.tool_choice, dict):
             tool_choice_dict = anthropic_request.tool_choice
         elif hasattr(anthropic_request.tool_choice, "model_dump"):
@@ -777,6 +831,52 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
         else:
             # Default to auto if we can't determine
             litellm_request["tool_choice"] = "auto"
+
+    # Add Azure configuration if using azure/ prefix
+    if anthropic_request.model.startswith("azure/"):
+        # Get Azure configuration from environment - check multiple possible variables
+        azure_base = (
+            os.environ.get("OPENAI_BASE_URL", "")
+            or os.environ.get("AZURE_ENDPOINT", "")
+            or os.environ.get("AZURE_OPENAI_ENDPOINT", "")
+            or os.environ.get("AZURE_API_BASE", "")
+        )
+        azure_key = os.environ.get("AZURE_OPENAI_API_KEY", "") or os.environ.get(
+            "AZURE_API_KEY", ""
+        )
+
+        # Security: Use debug level for sensitive configuration details
+        logger.debug(f"Azure config check for {anthropic_request.model}:")
+        logger.debug(f"  OPENAI_BASE_URL configured: {bool(os.environ.get('OPENAI_BASE_URL'))}")
+        logger.debug(f"  AZURE_ENDPOINT configured: {bool(os.environ.get('AZURE_ENDPOINT'))}")
+        logger.debug(f"  AZURE_API_BASE configured: {bool(os.environ.get('AZURE_API_BASE'))}")
+        logger.debug(f"  azure_base configured: {bool(azure_base)}")
+        logger.debug(f"  azure_key configured: {bool(azure_key)}")
+
+        if azure_base:
+            # Extract clean base URL without query parameters
+            clean_azure_base = azure_base.split("?")[0] if "?" in azure_base else azure_base
+
+            # Check if this is Responses API
+            is_responses_api = "/openai/responses" in clean_azure_base
+
+            # For regular Chat API, remove the path; for Responses API, keep it
+            if not is_responses_api:
+                # Only strip for regular Chat API endpoints
+                clean_azure_base = clean_azure_base.replace("/openai/deployments", "")
+            # For Responses API, keep the /openai/responses path
+
+            # Add to request for LiteLLM
+            litellm_request["api_base"] = clean_azure_base
+            litellm_request["api_key"] = azure_key
+            litellm_request["api_version"] = os.environ.get(
+                "AZURE_API_VERSION", "2025-04-01-preview"
+            )
+
+            logger.info("Added Azure config to request:")
+            logger.info(f"  api_base: {clean_azure_base}")
+            logger.info(f"  api_key: {'SET' if azure_key else 'NOT SET'}")
+            logger.info(f"  api_version: {litellm_request['api_version']}")
 
     return litellm_request
 
@@ -1295,42 +1395,32 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                 # Default to maximum limit for Azure Responses API models
                 max_tokens_value = max_tokens_limit
 
-            # Determine appropriate temperature based on target model type
-            def map_claude_model_to_azure_passthrough(model: str) -> str:
-                """Map Claude model names to Azure deployment names for passthrough."""
-                # Map Claude models to configured Azure models
-                if "sonnet" in model.lower() or "opus" in model.lower():
-                    return BIG_MODEL
-                if "haiku" in model.lower():
-                    return SMALL_MODEL
-                # Default to big model for unrecognized patterns
-                return BIG_MODEL
+            # Map the model to Azure model for passthrough
+            model_lower = clean_model.lower()
+            azure_model = (
+                BIG_MODEL
+                if "sonnet" in model_lower or "opus" in model_lower
+                else (SMALL_MODEL if "haiku" in model_lower else BIG_MODEL)
+            )
 
-            def should_use_responses_api_for_passthrough(azure_model: str) -> bool:
-                """Check if the Azure model should use Responses API for passthrough."""
-                openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
-                if not (openai_base_url and "/responses" in openai_base_url):
-                    return False
-
-                # Check if model name matches Responses API patterns
-                if (
+            # Check if this should use Responses API
+            openai_base_url = os.environ.get("OPENAI_BASE_URL", "")
+            use_responses_api = (
+                openai_base_url
+                and "/responses" in openai_base_url
+                and (
                     azure_model.startswith(("o3-", "o4-"))
                     or azure_model.startswith("gpt-5-code")
                     or azure_model == "gpt-5"
-                ):
-                    return True
-                return False
+                )
+            )
 
-            # Map the model to Azure model first to check if it uses Responses API
-            azure_model = map_claude_model_to_azure_passthrough(clean_model)
-
-            # Determine temperature based on API type
-            if should_use_responses_api_for_passthrough(azure_model):
-                # Azure Responses API models always use temperature=1.0 for high creativity
-                temperature = 1.0
-            else:
-                # Chat API models use the requested temperature or default
-                temperature = request.temperature if request.temperature is not None else 1.0
+            # Determine temperature
+            temperature = (
+                1.0
+                if use_responses_api
+                else (request.temperature if request.temperature is not None else 1.0)
+            )
 
             # Prepare request data for passthrough
             request_data = {
@@ -1403,8 +1493,10 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                 logger.info("Falling back to LiteLLM processing")
                 # Continue with normal processing below
 
+        logger.info(f"🔵 REQUEST MODEL AFTER VALIDATION: '{request.model}'")
         # Convert Anthropic request to LiteLLM format
         litellm_request = convert_anthropic_to_litellm(request)
+        logger.info(f"🔵 LITELLM_REQUEST MODEL AFTER CONVERSION: '{litellm_request.get('model')}'")
 
         # Determine which API key to use based on the model
         if request.model.startswith("openai/"):
@@ -1624,6 +1716,10 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             num_tools,
             200,  # Assuming success at this point
         )
+        logger.info(
+            f"🔥 LITELLM REQUEST MODEL: '{litellm_request.get('model')}', api_base: '{litellm_request.get('api_base', 'NOT SET')}'"
+        )
+        logger.info(f"🔥 LITELLM REQUEST KEYS: {list(litellm_request.keys())}")
         start_time = time.time()
         litellm_response = litellm.completion(**litellm_request)
         logger.debug(
