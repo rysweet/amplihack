@@ -34,6 +34,13 @@ dev = [
 [project.scripts]
 amplihack = "amplihack:main"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "pre-commit",
+]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
