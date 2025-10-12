@@ -14,12 +14,13 @@ cp examples/example.azure.env .azure.env
 nano .azure.env  # Set OPENAI_API_KEY, OPENAI_BASE_URL, etc.
 
 # 3. Launch with Azure integration
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding@feat/issue-676-azure-openai-proxy amplihack launch --with-proxy-config ./.azure.env
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --with-proxy-config ./.azure.env
 ```
 
 ### 2. What Happens Automatically
 
 - ✅ **Proxy Setup**: claude-code-proxy starts with Azure configuration
+- ✅ **Auto-load .azure.env**: The proxy automatically loads `.azure.env` from current directory
 - ✅ **Model Mapping**: OpenAI model names → Azure deployment names
 - ✅ **Persistence**: Azure persistence prompt automatically appended
 - ✅ **Environment**: Proper environment variables configured
@@ -93,7 +94,18 @@ OPENAI_BASE_URL="https://eastus-openai.openai.azure.com/openai/deployments/gpt-4
 
 # Custom deployment name
 OPENAI_BASE_URL="https://prod-ai.openai.azure.com/openai/deployments/my-gpt4-model/chat/completions?api-version=2025-01-01-preview"
+
+# Azure Responses API (for structured output)
+OPENAI_BASE_URL="https://mycompany-ai.openai.azure.com/openai/responses?api-version=2025-04-01-preview"
 ```
+
+### Azure Responses API Support
+
+The proxy automatically detects and handles Azure Responses API endpoints:
+
+- Preserves the `/openai/responses` path for proper routing
+- Uses the appropriate API version (2025-04-01-preview)
+- Maps all Claude models to your BIG_MODEL deployment
 
 ## Configuration Examples
 

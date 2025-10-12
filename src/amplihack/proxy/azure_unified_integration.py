@@ -448,10 +448,13 @@ def _get_cached_model_list_template(
 
     if is_responses_api:
         # Responses API models (uses different endpoint and API version)
-        responses_api_version = "2025-03-01-preview"  # Responses API minimum version
+        responses_api_version = "2025-04-01-preview"  # Use the user's specified API version
 
-        # LiteLLM handles endpoint routing - just provide base URL without path
-        clean_base_url = base_url.replace("/openai/responses", "")
+        # For Azure Responses API, we need to keep the full endpoint path
+        # First remove any query parameters (api-version will be added by LiteLLM)
+        clean_base_url = base_url.split("?")[0] if "?" in base_url else base_url
+        # Keep the /openai/responses path for Responses API
+        # clean_base_url = clean_base_url.replace("/openai/responses", "")  # DON'T strip this for Responses API
 
         # Create model list with Claude model names mapped to user's deployment names
         # All Claude models route to the BIG_MODEL deployment for Responses API
