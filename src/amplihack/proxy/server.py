@@ -332,11 +332,9 @@ class MessagesRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Azure takes precedence if configured
+        # Use openai/ prefix for Azure models - LiteLLM handles Azure routing via env vars
         provider_prefix = "openai/"
-        if AZURE_BASE_URL:
-            provider_prefix = "azure/"
-        elif PREFERRED_PROVIDER == "google" and (
+        if PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
             provider_prefix = "gemini/"
@@ -413,11 +411,9 @@ class TokenCountRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Azure takes precedence if configured
+        # Use openai/ prefix for Azure models - LiteLLM handles Azure routing via env vars
         provider_prefix = "openai/"
-        if AZURE_BASE_URL:
-            provider_prefix = "azure/"
-        elif PREFERRED_PROVIDER == "google" and (
+        if PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
             provider_prefix = "gemini/"
@@ -857,28 +853,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
         litellm_request["top_k"] = anthropic_request.top_k
 
     # Convert tools to OpenAI format
-    # Skip tools for Azure Responses API models (they don't support tools)
-    is_responses_api_model = False
-    if anthropic_request.model.startswith("azure/"):
-        # Check if this is a Responses API model
-        model_name = anthropic_request.model.split("/")[-1]
-        responses_api_models = {
-            "o3-mini",
-            "o3-small",
-            "o3-medium",
-            "o3-large",
-            "o4-mini",
-            "o4-small",
-            "o4-medium",
-            "o4-large",
-            "gpt-5-code",
-            "gpt-5-codex",
-        }
-        if model_name in responses_api_models:
-            is_responses_api_model = True
-            logger.info(f"Skipping tools for Azure Responses API model: {model_name}")
-
-    if anthropic_request.tools and not is_responses_api_model:
+    if anthropic_request.tools:
         openai_tools = []
         is_gemini_model = anthropic_request.model.startswith("gemini/")
 
@@ -913,8 +888,8 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
         litellm_request["tools"] = openai_tools
 
-    # Convert tool_choice to OpenAI format if present (skip for Responses API)
-    if anthropic_request.tool_choice and not is_responses_api_model:
+    # Convert tool_choice to OpenAI format if present
+    if anthropic_request.tool_choice:
         if isinstance(anthropic_request.tool_choice, dict):
             tool_choice_dict = anthropic_request.tool_choice
         elif hasattr(anthropic_request.tool_choice, "model_dump"):
@@ -941,52 +916,6 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
         else:
             # Default to auto if we can't determine
             litellm_request["tool_choice"] = "auto"
-
-    # Add Azure configuration if using azure/ prefix
-    if anthropic_request.model.startswith("azure/"):
-        # Get Azure configuration from environment - check multiple possible variables
-        azure_base = (
-            os.environ.get("OPENAI_BASE_URL", "")
-            or os.environ.get("AZURE_ENDPOINT", "")
-            or os.environ.get("AZURE_OPENAI_ENDPOINT", "")
-            or os.environ.get("AZURE_API_BASE", "")
-        )
-        azure_key = os.environ.get("AZURE_OPENAI_API_KEY", "") or os.environ.get(
-            "AZURE_API_KEY", ""
-        )
-
-        # Security: Use debug level for sensitive configuration details
-        logger.debug(f"Azure config check for {anthropic_request.model}:")
-        logger.debug(f"  OPENAI_BASE_URL configured: {bool(os.environ.get('OPENAI_BASE_URL'))}")
-        logger.debug(f"  AZURE_ENDPOINT configured: {bool(os.environ.get('AZURE_ENDPOINT'))}")
-        logger.debug(f"  AZURE_API_BASE configured: {bool(os.environ.get('AZURE_API_BASE'))}")
-        logger.debug(f"  azure_base configured: {bool(azure_base)}")
-        logger.debug(f"  azure_key configured: {bool(azure_key)}")
-
-        if azure_base:
-            # Extract clean base URL without query parameters
-            clean_azure_base = azure_base.split("?")[0] if "?" in azure_base else azure_base
-
-            # Check if this is Responses API
-            is_responses_api = "/openai/responses" in clean_azure_base
-
-            # For regular Chat API, remove the path; for Responses API, keep it
-            if not is_responses_api:
-                # Only strip for regular Chat API endpoints
-                clean_azure_base = clean_azure_base.replace("/openai/deployments", "")
-            # For Responses API, keep the /openai/responses path
-
-            # Add to request for LiteLLM
-            litellm_request["api_base"] = clean_azure_base
-            litellm_request["api_key"] = azure_key
-            litellm_request["api_version"] = os.environ.get(
-                "AZURE_API_VERSION", "2025-04-01-preview"
-            )
-
-            logger.info("Added Azure config to request:")
-            logger.info(f"  api_base: {clean_azure_base}")
-            logger.info(f"  api_key: {'SET' if azure_key else 'NOT SET'}")
-            logger.info(f"  api_version: {litellm_request['api_version']}")
 
     return litellm_request
 
@@ -1612,165 +1541,6 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         # Convert Anthropic request to LiteLLM format
         litellm_request = convert_anthropic_to_litellm(request)
         logger.info(f"🔵 LITELLM_REQUEST MODEL AFTER CONVERSION: '{litellm_request.get('model')}'")
-
-        # Check if this is an Azure Responses API model - bypass LiteLLM if so
-        if request.model.startswith("azure/"):
-            model_name = request.model.split("/")[-1]
-            responses_api_models = {
-                "o3-mini",
-                "o3-small",
-                "o3-medium",
-                "o3-large",
-                "o4-mini",
-                "o4-small",
-                "o4-medium",
-                "o4-large",
-                "gpt-5-code",
-                "gpt-5-codex",
-            }
-
-            azure_base = os.environ.get("OPENAI_BASE_URL", "")
-            is_responses_api_endpoint = azure_base and "/responses" in azure_base
-
-            if is_responses_api_endpoint and model_name in responses_api_models:
-                logger.info(f"🔄 BYPASSING LITELLM for Responses API model: {model_name}")
-
-                # Convert messages to simple text format for Responses API
-                input_text = ""
-
-                # Add system message if present
-                if request.system:
-                    if isinstance(request.system, str):
-                        input_text += f"System: {request.system}\n\n"
-                    elif isinstance(request.system, list):
-                        system_text = ""
-                        for block in request.system:
-                            if hasattr(block, "type") and getattr(block, "type", None) == "text":
-                                system_text += getattr(block, "text", "") + "\n"
-                            elif isinstance(block, dict) and block.get("type") == "text":
-                                system_text += block.get("text", "") + "\n"
-                        if system_text:
-                            input_text += f"System: {system_text}\n\n"
-
-                # Add conversation messages
-                for msg in request.messages:
-                    role = msg.role.capitalize()
-                    content = msg.content
-
-                    if isinstance(content, str):
-                        input_text += f"{role}: {content}\n\n"
-                    elif isinstance(content, list):
-                        msg_text = ""
-                        for block in content:
-                            if hasattr(block, "type") and getattr(block, "type", None) == "text":
-                                msg_text += getattr(block, "text", "")
-                            elif isinstance(block, dict) and block.get("type") == "text":
-                                msg_text += block.get("text", "")
-                        if msg_text:
-                            input_text += f"{role}: {msg_text}\n\n"
-
-                # Get Azure configuration
-                azure_endpoint = azure_base.rstrip("/")
-                azure_api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_KEY")
-
-                if not azure_api_key:
-                    raise HTTPException(status_code=500, detail="Azure API key not configured")
-
-                # Prepare request for Azure Responses API
-                azure_request_data = {"model": model_name, "input": input_text.strip()}
-
-                # Prepare headers
-                headers = {"Content-Type": "application/json", "api-key": azure_api_key}
-
-                logger.debug(f"Making direct request to Azure Responses API: {azure_endpoint}")
-                logger.debug(f"Request model: {model_name}")
-
-                # Make direct HTTP request to Azure
-                try:
-                    async with httpx.AsyncClient(timeout=120.0) as client:
-                        azure_response = await client.post(
-                            azure_endpoint, json=azure_request_data, headers=headers
-                        )
-
-                        logger.debug(f"Azure response status: {azure_response.status_code}")
-
-                        if azure_response.status_code == 200:
-                            response_data = azure_response.json()
-                            logger.debug(
-                                f"✅ RESPONSES API SUCCESS: {response_data.get('id', 'no-id')}"
-                            )
-                            logger.debug(f"Azure response keys: {list(response_data.keys())}")
-
-                            # Convert Azure Responses API format to Anthropic format
-                            # Azure may return: {"id": "...", "output": "...", "model": "...", ...}
-                            # Or it may return choices format similar to Chat Completions
-
-                            # Try to extract output text from various formats
-                            output_text = ""
-                            if "output" in response_data:
-                                output_text = response_data.get("output", "")
-                            elif "choices" in response_data:
-                                choices = response_data.get("choices", [])
-                                if choices and len(choices) > 0:
-                                    message = choices[0].get("message", {})
-                                    output_text = message.get("content", "")
-                            elif "message" in response_data:
-                                message = response_data.get("message", {})
-                                output_text = message.get("content", "")
-
-                            # Fallback if we still don't have text
-                            if not output_text:
-                                output_text = str(response_data)
-                                logger.warning(
-                                    "Could not extract output from Azure response, using full response as string"
-                                )
-
-                            # Extract usage information
-                            usage_data = response_data.get("usage", {})
-                            input_tokens = usage_data.get("prompt_tokens", 0) or usage_data.get(
-                                "input_tokens", 0
-                            )
-                            output_tokens = usage_data.get("completion_tokens", 0) or usage_data.get(
-                                "output_tokens", 0
-                            )
-
-                            # Create Anthropic-style response
-                            anthropic_response = MessagesResponse(
-                                id=response_data.get("id", f"msg_{uuid.uuid4()}"),
-                                model=request.model,
-                                role="assistant",
-                                content=[{"type": "text", "text": str(output_text)}],
-                                stop_reason="end_turn",
-                                stop_sequence=None,
-                                usage=Usage(input_tokens=input_tokens, output_tokens=output_tokens),
-                            )
-
-                            # Log the request beautifully
-                            num_tools = len(request.tools) if request.tools else 0
-                            log_request_beautifully(
-                                "POST",
-                                raw_request.url.path,
-                                display_model,
-                                model_name,
-                                len(request.messages),
-                                num_tools,
-                                200,
-                            )
-
-                            return anthropic_response
-
-                        error_text = azure_response.text
-                        logger.error(
-                            f"Azure Responses API error {azure_response.status_code}: {error_text}"
-                        )
-                        raise HTTPException(
-                            status_code=azure_response.status_code,
-                            detail=f"Azure Responses API error: {error_text}",
-                        )
-
-                except httpx.RequestError as e:
-                    logger.error(f"Request error calling Azure Responses API: {e!s}")
-                    raise HTTPException(status_code=500, detail=f"Request error: {e!s}")
 
         # Determine which API key to use based on the model
         if request.model.startswith("openai/"):
