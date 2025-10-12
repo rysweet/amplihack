@@ -1489,8 +1489,6 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             logger.debug("Using passthrough mode for Claude model")
 
             # Get configured token limits from environment for Azure Responses API
-            import os
-
             min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
             max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
 
@@ -1701,27 +1699,50 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                             logger.debug(
                                 f"✅ RESPONSES API SUCCESS: {response_data.get('id', 'no-id')}"
                             )
+                            logger.debug(f"Azure response keys: {list(response_data.keys())}")
 
                             # Convert Azure Responses API format to Anthropic format
-                            # Azure returns: {"id": "...", "output": "...", "model": "...", ...}
-                            output_text = response_data.get("output", "")
+                            # Azure may return: {"id": "...", "output": "...", "model": "...", ...}
+                            # Or it may return choices format similar to Chat Completions
+
+                            # Try to extract output text from various formats
+                            output_text = ""
+                            if "output" in response_data:
+                                output_text = response_data.get("output", "")
+                            elif "choices" in response_data:
+                                choices = response_data.get("choices", [])
+                                if choices and len(choices) > 0:
+                                    message = choices[0].get("message", {})
+                                    output_text = message.get("content", "")
+                            elif "message" in response_data:
+                                message = response_data.get("message", {})
+                                output_text = message.get("content", "")
+
+                            # Fallback if we still don't have text
+                            if not output_text:
+                                output_text = str(response_data)
+                                logger.warning(
+                                    "Could not extract output from Azure response, using full response as string"
+                                )
+
+                            # Extract usage information
+                            usage_data = response_data.get("usage", {})
+                            input_tokens = usage_data.get("prompt_tokens", 0) or usage_data.get(
+                                "input_tokens", 0
+                            )
+                            output_tokens = usage_data.get("completion_tokens", 0) or usage_data.get(
+                                "output_tokens", 0
+                            )
 
                             # Create Anthropic-style response
                             anthropic_response = MessagesResponse(
                                 id=response_data.get("id", f"msg_{uuid.uuid4()}"),
                                 model=request.model,
                                 role="assistant",
-                                content=[{"type": "text", "text": output_text}],
+                                content=[{"type": "text", "text": str(output_text)}],
                                 stop_reason="end_turn",
                                 stop_sequence=None,
-                                usage=Usage(
-                                    input_tokens=response_data.get("usage", {}).get(
-                                        "prompt_tokens", 0
-                                    ),
-                                    output_tokens=response_data.get("usage", {}).get(
-                                        "completion_tokens", 0
-                                    ),
-                                ),
+                                usage=Usage(input_tokens=input_tokens, output_tokens=output_tokens),
                             )
 
                             # Log the request beautifully
