@@ -728,7 +728,9 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
             # OpenAI/LiteLLM format expects the assistant to call the tool,
             # and the user's next message to include the result as plain text
             if msg.role == "user" and any(
-                block.type == "tool_result" for block in content if hasattr(block, "type")
+                getattr(block, "type", None) == "tool_result"
+                for block in content
+                if hasattr(block, "type")
             ):
                 # For user messages with tool_result, we need to extract the raw result content
                 # Extract regular text content
@@ -736,16 +738,16 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
                 # First extract any normal text blocks
                 for block in content:
-                    if hasattr(block, "type") and block.type == "text":
-                        text_content += block.text + "\n"
+                    if hasattr(block, "type") and getattr(block, "type", None) == "text":
+                        text_content += getattr(block, "text", "") + "\n"
 
                 # Extract tool results
                 for block in content:
-                    if hasattr(block, "type") and block.type == "tool_result":
+                    if hasattr(block, "type") and getattr(block, "type", None) == "tool_result":
                         # Get the raw result content without wrapping it in explanatory text
 
                         if hasattr(block, "content"):
-                            result_content = block.content
+                            result_content = getattr(block, "content", "")
 
                             # Extract the raw content
                             if isinstance(result_content, str):
@@ -777,43 +779,49 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                 processed_content = []
                 for block in content:
                     if hasattr(block, "type"):
-                        if block.type == "text":
-                            processed_content.append({"type": "text", "text": block.text})
-                        elif block.type == "image":
-                            processed_content.append({"type": "image", "source": block.source})
-                        elif block.type == "tool_use":
+                        block_type = getattr(block, "type", None)
+                        if block_type == "text":
+                            processed_content.append(
+                                {"type": "text", "text": getattr(block, "text", "")}
+                            )
+                        elif block_type == "image":
+                            processed_content.append(
+                                {"type": "image", "source": getattr(block, "source", {})}
+                            )
+                        elif block_type == "tool_use":
                             # Handle tool use blocks if needed
                             processed_content.append(
                                 {
                                     "type": "tool_use",
-                                    "id": block.id,
-                                    "name": block.name,
-                                    "input": block.input,
+                                    "id": getattr(block, "id", ""),
+                                    "name": getattr(block, "name", ""),
+                                    "input": getattr(block, "input", {}),
                                 }
                             )
-                        elif block.type == "tool_result":
+                        elif block_type == "tool_result":
                             # Handle different formats of tool result content
                             processed_content_block: Dict[str, Any] = {
                                 "type": "tool_result",
-                                "tool_use_id": block.tool_use_id
+                                "tool_use_id": getattr(block, "tool_use_id", "")
                                 if hasattr(block, "tool_use_id")
                                 else "",
                             }
 
                             # Process the content field properly
                             if hasattr(block, "content"):
-                                if isinstance(block.content, str):
+                                block_content = getattr(block, "content", "")
+                                if isinstance(block_content, str):
                                     # If it's a simple string, create a text block for it
                                     processed_content_block["content"] = [
-                                        {"type": "text", "text": block.content}
+                                        {"type": "text", "text": block_content}
                                     ]
-                                elif isinstance(block.content, list):
+                                elif isinstance(block_content, list):
                                     # If it's already a list of blocks, keep it
-                                    processed_content_block["content"] = block.content
+                                    processed_content_block["content"] = block_content
                                 else:
                                     # Default fallback
                                     processed_content_block["content"] = [
-                                        {"type": "text", "text": str(block.content)}
+                                        {"type": "text", "text": str(block_content)}
                                     ]
                             else:
                                 # Default empty content
@@ -1606,6 +1614,142 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         # Convert Anthropic request to LiteLLM format
         litellm_request = convert_anthropic_to_litellm(request)
         logger.info(f"🔵 LITELLM_REQUEST MODEL AFTER CONVERSION: '{litellm_request.get('model')}'")
+
+        # Check if this is an Azure Responses API model - bypass LiteLLM if so
+        if request.model.startswith("azure/"):
+            model_name = request.model.split("/")[-1]
+            responses_api_models = {
+                "o3-mini",
+                "o3-small",
+                "o3-medium",
+                "o3-large",
+                "o4-mini",
+                "o4-small",
+                "o4-medium",
+                "o4-large",
+                "gpt-5-code",
+                "gpt-5-codex",
+            }
+
+            azure_base = os.environ.get("OPENAI_BASE_URL", "")
+            is_responses_api_endpoint = azure_base and "/responses" in azure_base
+
+            if is_responses_api_endpoint and model_name in responses_api_models:
+                logger.info(f"🔄 BYPASSING LITELLM for Responses API model: {model_name}")
+
+                # Convert messages to simple text format for Responses API
+                input_text = ""
+
+                # Add system message if present
+                if request.system:
+                    if isinstance(request.system, str):
+                        input_text += f"System: {request.system}\n\n"
+                    elif isinstance(request.system, list):
+                        system_text = ""
+                        for block in request.system:
+                            if hasattr(block, "type") and getattr(block, "type", None) == "text":
+                                system_text += getattr(block, "text", "") + "\n"
+                            elif isinstance(block, dict) and block.get("type") == "text":
+                                system_text += block.get("text", "") + "\n"
+                        if system_text:
+                            input_text += f"System: {system_text}\n\n"
+
+                # Add conversation messages
+                for msg in request.messages:
+                    role = msg.role.capitalize()
+                    content = msg.content
+
+                    if isinstance(content, str):
+                        input_text += f"{role}: {content}\n\n"
+                    elif isinstance(content, list):
+                        msg_text = ""
+                        for block in content:
+                            if hasattr(block, "type") and getattr(block, "type", None) == "text":
+                                msg_text += getattr(block, "text", "")
+                            elif isinstance(block, dict) and block.get("type") == "text":
+                                msg_text += block.get("text", "")
+                        if msg_text:
+                            input_text += f"{role}: {msg_text}\n\n"
+
+                # Get Azure configuration
+                azure_endpoint = azure_base.rstrip("/")
+                azure_api_key = os.getenv("OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_KEY")
+
+                if not azure_api_key:
+                    raise HTTPException(status_code=500, detail="Azure API key not configured")
+
+                # Prepare request for Azure Responses API
+                azure_request_data = {"model": model_name, "input": input_text.strip()}
+
+                # Prepare headers
+                headers = {"Content-Type": "application/json", "api-key": azure_api_key}
+
+                logger.debug(f"Making direct request to Azure Responses API: {azure_endpoint}")
+                logger.debug(f"Request model: {model_name}")
+
+                # Make direct HTTP request to Azure
+                try:
+                    async with httpx.AsyncClient(timeout=120.0) as client:
+                        azure_response = await client.post(
+                            azure_endpoint, json=azure_request_data, headers=headers
+                        )
+
+                        logger.debug(f"Azure response status: {azure_response.status_code}")
+
+                        if azure_response.status_code == 200:
+                            response_data = azure_response.json()
+                            logger.debug(
+                                f"✅ RESPONSES API SUCCESS: {response_data.get('id', 'no-id')}"
+                            )
+
+                            # Convert Azure Responses API format to Anthropic format
+                            # Azure returns: {"id": "...", "output": "...", "model": "...", ...}
+                            output_text = response_data.get("output", "")
+
+                            # Create Anthropic-style response
+                            anthropic_response = MessagesResponse(
+                                id=response_data.get("id", f"msg_{uuid.uuid4()}"),
+                                model=request.model,
+                                role="assistant",
+                                content=[{"type": "text", "text": output_text}],
+                                stop_reason="end_turn",
+                                stop_sequence=None,
+                                usage=Usage(
+                                    input_tokens=response_data.get("usage", {}).get(
+                                        "prompt_tokens", 0
+                                    ),
+                                    output_tokens=response_data.get("usage", {}).get(
+                                        "completion_tokens", 0
+                                    ),
+                                ),
+                            )
+
+                            # Log the request beautifully
+                            num_tools = len(request.tools) if request.tools else 0
+                            log_request_beautifully(
+                                "POST",
+                                raw_request.url.path,
+                                display_model,
+                                model_name,
+                                len(request.messages),
+                                num_tools,
+                                200,
+                            )
+
+                            return anthropic_response
+
+                        error_text = azure_response.text
+                        logger.error(
+                            f"Azure Responses API error {azure_response.status_code}: {error_text}"
+                        )
+                        raise HTTPException(
+                            status_code=azure_response.status_code,
+                            detail=f"Azure Responses API error: {error_text}",
+                        )
+
+                except httpx.RequestError as e:
+                    logger.error(f"Request error calling Azure Responses API: {e!s}")
+                    raise HTTPException(status_code=500, detail=f"Request error: {e!s}")
 
         # Determine which API key to use based on the model
         if request.model.startswith("openai/"):
