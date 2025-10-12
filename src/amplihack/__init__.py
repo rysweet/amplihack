@@ -161,19 +161,36 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
             # to other directories (e.g., project .claude dirs)
             if dir_path.startswith("tools/"):
                 import stat
+                import sys
 
-                for root, _dirs, files in os.walk(target_dir):
-                    # Only set execute on files in hooks subdirectories
-                    if "hooks" in root:
-                        for file in files:
-                            if file.endswith(".py"):
-                                file_path = os.path.join(root, file)
-                                # Add execute permission for user, group, and other
-                                current_perms = os.stat(file_path).st_mode
-                                os.chmod(
-                                    file_path,
-                                    current_perms | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH,
-                                )
+                # Skip on Windows - uses different permission model
+                if sys.platform == "win32":
+                    print("  ℹ️  Skipping POSIX permissions on Windows")
+                else:
+                    files_updated = 0
+                    permission_errors = 0
+
+                    # Don't follow symlinks for security
+                    for root, _dirs, files in os.walk(target_dir, followlinks=False):
+                        # Match exact hooks directory name (not just substring)
+                        if os.path.basename(root) == "hooks":
+                            for file in files:
+                                if file.endswith(".py"):
+                                    file_path = os.path.join(root, file)
+                                    try:
+                                        current_perms = os.stat(file_path).st_mode
+                                        # User and group only (more secure than user+group+other)
+                                        new_perms = current_perms | stat.S_IXUSR | stat.S_IXGRP
+                                        os.chmod(file_path, new_perms)
+                                        files_updated += 1
+                                    except (OSError, PermissionError) as e:
+                                        permission_errors += 1
+                                        print(f"  ⚠️  Could not chmod {file}: {e}")
+
+                    if files_updated > 0:
+                        print(f"  🔐 Set execute permissions on {files_updated} hook files")
+                    if permission_errors > 0:
+                        print(f"  ⚠️  {permission_errors} permission errors (hooks may not execute)")
 
             copied.append(dir_path)
             print(f"  ✅ Copied {dir_path}")
