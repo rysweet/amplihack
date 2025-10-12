@@ -30,7 +30,10 @@ test_requirements*.md
 test_sample_project/
 
 # Environment files with secrets (catch ALL .env files)
-*.env
+*.env           # Matches: test.env, production.env
+.env*           # Matches: .env.production, .env.development, .env.test
+!.env.example   # Allow template files
+!.env.template  # Allow template files
 .azure.env
 
 # Build
@@ -110,10 +113,18 @@ ai_working/tmp
 .claude/runtime/proxy/litellm_proxy.log
 .claude/runtime/proxy/litellm_proxy.pid
 .claude/runtime/proxy/litellm.db
-*.env.litellm
-.claude/runtime/proxy/litellm_config.yaml
-.claude/runtime/proxy/.env.litellm
 .claude/runtime/proxy/litellm_simple_config.yaml
-.claude/runtime/proxy/litellm_proxy.log
-.claude/runtime/proxy/litellm_proxy.pid
+*.env.litellm
 amplihack_litellm_proxy.env
+
+# Common credential files
+credentials.json
+**/credentials.json
+service-account.json
+**/service-account.json
+secrets.yaml
+secrets.yml
+**/secrets.yaml
+**/secrets.yml
+.npmrc
+.pypirc
