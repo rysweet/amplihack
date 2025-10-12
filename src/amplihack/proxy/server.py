@@ -331,25 +331,23 @@ class MessagesRequest(BaseModel):
 
         # --- Mapping Logic --- START ---
         mapped = False
-        # Determine provider based on configuration
-        # Azure takes precedence if configured
-        provider_prefix = "openai/"
-        if AZURE_BASE_URL:
-            provider_prefix = "azure/"
-        elif PREFERRED_PROVIDER == "google" and (
-            BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
-        ):
-            provider_prefix = "gemini/"
-
         # Map Haiku to SMALL_MODEL based on provider preference
         if "haiku" in clean_v.lower():
-            new_model = f"{provider_prefix}{SMALL_MODEL}"
-            mapped = True
+            if PREFERRED_PROVIDER == "google" and SMALL_MODEL in GEMINI_MODELS:
+                new_model = f"gemini/{SMALL_MODEL}"
+                mapped = True
+            else:
+                new_model = f"openai/{SMALL_MODEL}"
+                mapped = True
 
         # Map Sonnet to BIG_MODEL based on provider preference
         elif "sonnet" in clean_v.lower():
-            new_model = f"{provider_prefix}{BIG_MODEL}"
-            mapped = True
+            if PREFERRED_PROVIDER == "google" and BIG_MODEL in GEMINI_MODELS:
+                new_model = f"gemini/{BIG_MODEL}"
+                mapped = True
+            else:
+                new_model = f"openai/{BIG_MODEL}"
+                mapped = True
 
         # Add prefixes to non-mapped models if they match known lists
         elif not mapped:
@@ -412,25 +410,23 @@ class TokenCountRequest(BaseModel):
 
         # --- Mapping Logic --- START ---
         mapped = False
-        # Determine provider based on configuration
-        # Azure takes precedence if configured
-        provider_prefix = "openai/"
-        if AZURE_BASE_URL:
-            provider_prefix = "azure/"
-        elif PREFERRED_PROVIDER == "google" and (
-            BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
-        ):
-            provider_prefix = "gemini/"
-
         # Map Haiku to SMALL_MODEL based on provider preference
         if "haiku" in clean_v.lower():
-            new_model = f"{provider_prefix}{SMALL_MODEL}"
-            mapped = True
+            if PREFERRED_PROVIDER == "google" and SMALL_MODEL in GEMINI_MODELS:
+                new_model = f"gemini/{SMALL_MODEL}"
+                mapped = True
+            else:
+                new_model = f"openai/{SMALL_MODEL}"
+                mapped = True
 
         # Map Sonnet to BIG_MODEL based on provider preference
         elif "sonnet" in clean_v.lower():
-            new_model = f"{provider_prefix}{BIG_MODEL}"
-            mapped = True
+            if PREFERRED_PROVIDER == "google" and BIG_MODEL in GEMINI_MODELS:
+                new_model = f"gemini/{BIG_MODEL}"
+                mapped = True
+            else:
+                new_model = f"openai/{BIG_MODEL}"
+                mapped = True
 
         # Add prefixes to non-mapped models if they match known lists
         elif not mapped:
