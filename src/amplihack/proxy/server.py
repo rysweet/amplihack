@@ -137,21 +137,53 @@ SMALL_MODEL = os.environ.get("SMALL_MODEL", "gpt-4.1-mini")
 # Configure LiteLLM for Azure if Azure endpoint is present
 AZURE_BASE_URL = os.environ.get("OPENAI_BASE_URL", "")
 if AZURE_BASE_URL:
-    # Extract clean base URL without query parameters
-    clean_azure_base = AZURE_BASE_URL.split("?")[0] if "?" in AZURE_BASE_URL else AZURE_BASE_URL
+    # Strip /responses from the URL for LiteLLM auto-detection
+    # LiteLLM with openai/ prefix expects the base URL and will append /responses automatically
+    # Example: https://ai-adapt-oai-eastus2.cognitiveservices.azure.com/openai/responses?api-version=X
+    #       -> https://ai-adapt-oai-eastus2.cognitiveservices.azure.com/openai?api-version=X
+    from urllib.parse import urlparse, urlunparse
 
-    # LiteLLM adds the path automatically, so we need to strip it
-    # Remove both /openai/deployments (Chat API) and /openai/responses (Responses API)
-    clean_azure_base = clean_azure_base.replace("/openai/deployments", "")
-    clean_azure_base = clean_azure_base.replace("/openai/responses", "")
+    parsed = urlparse(AZURE_BASE_URL)
+    path = parsed.path
 
-    # Set LiteLLM environment variables for Azure
-    os.environ["AZURE_API_BASE"] = clean_azure_base
+    # Strip only /responses from path, keep /openai
+    # Example: /openai/responses -> /openai
+    if path.endswith("/responses"):
+        path = path[: -len("/responses")]
+
+    # Reconstruct base URL without the /responses endpoint
+    litellm_base_url = urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            path,
+            parsed.params,
+            parsed.query,  # Keep api-version query string
+            parsed.fragment,
+        )
+    )
+
+    # Set OPENAI_BASE_URL for LiteLLM to auto-read (for openai/ prefix models)
+    os.environ["OPENAI_BASE_URL"] = litellm_base_url
+
+    # Also set Azure-specific env vars for completeness
+    os.environ["AZURE_API_BASE"] = litellm_base_url
+    os.environ["AZURE_ENDPOINT"] = litellm_base_url
+    os.environ["AZURE_OPENAI_ENDPOINT"] = litellm_base_url
+    os.environ["AZURE_OPENAI_BASE_URL"] = litellm_base_url
+
     os.environ["AZURE_API_KEY"] = OPENAI_API_KEY or ""
-    # Use the correct API version from environment or default to user's version
-    os.environ["AZURE_API_VERSION"] = os.environ.get("AZURE_API_VERSION", "2025-04-01-preview")
+    os.environ["AZURE_OPENAI_API_KEY"] = OPENAI_API_KEY or ""
 
-    logger.info(f"Configured LiteLLM for Azure: {clean_azure_base}")
+    # Extract API version from URL if present
+    api_version = os.environ.get("AZURE_API_VERSION", "2025-04-01-preview")
+    os.environ["AZURE_API_VERSION"] = api_version
+
+    logger.warning("🔧 Azure Configuration:")
+    logger.warning(f"  Original URL: {AZURE_BASE_URL}")
+    logger.warning(f"  LiteLLM Base: {litellm_base_url}")
+    logger.warning(f"  API Version: {api_version}")
+    logger.warning(f"  API Key: {'SET' if os.environ['AZURE_API_KEY'] else 'NOT SET'}")
 
 # List of OpenAI models
 OPENAI_MODELS = [
@@ -1541,6 +1573,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         if request.model.startswith("openai/"):
             litellm_request["api_key"] = OPENAI_API_KEY
             logger.debug(f"Using OpenAI API key for model: {request.model}")
+            # LiteLLM will automatically read OPENAI_BASE_URL from environment for openai/ prefix
         elif request.model.startswith("gemini/"):
             litellm_request["api_key"] = GEMINI_API_KEY
             logger.debug(f"Using Gemini API key for model: {request.model}")
