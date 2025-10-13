@@ -350,8 +350,8 @@ class MessagesRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Use openai/ prefix for Azure models - LiteLLM handles Azure routing via env vars
-        provider_prefix = "openai/"
+        # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
+        provider_prefix = "azure/"
         if PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
@@ -429,8 +429,8 @@ class TokenCountRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Use openai/ prefix for Azure models - LiteLLM handles Azure routing via env vars
-        provider_prefix = "openai/"
+        # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
+        provider_prefix = "azure/"
         if PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
@@ -1561,10 +1561,27 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         logger.info(f"🔵 LITELLM_REQUEST MODEL AFTER CONVERSION: '{litellm_request.get('model')}'")
 
         # Determine which API key to use based on the model
-        if request.model.startswith("openai/"):
+        if request.model.startswith("azure/"):
+            # Azure models need explicit api_base configuration
+            litellm_request["api_key"] = OPENAI_API_KEY
+
+            if AZURE_BASE_URL:
+                # Use the FULL URL with /openai/responses path
+                clean_azure_base = (
+                    AZURE_BASE_URL.split("?")[0] if "?" in AZURE_BASE_URL else AZURE_BASE_URL
+                )
+                litellm_request["api_base"] = clean_azure_base
+                litellm_request["api_version"] = os.environ.get(
+                    "AZURE_API_VERSION", "2025-04-01-preview"
+                )
+
+                logger.warning(f"🔧 Azure config for {request.model}:")
+                logger.warning(f"  api_base: {clean_azure_base}")
+                logger.warning(f"  api_version: {litellm_request['api_version']}")
+                logger.warning(f"  api_key: {'SET' if OPENAI_API_KEY else 'NOT SET'}")
+        elif request.model.startswith("openai/"):
             litellm_request["api_key"] = OPENAI_API_KEY
             logger.debug(f"Using OpenAI API key for model: {request.model}")
-            # LiteLLM will automatically read AZURE_API_BASE from environment for openai/ prefix
         elif request.model.startswith("gemini/"):
             litellm_request["api_key"] = GEMINI_API_KEY
             logger.debug(f"Using Gemini API key for model: {request.model}")
