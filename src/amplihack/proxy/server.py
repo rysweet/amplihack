@@ -144,13 +144,17 @@ if AZURE_BASE_URL:
 
     parsed = urlparse(AZURE_BASE_URL)
 
-    # Keep the FULL path including /openai/responses, but strip query string
-    # LiteLLM will add the api-version query parameter itself
+    # Strip /responses from path - LiteLLM will add it automatically
+    # Also strip query string - LiteLLM will add the api-version parameter
+    path = parsed.path
+    if path.endswith("/responses"):
+        path = path[: -len("/responses")]
+
     litellm_base_url = urlunparse(
         (
             parsed.scheme,
             parsed.netloc,
-            parsed.path,  # Keep /openai/responses intact
+            path,  # Path without /responses (e.g., /openai)
             parsed.params,
             "",  # Remove query string - LiteLLM will add it
             parsed.fragment,
@@ -906,6 +910,11 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
         litellm_request["tools"] = openai_tools
 
+        # Debug: Log the tool structure we're sending
+        logger.warning(f"🔧 Sending {len(openai_tools)} tools to LiteLLM:")
+        for idx, tool in enumerate(openai_tools):
+            logger.warning(f"  Tool {idx}: {json.dumps(tool, indent=2)}")
+
     # Convert tool_choice to OpenAI format if present
     if anthropic_request.tool_choice:
         if isinstance(anthropic_request.tool_choice, dict):
@@ -1566,10 +1575,14 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             litellm_request["api_key"] = OPENAI_API_KEY
 
             if AZURE_BASE_URL:
-                # Use the FULL URL with /openai/responses path
+                # Strip query string and /responses path - LiteLLM will add /responses automatically
                 clean_azure_base = (
                     AZURE_BASE_URL.split("?")[0] if "?" in AZURE_BASE_URL else AZURE_BASE_URL
                 )
+                # Strip /responses from path if present
+                if clean_azure_base.endswith("/responses"):
+                    clean_azure_base = clean_azure_base[: -len("/responses")]
+
                 litellm_request["api_base"] = clean_azure_base
                 litellm_request["api_version"] = os.environ.get(
                     "AZURE_API_VERSION", "2025-04-01-preview"
