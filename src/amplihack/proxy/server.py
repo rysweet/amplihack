@@ -874,10 +874,16 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     if anthropic_request.top_k:
         litellm_request["top_k"] = anthropic_request.top_k
 
-    # Convert tools to OpenAI format
+    # Convert tools to appropriate format
     if anthropic_request.tools:
         openai_tools = []
         is_gemini_model = anthropic_request.model.startswith("gemini/")
+        is_azure_model = anthropic_request.model.startswith("azure/")
+
+        # Check if using Azure Responses API (for o3/o4/gpt-5 models)
+        use_responses_api = False
+        if is_azure_model and AZURE_BASE_URL and "/responses" in AZURE_BASE_URL:
+            use_responses_api = True
 
         for tool in anthropic_request.tools:
             # Convert to dict if it's a pydantic model
@@ -897,21 +903,32 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                 logger.debug(f"Cleaning schema for Gemini tool: {tool_dict.get('name')}")
                 input_schema = clean_gemini_schema(input_schema)
 
-            # Create OpenAI-compatible function tool
-            openai_tool = {
-                "type": "function",
-                "function": {
+            # Azure Responses API uses a flat tool format with type at top level
+            if use_responses_api:
+                openai_tool = {
+                    "type": "function",
                     "name": tool_dict["name"],
                     "description": tool_dict.get("description", ""),
-                    "parameters": input_schema,  # Use potentially cleaned schema
-                },
-            }
+                    "parameters": input_schema,
+                }
+            else:
+                # Standard OpenAI Chat Completions format
+                openai_tool = {
+                    "type": "function",
+                    "function": {
+                        "name": tool_dict["name"],
+                        "description": tool_dict.get("description", ""),
+                        "parameters": input_schema,  # Use potentially cleaned schema
+                    },
+                }
             openai_tools.append(openai_tool)
 
         litellm_request["tools"] = openai_tools
 
         # Debug: Log the tool structure we're sending
-        logger.warning(f"🔧 Sending {len(openai_tools)} tools to LiteLLM:")
+        logger.warning(
+            f"🔧 Sending {len(openai_tools)} tools to LiteLLM (Responses API: {use_responses_api}):"
+        )
         for idx, tool in enumerate(openai_tools):
             logger.warning(f"  Tool {idx}: {json.dumps(tool, indent=2)}")
 
