@@ -40,6 +40,10 @@ class ProxyManager:
         self._endpoint_cache = {}
         self._api_version_cache = {}
 
+        # Log file handles for proxy output
+        self._stdout_log_file = None
+        self._stderr_log_file = None
+
     def ensure_proxy_installed(self) -> bool:
         """Ensure the proxy server can be run.
 
@@ -94,6 +98,21 @@ class ProxyManager:
             # Start the proxy process using the built-in server
             print(f"Starting built-in proxy server on port {self.proxy_port}...")
 
+            # Create log directory and files
+            from datetime import datetime
+
+            log_dir = Path("/tmp/amplihack_logs")
+            log_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            stdout_log_path = log_dir / f"proxy-stdout-{timestamp}.log"
+            stderr_log_path = log_dir / f"proxy-stderr-{timestamp}.log"
+
+            # Open log files for writing
+            # Note: Cannot use context manager as files must stay open for subprocess lifetime
+            self._stdout_log_file = open(stdout_log_path, "w")  # noqa: SIM115
+            self._stderr_log_file = open(stderr_log_path, "w")  # noqa: SIM115
+
             # Create environment for the proxy process
             proxy_env = os.environ.copy()
             if self.proxy_config:
@@ -106,13 +125,14 @@ class ProxyManager:
 
             if not start_command:
                 print("Failed to determine proxy start command")
+                self._close_log_files()
                 return False
 
             self.proxy_process = subprocess.Popen(
                 start_command,
                 env=proxy_env,
-                stdout=None,  # Don't capture - let output go to console/parent
-                stderr=None,  # Prevents pipe buffer overflow causing broken pipe
+                stdout=self._stdout_log_file,  # Redirect to log file
+                stderr=self._stderr_log_file,  # Redirect to log file
                 preexec_fn=os.setsid if os.name != "nt" else None,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
             )
@@ -126,7 +146,10 @@ class ProxyManager:
             # Check if proxy is still running
             if self.proxy_process.poll() is not None:
                 print(f"Proxy failed to start. Exit code: {self.proxy_process.returncode}")
-                print("Check console output above for error details.")
+                print("Check logs for details:")
+                print(f"  stdout: {stdout_log_path}")
+                print(f"  stderr: {stderr_log_path}")
+                self._close_log_files()
                 return False
 
             # Set up environment variables - handle both OpenAI and Azure configs
@@ -139,11 +162,14 @@ class ProxyManager:
             self.env_manager.setup(self.proxy_port, api_key, azure_config)
 
             print(f"Proxy started successfully on port {self.proxy_port}")
-            self._display_log_locations()
+            print("Proxy logs:")
+            print(f"  stdout: {stdout_log_path}")
+            print(f"  stderr: {stderr_log_path}")
             return True
 
         except Exception as e:
             print(f"Failed to start proxy: {e}")
+            self._close_log_files()
             return False
 
     def stop_proxy(self) -> None:
@@ -176,6 +202,9 @@ class ProxyManager:
             except Exception as e:
                 sanitized_error = self._sanitize_subprocess_error(str(e))
                 print(f"Error stopping proxy: {sanitized_error}")
+
+        # Close log files
+        self._close_log_files()
 
         # Restore environment variables
         self.env_manager.restore()
@@ -712,6 +741,22 @@ class ProxyManager:
         print("\nPlease ensure the proxy server module is properly installed or available.")
 
         return None
+
+    def _close_log_files(self) -> None:
+        """Close proxy log files safely."""
+        if self._stdout_log_file:
+            try:
+                self._stdout_log_file.close()
+            except Exception:
+                pass  # Ignore errors when closing
+            self._stdout_log_file = None
+
+        if self._stderr_log_file:
+            try:
+                self._stderr_log_file.close()
+            except Exception:
+                pass  # Ignore errors when closing
+            self._stderr_log_file = None
 
     def _display_log_locations(self) -> None:
         """Display proxy log file locations."""
