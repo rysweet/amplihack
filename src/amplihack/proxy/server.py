@@ -1,17 +1,19 @@
 """Built-in FastAPI proxy server with OpenAI Responses API support."""
 
+import asyncio
 import json
 import logging
 import os
 import sys
 import time
 import uuid
+from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import httpx  # type: ignore
 import litellm  # type: ignore
 from dotenv import load_dotenv  # type: ignore
-from fastapi import FastAPI, HTTPException, Request  # type: ignore
+from fastapi import FastAPI, HTTPException, Request, Response  # type: ignore
 from fastapi.responses import StreamingResponse  # type: ignore
 from pydantic import BaseModel, field_validator  # type: ignore
 
@@ -134,29 +136,83 @@ if PASSTHROUGH_MODE:
 BIG_MODEL = os.environ.get("BIG_MODEL", "gpt-4.1")
 SMALL_MODEL = os.environ.get("SMALL_MODEL", "gpt-4.1-mini")
 
+# Timeout configuration
+DEFAULT_TIMEOUT = 120.0  # seconds - reasonable default for LLM requests
+PROXY_TIMEOUT = float(os.getenv("AMPLIHACK_PROXY_TIMEOUT", DEFAULT_TIMEOUT))
+
+logger.info(f"Proxy timeout configured: {PROXY_TIMEOUT}s")
+
+# Validate timeout configuration
+MAX_TIMEOUT = 600.0
+if PROXY_TIMEOUT <= 0:
+    raise ValueError(f"AMPLIHACK_PROXY_TIMEOUT must be positive, got {PROXY_TIMEOUT}")
+if PROXY_TIMEOUT > MAX_TIMEOUT:
+    raise ValueError(f"AMPLIHACK_PROXY_TIMEOUT must be <= {MAX_TIMEOUT}s, got {PROXY_TIMEOUT}")
+
+
+def generate_request_id() -> str:
+    """Generate unique request ID for debugging."""
+    return f"req_{uuid.uuid4().hex[:12]}"
+
+
+def log_request_lifecycle(request_id: str, event: str, details: Optional[Dict[str, Any]] = None):
+    """Log request lifecycle with context for debugging hung requests."""
+    log_data = {
+        "request_id": request_id,
+        "event": event,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    if details:
+        log_data.update(details)
+
+    logger.info(f"[{request_id}] {event}", extra=log_data)
+
+
 # Configure LiteLLM for Azure if Azure endpoint is present
 AZURE_BASE_URL = os.environ.get("OPENAI_BASE_URL", "")
 if AZURE_BASE_URL:
-    # For Azure Responses API, keep the full path
-    # Extract clean base URL without query parameters
-    clean_azure_base = AZURE_BASE_URL.split("?")[0] if "?" in AZURE_BASE_URL else AZURE_BASE_URL
+    # For Azure Responses API with openai/ prefix:
+    # LiteLLM DOES read AZURE_API_BASE environment variable (not OPENAI_BASE_URL)
+    # We need to set AZURE_API_BASE to the FULL URL with /openai/responses path
+    from urllib.parse import urlparse, urlunparse
 
-    # Check if this is Responses API
-    is_responses_api = "/openai/responses" in clean_azure_base
+    parsed = urlparse(AZURE_BASE_URL)
 
-    # For regular Chat API, remove the path; for Responses API, keep it
-    if not is_responses_api:
-        # Only strip for regular Chat API endpoints
-        clean_azure_base = clean_azure_base.replace("/openai/deployments", "")
-    # For Responses API, keep the /openai/responses path
+    # Strip /responses from path - LiteLLM will add it automatically
+    # Also strip query string - LiteLLM will add the api-version parameter
+    path = parsed.path
+    if path.endswith("/responses"):
+        path = path[: -len("/responses")]
 
-    # Set LiteLLM environment variables for Azure
-    os.environ["AZURE_API_BASE"] = clean_azure_base
+    litellm_base_url = urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            path,  # Path without /responses (e.g., /openai)
+            parsed.params,
+            "",  # Remove query string - LiteLLM will add it
+            parsed.fragment,
+        )
+    )
+
+    # Set Azure-specific env vars that LiteLLM reads for openai/ prefix
+    os.environ["AZURE_API_BASE"] = litellm_base_url
+    os.environ["AZURE_ENDPOINT"] = litellm_base_url
+    os.environ["AZURE_OPENAI_ENDPOINT"] = litellm_base_url
+    os.environ["AZURE_OPENAI_BASE_URL"] = litellm_base_url
+
     os.environ["AZURE_API_KEY"] = OPENAI_API_KEY or ""
-    # Use the correct API version from environment or default to user's version
-    os.environ["AZURE_API_VERSION"] = os.environ.get("AZURE_API_VERSION", "2025-04-01-preview")
+    os.environ["AZURE_OPENAI_API_KEY"] = OPENAI_API_KEY or ""
 
-    logger.info(f"Configured LiteLLM for Azure: {clean_azure_base}")
+    # Extract API version from URL if present
+    api_version = os.environ.get("AZURE_API_VERSION", "2025-04-01-preview")
+    os.environ["AZURE_API_VERSION"] = api_version
+
+    logger.warning("🔧 Azure Configuration:")
+    logger.warning(f"  Original URL: {AZURE_BASE_URL}")
+    logger.warning(f"  LiteLLM Base: {litellm_base_url}")
+    logger.warning(f"  API Version: {api_version}")
+    logger.warning(f"  API Key: {'SET' if os.environ['AZURE_API_KEY'] else 'NOT SET'}")
 
 # List of OpenAI models
 OPENAI_MODELS = [
@@ -332,11 +388,9 @@ class MessagesRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Azure takes precedence if configured
-        provider_prefix = "openai/"
-        if AZURE_BASE_URL:
-            provider_prefix = "azure/"
-        elif PREFERRED_PROVIDER == "google" and (
+        # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
+        provider_prefix = "azure/"
+        if PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
             provider_prefix = "gemini/"
@@ -413,11 +467,9 @@ class TokenCountRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Azure takes precedence if configured
-        provider_prefix = "openai/"
-        if AZURE_BASE_URL:
-            provider_prefix = "azure/"
-        elif PREFERRED_PROVIDER == "google" and (
+        # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
+        provider_prefix = "azure/"
+        if PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
             provider_prefix = "gemini/"
@@ -728,7 +780,9 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
             # OpenAI/LiteLLM format expects the assistant to call the tool,
             # and the user's next message to include the result as plain text
             if msg.role == "user" and any(
-                block.type == "tool_result" for block in content if hasattr(block, "type")
+                getattr(block, "type", None) == "tool_result"
+                for block in content
+                if hasattr(block, "type")
             ):
                 # For user messages with tool_result, we need to extract the raw result content
                 # Extract regular text content
@@ -736,16 +790,16 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
                 # First extract any normal text blocks
                 for block in content:
-                    if hasattr(block, "type") and block.type == "text":
-                        text_content += block.text + "\n"
+                    if hasattr(block, "type") and getattr(block, "type", None) == "text":
+                        text_content += getattr(block, "text", "") + "\n"
 
                 # Extract tool results
                 for block in content:
-                    if hasattr(block, "type") and block.type == "tool_result":
+                    if hasattr(block, "type") and getattr(block, "type", None) == "tool_result":
                         # Get the raw result content without wrapping it in explanatory text
 
                         if hasattr(block, "content"):
-                            result_content = block.content
+                            result_content = getattr(block, "content", "")
 
                             # Extract the raw content
                             if isinstance(result_content, str):
@@ -777,43 +831,49 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                 processed_content = []
                 for block in content:
                     if hasattr(block, "type"):
-                        if block.type == "text":
-                            processed_content.append({"type": "text", "text": block.text})
-                        elif block.type == "image":
-                            processed_content.append({"type": "image", "source": block.source})
-                        elif block.type == "tool_use":
+                        block_type = getattr(block, "type", None)
+                        if block_type == "text":
+                            processed_content.append(
+                                {"type": "text", "text": getattr(block, "text", "")}
+                            )
+                        elif block_type == "image":
+                            processed_content.append(
+                                {"type": "image", "source": getattr(block, "source", {})}
+                            )
+                        elif block_type == "tool_use":
                             # Handle tool use blocks if needed
                             processed_content.append(
                                 {
                                     "type": "tool_use",
-                                    "id": block.id,
-                                    "name": block.name,
-                                    "input": block.input,
+                                    "id": getattr(block, "id", ""),
+                                    "name": getattr(block, "name", ""),
+                                    "input": getattr(block, "input", {}),
                                 }
                             )
-                        elif block.type == "tool_result":
+                        elif block_type == "tool_result":
                             # Handle different formats of tool result content
                             processed_content_block: Dict[str, Any] = {
                                 "type": "tool_result",
-                                "tool_use_id": block.tool_use_id
+                                "tool_use_id": getattr(block, "tool_use_id", "")
                                 if hasattr(block, "tool_use_id")
                                 else "",
                             }
 
                             # Process the content field properly
                             if hasattr(block, "content"):
-                                if isinstance(block.content, str):
+                                block_content = getattr(block, "content", "")
+                                if isinstance(block_content, str):
                                     # If it's a simple string, create a text block for it
                                     processed_content_block["content"] = [
-                                        {"type": "text", "text": block.content}
+                                        {"type": "text", "text": block_content}
                                     ]
-                                elif isinstance(block.content, list):
+                                elif isinstance(block_content, list):
                                     # If it's already a list of blocks, keep it
-                                    processed_content_block["content"] = block.content
+                                    processed_content_block["content"] = block_content
                                 else:
                                     # Default fallback
                                     processed_content_block["content"] = [
-                                        {"type": "text", "text": str(block.content)}
+                                        {"type": "text", "text": str(block_content)}
                                     ]
                             else:
                                 # Default empty content
@@ -848,31 +908,16 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     if anthropic_request.top_k:
         litellm_request["top_k"] = anthropic_request.top_k
 
-    # Convert tools to OpenAI format
-    # Skip tools for Azure Responses API models (they don't support tools)
-    is_responses_api_model = False
-    if anthropic_request.model.startswith("azure/"):
-        # Check if this is a Responses API model
-        model_name = anthropic_request.model.split("/")[-1]
-        responses_api_models = {
-            "o3-mini",
-            "o3-small",
-            "o3-medium",
-            "o3-large",
-            "o4-mini",
-            "o4-small",
-            "o4-medium",
-            "o4-large",
-            "gpt-5-code",
-            "gpt-5-codex",
-        }
-        if model_name in responses_api_models:
-            is_responses_api_model = True
-            logger.info(f"Skipping tools for Azure Responses API model: {model_name}")
-
-    if anthropic_request.tools and not is_responses_api_model:
+    # Convert tools to appropriate format
+    if anthropic_request.tools:
         openai_tools = []
         is_gemini_model = anthropic_request.model.startswith("gemini/")
+        is_azure_model = anthropic_request.model.startswith("azure/")
+
+        # Check if using Azure Responses API (for o3/o4/gpt-5 models)
+        use_responses_api = False
+        if is_azure_model and AZURE_BASE_URL and "/responses" in AZURE_BASE_URL:
+            use_responses_api = True
 
         for tool in anthropic_request.tools:
             # Convert to dict if it's a pydantic model
@@ -892,21 +937,37 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                 logger.debug(f"Cleaning schema for Gemini tool: {tool_dict.get('name')}")
                 input_schema = clean_gemini_schema(input_schema)
 
-            # Create OpenAI-compatible function tool
-            openai_tool = {
-                "type": "function",
-                "function": {
+            # Azure Responses API uses a flat tool format with type at top level
+            if use_responses_api:
+                openai_tool = {
+                    "type": "function",
                     "name": tool_dict["name"],
                     "description": tool_dict.get("description", ""),
-                    "parameters": input_schema,  # Use potentially cleaned schema
-                },
-            }
+                    "parameters": input_schema,
+                }
+            else:
+                # Standard OpenAI Chat Completions format
+                openai_tool = {
+                    "type": "function",
+                    "function": {
+                        "name": tool_dict["name"],
+                        "description": tool_dict.get("description", ""),
+                        "parameters": input_schema,  # Use potentially cleaned schema
+                    },
+                }
             openai_tools.append(openai_tool)
 
         litellm_request["tools"] = openai_tools
 
-    # Convert tool_choice to OpenAI format if present (skip for Responses API)
-    if anthropic_request.tool_choice and not is_responses_api_model:
+        # Debug: Log the tool structure we're sending
+        logger.warning(
+            f"🔧 Sending {len(openai_tools)} tools to LiteLLM (Responses API: {use_responses_api}):"
+        )
+        for idx, tool in enumerate(openai_tools):
+            logger.warning(f"  Tool {idx}: {json.dumps(tool, indent=2)}")
+
+    # Convert tool_choice to OpenAI format if present
+    if anthropic_request.tool_choice:
         if isinstance(anthropic_request.tool_choice, dict):
             tool_choice_dict = anthropic_request.tool_choice
         elif hasattr(anthropic_request.tool_choice, "model_dump"):
@@ -933,52 +994,6 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
         else:
             # Default to auto if we can't determine
             litellm_request["tool_choice"] = "auto"
-
-    # Add Azure configuration if using azure/ prefix
-    if anthropic_request.model.startswith("azure/"):
-        # Get Azure configuration from environment - check multiple possible variables
-        azure_base = (
-            os.environ.get("OPENAI_BASE_URL", "")
-            or os.environ.get("AZURE_ENDPOINT", "")
-            or os.environ.get("AZURE_OPENAI_ENDPOINT", "")
-            or os.environ.get("AZURE_API_BASE", "")
-        )
-        azure_key = os.environ.get("AZURE_OPENAI_API_KEY", "") or os.environ.get(
-            "AZURE_API_KEY", ""
-        )
-
-        # Security: Use debug level for sensitive configuration details
-        logger.debug(f"Azure config check for {anthropic_request.model}:")
-        logger.debug(f"  OPENAI_BASE_URL configured: {bool(os.environ.get('OPENAI_BASE_URL'))}")
-        logger.debug(f"  AZURE_ENDPOINT configured: {bool(os.environ.get('AZURE_ENDPOINT'))}")
-        logger.debug(f"  AZURE_API_BASE configured: {bool(os.environ.get('AZURE_API_BASE'))}")
-        logger.debug(f"  azure_base configured: {bool(azure_base)}")
-        logger.debug(f"  azure_key configured: {bool(azure_key)}")
-
-        if azure_base:
-            # Extract clean base URL without query parameters
-            clean_azure_base = azure_base.split("?")[0] if "?" in azure_base else azure_base
-
-            # Check if this is Responses API
-            is_responses_api = "/openai/responses" in clean_azure_base
-
-            # For regular Chat API, remove the path; for Responses API, keep it
-            if not is_responses_api:
-                # Only strip for regular Chat API endpoints
-                clean_azure_base = clean_azure_base.replace("/openai/deployments", "")
-            # For Responses API, keep the /openai/responses path
-
-            # Add to request for LiteLLM
-            litellm_request["api_base"] = clean_azure_base
-            litellm_request["api_key"] = azure_key
-            litellm_request["api_version"] = os.environ.get(
-                "AZURE_API_VERSION", "2025-04-01-preview"
-            )
-
-            logger.info("Added Azure config to request:")
-            logger.info(f"  api_base: {clean_azure_base}")
-            logger.info(f"  api_key: {'SET' if azure_key else 'NOT SET'}")
-            logger.info(f"  api_version: {litellm_request['api_version']}")
 
     return litellm_request
 
@@ -1481,8 +1496,6 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             logger.debug("Using passthrough mode for Claude model")
 
             # Get configured token limits from environment for Azure Responses API
-            import os
-
             min_tokens_limit = int(os.environ.get("MIN_TOKENS_LIMIT", "4096"))
             max_tokens_limit = int(os.environ.get("MAX_TOKENS_LIMIT", "512000"))
 
@@ -1608,7 +1621,29 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         logger.info(f"🔵 LITELLM_REQUEST MODEL AFTER CONVERSION: '{litellm_request.get('model')}'")
 
         # Determine which API key to use based on the model
-        if request.model.startswith("openai/"):
+        if request.model.startswith("azure/"):
+            # Azure models need explicit api_base configuration
+            litellm_request["api_key"] = OPENAI_API_KEY
+
+            if AZURE_BASE_URL:
+                # Strip query string and /responses path - LiteLLM will add /responses automatically
+                clean_azure_base = (
+                    AZURE_BASE_URL.split("?")[0] if "?" in AZURE_BASE_URL else AZURE_BASE_URL
+                )
+                # Strip /responses from path if present
+                if clean_azure_base.endswith("/responses"):
+                    clean_azure_base = clean_azure_base[: -len("/responses")]
+
+                litellm_request["api_base"] = clean_azure_base
+                litellm_request["api_version"] = os.environ.get(
+                    "AZURE_API_VERSION", "2025-04-01-preview"
+                )
+
+                logger.warning(f"🔧 Azure config for {request.model}:")
+                logger.warning(f"  api_base: {clean_azure_base}")
+                logger.warning(f"  api_version: {litellm_request['api_version']}")
+                logger.warning(f"  api_key: {'SET' if OPENAI_API_KEY else 'NOT SET'}")
+        elif request.model.startswith("openai/"):
             litellm_request["api_key"] = OPENAI_API_KEY
             logger.debug(f"Using OpenAI API key for model: {request.model}")
         elif request.model.startswith("gemini/"):
@@ -1808,10 +1843,42 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                 200,  # Assuming success at this point
             )
             # Ensure we use the async version for streaming
-            response_generator = await litellm.acompletion(**litellm_request)
+            # Add timeout to request parameters
+            litellm_request["timeout"] = PROXY_TIMEOUT
+
+            # Add request tracking
+            request_id = generate_request_id()
+            log_request_lifecycle(
+                request_id,
+                "request_start",
+                {"model": litellm_request.get("model"), "stream": litellm_request.get("stream")},
+            )
+
+            try:
+                # Use asyncio.wait_for for defense-in-depth timeout enforcement
+                response_generator = await asyncio.wait_for(
+                    litellm.acompletion(**litellm_request),
+                    timeout=PROXY_TIMEOUT + 5.0,  # Add 5s buffer for cleanup
+                )
+                log_request_lifecycle(request_id, "request_complete")
+            except asyncio.TimeoutError:
+                log_request_lifecycle(request_id, "request_timeout", {"timeout": PROXY_TIMEOUT})
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"Request {request_id} timed out after {PROXY_TIMEOUT}s",
+                )
+            except Exception as e:
+                log_request_lifecycle(
+                    request_id,
+                    "request_error",
+                    {"error": str(e), "error_type": type(e).__name__},
+                )
+                raise
 
             return StreamingResponse(
-                handle_streaming(response_generator, request), media_type="text/event-stream"
+                handle_streaming(response_generator, request),
+                media_type="text/event-stream",
+                headers={"X-Request-ID": request_id},
             )
         # Use LiteLLM for regular completion
         num_tools = len(request.tools) if request.tools else 0
@@ -1830,7 +1897,36 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         )
         logger.info(f"🔥 LITELLM REQUEST KEYS: {list(litellm_request.keys())}")
         start_time = time.time()
-        litellm_response = litellm.completion(**litellm_request)
+        # Add timeout to request parameters
+        litellm_request["timeout"] = PROXY_TIMEOUT
+
+        # Add request tracking
+        request_id = generate_request_id()
+        log_request_lifecycle(
+            request_id,
+            "request_start",
+            {"model": litellm_request.get("model"), "stream": litellm_request.get("stream")},
+        )
+
+        try:
+            # Run sync function in executor with timeout
+            litellm_response = await asyncio.wait_for(
+                asyncio.to_thread(litellm.completion, **litellm_request),
+                timeout=PROXY_TIMEOUT + 5.0,
+            )
+            log_request_lifecycle(request_id, "request_complete")
+        except asyncio.TimeoutError:
+            log_request_lifecycle(request_id, "request_timeout", {"timeout": PROXY_TIMEOUT})
+            raise HTTPException(
+                status_code=504, detail=f"Request {request_id} timed out after {PROXY_TIMEOUT}s"
+            )
+        except Exception as e:
+            log_request_lifecycle(
+                request_id,
+                "request_error",
+                {"error": str(e), "error_type": type(e).__name__},
+            )
+            raise
         logger.debug(
             f"✅ RESPONSE RECEIVED: Model={litellm_request.get('model')}, Time={time.time() - start_time:.2f}s"
         )
@@ -1838,7 +1934,12 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         # Convert LiteLLM response to Anthropic format
         anthropic_response = convert_litellm_to_anthropic(litellm_response, request)
 
-        return anthropic_response
+        # Return response with request ID header
+        return Response(
+            content=anthropic_response.model_dump_json(),
+            media_type="application/json",
+            headers={"X-Request-ID": request_id},
+        )
 
     except Exception as e:
         import traceback
