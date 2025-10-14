@@ -1,17 +1,19 @@
 """Built-in FastAPI proxy server with OpenAI Responses API support."""
 
+import asyncio
 import json
 import logging
 import os
 import sys
 import time
 import uuid
+from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import httpx  # type: ignore
 import litellm  # type: ignore
 from dotenv import load_dotenv  # type: ignore
-from fastapi import FastAPI, HTTPException, Request  # type: ignore
+from fastapi import FastAPI, HTTPException, Request, Response  # type: ignore
 from fastapi.responses import StreamingResponse  # type: ignore
 from pydantic import BaseModel, field_validator  # type: ignore
 
@@ -133,6 +135,38 @@ if PASSTHROUGH_MODE:
 # Default to latest OpenAI models if not set
 BIG_MODEL = os.environ.get("BIG_MODEL", "gpt-4.1")
 SMALL_MODEL = os.environ.get("SMALL_MODEL", "gpt-4.1-mini")
+
+# Timeout configuration
+DEFAULT_TIMEOUT = 120.0  # seconds - reasonable default for LLM requests
+PROXY_TIMEOUT = float(os.getenv("AMPLIHACK_PROXY_TIMEOUT", DEFAULT_TIMEOUT))
+
+logger.info(f"Proxy timeout configured: {PROXY_TIMEOUT}s")
+
+# Validate timeout configuration
+MAX_TIMEOUT = 600.0
+if PROXY_TIMEOUT <= 0:
+    raise ValueError(f"AMPLIHACK_PROXY_TIMEOUT must be positive, got {PROXY_TIMEOUT}")
+if PROXY_TIMEOUT > MAX_TIMEOUT:
+    raise ValueError(f"AMPLIHACK_PROXY_TIMEOUT must be <= {MAX_TIMEOUT}s, got {PROXY_TIMEOUT}")
+
+
+def generate_request_id() -> str:
+    """Generate unique request ID for debugging."""
+    return f"req_{uuid.uuid4().hex[:12]}"
+
+
+def log_request_lifecycle(request_id: str, event: str, details: Optional[Dict[str, Any]] = None):
+    """Log request lifecycle with context for debugging hung requests."""
+    log_data = {
+        "request_id": request_id,
+        "event": event,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    if details:
+        log_data.update(details)
+
+    logger.info(f"[{request_id}] {event}", extra=log_data)
+
 
 # Configure LiteLLM for Azure if Azure endpoint is present
 AZURE_BASE_URL = os.environ.get("OPENAI_BASE_URL", "")
@@ -1809,10 +1843,42 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                 200,  # Assuming success at this point
             )
             # Ensure we use the async version for streaming
-            response_generator = await litellm.acompletion(**litellm_request)
+            # Add timeout to request parameters
+            litellm_request["timeout"] = PROXY_TIMEOUT
+
+            # Add request tracking
+            request_id = generate_request_id()
+            log_request_lifecycle(
+                request_id,
+                "request_start",
+                {"model": litellm_request.get("model"), "stream": litellm_request.get("stream")},
+            )
+
+            try:
+                # Use asyncio.wait_for for defense-in-depth timeout enforcement
+                response_generator = await asyncio.wait_for(
+                    litellm.acompletion(**litellm_request),
+                    timeout=PROXY_TIMEOUT + 5.0,  # Add 5s buffer for cleanup
+                )
+                log_request_lifecycle(request_id, "request_complete")
+            except asyncio.TimeoutError:
+                log_request_lifecycle(request_id, "request_timeout", {"timeout": PROXY_TIMEOUT})
+                raise HTTPException(
+                    status_code=504,
+                    detail=f"Request {request_id} timed out after {PROXY_TIMEOUT}s",
+                )
+            except Exception as e:
+                log_request_lifecycle(
+                    request_id,
+                    "request_error",
+                    {"error": str(e), "error_type": type(e).__name__},
+                )
+                raise
 
             return StreamingResponse(
-                handle_streaming(response_generator, request), media_type="text/event-stream"
+                handle_streaming(response_generator, request),
+                media_type="text/event-stream",
+                headers={"X-Request-ID": request_id},
             )
         # Use LiteLLM for regular completion
         num_tools = len(request.tools) if request.tools else 0
@@ -1831,7 +1897,36 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         )
         logger.info(f"🔥 LITELLM REQUEST KEYS: {list(litellm_request.keys())}")
         start_time = time.time()
-        litellm_response = litellm.completion(**litellm_request)
+        # Add timeout to request parameters
+        litellm_request["timeout"] = PROXY_TIMEOUT
+
+        # Add request tracking
+        request_id = generate_request_id()
+        log_request_lifecycle(
+            request_id,
+            "request_start",
+            {"model": litellm_request.get("model"), "stream": litellm_request.get("stream")},
+        )
+
+        try:
+            # Run sync function in executor with timeout
+            litellm_response = await asyncio.wait_for(
+                asyncio.to_thread(litellm.completion, **litellm_request),
+                timeout=PROXY_TIMEOUT + 5.0,
+            )
+            log_request_lifecycle(request_id, "request_complete")
+        except asyncio.TimeoutError:
+            log_request_lifecycle(request_id, "request_timeout", {"timeout": PROXY_TIMEOUT})
+            raise HTTPException(
+                status_code=504, detail=f"Request {request_id} timed out after {PROXY_TIMEOUT}s"
+            )
+        except Exception as e:
+            log_request_lifecycle(
+                request_id,
+                "request_error",
+                {"error": str(e), "error_type": type(e).__name__},
+            )
+            raise
         logger.debug(
             f"✅ RESPONSE RECEIVED: Model={litellm_request.get('model')}, Time={time.time() - start_time:.2f}s"
         )
@@ -1839,7 +1934,12 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         # Convert LiteLLM response to Anthropic format
         anthropic_response = convert_litellm_to_anthropic(litellm_response, request)
 
-        return anthropic_response
+        # Return response with request ID header
+        return Response(
+            content=anthropic_response.model_dump_json(),
+            media_type="application/json",
+            headers={"X-Request-ID": request_id},
+        )
 
     except Exception as e:
         import traceback
