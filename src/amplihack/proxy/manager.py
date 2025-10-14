@@ -111,9 +111,8 @@ class ProxyManager:
             self.proxy_process = subprocess.Popen(
                 start_command,
                 env=proxy_env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+                stdout=None,  # Don't capture - let output go to console/parent
+                stderr=None,  # Prevents pipe buffer overflow causing broken pipe
                 preexec_fn=os.setsid if os.name != "nt" else None,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
             )
@@ -126,12 +125,8 @@ class ProxyManager:
 
             # Check if proxy is still running
             if self.proxy_process.poll() is not None:
-                stdout, stderr = self.proxy_process.communicate(timeout=1)
                 print(f"Proxy failed to start. Exit code: {self.proxy_process.returncode}")
-                if stderr:
-                    print(f"Error output: {stderr}")
-                if stdout:
-                    print(f"Output: {stdout}")
+                print("Check console output above for error details.")
                 return False
 
             # Set up environment variables - handle both OpenAI and Azure configs
