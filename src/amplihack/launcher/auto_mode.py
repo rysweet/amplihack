@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Optional, Tuple
@@ -38,7 +39,7 @@ class AutoMode:
             f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
 
     def run_sdk(self, prompt: str) -> Tuple[int, str]:
-        """Run SDK command with prompt.
+        """Run SDK command with prompt, mirroring output to stdout/stderr.
 
         Returns:
             (exit_code, output)
@@ -49,14 +50,55 @@ class AutoMode:
             cmd = ["claude", "--dangerously-skip-permissions", "-p", prompt]
 
         self.log(f'Running: {cmd[0]} -p "..."')
-        result = subprocess.run(
+
+        # Use Popen to capture and mirror output in real-time
+        process = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            check=False,
             cwd=self.working_dir,
         )
-        return result.returncode, result.stdout
+
+        # Capture output while mirroring to stdout/stderr
+        stdout_lines = []
+        stderr_lines = []
+
+        def read_stream(stream, output_list, mirror_stream):
+            """Read from stream and mirror to output."""
+            for line in iter(stream.readline, ""):
+                output_list.append(line)
+                mirror_stream.write(line)
+                mirror_stream.flush()
+
+        # Create threads to read stdout and stderr concurrently
+        stdout_thread = threading.Thread(
+            target=read_stream, args=(process.stdout, stdout_lines, sys.stdout)
+        )
+        stderr_thread = threading.Thread(
+            target=read_stream, args=(process.stderr, stderr_lines, sys.stderr)
+        )
+
+        # Start threads
+        stdout_thread.start()
+        stderr_thread.start()
+
+        # Wait for process to complete
+        process.wait()
+
+        # Wait for threads to finish reading
+        stdout_thread.join()
+        stderr_thread.join()
+
+        # Combine captured output
+        stdout_output = "".join(stdout_lines)
+        stderr_output = "".join(stderr_lines)
+
+        # Log stderr if present
+        if stderr_output:
+            self.log(f"stderr: {stderr_output[:200]}...")
+
+        return process.returncode, stdout_output
 
     def run_hook(self, hook: str):
         """Run hook for copilot (Claude does it automatically)."""
