@@ -1,7 +1,34 @@
 # amplihack
 
-Development framework for Claude Code with specialized agents and automated
-workflows.
+Development framework for Claude Code and GitHub Copilot CLI with specialized
+agents and automated workflows.
+
+## Quick Setup
+
+Create a local `amplihack` command (optional but recommended):
+
+```sh
+# For bash
+echo 'alias amplihack="uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack"' >> ~/.bashrc
+source ~/.bashrc
+
+# For zsh (macOS default)
+echo 'alias amplihack="uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack"' >> ~/.zshrc
+source ~/.zshrc
+
+# For fish
+alias -s amplihack="uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack"
+```
+
+Then use simply:
+
+```sh
+amplihack claude                               # Launch Claude Code
+amplihack copilot                              # Launch GitHub Copilot CLI
+amplihack claude --auto -- -p "your task"      # Autonomous mode
+```
+
+Without alias, use the full command:
 
 ```sh
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
@@ -23,35 +50,31 @@ For detailed installation instructions, see
 ### Basic Usage
 
 ```sh
-# Launch Claude Code with amplihack
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
+# Launch Claude Code
+amplihack claude
+
+# Launch GitHub Copilot CLI
+amplihack copilot
 
 # With Azure OpenAI (requires azure.env configuration)
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --with-proxy-config ./azure.env
+amplihack claude --with-proxy-config ./azure.env
 
 # Work directly in a GitHub repository
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --checkout-repo owner/repo
+amplihack claude --checkout-repo owner/repo
+
+# Autonomous mode with Claude
+amplihack claude --auto -- -p "implement feature X"
+
+# Autonomous mode with Copilot
+amplihack copilot --auto -- -p "add tests to module Y"
+
+# Customize max turns for complex tasks
+amplihack claude --auto --max-turns 20 -- -p "refactor entire module"
 ```
 
 Not sure where to start? Use the command above to run from uvx, then tell Claude
 Code to `cd /path/to/my/project` and
 `/amplihack:ultrathink <my first prompt here>`.
-
-### GitHub Copilot CLI Support
-
-Amplihack now supports GitHub Copilot CLI as an alternative to Claude Code:
-
-```sh
-# Launch Copilot CLI interactively
-amplihack copilot
-
-# Run Copilot with a prompt
-amplihack copilot -- -p "explain this code"
-
-# Autonomous mode - multi-turn agentic loop
-amplihack copilot --auto -- -p "add logging to the payment service"
-amplihack copilot --auto --max-turns 20 -- -p "implement feature X"
-```
 
 **Auto Mode** enables autonomous agents that:
 
