@@ -65,17 +65,35 @@ class AutoMode:
 
         hook_path = self.working_dir / ".claude" / "tools" / "amplihack" / "hooks" / f"{hook}.py"
         if not hook_path.exists():
+            self.log(f"Hook {hook} not found at {hook_path}")
             return
 
+        self.log(f"Running hook: {hook}")
+        start_time = time.time()
+
         try:
-            subprocess.run(
+            result = subprocess.run(
                 [sys.executable, str(hook_path)],
                 check=False,
-                timeout=30,
+                timeout=120,  # Increased from 30s to 120s for complex hooks
                 cwd=self.working_dir,
+                capture_output=True,
+                text=True,
             )
+            elapsed = time.time() - start_time
+
+            if result.returncode == 0:
+                self.log(f"✓ Hook {hook} completed in {elapsed:.1f}s")
+            else:
+                self.log(
+                    f"⚠ Hook {hook} returned exit code {result.returncode} after {elapsed:.1f}s"
+                )
+                if result.stderr:
+                    self.log(f"Hook stderr: {result.stderr[:200]}")
+
         except subprocess.TimeoutExpired:
-            self.log(f"Warning: Hook {hook} timed out")
+            elapsed = time.time() - start_time
+            self.log(f"✗ Hook {hook} timed out after {elapsed:.1f}s")
 
     def run(self) -> int:
         """Execute agentic loop."""
