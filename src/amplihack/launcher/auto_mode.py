@@ -1,6 +1,8 @@
 """Auto mode - agentic loop orchestrator."""
 
 import json
+import os
+import pty
 import subprocess
 import sys
 import threading
@@ -52,14 +54,22 @@ class AutoMode:
 
         self.log(f'Running: {cmd[0]} -p "..."')
 
+        # Create a pseudo-terminal for stdin
+        # This allows any subprocess (including children) to read from it
+        master_fd, slave_fd = pty.openpty()
+
         # Use Popen to capture and mirror output in real-time
         process = subprocess.Popen(
             cmd,
+            stdin=slave_fd,  # Use slave side of pty as stdin
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             cwd=self.working_dir,
         )
+
+        # Close slave_fd in parent process (child has a copy)
+        os.close(slave_fd)
 
         # Capture output while mirroring to stdout/stderr
         stdout_lines = []
@@ -72,6 +82,25 @@ class AutoMode:
                 mirror_stream.write(line)
                 mirror_stream.flush()
 
+        def feed_pty_stdin(fd, proc):
+            """Auto-feed pty master with newlines to prevent any stdin blocking."""
+            try:
+                while proc.poll() is None:
+                    time.sleep(0.1)  # Check every 100ms
+                    try:
+                        os.write(fd, b"\n")
+                    except (BrokenPipeError, OSError):
+                        # Process closed or pty closed
+                        break
+            except Exception:
+                # Silently handle any other exceptions
+                pass
+            finally:
+                try:
+                    os.close(fd)
+                except Exception:
+                    pass
+
         # Create threads to read stdout and stderr concurrently
         stdout_thread = threading.Thread(
             target=read_stream, args=(process.stdout, stdout_lines, sys.stdout)
@@ -79,17 +108,22 @@ class AutoMode:
         stderr_thread = threading.Thread(
             target=read_stream, args=(process.stderr, stderr_lines, sys.stderr)
         )
+        stdin_thread = threading.Thread(
+            target=feed_pty_stdin, args=(master_fd, process), daemon=True
+        )
 
         # Start threads
         stdout_thread.start()
         stderr_thread.start()
+        stdin_thread.start()
 
         # Wait for process to complete
         process.wait()
 
-        # Wait for threads to finish reading
+        # Wait for output threads to finish reading
         stdout_thread.join()
         stderr_thread.join()
+        # stdin_thread is daemon, will terminate automatically
 
         # Combine captured output
         stdout_output = "".join(stdout_lines)
