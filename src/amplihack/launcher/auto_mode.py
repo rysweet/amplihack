@@ -72,13 +72,15 @@ class AutoMode:
         start_time = time.time()
 
         try:
+            # Provide empty JSON input via stdin (hooks expect JSON from stdin)
             result = subprocess.run(
                 [sys.executable, str(hook_path)],
                 check=False,
-                timeout=120,  # Increased from 30s to 120s for complex hooks
+                timeout=120,
                 cwd=self.working_dir,
                 capture_output=True,
                 text=True,
+                input="{}",  # Provide empty JSON object as input
             )
             elapsed = time.time() - start_time
 
