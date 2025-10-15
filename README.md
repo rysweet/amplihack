@@ -37,6 +37,32 @@ Not sure where to start? Use the command above to run from uvx, then tell Claude
 Code to `cd /path/to/my/project` and
 `/amplihack:ultrathink <my first prompt here>`.
 
+### GitHub Copilot CLI Support
+
+Amplihack now supports GitHub Copilot CLI as an alternative to Claude Code:
+
+```sh
+# Launch Copilot CLI interactively
+amplihack copilot
+
+# Run Copilot with a prompt
+amplihack copilot -- -p "explain this code"
+
+# Autonomous mode - multi-turn agentic loop
+amplihack copilot --auto -- -p "add logging to the payment service"
+amplihack copilot --auto --max-turns 20 -- -p "implement feature X"
+```
+
+**Auto Mode** enables autonomous agents that:
+
+- Clarify objectives and create plans
+- Execute work across multiple turns
+- Evaluate progress and adapt
+- Work with both Claude and Copilot
+
+See [docs/AUTO_MODE.md](docs/AUTO_MODE.md) for details and
+[AGENTS.md](AGENTS.md) for Copilot CLI usage guide.
+
 ### Commands in Claude Code
 
 - `/amplihack:ultrathink <task>` - Orchestrate agents for complex tasks
