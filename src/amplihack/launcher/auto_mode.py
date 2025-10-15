@@ -46,7 +46,7 @@ class AutoMode:
             (exit_code, output)
         """
         if self.sdk == "copilot":
-            cmd = ["copilot", "--allow-all-tools", "-p", prompt]
+            cmd = ["copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
         else:
             cmd = ["claude", "--dangerously-skip-permissions", "-p", prompt]
 
