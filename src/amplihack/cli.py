@@ -101,6 +101,39 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     return launcher.launch_interactive()
 
 
+def handle_auto_mode(
+    sdk: str, args: argparse.Namespace, cmd_args: Optional[List[str]]
+) -> Optional[int]:
+    """Handle auto mode for claude or copilot commands.
+
+    Args:
+        sdk: "claude" or "copilot"
+        args: Parsed arguments
+        cmd_args: Command arguments (for extracting prompt)
+
+    Returns:
+        Exit code if auto mode, None if not auto mode
+    """
+    if not getattr(args, "auto", False):
+        return None
+
+    from .launcher.auto_mode import AutoMode
+
+    # Extract prompt from args
+    prompt = None
+    if cmd_args and "-p" in cmd_args:
+        idx = cmd_args.index("-p")
+        if idx + 1 < len(cmd_args):
+            prompt = cmd_args[idx + 1]
+
+    if not prompt:
+        print(f'Error: --auto requires a prompt. Use: amplihack {sdk} --auto -- -p "your prompt"')
+        return 1
+
+    auto = AutoMode(sdk, prompt, args.max_turns)
+    return auto.run()
+
+
 def parse_args_with_passthrough(
     argv: Optional[List[str]] = None,
 ) -> "tuple[argparse.Namespace, List[str]]":
@@ -189,6 +222,31 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run amplihack in Docker container for isolated execution",
     )
+    launch_parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Run in autonomous agentic mode",
+    )
+    launch_parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=10,
+        help="Max turns for auto mode (default: 10)",
+    )
+
+    # Claude command (alias for launch)
+    claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
+    claude_parser.add_argument("--with-proxy-config", metavar="PATH")
+    claude_parser.add_argument("--builtin-proxy", action="store_true")
+    claude_parser.add_argument("--checkout-repo", metavar="GITHUB_URI")
+    claude_parser.add_argument("--docker", action="store_true")
+    claude_parser.add_argument("--auto", action="store_true", help="Run in autonomous mode")
+    claude_parser.add_argument("--max-turns", type=int, default=10)
+
+    # Copilot command
+    copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
+    copilot_parser.add_argument("--auto", action="store_true", help="Run in autonomous mode")
+    copilot_parser.add_argument("--max-turns", type=int, default=10)
 
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
@@ -367,7 +425,41 @@ def main(argv: Optional[List[str]] = None) -> int:
                 claude_args = ["--add-dir", original_cwd] + claude_args
             elif not claude_args:
                 claude_args = ["--add-dir", original_cwd]
+
+        # Handle auto mode
+        exit_code = handle_auto_mode("claude", args, claude_args)
+        if exit_code is not None:
+            return exit_code
+
         return launch_command(args, claude_args)
+
+    elif args.command == "claude":
+        # Claude is an alias for launch
+        if is_uvx_deployment():
+            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+            if claude_args and "--add-dir" not in claude_args:
+                claude_args = ["--add-dir", original_cwd] + claude_args
+            elif not claude_args:
+                claude_args = ["--add-dir", original_cwd]
+
+        # Handle auto mode
+        exit_code = handle_auto_mode("claude", args, claude_args)
+        if exit_code is not None:
+            return exit_code
+
+        return launch_command(args, claude_args)
+
+    elif args.command == "copilot":
+        from .launcher.copilot import launch_copilot
+
+        # Handle auto mode
+        exit_code = handle_auto_mode("copilot", args, claude_args)
+        if exit_code is not None:
+            return exit_code
+
+        # Normal copilot launch
+        has_prompt = claude_args and "-p" in claude_args
+        return launch_copilot(claude_args, interactive=not has_prompt)
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
