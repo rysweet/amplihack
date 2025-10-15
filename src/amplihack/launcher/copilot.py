@@ -19,7 +19,11 @@ def install_copilot() -> bool:
     print("Installing GitHub Copilot CLI...")
     try:
         result = subprocess.run(["npm", "install", "-g", "@github/copilot"], check=False)
-        return result.returncode == 0
+        if result.returncode == 0:
+            print("✓ Copilot CLI installed")
+            return True
+        print("✗ Installation failed")
+        return False
     except FileNotFoundError:
         print("Error: npm not found. Install Node.js first.")
         return False
@@ -33,7 +37,7 @@ def launch_copilot(args: Optional[List[str]] = None, interactive: bool = True) -
         interactive: If True, exec to replace process
 
     Returns:
-        Exit code
+        Exit code (only for non-interactive mode)
     """
     # Ensure copilot is installed
     if not check_copilot():
@@ -48,7 +52,10 @@ def launch_copilot(args: Optional[List[str]] = None, interactive: bool = True) -
 
     # Launch
     if interactive:
-        os.execvp(cmd[0], cmd)  # Replace process
-        return 0
+        os.execvp(cmd[0], cmd)  # Replace process - never returns
+        # This line is unreachable but helps type checkers
+        return 0  # pragma: no cover
+
+    # Non-interactive mode
     result = subprocess.run(cmd, check=False)
     return result.returncode

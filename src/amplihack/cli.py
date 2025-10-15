@@ -101,6 +101,39 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     return launcher.launch_interactive()
 
 
+def handle_auto_mode(
+    sdk: str, args: argparse.Namespace, cmd_args: Optional[List[str]]
+) -> Optional[int]:
+    """Handle auto mode for claude or copilot commands.
+
+    Args:
+        sdk: "claude" or "copilot"
+        args: Parsed arguments
+        cmd_args: Command arguments (for extracting prompt)
+
+    Returns:
+        Exit code if auto mode, None if not auto mode
+    """
+    if not getattr(args, "auto", False):
+        return None
+
+    from .launcher.auto_mode import AutoMode
+
+    # Extract prompt from args
+    prompt = None
+    if cmd_args and "-p" in cmd_args:
+        idx = cmd_args.index("-p")
+        if idx + 1 < len(cmd_args):
+            prompt = cmd_args[idx + 1]
+
+    if not prompt:
+        print(f'Error: --auto requires a prompt. Use: amplihack {sdk} --auto -- -p "your prompt"')
+        return 1
+
+    auto = AutoMode(sdk, prompt, args.max_turns)
+    return auto.run()
+
+
 def parse_args_with_passthrough(
     argv: Optional[List[str]] = None,
 ) -> "tuple[argparse.Namespace, List[str]]":
@@ -394,21 +427,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 claude_args = ["--add-dir", original_cwd]
 
         # Handle auto mode
-        if getattr(args, "auto", False):
-            from .launcher.auto_mode import AutoMode
-
-            prompt = None
-            if claude_args and "-p" in claude_args:
-                idx = claude_args.index("-p")
-                if idx + 1 < len(claude_args):
-                    prompt = claude_args[idx + 1]
-            if not prompt:
-                print(
-                    'Error: --auto requires a prompt. Use: amplihack launch --auto -- -p "your prompt"'
-                )
-                return 1
-            auto = AutoMode("claude", prompt, args.max_turns)
-            return auto.run()
+        exit_code = handle_auto_mode("claude", args, claude_args)
+        if exit_code is not None:
+            return exit_code
 
         return launch_command(args, claude_args)
 
@@ -422,21 +443,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 claude_args = ["--add-dir", original_cwd]
 
         # Handle auto mode
-        if getattr(args, "auto", False):
-            from .launcher.auto_mode import AutoMode
-
-            prompt = None
-            if claude_args and "-p" in claude_args:
-                idx = claude_args.index("-p")
-                if idx + 1 < len(claude_args):
-                    prompt = claude_args[idx + 1]
-            if not prompt:
-                print(
-                    'Error: --auto requires a prompt. Use: amplihack claude --auto -- -p "your prompt"'
-                )
-                return 1
-            auto = AutoMode("claude", prompt, args.max_turns)
-            return auto.run()
+        exit_code = handle_auto_mode("claude", args, claude_args)
+        if exit_code is not None:
+            return exit_code
 
         return launch_command(args, claude_args)
 
@@ -444,21 +453,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         from .launcher.copilot import launch_copilot
 
         # Handle auto mode
-        if getattr(args, "auto", False):
-            from .launcher.auto_mode import AutoMode
-
-            prompt = None
-            if claude_args and "-p" in claude_args:
-                idx = claude_args.index("-p")
-                if idx + 1 < len(claude_args):
-                    prompt = claude_args[idx + 1]
-            if not prompt:
-                print(
-                    'Error: --auto requires a prompt. Use: amplihack copilot --auto -- -p "your prompt"'
-                )
-                return 1
-            auto = AutoMode("copilot", prompt, args.max_turns)
-            return auto.run()
+        exit_code = handle_auto_mode("copilot", args, claude_args)
+        if exit_code is not None:
+            return exit_code
 
         # Normal copilot launch
         has_prompt = claude_args and "-p" in claude_args
