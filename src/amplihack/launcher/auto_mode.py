@@ -1,6 +1,8 @@
 """Auto mode - agentic loop orchestrator."""
 
 import json
+import os
+import pty
 import subprocess
 import sys
 import threading
@@ -52,15 +54,22 @@ class AutoMode:
 
         self.log(f'Running: {cmd[0]} -p "..."')
 
+        # Create a pseudo-terminal for stdin
+        # This allows any subprocess (including children) to read from it
+        master_fd, slave_fd = pty.openpty()
+
         # Use Popen to capture and mirror output in real-time
         process = subprocess.Popen(
             cmd,
-            stdin=subprocess.PIPE,
+            stdin=slave_fd,  # Use slave side of pty as stdin
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             cwd=self.working_dir,
         )
+
+        # Close slave_fd in parent process (child has a copy)
+        os.close(slave_fd)
 
         # Capture output while mirroring to stdout/stderr
         stdout_lines = []
@@ -73,23 +82,22 @@ class AutoMode:
                 mirror_stream.write(line)
                 mirror_stream.flush()
 
-        def feed_stdin(proc):
-            """Auto-respond to stdin requests with newlines to prevent blocking."""
+        def feed_pty_stdin(fd, proc):
+            """Auto-feed pty master with newlines to prevent any stdin blocking."""
             try:
                 while proc.poll() is None:
                     time.sleep(0.1)  # Check every 100ms
                     try:
-                        proc.stdin.write("\n")
-                        proc.stdin.flush()
+                        os.write(fd, b"\n")
                     except (BrokenPipeError, OSError):
-                        # Process closed stdin or terminated
+                        # Process closed or pty closed
                         break
             except Exception:
                 # Silently handle any other exceptions
                 pass
             finally:
                 try:
-                    proc.stdin.close()
+                    os.close(fd)
                 except Exception:
                     pass
 
@@ -100,7 +108,9 @@ class AutoMode:
         stderr_thread = threading.Thread(
             target=read_stream, args=(process.stderr, stderr_lines, sys.stderr)
         )
-        stdin_thread = threading.Thread(target=feed_stdin, args=(process,), daemon=True)
+        stdin_thread = threading.Thread(
+            target=feed_pty_stdin, args=(master_fd, process), daemon=True
+        )
 
         # Start threads
         stdout_thread.start()
