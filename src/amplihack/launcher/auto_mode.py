@@ -1,5 +1,6 @@
 """Auto mode - agentic loop orchestrator."""
 
+import json
 import subprocess
 import sys
 import threading
@@ -112,6 +113,40 @@ class AutoMode:
 
         self.log(f"Running hook: {hook}")
         start_time = time.time()
+
+        try:
+            # Prepare hook input matching Claude Code's format
+            session_id = self.log_dir.name  # Use our auto mode session ID
+            hook_input = {
+                "prompt": self.prompt if hook == "session_start" else "",
+                "workingDirectory": str(self.working_dir),
+                "sessionId": session_id,
+            }
+
+            # Provide JSON input via stdin (hooks expect JSON from Claude Code)
+            result = subprocess.run(
+                [sys.executable, str(hook_path)],
+                check=False,
+                timeout=120,
+                cwd=self.working_dir,
+                capture_output=True,
+                text=True,
+                input=json.dumps(hook_input),
+            )
+            elapsed = time.time() - start_time
+
+            if result.returncode == 0:
+                self.log(f"✓ Hook {hook} completed in {elapsed:.1f}s")
+            else:
+                self.log(
+                    f"⚠ Hook {hook} returned exit code {result.returncode} after {elapsed:.1f}s"
+                )
+                if result.stderr:
+                    self.log(f"Hook stderr: {result.stderr[:200]}")
+
+        except subprocess.TimeoutExpired:
+            elapsed = time.time() - start_time
+            self.log(f"✗ Hook {hook} timed out after {elapsed:.1f}s")
 
         try:
             result = subprocess.run(
