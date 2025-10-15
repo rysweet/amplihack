@@ -95,7 +95,7 @@ This workflow should be followed for:
 - [ ] Eliminate dead code (unless user explicitly wanted it)
 - [ ] Simplify complex logic (without violating user specifications)
 - [ ] Ensure single responsibility principle
-- [ ] Verify no placeholders remain
+- [ ] Verify no placeholders remain - no stubs, no TODOs, no swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
 - [ ] **VALIDATE: All explicit user requirements still preserved**
 
 ### Step 7: Run Tests and Pre-commit Hooks
@@ -160,15 +160,19 @@ This workflow should be followed for:
 - [ ] Ensure adequate test coverage
 - [ ] Post review comments on PR
 - [ ] Identify potential improvements
+- [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
+- [ ] Post the review as a comment on the PR
 
 ### Step 12: Implement Review Feedback
 
-- [ ] Review all feedback comments
+- [ ] Review all feedback comments, think very carefully about each one and decide how to address it (or if you should disagree, explain why in a comment)
 - [ ] **Always use** builder agent to implement changes
 - [ ] **Use** relevant specialized agents for specific feedback
 - [ ] Address each review comment
 - [ ] Push updates to PR
-- [ ] Respond to review comments
+- [ ] Respond to review comments by posting replies
+- [ ] Ensure all tests still pass
+- [ ] Ensure PR is still mergeable
 - [ ] Request re-review if needed
 
 ### Step 13: Philosophy Compliance Check
