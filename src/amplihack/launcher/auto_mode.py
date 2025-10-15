@@ -1,5 +1,6 @@
 """Auto mode - agentic loop orchestrator."""
 
+import json
 import subprocess
 import sys
 import threading
@@ -114,7 +115,15 @@ class AutoMode:
         start_time = time.time()
 
         try:
-            # Provide empty JSON input via stdin (hooks expect JSON from stdin)
+            # Prepare hook input matching Claude Code's format
+            session_id = self.log_dir.name  # Use our auto mode session ID
+            hook_input = {
+                "prompt": self.prompt if hook == "session_start" else "",
+                "workingDirectory": str(self.working_dir),
+                "sessionId": session_id,
+            }
+
+            # Provide JSON input via stdin (hooks expect JSON from Claude Code)
             result = subprocess.run(
                 [sys.executable, str(hook_path)],
                 check=False,
@@ -122,7 +131,7 @@ class AutoMode:
                 cwd=self.working_dir,
                 capture_output=True,
                 text=True,
-                input="{}",  # Provide empty JSON object to prevent stdin blocking
+                input=json.dumps(hook_input),
             )
             elapsed = time.time() - start_time
 
