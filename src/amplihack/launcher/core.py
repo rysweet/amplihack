@@ -1,6 +1,7 @@
 """Core launcher functionality for Claude Code."""
 
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -204,7 +205,78 @@ class ClaudeLauncher:
 
             print(f"Proxy running at: {self.proxy_manager.get_proxy_url()}")
 
+            # Open terminal window tailing proxy logs
+            self._open_log_tail_window()
+
         return True
+
+    def _open_log_tail_window(self) -> None:
+        """Open a new terminal window tailing proxy logs.
+
+        This method spawns a new terminal window (macOS Terminal.app on Darwin)
+        that tails both stdout and stderr proxy log files. The terminal window
+        remains open even after Claude exits, allowing for post-mortem debugging.
+
+        Platform Support:
+            - macOS (Darwin): Uses osascript to open Terminal.app
+            - Other platforms: Not yet implemented (gracefully skips)
+
+        Error Handling:
+            Errors are logged but do not fail the proxy startup process.
+        """
+        # Only supported on macOS for now
+        if sys.platform != "darwin":
+            return
+
+        try:
+            # Get log directory
+            log_dir = Path("/tmp/amplihack_logs")
+            if not log_dir.exists():
+                print("Log directory does not exist, skipping log tail window")
+                return
+
+            # Find the most recent log files (they were just created)
+            # We use glob pattern to match any timestamp
+            stdout_logs = list(log_dir.glob("proxy-stdout-*.log"))
+            stderr_logs = list(log_dir.glob("proxy-stderr-*.log"))
+
+            if not stdout_logs or not stderr_logs:
+                print("Could not find proxy log files, skipping log tail window")
+                return
+
+            # Sort by modification time and get the most recent
+            stdout_log = sorted(stdout_logs, key=lambda p: p.stat().st_mtime)[-1]
+            stderr_log = sorted(stderr_logs, key=lambda p: p.stat().st_mtime)[-1]
+
+            # Build the tail command that follows both files
+            # Using tail -f to follow files as they grow
+            # Use shlex.quote() to prevent command injection via log file paths
+            tail_cmd = f"tail -f {shlex.quote(str(stdout_log))} {shlex.quote(str(stderr_log))}"
+
+            # AppleScript to open a new Terminal window with the tail command
+            # We use 'do script' to execute the command in a new window
+            applescript = f'''
+            tell application "Terminal"
+                activate
+                do script "{tail_cmd}"
+            end tell
+            '''
+
+            # Execute osascript in the background (non-blocking)
+            subprocess.Popen(
+                ["osascript", "-e", applescript],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+
+            print("Opened terminal window tailing proxy logs")
+            print(f"  stdout: {stdout_log.name}")
+            print(f"  stderr: {stderr_log.name}")
+
+        except Exception as e:
+            # Log error but don't fail proxy startup
+            print(f"Warning: Could not open log tail window: {e}")
 
     def build_claude_command(self) -> List[str]:
         """Build the Claude command with arguments.

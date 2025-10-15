@@ -1243,9 +1243,39 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
         last_tool_index = 0
         anthropic_tool_index = 0  # Initialize to prevent unbound variable error
 
+        # Track tool call ID to name mapping (Azure Responses API workaround)
+        tool_call_names = {}  # Maps tool_call_id -> tool_name
+
         # Process each chunk
         async for chunk in response_generator:
             try:
+                # DIAGNOSTIC: Log full chunk structure for Azure Responses API debugging
+                if hasattr(chunk, "choices") and len(chunk.choices) > 0:
+                    choice = chunk.choices[0]
+                    if hasattr(choice, "delta") and choice.delta:
+                        delta = choice.delta
+                        if hasattr(delta, "tool_calls") and delta.tool_calls:
+                            logger.warning("🔍 RAW TOOL_CALL CHUNK:")
+                            logger.warning(f"  Chunk type: {type(chunk)}")
+                            logger.warning(f"  Delta tool_calls: {delta.tool_calls}")
+                            for tc in delta.tool_calls:
+                                logger.warning(f"    Tool call ID: {getattr(tc, 'id', 'NO_ID')}")
+                                logger.warning(
+                                    f"    Tool call index: {getattr(tc, 'index', 'NO_INDEX')}"
+                                )
+                                logger.warning(
+                                    f"    Tool call type: {getattr(tc, 'type', 'NO_TYPE')}"
+                                )
+                                func = getattr(tc, "function", None)
+                                if func:
+                                    logger.warning(f"    Function: {func}")
+                                    logger.warning(
+                                        f"      name: {getattr(func, 'name', 'NO_NAME')}"
+                                    )
+                                    logger.warning(
+                                        f"      arguments: {getattr(func, 'arguments', 'NO_ARGS')}"
+                                    )
+
                 # Check if this is the end of the response with usage data
                 if hasattr(chunk, "usage") and chunk.usage is not None:
                     if hasattr(chunk.usage, "completion_tokens"):
@@ -1319,6 +1349,21 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                             delta_tool_calls = [delta_tool_calls]
 
                         for tool_call in delta_tool_calls:
+                            # DEBUG: Log the raw tool_call structure
+                            logger.warning("🔍 Raw tool_call structure:")
+                            logger.warning(f"  Type: {type(tool_call)}")
+                            if isinstance(tool_call, dict):
+                                logger.warning(f"  Dict keys: {tool_call.keys()}")
+                                logger.warning(f"  Full dict: {tool_call}")
+                            else:
+                                logger.warning(f"  Object attributes: {dir(tool_call)}")
+                                logger.warning(f"  Object repr: {tool_call!r}")
+                                # Log key attributes
+                                for attr in ["id", "index", "function", "type"]:
+                                    if hasattr(tool_call, attr):
+                                        val = getattr(tool_call, attr)
+                                        logger.warning(f"  {attr}: {val} (type: {type(val)})")
+
                             # Get the index of this tool call (for multiple tools)
                             current_index = None
                             if isinstance(tool_call, dict) and "index" in tool_call:
@@ -1338,18 +1383,38 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                                 # Extract function info
                                 if isinstance(tool_call, dict):
                                     function = tool_call.get("function", {})
+                                    # Handle None values from Azure Responses API
                                     name = (
-                                        function.get("name", "")
+                                        function.get("name") or ""
                                         if isinstance(function, dict)
                                         else ""
                                     )
                                     tool_id = tool_call.get("id", f"toolu_{uuid.uuid4().hex[:24]}")
                                 else:
                                     function = getattr(tool_call, "function", None)
-                                    name = getattr(function, "name", "") if function else ""
+                                    name = getattr(function, "name", None) or "" if function else ""
                                     tool_id = getattr(
                                         tool_call, "id", f"toolu_{uuid.uuid4().hex[:24]}"
                                     )
+
+                                # Azure Responses API workaround: store tool name if we have it
+                                if name and tool_id:
+                                    tool_call_names[tool_id] = name
+                                elif tool_id in tool_call_names:
+                                    # Use previously stored name if current chunk doesn't have it
+                                    name = tool_call_names[tool_id]
+                                else:
+                                    # Log warning if we can't determine tool name
+                                    logger.warning(
+                                        f"⚠️ Tool call {tool_id} has no name in chunk. "
+                                        f"function: {function}"
+                                    )
+                                    # Try to infer from original request tools
+                                    if original_request.tools and len(original_request.tools) > 0:
+                                        # Use first tool as fallback (better than null)
+                                        name = original_request.tools[0].name
+                                        tool_call_names[tool_id] = name
+                                        logger.warning(f"  Using fallback tool name: {name}")
 
                                 # Start a new tool_use block
                                 yield f"event: content_block_start\ndata: {json.dumps({'type': 'content_block_start', 'index': anthropic_tool_index, 'content_block': {'type': 'tool_use', 'id': tool_id, 'name': name, 'input': {}}})}\n\n"
@@ -1359,17 +1424,34 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                             arguments = None
                             if isinstance(tool_call, dict) and "function" in tool_call:
                                 function = tool_call.get("function", {})
+                                logger.warning("🔍 Extracting arguments from dict function:")
+                                logger.warning(f"  function type: {type(function)}")
+                                logger.warning(f"  function value: {function}")
                                 arguments = (
                                     function.get("arguments", "")
                                     if isinstance(function, dict)
                                     else ""
                                 )
+                                logger.warning(f"  extracted arguments: {arguments}")
                             elif hasattr(tool_call, "function"):
                                 function = getattr(tool_call, "function", None)
+                                logger.warning("🔍 Extracting arguments from object function:")
+                                logger.warning(f"  function type: {type(function)}")
+                                logger.warning(f"  function value: {function}")
+                                if function:
+                                    logger.warning(f"  function attributes: {dir(function)}")
+                                    logger.warning(f"  function repr: {function!r}")
                                 arguments = getattr(function, "arguments", "") if function else ""
+                                logger.warning(f"  extracted arguments: {arguments}")
 
                             # If we have arguments, send them as a delta
+                            logger.warning(
+                                f"🔍 Checking if should send arguments: arguments={arguments!r}, truthiness={bool(arguments)}"
+                            )
                             if arguments:
+                                logger.warning(
+                                    f"🔍 SENDING input_json_delta for arguments: {arguments!r}"
+                                )
                                 # Try to detect if arguments are valid JSON or just a fragment
                                 try:
                                     # If it's already a dict, use it
@@ -1386,8 +1468,16 @@ async def handle_streaming(response_generator, original_request: MessagesRequest
                                 # Add to accumulated tool content
                                 tool_content += args_json if isinstance(args_json, str) else ""
 
+                                logger.warning(
+                                    f"🔍 About to yield content_block_delta with args_json={args_json!r}, index={anthropic_tool_index}"
+                                )
                                 # Send the update
                                 yield f"event: content_block_delta\ndata: {json.dumps({'type': 'content_block_delta', 'index': anthropic_tool_index, 'delta': {'type': 'input_json_delta', 'partial_json': args_json}})}\n\n"
+                                logger.warning("✅ Yielded content_block_delta successfully")
+                            else:
+                                logger.warning(
+                                    f"⚠️ NOT sending arguments because they are falsy: {arguments!r}"
+                                )
 
                     # Process finish_reason - end the streaming response
                     if finish_reason and not has_sent_stop_reason:
@@ -1626,21 +1716,32 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             litellm_request["api_key"] = OPENAI_API_KEY
 
             if AZURE_BASE_URL:
-                # Strip query string and /responses path - LiteLLM will add /responses automatically
+                # Strip query string from base URL
                 clean_azure_base = (
                     AZURE_BASE_URL.split("?")[0] if "?" in AZURE_BASE_URL else AZURE_BASE_URL
                 )
-                # Strip /responses from path if present
+
+                # Detect if using Responses API (for o3/o4/gpt-5 models)
+                use_responses_api_endpoint = "/responses" in AZURE_BASE_URL
+
+                # Strip /responses from path if present (we'll add it back explicitly)
                 if clean_azure_base.endswith("/responses"):
                     clean_azure_base = clean_azure_base[: -len("/responses")]
 
-                litellm_request["api_base"] = clean_azure_base
+                # For Responses API models, explicitly include /responses in api_base
+                # This ensures LiteLLM routes to the correct endpoint
+                if use_responses_api_endpoint:
+                    litellm_request["api_base"] = clean_azure_base + "/responses"
+                else:
+                    litellm_request["api_base"] = clean_azure_base
+
                 litellm_request["api_version"] = os.environ.get(
                     "AZURE_API_VERSION", "2025-04-01-preview"
                 )
 
                 logger.warning(f"🔧 Azure config for {request.model}:")
-                logger.warning(f"  api_base: {clean_azure_base}")
+                logger.warning(f"  api_base: {litellm_request['api_base']}")
+                logger.warning(f"  using_responses_api: {use_responses_api_endpoint}")
                 logger.warning(f"  api_version: {litellm_request['api_version']}")
                 logger.warning(f"  api_key: {'SET' if OPENAI_API_KEY else 'NOT SET'}")
         elif request.model.startswith("openai/"):
