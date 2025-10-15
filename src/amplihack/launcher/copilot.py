@@ -45,14 +45,13 @@ def launch_copilot(args: Optional[List[str]] = None, interactive: bool = True) -
             print("Failed to install Copilot CLI")
             return 1
 
-    # Build command with default --add-dir flags
+    # Build command with default --add-dir flag for full filesystem access
+    # (safe in VM environment)
     cmd = [
         "copilot",
         "--allow-all-tools",
         "--add-dir",
-        "/tmp",
-        "--add-dir",
-        "..",
+        "/",
     ]
     if args:
         cmd.extend(args)
