@@ -72,29 +72,12 @@ def _configure_user_local_npm() -> dict[str, str]:
 
 
 def _find_claude_in_common_locations() -> Optional[str]:
-    """Search for claude in common installation locations.
+    """Search for claude in PATH.
 
     Returns:
         Path to claude binary if found, None otherwise.
     """
-    # Priority order: user-local → homebrew → npm global → system paths
-    user_npm_global = Path.home() / ".npm-global" / "bin" / "claude"
-    user_npm_packages = Path.home() / ".npm-packages" / "bin" / "claude"
-
-    common_paths = [
-        str(user_npm_global),  # User-local npm (highest priority)
-        str(user_npm_packages),  # Alternative npm packages location
-        str(Path.home() / ".local" / "bin" / "claude"),  # User-local alternative
-        "/opt/homebrew/bin/claude",  # macOS Homebrew (Apple Silicon)
-        "/usr/local/bin/claude",  # macOS Homebrew (Intel) / Linux
-        "/usr/bin/claude",  # System-wide Linux
-    ]
-
-    for path in common_paths:
-        if os.path.isfile(path) and os.access(path, os.X_OK):
-            return path
-
-    # Fall back to PATH search
+    # Use shutil.which() to search PATH - this respects the user's environment
     return shutil.which("claude")
 
 
