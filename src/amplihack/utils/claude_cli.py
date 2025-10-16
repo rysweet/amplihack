@@ -3,9 +3,9 @@
 Auto-installs Claude CLI when missing, with smart path resolution and validation.
 
 Philosophy:
-- Opt-in auto-installation for security (requires AMPLIHACK_AUTO_INSTALL=1 or UVX mode)
+- Auto-installation enabled by default (can be disabled with AMPLIHACK_AUTO_INSTALL=0)
 - User-local npm installation to avoid permission issues
-- Platform-aware path detection (user-local, homebrew, npm global, system paths)
+- Platform-aware path detection (user-local npm paths, homebrew, npm global, system paths)
 - Validate binary execution before use
 - Standard library only (no external dependencies)
 - Supply chain protection via --ignore-scripts flag
@@ -78,10 +78,12 @@ def _find_claude_in_common_locations() -> Optional[str]:
         Path to claude binary if found, None otherwise.
     """
     # Priority order: user-local → homebrew → npm global → system paths
-    user_npm_bin = Path.home() / ".npm-global" / "bin" / "claude"
+    user_npm_global = Path.home() / ".npm-global" / "bin" / "claude"
+    user_npm_packages = Path.home() / ".npm-packages" / "bin" / "claude"
 
     common_paths = [
-        str(user_npm_bin),  # User-local npm (highest priority)
+        str(user_npm_global),  # User-local npm (highest priority)
+        str(user_npm_packages),  # Alternative npm packages location
         str(Path.home() / ".local" / "bin" / "claude"),  # User-local alternative
         "/opt/homebrew/bin/claude",  # macOS Homebrew (Apple Silicon)
         "/usr/local/bin/claude",  # macOS Homebrew (Intel) / Linux
@@ -211,26 +213,24 @@ def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
 
     # If not found and auto-install is enabled, try to install
     if auto_install:
-        # Auto-enable in UVX mode OR when explicitly enabled
-        auto_install_enabled = _is_uvx_mode() or os.getenv(
-            "AMPLIHACK_AUTO_INSTALL", ""
-        ).lower() in (
-            "1",
-            "true",
-            "yes",
+        # Auto-install is enabled by default
+        # Can be explicitly disabled with AMPLIHACK_AUTO_INSTALL=0
+        auto_install_disabled = os.getenv("AMPLIHACK_AUTO_INSTALL", "").lower() in (
+            "0",
+            "false",
+            "no",
         )
 
-        if not auto_install_enabled:
+        if auto_install_disabled:
             print("\n⚠️  Claude CLI not found")
-            print("Auto-installation requires explicit consent:")
-            print("  export AMPLIHACK_AUTO_INSTALL=1")
-            print("\nOr install manually:")
+            print("Auto-installation disabled via AMPLIHACK_AUTO_INSTALL=0")
+            print("\nTo install manually:")
             print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
             print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
             print('  export PATH="$HOME/.npm-global/bin:$PATH"')
             return None
 
-        print("Claude CLI not found. Auto-installation enabled, proceeding...")
+        print("Claude CLI not found. Auto-installing...")
         if _install_claude_cli():
             # Search again after installation
             claude_path = _find_claude_in_common_locations()
@@ -238,7 +238,7 @@ def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
                 return claude_path
 
     # Installation failed or auto-install disabled
-    print("\n⚠️  Claude CLI not found")
+    print("\n⚠️  Claude CLI installation failed or not found")
     print("Please install manually:")
     print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
     print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")

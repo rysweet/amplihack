@@ -340,20 +340,8 @@ class PrerequisiteChecker:
                 )
             )
         else:
-            # Claude CLI not available
-            # Distinguish between "auto-install disabled" vs "installation failed"
-            import os
-
-            auto_install_enabled = os.getenv("AMPLIHACK_AUTO_INSTALL", "").lower() in (
-                "1",
-                "true",
-                "yes",
-            )
-
-            if auto_install_enabled:
-                error_msg = "Auto-installation failed. Please install manually: npm install -g @anthropic-ai/claude-code"
-            else:
-                error_msg = "Not found. Enable auto-install with AMPLIHACK_AUTO_INSTALL=1 or install manually: npm install -g @anthropic-ai/claude-code"
+            # Claude CLI not available (detection failed or auto-install failed)
+            error_msg = "Not found in common locations and auto-installation failed. Install manually: npm install -g @anthropic-ai/claude-code"
 
             missing_tools.append(
                 ToolCheckResult(
