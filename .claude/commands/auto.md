@@ -409,6 +409,15 @@ Auto mode embodies key framework principles:
 - Dynamic plan adjustment
 - Learns from each turn's output
 
+## Related Documentation
+
+For more information on auto mode and agentic workflows:
+
+- **Auto Mode Details**: See `docs/AUTO_MODE.md` for technical implementation details
+- **CLI Usage**: See `AGENTS.md` for GitHub Copilot CLI integration
+- **Examples**: See `examples/copilot_integration/` for practical usage examples
+- **Implementation**: See `src/amplihack/launcher/auto_mode.py` for the code
+
 ## Remember
 
 Auto mode is a power tool for autonomous execution. It works best when:
