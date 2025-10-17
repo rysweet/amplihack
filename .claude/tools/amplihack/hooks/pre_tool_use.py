@@ -18,17 +18,15 @@ class PreToolUseHook(HookProcessor):
 
     def __init__(self):
         super().__init__("pre_tool_use")
-        self.tool_use_count_file = (
-            self.project_root / ".claude" / "runtime" / "tool_use_count.txt"
-        )
+        self.tool_use_count_file = self.project_root / ".claude" / "runtime" / "tool_use_count.txt"
 
     def get_tool_use_count(self) -> int:
         """Get current tool use count from file."""
         if self.tool_use_count_file.exists():
             try:
-                with open(self.tool_use_count_file, "r") as f:
+                with open(self.tool_use_count_file) as f:
                     return int(f.read().strip())
-            except (ValueError, IOError):
+            except (OSError, ValueError):
                 return 0
         return 0
 
@@ -66,9 +64,7 @@ class PreToolUseHook(HookProcessor):
 
                 reminder = create_preference_reminder()
                 if reminder:
-                    self.log(
-                        f"Injecting preference reminder at tool use #{count}"
-                    )
+                    self.log(f"Injecting preference reminder at tool use #{count}")
                     self.save_metric("preference_reminder_count", count // 10)
 
                     return {

@@ -32,13 +32,11 @@ class SessionEndHook(HookProcessor):
 
         try:
             claude_md_path = self.project_root / ".claude" / "CLAUDE.md"
-            backup_path = (
-                self.project_root / ".claude" / "runtime" / "CLAUDE.md.backup"
-            )
+            backup_path = self.project_root / ".claude" / "runtime" / "CLAUDE.md.backup"
 
             # Restore CLAUDE.md from backup if it exists
             if backup_path.exists():
-                with open(backup_path, "r", encoding="utf-8") as f:
+                with open(backup_path, encoding="utf-8") as f:
                     original_content = f.read()
 
                 with open(claude_md_path, "w", encoding="utf-8") as f:
@@ -64,9 +62,7 @@ class SessionEndHook(HookProcessor):
             "message": "Session cleanup complete",
             "metadata": {
                 "source": "amplihack_session_end",
-                "cleanup_performed": backup_path.exists()
-                if "backup_path" in locals()
-                else False,
+                "cleanup_performed": backup_path.exists() if "backup_path" in locals() else False,
             },
         }
 

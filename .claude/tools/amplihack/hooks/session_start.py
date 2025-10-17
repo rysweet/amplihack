@@ -174,35 +174,26 @@ class SessionStartHook(HookProcessor):
                     _, parsed_prefs = load_preferences()
                     if parsed_prefs:
                         claude_md_path = self.project_root / ".claude" / "CLAUDE.md"
-                        backup_path = (
-                            self.project_root
-                            / ".claude"
-                            / "runtime"
-                            / "CLAUDE.md.backup"
-                        )
+                        backup_path = self.project_root / ".claude" / "runtime" / "CLAUDE.md.backup"
 
                         if claude_md_path.exists():
                             # Create backup if it doesn't already exist
                             if not backup_path.exists():
                                 backup_path.parent.mkdir(parents=True, exist_ok=True)
-                                with open(claude_md_path, "r", encoding="utf-8") as f:
+                                with open(claude_md_path, encoding="utf-8") as f:
                                     original_content = f.read()
                                 with open(backup_path, "w", encoding="utf-8") as f:
                                     f.write(original_content)
                                 self.log(f"Created CLAUDE.md backup at: {backup_path}")
 
                             # Read current CLAUDE.md
-                            with open(claude_md_path, "r", encoding="utf-8") as f:
+                            with open(claude_md_path, encoding="utf-8") as f:
                                 claude_content = f.read()
 
                             # Check if preferences are already injected
-                            if (
-                                "## MANDATORY User Preferences" not in claude_content
-                            ):
+                            if "## MANDATORY User Preferences" not in claude_content:
                                 # Inject preferences at the top (after title)
-                                pref_section = format_preferences_for_injection(
-                                    parsed_prefs
-                                )
+                                pref_section = format_preferences_for_injection(parsed_prefs)
 
                                 # Insert after the "# CLAUDE.md" header and overview
                                 lines = claude_content.split("\n")
@@ -221,24 +212,16 @@ class SessionStartHook(HookProcessor):
 
                                 # Write modified CLAUDE.md
                                 modified_content = "\n".join(lines)
-                                with open(
-                                    claude_md_path, "w", encoding="utf-8"
-                                ) as f:
+                                with open(claude_md_path, "w", encoding="utf-8") as f:
                                     f.write(modified_content)
 
                                 self.log(
                                     "✅ Injected preferences into CLAUDE.md (Layer 1 enforcement)"
                                 )
-                                self.save_metric(
-                                    "claude_md_preference_injection", True
-                                )
+                                self.save_metric("claude_md_preference_injection", True)
                             else:
-                                self.log(
-                                    "Preferences already injected in CLAUDE.md"
-                                )
-                                self.save_metric(
-                                    "claude_md_preference_injection", False
-                                )
+                                self.log("Preferences already injected in CLAUDE.md")
+                                self.save_metric("claude_md_preference_injection", False)
 
                 except Exception as e:
                     self.log(

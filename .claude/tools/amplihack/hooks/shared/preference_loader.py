@@ -15,6 +15,7 @@ def get_preferences_file() -> Optional[Path]:
     # Try FrameworkPathResolver first (if available)
     try:
         from ..shared.framework_path_resolver import FrameworkPathResolver
+
         return FrameworkPathResolver.resolve_preferences_file()
     except (ImportError, AttributeError):
         # Fallback to relative path from this file
@@ -35,7 +36,7 @@ def load_preferences() -> Tuple[Optional[str], Dict[str, str]]:
         return None, {}
 
     try:
-        with open(prefs_file, 'r', encoding='utf-8') as f:
+        with open(prefs_file, encoding="utf-8") as f:
             content = f.read()
 
         # Parse key preferences
@@ -48,7 +49,7 @@ def load_preferences() -> Tuple[Optional[str], Dict[str, str]]:
             "Priority Type",
             "Preferred Languages",
             "Coding Standards",
-            "Workflow Preferences"
+            "Workflow Preferences",
         ]
 
         for pref_name in key_prefs:
@@ -92,7 +93,7 @@ def format_preferences_for_injection(preferences: Dict[str, str]) -> str:
         "",
         "**CRITICAL**: These preferences are MANDATORY and take priority over default behaviors.",
         "They CANNOT be optimized away or ignored under any circumstances.",
-        ""
+        "",
     ]
 
     # Add each preference
@@ -152,10 +153,7 @@ def create_preference_reminder() -> str:
     if not rules:
         return ""
 
-    reminder = [
-        "**USER PREFERENCE REMINDER (MANDATORY)**:",
-        ""
-    ]
+    reminder = ["**USER PREFERENCE REMINDER (MANDATORY)**:", ""]
 
     for rule in rules:
         reminder.append(f"- {rule}")
