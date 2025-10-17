@@ -18,13 +18,20 @@ Execute the following to enable lock:
 Create the lock flag file at `.claude/tools/amplihack/.lock_active`:
 
 ```python
+import os
 from pathlib import Path
+
 lock_flag = Path(".claude/tools/amplihack/.lock_active")
 lock_flag.parent.mkdir(parents=True, exist_ok=True)
-if lock_flag.exists():
-    print("⚠️  Lock was already active")
-else:
-    lock_flag.touch()
-    print("🔒 Lock enabled - Claude will continue working until unlocked")
+
+# Atomic file creation with exclusive flag
+try:
+    fd = os.open(str(lock_flag), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    os.close(fd)
+    print("Lock enabled - Claude will continue working until unlocked")
     print("Use /amplihack:unlock to disable continuous work mode")
+except FileExistsError:
+    print("WARNING: Lock was already active")
+except Exception as e:
+    print(f"Error enabling lock: {e}")
 ```

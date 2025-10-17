@@ -18,10 +18,17 @@ Remove the lock flag file at `.claude/tools/amplihack/.lock_active`:
 
 ```python
 from pathlib import Path
+
 lock_flag = Path(".claude/tools/amplihack/.lock_active")
-if lock_flag.exists():
-    lock_flag.unlink()
-    print("🔓 Lock disabled - Claude can now stop normally")
-else:
-    print("⚠️  No lock was active")
+
+try:
+    lock_flag.unlink(missing_ok=True)
+    if lock_flag.exists():
+        # Double-check it was actually removed
+        lock_flag.unlink()
+    print("Lock disabled - Claude will stop normally")
+except PermissionError as e:
+    print(f"Error: Cannot remove lock file - {e}")
+except Exception as e:
+    print(f"Error disabling lock: {e}")
 ```

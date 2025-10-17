@@ -21,17 +21,25 @@ class StopHook(HookProcessor):
         self.lock_flag = self.project_root / ".claude" / "tools" / "amplihack" / ".lock_active"
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Process stop event.
+        """Check lock flag and block stop if active.
 
         Args:
             input_data: Input from Claude Code
 
         Returns:
-            Decision dict with block/allow and optional reason
+            Dict with decision to block or allow stop
         """
-        # Check lock flag
-        if self.lock_flag.exists():
-            self.log("Lock active - blocking stop to continue working")
+        try:
+            lock_exists = self.lock_flag.exists()
+        except (PermissionError, OSError) as e:
+            self.log(f"Cannot access lock file: {e}", "WARNING")
+            # Fail-safe: allow stop if we can't read lock
+            return {"decision": "allow", "continue": False}
+
+        if lock_exists:
+            # Lock is active - block stop and continue working
+            self.log("Lock is active - blocking stop to continue working")
+            self.save_metric("lock_blocks", 1)
             return {
                 "decision": "block",
                 "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
