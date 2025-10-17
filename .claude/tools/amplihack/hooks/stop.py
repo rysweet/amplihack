@@ -23,14 +23,11 @@ def run():
         return {
             "decision": "block",
             "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
-            "continue": True
+            "continue": True,
         }
 
     # Not locked - allow stop
-    return {
-        "decision": "allow",
-        "continue": False
-    }
+    return {"decision": "allow", "continue": False}
 
 
 def main():
@@ -41,11 +38,7 @@ def main():
         return 0
     except Exception as e:
         # On error, allow stop (fail-safe)
-        error_result = {
-            "decision": "allow",
-            "continue": False,
-            "error": str(e)
-        }
+        error_result = {"decision": "allow", "continue": False, "error": str(e)}
         print(json.dumps(error_result), file=sys.stderr)
         return 0  # Don't fail the hook - just allow stop
 

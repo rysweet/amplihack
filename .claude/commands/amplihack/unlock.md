@@ -3,6 +3,7 @@
 Disable continuous work mode to allow Claude to stop normally.
 
 When unlocked, Claude will:
+
 - Stop when appropriate based on task completion
 - Follow normal stop behavior
 - Allow user interaction for next steps

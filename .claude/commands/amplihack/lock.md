@@ -3,6 +3,7 @@
 Enable continuous work mode to prevent Claude from stopping until explicitly unlocked.
 
 When locked, Claude will:
+
 - Continue working through all TODOs and next steps
 - Block stop attempts and keep pursuing the user's objective
 - Look for additional work and execute in parallel
