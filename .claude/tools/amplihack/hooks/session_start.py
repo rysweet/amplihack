@@ -303,10 +303,6 @@ class SessionStartHook(HookProcessor):
                 )
                 full_context = enforcement + full_context
 
-            # Inject original request context at top priority
-            if original_request_context:
-                full_context = original_request_context + "\n\n" + full_context
-
             output = {
                 "additionalContext": full_context,
                 "message": startup_message,

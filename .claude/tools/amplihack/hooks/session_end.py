@@ -58,6 +58,17 @@ class SessionEndHook(HookProcessor):
             self.save_metric("claude_md_restored", False)
             # Don't fail the session end - this is best effort cleanup
 
+        # Reset tool use counter for next session
+        try:
+            tool_use_count_file = self.project_root / ".claude" / "runtime" / "tool_use_count.txt"
+            if tool_use_count_file.exists():
+                tool_use_count_file.unlink()
+                self.log("Reset tool use counter for next session")
+                self.save_metric("tool_use_counter_reset", True)
+        except Exception as e:
+            self.log(f"Failed to reset tool use counter: {e}", "WARNING")
+            self.save_metric("tool_use_counter_reset", False)
+
         return {
             "message": "Session cleanup complete",
             "metadata": {
