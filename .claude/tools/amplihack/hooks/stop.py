@@ -4,44 +4,50 @@ Claude Code hook for stop events.
 Checks lock flag and blocks stop if continuous work mode is enabled.
 """
 
-import json
 import sys
 from pathlib import Path
+from typing import Any, Dict
 
-# Flag file location
-LOCK_FLAG = Path(__file__).parent.parent / ".lock_active"
+# Clean import structure
+sys.path.insert(0, str(Path(__file__).parent))
+from hook_processor import HookProcessor
 
 
-def run():
-    """Check lock flag and block stop if active.
+class StopHook(HookProcessor):
+    """Hook processor for stop events with lock support."""
 
-    Returns:
-        Dict with decision to block or allow stop
-    """
-    if LOCK_FLAG.exists():
-        # Lock is active - block stop and continue working
-        return {
-            "decision": "block",
-            "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
-            "continue": True,
-        }
+    def __init__(self):
+        super().__init__("stop")
+        self.lock_flag = self.project_root / ".claude" / "tools" / "amplihack" / ".lock_active"
 
-    # Not locked - allow stop
-    return {"decision": "allow", "continue": False}
+    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process stop event.
+
+        Args:
+            input_data: Input from Claude Code
+
+        Returns:
+            Decision dict with block/allow and optional reason
+        """
+        # Check lock flag
+        if self.lock_flag.exists():
+            self.log("Lock active - blocking stop to continue working")
+            return {
+                "decision": "block",
+                "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
+                "continue": True,
+            }
+
+        # Not locked - allow stop
+        self.log("No lock active - allowing stop")
+        return {"decision": "allow", "continue": False}
 
 
 def main():
     """Entry point for the stop hook."""
-    try:
-        result = run()
-        print(json.dumps(result))
-        return 0
-    except Exception as e:
-        # On error, allow stop (fail-safe)
-        error_result = {"decision": "allow", "continue": False, "error": str(e)}
-        print(json.dumps(error_result), file=sys.stderr)
-        return 0  # Don't fail the hook - just allow stop
+    hook = StopHook()
+    hook.run()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
