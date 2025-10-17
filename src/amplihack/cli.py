@@ -186,7 +186,14 @@ def create_parser() -> argparse.ArgumentParser:
   amplihack -- --verbose                      # Forward verbose flag to Claude
   amplihack launch -- --help                  # Get Claude help
   amplihack install                           # Install amplihack (no forwarding)
-  amplihack install -- --verbose             # Install with Claude args forwarded""",
+  amplihack install -- --verbose             # Install with Claude args forwarded
+
+Auto Mode Examples:
+  amplihack launch --auto -- -p "implement user authentication"
+  amplihack claude --auto --max-turns 20 -- -p "refactor the API module"
+  amplihack copilot --auto -- -p "add logging to all services"
+
+For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
@@ -225,13 +232,13 @@ def create_parser() -> argparse.ArgumentParser:
     launch_parser.add_argument(
         "--auto",
         action="store_true",
-        help="Run in autonomous agentic mode",
+        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
     )
     launch_parser.add_argument(
         "--max-turns",
         type=int,
         default=10,
-        help="Max turns for auto mode (default: 10)",
+        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
 
     # Claude command (alias for launch)
@@ -240,13 +247,13 @@ def create_parser() -> argparse.ArgumentParser:
     claude_parser.add_argument("--builtin-proxy", action="store_true")
     claude_parser.add_argument("--checkout-repo", metavar="GITHUB_URI")
     claude_parser.add_argument("--docker", action="store_true")
-    claude_parser.add_argument("--auto", action="store_true", help="Run in autonomous mode")
-    claude_parser.add_argument("--max-turns", type=int, default=10)
+    claude_parser.add_argument("--auto", action="store_true", help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.")
+    claude_parser.add_argument("--max-turns", type=int, default=10, help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.")
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
-    copilot_parser.add_argument("--auto", action="store_true", help="Run in autonomous mode")
-    copilot_parser.add_argument("--max-turns", type=int, default=10)
+    copilot_parser.add_argument("--auto", action="store_true", help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.")
+    copilot_parser.add_argument("--max-turns", type=int, default=10, help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.")
 
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
