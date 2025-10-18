@@ -247,13 +247,31 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     claude_parser.add_argument("--builtin-proxy", action="store_true")
     claude_parser.add_argument("--checkout-repo", metavar="GITHUB_URI")
     claude_parser.add_argument("--docker", action="store_true")
-    claude_parser.add_argument("--auto", action="store_true", help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.")
-    claude_parser.add_argument("--max-turns", type=int, default=10, help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.")
+    claude_parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+    )
+    claude_parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=10,
+        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
-    copilot_parser.add_argument("--auto", action="store_true", help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.")
-    copilot_parser.add_argument("--max-turns", type=int, default=10, help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.")
+    copilot_parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+    )
+    copilot_parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=10,
+        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
 
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")

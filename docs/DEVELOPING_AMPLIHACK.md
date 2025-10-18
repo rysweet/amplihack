@@ -82,6 +82,7 @@ This is the **authoritative technical reference** for developing with and extend
 **For AI Agents**: Use Ctrl+F / Cmd+F to search for specific terms. Section headers use H2 (##) for major sections and H3 (###) for subsections.
 
 **Quick Navigation Patterns**:
+
 - Feature lookup: Go to Section 3 (Feature Inventory)
 - API reference: Go to Section 4 (Module Reference)
 - Configuration: Go to Section 5 (Configuration Guide)
@@ -119,42 +120,42 @@ amplihack copilot
 
 #### Slash Commands
 
-| Command | Purpose | Implementation |
-|---------|---------|----------------|
-| `/amplihack:ultrathink <task>` | Orchestrate multi-agent workflows | `.claude/commands/amplihack/ultrathink.md` |
-| `/amplihack:analyze <path>` | Code review and analysis | `.claude/commands/amplihack/analyze.md` |
-| `/amplihack:fix [pattern]` | Intelligent fix workflow | `.claude/commands/amplihack/fix.md` |
-| `/amplihack:improve [target]` | Capture learnings | `.claude/commands/amplihack/improve.md` |
-| `/amplihack:customize <action>` | Manage preferences | `.claude/commands/amplihack/customize.md` |
+| Command                         | Purpose                           | Implementation                             |
+| ------------------------------- | --------------------------------- | ------------------------------------------ |
+| `/amplihack:ultrathink <task>`  | Orchestrate multi-agent workflows | `.claude/commands/amplihack/ultrathink.md` |
+| `/amplihack:analyze <path>`     | Code review and analysis          | `.claude/commands/amplihack/analyze.md`    |
+| `/amplihack:fix [pattern]`      | Intelligent fix workflow          | `.claude/commands/amplihack/fix.md`        |
+| `/amplihack:improve [target]`   | Capture learnings                 | `.claude/commands/amplihack/improve.md`    |
+| `/amplihack:customize <action>` | Manage preferences                | `.claude/commands/amplihack/customize.md`  |
 
 **Implementation**: `/home/azureuser/src/amplihack-worktree-921-922/.claude/commands/amplihack/`
 
 #### Key Modules
 
-| Module | Purpose | Entry Point |
-|--------|---------|-------------|
-| **Launcher** | Claude Code execution | `src/amplihack/launcher/core.py` |
-| **Proxy** | Azure/GitHub integration | `src/amplihack/proxy/integrated_proxy.py` |
-| **Bundle Generator** | Agent creation | `src/amplihack/bundle_generator/generator.py` |
-| **Security** | XPIA defense | `src/amplihack/security/xpia_defender.py` |
-| **Memory** | Session persistence | `src/amplihack/memory/manager.py` |
+| Module               | Purpose                  | Entry Point                                   |
+| -------------------- | ------------------------ | --------------------------------------------- |
+| **Launcher**         | Claude Code execution    | `src/amplihack/launcher/core.py`              |
+| **Proxy**            | Azure/GitHub integration | `src/amplihack/proxy/integrated_proxy.py`     |
+| **Bundle Generator** | Agent creation           | `src/amplihack/bundle_generator/generator.py` |
+| **Security**         | XPIA defense             | `src/amplihack/security/xpia_defender.py`     |
+| **Memory**           | Session persistence      | `src/amplihack/memory/manager.py`             |
 
 #### Configuration Files
 
-| File | Purpose | Location |
-|------|---------|----------|
-| **azure.env** | Azure OpenAI config | Project root (user-created) |
-| **settings.json** | Claude settings | `.claude/settings.json` |
-| **.env.security-template** | Security config template | Project root |
-| **pyproject.toml** | Project metadata | Project root |
+| File                       | Purpose                  | Location                    |
+| -------------------------- | ------------------------ | --------------------------- |
+| **azure.env**              | Azure OpenAI config      | Project root (user-created) |
+| **settings.json**          | Claude settings          | `.claude/settings.json`     |
+| **.env.security-template** | Security config template | Project root                |
+| **pyproject.toml**         | Project metadata         | Project root                |
 
 #### Agent Locations
 
-| Type | Location | Count |
-|------|----------|-------|
-| **Core Agents** | `.claude/agents/amplihack/core/` | 10+ |
-| **Specialized Agents** | `.claude/agents/amplihack/specialized/` | 15+ |
-| **Workflow Agents** | `.claude/agents/amplihack/workflows/` | 5+ |
+| Type                   | Location                                | Count |
+| ---------------------- | --------------------------------------- | ----- |
+| **Core Agents**        | `.claude/agents/amplihack/core/`        | 10+   |
+| **Specialized Agents** | `.claude/agents/amplihack/specialized/` | 15+   |
+| **Workflow Agents**    | `.claude/agents/amplihack/workflows/`   | 5+    |
 
 #### Common File Paths
 
@@ -256,12 +257,14 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 **Purpose**: Manages Claude Code execution lifecycle
 **Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/launcher/`
 **Key Files**:
+
 - `core.py:20-543` - Main ClaudeLauncher class
 - `detector.py:1-150` - .claude directory detection
 - `repo_checkout.py:1-100` - Repository checkout
 - `auto_mode.py:1-200` - Autonomous mode
 
 **Responsibilities**:
+
 1. Prerequisites checking (Node.js, npm, claude CLI)
 2. Repository checkout and directory management
 3. Proxy lifecycle management
@@ -277,14 +280,16 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 **Purpose**: Enables Azure OpenAI and GitHub Copilot integration
 **Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/proxy/`
 **Key Files**:
+
 - `integrated_proxy.py:1-500` - Main proxy server
 - `config.py:1-580` - Configuration management
 - `azure_unified_handler.py:1-400` - Azure request handling
 - `github_client.py:1-300` - GitHub Copilot integration
 
 **Responsibilities**:
+
 1. Anthropic API to Azure OpenAI translation
-2. Model mapping (claude-* to gpt-*)
+2. Model mapping (claude-_ to gpt-_)
 3. Request/response transformation
 4. Authentication management
 5. Error handling and retries
@@ -298,12 +303,14 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 **Purpose**: Creates custom agent bundles from natural language
 **Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/bundle_generator/`
 **Key Files**:
+
 - `generator.py:1-556` - Agent content generation
 - `parser.py:1-300` - Intent extraction
 - `packager.py:1-250` - Bundle packaging
 - `cli.py:1-200` - CLI interface
 
 **Responsibilities**:
+
 1. Natural language intent extraction
 2. Agent specification generation
 3. Test file creation
@@ -319,12 +326,14 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 **Purpose**: Cross-Prompt Injection Attack defense
 **Location**: `/home/azureuser/src/amplihack-worktree-921-922/src/amplihack/security/`
 **Key Files**:
+
 - `xpia_defender.py:1-673` - Core security validation
 - `xpia_patterns.py:1-400` - Attack pattern detection
 - `xpia_hooks.py:1-250` - Hook integration
 - `xpia_defense_interface.py:1-200` - Public API
 
 **Responsibilities**:
+
 1. Content validation (prompts, commands, URLs)
 2. Attack pattern detection
 3. Risk level assessment
@@ -407,18 +416,18 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ### 3.1 Launcher Features
 
-| Feature | Description | Implementation | Status |
-|---------|-------------|----------------|--------|
-| **Basic Launch** | Launch Claude Code with .claude config | `launcher/core.py:350-420` | ✅ Stable |
-| **Repository Checkout** | Clone and launch in GitHub repo | `launcher/repo_checkout.py:1-100` | ✅ Stable |
-| **Proxy Integration** | Auto-start Azure/GitHub proxy | `launcher/core.py:189-211` | ✅ Stable |
-| **UVX Detection** | Detect uvx execution mode | `uvx/manager.py:1-200` | ✅ Stable |
-| **--add-dir Support** | Add project directory to Claude | `launcher/core.py:311-338` | ✅ Stable |
-| **Prerequisites Check** | Validate Node.js, npm, claude CLI | `utils/prerequisites.py:1-150` | ✅ Stable |
-| **Path Caching** | Cache resolved paths for performance | `launcher/core.py:510-528` | ✅ Stable |
-| **Log Tailing** | Open terminal with proxy logs | `launcher/core.py:213-279` | ✅ macOS only |
-| **Autonomous Mode** | Multi-turn task execution | `launcher/auto_mode.py:1-200` | ✅ Stable |
-| **Settings Backup** | Backup/restore Claude settings | `launcher/settings_manager.py:1-150` | ✅ Stable |
+| Feature                 | Description                            | Implementation                       | Status        |
+| ----------------------- | -------------------------------------- | ------------------------------------ | ------------- |
+| **Basic Launch**        | Launch Claude Code with .claude config | `launcher/core.py:350-420`           | ✅ Stable     |
+| **Repository Checkout** | Clone and launch in GitHub repo        | `launcher/repo_checkout.py:1-100`    | ✅ Stable     |
+| **Proxy Integration**   | Auto-start Azure/GitHub proxy          | `launcher/core.py:189-211`           | ✅ Stable     |
+| **UVX Detection**       | Detect uvx execution mode              | `uvx/manager.py:1-200`               | ✅ Stable     |
+| **--add-dir Support**   | Add project directory to Claude        | `launcher/core.py:311-338`           | ✅ Stable     |
+| **Prerequisites Check** | Validate Node.js, npm, claude CLI      | `utils/prerequisites.py:1-150`       | ✅ Stable     |
+| **Path Caching**        | Cache resolved paths for performance   | `launcher/core.py:510-528`           | ✅ Stable     |
+| **Log Tailing**         | Open terminal with proxy logs          | `launcher/core.py:213-279`           | ✅ macOS only |
+| **Autonomous Mode**     | Multi-turn task execution              | `launcher/auto_mode.py:1-200`        | ✅ Stable     |
+| **Settings Backup**     | Backup/restore Claude settings         | `launcher/settings_manager.py:1-150` | ✅ Stable     |
 
 **Search Terms**: launch, claude code, execution, repository, uvx
 
@@ -426,20 +435,20 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ### 3.2 Proxy Features
 
-| Feature | Description | Implementation | Status |
-|---------|-------------|----------------|--------|
-| **Azure Integration** | Anthropic to Azure OpenAI translation | `proxy/azure_unified_handler.py:1-400` | ✅ Stable |
-| **GitHub Copilot** | GitHub Copilot API support | `proxy/github_client.py:1-300` | ✅ Stable |
-| **Model Mapping** | Map claude-* to gpt-* models | `proxy/azure_models.py:20-150` | ✅ Stable |
-| **Endpoint Detection** | Auto-detect Azure/GitHub endpoints | `proxy/azure_detector.py:1-200` | ✅ Stable |
-| **Request Transform** | Convert Anthropic to OpenAI format | `proxy/azure_unified_handler.py:100-250` | ✅ Stable |
-| **Response Transform** | Convert OpenAI to Anthropic format | `proxy/azure_unified_handler.py:300-400` | ✅ Stable |
-| **Streaming Support** | Server-sent events streaming | `proxy/integrated_proxy.py:400-500` | ✅ Stable |
-| **Authentication** | Azure API key management | `proxy/config.py:248-280` | ✅ Stable |
-| **Config Validation** | Validate proxy configuration | `proxy/config.py:145-297` | ✅ Stable |
-| **File Logging** | Log requests/responses to files | `proxy/file_logging.py:1-200` | ✅ Stable |
-| **Log Streaming** | Real-time log streaming | `proxy/log_streaming.py:1-250` | ✅ Stable |
-| **Passthrough Mode** | Direct passthrough without transform | `proxy/passthrough.py:1-150` | ✅ Stable |
+| Feature                | Description                           | Implementation                           | Status    |
+| ---------------------- | ------------------------------------- | ---------------------------------------- | --------- |
+| **Azure Integration**  | Anthropic to Azure OpenAI translation | `proxy/azure_unified_handler.py:1-400`   | ✅ Stable |
+| **GitHub Copilot**     | GitHub Copilot API support            | `proxy/github_client.py:1-300`           | ✅ Stable |
+| **Model Mapping**      | Map claude-_ to gpt-_ models          | `proxy/azure_models.py:20-150`           | ✅ Stable |
+| **Endpoint Detection** | Auto-detect Azure/GitHub endpoints    | `proxy/azure_detector.py:1-200`          | ✅ Stable |
+| **Request Transform**  | Convert Anthropic to OpenAI format    | `proxy/azure_unified_handler.py:100-250` | ✅ Stable |
+| **Response Transform** | Convert OpenAI to Anthropic format    | `proxy/azure_unified_handler.py:300-400` | ✅ Stable |
+| **Streaming Support**  | Server-sent events streaming          | `proxy/integrated_proxy.py:400-500`      | ✅ Stable |
+| **Authentication**     | Azure API key management              | `proxy/config.py:248-280`                | ✅ Stable |
+| **Config Validation**  | Validate proxy configuration          | `proxy/config.py:145-297`                | ✅ Stable |
+| **File Logging**       | Log requests/responses to files       | `proxy/file_logging.py:1-200`            | ✅ Stable |
+| **Log Streaming**      | Real-time log streaming               | `proxy/log_streaming.py:1-250`           | ✅ Stable |
+| **Passthrough Mode**   | Direct passthrough without transform  | `proxy/passthrough.py:1-150`             | ✅ Stable |
 
 **Search Terms**: proxy, azure, github copilot, integration, api, model mapping
 
@@ -447,18 +456,18 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ### 3.3 Bundle Generator Features
 
-| Feature | Description | Implementation | Status |
-|---------|-------------|----------------|--------|
-| **Intent Extraction** | Parse natural language requirements | `bundle_generator/parser.py:1-300` | ✅ Stable |
-| **Agent Generation** | Create agent markdown files | `bundle_generator/generator.py:87-179` | ✅ Stable |
-| **Test Generation** | Generate pytest test files | `bundle_generator/generator.py:409-464` | ✅ Stable |
-| **Documentation** | Create README and integration docs | `bundle_generator/generator.py:466-528` | ✅ Stable |
-| **Bundle Packaging** | Package as standalone distribution | `bundle_generator/packager.py:1-250` | ✅ Stable |
-| **CLI Interface** | Command-line bundle creation | `bundle_generator/cli.py:1-200` | ✅ Stable |
-| **Validation** | Validate generated agents | `bundle_generator/generator.py:530-556` | ✅ Stable |
-| **Template System** | Customizable agent templates | `bundle_generator/generator.py:26-76` | ✅ Stable |
+| Feature                | Description                         | Implementation                          | Status    |
+| ---------------------- | ----------------------------------- | --------------------------------------- | --------- |
+| **Intent Extraction**  | Parse natural language requirements | `bundle_generator/parser.py:1-300`      | ✅ Stable |
+| **Agent Generation**   | Create agent markdown files         | `bundle_generator/generator.py:87-179`  | ✅ Stable |
+| **Test Generation**    | Generate pytest test files          | `bundle_generator/generator.py:409-464` | ✅ Stable |
+| **Documentation**      | Create README and integration docs  | `bundle_generator/generator.py:466-528` | ✅ Stable |
+| **Bundle Packaging**   | Package as standalone distribution  | `bundle_generator/packager.py:1-250`    | ✅ Stable |
+| **CLI Interface**      | Command-line bundle creation        | `bundle_generator/cli.py:1-200`         | ✅ Stable |
+| **Validation**         | Validate generated agents           | `bundle_generator/generator.py:530-556` | ✅ Stable |
+| **Template System**    | Customizable agent templates        | `bundle_generator/generator.py:26-76`   | ✅ Stable |
 | **Capability Mapping** | Map capabilities to implementations | `bundle_generator/generator.py:190-201` | ✅ Stable |
-| **Complexity Levels** | Simple/standard/advanced agents | `bundle_generator/generator.py:310-342` | ✅ Stable |
+| **Complexity Levels**  | Simple/standard/advanced agents     | `bundle_generator/generator.py:310-342` | ✅ Stable |
 
 **Search Terms**: bundle generator, agent creation, custom agents, agent bundle
 
@@ -466,20 +475,20 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ### 3.4 Security Features
 
-| Feature | Description | Implementation | Status |
-|---------|-------------|----------------|--------|
-| **Content Validation** | Validate arbitrary content | `security/xpia_defender.py:136-191` | ✅ Stable |
-| **Bash Validation** | Validate shell commands | `security/xpia_defender.py:193-270` | ✅ Stable |
-| **URL Validation** | Validate URLs for security | `security/xpia_defender.py:559-625` | ✅ Stable |
-| **WebFetch Defense** | Specialized WebFetch validation | `security/xpia_defender.py:522-557` | ✅ Stable |
-| **Pattern Detection** | Detect attack patterns | `security/xpia_patterns.py:1-400` | ✅ Stable |
-| **Risk Assessment** | Calculate overall risk level | `security/xpia_defender.py:419-435` | ✅ Stable |
-| **Threat Mitigation** | Generate mitigation recommendations | `security/xpia_defender.py:437-469` | ✅ Stable |
-| **Security Levels** | Configurable strictness (4 levels) | `security/xpia_defender.py:61-84` | ✅ Stable |
-| **Whitelist/Blacklist** | Domain filtering | `security/xpia_defender.py:86-134` | ✅ Stable |
-| **Event Logging** | Security event audit trail | `security/xpia_defender.py:471-502` | ✅ Stable |
-| **Hook Integration** | Pre/post validation hooks | `security/xpia_hooks.py:1-250` | ✅ Stable |
-| **Health Check** | System health monitoring | `security/xpia_defender.py:347-357` | ✅ Stable |
+| Feature                 | Description                         | Implementation                      | Status    |
+| ----------------------- | ----------------------------------- | ----------------------------------- | --------- |
+| **Content Validation**  | Validate arbitrary content          | `security/xpia_defender.py:136-191` | ✅ Stable |
+| **Bash Validation**     | Validate shell commands             | `security/xpia_defender.py:193-270` | ✅ Stable |
+| **URL Validation**      | Validate URLs for security          | `security/xpia_defender.py:559-625` | ✅ Stable |
+| **WebFetch Defense**    | Specialized WebFetch validation     | `security/xpia_defender.py:522-557` | ✅ Stable |
+| **Pattern Detection**   | Detect attack patterns              | `security/xpia_patterns.py:1-400`   | ✅ Stable |
+| **Risk Assessment**     | Calculate overall risk level        | `security/xpia_defender.py:419-435` | ✅ Stable |
+| **Threat Mitigation**   | Generate mitigation recommendations | `security/xpia_defender.py:437-469` | ✅ Stable |
+| **Security Levels**     | Configurable strictness (4 levels)  | `security/xpia_defender.py:61-84`   | ✅ Stable |
+| **Whitelist/Blacklist** | Domain filtering                    | `security/xpia_defender.py:86-134`  | ✅ Stable |
+| **Event Logging**       | Security event audit trail          | `security/xpia_defender.py:471-502` | ✅ Stable |
+| **Hook Integration**    | Pre/post validation hooks           | `security/xpia_hooks.py:1-250`      | ✅ Stable |
+| **Health Check**        | System health monitoring            | `security/xpia_defender.py:347-357` | ✅ Stable |
 
 **Search Terms**: security, xpia, validation, threat detection, injection attacks
 
@@ -487,18 +496,18 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ### 3.5 Agent System Features
 
-| Feature | Description | Implementation | Status |
-|---------|-------------|----------------|--------|
-| **Core Agents** | 10+ pre-built core agents | `.claude/agents/amplihack/core/` | ✅ Stable |
-| **Specialized Agents** | 15+ specialized agents | `.claude/agents/amplihack/specialized/` | ✅ Stable |
-| **Workflow Agents** | 5+ workflow agents | `.claude/agents/amplihack/workflows/` | ✅ Stable |
-| **Agent Orchestration** | Multi-agent task coordination | `.claude/commands/amplihack/ultrathink.md` | ✅ Stable |
-| **Parallel Execution** | Concurrent agent execution | `CLAUDE.md:200-350` | ✅ Stable |
-| **Agent Communication** | Inter-agent messaging | Security validation available | 🚧 Experimental |
-| **Custom Agents** | User-created agents | Bundle Generator | ✅ Stable |
-| **Agent Catalog** | Browse available agents | `.claude/agents/CATALOG.md` | ✅ Stable |
-| **Context Injection** | Automatic context loading | `.claude/context/` files | ✅ Stable |
-| **Session Logging** | Agent decision logging | `.claude/runtime/logs/` | ✅ Stable |
+| Feature                 | Description                   | Implementation                             | Status          |
+| ----------------------- | ----------------------------- | ------------------------------------------ | --------------- |
+| **Core Agents**         | 10+ pre-built core agents     | `.claude/agents/amplihack/core/`           | ✅ Stable       |
+| **Specialized Agents**  | 15+ specialized agents        | `.claude/agents/amplihack/specialized/`    | ✅ Stable       |
+| **Workflow Agents**     | 5+ workflow agents            | `.claude/agents/amplihack/workflows/`      | ✅ Stable       |
+| **Agent Orchestration** | Multi-agent task coordination | `.claude/commands/amplihack/ultrathink.md` | ✅ Stable       |
+| **Parallel Execution**  | Concurrent agent execution    | `CLAUDE.md:200-350`                        | ✅ Stable       |
+| **Agent Communication** | Inter-agent messaging         | Security validation available              | 🚧 Experimental |
+| **Custom Agents**       | User-created agents           | Bundle Generator                           | ✅ Stable       |
+| **Agent Catalog**       | Browse available agents       | `.claude/agents/CATALOG.md`                | ✅ Stable       |
+| **Context Injection**   | Automatic context loading     | `.claude/context/` files                   | ✅ Stable       |
+| **Session Logging**     | Agent decision logging        | `.claude/runtime/logs/`                    | ✅ Stable       |
 
 **Search Terms**: agents, orchestration, multi-agent, workflows, agent system
 
@@ -528,6 +537,7 @@ class ClaudeLauncher:
 **Purpose**: Manages the complete Claude Code launch lifecycle including repository checkout, proxy management, and environment configuration.
 
 **Performance Optimizations**:
+
 - Path resolution caching (lines 70-71, 510-528)
 - UVX decision caching (lines 72-73)
 - Directory comparison optimization (lines 163-171)
@@ -548,6 +558,7 @@ def __init__(
 ```
 
 **Parameters**:
+
 - `proxy_manager`: Optional ProxyManager instance for Azure integration
 - `append_system_prompt`: Path to additional system prompt file
 - `force_staging`: Force staging approach instead of --add-dir (UVX mode)
@@ -589,6 +600,7 @@ exit_code = launcher.launch()
 **Returns**: `True` if preparation successful, `False` otherwise
 
 **Process**:
+
 1. Check prerequisites (Node.js, npm, Claude CLI) - line 81
 2. Handle repository checkout if requested - lines 85-87
 3. Find and validate target directory - lines 90-93
@@ -615,6 +627,7 @@ if launcher.prepare_launch():
 **Returns**: List of command arguments for subprocess
 
 **Logic**:
+
 - Detects claude-trace vs standard claude (line 291)
 - Adds --add-dir for UVX mode (lines 312-313, 336-338)
 - Configures Azure model when proxy is active (lines 316-317, 341-342)
@@ -642,6 +655,7 @@ cmd = launcher.build_claude_command()
 **Returns**: Exit code from Claude process
 
 **Features**:
+
 - Signal handling for graceful shutdown (lines 364-374)
 - Environment variable configuration (lines 377-404)
 - Proxy environment integration (lines 391-404)
@@ -708,6 +722,7 @@ def checkout_repository(repo_uri: str) -> Optional[str]:
 ```
 
 **Supported Formats**:
+
 - `owner/repo`
 - `https://github.com/owner/repo`
 - `https://github.com/owner/repo.git`
@@ -740,6 +755,7 @@ if repo_path:
 **Purpose**: Main proxy server that translates Anthropic API calls to Azure OpenAI or GitHub Copilot.
 
 **Key Features**:
+
 - Anthropic to OpenAI format conversion
 - Azure endpoint detection and routing
 - GitHub Copilot integration
@@ -779,6 +795,7 @@ proxy.start()
 **Purpose**: Start the proxy server.
 
 **Parameters**:
+
 - `host`: Host address to bind to (default: 127.0.0.1)
 - `port`: Port to listen on (default: 8000)
 
@@ -797,6 +814,7 @@ proxy.start(host="0.0.0.0", port=8080)
 **Purpose**: Handle chat completion requests from Claude.
 
 **Process**:
+
 1. Parse Anthropic request format
 2. Detect endpoint type (Azure/GitHub/OpenAI)
 3. Transform request format
@@ -855,6 +873,7 @@ class ProxyConfig:
 **Returns**: `True` if configuration is valid, `False` otherwise
 
 **Validation Checks**:
+
 - Azure: API key format, endpoint URL, API version
 - GitHub: Token format, endpoint validity
 - OpenAI: API key presence
@@ -881,18 +900,19 @@ else:
 **Purpose**: Map OpenAI model names to Azure deployment names.
 
 **Parameters**:
+
 - `model_name`: OpenAI model name (e.g., "gpt-4", "gpt-4-turbo")
 
 **Returns**: Azure deployment name or None
 
 **Model Mapping**:
 
-| OpenAI Model | Azure Deployment Variable |
-|--------------|---------------------------|
-| gpt-4 | AZURE_GPT4_DEPLOYMENT |
-| gpt-4-turbo | AZURE_GPT4_TURBO_DEPLOYMENT |
-| gpt-4-mini | AZURE_GPT4_MINI_DEPLOYMENT |
-| gpt-3.5-turbo | AZURE_GPT35_DEPLOYMENT |
+| OpenAI Model  | Azure Deployment Variable   |
+| ------------- | --------------------------- |
+| gpt-4         | AZURE_GPT4_DEPLOYMENT       |
+| gpt-4-turbo   | AZURE_GPT4_TURBO_DEPLOYMENT |
+| gpt-4-mini    | AZURE_GPT4_MINI_DEPLOYMENT  |
+| gpt-3.5-turbo | AZURE_GPT35_DEPLOYMENT      |
 
 **Example**:
 
@@ -910,6 +930,7 @@ deployment = config.get_azure_deployment("gpt-4")
 **Purpose**: Check if configuration uses Azure OpenAI endpoint.
 
 **Detection Logic**:
+
 - Checks AZURE_OPENAI_BASE_URL
 - Checks AZURE_OPENAI_ENDPOINT
 - Validates URL contains ".openai.azure.com"
@@ -931,6 +952,7 @@ if config.is_azure_endpoint():
 **Purpose**: Check if configuration uses GitHub Copilot endpoint.
 
 **Detection Logic**:
+
 - Checks GITHUB_COPILOT_ENDPOINT
 - Validates endpoint is api.github.com
 - Checks GITHUB_COPILOT_ENABLED flag
@@ -960,7 +982,8 @@ if config.is_github_endpoint():
 **Purpose**: Transform Anthropic request to Azure OpenAI format.
 
 **Transformations**:
-1. Map model name (claude-* → gpt-*)
+
+1. Map model name (claude-_ → gpt-_)
 2. Convert message format
 3. Add Azure-specific parameters
 4. Set API version and authentication
@@ -981,6 +1004,7 @@ azure_request = handler.handle_request(anthropic_request)
 **Purpose**: Transform Azure response to Anthropic format.
 
 **Transformations**:
+
 1. Convert message format
 2. Map usage statistics
 3. Handle streaming chunks
@@ -1064,6 +1088,7 @@ class AgentGenerator:
 **Purpose**: Generate agents from extracted intent.
 
 **Parameters**:
+
 - `intent`: ExtractedIntent object with parsed requirements
 - `options`: Optional generation options
   - `include_tests`: Generate test files (default: True)
@@ -1097,6 +1122,7 @@ for agent in agents:
 **Purpose**: Generate a single agent from requirement specification.
 
 **Generated Content**:
+
 - Agent markdown file (lines 126-152)
 - Test files (lines 155-157)
 - Documentation (lines 160-162)
@@ -1110,36 +1136,47 @@ for agent in agents:
 {description}
 
 ## Role
+
 {role}
 
 ## Model Configuration
+
 Model: {model}
 
 ## Capabilities
+
 {capabilities}
 
 ## Core Responsibilities
+
 {responsibilities}
 
 ## Implementation
+
 {implementation}
 
 ## Context and Philosophy
+
 {philosophy}
 
 ## Error Handling
+
 {error_handling}
 
 ## Performance Considerations
+
 {performance}
 
 ## Dependencies
+
 {dependencies}
 
 ## Example Usage
+
 {examples}
 
 ## Testing
+
 {testing}
 ```
 
@@ -1152,6 +1189,7 @@ Model: {model}
 **Purpose**: Validate generated agent content.
 
 **Checks**:
+
 - Content length (minimum 100 bytes)
 - Required sections present (Role, Capabilities, Implementation)
 - No placeholders (TODO, PLACEHOLDER)
@@ -1533,6 +1571,7 @@ result = await defender.validate_agent_communication(
 **Purpose**: Validate WebFetch requests (URL + prompt combination).
 
 **Checks**:
+
 - URL validation (domain, parameters, protocol)
 - Prompt validation (injection patterns)
 - Combined attack detection (URL referenced in malicious prompts)
@@ -1591,6 +1630,7 @@ class ThreatType(str, Enum):
 **Purpose**: Manage session persistence and conversation history.
 
 **Key Files**:
+
 - `manager.py:1-300` - Memory management
 - `database.py:1-250` - SQLite database operations
 - `models.py:1-150` - Data models
@@ -1903,6 +1943,7 @@ LOG_LEVEL=INFO                 # Logging level
 ```
 
 **Validation** (`proxy/config.py:240-297`):
+
 - API key format validation
 - Endpoint URL validation (must be HTTPS)
 - API version format (YYYY-MM-DD or YYYY-MM-DD-preview)
@@ -1937,6 +1978,7 @@ LOG_LEVEL=INFO
 ```
 
 **Token Format** (`proxy/config.py:481-506`):
+
 - GitHub tokens: `gho_`, `ghp_`, `ghs_`, `ghu_`, `ghr_` prefix
 - Legacy tokens: 40-character hex string
 - Test tokens: `test-`, `fake-`, `dummy-` prefix (for development)
@@ -1954,18 +1996,18 @@ amplihack copilot --with-proxy-config ./github.env
 **Azure Model Mapping** (`proxy/azure_models.py:20-150`):
 
 | Anthropic Model | Default Azure Model | Configurable Via |
-|----------------|---------------------|------------------|
-| claude-3-opus | gpt-4-turbo | BIG_MODEL |
-| claude-3-sonnet | gpt-4 | MIDDLE_MODEL |
-| claude-3-haiku | gpt-4o-mini | SMALL_MODEL |
-| claude-sonnet-4 | gpt-4 | MIDDLE_MODEL |
+| --------------- | ------------------- | ---------------- |
+| claude-3-opus   | gpt-4-turbo         | BIG_MODEL        |
+| claude-3-sonnet | gpt-4               | MIDDLE_MODEL     |
+| claude-3-haiku  | gpt-4o-mini         | SMALL_MODEL      |
+| claude-sonnet-4 | gpt-4               | MIDDLE_MODEL     |
 
 **GitHub Model Mapping** (`proxy/github_models.py:1-150`):
 
-| OpenAI Model | GitHub Copilot Model |
-|--------------|----------------------|
-| gpt-4 | copilot-gpt-4 |
-| gpt-4-turbo | copilot-gpt-4-turbo |
+| OpenAI Model  | GitHub Copilot Model  |
+| ------------- | --------------------- |
+| gpt-4         | copilot-gpt-4         |
+| gpt-4-turbo   | copilot-gpt-4-turbo   |
 | gpt-3.5-turbo | copilot-gpt-3.5-turbo |
 
 **Custom Mapping**:
@@ -2006,12 +2048,12 @@ XPIA_BLACKLIST_FILE=.xpia_blacklist
 
 **Security Levels** (`security/xpia_defender.py:61-84`):
 
-| Level | Threshold | Use Case |
-|-------|-----------|----------|
-| **STRICT** | Flag all patterns | High-security environments |
-| **HIGH** | Flag all patterns | Sensitive operations |
-| **MODERATE** | Flag medium+ severity | Default production |
-| **LOW** | Flag high+ severity | Development/testing |
+| Level        | Threshold             | Use Case                   |
+| ------------ | --------------------- | -------------------------- |
+| **STRICT**   | Flag all patterns     | High-security environments |
+| **HIGH**     | Flag all patterns     | Sensitive operations       |
+| **MODERATE** | Flag medium+ severity | Default production         |
+| **LOW**      | Flag high+ severity   | Development/testing        |
 
 ---
 
@@ -2041,6 +2083,7 @@ known-bad-domain.com
 ```
 
 **Default Whitelisted Domains** (`security/xpia_defender.py:101-115`):
+
 - github.com
 - microsoft.com
 - azure.com
@@ -2066,7 +2109,7 @@ repos:
         name: Detect secrets
         entry: detect-secrets-hook
         language: system
-        args: ['--baseline', '.secrets.baseline']
+        args: ["--baseline", ".secrets.baseline"]
 
       - id: gitguardian
         name: GitGuardian scan
@@ -2099,6 +2142,7 @@ ignore-known-secrets: true
 #### 6.1.1 Initial Setup
 
 **Prerequisites**:
+
 1. Python 3.8+
 2. Node.js 18+
 3. npm
@@ -2205,7 +2249,7 @@ amplihack-worktree-921-922/
 
 **File**: `.claude/agents/amplihack/specialized/my-agent.md`
 
-```markdown
+````markdown
 # My Agent
 
 Brief description of what this agent does.
@@ -2245,6 +2289,7 @@ def process(input_data):
     # Pseudocode or actual implementation
     pass
 ```
+````
 
 ### Output Format
 
@@ -2253,6 +2298,7 @@ Describe output structure and format.
 ## Context and Philosophy
 
 This agent follows amplihack philosophy:
+
 - Ruthless Simplicity
 - Modular Design
 - Zero-BS Implementation
@@ -2261,6 +2307,7 @@ This agent follows amplihack philosophy:
 ## Error Handling
 
 Describe error handling strategy:
+
 1. Input validation errors
 2. Processing errors
 3. Resource errors
@@ -2290,7 +2337,8 @@ result = my_agent.process(input_data, options={...})
 ## Testing
 
 Describe testing strategy and test coverage.
-```
+
+````
 
 ---
 
@@ -2302,7 +2350,7 @@ amplihack claude
 
 # In Claude:
 # "Use my-agent to process this data..."
-```
+````
 
 ---
 
@@ -2781,9 +2829,10 @@ You are executing the `/amplihack:my-command` slash command.
 This command does [describe what it does].
 
 ## Usage
-
 ```
+
 /amplihack:my-command [arguments]
+
 ```
 
 ## Arguments
@@ -3104,12 +3153,14 @@ tail -f /tmp/amplihack_logs/proxy-stderr-*.log
 **Solutions**:
 
 1. **Port already in use**:
+
    ```bash
    # In azure.env
    PORT=8001  # Use different port
    ```
 
 2. **Configuration invalid**:
+
    ```bash
    python -c "
    from amplihack.proxy.config import ProxyConfig
@@ -3147,11 +3198,13 @@ print('Length:', len(key))
 ```
 
 **Requirements**:
+
 - Minimum 20 characters
 - Alphanumeric with dashes/underscores
 - Test keys allowed (prefix: `test-`, `sk-test-`, `dummy-`)
 
 **Solution**:
+
 - Verify key from Azure Portal
 - Ensure no extra spaces or quotes
 - Check key permissions (should have inference access)
@@ -3229,6 +3282,7 @@ amplihack claude
 **Common Causes**:
 
 1. **Settings.json locked**:
+
    ```bash
    # Check permissions
    ls -la ~/.claude/settings.json
@@ -3238,6 +3292,7 @@ amplihack claude
    ```
 
 2. **Log directory permissions**:
+
    ```bash
    # Fix log directory
    sudo chown -R $USER /tmp/amplihack_logs
@@ -3431,6 +3486,7 @@ mgr.start_proxy()
 **Solutions**:
 
 1. **Disable proxy if not needed**:
+
    ```bash
    amplihack claude  # Without --with-proxy-config
    ```
@@ -3469,12 +3525,14 @@ time curl -X POST "http://127.0.0.1:8000/v1/messages" \
 **Solutions**:
 
 1. **Increase timeout**:
+
    ```bash
    # In azure.env
    REQUEST_TIMEOUT=600  # 10 minutes
    ```
 
 2. **Reduce max tokens**:
+
    ```bash
    # In azure.env
    MAX_TOKENS_LIMIT=100000  # Smaller context
@@ -3506,12 +3564,14 @@ htop -p $(pgrep -f amplihack)
 **Solutions**:
 
 1. **Reduce context size**:
+
    ```bash
    # In azure.env
    MAX_TOKENS_LIMIT=50000  # Smaller context
    ```
 
 2. **Clear runtime logs**:
+
    ```bash
    rm -rf .claude/runtime/logs/old-sessions/
    ```
@@ -3947,7 +4007,7 @@ if __name__ == "__main__":
 
 **Launcher**: Component that manages Claude Code execution lifecycle.
 
-**Model Mapping**: Translation between Anthropic model names (claude-*) and Azure models (gpt-*).
+**Model Mapping**: Translation between Anthropic model names (claude-_) and Azure models (gpt-_).
 
 **Proxy**: Service that translates Anthropic API calls to Azure OpenAI or GitHub Copilot format.
 
@@ -3971,63 +4031,63 @@ if __name__ == "__main__":
 
 #### Core Implementation Files
 
-| File | Purpose | Lines | Status |
-|------|---------|-------|--------|
-| `src/amplihack/__main__.py` | Package entry point | ~50 | Stable |
-| `src/amplihack/cli.py` | CLI argument parsing | ~300 | Stable |
-| `src/amplihack/launcher/core.py` | Claude launcher | 543 | Stable |
-| `src/amplihack/launcher/detector.py` | .claude detection | 150 | Stable |
-| `src/amplihack/launcher/repo_checkout.py` | Repository checkout | 100 | Stable |
-| `src/amplihack/launcher/auto_mode.py` | Autonomous mode | 200 | Stable |
-| `src/amplihack/proxy/integrated_proxy.py` | Main proxy server | 500 | Stable |
-| `src/amplihack/proxy/config.py` | Proxy configuration | 580 | Stable |
-| `src/amplihack/proxy/azure_unified_handler.py` | Azure request handling | 400 | Stable |
-| `src/amplihack/proxy/azure_models.py` | Azure model mapping | 150 | Stable |
-| `src/amplihack/proxy/github_client.py` | GitHub integration | 300 | Stable |
-| `src/amplihack/bundle_generator/generator.py` | Agent generation | 556 | Stable |
-| `src/amplihack/bundle_generator/parser.py` | Intent parsing | 300 | Stable |
-| `src/amplihack/bundle_generator/packager.py` | Bundle packaging | 250 | Stable |
-| `src/amplihack/security/xpia_defender.py` | XPIA defense | 673 | Stable |
-| `src/amplihack/security/xpia_patterns.py` | Attack patterns | 400 | Stable |
-| `src/amplihack/security/xpia_hooks.py` | Security hooks | 250 | Stable |
+| File                                           | Purpose                | Lines | Status |
+| ---------------------------------------------- | ---------------------- | ----- | ------ |
+| `src/amplihack/__main__.py`                    | Package entry point    | ~50   | Stable |
+| `src/amplihack/cli.py`                         | CLI argument parsing   | ~300  | Stable |
+| `src/amplihack/launcher/core.py`               | Claude launcher        | 543   | Stable |
+| `src/amplihack/launcher/detector.py`           | .claude detection      | 150   | Stable |
+| `src/amplihack/launcher/repo_checkout.py`      | Repository checkout    | 100   | Stable |
+| `src/amplihack/launcher/auto_mode.py`          | Autonomous mode        | 200   | Stable |
+| `src/amplihack/proxy/integrated_proxy.py`      | Main proxy server      | 500   | Stable |
+| `src/amplihack/proxy/config.py`                | Proxy configuration    | 580   | Stable |
+| `src/amplihack/proxy/azure_unified_handler.py` | Azure request handling | 400   | Stable |
+| `src/amplihack/proxy/azure_models.py`          | Azure model mapping    | 150   | Stable |
+| `src/amplihack/proxy/github_client.py`         | GitHub integration     | 300   | Stable |
+| `src/amplihack/bundle_generator/generator.py`  | Agent generation       | 556   | Stable |
+| `src/amplihack/bundle_generator/parser.py`     | Intent parsing         | 300   | Stable |
+| `src/amplihack/bundle_generator/packager.py`   | Bundle packaging       | 250   | Stable |
+| `src/amplihack/security/xpia_defender.py`      | XPIA defense           | 673   | Stable |
+| `src/amplihack/security/xpia_patterns.py`      | Attack patterns        | 400   | Stable |
+| `src/amplihack/security/xpia_hooks.py`         | Security hooks         | 250   | Stable |
 
 ---
 
 #### Configuration Files
 
-| File | Purpose | Location |
-|------|---------|----------|
-| `pyproject.toml` | Project metadata | Root |
-| `setup.py` | Setup configuration | Root |
-| `.pre-commit-config.yaml` | Pre-commit hooks | Root |
-| `.gitignore` | Git ignore patterns | Root |
-| `.env.security-template` | Security config template | Root |
-| `litellm_standalone_config.yaml` | LiteLLM config | Root |
-| `.claude/settings.json` | Claude settings | `.claude/` |
+| File                             | Purpose                  | Location   |
+| -------------------------------- | ------------------------ | ---------- |
+| `pyproject.toml`                 | Project metadata         | Root       |
+| `setup.py`                       | Setup configuration      | Root       |
+| `.pre-commit-config.yaml`        | Pre-commit hooks         | Root       |
+| `.gitignore`                     | Git ignore patterns      | Root       |
+| `.env.security-template`         | Security config template | Root       |
+| `litellm_standalone_config.yaml` | LiteLLM config           | Root       |
+| `.claude/settings.json`          | Claude settings          | `.claude/` |
 
 ---
 
 #### Claude Configuration
 
-| Directory | Purpose | Count |
-|-----------|---------|-------|
-| `.claude/agents/amplihack/core/` | Core agents | 10+ |
-| `.claude/agents/amplihack/specialized/` | Specialized agents | 15+ |
-| `.claude/agents/amplihack/workflows/` | Workflow agents | 5+ |
-| `.claude/commands/amplihack/` | Slash commands | 10+ |
-| `.claude/context/` | Philosophy & patterns | 7 |
-| `.claude/workflow/` | Development workflows | 1+ |
+| Directory                               | Purpose               | Count |
+| --------------------------------------- | --------------------- | ----- |
+| `.claude/agents/amplihack/core/`        | Core agents           | 10+   |
+| `.claude/agents/amplihack/specialized/` | Specialized agents    | 15+   |
+| `.claude/agents/amplihack/workflows/`   | Workflow agents       | 5+    |
+| `.claude/commands/amplihack/`           | Slash commands        | 10+   |
+| `.claude/context/`                      | Philosophy & patterns | 7     |
+| `.claude/workflow/`                     | Development workflows | 1+    |
 
 ---
 
 #### Test Files
 
-| Directory | Purpose | Tests |
-|-----------|---------|-------|
-| `tests/launcher/` | Launcher tests | 10+ |
-| `tests/proxy/` | Proxy tests | 15+ |
-| `tests/bundle_generator/` | Bundle generator tests | 10+ |
-| `tests/security/` | Security tests | 8+ |
+| Directory                 | Purpose                | Tests |
+| ------------------------- | ---------------------- | ----- |
+| `tests/launcher/`         | Launcher tests         | 10+   |
+| `tests/proxy/`            | Proxy tests            | 15+   |
+| `tests/bundle_generator/` | Bundle generator tests | 10+   |
+| `tests/security/`         | Security tests         | 8+    |
 
 ---
 
@@ -4193,6 +4253,7 @@ pyright src/amplihack
 **Last Updated**: 2025-10-17
 
 **Change Log**:
+
 - 1.0.0 (2025-10-17): Initial comprehensive reference document
 
 ---

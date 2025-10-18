@@ -45,7 +45,17 @@ Like a brick model, our software is built from small, clear modules. Each module
 - **End-to-end thinking**: Focus on complete flows rather than perfect components
 - **Regeneration-ready**: Every module can be rebuilt from its specification
 
-### 3. Library vs Custom Code
+### 3. Zero-BS Implementations - Quality over Speed of Implementation
+
+- **Focus on quality**: Prioritize robust, well-tested implementations over quick fixes
+- **Avoid technical debt**: Don't sacrifice long-term maintainability for short-term gains
+- **Iterate with purpose**: Make incremental improvements that enhance quality
+- **No shortcuts**: Every function must work or not exist; no stubs or placeholders, no dead code, unimplemented functions, or TODOs in code
+- **Do not compromise**: Always choose quality over speed of implementation
+- **No faked APIs or mock implementations**: Implement real functionality from the start, do not create fake data or mock services (except in tests)
+- **No swallowed exceptions**: Handle errors transparently and ensure they are visible during development
+
+### 4. Library vs Custom Code
 
 Choosing between custom code and external libraries is a judgment call that evolves with requirements:
 

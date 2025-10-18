@@ -135,6 +135,26 @@ class AutoMode:
 
         return process.returncode, stdout_output
 
+    def _build_philosophy_context(self) -> str:
+        """Build comprehensive philosophy and decision-making context.
+
+        Returns context string that instructs Claude on autonomous decision-making
+        using project philosophy files.
+        """
+        return """AUTONOMOUS MODE: You are in auto mode. Do NOT ask questions. Make decisions using:
+1. Explicit user requirements (HIGHEST PRIORITY - cannot be overridden)
+2. @.claude/context/USER_PREFERENCES.md guidance (MANDATORY - must follow)
+3. @.claude/context/PHILOSOPHY.md principles (ruthless simplicity, zero-BS, modular design)
+4. @.claude/workflow/DEFAULT_WORKFLOW.md patterns
+5. @.claude/context/USER_REQUIREMENT_PRIORITY.md for resolving conflicts
+
+Decision Authority:
+- YOU DECIDE: How to implement, what patterns to use, technical details, architecture
+- YOU PRESERVE: Explicit user requirements, user preferences, "must have" constraints
+- WHEN AMBIGUOUS: Apply philosophy principles to make the simplest, most modular choice
+
+Document your decisions and reasoning in comments/logs."""
+
     def run_hook(self, hook: str):
         """Run hook for copilot (Claude does it automatically)."""
         if self.sdk != "copilot":
@@ -217,9 +237,19 @@ class AutoMode:
             # Turn 1: Clarify objective
             self.turn = 1
             self.log(f"\n--- TURN {self.turn}: Clarify Objective ---")
-            code, objective = self.run_sdk(
-                f"Clarify this objective with evaluation criteria:\n{self.prompt}"
-            )
+            turn1_prompt = f"""{self._build_philosophy_context()}
+
+Task: Analyze this user request and clarify the objective with evaluation criteria.
+
+1. IDENTIFY EXPLICIT REQUIREMENTS: Extract any "must have", "all", "include everything", quoted specifications
+2. IDENTIFY IMPLICIT PREFERENCES: What user likely wants based on @.claude/context/USER_PREFERENCES.md
+3. APPLY PHILOSOPHY: Ruthless simplicity from @.claude/context/PHILOSOPHY.md, modular design, zero-BS implementation
+4. DEFINE SUCCESS CRITERIA: Clear, measurable, aligned with philosophy
+
+User Request:
+{self.prompt}"""
+
+            code, objective = self.run_sdk(turn1_prompt)
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
                 return 1
@@ -227,9 +257,31 @@ class AutoMode:
             # Turn 2: Create plan
             self.turn = 2
             self.log(f"\n--- TURN {self.turn}: Create Plan ---")
-            code, plan = self.run_sdk(
-                f"Create execution plan for:\n{objective}\n\nIdentify parallel opportunities."
-            )
+            turn2_prompt = f"""{self._build_philosophy_context()}
+
+Reference:
+- @.claude/context/PHILOSOPHY.md for design principles
+- @.claude/workflow/DEFAULT_WORKFLOW.md for standard workflow steps
+- @.claude/context/USER_PREFERENCES.md for user-specific preferences
+
+Task: Create an execution plan that:
+1. PRESERVES all explicit user requirements from objective
+2. APPLIES ruthless simplicity and modular design principles
+3. IDENTIFIES parallel execution opportunities (agents, tasks, operations)
+4. FOLLOWS the brick philosophy (self-contained modules with clear contracts)
+5. IMPLEMENTS zero-BS approach (no stubs, no TODOs, no placeholders)
+
+Plan Structure:
+- List explicit requirements that CANNOT be changed
+- Break work into self-contained modules (bricks)
+- Identify what can execute in parallel
+- Define clear contracts between components
+- Specify success criteria for each step
+
+Objective:
+{objective}"""
+
+            code, plan = self.run_sdk(turn2_prompt)
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
                 return 1
@@ -240,16 +292,52 @@ class AutoMode:
                 self.log(f"\n--- TURN {self.turn}: Execute & Evaluate ---")
 
                 # Execute
-                code, execution_output = self.run_sdk(
-                    f"Execute next part of plan:\n{plan}\n\nObjective:\n{objective}"
-                )
+                execute_prompt = f"""{self._build_philosophy_context()}
+
+Task: Execute the next part of the plan using specialized agents where possible.
+
+Execution Guidelines:
+- Use PARALLEL EXECUTION by default (multiple agents, multiple tasks)
+- Apply @.claude/context/PHILOSOPHY.md principles throughout
+- Delegate to specialized agents from .claude/agents/* when appropriate
+- Implement COMPLETE features (no stubs, no TODOs, no placeholders)
+- Make ALL implementation decisions autonomously
+- Log your decisions and reasoning
+
+Current Plan:
+{plan}
+
+Original Objective:
+{objective}
+
+Current Turn: {turn}/{self.max_turns}"""
+
+                code, execution_output = self.run_sdk(execute_prompt)
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
                 # Evaluate
-                code, eval_result = self.run_sdk(
-                    f"Evaluate if objective achieved:\n{objective}\n\nCurrent turn: {turn}/{self.max_turns}"
-                )
+                eval_prompt = f"""{self._build_philosophy_context()}
+
+Task: Evaluate if the objective is achieved based on:
+1. All explicit user requirements met
+2. Philosophy principles applied (simplicity, modularity, zero-BS)
+3. Success criteria from Turn 1 satisfied
+4. No placeholders or incomplete implementations remain
+
+Respond with one of:
+- "EVALUATION: COMPLETE" - All criteria met, objective achieved
+- "EVALUATION: IN PROGRESS" - Making progress, continue execution
+- "EVALUATION: NEEDS ADJUSTMENT" - Issues identified, plan adjustment needed
+
+Include brief reasoning for your evaluation.
+
+Objective:
+{objective}
+
+Current Turn: {turn}/{self.max_turns}"""
+
+                code, eval_result = self.run_sdk(eval_prompt)
 
                 # Check completion - look for strong completion signals
                 eval_lower = eval_result.lower()
