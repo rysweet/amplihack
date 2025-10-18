@@ -1,0 +1,30 @@
+[package]
+name = "amplihack-logparse"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core parsing
+regex = "1.10"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Performance
+rayon = "1.10"
+memmap2 = "0.9"
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4"
+
+[[bench]]
+name = "parser_bench"
+harness = false
