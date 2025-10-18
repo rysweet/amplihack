@@ -34,7 +34,7 @@ def test_hook_with_input(prompt: str, session_id: str = "test-session") -> dict:
     input_json = json.dumps(test_input)
 
     # Run the hook
-    hook_path = Path(__file__).parent / ".claude" / "hooks" / "user_prompt_submit.py"
+    hook_path = Path(__file__).parent.parent / ".claude" / "hooks" / "user_prompt_submit.py"
 
     try:
         result = subprocess.run(

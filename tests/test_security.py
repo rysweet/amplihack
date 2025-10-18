@@ -20,7 +20,7 @@ def test_hook_with_input(prompt: str) -> dict:
     }
 
     input_json = json.dumps(test_input)
-    hook_path = Path(__file__).parent / ".claude" / "hooks" / "user_prompt_submit.py"
+    hook_path = Path(__file__).parent.parent / ".claude" / "hooks" / "user_prompt_submit.py"
 
     try:
         result = subprocess.run(

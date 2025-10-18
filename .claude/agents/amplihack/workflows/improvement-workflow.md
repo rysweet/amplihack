@@ -1,6 +1,6 @@
 ---
 name: improvement-workflow
-description: Enforces progressive validation throughout improvement process. Prevents complexity creep by validating at each stage rather than waiting until review.
+description: Used for Improving only the amplihack project, not other projects. Enforces progressive validation throughout improvement process. Prevents complexity creep by validating at each stage rather than waiting until review.
 model: inherit
 ---
 
