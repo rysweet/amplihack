@@ -1,18 +1,11 @@
 """Unit tests for Knowledge Builder modules."""
 
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-
-# Add knowledge-builder to path
-KB_PATH = Path(".claude/agents/knowledge-builder")
-sys.path.insert(0, str(KB_PATH))
-
-from kb_types import KnowledgeGraph, KnowledgeTriplet, Question
-from modules.artifact_generator import ArtifactGenerator
-from modules.knowledge_acquirer import KnowledgeAcquirer
-from modules.question_generator import QuestionGenerator
+from amplihack.knowledge_builder.kb_types import KnowledgeGraph, KnowledgeTriplet, Question
+from amplihack.knowledge_builder.modules.artifact_generator import ArtifactGenerator
+from amplihack.knowledge_builder.modules.knowledge_acquirer import KnowledgeAcquirer
+from amplihack.knowledge_builder.modules.question_generator import QuestionGenerator
 
 
 class TestQuestionGenerator:

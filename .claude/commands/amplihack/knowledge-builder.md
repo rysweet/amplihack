@@ -42,13 +42,8 @@ Total: ~270 questions with web-researched answers
 
 ```python
 import sys
-from pathlib import Path
 
-# Add knowledge-builder to path
-kb_path = Path(".claude/agents/knowledge-builder")
-sys.path.insert(0, str(kb_path))
-
-from orchestrator import KnowledgeBuilder
+from amplihack.knowledge_builder import KnowledgeBuilder
 
 # Get topic from user prompt (everything after the command)
 topic = """{{PROMPT}}"""

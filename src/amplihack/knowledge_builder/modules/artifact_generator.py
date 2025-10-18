@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 from urllib.parse import urlparse
 
-from ..kb_types import KnowledgeGraph, KnowledgeTriplet, Question
+from amplihack.knowledge_builder.kb_types import KnowledgeGraph, KnowledgeTriplet, Question
 
 
 class ArtifactGenerator:

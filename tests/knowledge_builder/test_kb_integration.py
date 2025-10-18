@@ -1,16 +1,11 @@
 """Integration tests for Knowledge Builder orchestrator."""
 
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Add knowledge-builder to path
-KB_PATH = Path(".claude/agents/knowledge-builder")
-sys.path.insert(0, str(KB_PATH))
-
-from orchestrator import KnowledgeBuilder
+from amplihack.knowledge_builder import KnowledgeBuilder
 
 
 class TestKnowledgeBuilderIntegration:

@@ -3,7 +3,7 @@
 import subprocess
 from typing import List
 
-from ..kb_types import Question
+from amplihack.knowledge_builder.kb_types import Question
 
 
 class QuestionGenerator:

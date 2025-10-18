@@ -3,10 +3,10 @@
 import sys
 from pathlib import Path
 
-from .kb_types import KnowledgeGraph
-from .modules.artifact_generator import ArtifactGenerator
-from .modules.knowledge_acquirer import KnowledgeAcquirer
-from .modules.question_generator import QuestionGenerator
+from amplihack.knowledge_builder.kb_types import KnowledgeGraph
+from amplihack.knowledge_builder.modules.artifact_generator import ArtifactGenerator
+from amplihack.knowledge_builder.modules.knowledge_acquirer import KnowledgeAcquirer
+from amplihack.knowledge_builder.modules.question_generator import QuestionGenerator
 
 
 class KnowledgeBuilder:
