@@ -17,41 +17,26 @@ The hook system uses a **unified HookProcessor** base class that provides common
   - Error handling and graceful fallback
   - Session data management
 
-### Active Hooks
+### Active Hooks (Configured in .claude/settings.json)
 
 - **`session_start.py`** - Runs when a Claude Code session starts
   - Adds project context to the conversation
+  - Reads and applies user preferences from USER_PREFERENCES.md
   - Logs session start metrics
 
 - **`stop.py`** - Runs when a session ends
-  - Analyzes conversation for learnings
-  - Saves session statistics
-  - Creates session analysis files
+  - Checks for lock flag (`.claude/tools/amplihack/.lock_active`)
+  - Blocks stop if continuous work mode is enabled (lock active)
+  - Logs stop attempts and lock status
 
 - **`post_tool_use.py`** - Runs after each tool use
   - Tracks tool usage metrics
   - Validates tool execution results
   - Categorizes tool types for analytics
 
-- **`stop_azure_continuation.py`** - Stop hook with DecisionControl for Azure OpenAI
-  - Prevents premature stopping when using Azure OpenAI models through the proxy
-  - Auto-activates when Azure OpenAI proxy is detected (via environment variables)
-  - Decision Logic:
-    - Continues if uncompleted TODO items exist
-    - Continues if continuation phrases are detected
-    - Continues if multi-part user request appears unfulfilled
-    - Otherwise allows normal stop
-
-### Testing
-
-- **`test_hook_processor.py`** - Unit tests for the HookProcessor base class
-- **`test_integration.py`** - Integration tests for the complete hook system
-- **`test_stop_azure_continuation.py`** - Tests the Azure continuation hook
-
-### Backup Files
-
-- **`*.py.backup`** - Original implementations before refactoring (kept for reference)
-- **`*_refactored.py`** - Initial refactored versions (can be removed)
+- **`pre_compact.py`** - Runs before context compaction
+  - Manages context and prepares for compaction
+  - Logs pre-compact events
 
 ## Architecture
 
@@ -169,10 +154,7 @@ echo '{"prompt": "test"}' | python session_start.py
 
 ### stop
 
-- `message_count` - Total messages in conversation
-- `tool_uses` - Number of tool invocations
-- `errors` - Number of errors detected
-- `potential_learnings` - Number of potential discoveries
+- `lock_blocks` - Count of stop attempts blocked by lock flag
 
 ### post_tool_use
 
@@ -192,16 +174,57 @@ All hooks implement graceful error handling:
 
 This ensures that hook failures never break the Claude Code chain.
 
-## Environment Variables
+## Hook Configuration
 
-### Azure OpenAI Integration
+Hooks are configured in `.claude/settings.json`:
 
-The Azure continuation hook (`stop_azure_continuation.py`) checks for these environment variables:
-
-- `ANTHROPIC_BASE_URL` - Set to localhost when proxy is active
-- `CLAUDE_CODE_PROXY_LAUNCHER` - Indicates proxy launcher usage
-- `AZURE_OPENAI_KEY` - Azure OpenAI credentials
-- `OPENAI_BASE_URL` - Azure OpenAI endpoint
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
 ## Benefits of Unified Processor
 
@@ -213,13 +236,13 @@ The Azure continuation hook (`stop_azure_continuation.py`) checks for these envi
 6. **Better Metrics** - Consistent metric collection
 7. **Easier Extension** - Simple to add new hooks
 
-## Migration from Old Hooks
+## Continuous Work Mode (Lock System)
 
-The refactored hooks maintain 100% backward compatibility:
+The stop hook supports continuous work mode via a lock flag:
 
-- Same input/output format
-- Same file locations
-- Same functionality
-- Additional features (metrics, better logging)
+- **Lock file**: `.claude/tools/amplihack/.lock_active`
+- **Enable**: Use `/amplihack:lock` slash command
+- **Disable**: Use `/amplihack:unlock` slash command
+- **Behavior**: When locked, Claude continues working through all TODOs without stopping
 
-Original hooks are backed up as `*.backup` files and can be restored if needed.
+This enables autonomous operation for complex multi-step tasks.
