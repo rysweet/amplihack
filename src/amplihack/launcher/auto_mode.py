@@ -199,8 +199,8 @@ Document your decisions and reasoning in comments/logs."""
 
             # Configure SDK options
             options = ClaudeAgentOptions(
-                working_directory=str(self.working_dir),
-                dangerously_skip_permissions=True,
+                cwd=str(self.working_dir),
+                permission_mode="allow",
             )
 
             # Stream response
