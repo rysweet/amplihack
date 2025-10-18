@@ -145,6 +145,8 @@ class HookProcessor(ABC):
             output: Dictionary to write as JSON
         """
         json.dump(output, sys.stdout)
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
     def save_metric(self, metric_name: str, value: Any, metadata: Optional[Dict] = None):
         """Save a metric to the metrics directory.
