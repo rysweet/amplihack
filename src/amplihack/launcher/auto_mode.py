@@ -204,7 +204,7 @@ Document your decisions and reasoning in comments/logs."""
             )
 
             # Stream response
-            async for message in query(prompt, options=options):
+            async for message in query(prompt=prompt, options=options):
                 # message is a dict with 'type' and 'content'
                 if message.get("type") == "text":
                     content = message.get("content", "")
