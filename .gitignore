@@ -99,6 +99,7 @@ ai_working/tmp
 
 # Claude runtime data
 .claude/runtime/
+!.claude/runtime/*/.gitkeep
 .claude/.claude/
 **/runtime/logs/
 **/runtime/metrics/
