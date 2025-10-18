@@ -5,13 +5,11 @@ repository.
 
 ## Project Overview
 
-**AMPLIHACK - Agentic Coding Framework**
+**Microsoft Hackathon 2025 - Agentic Coding Framework**
 
-These instructions are part of an advanced agentic coding framework that
-leverages AI agents to accelerate software development through intelligent
-automation, code generation, and collaborative problem-solving. These
-instructions might be embedded inside a different project which is NOT the
-amplihack framework itself.
+We are building an advanced agentic coding framework that leverages AI agents to
+accelerate software development through intelligent automation, code generation,
+and collaborative problem-solving.
 
 ## Important Files to Import
 
@@ -22,39 +20,24 @@ When starting a session, import these files for context:
 @.claude/context/PROJECT.md
 @.claude/context/PATTERNS.md
 @.claude/context/TRUST.md
+@.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
 @.claude/context/DISCOVERIES.md
 ```
-
-## USER PREFERENCES - MANDATORY across all sessions
-
-User preferences in @.claude/context/USER_PREFERENCES.md are MANDATORY and MUST
-be strictly followed by all agents and operations. These are NOT advisory
-suggestions - they are REQUIRED behaviors that CANNOT be optimized away or
-ignored. USER PREFERENCES must apply to every response.
 
 ## Working Philosophy
 
 ### Critical Operating Principles
 
 - **Always think through a plan**: For any non-trivial task, break it down and
-  use TodoWrite tool to manage a todo list. When encountering a TODO item, you
-  may then further break that item down into multiple sub-tasks as needed, and
-  should do that recursively until each task is atomic, clear, and fully
-  actionable.
-- **The workflow is authoritative**: The workflow in
+  use TodoWrite tool to manage a todo list
+- **The workflow is authoritative**: The 13-step workflow in
   `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
-  workflow, and CI/CD process (users can customize this file) - all changes
-  shall follow this workflow.
+  workflow, and CI/CD process (users can customize this file)
 - **Use UltraThink by default**: For non-trivial tasks, start with `/ultrathink`
-  which reads the workflow and orchestrates subagents to execute it
-- **Maximize subagent usage**: Every workflow step should leverage specialized
-  subagents - delegate aggressively to subagents defined by .md files in
-  directories under .claude/agents/\* - these subagents help manage context and
-  focus on specific tasks
-- **Parallel execution by default**: whenever possible, execute as many tasks in
-  parallel as you can by passing multiple tasks to subagents in a single call to
-  the task tool.
+  which reads the workflow and orchestrates agents to execute it
+- **Maximize agent usage**: Every workflow step should leverage specialized
+  agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Ask for clarity**: If requirements are unclear, ask questions before
   proceeding
 - **Document learnings**: Update .claude/context/DISCOVERIES.md with new
@@ -62,24 +45,16 @@ ignored. USER PREFERENCES must apply to every response.
 - **Session Logs**: All interactions MUST be logged in
   .claude/runtime/logs/<session_id> where <session_id> is a unique identifier
   for the session based on the timestamp.
-
-## Some things you must NEVER do
-
-- NEVER say "You're absolutely right" or similar affirmations
-- NEVER use "--no-verify" or disable linters, type checkers, or formatters
-- NEVER ignore user requirements or preferences
-- NEVER leave TODOs or unimplemented code
-
-### Decision Recording
-
-**IMPORTANT**: Record significant decisions in session logs:
-
 - **Decision records**: All Agents MUST log their decisions and reasoning in
   .claude/runtime/logs/<session_id>/DECISIONS.md
 - **When to record decisions**: Document significant architectural choices,
   trade-offs between approaches, or decisions that affect system design
-- **Simple format for decisions**: What was decided | Why | Alternatives
-  considered
+- **Simple format**: What was decided | Why | Alternatives considered
+
+### Decision Recording
+
+**IMPORTANT**: Record significant decisions in session logs as: What was decided
+| Why | Alternatives considered
 
 ### CRITICAL: User Requirement Priority
 
@@ -98,9 +73,9 @@ See `@.claude/context/USER_REQUIREMENT_PRIORITY.md` for complete guidelines.
 
 ### Agent Delegation Strategy
 
-**IMPORTANT GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS
-delegate to specialized agents when possible. **DEFAULT TO PARALLEL EXECUTION**
-unlessdependencies require sequential order.
+**GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to
+specialized agents when possible. **DEFAULT TO PARALLEL EXECUTION** unless
+dependencies require sequential order.
 
 #### When to Use Agents (ALWAYS IF POSSIBLE)
 
@@ -120,28 +95,74 @@ unlessdependencies require sequential order.
 - **Pattern Recognition**: Use `patterns.md` to identify reusable solutions
 - **Analysis**: Use `analyzer.md` for deep code understanding
 - **Ambiguity**: Use `ambiguity.md` when requirements are unclear
+- **Fix Workflows**: Use `fix-agent.md` for rapid resolution of common error
+  patterns (imports, CI, tests, config, quality, logic)
+- **Socratic Questioning**: Use `/socratic` command or pattern for challenging
+  vague requirements, exploring design trade-offs, and forcing precision in
+  architectural claims (see `.claude/context/DISCOVERIES.md` and
+  `.claude/runtime/logs/20251018_socratic_questioning/`)
+
+### Development Workflow Agents
+
+**Two-Stage Diagnostic Workflow:**
+
+#### Stage 1: Pre-Commit Issues (Before Push)
+
 - **Pre-Commit Workflow**: Use `pre-commit-diagnostic.md` when pre-commit hooks
-  fail locally. Handles formatting, linting, type checking, and ensures code
-  iscommittable BEFORE pushing.
+  fail locally. Handles formatting, linting, type checking, and ensures code is
+  committable BEFORE pushing.
+- **Trigger**: "Pre-commit failed", "Can't commit", "Hooks failing"
+
+#### Stage 2: CI Issues (After Push)
+
 - **CI Workflow**: Use `ci-diagnostic-workflow.md` after pushing when CI checks
   fail. Monitors CI status, diagnoses failures, fixes issues, and iterates until
-  PR is mergeable (but never auto-merges). **Trigger**: "CI failing", "Fix CI",
-  "Make PR mergeable"
+  PR is mergeable (but never auto-merges).
+- **Trigger**: "CI failing", "Fix CI", "Make PR mergeable"
+
+#### Stage 3: General Fix Workflow (Optimized for Common Patterns)
+
 - **Fix Workflow**: Use `fix-agent.md` for rapid resolution of the most common
   fix patterns identified in usage analysis. Provides QUICK (template-based),
-  DIAGNOSTIC (root cause), and COMPREHENSIVE (full workflow) modes. **Trigger**:
-  "Fix this", "Something's broken", "Error in", specific error patterns -
-  **Command**: `/fix [pattern] [scope]` for intelligent fix dispatch
+  DIAGNOSTIC (root cause), and COMPREHENSIVE (full workflow) modes.
+- **Trigger**: "Fix this", "Something's broken", "Error in", specific error
+  patterns
+- **Command**: `/fix [pattern] [scope]` for intelligent fix dispatch
+
+```
+Example - Pre-commit failure:
+"My pre-commit hooks are failing"
+→ Use pre-commit-diagnostic agent
+→ Automatically fixes all issues
+→ Ready to commit
+
+Example - CI failure after push:
+"CI is failing on my PR"
+→ Use ci-diagnostic-workflow agent
+→ Iterates until PR is mergeable
+→ Never auto-merges without permission
+
+Example - General fix request:
+"This import error is blocking me"
+→ Use /fix import or fix-agent
+→ Auto-detects and applies import-fix-template
+→ Resolves dependency and path issues quickly
+
+Example - Complex issue:
+"Tests are failing and I'm not sure why"
+→ Use /fix test diagnostic
+→ fix-agent uses DIAGNOSTIC mode
+→ Systematic debugging and root cause analysis
+```
 
 #### Creating Custom Agents
 
 For repeated specialized tasks:
 
 1. Identify pattern after 2-3 similar requests
-2. start a new PR and workflow in parallel to existing work
-3. Create agent in `.claude/agents/amplihack/specialized/`
-4. Define clear role and boundaries
-5. Add to delegation triggers above
+2. Create agent in `.claude/agents/amplihack/specialized/`
+3. Define clear role and boundaries
+4. Add to delegation triggers above
 
 Remember: Your value is in orchestration and coordination, not in doing
 everything yourself.
@@ -156,22 +177,32 @@ cleaning some data).
 
 **The workflow defines WHAT to do, UltraThink orchestrates HOW to do it:**
 
+```
 Example - Any Non-Trivial Task:
 
 User: "Add authentication to the API"
 
-1. Invoke /ultrathink with the task → UltraThink reads DEFAULT_WORKFLOW.md →
-   Follows all steps in order → Orchestrates multiple agents at each step
+1. Invoke /ultrathink with the task
+   → UltraThink reads DEFAULT_WORKFLOW.md
+   → Follows all 13 steps in order
+   → Orchestrates multiple agents at each step
 
-2. Workflow provides the authoritative process: → Step order (1-13) must be
-   followed → Git operations (branch, commit, push) → CI/CD integration points →
-   Review and merge requirements
+2. Workflow provides the authoritative process:
+   → Step order (1-13) must be followed
+   → Git operations (branch, commit, push)
+   → CI/CD integration points
+   → Review and merge requirements
 
-3. Agents execute the actual work: → prompt-writer clarifies requirements →
-   architect designs the solution → builder implements the code → reviewer
-   ensures quality
+3. Agents execute the actual work:
+   → prompt-writer clarifies requirements
+   → architect designs the solution
+   → builder implements the code
+   → reviewer ensures quality
+```
 
 The workflow file is the single source of truth - edit it to change the process.
+
+### Microsoft Amplifier Parallel Execution Engine
 
 **PARALLEL BY DEFAULT**: Always execute operations in parallel unless
 dependencies require sequential order.
@@ -256,13 +287,12 @@ architect → builder → reviewer
 - Output integration: Orchestrator synthesizes parallel results
 - Progress tracking: TodoWrite manages parallel task completion
 
-**PARALLEL-READY Agents**: `analyzer`, `security`, `builder`, `optimizer`,
-`patterns`, `reviewer`, `architect`, `api-designer`, `database`, `tester`,
-`integration`, `cleanup`, `ambiguity`, `pre-commit-diagnostic`,
-`ci-diagnostic-workflow`
+**PARALLEL-READY Agents**: `analyzer`, `security`, `optimizer`, `patterns`,
+`reviewer`, `architect`, `api-designer`, `database`, `tester`, `integration`,
+`cleanup`, `ambiguity`
 
-**SEQUENTIAL-REQUIRED Agents**: `architect` → `builder` (may spawn many builders
-in parallel)→ `reviewer`,
+**SEQUENTIAL-REQUIRED Agents**: `architect` → `builder` → `reviewer`,
+`pre-commit-diagnostic`, `ci-diagnostic-workflow`
 
 ### Systematic Decision Framework
 
@@ -351,17 +381,82 @@ Execute comprehensive system review with all relevant agents in parallel.
 
 ### Zero-BS Implementation
 
-- Always choose Quality over Speed of implementation
-- No stubs or placeholders - no TODOs in code, no fake implementations or
-  unimplemented functions
+- No stubs or placeholders - no fake implementations or unimplemented functions
 - No dead code - remove unused code
 - Every function must work or not exist
-- No swalloed exceptions
+
+## Project Structure
+
+```
+.claude/
+├── context/          # Philosophy, patterns, project info
+├── agents/           # Specialized AI agents
+├── commands/         # Slash commands (/ultrathink, /analyze, /improve)
+├── scenarios/        # Production-ready user-facing tools
+│   ├── README.md     # Scenarios pattern documentation
+│   ├── tool-name/    # Each tool gets its own directory
+│   │   ├── README.md                 # Tool overview and usage
+│   │   ├── HOW_TO_CREATE_YOUR_OWN.md # Template for similar tools
+│   │   ├── tool.py                   # Main implementation
+│   │   ├── tests/                    # Tool-specific tests
+│   │   └── examples/                 # Usage examples
+│   └── templates/    # Shared templates and utilities
+├── ai_working/       # Experimental tools under development
+├── tools/            # Hooks and utilities
+├── workflow/         # Default workflow definition
+│   └── DEFAULT_WORKFLOW.md  # Customizable 13-step workflow
+└── runtime/          # Logs, metrics, analysis
+
+Specs/               # Module specifications
+Makefile             # Easy access to scenario tools
+```
+
+## Key Commands
+
+### /ultrathink <task>
+
+Default execution mode for non-trivial tasks. UltraThink:
+
+- Reads the workflow from `.claude/workflow/DEFAULT_WORKFLOW.md`
+- Follows all steps in the exact order defined
+- Orchestrates multiple agents at each step for maximum effectiveness
+- Adapts automatically when you customize the workflow file
+
+### /analyze <path>
+
+Comprehensive code review for philosophy compliance
+
+### /improve [target]
+
+Self-improvement and learning capture
+
+### /fix [pattern] [scope]
+
+Intelligent fix workflow optimization for common error patterns. Key features:
+
+- **Auto-detection**: Automatically identifies fix pattern from error context
+- **Template-based**: Uses pre-built templates for 80% of common fixes
+- **Mode selection**: QUICK (< 5 min), DIAGNOSTIC (root cause), COMPREHENSIVE
+  (full workflow)
+- **Integration**: Seamlessly works with UltraThink and existing agents
+
+**Usage Examples:**
+
+```bash
+/fix                    # Auto-detect pattern and scope
+/fix import             # Target import/dependency issues
+/fix ci                 # Focus on CI/CD problems
+/fix test diagnostic    # Deep analysis of test failures
+/fix logic comprehensive # Full workflow for complex logic issues
+```
+
+**Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
+(25%), logic (10%)
 
 ## Scenario Tools
 
-Amplihack includes scenario tools that follow the **Progressive Maturity
-Model**:
+Amplihack includes production-ready scenario tools that follow the **Progressive
+Maturity Model**:
 
 ### Using Scenario Tools
 
@@ -466,9 +561,7 @@ See `.claude/context/PATTERNS.md` for:
 
 ## Self-Improvement
 
-The system should continuously improve, resulting in new workstreams that create
-PRs in the amplihack repository
-(https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding)
+The system should continuously improve:
 
 - Track patterns in `.claude/context/PATTERNS.md`
 - Document discoveries in `.claude/context/DISCOVERIES.md`
@@ -483,7 +576,78 @@ We measure success by:
 - Module independence
 - Agent effectiveness
 - Knowledge capture rate
-- Development velocity and autonmomy
+- Development velocity
+
+## User Preferences
+
+### MANDATORY Preference Enforcement
+
+User preferences in `.claude/context/USER_PREFERENCES.md` are MANDATORY and MUST
+be strictly followed by all agents and Claude Code operations. These are NOT
+advisory suggestions - they are REQUIRED behaviors that CANNOT be optimized away
+or ignored.
+
+**Priority Hierarchy (Highest to Lowest):**
+
+1. **EXPLICIT USER REQUIREMENTS** (HIGHEST PRIORITY - NEVER OVERRIDE)
+   - Direct user instructions in quotes ("do X")
+   - Explicit requirements like "ALL files" or "include everything"
+   - These take precedence over all other guidance
+
+2. **USER_PREFERENCES.md** (MANDATORY - MUST FOLLOW)
+   - Communication style (formal, casual, technical, or custom like pirate)
+   - Verbosity level (concise, balanced, detailed)
+   - Collaboration style (independent, interactive, guided)
+   - Update frequency (minimal, regular, frequent)
+   - Priority type (features, bugs, performance, security)
+   - Preferred languages, coding standards, workflow preferences
+   - Learned patterns from user feedback
+
+3. **PROJECT PHILOSOPHY** (Strong guidance)
+   - PHILOSOPHY.md principles
+   - PATTERNS.md approaches
+   - TRUST.md guidelines
+
+4. **DEFAULT BEHAVIORS** (LOWEST PRIORITY - Override when needed)
+   - Standard Claude Code behavior
+   - Default communication patterns
+
+### User Preference Application
+
+**Ruthlessly Simple Approach:**
+
+1. **Session Start**: USER_PREFERENCES.md is automatically imported at session
+   start with MANDATORY enforcement
+2. **Every Response**: Check and apply preferences BEFORE responding
+3. **Agent Invocation**: Pass preference context to all agents
+4. **No Complex Systems**: No hooks, validators, or injection frameworks - just
+   direct application
+
+**Example Usage:**
+
+```
+User Preference: communication_style = "pirate"
+
+Every response must use pirate language:
+- "Arr matey, I'll be implementin' that feature fer ye!"
+- "Shiver me timbers, found a bug in the code!"
+- "Ahoy! The tests be passin' now!"
+```
+
+**What We DON'T Do:**
+
+- Ignore preferences because "it seems unnecessary"
+- Override preferences for "simplification"
+- Treat preferences as optional suggestions
+- Add complex preference injection frameworks
+
+**Enforcement Mechanism:**
+
+- Command `/amplihack:customize` manages preferences via simple Read/Edit/Write
+  operations
+- No bash scripts or complex automation
+- Claude Code directly reads and applies preferences
+- Changes persist across sessions
 
 ### Managing Preferences
 
@@ -504,6 +668,7 @@ automation, just simple file operations.
 ## Getting Help
 
 - Review `.claude/context/PHILOSOPHY.md` for principles
+- Check `.claude/agents/CATALOG.md` for agent capabilities
 - Look in `.claude/context/PATTERNS.md` for solutions
 - Update `.claude/context/DISCOVERIES.md` with new learnings
 
@@ -511,3 +676,5 @@ automation, just simple file operations.
 
 Remember: You are the orchestrator working with specialized agents. Delegate
 liberally, execute in parallel, and continuously learn.
+
+<!-- Updated for PR #41 -->
