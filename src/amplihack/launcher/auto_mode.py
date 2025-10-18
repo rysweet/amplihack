@@ -1,5 +1,6 @@
 """Auto mode - agentic loop orchestrator."""
 
+import asyncio
 import json
 import os
 import pty
@@ -9,6 +10,14 @@ import threading
 import time
 from pathlib import Path
 from typing import Optional, Tuple
+
+# Try to import Claude SDK, fall back gracefully
+try:
+    from claude_agent_sdk import query, ClaudeAgentOptions  # type: ignore
+
+    CLAUDE_SDK_AVAILABLE = True
+except ImportError:
+    CLAUDE_SDK_AVAILABLE = False
 
 
 class AutoMode:
@@ -35,14 +44,30 @@ class AutoMode:
         )
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-    def log(self, msg: str):
-        """Log message."""
+    def log(self, msg: str, level: str = "INFO"):
+        """Log message with optional level."""
         print(f"[AUTO {self.sdk.upper()}] {msg}")
         with open(self.log_dir / "auto.log", "a") as f:
-            f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+            f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
 
     def run_sdk(self, prompt: str) -> Tuple[int, str]:
-        """Run SDK command with prompt, mirroring output to stdout/stderr.
+        """Run SDK command with prompt, choosing method by provider.
+
+        For Claude: Use Python SDK with streaming (if available)
+        For Copilot: Use subprocess approach
+
+        Returns:
+            (exit_code, output)
+        """
+        # Use SDK for Claude if available, subprocess otherwise
+        if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
+            # Run async function in sync context
+            return asyncio.run(self._run_turn_with_sdk(prompt))
+        # Fallback to subprocess for Copilot or if SDK unavailable
+        return self._run_sdk_subprocess(prompt)
+
+    def _run_sdk_subprocess(self, prompt: str) -> Tuple[int, str]:
+        """Run SDK command via subprocess (legacy/copilot mode).
 
         Returns:
             (exit_code, output)
@@ -155,9 +180,58 @@ Decision Authority:
 
 Document your decisions and reasoning in comments/logs."""
 
+    async def _run_turn_with_sdk(self, prompt: str) -> Tuple[int, str]:
+        """Execute one turn using Claude Python SDK with streaming.
+
+        Args:
+            prompt: The prompt for this turn
+
+        Returns:
+            (exit_code, output_text)
+        """
+        if not CLAUDE_SDK_AVAILABLE:
+            self.log("ERROR: Claude SDK not available, falling back to subprocess")
+            return self._run_sdk_subprocess(prompt)
+
+        try:
+            self.log("Using Claude SDK (streaming mode)")
+            output_lines = []
+
+            # Configure SDK options
+            options = ClaudeAgentOptions(
+                working_directory=str(self.working_dir),
+                dangerously_skip_permissions=True,
+            )
+
+            # Stream response
+            async for message in query(prompt, options=options):
+                # message is a dict with 'type' and 'content'
+                if message.get("type") == "text":
+                    content = message.get("content", "")
+                    # Print to console in real-time
+                    print(content, end="", flush=True)
+                    output_lines.append(content)
+                elif message.get("type") == "error":
+                    error_msg = message.get("content", "Unknown error")
+                    self.log(f"SDK error: {error_msg}", level="ERROR")
+                    return (1, "\n".join(output_lines))
+
+            # Success
+            full_output = "".join(output_lines)
+            return (0, full_output)
+
+        except Exception as e:
+            self.log(f"SDK execution failed: {e}", level="ERROR")
+            import traceback
+
+            self.log(f"Traceback: {traceback.format_exc()}", level="ERROR")
+            return (1, f"SDK Error: {e!s}")
+
     def run_hook(self, hook: str):
-        """Run hook for copilot (Claude does it automatically)."""
+        """Run hook for copilot (Claude SDK handles hooks automatically)."""
         if self.sdk != "copilot":
+            # Claude SDK runs hooks automatically
+            self.log("Skipping manual hook execution for Claude SDK (hooks run automatically)")
             return
 
         hook_path = self.working_dir / ".claude" / "tools" / "amplihack" / "hooks" / f"{hook}.py"
@@ -170,14 +244,14 @@ Document your decisions and reasoning in comments/logs."""
 
         try:
             # Prepare hook input matching Claude Code's format
-            session_id = self.log_dir.name  # Use our auto mode session ID
+            session_id = self.log_dir.name
             hook_input = {
                 "prompt": self.prompt if hook == "session_start" else "",
                 "workingDirectory": str(self.working_dir),
                 "sessionId": session_id,
             }
 
-            # Provide JSON input via stdin (hooks expect JSON from Claude Code)
+            # Provide JSON input via stdin
             result = subprocess.run(
                 [sys.executable, str(hook_path)],
                 check=False,
@@ -201,30 +275,8 @@ Document your decisions and reasoning in comments/logs."""
         except subprocess.TimeoutExpired:
             elapsed = time.time() - start_time
             self.log(f"✗ Hook {hook} timed out after {elapsed:.1f}s")
-
-        try:
-            result = subprocess.run(
-                [sys.executable, str(hook_path)],
-                check=False,
-                timeout=120,  # Increased from 30s to 120s for complex hooks
-                cwd=self.working_dir,
-                capture_output=True,
-                text=True,
-            )
-            elapsed = time.time() - start_time
-
-            if result.returncode == 0:
-                self.log(f"✓ Hook {hook} completed in {elapsed:.1f}s")
-            else:
-                self.log(
-                    f"⚠ Hook {hook} returned exit code {result.returncode} after {elapsed:.1f}s"
-                )
-                if result.stderr:
-                    self.log(f"Hook stderr: {result.stderr[:200]}")
-
-        except subprocess.TimeoutExpired:
-            elapsed = time.time() - start_time
-            self.log(f"✗ Hook {hook} timed out after {elapsed:.1f}s")
+        except Exception as e:
+            self.log(f"✗ Hook {hook} failed: {e}")
 
     def run(self) -> int:
         """Execute agentic loop."""
