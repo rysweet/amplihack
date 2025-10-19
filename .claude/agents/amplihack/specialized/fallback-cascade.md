@@ -7,7 +7,6 @@ Implements graceful degradation pattern for fault-tolerant operations. Attempts 
 ## When to Use
 
 Use for **operations with multiple viable approaches**:
-
 - External API calls (primary service, backup service, cached fallback)
 - Code generation (GPT-4, Claude, cached templates)
 - Data retrieval (database, cache, defaults)
@@ -24,7 +23,6 @@ Use for **operations with multiple viable approaches**:
 ### Cascade Pattern
 
 **Standard 3-Level Cascade:**
-
 ```
 Task: Fetch user profile data
 
@@ -51,7 +49,6 @@ Result: 99.9%+ reliability
 ```
 
 **Why It Works:**
-
 - Independent failure modes at each level
 - Degraded but functional service maintained
 - No single point of failure
@@ -59,7 +56,6 @@ Result: 99.9%+ reliability
 ### Fallback Strategy Types
 
 **Type 1: Service Fallback**
-
 ```
 Primary: Third-party API (feature-rich)
 Secondary: Backup API (limited features)
@@ -72,7 +68,6 @@ L3: Historical average → Rough estimate
 ```
 
 **Type 2: Quality Fallback**
-
 ```
 Primary: Expensive high-quality operation
 Secondary: Faster medium-quality operation
@@ -85,7 +80,6 @@ L3: Regex patterns → Basic insights
 ```
 
 **Type 3: Freshness Fallback**
-
 ```
 Primary: Live data (real-time)
 Secondary: Cached data (stale but recent)
@@ -106,14 +100,13 @@ L3: Daily rate → Approximate
 
 Task: [Your operation]
 Cascade Levels:
-Primary: [Best approach with failure conditions]
-Secondary: [Fallback with degraded capability]
-Tertiary: [Guaranteed success approach]
+  Primary: [Best approach with failure conditions]
+  Secondary: [Fallback with degraded capability]
+  Tertiary: [Guaranteed success approach]
 Timeout: [Time budget per level]
 ```
 
 Agent automatically:
-
 1. Attempts primary approach with timeout
 2. On failure, tries secondary approach
 3. On failure, executes tertiary approach
@@ -215,21 +208,18 @@ Time: 45s
 
 ```markdown
 Aggressive (Fast fallback):
-
 - Primary: 5s
 - Secondary: 2s
 - Tertiary: 1s
 - Best for: User-facing operations
 
 Balanced (Standard):
-
 - Primary: 30s
 - Secondary: 10s
 - Tertiary: 5s
 - Best for: Background tasks
 
 Patient (Thorough):
-
 - Primary: 120s
 - Secondary: 30s
 - Tertiary: 10s
@@ -257,7 +247,6 @@ N-Level: Custom cascade for complex scenarios
 ## Success Metrics
 
 From research (PR #946):
-
 - **Reliability Improvement**: 95%+ vs 70-80% single approach
 - **Graceful Degradation**: 98% of failures handled successfully
 - **User Impact**: 90%+ users unaware of fallbacks occurring
@@ -265,14 +254,12 @@ From research (PR #946):
 ## Limitations
 
 **Not Appropriate For:**
-
 - Operations with single correct approach only
 - Atomic transactions (all-or-nothing)
 - Operations where degraded service is unacceptable
 - Simple operations unlikely to fail
 
 **Cost Too High:**
-
 - Already reliable operations (99%+ success)
 - Fallbacks more expensive than retry
 - No meaningful degraded alternative exists
@@ -292,20 +279,19 @@ From research (PR #946):
 ✅ **Selective Application**: Only for operations with fallback options
 ✅ **Measurable Impact**: Quantified reliability improvement
 
-## Usage
+## Comparison to Code Implementation
 
-This pattern is implemented as a workflow. Use the `/amplihack:cascade` command:
+**This Markdown Approach:**
+- 0 LOC - agent instructions define cascade
+- Uses existing retry and conditional logic
+- Implements pattern through instructions
+- No maintenance burden
 
-```bash
-/amplihack:cascade "Generate API documentation from codebase"
-```
-
-The workflow file `.claude/workflow/CASCADE_WORKFLOW.md` can be customized to adjust:
-
-- Timeout strategy (aggressive, balanced, patient)
-- Fallback types (service, quality, freshness)
-- Degradation notification level
-- Number of cascade levels
+**vs Hypothetical Code:**
+- Would need cascade framework
+- Timeout management logic
+- Degradation tracking
+- ~200+ LOC maintenance
 
 ## Example Output
 
@@ -352,7 +338,6 @@ Prices Retrieved:
 ## Cascade Design Guidelines
 
 **Good Cascade Design:**
-
 1. Independent failure modes at each level
 2. Decreasing latency at lower levels
 3. Increasing reliability at lower levels
@@ -360,7 +345,6 @@ Prices Retrieved:
 5. Always-succeeds final fallback
 
 **Poor Cascade Design:**
-
 ```
 ❌ Primary: Database query
 ❌ Secondary: Same database with retry
@@ -372,7 +356,6 @@ Prices Retrieved:
 ```
 
 **Designing Fallbacks:**
-
 ```
 Ask for each level:
 1. What can fail? (failure modes)
