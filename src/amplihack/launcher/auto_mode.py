@@ -200,7 +200,7 @@ Document your decisions and reasoning in comments/logs."""
             # Configure SDK options
             options = ClaudeAgentOptions(
                 cwd=str(self.working_dir),
-                permission_mode="allow",
+                dangerously_allow_permissions=True,
             )
 
             # Stream response
