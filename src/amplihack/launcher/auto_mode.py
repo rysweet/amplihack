@@ -21,7 +21,7 @@ except ImportError:
 
 
 class AutoMode:
-    """Simple agentic loop orchestrator for Claude or Copilot."""
+    """Simple agentic loop orchestrator for Claude, Copilot, or Codex."""
 
     def __init__(
         self, sdk: str, prompt: str, max_turns: int = 10, working_dir: Optional[Path] = None
@@ -29,7 +29,7 @@ class AutoMode:
         """Initialize auto mode.
 
         Args:
-            sdk: "claude" or "copilot"
+            sdk: "claude", "copilot", or "codex"
             prompt: User's initial prompt
             max_turns: Max iterations (default 10)
             working_dir: Working directory (defaults to current dir)
@@ -74,10 +74,12 @@ class AutoMode:
         """
         if self.sdk == "copilot":
             cmd = ["copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
+        elif self.sdk == "codex":
+            cmd = ["codex", "exec", prompt]
         else:
             cmd = ["claude", "--dangerously-skip-permissions", "-p", prompt]
 
-        self.log(f'Running: {cmd[0]} -p "..."')
+        self.log(f"Running: {cmd[0]} ...")
 
         # Create a pseudo-terminal for stdin
         # This allows any subprocess (including children) to read from it
@@ -228,8 +230,8 @@ Document your decisions and reasoning in comments/logs."""
             return (1, f"SDK Error: {e!s}")
 
     def run_hook(self, hook: str):
-        """Run hook for copilot (Claude SDK handles hooks automatically)."""
-        if self.sdk != "copilot":
+        """Run hook for copilot and codex (Claude SDK handles hooks automatically)."""
+        if self.sdk not in ["copilot", "codex"]:
             # Claude SDK runs hooks automatically
             self.log("Skipping manual hook execution for Claude SDK (hooks run automatically)")
             return

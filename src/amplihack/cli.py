@@ -104,10 +104,10 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
 def handle_auto_mode(
     sdk: str, args: argparse.Namespace, cmd_args: Optional[List[str]]
 ) -> Optional[int]:
-    """Handle auto mode for claude or copilot commands.
+    """Handle auto mode for claude, copilot, or codex commands.
 
     Args:
-        sdk: "claude" or "copilot"
+        sdk: "claude", "copilot", or "codex"
         args: Parsed arguments
         cmd_args: Command arguments (for extracting prompt)
 
@@ -192,6 +192,7 @@ Auto Mode Examples:
   amplihack launch --auto -- -p "implement user authentication"
   amplihack claude --auto --max-turns 20 -- -p "refactor the API module"
   amplihack copilot --auto -- -p "add logging to all services"
+  amplihack codex --auto -- -p "optimize database queries"
 
 For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -267,6 +268,20 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
     )
     copilot_parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=10,
+        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
+
+    # Codex command
+    codex_parser = subparsers.add_parser("codex", help="Launch OpenAI Codex CLI")
+    codex_parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+    )
+    codex_parser.add_argument(
         "--max-turns",
         type=int,
         default=10,
@@ -485,6 +500,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Normal copilot launch
         has_prompt = claude_args and "-p" in claude_args
         return launch_copilot(claude_args, interactive=not has_prompt)
+
+    elif args.command == "codex":
+        from .launcher.codex import launch_codex
+
+        # Handle auto mode
+        exit_code = handle_auto_mode("codex", args, claude_args)
+        if exit_code is not None:
+            return exit_code
+
+        # Normal codex launch
+        has_prompt = claude_args and "-p" in claude_args
+        return launch_codex(claude_args, interactive=not has_prompt)
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
