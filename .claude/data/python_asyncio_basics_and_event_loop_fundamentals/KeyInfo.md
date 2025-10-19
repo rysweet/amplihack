@@ -7,6 +7,7 @@ Generated: 2025-10-18 14:34:34
 This knowledge base explores **Python asyncio basics and event loop fundamentals** through 3 questions across 4 depth levels using the Socratic method.
 
 **Key Statistics:**
+
 - Total Questions: 3
 - Initial Questions: 2
 - Depth 1 Questions: 1
@@ -33,4 +34,3 @@ This knowledge base uses the Socratic method to progressively deepen understandi
 - **Depth 1**: Challenging assumptions and exploring implications
 - **Depth 2**: Testing logical consistency and edge cases
 - **Depth 3**: Deep philosophical and practical considerations
-

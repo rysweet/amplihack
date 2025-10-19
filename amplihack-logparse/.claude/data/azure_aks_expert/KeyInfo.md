@@ -7,6 +7,7 @@ Generated: 2025-10-18
 This focused knowledge base covers essential AKS concepts for deploying and managing production workloads on Azure Kubernetes Service. It demonstrates how to leverage Azure's managed Kubernetes offering for scalable, secure, and cost-effective application deployments.
 
 **Key Statistics:**
+
 - Core Concepts: 9 major topics
 - Practical Examples: 30+ code snippets and commands
 - Application Focus: Production workload deployment on AKS
@@ -15,54 +16,63 @@ This focused knowledge base covers essential AKS concepts for deploying and mana
 ## Core Concepts Covered
 
 ### 1. AKS Architecture and Control Plane
+
 - Managed Kubernetes control plane (free)
 - High availability with Availability Zones
 - Automated upgrades and patching
 - SLA-backed uptime (99.95%)
 
 ### 2. Node Pools and Scaling
+
 - Multiple node pools for different workload types
 - Cluster Autoscaler for automatic node scaling
 - Horizontal Pod Autoscaler for pod scaling
 - Spot instances for cost-optimized workloads
 
 ### 3. Networking Models
+
 - Azure CNI vs kubenet comparison
 - Service types (ClusterIP, LoadBalancer, NodePort)
 - Ingress controllers (NGINX, Application Gateway)
 - Network policies for pod isolation
 
 ### 4. Identity and Access Management
+
 - Azure AD Workload Identity for pod-to-Azure access
 - Kubernetes RBAC integrated with Azure AD
 - Managed identities for secure authentication
 - Namespace-level access control
 
 ### 5. Storage and Persistence
+
 - Azure Disk for single-pod volumes (ReadWriteOnce)
 - Azure Files for shared storage (ReadWriteMany)
 - Storage classes and dynamic provisioning
 - StatefulSets for stateful applications
 
 ### 6. Monitoring and Logging
+
 - Azure Monitor Container Insights
 - Kusto Query Language (KQL) for log analysis
 - Metrics and alerts for proactive monitoring
 - Live container logs and diagnostics
 
 ### 7. Security Best Practices
+
 - Private clusters for API server isolation
 - Azure Key Vault CSI driver for secrets
 - Network policies for zero-trust networking
 - Azure Policy and Defender for Containers
 
 ### 8. CI/CD Integration
+
 - GitHub Actions workflows for AKS
 - Azure Container Registry integration
 - Blue-green deployment strategies
 - Automated rollouts and rollbacks
 
 ### 9. Cost Optimization
+
 - Spot instance node pools
 - Resource right-sizing with requests/limits
 - Cluster start/stop for non-production
@@ -71,6 +81,7 @@ This focused knowledge base covers essential AKS concepts for deploying and mana
 ## Relevance to Production Deployments
 
 This knowledge directly applies to:
+
 - Deploying microservices architectures on AKS
 - Implementing secure multi-tenant Kubernetes clusters
 - Automating application delivery pipelines
@@ -122,12 +133,14 @@ kubectl rollout undo deployment/<name>
 ## Common Production Patterns
 
 ### High Availability Setup
+
 - 3+ nodes across multiple Availability Zones
 - Cluster autoscaler enabled (min 3, max 10+)
 - Pod disruption budgets for critical services
 - Multiple replicas with anti-affinity rules
 
 ### Security Posture
+
 - Private cluster with private endpoint
 - Azure AD integration with Kubernetes RBAC
 - Network policies denying traffic by default
@@ -135,6 +148,7 @@ kubectl rollout undo deployment/<name>
 - Azure Policy for governance
 
 ### Cost-Optimized Architecture
+
 - Mix of regular and spot instance node pools
 - Resource requests/limits on all containers
 - Cluster autoscaler to scale down idle nodes
@@ -142,6 +156,7 @@ kubectl rollout undo deployment/<name>
 - Cost allocation tags on namespaces
 
 ### Observability Stack
+
 - Container Insights for metrics and logs
 - Azure Monitor alerts for critical thresholds
 - Application Insights for application metrics
@@ -151,6 +166,7 @@ kubectl rollout undo deployment/<name>
 ## Integration Points
 
 This knowledge integrates with:
+
 - **Azure Container Registry**: Store and scan container images
 - **Azure Key Vault**: Secure secrets management
 - **Azure Monitor**: Centralized logging and monitoring
@@ -163,6 +179,7 @@ This knowledge integrates with:
 ## Success Metrics
 
 Production-ready AKS deployment achieves:
+
 - Automated scaling (cluster and pod level)
 - Zero-downtime deployments
 - Sub-minute deployment times

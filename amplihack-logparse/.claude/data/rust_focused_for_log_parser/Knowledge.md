@@ -5,6 +5,7 @@ Generated: 2025-10-18 (Manual focused version for amplihack log parser)
 ## Overview
 
 This focused knowledge graph contains key Rust concepts needed for implementing a high-performance log parser:
+
 - Ownership and borrowing
 - Lifetimes
 - Error handling
@@ -20,6 +21,7 @@ This focused knowledge graph contains key Rust concepts needed for implementing 
 A: Ownership is Rust's core memory safety feature. Each value has a single owner variable. When the owner goes out of scope, the value is dropped (freed). This prevents memory leaks and double-frees at compile time.
 
 Key rules:
+
 - Each value has exactly one owner
 - When owner goes out of scope, value is dropped
 - Ownership can be moved or borrowed
@@ -27,8 +29,9 @@ Key rules:
 **Q: How does ownership prevent memory safety issues?**
 
 A: By enforcing single ownership at compile time, Rust prevents:
+
 - Use-after-free (can't use value after owner drops it)
-- Double-free (only owner can drop, and only once)  
+- Double-free (only owner can drop, and only once)
 - Memory leaks (values are always dropped when owner goes out of scope)
 - Data races (mutable access requires exclusive ownership)
 
@@ -37,10 +40,12 @@ A: By enforcing single ownership at compile time, Rust prevents:
 **Q: What is borrowing in Rust?**
 
 A: Borrowing allows temporary access to a value without taking ownership. There are two types:
+
 - Immutable borrow (`&T`): Read-only access, multiple allowed simultaneously
 - Mutable borrow (`&mut T`): Read-write access, only one allowed, no other borrows allowed
 
 Rules:
+
 - Either one mutable borrow OR any number of immutable borrows
 - Borrows must not outlive the data they reference
 
@@ -65,6 +70,7 @@ This says: "the returned reference lives as long as the shorter of s1 or s2"
 **Q: When do you need explicit lifetime annotations?**
 
 A: When the compiler can't infer the relationship between input and output lifetimes:
+
 - Functions returning references
 - Structs containing references
 - Impl blocks with references
@@ -85,6 +91,7 @@ enum Result<T, E> {
 ```
 
 Benefits:
+
 - Errors are explicit in function signatures
 - Compiler forces you to handle errors
 - `?` operator for convenient error propagation
@@ -111,7 +118,8 @@ It early-returns the error if Result is Err, or unwraps the Ok value.
 
 **Q: What's the difference between String and &str?**
 
-A: 
+A:
+
 - `String`: Owned, heap-allocated, mutable, growable
 - `&str`: Borrowed string slice, usually points into a String or static data
 - `&str` enables zero-copy parsing: you can create views into existing data without allocation
@@ -139,6 +147,7 @@ With lifetimes, Rust ensures these slices don't outlive the original String.
 **Q: Why are Rust iterators fast?**
 
 A: Rust iterators are zero-cost abstractions:
+
 - Compile to the same code as hand-written loops
 - Chain operations without intermediate allocations
 - Lazy evaluation: only process what's needed
@@ -164,8 +173,9 @@ trait Iterator {
 ```
 
 You build processing pipelines by chaining methods:
+
 - `filter`, `map`, `flat_map` for transformation
-- `collect`, `fold`, `for_each` for consumption  
+- `collect`, `fold`, `for_each` for consumption
 - All type-checked at compile time with no runtime overhead
 
 ### 7. Traits and Generic Programming
@@ -181,6 +191,7 @@ trait Parse {
 ```
 
 Benefits:
+
 - Define behavior without specifying concrete types
 - Enable generic programming with trait bounds
 - Zero runtime cost (monomorphization)
@@ -200,7 +211,7 @@ Becomes multiple concrete functions at compile time, as if you wrote them by han
 For our amplihack log parser, these concepts enable:
 
 1. **Ownership**: LogEntry owns its String data, no leaks
-2. **Borrowing**: Parse functions borrow file content, don't copy  
+2. **Borrowing**: Parse functions borrow file content, don't copy
 3. **Lifetimes**: LogEntry<'a> can hold &'a str slices into file content
 4. **Error Handling**: ParseResult<T> = Result<T, ParseError>
 5. **Zero-copy**: Parse log lines without allocating for each field
@@ -214,4 +225,3 @@ For our amplihack log parser, these concepts enable:
 - `Result<T, E>` with `?` operator for clean error handling
 - Iterator chains for efficient processing without intermediate allocations
 - Custom traits for extensible analysis plugins
-

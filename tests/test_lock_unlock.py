@@ -393,9 +393,7 @@ class TestStopHookWithCustomPrompts:
         stop_hook_with_custom.lock_flag.touch()
 
         # Mock read_text to raise error
-        with patch.object(
-            Path, "read_text", side_effect=PermissionError("Cannot read file")
-        ):
+        with patch.object(Path, "read_text", side_effect=PermissionError("Cannot read file")):
             result = stop_hook_with_custom.process({})
 
             # Should use default prompt on error

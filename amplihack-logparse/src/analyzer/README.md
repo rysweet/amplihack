@@ -18,11 +18,13 @@ The analyzer module provides trait-based, pluggable analyzers for extracting ins
 Calculates timing statistics for log sessions.
 
 **Output**: `TimingStats`
+
 - `total_duration_secs` - Total session duration
 - `entry_count` - Number of log entries
 - `avg_time_between_entries` - Average gap between entries
 
 **Example**:
+
 ```rust
 let analyzer = TimingAnalyzer::new();
 let stats = analyzer.analyze(&session)?;
@@ -32,6 +34,7 @@ println!("Processed {} entries", stats.entry_count);
 ```
 
 **Rust Concepts**:
+
 - Zero-sized type (no fields)
 - Iterator `min()`/`max()` for duration calculation
 - Iterator `windows()` for pairwise operations
@@ -41,12 +44,14 @@ println!("Processed {} entries", stats.entry_count);
 Tracks agent invocations and durations.
 
 **Output**: `Vec<AgentStats>`
+
 - `name` - Agent name
 - `invocation_count` - Number of times invoked
 - `total_duration_ms` - Total execution time
 - `avg_duration_ms` - Average execution time
 
 **Example**:
+
 ```rust
 let analyzer = AgentAnalyzer::new();
 let stats = analyzer.analyze(&session)?;
@@ -60,6 +65,7 @@ for agent in stats {
 ```
 
 **Rust Concepts**:
+
 - Stateful analyzer with `HashMap`
 - Mutable borrowing for aggregation
 - `filter_map` chains for processing
@@ -71,12 +77,14 @@ Detects common patterns in logs.
 **Output**: `PatternAnalysis` containing `Vec<LogPattern>`
 
 **Patterns Detected**:
+
 - `ErrorBurst` - Multiple errors in short time
 - `LongGap` - Long silence between entries
 - `AgentActivity` - High agent usage
 - `NoAgentActivity` - Session without agents
 
 **Example**:
+
 ```rust
 let analyzer = PatternAnalyzer::new();
 let analysis = analyzer.analyze(&session)?;
@@ -100,6 +108,7 @@ for pattern in analysis.patterns {
 ```
 
 **Configurable Thresholds**:
+
 ```rust
 let analyzer = PatternAnalyzer::with_thresholds(
     5.0,   // error_burst_threshold (errors/sec)
@@ -109,6 +118,7 @@ let analyzer = PatternAnalyzer::with_thresholds(
 ```
 
 **Rust Concepts**:
+
 - Configurable analyzer with fields
 - Complex pattern matching
 - Time-based windowing with iterators
@@ -127,6 +137,7 @@ pub trait Analyzer {
 ```
 
 This enables:
+
 - Polymorphic usage via trait objects
 - Associated types for different outputs
 - Consistent API across analyzers
@@ -141,12 +152,14 @@ This enables:
 ## Testing
 
 Comprehensive test coverage demonstrates:
+
 - Ownership and borrowing patterns
 - Iterator usage
 - Edge cases (empty sessions, single entries)
 - Pattern detection accuracy
 
 Run tests:
+
 ```bash
 cargo test analyzer
 ```

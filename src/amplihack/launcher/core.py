@@ -375,6 +375,10 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
+
+            # Set Node.js memory limit to 8GB for claude/claude-trace
+            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
@@ -454,6 +458,10 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
+
+            # Set Node.js memory limit to 8GB for claude/claude-trace
+            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
