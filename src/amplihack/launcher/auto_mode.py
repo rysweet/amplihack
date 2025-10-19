@@ -38,6 +38,7 @@ class AutoMode:
         self.prompt = prompt
         self.max_turns = max_turns
         self.turn = 0
+        self.start_time = 0.0  # Will be set when run() starts
         self.working_dir = working_dir if working_dir is not None else Path.cwd()
         self.log_dir = (
             self.working_dir / ".claude" / "runtime" / "logs" / f"auto_{sdk}_{int(time.time())}"
@@ -49,6 +50,33 @@ class AutoMode:
         print(f"[AUTO {self.sdk.upper()}] {msg}")
         with open(self.log_dir / "auto.log", "a") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
+
+    def _format_elapsed(self, seconds: float) -> str:
+        """Format elapsed time as Xm Ys or Xs.
+
+        Args:
+            seconds: Elapsed time in seconds
+
+        Returns:
+            Formatted string like "45s" or "1m 23s"
+        """
+        if seconds < 60:
+            return f"{int(seconds)}s"
+        minutes = int(seconds // 60)
+        remaining_seconds = int(seconds % 60)
+        return f"{minutes}m {remaining_seconds}s"
+
+    def _progress_str(self, phase: str) -> str:
+        """Build progress indicator string.
+
+        Args:
+            phase: Current phase name (Clarifying, Planning, Executing, Evaluating, Summarizing)
+
+        Returns:
+            Progress string like "[Turn 2/10 | Planning | 1m 23s]"
+        """
+        elapsed = time.time() - self.start_time
+        return f"[Turn {self.turn}/{self.max_turns} | {phase} | {self._format_elapsed(elapsed)}]"
 
     def run_sdk(self, prompt: str) -> Tuple[int, str]:
         """Run SDK command with prompt, choosing method by provider.
@@ -280,6 +308,7 @@ Document your decisions and reasoning in comments/logs."""
 
     def run(self) -> int:
         """Execute agentic loop."""
+        self.start_time = time.time()
         self.log(f"Starting auto mode (max {self.max_turns} turns)")
         self.log(f"Prompt: {self.prompt}")
 
@@ -288,7 +317,7 @@ Document your decisions and reasoning in comments/logs."""
         try:
             # Turn 1: Clarify objective
             self.turn = 1
-            self.log(f"\n--- TURN {self.turn}: Clarify Objective ---")
+            self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
 
 Task: Analyze this user request and clarify the objective with evaluation criteria.
@@ -308,7 +337,7 @@ User Request:
 
             # Turn 2: Create plan
             self.turn = 2
-            self.log(f"\n--- TURN {self.turn}: Create Plan ---")
+            self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
 
 Reference:
@@ -341,7 +370,7 @@ Objective:
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
-                self.log(f"\n--- TURN {self.turn}: Execute & Evaluate ---")
+                self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
                 # Execute
                 execute_prompt = f"""{self._build_philosophy_context()}
@@ -369,6 +398,7 @@ Current Turn: {turn}/{self.max_turns}"""
                     self.log(f"Warning: Execution returned exit code {code}")
 
                 # Evaluate
+                self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
                 eval_prompt = f"""{self._build_philosophy_context()}
 
 Task: Evaluate if the objective is achieved based on:
@@ -406,7 +436,7 @@ Current Turn: {turn}/{self.max_turns}"""
                     break
 
             # Summary - display it directly
-            self.log("\n--- Summary ---")
+            self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
             code, summary = self.run_sdk(
                 f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}"
             )
