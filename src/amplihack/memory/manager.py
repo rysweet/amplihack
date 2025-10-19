@@ -27,6 +27,11 @@ class MemoryManager:
         """
         self.db = MemoryDatabase(db_path)
         self.session_id = session_id or self._generate_session_id()
+        self._providers: Dict[str, Any] = {}
+        self._disabled_providers: set = set()
+        self._fallback_enabled = False
+        self._provider_priorities: List[str] = []
+        self._provider_configs: Dict[str, Dict[str, Any]] = {}
 
     def store(
         self,
@@ -366,3 +371,369 @@ class MemoryManager:
         """Context manager exit with automatic cleanup."""
         # Optionally cleanup expired memories on exit
         self.cleanup_expired()
+
+    # =========================================================================
+    # Provider Management
+    # =========================================================================
+
+    def register_provider(self, name: str, provider: Any):
+        """Register a memory provider.
+
+        Args:
+            name: Provider name
+            provider: Provider instance
+        """
+        self._providers[name] = provider
+
+    def get_providers(self) -> Dict[str, Any]:
+        """Get all registered providers.
+
+        Returns:
+            Dictionary of provider name to provider instance
+        """
+        return {k: v for k, v in self._providers.items() if k not in self._disabled_providers}
+
+    def get_provider(self, name: str) -> Optional[Any]:
+        """Get specific provider by name.
+
+        Args:
+            name: Provider name
+
+        Returns:
+            Provider instance or None if not found/disabled
+        """
+        if name in self._disabled_providers:
+            return None
+        return self._providers.get(name)
+
+    def get_default_provider(self) -> Optional[Any]:
+        """Get default provider based on priority.
+
+        Returns:
+            First available provider or None
+        """
+        # Use priority order if set
+        if self._provider_priorities:
+            for name in self._provider_priorities:
+                provider = self.get_provider(name)
+                if provider and getattr(provider, 'is_available', lambda: True)():
+                    return provider
+
+        # Fallback to beads if available, then others
+        priority_names = ['beads', 'github', 'local']
+        for name in priority_names:
+            provider = self.get_provider(name)
+            if provider and getattr(provider, 'is_available', lambda: True)():
+                return provider
+
+        # Return first available provider
+        for provider in self._providers.values():
+            if getattr(provider, 'is_available', lambda: True)():
+                return provider
+
+        return None
+
+    def auto_register_providers(self):
+        """Automatically register available providers."""
+        # Try to register beads provider
+        try:
+            from .beads_adapter import BeadsAdapter
+            from .beads_provider import BeadsMemoryProvider
+
+            adapter = BeadsAdapter()
+            if adapter.is_available():
+                provider = BeadsMemoryProvider(adapter)
+                self.register_provider("beads", provider)
+        except ImportError:
+            pass
+
+    # =========================================================================
+    # Provider Operations
+    # =========================================================================
+
+    def create_issue(
+        self,
+        title: str,
+        description: str,
+        provider: Optional[str] = None,
+        required: bool = False,
+        with_fallback: bool = False,
+        **kwargs
+    ) -> Optional[str]:
+        """Create issue through provider.
+
+        Args:
+            title: Issue title
+            description: Issue description
+            provider: Specific provider name (uses default if None)
+            required: Raise error if provider not available
+            with_fallback: Try fallback providers on failure
+            **kwargs: Additional provider-specific arguments
+
+        Returns:
+            Issue ID or None
+
+        Raises:
+            ValueError: If provider not found and required=True
+            RuntimeError: If provider unavailable and required=True
+        """
+        target_provider = None
+
+        if provider:
+            target_provider = self.get_provider(provider)
+            if not target_provider and required:
+                raise ValueError(f"Provider '{provider}' not found")
+        else:
+            target_provider = self.get_default_provider()
+
+        if not target_provider:
+            if required:
+                raise ValueError("No provider available")
+            return None
+
+        # Check availability
+        if not getattr(target_provider, 'is_available', lambda: True)():
+            if required:
+                raise RuntimeError(f"Provider '{provider or 'default'}' unavailable")
+            return None
+
+        # Try create
+        try:
+            return target_provider.create_issue(title, description, **kwargs)
+        except Exception as e:
+            # Try fallback if enabled
+            if with_fallback and self._fallback_enabled:
+                for fallback_name, fallback_provider in self._providers.items():
+                    if fallback_name == provider or fallback_name in self._disabled_providers:
+                        continue
+                    if getattr(fallback_provider, 'is_available', lambda: True)():
+                        try:
+                            return fallback_provider.create_issue(title, description, **kwargs)
+                        except:
+                            continue
+            raise
+
+    def get_issue(self, issue_id: str, provider: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Get issue through provider.
+
+        Args:
+            issue_id: Issue ID
+            provider: Specific provider name (uses default if None)
+
+        Returns:
+            Issue dict or None
+        """
+        target_provider = self.get_provider(provider) if provider else self.get_default_provider()
+        if not target_provider:
+            return None
+
+        return target_provider.get_issue(issue_id)
+
+    def update_issue(self, issue_id: str, provider: Optional[str] = None, **kwargs) -> bool:
+        """Update issue through provider.
+
+        Args:
+            issue_id: Issue ID
+            provider: Specific provider name (uses default if None)
+            **kwargs: Update fields
+
+        Returns:
+            True if updated
+        """
+        target_provider = self.get_provider(provider) if provider else self.get_default_provider()
+        if not target_provider:
+            return False
+
+        return target_provider.update_issue(issue_id, **kwargs)
+
+    def add_relationship(
+        self,
+        from_id: str,
+        to_id: str,
+        relationship_type: str,
+        provider: Optional[str] = None
+    ) -> bool:
+        """Add relationship through provider.
+
+        Args:
+            from_id: Source issue ID
+            to_id: Target issue ID
+            relationship_type: Relationship type
+            provider: Specific provider name (uses default if None)
+
+        Returns:
+            True if added
+        """
+        target_provider = self.get_provider(provider) if provider else self.get_default_provider()
+        if not target_provider:
+            return False
+
+        return target_provider.add_relationship(from_id, to_id, relationship_type)
+
+    def get_ready_work(self, provider: Optional[str] = None, **kwargs) -> List[Dict[str, Any]]:
+        """Get ready work through provider.
+
+        Args:
+            provider: Specific provider name (uses default if None)
+            **kwargs: Query filters
+
+        Returns:
+            List of ready work issues
+        """
+        target_provider = self.get_provider(provider) if provider else self.get_default_provider()
+        if not target_provider:
+            return []
+
+        return target_provider.get_ready_work(**kwargs)
+
+    # =========================================================================
+    # Cross-Provider Operations
+    # =========================================================================
+
+    def sync_issue(
+        self,
+        issue_id: str,
+        source_provider: str,
+        target_provider: str
+    ) -> Dict[str, Any]:
+        """Sync issue between providers.
+
+        Args:
+            issue_id: Issue ID in source provider
+            source_provider: Source provider name
+            target_provider: Target provider name
+
+        Returns:
+            Dict with sync results
+        """
+        source = self.get_provider(source_provider)
+        target = self.get_provider(target_provider)
+
+        if not source or not target:
+            return {"error": "Provider not found"}
+
+        # Get issue from source
+        issue = source.get_issue(issue_id)
+        if not issue:
+            return {"error": "Issue not found"}
+
+        # Create in target
+        target_id = target.create_issue(
+            title=issue.get("title", ""),
+            description=issue.get("description", ""),
+            labels=issue.get("labels", []),
+            status=issue.get("status", "open")
+        )
+
+        return {
+            "source_issue_id": issue_id,
+            f"{target_provider}_issue_id": target_id
+        }
+
+    def link_issues(
+        self,
+        beads_issue_id: str,
+        github_issue_id: str,
+        repo: str
+    ) -> bool:
+        """Link beads issue with GitHub issue.
+
+        Args:
+            beads_issue_id: Beads issue ID
+            github_issue_id: GitHub issue ID
+            repo: GitHub repository
+
+        Returns:
+            True if linked
+        """
+        beads = self.get_provider("beads")
+        if not beads:
+            return False
+
+        return beads.update_issue(
+            beads_issue_id,
+            metadata={
+                "github_issue": github_issue_id,
+                "github_repo": repo
+            }
+        )
+
+    # =========================================================================
+    # Provider Configuration
+    # =========================================================================
+
+    def set_fallback_enabled(self, enabled: bool):
+        """Enable/disable fallback to alternative providers."""
+        self._fallback_enabled = enabled
+
+    def set_provider_priorities(self, priorities: List[Dict[str, Any]]):
+        """Set provider priority order.
+
+        Args:
+            priorities: List of {name, priority} dicts
+        """
+        sorted_priorities = sorted(priorities, key=lambda x: x.get("priority", 999))
+        self._provider_priorities = [p["name"] for p in sorted_priorities]
+
+    def get_provider_priority_order(self) -> List[str]:
+        """Get provider priority order."""
+        return self._provider_priorities.copy()
+
+    def configure_provider(self, name: str, settings: Dict[str, Any]):
+        """Configure provider settings.
+
+        Args:
+            name: Provider name
+            settings: Settings dict
+        """
+        self._provider_configs[name] = settings
+
+    def get_provider_config(self, name: str) -> Dict[str, Any]:
+        """Get provider configuration."""
+        return self._provider_configs.get(name, {})
+
+    def disable_provider(self, name: str):
+        """Disable a provider."""
+        self._disabled_providers.add(name)
+
+    def enable_provider(self, name: str):
+        """Enable a provider."""
+        self._disabled_providers.discard(name)
+
+    # =========================================================================
+    # Provider Health and Status
+    # =========================================================================
+
+    def check_provider_health(self, name: str) -> Dict[str, Any]:
+        """Check provider health.
+
+        Args:
+            name: Provider name
+
+        Returns:
+            Health status dict
+        """
+        provider = self.get_provider(name)
+        if not provider:
+            return {"status": "unavailable"}
+
+        if hasattr(provider, 'health_check'):
+            return provider.health_check()
+
+        return {
+            "status": "healthy" if getattr(provider, 'is_available', lambda: True)() else "unavailable"
+        }
+
+    def get_providers_status(self) -> Dict[str, Dict[str, Any]]:
+        """Get status of all providers.
+
+        Returns:
+            Dict of provider name to status
+        """
+        status = {}
+        for name, provider in self._providers.items():
+            status[name] = {
+                "available": getattr(provider, 'is_available', lambda: True)(),
+                "enabled": name not in self._disabled_providers
+            }
+        return status
