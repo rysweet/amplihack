@@ -3,6 +3,7 @@
 ## Problem
 
 When running `amplihack claude --auto`, you encounter:
+
 ```
 option '--permission-mode <mode>' argument 'allow' is invalid
 ```
@@ -16,11 +17,13 @@ Bug in `auto_mode.py` line 203 using incorrect Claude SDK argument.
 **Fixed in PR #948**
 
 Changed from incorrect:
+
 ```python
 permission_mode="allow"
 ```
 
 To correct:
+
 ```python
 dangerously_allow_permissions=True
 ```
@@ -28,6 +31,7 @@ dangerously_allow_permissions=True
 ## Verifying the Fix
 
 **Check if you have the fix:**
+
 ```bash
 git log --oneline | grep "permission argument"
 ```
@@ -35,6 +39,7 @@ git log --oneline | grep "permission argument"
 If you see commit with "Correct Claude SDK permission argument", you have the fix.
 
 **Test auto mode:**
+
 ```bash
 amplihack claude --auto -- -p "Create a hello world script"
 ```

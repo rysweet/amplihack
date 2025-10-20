@@ -3,6 +3,7 @@
 ## Problem Statement
 
 Auto mode currently operates as a "black box" - users see turn transitions but lack insight into:
+
 - Which turn they're on (out of max turns)
 - What phase of the turn is executing
 - How long the session has been running
@@ -19,6 +20,7 @@ This creates uncertainty and makes it difficult to gauge progress or estimate co
 ## Approach 1: Minimal Progress Indicators (SELECTED)
 
 ### Overview
+
 Add lightweight progress indicators to existing turn logging statements.
 
 ### Features
@@ -42,6 +44,7 @@ Add lightweight progress indicators to existing turn logging statements.
 Current file: `src/amplihack/launcher/auto_mode.py`
 
 #### 1. Track Start Time (Line ~283)
+
 ```python
 def run(self) -> int:
     """Execute agentic loop."""
@@ -50,6 +53,7 @@ def run(self) -> int:
 ```
 
 #### 2. Add Helper Methods
+
 ```python
 def _format_elapsed(self, seconds: float) -> str:
     """Format elapsed time as Xm Ys or Xs."""
@@ -68,6 +72,7 @@ def _progress_str(self, phase: str) -> str:
 #### 3. Update Logging Calls
 
 **Turn 1 - Clarify Objective (Line ~291)**
+
 ```python
 # BEFORE
 self.log(f"\n--- TURN {self.turn}: Clarify Objective ---")
@@ -77,6 +82,7 @@ self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
 ```
 
 **Turn 2 - Create Plan (Line ~311)**
+
 ```python
 # BEFORE
 self.log(f"\n--- TURN {self.turn}: Create Plan ---")
@@ -86,6 +92,7 @@ self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
 ```
 
 **Turn 3+ - Execute (Line ~344)**
+
 ```python
 # BEFORE
 self.log(f"\n--- TURN {self.turn}: Execute & Evaluate ---")
@@ -96,12 +103,14 @@ self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 ```
 
 **Turn 3+ - Evaluate (Line ~371)**
+
 ```python
 # AFTER execution, before evaluation prompt
 self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
 ```
 
 **Summary Phase (Line ~409)**
+
 ```python
 # BEFORE
 self.log("\n--- Summary ---")
@@ -140,14 +149,17 @@ self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
 ## Alternative Approaches (Not Selected)
 
 ### Approach 2: Rich Progress Dashboard
+
 More comprehensive but higher complexity - deferred for future iteration.
 
 ### Approach 3: Structured JSON Logging
+
 Good for programmatic consumption but less human-readable - consider for logging subsystem.
 
 ## Testing Strategy
 
 ### Manual Testing
+
 ```bash
 # Test with simple task
 amplihack auto "Create a hello world Python script"
@@ -167,6 +179,7 @@ amplihack auto "Create a hello world Python script"
 ```
 
 ### Integration Testing
+
 - Run with both Claude SDK and subprocess modes
 - Verify logging to auto.log file includes progress indicators
 - Test with max_turns from 1 to 20
@@ -177,6 +190,7 @@ amplihack auto "Create a hello world Python script"
 **Branch**: `feat/auto-transparency-minimal`
 
 **Test Command**:
+
 ```bash
 uvx --from git+https://github.com/[user]/[repo].git@feat/auto-transparency-minimal amplihack auto "test task"
 ```

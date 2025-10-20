@@ -473,3 +473,173 @@ def assert_package_valid():
         return True
 
     return validate
+
+
+# =============================================================================
+# Stop Hook Test Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def temp_project_root(tmp_path):
+    """Create temporary project structure for stop hook tests.
+
+    Returns:
+        Path: Temporary project root with .claude directory structure
+    """
+    project = tmp_path / "project"
+    project.mkdir()
+
+    # Create directory structure
+    (project / ".claude/tools/amplihack/hooks").mkdir(parents=True)
+    (project / ".claude/runtime/logs").mkdir(parents=True)
+    (project / ".claude/runtime/metrics").mkdir(parents=True)
+
+    return project
+
+
+@pytest.fixture
+def stop_hook(temp_project_root):
+    """Create StopHook instance with test paths.
+
+    Args:
+        temp_project_root: Temporary project root fixture
+
+    Returns:
+        StopHook: Configured hook instance for testing
+    """
+    import sys
+
+    # Import here to avoid circular import issues
+    sys.path.insert(0, str(Path(__file__).parent.parent / ".claude/tools/amplihack/hooks"))
+    from stop import StopHook
+
+    hook = StopHook()
+    hook.project_root = temp_project_root
+    hook.lock_flag = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    hook.continuation_prompt_file = (
+        temp_project_root / ".claude/tools/amplihack/.continuation_prompt"
+    )
+    hook.log_dir = temp_project_root / ".claude/runtime/logs"
+    hook.metrics_dir = temp_project_root / ".claude/runtime/metrics"
+    hook.analysis_dir = temp_project_root / ".claude/runtime/analysis"
+    hook.log_file = hook.log_dir / "stop.log"
+
+    return hook
+
+
+@pytest.fixture
+def active_lock(stop_hook):
+    """Create active lock file.
+
+    Args:
+        stop_hook: StopHook fixture
+
+    Yields:
+        Path: Lock file path
+    """
+    stop_hook.lock_flag.touch()
+    yield stop_hook.lock_flag
+    if stop_hook.lock_flag.exists():
+        stop_hook.lock_flag.unlink()
+
+
+@pytest.fixture
+def custom_prompt(stop_hook):
+    """Create custom continuation prompt.
+
+    Args:
+        stop_hook: StopHook fixture
+
+    Returns:
+        callable: Function to create prompt with given content
+    """
+
+    def _create_prompt(content: str) -> Path:
+        stop_hook.continuation_prompt_file.write_text(content, encoding="utf-8")
+        return stop_hook.continuation_prompt_file
+
+    return _create_prompt
+
+
+@pytest.fixture
+def captured_subprocess(temp_project_root):
+    """Run hook as subprocess and capture output.
+
+    Args:
+        temp_project_root: Temporary project root fixture
+
+    Returns:
+        callable: Function to run hook subprocess
+    """
+    import sys
+    import os
+
+    # Path to the actual stop.py hook
+    hook_script = Path(__file__).parent.parent / ".claude/tools/amplihack/hooks/stop.py"
+
+    def _run(input_data: dict, lock_active: bool = False) -> subprocess.CompletedProcess:
+        """Run hook as subprocess with input.
+
+        Args:
+            input_data: JSON input to pass to hook
+            lock_active: Whether to create lock file
+
+        Returns:
+            CompletedProcess with stdout, stderr, exit code
+        """
+        # Setup environment - make sure directories exist
+        (temp_project_root / ".claude/tools/amplihack").mkdir(parents=True, exist_ok=True)
+
+        # Setup lock file if requested
+        if lock_active:
+            lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+            lock_file.touch()
+
+        # Prepare input
+        json_input = json.dumps(input_data)
+
+        # Set environment to point to temp project root
+        env = os.environ.copy()
+        env["AMPLIHACK_PROJECT_ROOT"] = str(temp_project_root)
+
+        # Run subprocess
+        result = subprocess.run(
+            [sys.executable, str(hook_script)],
+            input=json_input,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=str(temp_project_root),
+            env=env,
+        )
+
+        return result
+
+    return _run
+
+
+@pytest.fixture
+def mock_time():
+    """Fixture for timing tests.
+
+    Returns:
+        callable: Time tracking context manager
+    """
+    import time
+
+    class TimeTracker:
+        def __init__(self):
+            self.start = None
+            self.end = None
+            self.duration_ms = None
+
+        def __enter__(self):
+            self.start = time.perf_counter()
+            return self
+
+        def __exit__(self, *args):
+            self.end = time.perf_counter()
+            self.duration_ms = (self.end - self.start) * 1000
+
+    return TimeTracker

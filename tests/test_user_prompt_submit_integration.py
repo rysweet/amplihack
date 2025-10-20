@@ -8,7 +8,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -76,8 +75,6 @@ balanced
             hook.metrics_dir.mkdir(parents=True, exist_ok=True)
 
             # Override find_user_preferences to only look in temp location
-            original_find = hook.find_user_preferences
-
             def temp_find():
                 pref_file = temp_project_root / ".claude" / "context" / "USER_PREFERENCES.md"
                 if pref_file.exists():
@@ -109,12 +106,12 @@ balanced
         assert len(context) > 0, "Context should not be empty"
 
         # Check for key indicators of preference injection
-        assert (
-            "PREFERENCES" in context or "preferences" in context.lower()
-        ), "Should mention preferences"
-        assert (
-            "Communication Style" in context or "pirate" in context.lower()
-        ), "Should include communication style"
+        assert "PREFERENCES" in context or "preferences" in context.lower(), (
+            "Should mention preferences"
+        )
+        assert "Communication Style" in context or "pirate" in context.lower(), (
+            "Should include communication style"
+        )
 
     def test_pirate_preference_detection(self, mock_user_prompt_submit_hook):
         """Test specifically with pirate communication style."""
@@ -130,12 +127,14 @@ balanced
         assert "pirate" in context.lower(), "Should explicitly mention pirate communication style"
 
         # Should include enforcement instruction
-        assert (
-            "style" in context.lower() or "response" in context.lower()
-        ), "Should include style enforcement"
+        assert "style" in context.lower() or "response" in context.lower(), (
+            "Should include style enforcement"
+        )
 
         # Should be in active preferences section
-        assert "ACTIVE" in context or "MANDATORY" in context, "Should emphasize preference is active"
+        assert "ACTIVE" in context or "MANDATORY" in context, (
+            "Should emphasize preference is active"
+        )
 
     def test_preference_consistency_across_messages(self, mock_user_prompt_submit_hook):
         """Test that preferences are injected consistently across multiple messages."""
@@ -172,7 +171,9 @@ balanced
         avg_length = sum(context_lengths) / len(context_lengths)
         for length in context_lengths:
             # Allow 20% variance
-            assert abs(length - avg_length) / avg_length < 0.2, "Context lengths should be consistent"
+            assert abs(length - avg_length) / avg_length < 0.2, (
+                "Context lengths should be consistent"
+            )
 
     def test_multiple_preferences_simultaneously(self, mock_user_prompt_submit_hook):
         """Test with multiple preferences set."""
@@ -193,9 +194,9 @@ balanced
         found_count = sum(1 for pref in expected_preferences if pref in context)
 
         # Should find at least 4 out of 5 preferences
-        assert (
-            found_count >= 4
-        ), f"Should include most preferences, found {found_count}/{len(expected_preferences)}"
+        assert found_count >= 4, (
+            f"Should include most preferences, found {found_count}/{len(expected_preferences)}"
+        )
 
         # Check proper formatting with bullet points
         assert "•" in context or "-" in context or "*" in context, "Should use bullet points"
@@ -245,7 +246,9 @@ balanced
 
                 # Should return empty additionalContext gracefully
                 assert "additionalContext" in result
-                assert result["additionalContext"] == "", "Should return empty context when no preferences"
+                assert result["additionalContext"] == "", (
+                    "Should return empty context when no preferences"
+                )
 
         finally:
             sys.path.pop(0)
@@ -275,12 +278,12 @@ balanced
         assert second_call_time < 0.2, f"Second call too slow: {second_call_time:.3f}s"
 
         # Verify cache is being used by checking internal state
-        assert (
-            mock_user_prompt_submit_hook._preferences_cache is not None
-        ), "Cache should be populated"
-        assert (
-            mock_user_prompt_submit_hook._cache_timestamp is not None
-        ), "Cache timestamp should be set"
+        assert mock_user_prompt_submit_hook._preferences_cache is not None, (
+            "Cache should be populated"
+        )
+        assert mock_user_prompt_submit_hook._cache_timestamp is not None, (
+            "Cache timestamp should be set"
+        )
 
     def test_preference_change_mid_session(self, mock_user_prompt_submit_hook, temp_project_root):
         """Test that preference changes are picked up mid-session."""
@@ -385,9 +388,9 @@ concise
         assert "interactive" in context.lower(), "Should extract interactive collaboration"
 
         # Verify enforcement instructions are present
-        assert (
-            "response" in context.lower() or "style" in context.lower()
-        ), "Should include enforcement instructions"
+        assert "response" in context.lower() or "style" in context.lower(), (
+            "Should include enforcement instructions"
+        )
 
     def test_context_format_structure(self, mock_user_prompt_submit_hook):
         """Test that context has proper structure and formatting."""
@@ -406,18 +409,18 @@ concise
         assert len(bullet_lines) >= 3, "Should have multiple bulleted preferences"
 
         # Should end with enforcement reminder
-        assert "MUST" in context or "mandatory" in context.lower(), "Should have enforcement reminder"
+        assert "MUST" in context or "mandatory" in context.lower(), (
+            "Should have enforcement reminder"
+        )
 
     def test_hook_metrics_logging(self, mock_user_prompt_submit_hook):
         """Test that hook logs metrics correctly."""
         input_data = {"hook_event_name": "UserPromptSubmit", "prompt": "Test prompt"}
 
-        result = mock_user_prompt_submit_hook.process(input_data)
+        mock_user_prompt_submit_hook.process(input_data)
 
         # Should have created metrics file
-        metrics_file = (
-            mock_user_prompt_submit_hook.metrics_dir / "user_prompt_submit_metrics.jsonl"
-        )
+        metrics_file = mock_user_prompt_submit_hook.metrics_dir / "user_prompt_submit_metrics.jsonl"
 
         # Metrics file may or may not exist depending on implementation
         # But if it does exist, it should be valid JSON lines

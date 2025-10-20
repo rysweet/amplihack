@@ -132,7 +132,7 @@ def test_caching():
     # Verify caching improved performance
     assert time2 <= time1, f"Cache should be faster (time1={time1:.4f}s, time2={time2:.4f}s)"
 
-    print(f"✓ Caching works (1st: {time1*1000:.1f}ms, 2nd: {time2*1000:.1f}ms)")
+    print(f"✓ Caching works (1st: {time1 * 1000:.1f}ms, 2nd: {time2 * 1000:.1f}ms)")
 
 
 def test_json_output():
@@ -213,9 +213,9 @@ def test_performance():
     print(f"  Max: {max_time:.1f}ms")
 
     # Relaxed performance target (Python startup is slow)
-    assert (
-        avg_time < 200
-    ), f"Hook too slow (avg {avg_time:.1f}ms > 200ms target including Python startup)"
+    assert avg_time < 200, (
+        f"Hook too slow (avg {avg_time:.1f}ms > 200ms target including Python startup)"
+    )
 
     print("✓ Performance acceptable")
 
