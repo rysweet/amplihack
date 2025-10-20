@@ -5,6 +5,7 @@ Provides common functionality for all hook scripts.
 """
 
 import json
+import os
 import sys
 import traceback
 from abc import ABC, abstractmethod
@@ -246,9 +247,21 @@ class HookProcessor(ABC):
             print(f"HOOK ERROR: {self.hook_name}", file=sys.stderr)
             print("=" * 60, file=sys.stderr)
             print(f"Error: {e}", file=sys.stderr)
-            print(f"\nLog file: {self.log_file}", file=sys.stderr)
-            print("\nStack trace:", file=sys.stderr)
-            print(traceback_str, file=sys.stderr)
+
+            # Use relative path to avoid disclosing full system paths
+            try:
+                relative_log_path = self.log_file.relative_to(self.project_root)
+                print(f"\nLog file: {relative_log_path}", file=sys.stderr)
+            except ValueError:
+                # Fallback if path is outside project root
+                print(f"\nLog file: {self.log_file.name}", file=sys.stderr)
+
+            # Only show full stack trace in debug mode for security
+            if os.getenv("AMPLIHACK_DEBUG"):
+                print("\nStack trace:", file=sys.stderr)
+                print(traceback_str, file=sys.stderr)
+            else:
+                print("\nFull error details available in log file", file=sys.stderr)
             print("=" * 60, file=sys.stderr)
 
             # Return empty dict to allow graceful continuation
