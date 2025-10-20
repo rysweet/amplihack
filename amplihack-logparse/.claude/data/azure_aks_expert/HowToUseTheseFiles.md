@@ -9,17 +9,20 @@ This knowledge base provides focused Azure Kubernetes Service (AKS) concepts spe
 ## Structure
 
 ### Knowledge.md
+
 - **9 core concepts** explained with Q&A format
 - **30+ practical examples** with Azure CLI, kubectl, and YAML manifests
 - **Direct application** to production deployment scenarios
 
 ### KeyInfo.md
+
 - Executive summary of AKS capabilities
 - Learning path recommendation
 - Quick reference commands
 - Common production patterns
 
 ### This File (HowToUseTheseFiles.md)
+
 - Usage guide for different scenarios
 - Integration with deployment workflow
 - Troubleshooting decision tree
@@ -27,12 +30,14 @@ This knowledge base provides focused Azure Kubernetes Service (AKS) concepts spe
 ## How To Use
 
 ### For Learning AKS
+
 1. Read KeyInfo.md for overview and learning path
 2. Work through Knowledge.md sequentially
 3. Execute commands in your own AKS cluster (start with dev cluster)
 4. Modify YAML examples to match your application needs
 
 ### For Deployment Reference
+
 1. Keep Knowledge.md open while deploying
 2. Search for concepts as needed:
    - "networking" when exposing applications
@@ -46,21 +51,25 @@ This knowledge base provides focused Azure Kubernetes Service (AKS) concepts spe
 ### For Problem Solving
 
 **Deployment Issues?**
+
 - Pods not starting → Check "Storage" and "Identity" sections
 - Can't access application → Read "Networking" section
 - Permission denied → Review "Identity and Access" section
 
 **Performance Problems?**
+
 - Slow response times → Check "Node Pools and Scaling" section
 - Out of resources → Read "Scaling" and review resource requests/limits
 - High latency → Review "Networking" for CNI and service configuration
 
 **Security Concerns?**
+
 - Need to secure secrets → Read "Security Best Practices" on Key Vault
 - Network isolation → Check "Networking" for network policies
 - Compliance requirements → Review "Security" section for Azure Policy
 
 **Cost Issues?**
+
 - Bills too high → Read "Cost Optimization" section
 - Idle resources → Check autoscaler configuration
 - Inefficient workloads → Review resource requests/limits
@@ -72,12 +81,14 @@ This knowledge base provides focused Azure Kubernetes Service (AKS) concepts spe
 **Objective**: Deploy a simple web application to AKS
 
 **Path**:
+
 1. Read "AKS Architecture" to understand the model
 2. Follow cluster creation in "Node Pools and Scaling"
 3. Deploy application using examples in "Networking"
 4. Set up basic monitoring from "Monitoring and Logging"
 
 **Commands to execute**:
+
 ```bash
 # Create cluster
 az aks create --resource-group myRG --name myCluster --node-count 3 --enable-managed-identity
@@ -97,6 +108,7 @@ kubectl expose deployment myapp --type=LoadBalancer --port=80
 **Objective**: Secure an existing AKS cluster for production use
 
 **Path**:
+
 1. Review "Security Best Practices" entirely
 2. Implement private cluster if possible
 3. Set up Azure Key Vault integration
@@ -104,6 +116,7 @@ kubectl expose deployment myapp --type=LoadBalancer --port=80
 5. Enable Azure Policy add-on
 
 **Security checklist**:
+
 - [ ] Private cluster or authorized IP ranges
 - [ ] Azure AD integration with RBAC
 - [ ] Secrets in Key Vault, not Kubernetes secrets
@@ -116,12 +129,14 @@ kubectl expose deployment myapp --type=LoadBalancer --port=80
 **Objective**: Containerize and deploy existing VM-based applications
 
 **Path**:
+
 1. Read "Storage" for persistent data strategy
 2. Review "Networking" for service exposure patterns
 3. Study "Identity" for Azure resource access
 4. Plan "CI/CD" pipeline for automated deployments
 
 **Migration pattern**:
+
 ```yaml
 # StatefulSet for database
 # Deployment for stateless app servers
@@ -135,12 +150,14 @@ kubectl expose deployment myapp --type=LoadBalancer --port=80
 **Objective**: Automate deployments across dev, staging, production
 
 **Path**:
+
 1. Review "CI/CD Integration" for GitHub Actions examples
 2. Study "Networking" for namespace isolation
 3. Check "Cost Optimization" for dev/test cluster management
 4. Implement "Monitoring" per environment
 
 **Pipeline structure**:
+
 ```
 GitHub PR → Build → Push to ACR
   ↓
@@ -182,12 +199,14 @@ Check "Monitoring and Logging" for diagnostics
 ## Next Steps After Reading
 
 ### Immediate Actions
+
 1. Create a development AKS cluster
 2. Deploy sample application with monitoring
 3. Practice kubectl and az aks commands
 4. Set up basic CI/CD pipeline
 
 ### Production Preparation
+
 1. Design multi-environment strategy (dev/staging/prod)
 2. Plan networking and security architecture
 3. Define resource quotas and limits
@@ -195,6 +214,7 @@ Check "Monitoring and Logging" for diagnostics
 5. Create runbooks for common operations
 
 ### Advanced Topics
+
 1. Implement GitOps with Flux or ArgoCD
 2. Set up service mesh (Istio, Linkerd)
 3. Configure advanced autoscaling (KEDA)
@@ -204,6 +224,7 @@ Check "Monitoring and Logging" for diagnostics
 ## Evaluation
 
 This knowledge base demonstrates:
+
 - ✅ Focused, actionable content for production deployments
 - ✅ Q&A format makes Azure-specific concepts clear
 - ✅ Practical examples with real commands and manifests
@@ -211,6 +232,7 @@ This knowledge base demonstrates:
 - ✅ Security and cost optimization built-in
 
 Compare to generic Kubernetes tutorials which cover:
+
 - ❌ Vanilla Kubernetes without Azure integration
 - ❌ Manual cluster setup instead of managed service
 - ❌ Generic examples not leveraging Azure features
@@ -229,6 +251,7 @@ Compare to generic Kubernetes tutorials which cover:
 ## Support Resources
 
 When stuck:
+
 - Azure AKS Documentation: https://learn.microsoft.com/azure/aks/
 - Azure CLI Reference: `az aks --help`
 - kubectl Cheat Sheet: `kubectl cheat-sheet`
@@ -266,6 +289,7 @@ az aks upgrade --resource-group <rg> --name <cluster> --kubernetes-version <vers
 ## Knowledge Base Maintenance
 
 This knowledge base should be updated when:
+
 - New AKS features are released (quarterly reviews)
 - Azure introduces new services that integrate with AKS
 - Best practices evolve based on production experience

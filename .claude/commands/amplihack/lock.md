@@ -21,6 +21,7 @@ You can customize the message Claude sees when trying to stop by creating a cont
 - Guide Claude's autonomous work direction
 
 **Example custom prompt:**
+
 ```
 Focus on security fixes first, then performance optimizations.
 Check all API endpoints for authentication issues.
@@ -101,3 +102,4 @@ except FileExistsError:
     print("WARNING: Lock was already active")
 except Exception as e:
     print(f"ERROR: Failed to enable lock: {e}")
+```

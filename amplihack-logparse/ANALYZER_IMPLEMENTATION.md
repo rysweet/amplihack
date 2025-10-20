@@ -21,6 +21,7 @@ Implements three main analyzers:
 **Location**: `/src/analyzer/README.md`
 
 Complete module documentation with:
+
 - API usage examples
 - Rust concept explanations
 - Configuration options
@@ -44,12 +45,14 @@ impl Analyzer for TimingAnalyzer {
 ```
 
 **Features**:
+
 - Zero-sized type (no runtime overhead)
 - Calculates total session duration
 - Computes average time between entries
 - Uses iterator `min()`/`max()` and `windows()`
 
 **Rust Concepts**:
+
 - Zero-sized types
 - Iterator patterns
 - Option handling
@@ -68,12 +71,14 @@ impl Analyzer for AgentAnalyzer {
 ```
 
 **Features**:
+
 - Tracks invocations per agent
 - Calculates duration statistics
 - Supports stateful cross-session analysis
 - HashMap-based aggregation
 
 **Rust Concepts**:
+
 - HashMap usage
 - Mutable borrowing
 - Iterator filtering and mapping
@@ -95,17 +100,20 @@ impl Analyzer for PatternAnalyzer {
 ```
 
 **Patterns Detected**:
+
 - `ErrorBurst` - Rapid error sequences
 - `LongGap` - Long silences in logs
 - `AgentActivity` - High agent usage
 - `NoAgentActivity` - Sessions without agents
 
 **Features**:
+
 - Configurable thresholds
 - Time-based windowing
 - Complex pattern matching
 
 **Rust Concepts**:
+
 - Enums with data
 - Pattern matching
 - Iterator windows
@@ -125,6 +133,7 @@ pub trait Analyzer {
 ```
 
 **Benefits**:
+
 - Polymorphic behavior
 - Associated types for flexibility
 - Consistent API across analyzers
@@ -145,6 +154,7 @@ Demonstrates trait objects for dynamic polymorphism.
 ### Test Coverage
 
 **16 tests** covering:
+
 - Basic functionality of each analyzer
 - Edge cases (empty sessions, single entries)
 - Stateful behavior (AgentAnalyzer)
@@ -163,16 +173,19 @@ All tests pass cleanly.
 ## Rust Concepts Demonstrated
 
 ### 1. Traits and Polymorphism
+
 - Trait definition with associated types
 - Multiple implementations
 - Trait objects (`Box<dyn Analyzer>`)
 
 ### 2. Ownership and Borrowing
+
 - All analyzers take `&LogSession` (borrowing)
 - No unnecessary cloning
 - Zero-copy analysis
 
 ### 3. Iterators
+
 - `filter` - Selecting specific entries
 - `map` - Transforming data
 - `windows` - Pairwise operations
@@ -180,23 +193,27 @@ All tests pass cleanly.
 - `filter_map` - Combined filter and map
 
 ### 4. Type Safety
+
 - Result types for error handling
 - Option for nullable values
 - Pattern matching on enums
 - Associated types in traits
 
 ### 5. Memory Efficiency
+
 - Zero-sized types (TimingAnalyzer)
 - Borrowing to avoid copies
 - HashMap for efficient aggregation
 - Iterator laziness
 
 ### 6. Error Handling
+
 - Custom error types
 - `?` operator for propagation
 - Result<T, E> pattern
 
 ### 7. Data Structures
+
 - HashMap for agent tracking
 - Vec for collections
 - Enum for pattern types
@@ -205,16 +222,19 @@ All tests pass cleanly.
 ## Code Quality
 
 ### Compilation
+
 - ✅ Compiles without errors
-- ⚠️  Minor warnings for unused functions (expected in library code)
+- ⚠️ Minor warnings for unused functions (expected in library code)
 
 ### Documentation
+
 - ✅ Comprehensive inline documentation
 - ✅ Example usage in docstrings
 - ✅ Module-level README
 - ✅ Standalone examples
 
 ### Testing
+
 - ✅ Unit tests for all analyzers
 - ✅ Edge case coverage
 - ✅ Integration tests for traits
@@ -241,6 +261,7 @@ amplihack-logparse/
 ### Dependencies Used
 
 From `Cargo.toml`:
+
 - `chrono` - Time calculations
 - `serde` - Serialization (for types)
 - Standard library (`HashMap`, iterators)
@@ -267,6 +288,7 @@ The analyzer module is ready for integration:
 ## Conclusion
 
 The analyzer module successfully demonstrates:
+
 - ✅ Trait-based pluggable architecture
 - ✅ Efficient iterator-based processing
 - ✅ Proper ownership and borrowing
@@ -279,6 +301,7 @@ All code compiles, tests pass, and the module is ready for integration into the 
 ---
 
 **Files Modified/Created**:
+
 - `/src/analyzer/mod.rs` (new)
 - `/src/analyzer/README.md` (new)
 - `/examples/analyzer_usage.rs` (new)

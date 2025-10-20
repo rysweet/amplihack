@@ -10,8 +10,8 @@ Each triplet follows the format: (Subject, Predicate, Object)
 
 ## Triplets
 
-| Subject | Predicate | Object | Source |
-|---------|-----------|--------|--------|
-| What is asyncio | has answer | Python library for asynchronous programming | web_search |
-| What is an event loop | has answer | Core of asyncio that manages async tasks | web_search |
-| How do coroutines work | has answer | Functions defined with async def | web_search |
+| Subject                | Predicate  | Object                                      | Source     |
+| ---------------------- | ---------- | ------------------------------------------- | ---------- |
+| What is asyncio        | has answer | Python library for asynchronous programming | web_search |
+| What is an event loop  | has answer | Core of asyncio that manages async tasks    | web_search |
+| How do coroutines work | has answer | Functions defined with async def            | web_search |

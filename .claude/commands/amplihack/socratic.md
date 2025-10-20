@@ -28,16 +28,19 @@ Generate deep, probing Socratic questions using the Three-Dimensional Attack pat
 ## The Three-Dimensional Attack
 
 ### Dimension 1: Empirical Challenge
+
 - Challenges with observable contrary evidence
 - References historical patterns and real systems
 - Grounds abstract claims in measurable reality
 
 ### Dimension 2: Computational Challenge
+
 - Probes tractability and complexity
 - Questions cognitive feasibility
 - Explores composition and scaling properties
 
 ### Dimension 3: Formal Challenge
+
 - Demands precise relationship definitions
 - Uses mathematical terminology
 - Creates logical forks that prevent vague answers
@@ -45,6 +48,7 @@ Generate deep, probing Socratic questions using the Three-Dimensional Attack pat
 ## Quality Standards
 
 Generated questions target:
+
 - **Deflection Resistance**: ≥7/10 (prevents vague responses)
 - **Logical Trap**: ≥7/10 (forces genuine engagement)
 - **Challenge Strength**: ≥7/10 (actually challenges the claim)
@@ -92,6 +96,7 @@ USAGE GUIDANCE:
 ## When to Use
 
 ✅ **Perfect for:**
+
 - Challenging equivalence claims ("X is just Y")
 - Exploring absolutist statements ("always", "never")
 - Deepening technical understanding
@@ -99,6 +104,7 @@ USAGE GUIDANCE:
 - Knowledge-building conversations
 
 ❌ **Not ideal for:**
+
 - Simple factual questions
 - Time-sensitive decisions
 - Consensus-building
@@ -107,12 +113,15 @@ USAGE GUIDANCE:
 ## Integration Points
 
 ### With Knowledge Builder
+
 Use `/socratic` to generate probing questions for deep topic exploration and assumption surfacing.
 
 ### With UltraThink
+
 In Step 1 (Requirement Analysis), use `/socratic` to challenge unclear requirements and force precision.
 
 ### With Code Review
+
 Challenge architectural decisions and design trade-offs with Socratic questions.
 
 ## Pattern Reference
@@ -178,6 +187,7 @@ where database selection trade-offs need exploration.
 
 **Current**: Slash command definition (this file)
 **Next**: Full implementation requires:
+
 1. Claim analysis logic
 2. Question generation engine using SOCRATIC_TEMPLATE.md
 3. Quality checking integration with QUALITY_CHECKER.py

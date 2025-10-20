@@ -5,6 +5,7 @@ Generated: 2025-10-18 (Focused version for production workload deployment)
 ## Overview
 
 This focused knowledge graph contains essential AKS concepts for deploying and managing production applications on Azure Kubernetes Service:
+
 - AKS architecture and control plane
 - Node pools and scaling strategies
 - Networking models and ingress
@@ -24,6 +25,7 @@ This focused knowledge graph contains essential AKS concepts for deploying and m
 A: The AKS control plane includes the Kubernetes API server, scheduler, controller manager, and etcd. Microsoft manages and maintains this for you at no cost - you only pay for worker nodes.
 
 Key benefits:
+
 - Managed upgrades and patches
 - High availability built-in
 - No need to manage master nodes
@@ -40,6 +42,7 @@ az aks get-credentials --resource-group myResourceGroup --name myAKSCluster
 **Q: What happens during AKS cluster creation?**
 
 A: When you create an AKS cluster, Azure provisions:
+
 1. Control plane (managed by Microsoft)
 2. Node pool(s) with VMs running Kubernetes nodes
 3. Virtual network and subnet (or uses existing)
@@ -88,6 +91,7 @@ az aks nodepool upgrade \
 **Q: What are node pools and when should I use multiple pools?**
 
 A: Node pools are groups of nodes with identical VM configurations. Use multiple node pools for:
+
 - Different workload types (CPU-intensive vs memory-intensive)
 - GPU workloads requiring specific VM SKUs
 - Windows and Linux containers in same cluster
@@ -143,15 +147,15 @@ spec:
   template:
     spec:
       containers:
-      - name: myapp
-        image: myapp:v1
-        resources:
-          requests:
-            cpu: 250m
-            memory: 256Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
+        - name: myapp
+          image: myapp:v1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -165,12 +169,12 @@ spec:
   minReplicas: 3
   maxReplicas: 20
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
 ```
 
 ### 3. Networking (CNI, Services, Ingress)
@@ -178,6 +182,7 @@ spec:
 **Q: What's the difference between kubenet and Azure CNI networking?**
 
 A:
+
 - **Kubenet**: Nodes get Azure VNET IPs, pods get IPs from separate address space (10.244.0.0/16). Requires route tables. Simpler, conserves IP addresses.
 - **Azure CNI**: Both nodes and pods get IPs from VNET. More IPs consumed but enables direct VNET integration, better for hybrid scenarios.
 
@@ -207,8 +212,8 @@ spec:
   selector:
     app: backend
   ports:
-  - port: 8080
-    targetPort: 8080
+    - port: 8080
+      targetPort: 8080
 ---
 # LoadBalancer - external with Azure Load Balancer
 apiVersion: v1
@@ -220,8 +225,8 @@ spec:
   selector:
     app: frontend
   ports:
-  - port: 80
-    targetPort: 8080
+    - port: 80
+      targetPort: 8080
 ```
 
 Ingress with NGINX for path-based routing:
@@ -237,27 +242,27 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-  - hosts:
-    - myapp.example.com
-    secretName: myapp-tls
+    - hosts:
+        - myapp.example.com
+      secretName: myapp-tls
   rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: backend-service
-            port:
-              number: 8080
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend-service
-            port:
-              number: 80
+    - host: myapp.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80
 ```
 
 Install NGINX Ingress Controller:
@@ -325,11 +330,11 @@ spec:
     spec:
       serviceAccountName: myapp-sa
       containers:
-      - name: myapp
-        image: myapp:v1
-        env:
-        - name: AZURE_CLIENT_ID
-          value: "${USER_ASSIGNED_CLIENT_ID}"
+        - name: myapp
+          image: myapp:v1
+          env:
+            - name: AZURE_CLIENT_ID
+              value: "${USER_ASSIGNED_CLIENT_ID}"
 ```
 
 **Q: How do I configure Kubernetes RBAC for teams?**
@@ -366,12 +371,12 @@ metadata:
   namespace: team-alpha
   name: developer
 rules:
-- apiGroups: ["", "apps", "batch"]
-  resources: ["pods", "deployments", "services", "jobs", "configmaps", "secrets"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-- apiGroups: [""]
-  resources: ["pods/log", "pods/exec"]
-  verbs: ["get", "list", "create"]
+  - apiGroups: ["", "apps", "batch"]
+    resources: ["pods", "deployments", "services", "jobs", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log", "pods/exec"]
+    verbs: ["get", "list", "create"]
 ---
 # Bind role to Azure AD group
 apiVersion: rbac.authorization.k8s.io/v1
@@ -380,9 +385,9 @@ metadata:
   namespace: team-alpha
   name: developer-binding
 subjects:
-- kind: Group
-  name: "team-alpha-developers"
-  apiGroup: rbac.authorization.k8s.io
+  - kind: Group
+    name: "team-alpha-developers"
+    apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: Role
   name: developer
@@ -416,7 +421,7 @@ metadata:
   name: postgres-pvc
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
   storageClassName: managed-premium
   resources:
     requests:
@@ -439,28 +444,29 @@ spec:
         app: postgres
     spec:
       containers:
-      - name: postgres
-        image: postgres:15
-        ports:
-        - containerPort: 5432
-        volumeMounts:
-        - name: postgres-storage
-          mountPath: /var/lib/postgresql/data
-        env:
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres-secret
-              key: password
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
       volumes:
-      - name: postgres-storage
-        persistentVolumeClaim:
-          claimName: postgres-pvc
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
 ```
 
 **Q: When should I use Azure Disk vs Azure Files?**
 
 A:
+
 - **Azure Disk**: Single pod access (ReadWriteOnce), better performance, use for databases
 - **Azure Files**: Multi-pod access (ReadWriteMany), shared storage, use for shared content or legacy apps
 
@@ -472,7 +478,7 @@ metadata:
   name: shared-uploads
 spec:
   accessModes:
-  - ReadWriteMany
+    - ReadWriteMany
   storageClassName: azurefile-premium
   resources:
     requests:
@@ -487,15 +493,15 @@ spec:
   template:
     spec:
       containers:
-      - name: web
-        image: mywebapp:v1
-        volumeMounts:
-        - name: uploads
-          mountPath: /app/uploads
+        - name: web
+          image: mywebapp:v1
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
       volumes:
-      - name: uploads
-        persistentVolumeClaim:
-          claimName: shared-uploads
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: shared-uploads
 ```
 
 ### 6. Monitoring and Logging (Azure Monitor, Container Insights)
@@ -612,8 +618,8 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
 ---
 # Allow specific traffic
 apiVersion: networking.k8s.io/v1
@@ -626,15 +632,15 @@ spec:
     matchLabels:
       app: backend
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: frontend
-    ports:
-    - protocol: TCP
-      port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 8080
 ```
 
 **Q: How do I manage secrets securely in AKS?**
@@ -686,25 +692,25 @@ spec:
   template:
     spec:
       containers:
-      - name: myapp
-        image: myapp:v1
-        volumeMounts:
-        - name: secrets-store
-          mountPath: "/mnt/secrets-store"
-          readOnly: true
-        env:
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: database-password-secret
-              key: database-password
+        - name: myapp
+          image: myapp:v1
+          volumeMounts:
+            - name: secrets-store
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-password-secret
+                  key: database-password
       volumes:
-      - name: secrets-store
-        csi:
-          driver: secrets-store.csi.k8s.io
-          readOnly: true
-          volumeAttributes:
-            secretProviderClass: "azure-keyvault"
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "azure-keyvault" # pragma: allowlist secret
 ```
 
 ### 8. CI/CD Integration
@@ -731,33 +737,33 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Build and push image
-      run: |
-        az acr login --name myregistry
-        docker build -t $CONTAINER_REGISTRY/$IMAGE_NAME:${{ github.sha }} .
-        docker push $CONTAINER_REGISTRY/$IMAGE_NAME:${{ github.sha }}
+      - name: Build and push image
+        run: |
+          az acr login --name myregistry
+          docker build -t $CONTAINER_REGISTRY/$IMAGE_NAME:${{ github.sha }} .
+          docker push $CONTAINER_REGISTRY/$IMAGE_NAME:${{ github.sha }}
 
-    - name: Get AKS credentials
-      run: |
-        az aks get-credentials \
-          --resource-group $AZURE_RESOURCE_GROUP \
-          --name $CLUSTER_NAME \
-          --overwrite-existing
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --name $CLUSTER_NAME \
+            --overwrite-existing
 
-    - name: Deploy to AKS
-      run: |
-        kubectl set image deployment/myapp \
-          myapp=$CONTAINER_REGISTRY/$IMAGE_NAME:${{ github.sha }} \
-          --namespace production
+      - name: Deploy to AKS
+        run: |
+          kubectl set image deployment/myapp \
+            myapp=$CONTAINER_REGISTRY/$IMAGE_NAME:${{ github.sha }} \
+            --namespace production
 
-        kubectl rollout status deployment/myapp -n production
+          kubectl rollout status deployment/myapp -n production
 ```
 
 **Q: How do I implement blue-green deployments in AKS?**
@@ -784,8 +790,8 @@ spec:
         version: blue
     spec:
       containers:
-      - name: myapp
-        image: myapp:v1.0
+        - name: myapp
+          image: myapp:v1.0
 ---
 # Green deployment (new)
 apiVersion: apps/v1
@@ -806,8 +812,8 @@ spec:
         version: green
     spec:
       containers:
-      - name: myapp
-        image: myapp:v2.0
+        - name: myapp
+          image: myapp:v2.0
 ---
 # Service initially points to blue
 apiVersion: v1
@@ -818,10 +824,10 @@ metadata:
 spec:
   selector:
     app: myapp
-    version: blue  # Switch to 'green' to cut over
+    version: blue # Switch to 'green' to cut over
   ports:
-  - port: 80
-    targetPort: 8080
+    - port: 80
+      targetPort: 8080
 ```
 
 Switch traffic:
@@ -894,21 +900,21 @@ spec:
   template:
     spec:
       containers:
-      - name: myapp
-        image: myapp:v1
-        resources:
-          requests:
-            cpu: 100m      # Start small
-            memory: 128Mi
-          limits:
-            cpu: 500m      # Prevent runaway processes
-            memory: 512Mi
+        - name: myapp
+          image: myapp:v1
+          resources:
+            requests:
+              cpu: 100m # Start small
+              memory: 128Mi
+            limits:
+              cpu: 500m # Prevent runaway processes
+              memory: 512Mi
       # Use spot nodes for batch jobs
       tolerations:
-      - key: "kubernetes.azure.com/scalesetpriority"
-        operator: "Equal"
-        value: "spot"
-        effect: "NoSchedule"
+        - key: "kubernetes.azure.com/scalesetpriority"
+          operator: "Equal"
+          value: "spot"
+          effect: "NoSchedule"
       nodeSelector:
         pool: spot
 ```
@@ -955,8 +961,8 @@ spec:
         environment: production
     spec:
       containers:
-      - name: myapp
-        image: myapp:v1
+        - name: myapp
+          image: myapp:v1
 ```
 
 ## Application to Production Deployments

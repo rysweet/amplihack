@@ -23,18 +23,18 @@ use std::path::Path;
 pub fn parse_log_file(path: &Path) -> ParseResult<Vec<LogEntry>> {
     let file = File::open(path)
         .map_err(|_| ParseError::FileNotFound(path.to_path_buf()))?;
-    
+
     let reader = BufReader::new(file);
     let mut entries = Vec::new();
-    
+
     for (line_num, line_result) in reader.lines().enumerate() {
         let line = line_result?;  // ? operator for error propagation
-        
+
         // Skip empty lines
         if line.trim().is_empty() {
             continue;
         }
-        
+
         // Parse each line into a LogEntry
         match parse_log_entry(&line) {
             Ok(entry) => entries.push(entry),
@@ -44,7 +44,7 @@ pub fn parse_log_file(path: &Path) -> ParseResult<Vec<LogEntry>> {
             }
         }
     }
-    
+
     Ok(entries)
 }
 
@@ -57,28 +57,28 @@ pub fn parse_log_file(path: &Path) -> ParseResult<Vec<LogEntry>> {
 fn parse_log_entry(line: &str) -> ParseResult<LogEntry> {
     // Simple log format: [TIMESTAMP] LEVEL: MESSAGE
     // Example: [2025-10-18T14:30:45Z] INFO: Starting analysis
-    
+
     if !line.starts_with('[') {
         return Err(ParseError::MalformedEntry {
             line: 0,
             details: "Line doesn't start with '['".to_string(),
         });
     }
-    
+
     // Find timestamp end
     let timestamp_end = line.find(']')
         .ok_or_else(|| ParseError::MalformedEntry {
             line: 0,
             details: "No closing ']' for timestamp".to_string(),
         })?;
-    
+
     // Extract and parse timestamp
     let timestamp_str = &line[1..timestamp_end];
     let timestamp = parse_timestamp(timestamp_str)?;
-    
+
     // Rest of line after timestamp
     let rest = &line[timestamp_end + 1..].trim();
-    
+
     // Parse level and message
     let (entry_type, message) = if let Some(colon_pos) = rest.find(':') {
         let level_str = &rest[..colon_pos].trim();
@@ -88,7 +88,7 @@ fn parse_log_entry(line: &str) -> ParseResult<LogEntry> {
     } else {
         (EntryType::Unknown, rest.to_string())
     };
-    
+
     Ok(LogEntry {
         timestamp,
         entry_type,
@@ -144,7 +144,7 @@ fn parse_entry_type(s: &str) -> EntryType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parse_entry_type() {
         assert_eq!(parse_entry_type("INFO"), EntryType::Info);
@@ -152,24 +152,24 @@ mod tests {
         assert_eq!(parse_entry_type("ERROR"), EntryType::Error);
         assert_eq!(parse_entry_type("unknown"), EntryType::Unknown);
     }
-    
+
     #[test]
     fn test_parse_timestamp() {
         let result = parse_timestamp("2025-10-18T14:30:45Z");
         assert!(result.is_ok());
     }
-    
+
     #[test]
     fn test_parse_log_entry() {
         let line = "[2025-10-18T14:30:45Z] INFO: Test message";
         let result = parse_log_entry(line);
-        
+
         assert!(result.is_ok());
         let entry = result.unwrap();
         assert_eq!(entry.entry_type, EntryType::Info);
         assert_eq!(entry.message, "Test message");
     }
-    
+
     #[test]
     fn test_parse_malformed_entry() {
         let line = "This is not a valid log line";
