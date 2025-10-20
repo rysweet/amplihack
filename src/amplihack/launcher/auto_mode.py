@@ -103,9 +103,9 @@ class AutoMode:
         if self.sdk == "copilot":
             cmd = ["copilot", "--allow-all-tools", "--add-dir", "/", "-p", prompt]
         elif self.sdk == "codex":
-            cmd = ["codex", "exec", prompt]
+            cmd = ["codex", "--dangerously-bypass-approvals-and-sandbox", "exec", prompt]
         else:
-            cmd = ["claude", "--dangerously-skip-permissions", "-p", prompt]
+            cmd = ["claude", "--dangerously-skip-permissions --verbose", "-p", prompt]
 
         self.log(f"Running: {cmd[0]} ...")
 
@@ -231,6 +231,7 @@ Document your decisions and reasoning in comments/logs."""
             options = ClaudeAgentOptions(
                 cwd=str(self.working_dir),
                 dangerously_allow_permissions=True,
+                extra_args={"--verbose"},
             )
 
             # Stream response
@@ -408,13 +409,15 @@ Task: Evaluate if the objective is achieved based on:
 2. Philosophy principles applied (simplicity, modularity, zero-BS)
 3. Success criteria from Turn 1 satisfied
 4. No placeholders or incomplete implementations remain
+5. All work has actually been thoroughly tested and verified
+6. The required workflow has been fully executed
 
 Respond with one of:
-- "EVALUATION: COMPLETE" - All criteria met, objective achieved
-- "EVALUATION: IN PROGRESS" - Making progress, continue execution
-- "EVALUATION: NEEDS ADJUSTMENT" - Issues identified, plan adjustment needed
+- "auto-mode EVALUATION: COMPLETE" - All criteria met, objective achieved
+- "auto-mode EVALUATION: IN PROGRESS" - Making progress, continue execution
+- "auto-mode EVALUATION: NEEDS ADJUSTMENT" - Issues identified, plan adjustment needed
 
-Include brief reasoning for your evaluation.
+Include brief reasoning for your evaluation. If incomplete, specify next steps or adjustments needed.
 
 Objective:
 {objective}
@@ -426,7 +429,7 @@ Current Turn: {turn}/{self.max_turns}"""
                 # Check completion - look for strong completion signals
                 eval_lower = eval_result.lower()
                 if (
-                    "evaluation: complete" in eval_lower
+                    "auto-mode evaluation: complete" in eval_lower
                     or "objective achieved" in eval_lower
                     or "all criteria met" in eval_lower
                 ):
