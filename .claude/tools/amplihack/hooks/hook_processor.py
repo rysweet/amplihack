@@ -5,6 +5,7 @@ Provides common functionality for all hook scripts.
 """
 
 import json
+import os
 import sys
 import traceback
 from abc import ABC, abstractmethod
@@ -197,12 +198,16 @@ class HookProcessor(ABC):
         4. Handle any errors gracefully
         """
         try:
-            # Log start
-            self.log(f"{self.hook_name} hook starting")
+            # Log start with version info
+            self.log(f"{self.hook_name} hook starting (Python {sys.version.split()[0]})")
 
             # Read input
             input_data = self.read_input()
             self.log(f"Received input with keys: {list(input_data.keys())}")
+
+            # Log hook event name if available for debugging
+            if "hook_event_name" in input_data:
+                self.log(f"Event type: {input_data['hook_event_name']}")
 
             # Process
             output = self.process(input_data)
@@ -214,6 +219,13 @@ class HookProcessor(ABC):
                 self.log(f"Warning: process() returned non-dict: {type(output)}", "WARNING")
                 output = {"result": output}
 
+            # Log output structure for diagnostics
+            output_keys = list(output.keys())
+            if output_keys:
+                self.log(f"Returning output with keys: {output_keys}")
+            else:
+                self.log("Returning empty output (allows default behavior)")
+
             # Write output
             self.write_output(output)
             self.log(f"{self.hook_name} hook completed successfully")
@@ -224,18 +236,37 @@ class HookProcessor(ABC):
 
         except Exception as e:
             # Log full traceback for debugging
-            self.log(f"Error in {self.hook_name}: {e}", "ERROR")
-            self.log(f"Traceback: {traceback.format_exc()}", "ERROR")
+            error_msg = f"Error in {self.hook_name}: {e}"
+            traceback_str = traceback.format_exc()
 
-            # Also log to stderr for visibility
-            print(f"Hook error in {self.hook_name}: {e}", file=sys.stderr)
+            self.log(error_msg, "ERROR")
+            self.log(f"Traceback: {traceback_str}", "ERROR")
 
-            # Return error indicator instead of empty dict
-            error_response = {
-                "error": f"Hook {self.hook_name} encountered an error",
-                "details": str(e)[:200],  # Truncate for safety
-            }
-            self.write_output(error_response)
+            # Enhanced stderr output for visibility
+            print("=" * 60, file=sys.stderr)
+            print(f"HOOK ERROR: {self.hook_name}", file=sys.stderr)
+            print("=" * 60, file=sys.stderr)
+            print(f"Error: {e}", file=sys.stderr)
+
+            # Use relative path to avoid disclosing full system paths
+            try:
+                relative_log_path = self.log_file.relative_to(self.project_root)
+                print(f"\nLog file: {relative_log_path}", file=sys.stderr)
+            except ValueError:
+                # Fallback if path is outside project root
+                print(f"\nLog file: {self.log_file.name}", file=sys.stderr)
+
+            # Only show full stack trace in debug mode for security
+            if os.getenv("AMPLIHACK_DEBUG"):
+                print("\nStack trace:", file=sys.stderr)
+                print(traceback_str, file=sys.stderr)
+            else:
+                print("\nFull error details available in log file", file=sys.stderr)
+            print("=" * 60, file=sys.stderr)
+
+            # Return empty dict to allow graceful continuation
+            # (exit code 0 ensures non-blocking error)
+            self.write_output({})
 
     def get_session_id(self) -> str:
         """Generate or retrieve a session ID.

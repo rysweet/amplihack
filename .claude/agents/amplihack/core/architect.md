@@ -55,6 +55,7 @@ Review for:
 **When Analyzing Projects:** Check for pre-commit configuration during initial project assessment.
 
 **Trigger Conditions:**
+
 - Working on a new project being created
 - Existing project lacks `.pre-commit-config.yaml`
 
@@ -62,7 +63,7 @@ Review for:
 
 Recommend setting up pre-commit hooks for automated quality enforcement:
 
-```
+````
 This project lacks pre-commit hooks for automated code quality enforcement.
 I recommend establishing baseline quality automation before proceeding.
 
@@ -95,11 +96,12 @@ I recommend establishing baseline quality automation before proceeding.
 ```bash
 pip install pre-commit
 pre-commit install
-```
+````
 
 ## Reference Configuration
 
 See `.pre-commit-config.yaml` in this project for a production-ready example with:
+
 - Python tooling (ruff, pyright, detect-secrets)
 - JS/TS tooling (prettier, eslint)
 - Markdown tooling (prettier, markdownlint)
@@ -111,10 +113,12 @@ Full documentation: `Specs/PreCommitHooks.md`
 ## Next Steps
 
 Would you like me to:
+
 1. Create a pre-commit configuration for this project?
 2. Delegate to builder agent for implementation?
 3. Customize based on specific project needs?
-```
+
+````
 
 **Notes:**
 - Pre-commit runs automatically before every commit
@@ -148,7 +152,7 @@ Would you like me to:
 ## Test Requirements
 
 [What must be tested]
-```
+````
 
 ## Decision Framework
 

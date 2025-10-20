@@ -80,28 +80,34 @@ class StopHook(HookProcessor):
 
         Returns:
             Dict with decision to block or allow stop
+
+        API Compliance:
+            - When blocking: {"decision": "block", "reason": "..."}
+            - When allowing: {} (empty dict, or omit decision field)
+            - Do NOT use "allow" as decision value
+            - Do NOT include "continue" field (not part of API)
         """
         try:
             lock_exists = self.lock_flag.exists()
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
-            # Fail-safe: allow stop if we can't read lock
-            return {"decision": "allow", "continue": False}
+            # Fail-safe: allow stop if we can't read lock (return empty dict)
+            return {}
 
         if lock_exists:
             # Lock is active - block stop and continue working
             continuation_prompt = self.read_continuation_prompt()
             self.log("Lock is active - blocking stop to continue working")
             self.save_metric("lock_blocks", 1)
+            # Return only API-compliant fields
             return {
                 "decision": "block",
                 "reason": continuation_prompt,
-                "continue": True,
             }
 
-        # Not locked - allow stop
+        # Not locked - allow stop (return empty dict per API spec)
         self.log("No lock active - allowing stop")
-        return {"decision": "allow", "continue": False}
+        return {}
 
 
 def main():
