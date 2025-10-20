@@ -30,17 +30,11 @@ dev = [
     "black>=22.0.0",
     "ruff>=0.1.0",
     "build>=1.0.0",  # Required for test_uvx_packaging.py
+    "pre-commit",
 ]
 
 [project.scripts]
 amplihack = "amplihack:main"
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-asyncio>=0.21.0",
-    "pre-commit",
-]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
