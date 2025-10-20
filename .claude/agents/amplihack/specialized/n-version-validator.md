@@ -7,6 +7,7 @@ Implements N-version programming fault-tolerance pattern using agent orchestrati
 ## When to Use
 
 Use this agent for **critical tasks** where correctness is paramount:
+
 - Security-sensitive code (authentication, authorization, encryption)
 - Core algorithms (payment calculations, data transformations)
 - Mission-critical features (data backup, recovery procedures)
@@ -22,6 +23,7 @@ Use this agent for **critical tasks** where correctness is paramount:
 ### Three-Phase Process
 
 **Phase 1: Independent Generation (Parallel)**
+
 ```
 Task: Implement password hashing function
 
@@ -33,6 +35,7 @@ Agent 3 → Implementation C (PBKDF2 approach)
 All agents work independently with no context sharing.
 
 **Phase 2: Comparison & Analysis**
+
 ```
 Reviewer Agent compares all 3 implementations:
 - Correctness (security best practices)
@@ -42,6 +45,7 @@ Reviewer Agent compares all 3 implementations:
 ```
 
 **Phase 3: Selection or Synthesis**
+
 ```
 Options:
 1. Select single best implementation
@@ -62,6 +66,7 @@ Selection Criteria: [Correctness, Security, Performance, etc.]
 ```
 
 Agent automatically:
+
 1. Spawns N independent builder agents in parallel
 2. Collects all implementations
 3. Invokes reviewer for comparison
@@ -123,6 +128,7 @@ LOW Criticality (standard features): N = 2 (just comparison)
 ### Selection Criteria
 
 Customize comparison criteria:
+
 - **Correctness**: Does it work? Handle edge cases?
 - **Security**: Follow best practices? Vulnerabilities?
 - **Performance**: Efficiency appropriate for use case?
@@ -132,8 +138,10 @@ Customize comparison criteria:
 ### Agent Diversity
 
 Specify agent diversity:
+
 ```markdown
 Agent Profiles:
+
 1. Security-Focused Builder
 2. Performance-Focused Builder
 3. Simplicity-Focused Builder
@@ -144,6 +152,7 @@ Diversity increases solution space coverage.
 ## Success Metrics
 
 From research (PR #946):
+
 - **Error Reduction**: 30-65% for critical tasks
 - **Best Practices Alignment**: 90%+ when N ≥ 3
 - **Defect Detection**: 80%+ of security issues caught
@@ -151,12 +160,14 @@ From research (PR #946):
 ## Limitations
 
 **Not Appropriate For:**
+
 - Simple, well-understood tasks
 - Time-critical implementations
 - Non-critical utility functions
 - Trivial bug fixes
 
 **Cost Too High:**
+
 - 4-6x multiplier for simple CRUD
 - Documentation changes
 - UI adjustments
@@ -176,19 +187,20 @@ From research (PR #946):
 ✅ **Selective Application**: Only for critical tasks
 ✅ **Measurable Impact**: Quantified error reduction
 
-## Comparison to Code Implementation
+## Usage
 
-**This Markdown Approach:**
-- 0 LOC - pure agent orchestration
-- Uses existing Task tool
-- Implements pattern through instructions
-- No maintenance burden
+This pattern is implemented as a workflow. Use the `/n-version` command:
 
-**vs Hypothetical Code:**
-- Would need infrastructure for N parallel builds
-- Result aggregation logic
-- Comparison framework
-- ~500+ LOC maintenance
+```bash
+/n-version "Implement password hashing function"
+```
+
+The workflow file `.claude/workflow/N_VERSION_WORKFLOW.md` can be customized to adjust:
+
+- Number of versions (N)
+- Selection criteria
+- Timeout settings
+- Agent diversity profiles
 
 ## Example Output
 

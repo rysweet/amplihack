@@ -7,6 +7,7 @@ Implements structured debate pattern for fault-tolerant decision-making. Multipl
 ## When to Use
 
 Use for **decisions with multiple valid approaches**:
+
 - Architectural trade-offs (microservices vs monolith)
 - Algorithm selection (quick vs accurate)
 - Security vs usability decisions
@@ -23,6 +24,7 @@ Use for **decisions with multiple valid approaches**:
 ### Three-Phase Debate Process
 
 **Phase 1: Position Formation**
+
 ```
 Task: Choose database for high-traffic API
 
@@ -48,6 +50,7 @@ Agent 3 (Simplicity Focus):
 Each agent presents initial position independently.
 
 **Phase 2: Debate Rounds (2-3 iterations)**
+
 ```
 Round 1: Challenge Arguments
 Agent 1: "Redis loses ACID guarantees"
@@ -66,6 +69,7 @@ All: "Need: ACID, scale to 10K req/sec, simple ops"
 Agents directly challenge each other's arguments.
 
 **Phase 3: Synthesis & Consensus**
+
 ```
 Facilitator identifies consensus:
 - All agree: Need ACID guarantees
@@ -91,14 +95,16 @@ Consensus: 2/3 agents converged on PostgreSQL
 
 Task: [Your decision or design question]
 Agent Profiles:
-  - security-focused
-  - performance-focused
-  - simplicity-focused
-Debate Rounds: 3
-Convergence Criteria: 2/3 agreement or clear best argument
+
+- security-focused
+- performance-focused
+- simplicity-focused
+  Debate Rounds: 3
+  Convergence Criteria: 2/3 agreement or clear best argument
 ```
 
 Agent automatically:
+
 1. Spawns N agents with different perspectives
 2. Collects initial positions
 3. Facilitates 2-3 debate rounds
@@ -166,15 +172,15 @@ Confidence: HIGH - All perspectives incorporated
 
 ```markdown
 Default Profiles (3 agents):
+
 1. Security/Correctness - "What could go wrong?"
 2. Performance/Scale - "Will this handle load?"
 3. Simplicity/Ops - "Can we maintain this?"
 
-Extended Profiles (5 agents):
-4. Cost - "What's the TCO?"
-5. User Experience - "Is this good for users?"
+Extended Profiles (5 agents): 4. Cost - "What's the TCO?" 5. User Experience - "Is this good for users?"
 
 Custom Profile Example:
+
 - "Think like a startup (move fast)"
 - "Think like enterprise (stability)"
 - "Think like open source (community)"
@@ -184,16 +190,19 @@ Custom Profile Example:
 
 ```markdown
 Quick Debate (1 round):
+
 - Initial positions only
 - Fast decision
 - Lower confidence
 
 Standard Debate (2-3 rounds):
+
 - Position → Challenge → Synthesis
 - Balanced time/quality
 - Medium-high confidence
 
 Deep Debate (4-5 rounds):
+
 - Explore edge cases
 - Address all objections
 - Highest confidence
@@ -212,6 +221,7 @@ No Consensus: Present trade-offs, defer to user
 ## Success Metrics
 
 From research (PR #946):
+
 - **Decision Quality**: 40-70% improvement vs single perspective
 - **Blind Spot Detection**: 85%+ of overlooked concerns surfaced
 - **Stakeholder Alignment**: 90%+ when diverse perspectives included
@@ -219,12 +229,14 @@ From research (PR #946):
 ## Limitations
 
 **Not Appropriate For:**
+
 - Simple yes/no decisions
 - Well-established best practices
 - Trivial implementation choices
 - Time-critical decisions (< 5 min)
 
 **Cost Too High:**
+
 - Obvious solutions
 - No real trade-offs
 - Single clear best practice exists
@@ -244,19 +256,20 @@ From research (PR #946):
 ✅ **Selective Application**: Only for decisions with real trade-offs
 ✅ **Measurable Impact**: Quantified decision quality improvement
 
-## Comparison to Code Implementation
+## Usage
 
-**This Markdown Approach:**
-- 0 LOC - pure agent orchestration
-- Uses existing Task tool
-- Implements pattern through instructions
-- No maintenance burden
+This pattern is implemented as a workflow. Use the `/debate` command:
 
-**vs Hypothetical Code:**
-- Would need debate protocol framework
-- Argument tracking and synthesis logic
-- Convergence detection
-- ~300+ LOC maintenance
+```bash
+/debate "Should we add Redis for caching?"
+```
+
+The workflow file `.claude/workflow/DEBATE_WORKFLOW.md` can be customized to adjust:
+
+- Agent perspectives (security, performance, simplicity, etc.)
+- Number of debate rounds
+- Convergence criteria
+- Facilitation rules
 
 ## Example Output
 
@@ -325,6 +338,7 @@ Consensus: 3/3 agents converged
 ## Debate Facilitation Rules
 
 **Structured Protocol:**
+
 1. No circular arguments (track claims)
 2. Must address direct challenges
 3. Acknowledge valid points from opponents
@@ -332,6 +346,7 @@ Consensus: 3/3 agents converged
 5. Quantify claims when possible
 
 **Anti-Patterns:**
+
 - Ignoring opponent arguments
 - Restating position without new info
 - Ad hominem (attacking approach, not reasoning)
