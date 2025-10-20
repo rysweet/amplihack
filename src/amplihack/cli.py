@@ -597,7 +597,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
 
     # Hidden local install command
     _local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
-    local_install_parser.add_argument("repo_root", help="Repository root directory")
+    _local_install_parser.add_argument("repo_root", help="Repository root directory")
 
     return parser
 
