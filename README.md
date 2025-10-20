@@ -111,7 +111,7 @@ amplihack claude --with-proxy-config ./azure.env
 1. User-specified `--model` argument (highest priority)
 2. Azure proxy model (when using `--with-proxy-config`)
 3. `AMPLIHACK_DEFAULT_MODEL` environment variable
-4. Default: `sonnet` (Claude Sonnet with 1M context)
+4. Default: `sonnet[1m]` (Claude Sonnet with 1M context)
 
 ### Commands in Claude Code
 

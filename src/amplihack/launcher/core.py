@@ -327,7 +327,7 @@ class ClaudeLauncher:
                 claude_args.extend(["--model", "azure/gpt-5-codex"])
             # Add default model if not using proxy and user hasn't specified one
             elif not self._has_model_arg():
-                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet")
+                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
                 claude_args.extend(["--model", default_model])
 
             # Add forwarded Claude arguments
@@ -356,7 +356,7 @@ class ClaudeLauncher:
             cmd.extend(["--model", "azure/gpt-5-codex"])
         # Add default model if not using proxy and user hasn't specified one
         elif not self._has_model_arg():
-            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet")
+            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
             cmd.extend(["--model", default_model])
 
         # Add forwarded Claude arguments
