@@ -230,22 +230,32 @@ Document your decisions and reasoning in comments/logs."""
             # Configure SDK options
             options = ClaudeAgentOptions(
                 cwd=str(self.working_dir),
-                dangerously_allow_permissions=True,
-                extra_args={"--verbose"},
+                permission_mode="bypassPermissions",  # Auto mode needs non-interactive permissions
+                # Note: verbose flag can be added via extra_args if needed
             )
 
-            # Stream response
+            # Stream response - messages are typed objects, not dicts
             async for message in query(prompt=prompt, options=options):
-                # message is a dict with 'type' and 'content'
-                if message.get("type") == "text":
-                    content = message.get("content", "")
-                    # Print to console in real-time
-                    print(content, end="", flush=True)
-                    output_lines.append(content)
-                elif message.get("type") == "error":
-                    error_msg = message.get("content", "Unknown error")
-                    self.log(f"SDK error: {error_msg}", level="ERROR")
-                    return (1, "\n".join(output_lines))
+                # Handle different message types
+                if hasattr(message, "__class__"):
+                    msg_type = message.__class__.__name__
+
+                    if msg_type == "AssistantMessage":
+                        # Extract text from content blocks
+                        for block in getattr(message, "content", []):
+                            if hasattr(block, "text"):
+                                text = block.text
+                                print(text, end="", flush=True)
+                                output_lines.append(text)
+
+                    elif msg_type == "ResultMessage":
+                        # Check if there was an error
+                        if getattr(message, "is_error", False):
+                            error_result = getattr(message, "result", "Unknown error")
+                            self.log(f"SDK error: {error_result}", level="ERROR")
+                            return (1, "".join(output_lines))
+
+                    # SystemMessage and other types are informational - skip
 
             # Success
             full_output = "".join(output_lines)
