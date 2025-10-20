@@ -458,7 +458,7 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 Three workflow-based patterns for critical operations that require consensus,
 multiple perspectives, or graceful degradation:
 
-#### /amplihack:n-version <task>
+#### /n-version <task>
 
 N-version programming for critical implementations. Generates N independent
 solutions and selects the best through comparison.
@@ -469,10 +469,10 @@ solutions and selects the best through comparison.
 - **Workflow**: `.claude/workflow/N_VERSION_WORKFLOW.md`
 
 ```bash
-/amplihack:n-version "Implement JWT token validation"
+/n-version "Implement JWT token validation"
 ```
 
-#### /amplihack:debate <question>
+#### /debate <question>
 
 Multi-agent debate for complex decisions. Structured debate with multiple
 perspectives (security, performance, simplicity) converges on best decision.
@@ -483,10 +483,10 @@ perspectives (security, performance, simplicity) converges on best decision.
 - **Workflow**: `.claude/workflow/DEBATE_WORKFLOW.md`
 
 ```bash
-/amplihack:debate "Should we use PostgreSQL or Redis for this feature?"
+/debate "Should we use PostgreSQL or Redis for this feature?"
 ```
 
-#### /amplihack:cascade <task>
+#### /cascade <task>
 
 Fallback cascade for resilient operations. Graceful degradation: optimal →
 pragmatic → minimal ensures reliable completion.
@@ -497,7 +497,7 @@ pragmatic → minimal ensures reliable completion.
 - **Workflow**: `.claude/workflow/CASCADE_WORKFLOW.md`
 
 ```bash
-/amplihack:cascade "Generate API documentation from codebase"
+/cascade "Generate API documentation from codebase"
 ```
 
 **Integration with UltraThink:** These patterns can be combined with

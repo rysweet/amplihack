@@ -2,7 +2,7 @@
 
 ## Usage
 
-`/amplihack:cascade <TASK_DESCRIPTION>`
+`/cascade <TASK_DESCRIPTION>`
 
 ## Purpose
 
@@ -12,36 +12,16 @@ Execute fallback cascade pattern for resilient operations. Graceful degradation 
 
 When this command is invoked, you MUST:
 
-1. **Import the orchestrator**:
-
-   ```python
-   import sys
-   from pathlib import Path
-   sys.path.insert(0, str(Path.cwd() / ".claude/tools/amplihack"))
-   from orchestration.patterns.cascade import run_cascade
-   ```
-
-2. **Execute the pattern**:
-
-   ```python
-   result = run_cascade(
-       task_prompt="{TASK_DESCRIPTION}",
-       fallback_strategy="quality",  # or "service", "freshness"
-       timeout_strategy="balanced",  # or "aggressive", "patient"
-       working_dir=Path.cwd()
-   )
-   ```
-
-3. **Display results**:
-   - Show final result and cascade level reached
-   - Explain any degradation from optimal
-   - Report which fallback succeeded
-   - Report session_id for traceability
-   - Link to logs: `.claude/runtime/logs/cascade_<timestamp>/`
-
-4. **Manual fallback** (if orchestrator unavailable):
-   - Read workflow: `.claude/workflow/CASCADE_WORKFLOW.md`
-   - Execute steps manually with TodoWrite tracking
+1. **Read the workflow file**: `.claude/workflow/CASCADE_WORKFLOW.md`
+2. **Create a comprehensive todo list** using TodoWrite with all workflow steps
+3. **Execute each step systematically**, marking todos as in_progress and completed
+4. **Follow the cascade pattern**:
+   - Attempt primary (optimal) approach with timeout
+   - If fails, attempt secondary (pragmatic) approach
+   - If fails, attempt tertiary (minimal) approach
+   - Report degradation level
+5. **Document cascade path** taken and degradation
+6. **Track decisions** in `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
 
 ## When to Use
 

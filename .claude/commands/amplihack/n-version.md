@@ -2,7 +2,7 @@
 
 ## Usage
 
-`/amplihack:n-version <TASK_DESCRIPTION>`
+`/n-version <TASK_DESCRIPTION>`
 
 ## Purpose
 
@@ -12,34 +12,15 @@ Execute N-version programming pattern for critical implementations. Generates mu
 
 When this command is invoked, you MUST:
 
-1. **Import the orchestrator**:
-
-   ```python
-   import sys
-   from pathlib import Path
-   sys.path.insert(0, str(Path.cwd() / ".claude/tools/amplihack"))
-   from orchestration.patterns.n_version import run_n_version
-   ```
-
-2. **Execute the pattern**:
-
-   ```python
-   result = run_n_version(
-       task_prompt="{TASK_DESCRIPTION}",
-       n=3,  # or custom value
-       working_dir=Path.cwd()
-   )
-   ```
-
-3. **Display results**:
-   - Show selected implementation
-   - Explain rationale for selection
-   - Report session_id for traceability
-   - Link to logs: `.claude/runtime/logs/n_version_<timestamp>/`
-
-4. **Manual fallback** (if orchestrator unavailable):
-   - Read workflow: `.claude/workflow/N_VERSION_WORKFLOW.md`
-   - Execute steps manually with TodoWrite tracking
+1. **Read the workflow file**: `.claude/workflow/N_VERSION_WORKFLOW.md`
+2. **Create a comprehensive todo list** using TodoWrite with all workflow steps
+3. **Execute each step systematically**, marking todos as in_progress and completed
+4. **Follow the N-version pattern**:
+   - Generate N independent implementations
+   - Compare implementations objectively
+   - Select or synthesize the best solution
+5. **Document the selection** with clear rationale
+6. **Track decisions** in `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
 
 ## When to Use
 
