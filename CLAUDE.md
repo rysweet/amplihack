@@ -540,6 +540,52 @@ status = check_ci_status()  # Check current branch
 status = check_ci_status(ref="123")  # Check PR #123
 ```
 
+### Beads Issue Tracking
+
+Beads is an AI-powered issue tracker for persistent agent memory across
+sessions:
+
+```bash
+# Check installation status
+amplihack beads status
+
+# Initialize in current directory
+amplihack beads init
+
+# Create issues for task tracking
+amplihack beads create --title "Implement authentication" \
+  --description "Add OAuth2 support" \
+  --labels "feature,high-priority"
+
+# Show ready work (no blockers)
+amplihack beads ready --labels "feature" --limit 5
+
+# List all open issues
+amplihack beads list --status open --json
+
+# Update issue status
+amplihack beads update <issue-id> --status in_progress
+
+# Close completed issue
+amplihack beads close <issue-id> --resolution completed
+```
+
+**Key Features:**
+
+- SQLite local cache + git-versioned JSONL (`.beads/issues.jsonl`)
+- Automatic sync before commits via pre-commit hook
+- Dependency tracking (blocks, related, parent-child)
+- Ready work detection (tasks without blockers)
+- JSON output for programmatic integration
+
+**Installation:**
+
+```bash
+brew install steveyegge/beads/beads
+```
+
+**Documentation:** See `docs/BEADS_CLI.md` for complete usage guide.
+
 ## Testing & Validation
 
 After code changes:

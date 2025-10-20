@@ -152,3 +152,12 @@ repos:
         language: system
         pass_filenames: false
         files: '^src/.*\.py$'
+
+      # Beads memory sync - sync agent memory before commits
+      - id: beads-sync
+        name: Sync beads agent memory to git
+        entry: .claude/tools/amplihack/hooks/beads_sync.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true

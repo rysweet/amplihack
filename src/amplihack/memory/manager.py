@@ -416,19 +416,19 @@ class MemoryManager:
         if self._provider_priorities:
             for name in self._provider_priorities:
                 provider = self.get_provider(name)
-                if provider and getattr(provider, 'is_available', lambda: True)():
+                if provider and getattr(provider, "is_available", lambda: True)():
                     return provider
 
         # Fallback to beads if available, then others
-        priority_names = ['beads', 'github', 'local']
+        priority_names = ["beads", "github", "local"]
         for name in priority_names:
             provider = self.get_provider(name)
-            if provider and getattr(provider, 'is_available', lambda: True)():
+            if provider and getattr(provider, "is_available", lambda: True)():
                 return provider
 
         # Return first available provider
         for provider in self._providers.values():
-            if getattr(provider, 'is_available', lambda: True)():
+            if getattr(provider, "is_available", lambda: True)():
                 return provider
 
         return None
@@ -458,7 +458,7 @@ class MemoryManager:
         provider: Optional[str] = None,
         required: bool = False,
         with_fallback: bool = False,
-        **kwargs
+        **kwargs,
     ) -> Optional[str]:
         """Create issue through provider.
 
@@ -492,7 +492,7 @@ class MemoryManager:
             return None
 
         # Check availability
-        if not getattr(target_provider, 'is_available', lambda: True)():
+        if not getattr(target_provider, "is_available", lambda: True)():
             if required:
                 raise RuntimeError(f"Provider '{provider or 'default'}' unavailable")
             return None
@@ -500,16 +500,16 @@ class MemoryManager:
         # Try create
         try:
             return target_provider.create_issue(title, description, **kwargs)
-        except Exception as e:
+        except Exception:
             # Try fallback if enabled
             if with_fallback and self._fallback_enabled:
                 for fallback_name, fallback_provider in self._providers.items():
                     if fallback_name == provider or fallback_name in self._disabled_providers:
                         continue
-                    if getattr(fallback_provider, 'is_available', lambda: True)():
+                    if getattr(fallback_provider, "is_available", lambda: True)():
                         try:
                             return fallback_provider.create_issue(title, description, **kwargs)
-                        except:
+                        except Exception:
                             continue
             raise
 
@@ -547,11 +547,7 @@ class MemoryManager:
         return target_provider.update_issue(issue_id, **kwargs)
 
     def add_relationship(
-        self,
-        from_id: str,
-        to_id: str,
-        relationship_type: str,
-        provider: Optional[str] = None
+        self, from_id: str, to_id: str, relationship_type: str, provider: Optional[str] = None
     ) -> bool:
         """Add relationship through provider.
 
@@ -591,10 +587,7 @@ class MemoryManager:
     # =========================================================================
 
     def sync_issue(
-        self,
-        issue_id: str,
-        source_provider: str,
-        target_provider: str
+        self, issue_id: str, source_provider: str, target_provider: str
     ) -> Dict[str, Any]:
         """Sync issue between providers.
 
@@ -622,20 +615,12 @@ class MemoryManager:
             title=issue.get("title", ""),
             description=issue.get("description", ""),
             labels=issue.get("labels", []),
-            status=issue.get("status", "open")
+            status=issue.get("status", "open"),
         )
 
-        return {
-            "source_issue_id": issue_id,
-            f"{target_provider}_issue_id": target_id
-        }
+        return {"source_issue_id": issue_id, f"{target_provider}_issue_id": target_id}
 
-    def link_issues(
-        self,
-        beads_issue_id: str,
-        github_issue_id: str,
-        repo: str
-    ) -> bool:
+    def link_issues(self, beads_issue_id: str, github_issue_id: str, repo: str) -> bool:
         """Link beads issue with GitHub issue.
 
         Args:
@@ -651,11 +636,7 @@ class MemoryManager:
             return False
 
         return beads.update_issue(
-            beads_issue_id,
-            metadata={
-                "github_issue": github_issue_id,
-                "github_repo": repo
-            }
+            beads_issue_id, metadata={"github_issue": github_issue_id, "github_repo": repo}
         )
 
     # =========================================================================
@@ -717,11 +698,13 @@ class MemoryManager:
         if not provider:
             return {"status": "unavailable"}
 
-        if hasattr(provider, 'health_check'):
+        if hasattr(provider, "health_check"):
             return provider.health_check()
 
         return {
-            "status": "healthy" if getattr(provider, 'is_available', lambda: True)() else "unavailable"
+            "status": "healthy"
+            if getattr(provider, "is_available", lambda: True)()
+            else "unavailable"
         }
 
     def get_providers_status(self) -> Dict[str, Dict[str, Any]]:
@@ -733,7 +716,7 @@ class MemoryManager:
         status = {}
         for name, provider in self._providers.items():
             status[name] = {
-                "available": getattr(provider, 'is_available', lambda: True)(),
-                "enabled": name not in self._disabled_providers
+                "available": getattr(provider, "is_available", lambda: True)(),
+                "enabled": name not in self._disabled_providers,
             }
         return status

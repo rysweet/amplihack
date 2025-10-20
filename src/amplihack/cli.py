@@ -134,6 +134,259 @@ def handle_auto_mode(
     return auto.run()
 
 
+def handle_beads_command(args: argparse.Namespace) -> int:
+    """Handle beads subcommands.
+
+    Args:
+        args: Parsed command line arguments
+
+    Returns:
+        Exit code (0 = success, 1 = error)
+    """
+    import json
+    from .memory import BeadsAdapter, BeadsMemoryProvider, BeadsPrerequisites
+
+    # Check if beads command was specified
+    if not hasattr(args, "beads_command") or args.beads_command is None:
+        print("Error: No beads subcommand specified")
+        print("Usage: amplihack beads {init,ready,create,list,update,close,get,status}")
+        return 1
+
+    # Handle status command (doesn't require beads to be installed)
+    if args.beads_command == "status":
+        status = BeadsPrerequisites.verify_setup()
+
+        print("\nBeads Setup Status:")
+        print(f"  Installed: {'✓' if status['beads_available'] else '✗'}")
+        print(f"  Initialized: {'✓' if status['beads_initialized'] else '✗'}")
+        print(f"  Version: {status['version'] or 'N/A'}")
+        print(f"  Compatible: {'✓' if status['version_compatible'] else '✗'}")
+
+        if status["errors"]:
+            print("\nErrors:")
+            for error in status["errors"]:
+                print(f"  - {error}")
+
+        if not status["beads_available"]:
+            print("\nInstallation Required:")
+            print("  Visit: https://github.com/steveyegge/beads")
+            print("  Or run: brew install steveyegge/beads/beads")
+
+        return 0
+
+    # Handle init command (requires beads installed but not initialized)
+    if args.beads_command == "init":
+        result = BeadsPrerequisites.check_installed()
+        if not result.is_ok or not result.value:
+            print("Error: Beads not installed")
+            print("\nInstallation instructions:")
+            print("  Visit: https://github.com/steveyegge/beads")
+            print("  Or run: brew install steveyegge/beads/beads")
+            return 1
+
+        init_result = BeadsPrerequisites.initialize()
+        if not init_result.is_ok:
+            print(f"Error: Failed to initialize beads: {init_result.error}")
+            return 1
+
+        print("✓ Beads initialized successfully")
+        print("  Location: .beads/issues.jsonl")
+        print("\nYou can now use beads commands:")
+        print("  amplihack beads create --title 'Task name'")
+        print("  amplihack beads ready")
+        print("  amplihack beads list")
+        return 0
+
+    # All other commands require beads to be installed and initialized
+    adapter = BeadsAdapter()
+
+    if not adapter.is_available():
+        print("Error: Beads CLI not found")
+        print("\nInstallation instructions:")
+        print("  Visit: https://github.com/steveyegge/beads")
+        print("  Or run: brew install steveyegge/beads/beads")
+        return 1
+
+    if not adapter.check_init():
+        print("Error: Beads not initialized in this directory")
+        print("Run: amplihack beads init")
+        return 1
+
+    provider = BeadsMemoryProvider(adapter)
+
+    # Handle each command
+    try:
+        if args.beads_command == "ready":
+            # Show ready work (no blockers)
+            labels = args.labels.split(",") if args.labels else None
+            issues = provider.get_ready_work(assignee=args.assignee, labels=labels)
+
+            # Apply limit if specified
+            if args.limit and len(issues) > args.limit:
+                issues = issues[: args.limit]
+
+            if args.json:
+                print(json.dumps(issues, indent=2))
+            else:
+                if not issues:
+                    print("No ready work found")
+                else:
+                    print(f"\nReady Work ({len(issues)} issues):")
+                    for issue in issues:
+                        print(f"\n[{issue.get('id', 'N/A')}] {issue.get('title', 'Untitled')}")
+                        if issue.get("labels"):
+                            print(f"  Labels: {', '.join(issue['labels'])}")
+                        if issue.get("assignee"):
+                            print(f"  Assignee: {issue['assignee']}")
+                        if issue.get("description"):
+                            desc = issue["description"]
+                            if len(desc) > 100:
+                                desc = desc[:97] + "..."
+                            print(f"  Description: {desc}")
+            return 0
+
+        if args.beads_command == "create":
+            # Create issue
+            labels = args.labels.split(",") if args.labels else None
+            issue_id = provider.create_issue(
+                title=args.title,
+                description=args.description,
+                status=args.status,
+                labels=labels,
+                assignee=args.assignee,
+            )
+
+            if args.json:
+                print(json.dumps({"id": issue_id, "title": args.title}))
+            else:
+                print(f"✓ Created issue: {issue_id}")
+                print(f"  Title: {args.title}")
+                if args.labels:
+                    print(f"  Labels: {args.labels}")
+                if args.assignee:
+                    print(f"  Assignee: {args.assignee}")
+            return 0
+
+        if args.beads_command == "list":
+            # List issues
+            labels = args.labels.split(",") if args.labels else None
+
+            # Build query parameters
+            query_kwargs = {}
+            if args.status != "all":
+                query_kwargs["status"] = args.status
+            if args.assignee:
+                query_kwargs["assignee"] = args.assignee
+            if labels:
+                query_kwargs["labels"] = labels
+
+            issues = adapter.query_issues(**query_kwargs)
+
+            # Apply limit if specified
+            if args.limit and len(issues) > args.limit:
+                issues = issues[: args.limit]
+
+            if args.json:
+                print(json.dumps(issues, indent=2))
+            else:
+                if not issues:
+                    print("No issues found")
+                else:
+                    print(f"\nIssues ({len(issues)}):")
+                    for issue in issues:
+                        status = issue.get("status", "unknown")
+                        print(
+                            f"\n[{issue.get('id', 'N/A')}] {issue.get('title', 'Untitled')} ({status})"
+                        )
+                        if issue.get("labels"):
+                            print(f"  Labels: {', '.join(issue['labels'])}")
+                        if issue.get("assignee"):
+                            print(f"  Assignee: {issue['assignee']}")
+            return 0
+
+        if args.beads_command == "get":
+            # Get issue by ID
+            issue = provider.get_issue(args.id)
+
+            if not issue:
+                print(f"Error: Issue not found: {args.id}")
+                return 1
+
+            if args.json:
+                print(json.dumps(issue, indent=2))
+            else:
+                print(f"\nIssue: {issue.get('id', 'N/A')}")
+                print(f"  Title: {issue.get('title', 'Untitled')}")
+                print(f"  Status: {issue.get('status', 'unknown')}")
+                if issue.get("description"):
+                    print(f"  Description: {issue['description']}")
+                if issue.get("labels"):
+                    print(f"  Labels: {', '.join(issue['labels'])}")
+                if issue.get("assignee"):
+                    print(f"  Assignee: {issue['assignee']}")
+                if issue.get("created_at"):
+                    print(f"  Created: {issue['created_at']}")
+            return 0
+
+        if args.beads_command == "update":
+            # Update issue
+            update_kwargs = {}
+            if args.status:
+                update_kwargs["status"] = args.status
+            if args.title:
+                update_kwargs["title"] = args.title
+            if args.description:
+                update_kwargs["description"] = args.description
+            if args.assignee:
+                update_kwargs["assignee"] = args.assignee
+            if args.labels:
+                update_kwargs["labels"] = args.labels.split(",")
+
+            success = provider.update_issue(args.id, **update_kwargs)
+
+            if args.json:
+                print(json.dumps({"success": success, "id": args.id}))
+            else:
+                if success:
+                    print(f"✓ Updated issue: {args.id}")
+                    for key, value in update_kwargs.items():
+                        print(f"  {key}: {value}")
+                else:
+                    print(f"Error: Failed to update issue: {args.id}")
+                    return 1
+            return 0
+
+        if args.beads_command == "close":
+            # Close issue
+            success = provider.close_issue(args.id, resolution=args.resolution)
+
+            if args.json:
+                print(
+                    json.dumps({"success": success, "id": args.id, "resolution": args.resolution})
+                )
+            else:
+                if success:
+                    print(f"✓ Closed issue: {args.id}")
+                    print(f"  Resolution: {args.resolution}")
+                else:
+                    print(f"Error: Failed to close issue: {args.id}")
+                    return 1
+            return 0
+
+        print(f"Error: Unknown beads command: {args.beads_command}")
+        return 1
+
+    except ValueError as e:
+        print(f"Error: Invalid input: {e}")
+        return 1
+    except RuntimeError as e:
+        print(f"Error: {e}")
+        return 1
+    except Exception as e:
+        print(f"Error: Unexpected error: {e}")
+        return 1
+
+
 def parse_args_with_passthrough(
     argv: Optional[List[str]] = None,
 ) -> "tuple[argparse.Namespace, List[str]]":
@@ -278,8 +531,72 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
     uvx_parser.add_argument("--info", action="store_true", help="Show UVX staging information")
 
+    # Beads command
+    beads_parser = subparsers.add_parser("beads", help="Beads issue tracking for AI agents")
+    beads_subparsers = beads_parser.add_subparsers(dest="beads_command", help="Beads subcommands")
+
+    # beads init
+    _init_parser = beads_subparsers.add_parser("init", help="Initialize beads in current directory")
+
+    # beads ready
+    ready_parser = beads_subparsers.add_parser("ready", help="Show ready work (no blockers)")
+    ready_parser.add_argument("--labels", help="Filter by labels (comma-separated)")
+    ready_parser.add_argument("--assignee", help="Filter by assignee")
+    ready_parser.add_argument(
+        "--limit", type=int, default=10, help="Max issues to show (default: 10)"
+    )
+    ready_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # beads create
+    create_parser = beads_subparsers.add_parser("create", help="Create new issue")
+    create_parser.add_argument("--title", required=True, help="Issue title")
+    create_parser.add_argument("--description", default="", help="Issue description")
+    create_parser.add_argument("--labels", help="Labels (comma-separated)")
+    create_parser.add_argument("--assignee", help="Assignee name")
+    create_parser.add_argument("--status", default="open", help="Issue status (default: open)")
+    create_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # beads list
+    list_parser = beads_subparsers.add_parser("list", help="List issues")
+    list_parser.add_argument(
+        "--status",
+        choices=["open", "closed", "in_progress", "blocked", "all"],
+        default="open",
+        help="Filter by status",
+    )
+    list_parser.add_argument("--labels", help="Filter by labels (comma-separated)")
+    list_parser.add_argument("--assignee", help="Filter by assignee")
+    list_parser.add_argument("--limit", type=int, help="Max issues to show")
+    list_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # beads update
+    update_parser = beads_subparsers.add_parser("update", help="Update issue")
+    update_parser.add_argument("id", help="Issue ID")
+    update_parser.add_argument("--status", help="New status")
+    update_parser.add_argument("--title", help="New title")
+    update_parser.add_argument("--description", help="New description")
+    update_parser.add_argument("--assignee", help="New assignee")
+    update_parser.add_argument("--labels", help="New labels (comma-separated)")
+    update_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # beads close
+    close_parser = beads_subparsers.add_parser("close", help="Close issue")
+    close_parser.add_argument("id", help="Issue ID")
+    close_parser.add_argument(
+        "--resolution", default="completed", help="Closure resolution (default: completed)"
+    )
+    close_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # beads get
+    get_parser = beads_subparsers.add_parser("get", help="Get issue by ID")
+    get_parser.add_argument("id", help="Issue ID")
+    get_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # beads status
+    _status_parser = beads_subparsers.add_parser("status", help="Show beads setup status")
+
     # Hidden local install command
-    local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
+    _local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
 
     return parser
@@ -505,6 +822,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 0
         print_uvx_usage_instructions()
         return 0
+
+    elif args.command == "beads":
+        return handle_beads_command(args)
 
     else:
         create_parser().print_help()

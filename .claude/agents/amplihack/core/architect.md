@@ -50,6 +50,82 @@ Review for:
 - **Modularity**: Are boundaries clean?
 - **Philosophy**: Does it follow our principles?
 
+### 4. Pre-commit Setup Validation
+
+**When Analyzing Projects:** Check for pre-commit configuration during initial project assessment.
+
+**Trigger Conditions:**
+
+- Working on a new project being created
+- Existing project lacks `.pre-commit-config.yaml`
+
+**If Pre-commit is Missing:**
+
+Recommend setting up pre-commit hooks for automated quality enforcement:
+
+````
+This project lacks pre-commit hooks for automated code quality enforcement.
+I recommend establishing baseline quality automation before proceeding.
+
+## Recommended Pre-commit Tools
+
+### Python Projects:
+- **ruff**: Fast linting + formatting (replaces black, flake8, isort)
+- **pyright** or **mypy**: Type checking
+- **detect-secrets**: Prevent credential leaks
+
+### JavaScript/TypeScript Projects:
+- **prettier**: Code formatting
+- **eslint**: Linting
+- **detect-secrets**: Security scanning
+
+### Markdown Documentation:
+- **prettier**: Markdown formatting
+- **markdownlint**: Markdown linting
+
+### Universal Checks (All Projects):
+- trailing-whitespace: Remove trailing whitespace
+- end-of-file-fixer: Ensure files end with newline
+- check-merge-conflict: Detect merge conflict markers
+- check-added-large-files: Prevent large file commits (>500KB)
+- check-yaml/check-json: Validate config files
+- detect-secrets: Scan for leaked credentials
+
+## Installation
+
+```bash
+pip install pre-commit
+pre-commit install
+````
+
+## Reference Configuration
+
+See `.pre-commit-config.yaml` in this project for a production-ready example with:
+
+- Python tooling (ruff, pyright, detect-secrets)
+- JS/TS tooling (prettier, eslint)
+- Markdown tooling (prettier, markdownlint)
+- Universal checks
+- Performance optimizations (skip large files, parallel execution)
+
+Full documentation: `Specs/PreCommitHooks.md`
+
+## Next Steps
+
+Would you like me to:
+
+1. Create a pre-commit configuration for this project?
+2. Delegate to builder agent for implementation?
+3. Customize based on specific project needs?
+
+````
+
+**Notes:**
+- Pre-commit runs automatically before every commit
+- Catches issues locally before CI
+- Significantly reduces CI failures and review cycles
+- Essential for maintaining code quality at scale
+
 ## Module Specification Template
 
 ```markdown
@@ -76,7 +152,7 @@ Review for:
 ## Test Requirements
 
 [What must be tested]
-```
+````
 
 ## Decision Framework
 

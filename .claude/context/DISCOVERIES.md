@@ -664,6 +664,7 @@ Simple question generation often produces shallow inquiries that can be deflecte
    - Prevents vague equivalence claims
 
 **Key Techniques**:
+
 - Use formal language (bijective, NP-complete) to force precision
 - Embed context within questions to prevent deflection
 - Connect theoretical claims to observable outcomes
@@ -680,12 +681,14 @@ Simple question generation often produces shallow inquiries that can be deflecte
 ### Usage Context
 
 **When to Use**:
+
 - Knowledge-builder agent scenarios requiring deep exploration
 - Challenging technical or philosophical claims
 - Surfacing hidden assumptions in design decisions
 - Teaching critical thinking through guided inquiry
 
 **When NOT to Use**:
+
 - Simple factual questions (overkill)
 - Time-sensitive decisions (too slow)
 - Consensus-building conversations (too confrontational)
@@ -699,12 +702,14 @@ Simple question generation often produces shallow inquiries that can be deflecte
 ### Prevention
 
 **To implement effectively**:
+
 - Test pattern 2-3 more times in varied contexts
 - Validate with knowledge-builder agent integration
 - Refine based on actual usage feedback
 - Consider adding to PATTERNS.md after sufficient validation
 
 **Trigger Signs for Pattern Use**:
+
 - User makes strong equivalence claim ("X is just Y")
 - Need to explore assumptions systematically
 - Goal is deep understanding, not quick answers
@@ -721,6 +726,7 @@ Simple question generation often produces shallow inquiries that can be deflecte
 - Show actual code that fixed the problem
 - Think about broader implications
 - Update PATTERNS.md when a discovery becomes a reusable pattern
+
 ---
 
 ## Expert Agent Creation Pattern from Knowledge Bases (2025-10-18)
@@ -732,12 +738,14 @@ Successfully established reusable pattern for creating domain expert agents grou
 ### Context
 
 After merging PR #931 (knowledge-builder refactoring), tested end-to-end workflow by creating two expert agents:
+
 1. Rust Programming Expert (memory safety, ownership)
 2. Azure Kubernetes Expert (production AKS deployments)
 
 ### Pattern Components
 
 **1. Focused Knowledge Base Structure**
+
 ```
 .claude/data/{domain_name}/
 ├── Knowledge.md          # 7-10 core concepts with Q&A
@@ -746,12 +754,14 @@ After merging PR #931 (knowledge-builder refactoring), tested end-to-end workflo
 ```
 
 **2. Knowledge Base Content**
+
 - Q&A format (not documentation style)
 - 2-3 practical code examples per concept
 - Actionable, not theoretical
 - Focused on specific use case (not 270 generic questions)
 
 **3. Expert Agent Definition**
+
 ```markdown
 ---
 description: {Domain} expert with...
@@ -790,20 +800,24 @@ priority: high
 ### Files Created
 
 **Expert Agents:**
+
 - `.claude/agents/amplihack/specialized/rust-programming-expert.md` (156 lines)
 - `.claude/agents/amplihack/specialized/azure-kubernetes-expert.md` (262 lines)
 
 **Rust Knowledge Base:**
+
 - `amplihack-logparse/.claude/data/rust_focused_for_log_parser/Knowledge.md` (218 lines)
 - `amplihack-logparse/.claude/data/rust_focused_for_log_parser/KeyInfo.md` (67 lines)
 - `amplihack-logparse/.claude/data/rust_focused_for_log_parser/HowToUseTheseFiles.md` (83 lines)
 
 **Azure AKS Knowledge Base:**
+
 - `.claude/data/azure_aks_expert/Knowledge.md` (986 lines, 30+ examples)
 - `.claude/data/azure_aks_expert/KeyInfo.md` (172 lines)
 - `.claude/data/azure_aks_expert/HowToUseTheseFiles.md` (275 lines)
 
 **Rust Log Parser (demonstrating knowledge application):**
+
 - `amplihack-logparse/src/types.rs` (91 lines) - Ownership
 - `amplihack-logparse/src/error.rs` (62 lines) - Error handling
 - `amplihack-logparse/src/parser/mod.rs` (165 lines) - Borrowing, Result
@@ -814,12 +828,14 @@ priority: high
 ### Verification
 
 **Rust Expert Agent Test:**
+
 - Question: Borrow checker lifetime error
 - Result: Correctly referenced Lifetimes section (Knowledge.md lines 52-72)
 - Provided: Proper fix with lifetime annotations
 - Score: 9.5/10
 
 **Azure AKS Expert Agent Test:**
+
 - Question: Production deployment with HTTPS, autoscaling, Key Vault, monitoring
 - Result: Correctly referenced 4 knowledge base sections
 - Provided: Complete Azure CLI commands and YAML manifests
@@ -828,6 +844,7 @@ priority: high
 ### Recommendations
 
 1. **Optimize knowledge-builder performance**
+
    ```bash
    /knowledge-builder "topic" --depth shallow    # 10 questions, 2-3 min
    /knowledge-builder "topic" --depth medium     # 30 questions, 5-10 min
@@ -835,6 +852,7 @@ priority: high
    ```
 
 2. **Add focus parameter**
+
    ```bash
    /knowledge-builder "Rust" --focus "ownership,borrowing"
    ```
