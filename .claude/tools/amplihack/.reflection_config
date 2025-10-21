@@ -1,6 +1,6 @@
 {
   "enabled": false,
-  "depth": "quick",
+  "depth": "comprehensive",
   "auto_file_issues": false,
   "min_patterns_for_notification": 1,
   "issue_labels": [

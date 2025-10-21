@@ -14,9 +14,9 @@ from typing import Any, Dict, List, Optional
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 
-# Import SessionReflector from the hooks directory
+# Import SessionReflector and utilities from the hooks directory
 try:
-    from reflection import SessionReflector
+    from reflection import SessionReflector, find_claude_trace_logs
 except ImportError:
     raise ImportError("SessionReflector not found in hooks directory")
 
@@ -86,8 +86,11 @@ class ReflectionOrchestrator:
         if not messages:
             raise ValueError(f"No messages found in session: {session_id}")
 
-        # Run reflection analysis
-        findings = self.reflector.analyze_session(messages)
+        # Find claude-trace logs
+        trace_logs = find_claude_trace_logs(session_dir, self.project_root)
+
+        # Run reflection analysis with trace logs
+        findings = self.reflector.analyze_session(messages, trace_logs=trace_logs)
 
         return findings
 
@@ -188,6 +191,22 @@ class ReflectionOrchestrator:
         print("\nSession Metrics:")
         print(f"  Total messages: {metrics.get('total_messages', 0)}")
         print(f"  Tool uses: {metrics.get('tool_uses', 0)}")
+
+        # Show claude-trace analysis if present
+        trace_analysis = findings.get("trace_analysis")
+        if trace_analysis:
+            print("\nClaude-Trace Analysis:")
+            token_usage = trace_analysis.get("token_usage", {})
+            if token_usage.get("total_input") or token_usage.get("total_output"):
+                print(
+                    f"  Token usage: {token_usage.get('total_input', 0)} input, {token_usage.get('total_output', 0)} output"
+                )
+            if trace_analysis.get("api_errors"):
+                print(f"  API errors: {len(trace_analysis['api_errors'])}")
+            if trace_analysis.get("rate_limits"):
+                print(f"  Rate limit hits: {len(trace_analysis['rate_limits'])}")
+            if trace_analysis.get("slow_requests"):
+                print(f"  Slow requests (>30s): {len(trace_analysis['slow_requests'])}")
 
         # Show patterns found
         patterns = findings.get("patterns", [])
