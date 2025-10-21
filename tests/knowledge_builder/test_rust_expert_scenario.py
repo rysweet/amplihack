@@ -202,9 +202,7 @@ SOURCES:
         assert "Sources:" in content or "Overview" in content, "Should have sources header"
 
         # Should have actual URLs (from our mocked responses)
-        assert (
-            "rust-lang.org" in content or "http" in content
-        ), "Should have domain names or URLs"
+        assert "rust-lang.org" in content or "http" in content, "Should have domain names or URLs"
 
         # Should be grouped by domain
         assert "###" in content or "##" in content, "Should have domain groupings"
@@ -249,14 +247,14 @@ SOURCES:
 
         # Should have technical depth
         technical_terms = ["ownership", "borrow", "safety", "memory", "compile"]
-        assert any(
-            term in knowledge_content.lower() for term in technical_terms
-        ), "Should contain technical Rust terminology"
+        assert any(term in knowledge_content.lower() for term in technical_terms), (
+            "Should contain technical Rust terminology"
+        )
 
         # Should have structured knowledge
-        assert (
-            knowledge_content.count("#") >= 3
-        ), "Should have hierarchical structure (multiple headers)"
+        assert knowledge_content.count("#") >= 3, (
+            "Should have hierarchical structure (multiple headers)"
+        )
 
         # Should have answerable questions with citations
         triplets_content = (output_dir / "Triplets.md").read_text()
@@ -268,9 +266,9 @@ SOURCES:
 
         # Key info should provide quick expert context
         assert len(keyinfo_content) > 500, "KeyInfo should be substantial (>500 chars)"
-        assert (
-            "statistics" in keyinfo_content.lower() or "Total Questions" in keyinfo_content
-        ), "Should have quantitative metrics"
+        assert "statistics" in keyinfo_content.lower() or "Total Questions" in keyinfo_content, (
+            "Should have quantitative metrics"
+        )
 
     @patch("subprocess.run")
     def test_artifact_file_quality_metrics(self, mock_run, tmp_path, rust_mock_responses):
@@ -317,20 +315,20 @@ SOURCES:
             content = filepath.read_text()
             content_size = len(content)
 
-            assert (
-                content_size >= requirements["min_size"]
-            ), f"{filename} should be at least {requirements['min_size']} bytes (got {content_size})"
+            assert content_size >= requirements["min_size"], (
+                f"{filename} should be at least {requirements['min_size']} bytes (got {content_size})"
+            )
 
             for must_have in requirements["must_have"]:
-                assert (
-                    must_have in content
-                ), f"{filename} should contain '{must_have}' (case-sensitive)"
+                assert must_have in content, (
+                    f"{filename} should contain '{must_have}' (case-sensitive)"
+                )
 
         # Additional quality checks
         knowledge_md = (output_dir / "Knowledge.md").read_text()
-        assert (
-            knowledge_md.count("```") >= 2
-        ), "Knowledge.md should have code blocks (mermaid diagram)"
+        assert knowledge_md.count("```") >= 2, (
+            "Knowledge.md should have code blocks (mermaid diagram)"
+        )
 
         triplets_md = (output_dir / "Triplets.md").read_text()
         table_rows = triplets_md.count("\n|") - 2  # Minus header and separator

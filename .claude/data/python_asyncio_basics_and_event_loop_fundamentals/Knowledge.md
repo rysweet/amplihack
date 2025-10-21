@@ -5,6 +5,7 @@ Generated: 2025-10-18 14:34:34
 ## Overview
 
 This knowledge graph contains 3 questions organized in a Socratic hierarchy:
+
 - 2 initial questions (depth 0)
 - 1 follow-up questions (depth 1)
 - 0 deeper questions (depth 2)
@@ -23,7 +24,7 @@ graph TD
     ROOT --> Q1
 ```
 
-*Note: Diagram shows simplified view (first 5 initial questions with first child each)*
+_Note: Diagram shows simplified view (first 5 initial questions with first child each)_
 
 ## Question Hierarchy
 
@@ -38,4 +39,3 @@ graph TD
 ### What is an event loop?
 
 **Answer:** Core of asyncio that manages async tasks
-
