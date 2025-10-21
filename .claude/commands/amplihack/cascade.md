@@ -2,7 +2,7 @@
 
 ## Usage
 
-`/cascade <TASK_DESCRIPTION>`
+`/amplihack:cascade <TASK_DESCRIPTION>`
 
 ## Purpose
 
