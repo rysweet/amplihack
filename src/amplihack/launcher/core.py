@@ -278,6 +278,16 @@ class ClaudeLauncher:
             # Log error but don't fail proxy startup
             print(f"Warning: Could not open log tail window: {e}")
 
+    def _has_model_arg(self) -> bool:
+        """Check if user has already specified --model in claude_args.
+
+        Returns:
+            True if --model is present in self.claude_args, False otherwise.
+        """
+        if not self.claude_args:
+            return False
+        return "--model" in self.claude_args
+
     def build_claude_command(self) -> List[str]:
         """Build the Claude command with arguments.
 
@@ -315,6 +325,10 @@ class ClaudeLauncher:
             # Add Azure model when using proxy
             if self.proxy_manager:
                 claude_args.extend(["--model", "azure/gpt-5-codex"])
+            # Add default model if not using proxy and user hasn't specified one
+            elif not self._has_model_arg():
+                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
+                claude_args.extend(["--model", default_model])
 
             # Add forwarded Claude arguments
             if self.claude_args:
@@ -340,6 +354,10 @@ class ClaudeLauncher:
         # Add Azure model when using proxy
         if self.proxy_manager:
             cmd.extend(["--model", "azure/gpt-5-codex"])
+        # Add default model if not using proxy and user hasn't specified one
+        elif not self._has_model_arg():
+            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
+            cmd.extend(["--model", default_model])
 
         # Add forwarded Claude arguments
         if self.claude_args:
@@ -375,6 +393,10 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
+
+            # Set Node.js memory limit to 8GB for claude/claude-trace
+            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
@@ -454,6 +476,10 @@ class ClaudeLauncher:
 
             # Set environment variables for UVX mode
             env = os.environ.copy()
+
+            # Set Node.js memory limit to 8GB for claude/claude-trace
+            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)

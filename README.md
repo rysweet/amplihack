@@ -86,6 +86,33 @@ Code to `cd /path/to/my/project` and
 See [docs/AUTO_MODE.md](docs/AUTO_MODE.md) for details and
 [AGENTS.md](AGENTS.md) for Copilot CLI usage guide.
 
+### Model Configuration
+
+amplihack automatically uses Claude Sonnet (1M context) as the default model.
+You can customize this behavior:
+
+```sh
+# Use default Sonnet model (automatic)
+amplihack claude
+
+# Override with a specific model
+amplihack claude -- --model opus
+
+# Set custom default via environment variable
+export AMPLIHACK_DEFAULT_MODEL=haiku
+amplihack claude
+
+# Azure proxy uses azure/gpt-5-codex automatically
+amplihack claude --with-proxy-config ./azure.env
+```
+
+**Model Priority:**
+
+1. User-specified `--model` argument (highest priority)
+2. Azure proxy model (when using `--with-proxy-config`)
+3. `AMPLIHACK_DEFAULT_MODEL` environment variable
+4. Default: `sonnet[1m]` (Claude Sonnet with 1M context)
+
 ### Commands in Claude Code
 
 - `/amplihack:ultrathink <task>` - Orchestrate agents for complex tasks

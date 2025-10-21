@@ -30,6 +30,7 @@ dev = [
     "black>=22.0.0",
     "ruff>=0.1.0",
     "build>=1.0.0",  # Required for test_uvx_packaging.py
+    "pre-commit",
 ]
 
 [project.scripts]

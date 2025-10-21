@@ -93,6 +93,47 @@ Check against project philosophy:
 - Unused config files
 - Temporary test data
 
+### 5. Documentation Placement
+
+**CRITICAL: No documentation files in project root**
+
+Documentation must be organized properly:
+
+**Project Root (/) - FORBIDDEN**:
+
+- ❌ `TEST_*.md` - Test specifications
+- ❌ `SPEC_*.md` - Specifications
+- ❌ `IMPL_*.md` - Implementation notes
+- ❌ `DESIGN_*.md` - Design documents
+- ❌ Any other `*.md` except: README.md, CLAUDE.md, CHANGELOG.md, LICENSE.md, CONTRIBUTING.md
+
+**Correct Locations**:
+
+Test Documentation:
+
+- ✅ `docs/testing/` - Test specifications, test plans, test results
+- ✅ `tests/README.md` - Test suite documentation
+
+Implementation & Design:
+
+- ✅ `docs/design/` - Design documents and architecture decisions
+- ✅ `docs/specs/` - Specifications and requirements
+- ✅ `Specs/` - Module specifications (existing convention)
+
+**Transient Documents**:
+If documentation is only valuable during PR review:
+
+- Include summary in PR description
+- Delete from repository after merge
+
+**Action Required**:
+When you find documentation in project root:
+
+1. Determine if it's permanent reference or transient
+2. If permanent: Move to appropriate `docs/` subdirectory
+3. If transient: Summarize in PR and delete
+4. Never allow new documentation in root during PR review
+
 ### 4. Code Review
 
 Check remaining files for:
