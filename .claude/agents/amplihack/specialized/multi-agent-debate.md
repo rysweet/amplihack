@@ -258,10 +258,10 @@ From research (PR #946):
 
 ## Usage
 
-This pattern is implemented as a workflow. Use the `/debate` command:
+This pattern is implemented as a workflow. Use the `/amplihack:debate` command:
 
 ```bash
-/debate "Should we add Redis for caching?"
+/amplihack:debate "Should we add Redis for caching?"
 ```
 
 The workflow file `.claude/workflow/DEBATE_WORKFLOW.md` can be customized to adjust:
