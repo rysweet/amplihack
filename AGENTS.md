@@ -26,6 +26,10 @@ When starting a session, reference these files for context:
 @.claude/context/DISCOVERIES.md
 ```
 
+## Issue Tracking
+
+BEFORE ANYTHING ELSE: run 'bd onboard' and follow the instructions
+
 ## USER PREFERENCES - MANDATORY across all sessions
 
 User preferences in @.claude/context/USER_PREFERENCES.md are MANDATORY and MUST
