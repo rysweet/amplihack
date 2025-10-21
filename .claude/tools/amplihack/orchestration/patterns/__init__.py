@@ -7,6 +7,7 @@ Implemented patterns:
 - N-Version Programming: Generate multiple independent implementations and select best
 - Multi-Agent Debate: Structured debate with multiple perspectives for decisions
 - Fallback Cascade: Graceful degradation through cascading fallback strategies
+- Expert Panel Review: Multiple experts independently review and vote on solutions
 
 Each pattern is a self-contained module that:
 1. Takes high-level inputs (prompts, configs)
@@ -18,6 +19,7 @@ Example usage:
     from .n_version import run_n_version
     from .debate import run_debate
     from .cascade import run_cascade
+    from .expert_panel import run_expert_panel
 
     # N-Version Programming
     result = run_n_version("Implement password hashing", n=3)
@@ -27,15 +29,20 @@ Example usage:
 
     # Fallback Cascade
     result = run_cascade("Generate docs", timeout_strategy="balanced")
+
+    # Expert Panel Review
+    result = run_expert_panel("def hash_password(pwd): ...", aggregation_method="simple_majority")
 """
 
 from .n_version import run_n_version
 from .debate import run_debate
 from .cascade import run_cascade, create_custom_cascade
+from .expert_panel import run_expert_panel
 
 __all__ = [
     "run_n_version",
     "run_debate",
     "run_cascade",
     "create_custom_cascade",
+    "run_expert_panel",
 ]
