@@ -294,10 +294,10 @@ From research (PR #946):
 
 ## Usage
 
-This pattern is implemented as a workflow. Use the `/cascade` command:
+This pattern is implemented as a workflow. Use the `/amplihack:cascade` command:
 
 ```bash
-/cascade "Generate API documentation from codebase"
+/amplihack:cascade "Generate API documentation from codebase"
 ```
 
 The workflow file `.claude/workflow/CASCADE_WORKFLOW.md` can be customized to adjust:

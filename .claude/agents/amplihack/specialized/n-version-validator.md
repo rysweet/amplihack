@@ -189,10 +189,10 @@ From research (PR #946):
 
 ## Usage
 
-This pattern is implemented as a workflow. Use the `/n-version` command:
+This pattern is implemented as a workflow. Use the `/amplihack:n-version` command:
 
 ```bash
-/n-version "Implement password hashing function"
+/amplihack:n-version "Implement password hashing function"
 ```
 
 The workflow file `.claude/workflow/N_VERSION_WORKFLOW.md` can be customized to adjust:
