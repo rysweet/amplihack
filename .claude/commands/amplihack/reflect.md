@@ -1,4 +1,4 @@
-# Reflect Command
+# /amplihack:reflect - Session Reflection Analysis
 
 ## Input Validation
 
@@ -6,14 +6,18 @@
 
 ## Usage
 
-`/reflect [session|last|force|status]`
+```bash
+/amplihack:reflect                     # Run reflection on last session
+/amplihack:reflect <session_id>        # Run reflection on specific session
+/amplihack:reflect enable              # Enable automatic reflection
+/amplihack:reflect disable             # Disable automatic reflection
+/amplihack:reflect config              # Show current configuration
+/amplihack:reflect config <key> <value> # Update configuration
+```
 
-Options:
+Legacy aliases (deprecated - use /amplihack:reflect):
 
-- `session` - Analyze current session (default)
-- `last` - Analyze most recent completed session
-- `force` - Run analysis even if REFLECTION_ENABLED=false
-- `status` - Show reflection system status
+- `/reflect [session|last|force|status]`
 
 ## Purpose
 
@@ -171,9 +175,120 @@ Patterns trigger automation when:
 - Adds appropriate labels
 - Links to session context
 
+## Implementation Instructions
+
+When the user invokes `/amplihack:reflect`, follow these steps:
+
+### 1. Parse Command Arguments
+
+Extract the command arguments to determine which operation to perform:
+
+- No args or session ID → Run reflection analysis
+- `enable` → Enable automatic reflection
+- `disable` → Disable automatic reflection
+- `config` → Show or update configuration
+
+### 2. For Reflection Analysis
+
+Use the `session_reflection.py` orchestrator:
+
+```python
+from .claude.tools.amplihack.hooks.session_reflection import ReflectionOrchestrator
+
+orchestrator = ReflectionOrchestrator()
+
+# Find last session or use provided session_id
+session_id = args[0] if args else find_last_session()
+
+# Run complete reflection workflow
+results = orchestrator.run_reflection(session_id, auto_create_issues=False)
+```
+
+The orchestrator will:
+
+1. Analyze the session using SessionReflector
+2. Present findings to the user
+3. Get approval for issue creation
+4. Create approved GitHub issues
+5. Save reflection summary
+
+### 3. For Enable/Disable
+
+Update the `.reflection_config` file:
+
+```python
+from pathlib import Path
+import json
+
+config_path = Path(".claude/tools/amplihack/.reflection_config")
+with open(config_path) as f:
+    config = json.load(f)
+
+config["enabled"] = True  # or False for disable
+
+with open(config_path, "w") as f:
+    json.dump(config, f, indent=2)
+
+print(f"✓ Reflection {'enabled' if config['enabled'] else 'disabled'}")
+```
+
+### 4. For Config Show
+
+Read and display the current configuration:
+
+```python
+config_path = Path(".claude/tools/amplihack/.reflection_config")
+with open(config_path) as f:
+    config = json.load(f)
+
+print("Current Reflection Configuration:")
+print(json.dumps(config, indent=2))
+```
+
+### 5. For Config Update
+
+Update a specific configuration key:
+
+```python
+key = args[1]  # e.g., "depth"
+value = args[2]  # e.g., "comprehensive"
+
+config_path = Path(".claude/tools/amplihack/.reflection_config")
+with open(config_path) as f:
+    config = json.load(f)
+
+# Parse value based on type
+if value.lower() in ["true", "false"]:
+    value = value.lower() == "true"
+elif value.isdigit():
+    value = int(value)
+
+config[key] = value
+
+with open(config_path, "w") as f:
+    json.dump(config, f, indent=2)
+
+print(f"✓ Updated {key} = {value}")
+```
+
+## Configuration File
+
+Location: `.claude/tools/amplihack/.reflection_config`
+
+```json
+{
+  "enabled": false,
+  "depth": "quick",
+  "auto_file_issues": false,
+  "min_patterns_for_notification": 1,
+  "issue_labels": ["reflection", "improvement"]
+}
+```
+
 ## Remember
 
 - Reflection identifies, /improve implements
 - High visibility - no silent failures
 - Links to issues and PRs provided
-- Configurable but on by default
+- Opt-in by default (enabled: false)
+- Non-blocking - never slows down session end
