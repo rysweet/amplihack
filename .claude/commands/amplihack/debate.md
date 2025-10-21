@@ -2,7 +2,7 @@
 
 ## Usage
 
-`/debate <QUESTION_OR_DECISION>`
+`/amplihack:debate <QUESTION_OR_DECISION>`
 
 ## Purpose
 

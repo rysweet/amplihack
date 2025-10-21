@@ -2,7 +2,7 @@
 
 ## Usage
 
-`/n-version <TASK_DESCRIPTION>`
+`/amplihack:n-version <TASK_DESCRIPTION>`
 
 ## Purpose
 
