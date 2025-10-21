@@ -12,16 +12,36 @@ Execute multi-agent debate pattern for complex decisions. Structured debate with
 
 When this command is invoked, you MUST:
 
-1. **Read the workflow file**: `.claude/workflow/DEBATE_WORKFLOW.md`
-2. **Create a comprehensive todo list** using TodoWrite with all workflow steps
-3. **Execute each step systematically**, marking todos as in_progress and completed
-4. **Follow the debate pattern**:
-   - Initialize perspectives (security, performance, simplicity, etc.)
-   - Conduct debate rounds (challenge, respond, synthesize)
-   - Identify convergence or best argument
-   - Make recommendation with confidence level
-5. **Document the debate** with all positions and rationale
-6. **Track decisions** in `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
+1. **Import the orchestrator**:
+
+   ```python
+   import sys
+   from pathlib import Path
+   sys.path.insert(0, str(Path.cwd() / ".claude/tools/amplihack"))
+   from orchestration.patterns.debate import run_debate
+   ```
+
+2. **Execute the pattern**:
+
+   ```python
+   result = run_debate(
+       decision_question="{QUESTION_OR_DECISION}",
+       perspectives=["security", "performance", "simplicity"],  # or custom
+       rounds=3,
+       working_dir=Path.cwd()
+   )
+   ```
+
+3. **Display results**:
+   - Show synthesis and recommendation
+   - Explain confidence level (HIGH/MEDIUM/LOW)
+   - Summarize key debate points
+   - Report session_id for traceability
+   - Link to logs: `.claude/runtime/logs/debate_<timestamp>/`
+
+4. **Manual fallback** (if orchestrator unavailable):
+   - Read workflow: `.claude/workflow/DEBATE_WORKFLOW.md`
+   - Execute steps manually with TodoWrite tracking
 
 ## When to Use
 
