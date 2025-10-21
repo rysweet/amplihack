@@ -49,6 +49,51 @@ Captures user feedback to improve future interactions.
 - `/amplihack:customize learn "Always include unit tests when creating new functions"`
 - `/amplihack:customize learn "Prefer async/await over callbacks"`
 
+### list-workflows - List available workflows
+
+`/amplihack:customize list-workflows`
+
+Displays all available workflows in `.claude/workflow/` directory with descriptions.
+
+Example output:
+
+```
+Available Workflows:
+
+1. DEFAULT_WORKFLOW
+   Description: Standard workflow for most development tasks
+   Location: .claude/workflow/DEFAULT_WORKFLOW.md
+   Steps: 15
+   Best for: Features, bug fixes, refactoring, day-to-day work
+
+2. CONSENSUS_WORKFLOW
+   Description: Enhanced workflow with consensus mechanisms
+   Location: .claude/workflow/CONSENSUS_WORKFLOW.md
+   Steps: 15
+   Best for: Critical tasks, ambiguous requirements, architectural changes
+
+Current Selection: DEFAULT_WORKFLOW
+```
+
+### show-workflow - Display workflow content
+
+`/amplihack:customize show-workflow <workflow_name>`
+
+Shows the content of a specific workflow file.
+
+- `/amplihack:customize show-workflow DEFAULT_WORKFLOW`
+- `/amplihack:customize show-workflow CONSENSUS_WORKFLOW`
+
+### set-workflow - Switch to a different workflow
+
+`/amplihack:customize set-workflow <workflow_name>`
+
+Changes the active workflow in USER_PREFERENCES.md.
+
+- `/amplihack:customize set-workflow CONSENSUS_WORKFLOW` - Switch to consensus workflow
+- `/amplihack:customize set-workflow DEFAULT_WORKFLOW` - Switch back to default
+- `/amplihack:customize set-workflow MY_CUSTOM_WORKFLOW` - Switch to custom workflow
+
 ## Available Preferences
 
 ### verbosity
@@ -95,6 +140,22 @@ Custom coding standards or guidelines (can be multi-line)
 ### workflow_preferences
 
 Custom workflow requirements or gates
+
+### consensus_depth
+
+Controls the depth of consensus mechanisms when using CONSENSUS_WORKFLOW:
+
+- **quick**: 2 agents, 2 rounds (faster, less thorough)
+- **balanced**: 3-4 agents, 3 rounds (recommended, good balance)
+- **comprehensive**: 5+ agents, 4+ rounds (slower, most thorough)
+
+Use set command to change:
+
+- `/amplihack:customize set consensus_depth quick`
+- `/amplihack:customize set consensus_depth balanced`
+- `/amplihack:customize set consensus_depth comprehensive`
+
+**Note**: Workflow selection (DEFAULT_WORKFLOW vs CONSENSUS_WORKFLOW) is managed via dedicated workflow commands (list-workflows, show-workflow, set-workflow).
 
 ## Implementation
 
@@ -210,12 +271,65 @@ Use Edit tool on .claude/context/USER_PREFERENCES.md:
   new_string: "## Learned Patterns\n\n<!-- User feedback and learned behaviors will be added here -->\n\n### [2025-09-29 10:30:00]\n\nAlways include unit tests when creating new functions\n"
 ```
 
+### For "list-workflows" action:
+
+1. Use the Bash tool to list workflow files:
+   ```bash
+   ls -1 /Users/ryan/src/tempsaturday/worktree-issue-968/.claude/workflow/*.md | grep -v README.md | grep -v templates
+   ```
+2. For each workflow file found, use the Read tool to extract:
+   - Workflow name (from filename)
+   - Title (from first # heading)
+   - Description (from first paragraph after "How This Workflow Works")
+   - Number of steps (count lines starting with "### Step")
+3. Use the Read tool on `.claude/context/USER_PREFERENCES.md` to get current selection:
+   - Find line "**Selected Workflow**:"
+   - Extract workflow name
+4. Format and display results as shown in the command documentation above
+5. Highlight current selection
+
+### For "show-workflow" action:
+
+1. Validate workflow_name argument is provided
+   - If missing: Display error and show available workflows (use list-workflows logic)
+2. Construct absolute file path: `.claude/workflow/{workflow_name}.md`
+3. Use the Read tool to read the workflow file
+4. If file not found:
+   - Show error message
+   - List available workflows
+   - Show how to create custom workflow from template
+5. If file found: Display full contents to user
+
+### For "set-workflow" action:
+
+1. Validate workflow_name argument is provided
+   - If missing: Display error and show usage
+2. Construct workflow file path: `.claude/workflow/{workflow_name}.md`
+3. Verify file exists using Read tool (attempt to read)
+   - If not found: Show error with available workflows list
+4. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+5. Use the Edit tool to update workflow selection:
+   ```
+   old_string: "**Selected Workflow**: [current_workflow]"
+   new_string: "**Selected Workflow**: {workflow_name}"
+   ```
+6. Update timestamp at bottom of file:
+   ```
+   old_string: "_Last updated: [old_timestamp]_"
+   new_string: "_Last updated: [current_timestamp]_"
+   ```
+7. Confirm change to user with helpful message including:
+   - Confirmation of workflow change
+   - How this affects /ultrathink
+   - How to view the workflow
+   - How to learn more
+
 ## Validation Rules
 
 Before making changes, validate:
 
 1. **Preference names** must match exactly (case-insensitive matching is acceptable):
-   - verbosity, communication_style, update_frequency, priority_type, collaboration_style, preferred_languages, coding_standards, workflow_preferences
+   - verbosity, communication_style, update_frequency, priority_type, collaboration_style, preferred_languages, coding_standards, workflow_preferences, consensus_depth
 
 2. **Enumerated values** must match allowed options:
    - verbosity: concise, balanced, detailed
@@ -223,6 +337,7 @@ Before making changes, validate:
    - update_frequency: minimal, regular, frequent
    - priority_type: features, bugs, performance, security, balanced
    - collaboration_style: independent, interactive, guided
+   - consensus_depth: quick, balanced, comprehensive
 
 3. **Free-form values** (preferred_languages, coding_standards, workflow_preferences) can be any non-empty string
 

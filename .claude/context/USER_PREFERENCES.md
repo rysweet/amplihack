@@ -40,6 +40,35 @@ interactive
 
 (not set)
 
+### Workflow Configuration
+
+**Selected Workflow**: DEFAULT_WORKFLOW
+
+**Consensus Depth**: balanced
+
+**Available Workflows**:
+
+- DEFAULT_WORKFLOW: Standard workflow for most development tasks (fast, balanced quality)
+- CONSENSUS_WORKFLOW: Enhanced workflow with consensus mechanisms for critical tasks (slower, highest quality)
+- Custom workflows: Create your own in .claude/workflow/ using templates/WORKFLOW_TEMPLATE.md
+
+**Workflow Selection Guide**:
+
+- Use DEFAULT_WORKFLOW for: Standard features, bug fixes, refactoring, day-to-day work
+- Use CONSENSUS_WORKFLOW for: Ambiguous requirements, architectural changes, critical code, security-sensitive work, public APIs
+
+**Consensus Depth Options** (for CONSENSUS_WORKFLOW only):
+
+- quick: Minimal consensus (2 agents, 2 rounds) - faster
+- balanced: Standard consensus (3-4 agents, 3 rounds) - recommended
+- comprehensive: Maximum consensus (5+ agents, 4+ rounds) - thorough
+
+**Management Commands**:
+
+- /amplihack:customize list-workflows - Show all available workflows
+- /amplihack:customize show-workflow [name] - Display specific workflow content
+- /amplihack:customize set-workflow [name] - Switch to different workflow
+
 ## Learned Patterns
 
 <!-- User feedback and learned behaviors will be added here -->
