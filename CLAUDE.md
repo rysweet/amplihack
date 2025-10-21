@@ -453,6 +453,57 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
 
+### Fault Tolerance Patterns
+
+Three workflow-based patterns for critical operations that require consensus,
+multiple perspectives, or graceful degradation:
+
+#### /amplihack:n-version <task>
+
+N-version programming for critical implementations. Generates N independent
+solutions and selects the best through comparison.
+
+- **Use for**: Security code, core algorithms, mission-critical features
+- **Cost**: 3-4x execution time
+- **Benefit**: 30-65% error reduction
+- **Workflow**: `.claude/workflow/N_VERSION_WORKFLOW.md`
+
+```bash
+/amplihack:n-version "Implement JWT token validation"
+```
+
+#### /amplihack:debate <question>
+
+Multi-agent debate for complex decisions. Structured debate with multiple
+perspectives (security, performance, simplicity) converges on best decision.
+
+- **Use for**: Architectural trade-offs, algorithm selection, design decisions
+- **Cost**: 2-3x execution time
+- **Benefit**: 40-70% better decision quality
+- **Workflow**: `.claude/workflow/DEBATE_WORKFLOW.md`
+
+```bash
+/amplihack:debate "Should we use PostgreSQL or Redis for this feature?"
+```
+
+#### /amplihack:cascade <task>
+
+Fallback cascade for resilient operations. Graceful degradation: optimal →
+pragmatic → minimal ensures reliable completion.
+
+- **Use for**: External APIs, code generation, data retrieval with fallbacks
+- **Cost**: 1.1-2x (only on failures)
+- **Benefit**: 95%+ reliability vs 70-80% single approach
+- **Workflow**: `.claude/workflow/CASCADE_WORKFLOW.md`
+
+```bash
+/amplihack:cascade "Generate API documentation from codebase"
+```
+
+**Integration with UltraThink:** These patterns can be combined with
+`/ultrathink` by customizing the workflow file to include consensus or fallback
+stages at specific steps.
+
 ## Scenario Tools
 
 Amplihack includes production-ready scenario tools that follow the **Progressive
