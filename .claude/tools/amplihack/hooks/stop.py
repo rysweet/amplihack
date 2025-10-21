@@ -18,7 +18,7 @@ class StopHook(HookProcessor):
 
     def __init__(self):
         super().__init__("stop")
-        self.lock_flag = self.project_root / ".claude" / "tools" / "amplihack" / ".lock_active"
+        self.lock_flag = self.project_root / ".claude" / "runtime" / "locks" / ".lock_active"
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Check lock flag and block stop if active.

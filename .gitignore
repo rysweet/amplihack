@@ -99,11 +99,12 @@ ai_working/tmp
 
 # Claude runtime data
 .claude/runtime/
-!.claude/runtime/*/.gitkeep
+!.claude/runtime/**/.gitkeep
 .claude/.claude/
 **/runtime/logs/
 **/runtime/metrics/
 **/runtime/analysis/
+.lock_active
 
 # Smoke test runtime logs
 .smoke_test_data/data

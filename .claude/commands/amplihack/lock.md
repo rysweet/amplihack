@@ -15,13 +15,13 @@ Use this mode when you want Claude to work autonomously through a complex task w
 
 Execute the following to enable lock:
 
-Create the lock flag file at `.claude/tools/amplihack/.lock_active`:
+Create the lock flag file at `.claude/runtime/locks/.lock_active`:
 
 ```python
 import os
 from pathlib import Path
 
-lock_flag = Path(".claude/tools/amplihack/.lock_active")
+lock_flag = Path(".claude/runtime/locks/.lock_active")
 lock_flag.parent.mkdir(parents=True, exist_ok=True)
 
 # Atomic file creation with exclusive flag
