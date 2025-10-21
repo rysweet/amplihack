@@ -68,6 +68,17 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/user_prompt_submit.py",
+            "timeout": 5000
+          }
+        ]
+      }
     ]
   }
 }
