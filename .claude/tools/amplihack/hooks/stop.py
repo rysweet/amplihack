@@ -2,6 +2,10 @@
 """
 Claude Code hook for stop events.
 Checks lock flag and blocks stop if continuous work mode is enabled.
+
+Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
+- Return {} to allow normal stop (undefined decision = default behavior)
+- Return {"decision": "block", "reason": "..."} to prevent stop and continue working
 """
 
 import sys
@@ -34,8 +38,8 @@ class StopHook(HookProcessor):
             lock_exists = self.lock_flag.exists()
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
-            # Fail-safe: allow stop if we can't read lock
-            return {"decision": "approve", "continue": False}
+            # Fail-safe: allow stop if we can't read lock (return empty dict for default behavior)
+            return {}
 
         if lock_exists:
             # Lock is active - block stop and continue working
@@ -50,9 +54,9 @@ class StopHook(HookProcessor):
         # Not locked - check if reflection should be triggered
         self._trigger_reflection_if_enabled()
 
-        # Allow stop
+        # Allow stop (return empty dict to let Claude Code proceed with default behavior)
         self.log("No lock active - allowing stop")
-        return {"decision": "approve", "continue": False}
+        return {}
 
     def _trigger_reflection_if_enabled(self):
         """Trigger reflection analysis if enabled and not already running."""
