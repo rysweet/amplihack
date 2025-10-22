@@ -152,7 +152,7 @@ amplihack also supports GitHub Copilot CLI integration. See [docs/github-copilot
 
 ### Workflow
 
-14-step development process:
+Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
 
 1. Clarify requirements
 2. Create issue
@@ -195,7 +195,7 @@ AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 
 ### Custom Workflows
 
-The 14-step workflow is fully customizable. Edit `.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process - changes apply immediately to `/ultrathink` and other commands. See [docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed customization instructions.
+The iterative-step workflow is fully customizable. Edit `.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process - changes apply immediately to `/ultrathink` and other commands. See [docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed customization instructions.
 
 ### Project Structure
 
