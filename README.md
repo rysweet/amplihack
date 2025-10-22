@@ -1,40 +1,34 @@
 # amplihack
 
-Development framework for Claude Code and GitHub Copilot CLI with specialized
-agents and automated workflows.
-
-## Quick Setup
-
-Create a local `amplihack` command (optional but recommended):
-
-```sh
-# For bash
-echo 'alias amplihack="uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack"' >> ~/.bashrc
-source ~/.bashrc
-
-# For zsh (macOS default)
-echo 'alias amplihack="uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack"' >> ~/.zshrc
-source ~/.zshrc
-
-# For fish
-alias -s amplihack="uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack"
-```
-
-Then use simply:
-
-```sh
-amplihack claude                               # Launch Claude Code
-amplihack copilot                              # Launch GitHub Copilot CLI
-amplihack claude --auto -- -p "your task"      # Autonomous mode
-```
-
-Without alias, use the full command:
+Development framework for Claude Code with specialized agents and automated workflows.
 
 ```sh
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
 ```
 
 Launches Claude Code with preconfigured agents. No installation needed.
+
+## Quick Setup
+
+### Create Alias for Easy Access
+
+Instead of typing the full uvx command, create an alias:
+
+```sh
+# Add to your ~/.bashrc or ~/.zshrc
+alias amplihack='uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack'
+
+# Reload your shell
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+Now you can simply run:
+
+```sh
+amplihack launch
+amplihack launch --with-proxy-config ./azure.env
+amplihack launch --checkout-repo owner/repo
+```
 
 ## Quick Start
 
@@ -44,96 +38,121 @@ Launches Claude Code with preconfigured agents. No installation needed.
 - GitHub CLI (`gh`) for PR/issue management
 - uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 
-For detailed installation instructions, see
-[docs/PREREQUISITES.md](docs/PREREQUISITES.md).
+For detailed installation instructions, see [docs/PREREQUISITES.md](docs/PREREQUISITES.md).
 
 ### Basic Usage
 
 ```sh
-# Launch Claude Code
-amplihack claude
-
-# Launch GitHub Copilot CLI
-amplihack copilot
+# Launch Claude Code with amplihack
+amplihack launch
 
 # With Azure OpenAI (requires azure.env configuration)
-amplihack claude --with-proxy-config ./azure.env
+amplihack launch --with-proxy-config ./azure.env
 
 # Work directly in a GitHub repository
-amplihack claude --checkout-repo owner/repo
-
-# Autonomous mode with Claude
-amplihack claude --auto -- -p "implement feature X"
-
-# Autonomous mode with Copilot
-amplihack copilot --auto -- -p "add tests to module Y"
-
-# Customize max turns for complex tasks
-amplihack claude --auto --max-turns 20 -- -p "refactor entire module"
+amplihack launch --checkout-repo owner/repo
 ```
 
-Not sure where to start? Use the command above to run from uvx, then tell Claude
-Code to `cd /path/to/my/project` and
-`/amplihack:ultrathink <my first prompt here>`.
+Not sure where to start? Use the command above to run from uvx, then tell Claude Code to `cd /path/to/my/project` and `/amplihack:ultrathink <my first prompt here>`.
 
-**Auto Mode** enables autonomous agents that:
+## Model Configuration
 
-- Clarify objectives and create plans
-- Execute work across multiple turns
-- Evaluate progress and adapt
-- Work with both Claude and Copilot
+### Anthropic (Default)
 
-See [docs/AUTO_MODE.md](docs/AUTO_MODE.md) for details and
-[AGENTS.md](AGENTS.md) for Copilot CLI usage guide.
+amplihack works with Claude Code and Anthropic models out of the box. No additional configuration needed.
 
-### Model Configuration
+### Azure OpenAI
 
-amplihack automatically uses Claude Sonnet (1M context) as the default model.
-You can customize this behavior:
+To use Azure OpenAI models, create an `azure.env` file:
+
+```env
+AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+```
+
+Launch with Azure configuration:
 
 ```sh
-# Use default Sonnet model (automatic)
-amplihack claude
-
-# Override with a specific model
-amplihack claude -- --model opus
-
-# Set custom default via environment variable
-export AMPLIHACK_DEFAULT_MODEL=haiku
-amplihack claude
-
-# Azure proxy uses azure/gpt-5-codex automatically
-amplihack claude --with-proxy-config ./azure.env
+amplihack launch --with-proxy-config ./azure.env
 ```
 
-**Model Priority:**
+### GitHub Copilot CLI
 
-1. User-specified `--model` argument (highest priority)
-2. Azure proxy model (when using `--with-proxy-config`)
-3. `AMPLIHACK_DEFAULT_MODEL` environment variable
-4. Default: `sonnet[1m]` (Claude Sonnet with 1M context)
+amplihack also supports GitHub Copilot CLI integration. See [docs/github-copilot-litellm-integration.md](docs/github-copilot-litellm-integration.md) for setup instructions.
 
-### Commands in Claude Code
+## Quick Reference - Commands
 
-- `/amplihack:ultrathink <task>` - Orchestrate agents for complex tasks
-- `/amplihack:analyze <path>` - Review code quality
-- `/amplihack:improve [target]` - Capture learnings
-- `/amplihack:fix [pattern]` - Fix common errors
+| Command | Description |
+|---------|-------------|
+| `/amplihack:ultrathink` | Deep multi-agent analysis for complex tasks |
+| `/amplihack:analyze` | Code analysis and philosophy compliance review |
+| `/amplihack:auto` | Autonomous agentic loop (clarify → plan → execute) |
+| `/amplihack:cascade` | Fallback cascade for resilient operations |
+| `/amplihack:debate` | Multi-agent debate for complex decisions |
+| `/amplihack:expert-panel` | Multi-expert review with voting |
+| `/amplihack:n-version` | N-version programming for critical code |
+| `/amplihack:socratic` | Generate Socratic questions to challenge claims |
+| `/amplihack:reflect` | Session reflection and improvement analysis |
+| `/amplihack:improve` | Capture learnings and implement improvements |
+| `/amplihack:fix` | Fix common errors and code issues |
+| `/amplihack:modular-build` | Build self-contained modules with clear contracts |
+| `/amplihack:knowledge-builder` | Build comprehensive knowledge base |
+| `/amplihack:transcripts` | Conversation transcript management |
+| `/amplihack:xpia` | Security analysis and threat detection |
+| `/amplihack:customize` | Manage user-specific preferences |
+| `/amplihack:lock` | Enable continuous work mode |
+| `/amplihack:unlock` | Disable continuous work mode |
+| `/amplihack:install` | Install amplihack tools |
+| `/amplihack:uninstall` | Uninstall amplihack tools |
+
+## Agents Reference
+
+### Core Agents (6)
+
+| Agent | Purpose |
+|-------|---------|
+| **api-designer** | API design and endpoint structure |
+| **architect** | System design and architecture decisions |
+| **builder** | Code generation and implementation |
+| **optimizer** | Performance optimization and efficiency |
+| **reviewer** | Code quality and best practices review |
+| **tester** | Test generation and validation |
+
+### Specialized Agents (23)
+
+| Agent | Purpose |
+|-------|---------|
+| **ambiguity** | Clarify ambiguous requirements |
+| **amplifier-cli-architect** | CLI tool design and architecture |
+| **analyzer** | Deep code analysis |
+| **azure-kubernetes-expert** | Azure Kubernetes Service expertise |
+| **ci-diagnostic-workflow** | CI/CD pipeline diagnostics |
+| **cleanup** | Remove artifacts and enforce philosophy |
+| **database** | Database design and optimization |
+| **fallback-cascade** | Resilient fallback strategies |
+| **fix-agent** | Automated error fixing |
+| **integration** | System integration patterns |
+| **knowledge-archaeologist** | Extract and preserve knowledge |
+| **memory-manager** | Context and state management |
+| **multi-agent-debate** | Facilitate multi-perspective debates |
+| **n-version-validator** | Validate N-version implementations |
+| **patterns** | Design pattern recommendations |
+| **pre-commit-diagnostic** | Pre-commit hook diagnostics |
+| **preference-reviewer** | User preference validation |
+| **prompt-writer** | Effective prompt engineering |
+| **rust-programming-expert** | Rust language expertise |
+| **security** | Security analysis and vulnerability detection |
+| **visualization-architect** | Data visualization design |
+| **xpia-defense** | Advanced threat detection |
+| **zen-architect** | Minimalist architecture design |
 
 ## Core Concepts
 
-### Agents
-
-- **architect** - System design
-- **builder** - Code generation
-- **reviewer** - Code quality
-- **tester** - Test generation
-- **security** - Vulnerability checks
-- **optimizer** - Performance
-
 ### Workflow
 
-14-step development process (customizeable via DEFAULT_WORKLOFW.md)
+Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
 
 1. Clarify requirements
 2. Create issue
@@ -159,62 +178,30 @@ amplihack claude --with-proxy-config ./azure.env
 
 ## Configuration
 
-amplihack works with Claude Code and Anthropic models by default. For additional
-capabilities, you can configure Azure OpenAI integration.
+amplihack works with Claude Code and Anthropic models by default. For additional capabilities, you can configure Azure OpenAI integration.
 
 ### Azure OpenAI
 
-# Create `azure.env` with your credentials:
-
-### Azure OpenAI Integration
-
-Use Azure OpenAI models with Claude Code interface through automatic proxy
-setup.
-
-#### Quick Setup (< 5 minutes)
-
-```bash
-# 1. Copy and edit example configuration
-cp examples/example.azure.env .azure.env
-# Edit .azure.env with your Azure credentials
-
-# 2. Launch with Azure integration
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --with-proxy-config ./.azure.env
-```
-
-#### Example Configuration
-
-> > > > > > > origin/feat/issue-676-azure-openai-proxy
+Create `azure.env` with your credentials:
 
 ```env
-# Required: Azure credentials and endpoint
-OPENAI_API_KEY="your-azure-api-key"  # pragma: allowlist secret
-OPENAI_BASE_URL="https://myai.openai.azure.com/openai/deployments/gpt-4/chat/completions?api-version=2025-01-01-preview"
-
-# Model mapping to your Azure deployments
-BIG_MODEL="gpt-4"
-MIDDLE_MODEL="gpt-4"
-SMALL_MODEL="gpt-4o-mini"
-
-# Performance settings for large context
-REQUEST_TIMEOUT="300"
-MAX_TOKENS_LIMIT="512000"
-MAX_RETRIES="2"
+AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 ```
+
+**Security Warning**: Never commit API keys to version control. Use environment variables or secure key management systems.
 
 ### Custom Workflows
 
-The 14-step workflow is fully customizable. Edit
-`.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process -
-changes apply immediately to `/ultrathink` and other commands. See
-[docs/WORKFLOW_CUSTOMIZATION.md](docs/WORKFLOW_CUSTOMIZATION.md) for detailed
-customization instructions.
+The iterative-step workflow is fully customizable. Edit `.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process - changes apply immediately to `/ultrathink` and other commands. See [docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed customization instructions.
 
 ### Project Structure
 
 ```
 .claude/
-├── agents/     # Agent definitions
+├── agents/     # Agent definitions (core + specialized)
 ├── context/    # Philosophy and patterns
 ├── workflow/   # Development processes
 └── commands/   # Slash commands
@@ -222,17 +209,36 @@ customization instructions.
 
 ## Documentation
 
-- [Prerequisites](docs/PREREQUISITES.md) - Platform setup
-- [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agents
-- [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles
-- [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Process customization
+### Getting Started
+- [Prerequisites](docs/PREREQUISITES.md) - Platform setup and dependencies
+- [Proxy Configuration](docs/PROXY_CONFIG_GUIDE.md) - Azure OpenAI proxy setup
+
+### Features
+- [Auto Mode](docs/AUTO_MODE.md) - Autonomous agentic loop
+- [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agent creation
+- [GitHub Copilot Integration](docs/github-copilot-litellm-integration.md) - Copilot CLI support
+
+### Configuration
+- [Hook Configuration](docs/HOOK_CONFIGURATION_GUIDE.md) - Session hooks
+- [Workflow Customization](docs/WORKFLOW_COMPLETION.md) - Process customization
+
+### Development
+- [Developing amplihack](docs/DEVELOPING_AMPLIHACK.md) - Contributing guide
+- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Architecture overview
+
+### Security
+- [Security Recommendations](docs/SECURITY_RECOMMENDATIONS.md) - Best practices
+- [Security Context Preservation](docs/SECURITY_CONTEXT_PRESERVATION.md) - Context handling
+
+### Core Principles
+- [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles and patterns
+- [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Development process
 
 ## Development
 
 ### Contributing
 
-Fork, submit PRs. Add agents to `.claude/agents/`, patterns to
-`.claude/context/PATTERNS.md`.
+Fork, submit PRs. Add agents to `.claude/agents/`, patterns to `.claude/context/PATTERNS.md`.
 
 ### Local Development
 
@@ -240,11 +246,8 @@ Fork, submit PRs. Add agents to `.claude/agents/`, patterns to
 git clone https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git
 cd MicrosoftHackathon2025-AgenticCoding
 uv pip install -e .
-uvx amplihack launch
+amplihack launch
 ```
-
-For complete setup instructions, troubleshooting, and advanced configuration,
-see **[Azure Integration Guide](docs/AZURE_INTEGRATION.md)**
 
 ### Testing
 
@@ -254,16 +257,14 @@ pytest tests/
 
 ## Command Reference
 
-| Task        | Command                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------- |
-| Launch      | `uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch` |
-| With Azure  | Add `--with-proxy-config ./azure.env`                                                             |
-| With repo   | Add `--checkout-repo owner/repo`                                                                  |
-| From branch | Use `@branch-name` after URL                                                                      |
-| Uninstall   | `uvx [...] amplihack uninstall`                                                                   |
+| Task | Command |
+|------|---------|
+| Launch | `amplihack launch` |
+| With Azure | Add `--with-proxy-config ./azure.env` |
+| With repo | Add `--checkout-repo owner/repo` |
+| From branch | Use `@branch-name` after URL |
+| Uninstall | `amplihack uninstall` |
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-# Test change

@@ -35,7 +35,7 @@ class StopHook(HookProcessor):
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             # Fail-safe: allow stop if we can't read lock
-            return {"decision": "allow", "continue": False}
+            return {"decision": "approve", "continue": False}
 
         if lock_exists:
             # Lock is active - block stop and continue working
@@ -52,7 +52,7 @@ class StopHook(HookProcessor):
 
         # Allow stop
         self.log("No lock active - allowing stop")
-        return {"decision": "allow", "continue": False}
+        return {"decision": "approve", "continue": False}
 
     def _trigger_reflection_if_enabled(self):
         """Trigger reflection analysis if enabled and not already running."""

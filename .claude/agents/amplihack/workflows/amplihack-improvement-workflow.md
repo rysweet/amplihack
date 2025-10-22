@@ -1,8 +1,10 @@
 ---
-name: improvement-workflow
-description: Used for Improving only the amplihack project, not other projects. Enforces progressive validation throughout improvement process. Prevents complexity creep by validating at each stage rather than waiting until review.
+name: amplihack-improvement-workflow
+description: Used ONLY for Improving the amplihack project, not other projects. Enforces progressive validation throughout improvement process. Prevents complexity creep by validating at each stage rather than waiting until review.
 model: inherit
 ---
+
+DO NOT USE IF YOU ARE NOT IMPROVING THE AMPLIHACK PROJECT (https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding)
 
 # Improvement Workflow Agent
 
