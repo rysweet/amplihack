@@ -14,12 +14,12 @@ Use this command to exit continuous work mode after `/amplihack:lock` was enable
 
 Execute the following to disable lock:
 
-Remove the lock flag file at `.claude/tools/amplihack/.lock_active`:
+Remove the lock flag file at `.claude/runtime/locks/.lock_active`:
 
 ```python
 from pathlib import Path
 
-lock_flag = Path(".claude/tools/amplihack/.lock_active")
+lock_flag = Path(".claude/runtime/locks/.lock_active")
 
 try:
     lock_flag.unlink(missing_ok=True)
