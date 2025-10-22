@@ -81,16 +81,16 @@ class AutoMode:
     def run_sdk(self, prompt: str) -> Tuple[int, str]:
         """Run SDK command with prompt, choosing method by provider.
 
-        For Claude: Use Python SDK with streaming (if available)
+        For Claude: Should NOT be called directly - use async path instead
         For Copilot: Use subprocess approach
 
         Returns:
             (exit_code, output)
         """
-        # Use SDK for Claude if available, subprocess otherwise
+        # Claude SDK should use the async session path to maintain single event loop
         if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
-            # Run async function in sync context
-            return asyncio.run(self._run_turn_with_sdk(prompt))
+            self.log("ERROR: Claude SDK should use _run_async_session(), not run_sdk()", level="ERROR")
+            return (1, "Internal error: Claude SDK requires async session mode")
         # Fallback to subprocess for Copilot or if SDK unavailable
         return self._run_sdk_subprocess(prompt)
 
@@ -261,6 +261,17 @@ Document your decisions and reasoning in comments/logs."""
             full_output = "".join(output_lines)
             return (0, full_output)
 
+        except GeneratorExit:
+            # Graceful generator cleanup
+            self.log("Generator exit during SDK execution", level="WARNING")
+            return (0, "".join(output_lines))
+        except RuntimeError as e:
+            # Catch cancel scope errors specifically
+            if "cancel scope" in str(e).lower():
+                self.log(f"Cancel scope error (non-fatal): {e}", level="WARNING")
+                return (0, "".join(output_lines))
+            # Re-raise other RuntimeErrors
+            raise
         except Exception as e:
             self.log(f"SDK execution failed: {e}", level="ERROR")
             import traceback
@@ -320,7 +331,20 @@ Document your decisions and reasoning in comments/logs."""
             self.log(f"✗ Hook {hook} failed: {e}")
 
     def run(self) -> int:
-        """Execute agentic loop."""
+        """Execute agentic loop.
+
+        Routes to async session for Claude SDK or sync session for subprocess-based SDKs.
+        """
+        # Detect if using Claude SDK
+        if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
+            # Use single async event loop for entire session
+            return asyncio.run(self._run_async_session())
+        else:
+            # Use subprocess-based sync session
+            return self._run_sync_session()
+
+    def _run_sync_session(self) -> int:
+        """Execute agentic loop using subprocess-based SDK calls (Copilot/fallback)."""
         self.start_time = time.time()
         self.log(f"Starting auto mode (max {self.max_turns} turns)")
         self.log(f"Prompt: {self.prompt}")
@@ -453,6 +477,157 @@ Current Turn: {turn}/{self.max_turns}"""
             # Summary - display it directly
             self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
             code, summary = self.run_sdk(
+                f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}"
+            )
+            if code == 0:
+                print(summary)
+            else:
+                self.log(f"Warning: Summary generation failed (exit {code})")
+
+        finally:
+            self.run_hook("stop")
+
+        return 0
+
+    async def _run_async_session(self) -> int:
+        """Execute agentic loop using Claude SDK in single async event loop.
+
+        This maintains a single event loop for the entire session, preventing
+        the "cancel scope in different task" error that occurs when repeatedly
+        calling asyncio.run() for each turn.
+        """
+        self.start_time = time.time()
+        self.log(f"Starting auto mode with Claude SDK (max {self.max_turns} turns)")
+        self.log(f"Prompt: {self.prompt}")
+
+        self.run_hook("session_start")
+
+        try:
+            # Turn 1: Clarify objective
+            self.turn = 1
+            self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
+            turn1_prompt = f"""{self._build_philosophy_context()}
+
+Task: Analyze this user request and clarify the objective with evaluation criteria.
+
+1. IDENTIFY EXPLICIT REQUIREMENTS: Extract any "must have", "all", "include everything", quoted specifications
+2. IDENTIFY IMPLICIT PREFERENCES: What user likely wants based on @.claude/context/USER_PREFERENCES.md
+3. APPLY PHILOSOPHY: Ruthless simplicity from @.claude/context/PHILOSOPHY.md, modular design, zero-BS implementation
+4. DEFINE SUCCESS CRITERIA: Clear, measurable, aligned with philosophy
+
+User Request:
+{self.prompt}"""
+
+            code, objective = await self._run_turn_with_sdk(turn1_prompt)
+            if code != 0:
+                self.log(f"Error clarifying objective (exit {code})")
+                return 1
+
+            # Turn 2: Create plan
+            self.turn = 2
+            self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
+            turn2_prompt = f"""{self._build_philosophy_context()}
+
+Reference:
+- @.claude/context/PHILOSOPHY.md for design principles
+- @.claude/workflow/DEFAULT_WORKFLOW.md for standard workflow steps
+- @.claude/context/USER_PREFERENCES.md for user-specific preferences
+
+Task: Create an execution plan that:
+1. PRESERVES all explicit user requirements from objective
+2. APPLIES ruthless simplicity and modular design principles
+3. IDENTIFIES parallel execution opportunities (agents, tasks, operations)
+4. FOLLOWS the brick philosophy (self-contained modules with clear contracts)
+5. IMPLEMENTS zero-BS approach (no stubs, no TODOs, no placeholders)
+
+Plan Structure:
+- List explicit requirements that CANNOT be changed
+- Break work into self-contained modules (bricks)
+- Identify what can execute in parallel
+- Define clear contracts between components
+- Specify success criteria for each step
+
+Objective:
+{objective}"""
+
+            code, plan = await self._run_turn_with_sdk(turn2_prompt)
+            if code != 0:
+                self.log(f"Error creating plan (exit {code})")
+                return 1
+
+            # Turns 3+: Execute and evaluate
+            for turn in range(3, self.max_turns + 1):
+                self.turn = turn
+                self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
+
+                # Execute
+                execute_prompt = f"""{self._build_philosophy_context()}
+
+Task: Execute the next part of the plan using specialized agents where possible.
+
+Execution Guidelines:
+- Use PARALLEL EXECUTION by default (multiple agents, multiple tasks)
+- Apply @.claude/context/PHILOSOPHY.md principles throughout
+- Delegate to specialized agents from .claude/agents/* when appropriate
+- Implement COMPLETE features (no stubs, no TODOs, no placeholders)
+- Make ALL implementation decisions autonomously
+- Log your decisions and reasoning
+
+Current Plan:
+{plan}
+
+Original Objective:
+{objective}
+
+Current Turn: {turn}/{self.max_turns}"""
+
+                code, execution_output = await self._run_turn_with_sdk(execute_prompt)
+                if code != 0:
+                    self.log(f"Warning: Execution returned exit code {code}")
+
+                # Evaluate
+                self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
+                eval_prompt = f"""{self._build_philosophy_context()}
+
+Task: Evaluate if the objective is achieved based on:
+1. All explicit user requirements met
+2. Philosophy principles applied (simplicity, modularity, zero-BS)
+3. Success criteria from Turn 1 satisfied
+4. No placeholders or incomplete implementations remain
+5. All work has actually been thoroughly tested and verified
+6. The required workflow has been fully executed
+
+Respond with one of:
+- "auto-mode EVALUATION: COMPLETE" - All criteria met, objective achieved
+- "auto-mode EVALUATION: IN PROGRESS" - Making progress, continue execution
+- "auto-mode EVALUATION: NEEDS ADJUSTMENT" - Issues identified, plan adjustment needed
+
+Include brief reasoning for your evaluation. If incomplete, specify next steps or adjustments needed.
+
+Objective:
+{objective}
+
+Current Turn: {turn}/{self.max_turns}"""
+
+                code, eval_result = await self._run_turn_with_sdk(eval_prompt)
+
+                # Check completion - look for strong completion signals
+                eval_lower = eval_result.lower()
+                if (
+                    "auto-mode evaluation: complete" in eval_lower
+                    or "objective achieved" in eval_lower
+                    or "all criteria met" in eval_lower
+                ):
+                    self.log("✓ Objective achieved!")
+                    break
+
+                if turn >= self.max_turns:
+                    self.log("Max turns reached")
+                    break
+
+            # Summary - display it directly
+            self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
+            code, summary = await self._run_turn_with_sdk(
                 f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}"
             )
             if code == 0:
