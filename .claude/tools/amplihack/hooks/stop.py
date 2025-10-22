@@ -2,6 +2,10 @@
 """
 Claude Code hook for stop events.
 Checks lock flag and blocks stop if continuous work mode is enabled.
+
+Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
+- Return {} to allow normal stop (undefined decision = default behavior)
+- Return {"decision": "block", "reason": "..."} to prevent stop and continue working
 """
 
 import sys

@@ -2,6 +2,14 @@
 """
 Unified hook processor for Claude Code hooks.
 Provides common functionality for all hook scripts.
+
+Hook Protocol Documentation:
+https://docs.claude.com/en/docs/claude-code/hooks
+
+Response Protocol:
+- Return {} for default behavior (no intervention)
+- Return {"decision": "block", "reason": "..."} to intervene (Stop hooks)
+- Return {"permissionDecision": "allow"/"deny"/"ask"} for permission (PreToolUse hooks)
 """
 
 import json
