@@ -77,10 +77,12 @@ Use this workflow for:
 
 ### Step 3: Setup Worktree and Branch
 
-- [ ] Create new git worktree for isolated development
+- [ ] **Always use** worktree-manager agent for worktree operations
+- [ ] Create new git worktree in `./worktrees/{branch-name}` for isolated development
 - [ ] Create branch with format: `feat/issue-{number}-{brief-description}`
-- [ ] Push branch to remote with tracking
-- [ ] Switch to new worktree directory
+- [ ] Command: `git worktree add ./worktrees/{branch-name} -b {branch-name}`
+- [ ] Push branch to remote with tracking: `git push -u origin {branch-name}`
+- [ ] Switch to new worktree directory: `cd ./worktrees/{branch-name}`
 - [ ] Document consensus decisions in `.claude/runtime/logs/<session_id>/CONSENSUS_DECISIONS.md`
 
 ### Step 4: Research and Design with TDD (ALWAYS CONSENSUS)
