@@ -311,7 +311,7 @@ class ClaudeLauncher:
             if claude_path:
                 cmd.extend(["--claude-path", claude_path])
 
-            claude_args = ["--dangerously-skip-permissions"]
+            claude_args = ["--dangerously-skip-permissions", "--verbose"]
 
             # Add system prompt if provided
             if self.append_system_prompt and self.append_system_prompt.exists():
@@ -340,7 +340,7 @@ class ClaudeLauncher:
 
             return cmd
         # Standard claude command
-        cmd = [claude_binary, "--dangerously-skip-permissions"]
+        cmd = [claude_binary, "--dangerously-skip-permissions", "--verbose"]
 
         # Add system prompt if provided
         if self.append_system_prompt and self.append_system_prompt.exists():
