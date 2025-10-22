@@ -87,9 +87,12 @@ Execute the workflow steps loaded from the selected workflow file:
 
 #### Step 3: Setup Worktree and Branch
 
-- Create git worktree for isolated development
+- **worktree-manager**: Use worktree manager agent for all worktree operations
+- Create git worktree in `./worktrees/{branch-name}` for isolated development
 - Create branch: `feat/issue-{number}-{description}`
-- Push and switch to worktree
+- Command: `git worktree add ./worktrees/{branch-name} -b {branch-name}`
+- Push with tracking: `git push -u origin {branch-name}`
+- Switch to worktree: `cd ./worktrees/{branch-name}`
 
 #### Step 4: Research and Design with TDD
 
