@@ -591,23 +591,6 @@ status = check_ci_status()  # Check current branch
 status = check_ci_status(ref="123")  # Check PR #123
 ```
 
-### GitHub CLI (gh) Commands
-
-When using `gh` commands in the Bash tool, always pipe through `cat` to ensure output is displayed:
-
-```bash
-# Creating pull requests
-gh pr create --title "..." --body "..." 2>&1 | cat
-
-# Viewing PR details
-gh pr view 123 2>&1 | cat
-
-# Listing PRs
-gh pr list --head branch-name 2>&1 | cat
-```
-
-**Why this matters**: The Bash tool may not display gh command output reliably without piping through `cat`. This ensures you see success messages, error details, and URLs.
-
 ## Testing & Validation
 
 After code changes:
