@@ -233,6 +233,7 @@ class HookProcessor(ABC):
         except json.JSONDecodeError as e:
             self.log(f"Invalid JSON input: {e}", "ERROR")
             self.write_output({"error": "Invalid JSON input"})
+            sys.exit(1)  # Exit with error code so Claude Code can detect failure
 
         except Exception as e:
             # Log full traceback for debugging
@@ -264,9 +265,10 @@ class HookProcessor(ABC):
                 print("\nFull error details available in log file", file=sys.stderr)
             print("=" * 60, file=sys.stderr)
 
-            # Return empty dict to allow graceful continuation
-            # (exit code 0 ensures non-blocking error)
+            # Return empty dict and exit with error code
+            # Exit code 1 = non-blocking error (stderr shown to user)
             self.write_output({})
+            sys.exit(1)  # Exit with error code so Claude Code can detect failure
 
     def get_session_id(self) -> str:
         """Generate or retrieve a session ID.
