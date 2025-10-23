@@ -45,6 +45,13 @@ class AutoMode:
         )
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
+        # Security: Session-level limits to prevent resource exhaustion
+        self.total_api_calls = 0
+        self.max_total_api_calls = 50  # Max API calls per session
+        self.max_session_duration = 3600  # 1 hour max
+        self.session_output_size = 0
+        self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
+
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
         print(f"[AUTO {self.sdk.upper()}] {msg}")
@@ -226,6 +233,8 @@ Document your decisions and reasoning in comments/logs."""
         try:
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
+            turn_output_size = 0
+            MAX_TURN_OUTPUT = 10 * 1024 * 1024  # 10MB per turn limit
 
             # Configure SDK options
             options = ClaudeAgentOptions(
@@ -245,6 +254,20 @@ Document your decisions and reasoning in comments/logs."""
                         for block in getattr(message, "content", []):
                             if hasattr(block, "text"):
                                 text = block.text
+
+                                # Security: Check output size limits
+                                text_size = len(text.encode("utf-8"))
+                                turn_output_size += text_size
+                                self.session_output_size += text_size
+
+                                if turn_output_size > MAX_TURN_OUTPUT:
+                                    self.log(f"Turn output size limit exceeded ({turn_output_size} bytes)", level="ERROR")
+                                    return (1, "Turn output too large")
+
+                                if self.session_output_size > self.max_session_output:
+                                    self.log(f"Session output limit exceeded ({self.session_output_size} bytes)", level="ERROR")
+                                    return (1, "Session output too large")
+
                                 print(text, end="", flush=True)
                                 output_lines.append(text)
 
@@ -262,14 +285,15 @@ Document your decisions and reasoning in comments/logs."""
             return (0, full_output)
 
         except GeneratorExit:
-            # Graceful generator cleanup
-            self.log("Generator exit during SDK execution", level="WARNING")
-            return (0, "".join(output_lines))
+            # Graceful generator cleanup - this is expected during async cleanup
+            self.log("Async generator cleanup (normal)", level="DEBUG")
+            return (0, "".join(output_lines) if output_lines else "")
         except RuntimeError as e:
-            # Catch cancel scope errors specifically
+            # Catch cancel scope errors specifically - these occur during normal async cleanup
             if "cancel scope" in str(e).lower():
-                self.log(f"Cancel scope error (non-fatal): {e}", level="WARNING")
-                return (0, "".join(output_lines))
+                self.log(f"Async cleanup complete (task coordination)", level="DEBUG")
+                # Don't propagate - this is expected during graceful shutdown
+                return (0, "".join(output_lines) if output_lines else "")
             # Re-raise other RuntimeErrors
             raise
         except Exception as e:
@@ -278,6 +302,83 @@ Document your decisions and reasoning in comments/logs."""
 
             self.log(f"Traceback: {traceback.format_exc()}", level="ERROR")
             return (1, f"SDK Error: {e!s}")
+
+    def _is_retryable_error(self, error_text: str) -> bool:
+        """Check if error is transient and should be retried.
+
+        Args:
+            error_text: Error message text
+
+        Returns:
+            True if error is retryable (500, 429, 503, timeout, overloaded)
+        """
+        error_lower = error_text.lower()
+        retryable_patterns = [
+            "overloaded",
+            "rate limit",
+            "503",
+            "500",
+            "timeout",
+            "service unavailable",
+            "too many requests",
+            "429",
+        ]
+        return any(pattern in error_lower for pattern in retryable_patterns)
+
+    async def _run_turn_with_retry(
+        self,
+        prompt: str,
+        max_retries: int = 3,
+        base_delay: float = 2.0,
+    ) -> Tuple[int, str]:
+        """Execute turn with retry on transient errors.
+
+        Implements exponential backoff for transient API errors (500, 429, 503).
+        Permanent errors (400, 401, 403) fail immediately without retry.
+
+        Args:
+            prompt: The prompt for this turn
+            max_retries: Maximum retry attempts (default 3)
+            base_delay: Base delay for exponential backoff in seconds (default 2.0s)
+
+        Returns:
+            (exit_code, output_text)
+        """
+        # Security: Check session limits before attempting turn
+        if self.total_api_calls >= self.max_total_api_calls:
+            self.log(f"Session limit reached ({self.max_total_api_calls} API calls)", level="ERROR")
+            return (1, "Session limit exceeded - too many API calls")
+
+        elapsed = time.time() - self.start_time
+        if elapsed > self.max_session_duration:
+            self.log(f"Session duration limit reached ({elapsed:.0f}s)", level="ERROR")
+            return (1, "Session timeout - maximum duration exceeded")
+
+        for attempt in range(max_retries + 1):
+            self.total_api_calls += 1  # Track API call count
+            code, output = await self._run_turn_with_sdk(prompt)
+
+            if code == 0:
+                # Success - return immediately
+                return (code, output)
+
+            # Check if error is retryable
+            if self._is_retryable_error(output):
+                if attempt < max_retries:
+                    delay = base_delay * (2**attempt)  # Exponential backoff: 2s, 4s, 8s
+                    self.log(
+                        f"Retryable error detected (attempt {attempt + 1}/{max_retries + 1}), "
+                        f"waiting {delay:.1f}s before retry..."
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                else:
+                    self.log(f"Max retries ({max_retries}) exceeded for transient error")
+
+            # Non-retryable error or max retries exceeded
+            return (code, output)
+
+        return (code, output)
 
     def run_hook(self, hook: str):
         """Run hook for copilot and codex (Claude SDK handles hooks automatically)."""
@@ -518,7 +619,7 @@ Task: Analyze this user request and clarify the objective with evaluation criter
 User Request:
 {self.prompt}"""
 
-            code, objective = await self._run_turn_with_sdk(turn1_prompt)
+            code, objective = await self._run_turn_with_retry(turn1_prompt, max_retries=3)
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
                 return 1
@@ -550,7 +651,7 @@ Plan Structure:
 Objective:
 {objective}"""
 
-            code, plan = await self._run_turn_with_sdk(turn2_prompt)
+            code, plan = await self._run_turn_with_retry(turn2_prompt, max_retries=3)
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
                 return 1
@@ -581,7 +682,7 @@ Original Objective:
 
 Current Turn: {turn}/{self.max_turns}"""
 
-                code, execution_output = await self._run_turn_with_sdk(execute_prompt)
+                code, execution_output = await self._run_turn_with_retry(execute_prompt, max_retries=3)
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
@@ -609,7 +710,7 @@ Objective:
 
 Current Turn: {turn}/{self.max_turns}"""
 
-                code, eval_result = await self._run_turn_with_sdk(eval_prompt)
+                code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
 
                 # Check completion - look for strong completion signals
                 eval_lower = eval_result.lower()
@@ -627,8 +728,9 @@ Current Turn: {turn}/{self.max_turns}"""
 
             # Summary - display it directly
             self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
-            code, summary = await self._run_turn_with_sdk(
-                f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}"
+            code, summary = await self._run_turn_with_retry(
+                f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}",
+                max_retries=2,  # Fewer retries for summary (less critical)
             )
             if code == 0:
                 print(summary)
