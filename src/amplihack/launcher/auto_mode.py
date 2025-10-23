@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import pty
+import re
 import subprocess
 import sys
 import threading
@@ -18,6 +19,51 @@ try:
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
+
+# Security constants for content sanitization
+MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
+PROMPT_INJECTION_PATTERNS = [
+    r"ignore\s+previous\s+instructions",
+    r"disregard\s+all\s+prior",
+    r"forget\s+everything",
+    r"new\s+instructions:",
+    r"system\s+prompt:",
+    r"you\s+are\s+now",
+    r"override\s+all",
+]
+
+
+def _sanitize_injected_content(content: str) -> str:
+    """Sanitize content before injecting into prompts.
+
+    Args:
+        content: Content to sanitize
+
+    Returns:
+        Sanitized content (truncated and with suspicious patterns removed)
+    """
+    if not content:
+        return content
+
+    # Truncate if too large
+    if len(content.encode("utf-8")) > MAX_INJECTED_CONTENT_SIZE:
+        # Truncate to size limit with warning
+        content = content[: MAX_INJECTED_CONTENT_SIZE // 2]  # UTF-8 safe truncation
+        content += "\n\n[Content truncated due to size limit]"
+
+    # Remove prompt injection patterns
+    content_lower = content.lower()
+    for pattern in PROMPT_INJECTION_PATTERNS:
+        if re.search(pattern, content_lower, re.IGNORECASE):
+            # Replace suspicious patterns with safe marker
+            content = re.sub(
+                pattern,
+                "[REDACTED: suspicious pattern]",
+                content,
+                flags=re.IGNORECASE,
+            )
+
+    return content
 
 
 class AutoMode:
@@ -44,6 +90,19 @@ class AutoMode:
             self.working_dir / ".claude" / "runtime" / "logs" / f"auto_{sdk}_{int(time.time())}"
         )
         self.log_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create directories for prompt injection feature
+        self.append_dir = self.log_dir / "append"
+        self.appended_dir = self.log_dir / "appended"
+        self.append_dir.mkdir(parents=True, exist_ok=True)
+        self.appended_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write original prompt to prompt.md
+        with open(self.log_dir / "prompt.md", "w") as f:
+            f.write(f"# Original Auto Mode Prompt\n\n{prompt}\n\n---\n\n")
+            f.write(f"**Session Started**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"**SDK**: {sdk}\n")
+            f.write(f"**Max Turns**: {max_turns}\n")
 
         # Security: Session-level limits to prevent resource exhaustion
         self.total_api_calls = 0
@@ -154,14 +213,21 @@ class AutoMode:
                     except (BrokenPipeError, OSError):
                         # Process closed or pty closed
                         break
-            except Exception:
-                # Silently handle any other exceptions
+            except KeyboardInterrupt:
+                # Allow clean shutdown on Ctrl+C
                 pass
+            except Exception as e:
+                # Log unexpected errors for debugging
+                self.log(f"PTY stdin feed error: {e}", level="WARNING")
             finally:
                 try:
                     os.close(fd)
-                except Exception:
+                except (OSError, ValueError):
+                    # File descriptor already closed or invalid
                     pass
+                except Exception as e:
+                    # Log any other unexpected cleanup errors
+                    self.log(f"PTY cleanup error: {e}", level="WARNING")
 
         # Create threads to read stdout and stderr concurrently
         stdout_thread = threading.Thread(
@@ -196,6 +262,48 @@ class AutoMode:
             self.log(f"stderr: {stderr_output[:200]}...")
 
         return process.returncode, stdout_output
+
+    def _check_for_new_instructions(self) -> str:
+        """Check append directory for new instruction files and process them.
+
+        Returns:
+            String containing all new instructions (sanitized), or empty string if none.
+        """
+        new_instructions = []
+
+        # Get all .md files in append directory
+        md_files = sorted(self.append_dir.glob("*.md"))
+
+        if not md_files:
+            return ""
+
+        self.log(f"Found {len(md_files)} new instruction file(s) to process")
+
+        for md_file in md_files:
+            try:
+                # Read the instruction file
+                with open(md_file, "r") as f:
+                    content = f.read()
+
+                # Sanitize content before injection
+                sanitized_content = _sanitize_injected_content(content)
+
+                timestamp = md_file.stem
+                new_instructions.append(
+                    f"\n## Additional Instruction (appended at {timestamp})\n\n{sanitized_content}\n"
+                )
+
+                # Move file to appended directory
+                target_path = self.appended_dir / md_file.name
+                md_file.rename(target_path)
+                self.log(f"Processed and archived: {md_file.name}")
+
+            except Exception as e:
+                self.log(f"Error processing {md_file.name}: {e}", level="ERROR")
+
+        if new_instructions:
+            return "\n".join(new_instructions)
+        return ""
 
     def _build_philosophy_context(self) -> str:
         """Build comprehensive philosophy and decision-making context.
@@ -510,6 +618,9 @@ Objective:
                 self.turn = turn
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
+                # Check for new instructions before executing
+                new_instructions = self._check_for_new_instructions()
+
                 # Execute
                 execute_prompt = f"""{self._build_philosophy_context()}
 
@@ -528,6 +639,7 @@ Current Plan:
 
 Original Objective:
 {objective}
+{new_instructions}
 
 Current Turn: {turn}/{self.max_turns}"""
 
@@ -661,6 +773,9 @@ Objective:
                 self.turn = turn
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
+                # Check for new instructions before executing
+                new_instructions = self._check_for_new_instructions()
+
                 # Execute
                 execute_prompt = f"""{self._build_philosophy_context()}
 
@@ -679,6 +794,7 @@ Current Plan:
 
 Original Objective:
 {objective}
+{new_instructions}
 
 Current Turn: {turn}/{self.max_turns}"""
 
