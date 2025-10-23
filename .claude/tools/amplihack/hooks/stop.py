@@ -48,7 +48,6 @@ class StopHook(HookProcessor):
             return {
                 "decision": "block",
                 "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
-                "continue": True,
             }
 
         # Not locked - check if reflection should be triggered
