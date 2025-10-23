@@ -24,7 +24,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 
 def _is_uvx_mode() -> bool:
@@ -83,6 +83,13 @@ def _find_claude_in_common_locations() -> Optional[str]:
     return shutil.which("claude")
 
 
+def _print_manual_install_instructions():
+    """Print manual installation instructions for Claude CLI."""
+    print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
+    print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
+    print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+
+
 def _validate_claude_binary(claude_path: str) -> bool:
     """Validate that claude binary works.
 
@@ -92,16 +99,15 @@ def _validate_claude_binary(claude_path: str) -> bool:
     Returns:
         True if binary is valid and executable.
     """
-    try:
-        result = subprocess.run(
-            [claude_path, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
-        return False
+    # Import here to avoid circular dependency
+    from .prerequisites import safe_subprocess_call
+
+    returncode, stdout, stderr = safe_subprocess_call(
+        [claude_path, "--version"],
+        context="validating Claude CLI binary",
+        timeout=5,
+    )
+    return returncode == 0
 
 
 def _install_claude_cli() -> bool:
@@ -125,19 +131,20 @@ def _install_claude_cli() -> bool:
     print(f"Target directory: {user_npm_bin}")
     print("Running: npm install -g @anthropic-ai/claude-code --ignore-scripts")
 
+    # Import here to avoid circular dependency
+    from .prerequisites import safe_subprocess_call
+
     try:
         # Use --ignore-scripts for supply chain security
         # Install to user-local directory using --prefix flag (overrides any npm config)
         user_npm_dir = Path.home() / ".npm-global"
-        result = subprocess.run(
+        returncode, stdout, stderr = safe_subprocess_call(
             [npm_path, "install", "-g", "--prefix", str(user_npm_dir), "@anthropic-ai/claude-code", "--ignore-scripts"],
-            env=env,
-            capture_output=True,
-            text=True,
+            context="installing Claude CLI via npm",
             timeout=120,  # 2 minutes for npm install
         )
 
-        if result.returncode == 0:
+        if returncode == 0:
             # Verify binary is at expected location (where we told npm to install it)
             expected_binary = user_npm_bin / "claude"
 
@@ -145,22 +152,22 @@ def _install_claude_cli() -> bool:
                 # Binary not where expected - check actual npm prefix
                 print(f"❌ Binary not found at expected location: {expected_binary}")
                 try:
-                    prefix_result = subprocess.run(
+                    prefix_returncode, prefix_stdout, prefix_stderr = safe_subprocess_call(
                         [npm_path, "config", "get", "prefix"],
-                        capture_output=True,
-                        text=True,
+                        context="checking npm prefix configuration",
                         timeout=5,
                     )
-                    actual_prefix = prefix_result.stdout.strip()
-                    print(f"Actual npm prefix: {actual_prefix}")
-                    print(f"Expected: {user_npm_dir}")
-                except Exception:
-                    print("Could not determine actual npm prefix")
+                    if prefix_returncode == 0:
+                        actual_prefix = prefix_stdout.strip()
+                        print(f"Actual npm prefix: {actual_prefix}")
+                        print(f"Expected: {user_npm_dir}")
+                    else:
+                        print(f"Could not determine npm prefix: {prefix_stderr}")
+                except Exception as e:
+                    print(f"Could not determine actual npm prefix: {type(e).__name__}: {str(e)}")
 
                 print("\nManual installation:")
-                print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
-                print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
-                print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+                _print_manual_install_instructions()
                 return False
 
             # Validate the binary is executable
@@ -181,23 +188,23 @@ def _install_claude_cli() -> bool:
         # Sanitized error - details logged, not exposed to user
         print("❌ Claude CLI installation failed")
         print("Check npm configuration and permissions")
+        if stderr:
+            print(f"Error details: {stderr}")
         print("\nManual installation:")
-        print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
-        print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
-        print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+        _print_manual_install_instructions()
         return False
 
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
         print("❌ Claude CLI installation timed out after 120 seconds")
+        print(f"Command: {' '.join(e.cmd) if hasattr(e, 'cmd') else 'npm install'}")
         print("Try manually:")
-        print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
-        print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
+        _print_manual_install_instructions()
         return False
-    except Exception:
-        print("❌ Unexpected error installing Claude CLI")
+    except Exception as e:
+        print(f"❌ Unexpected error installing Claude CLI: {type(e).__name__}")
+        print(f"Error: {str(e)}")
         print("Try manually:")
-        print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
-        print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
+        _print_manual_install_instructions()
         return False
 
 
@@ -230,9 +237,7 @@ def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
             print("\n⚠️  Claude CLI not found")
             print("Auto-installation disabled via AMPLIHACK_AUTO_INSTALL=0")
             print("\nTo install manually:")
-            print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
-            print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
-            print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+            _print_manual_install_instructions()
             return None
 
         print("Claude CLI not found. Auto-installing...")
@@ -246,9 +251,7 @@ def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
     # Installation failed or auto-install disabled - print manual instructions only once
     print("\n⚠️  Claude CLI installation failed or not found")
     print("Please install manually:")
-    print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
-    print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
-    print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+    _print_manual_install_instructions()
 
     return None
 
