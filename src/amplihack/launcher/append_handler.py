@@ -4,6 +4,8 @@ This module provides functionality to append new instructions to running auto mo
 Instructions are written to timestamped files in the session's append/ directory.
 """
 
+import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -15,6 +17,31 @@ class AppendError(Exception):
     """Error during append operation."""
 
     pass
+
+
+class ValidationError(Exception):
+    """Validation error for instruction content."""
+
+    pass
+
+
+# Security constants
+MAX_INSTRUCTION_SIZE = 100 * 1024  # 100KB
+MAX_APPENDS_PER_MINUTE = 10
+MAX_PENDING_INSTRUCTIONS = 100
+
+# Suspicious patterns that might indicate prompt injection
+SUSPICIOUS_PATTERNS = [
+    r"ignore\s+previous\s+instructions",
+    r"disregard\s+all\s+prior",
+    r"forget\s+everything",
+    r"new\s+instructions:",
+    r"system\s+prompt:",
+    r"<\s*script",
+    r"eval\s*\(",
+    r"exec\s*\(",
+    r"__import__",
+]
 
 
 @dataclass
@@ -51,6 +78,74 @@ class AppendResult:
             "timestamp": self.timestamp,
             "message": self.message,
         }
+
+
+def _validate_instruction(instruction: str) -> None:
+    """Validate instruction content for security and size.
+
+    Args:
+        instruction: Instruction text to validate
+
+    Raises:
+        ValidationError: If validation fails
+    """
+    # Check size
+    instruction_bytes = instruction.encode("utf-8")
+    if len(instruction_bytes) > MAX_INSTRUCTION_SIZE:
+        raise ValidationError(
+            f"Instruction too large: {len(instruction_bytes)} bytes "
+            f"(max {MAX_INSTRUCTION_SIZE} bytes / {MAX_INSTRUCTION_SIZE // 1024}KB)"
+        )
+
+    # Check for suspicious patterns
+    instruction_lower = instruction.lower()
+    for pattern in SUSPICIOUS_PATTERNS:
+        if re.search(pattern, instruction_lower, re.IGNORECASE):
+            raise ValidationError(
+                f"Suspicious pattern detected: '{pattern}'. "
+                "This might be a prompt injection attempt. "
+                "If this is legitimate, please rephrase your instruction."
+            )
+
+
+def _check_rate_limit(append_dir: Path) -> None:
+    """Check if rate limit has been exceeded.
+
+    Args:
+        append_dir: Directory to check for recent appends
+
+    Raises:
+        ValidationError: If rate limit exceeded
+    """
+    # Check pending instructions count
+    pending_count = len(list(append_dir.glob("*.md")))
+    if pending_count >= MAX_PENDING_INSTRUCTIONS:
+        raise ValidationError(
+            f"Too many pending instructions: {pending_count} "
+            f"(max {MAX_PENDING_INSTRUCTIONS}). "
+            "Wait for the auto mode session to process existing instructions."
+        )
+
+    # Check appends in last minute
+    now = time.time()
+    one_minute_ago = now - 60
+
+    recent_appends = 0
+    for md_file in append_dir.glob("*.md"):
+        try:
+            # Check file modification time
+            mtime = md_file.stat().st_mtime
+            if mtime >= one_minute_ago:
+                recent_appends += 1
+        except (OSError, ValueError):
+            # Ignore files we can't stat
+            pass
+
+    if recent_appends >= MAX_APPENDS_PER_MINUTE:
+        raise ValidationError(
+            f"Rate limit exceeded: {recent_appends} appends in last minute "
+            f"(max {MAX_APPENDS_PER_MINUTE}). Please wait before appending more instructions."
+        )
 
 
 def _find_workspace_root(start_dir: Path) -> Optional[Path]:
@@ -121,11 +216,15 @@ def append_instructions(instruction: str, session_id: Optional[str] = None) -> A
 
     Raises:
         ValueError: If instruction is empty or whitespace
+        ValidationError: If instruction fails security validation or rate limit
         AppendError: If session not found or write fails
     """
     # Validate instruction
     if not instruction or not instruction.strip():
         raise ValueError("Instruction cannot be empty or whitespace-only")
+
+    # Security validation
+    _validate_instruction(instruction)
 
     # Find workspace root
     cwd = Path.cwd()
@@ -155,6 +254,9 @@ def append_instructions(instruction: str, session_id: Optional[str] = None) -> A
     if not append_dir.exists():
         raise AppendError(f"Append directory not found in session: {session_dir}")
 
+    # Check rate limits
+    _check_rate_limit(append_dir)
+
     # Generate timestamped filename with microsecond precision
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     filename = f"{timestamp}.md"
@@ -165,11 +267,14 @@ def append_instructions(instruction: str, session_id: Optional[str] = None) -> A
     temp_filepath = append_dir / temp_filename
 
     try:
-        # Write to temp file
+        # Write to temp file with restrictive permissions (owner only)
         with open(temp_filepath, "w", encoding="utf-8") as f:
             f.write(f"# Appended Instruction\n\n")
             f.write(f"**Timestamp**: {datetime.now().isoformat()}\n\n")
             f.write(f"{instruction}\n")
+
+        # Set restrictive permissions (0o600 = owner read/write only)
+        os.chmod(temp_filepath, 0o600)
 
         # Atomic rename
         temp_filepath.rename(filepath)
