@@ -773,6 +773,9 @@ Objective:
                 self.turn = turn
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
+                # Check for new instructions before executing
+                new_instructions = self._check_for_new_instructions()
+
                 # Execute
                 execute_prompt = f"""{self._build_philosophy_context()}
 
@@ -791,6 +794,7 @@ Current Plan:
 
 Original Objective:
 {objective}
+{new_instructions}
 
 Current Turn: {turn}/{self.max_turns}"""
 
