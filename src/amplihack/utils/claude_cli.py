@@ -67,6 +67,8 @@ def _configure_user_local_npm() -> dict[str, str]:
     user_bin_str = str(user_npm_bin)
     if user_bin_str not in current_path:
         env["PATH"] = f"{user_bin_str}:{current_path}"
+        # Update current process PATH so subsequent shutil.which() calls find the binary
+        os.environ["PATH"] = env["PATH"]
 
     return env
 
@@ -125,9 +127,10 @@ def _install_claude_cli() -> bool:
 
     try:
         # Use --ignore-scripts for supply chain security
-        # Install to user-local directory via NPM_CONFIG_PREFIX
+        # Install to user-local directory using --prefix flag (overrides any npm config)
+        user_npm_dir = Path.home() / ".npm-global"
         result = subprocess.run(
-            [npm_path, "install", "-g", "@anthropic-ai/claude-code", "--ignore-scripts"],
+            [npm_path, "install", "-g", "--prefix", str(user_npm_dir), "@anthropic-ai/claude-code", "--ignore-scripts"],
             env=env,
             capture_output=True,
             text=True,
@@ -135,24 +138,43 @@ def _install_claude_cli() -> bool:
         )
 
         if result.returncode == 0:
-            # Validate the installed binary
-            claude_path = _find_claude_in_common_locations()
-            if not claude_path or not _validate_claude_binary(claude_path):
-                print("❌ Installed binary failed validation")
-                print("\nThe binary was installed but may not be in your PATH.")
-                print("Add to your shell profile (~/.bashrc, ~/.zshrc, etc.):")
+            # Verify binary is at expected location (where we told npm to install it)
+            expected_binary = user_npm_bin / "claude"
+
+            if not expected_binary.exists():
+                # Binary not where expected - check actual npm prefix
+                print(f"❌ Binary not found at expected location: {expected_binary}")
+                try:
+                    prefix_result = subprocess.run(
+                        [npm_path, "config", "get", "prefix"],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    actual_prefix = prefix_result.stdout.strip()
+                    print(f"Actual npm prefix: {actual_prefix}")
+                    print(f"Expected: {user_npm_dir}")
+                except Exception:
+                    print("Could not determine actual npm prefix")
+
+                print("\nManual installation:")
+                print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
+                print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
                 print('  export PATH="$HOME/.npm-global/bin:$PATH"')
-                print("\nThen restart your shell or run:")
-                print("  source ~/.bashrc  # or ~/.zshrc")
+                return False
+
+            # Validate the binary is executable
+            if not _validate_claude_binary(str(expected_binary)):
+                print(f"❌ Binary exists but failed validation: {expected_binary}")
+                print("The binary may not be executable or is corrupted.")
                 return False
 
             print("✅ Claude CLI installed and validated successfully")
-            print(f"Binary location: {claude_path}")
+            print(f"Binary location: {expected_binary}")
 
-            # Check if user needs to add to PATH
-            if not shutil.which("claude"):
-                print("\n⚠️  Add to your shell profile for future sessions:")
-                print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+            # Remind user to add to shell profile for future sessions
+            print("\n💡 Add to your shell profile for future sessions:")
+            print('  export PATH="$HOME/.npm-global/bin:$PATH"')
 
             return True
 
@@ -215,12 +237,13 @@ def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
 
         print("Claude CLI not found. Auto-installing...")
         if _install_claude_cli():
-            # Search again after installation
-            claude_path = _find_claude_in_common_locations()
-            if claude_path and _validate_claude_binary(claude_path):
-                return claude_path
+            # Installation succeeded - return the expected binary path
+            # We already validated it in _install_claude_cli(), so no need to check again
+            user_npm_bin = Path.home() / ".npm-global" / "bin"
+            expected_binary = user_npm_bin / "claude"
+            return str(expected_binary)
 
-    # Installation failed or auto-install disabled
+    # Installation failed or auto-install disabled - print manual instructions only once
     print("\n⚠️  Claude CLI installation failed or not found")
     print("Please install manually:")
     print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
