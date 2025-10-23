@@ -45,6 +45,19 @@ class AutoMode:
         )
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
+        # Create directories for prompt injection feature
+        self.append_dir = self.log_dir / "append"
+        self.appended_dir = self.log_dir / "appended"
+        self.append_dir.mkdir(parents=True, exist_ok=True)
+        self.appended_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write original prompt to prompt.md
+        with open(self.log_dir / "prompt.md", "w") as f:
+            f.write(f"# Original Auto Mode Prompt\n\n{prompt}\n\n---\n\n")
+            f.write(f"**Session Started**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"**SDK**: {sdk}\n")
+            f.write(f"**Max Turns**: {max_turns}\n")
+
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
         print(f"[AUTO {self.sdk.upper()}] {msg}")
@@ -189,6 +202,45 @@ class AutoMode:
             self.log(f"stderr: {stderr_output[:200]}...")
 
         return process.returncode, stdout_output
+
+    def _check_for_new_instructions(self) -> str:
+        """Check append directory for new instruction files and process them.
+
+        Returns:
+            String containing all new instructions, or empty string if none.
+        """
+        new_instructions = []
+
+        # Get all .md files in append directory
+        md_files = sorted(self.append_dir.glob("*.md"))
+
+        if not md_files:
+            return ""
+
+        self.log(f"Found {len(md_files)} new instruction file(s) to process")
+
+        for md_file in md_files:
+            try:
+                # Read the instruction file
+                with open(md_file, "r") as f:
+                    content = f.read()
+
+                timestamp = md_file.stem
+                new_instructions.append(
+                    f"\n## Additional Instruction (appended at {timestamp})\n\n{content}\n"
+                )
+
+                # Move file to appended directory
+                target_path = self.appended_dir / md_file.name
+                md_file.rename(target_path)
+                self.log(f"Processed and archived: {md_file.name}")
+
+            except Exception as e:
+                self.log(f"Error processing {md_file.name}: {e}", level="ERROR")
+
+        if new_instructions:
+            return "\n".join(new_instructions)
+        return ""
 
     def _build_philosophy_context(self) -> str:
         """Build comprehensive philosophy and decision-making context.
@@ -385,6 +437,9 @@ Objective:
                 self.turn = turn
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
+                # Check for new instructions before executing
+                new_instructions = self._check_for_new_instructions()
+
                 # Execute
                 execute_prompt = f"""{self._build_philosophy_context()}
 
@@ -403,6 +458,7 @@ Current Plan:
 
 Original Objective:
 {objective}
+{new_instructions}
 
 Current Turn: {turn}/{self.max_turns}"""
 
