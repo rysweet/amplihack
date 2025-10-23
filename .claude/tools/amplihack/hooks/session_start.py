@@ -134,37 +134,18 @@ class SessionStartHook(HookProcessor):
         if preferences_file and preferences_file.exists():
             try:
                 with open(preferences_file) as f:
-                    prefs_content = f.read()
+                    full_prefs_content = f.read()
                 self.log(f"Successfully read preferences from: {preferences_file}")
 
-                import re
+                # Inject FULL preferences content with MANDATORY enforcement
+                context_parts.append("\n## 🎯 USER PREFERENCES (MANDATORY - MUST FOLLOW)")
+                context_parts.append("\nThe following preferences are REQUIRED and CANNOT be ignored:\n")
+                context_parts.append(full_prefs_content)
 
-                context_parts.append("\n## 🎯 Active User Preferences")
-
-                # Simple preference extraction
-                key_prefs = [
-                    "Communication Style",
-                    "Verbosity",
-                    "Collaboration Style",
-                    "Priority Type",
-                ]
-                active_prefs = []
-
-                for pref in key_prefs:
-                    pattern = f"### {pref}\\s*\\n\\s*([^\\n]+)"
-                    match = re.search(pattern, prefs_content)
-                    if match and match.group(1).strip() not in ["", "(not set)"]:
-                        value = match.group(1).strip()
-                        active_prefs.append(f"• **{pref}**: {value}")
-                        preference_enforcement.append(f"MUST use {value} {pref.lower()}")
-
-                if active_prefs:
-                    context_parts.extend(active_prefs)
-                else:
-                    context_parts.append("• Using default settings")
+                self.log("Injected full USER_PREFERENCES.md content into session")
 
             except Exception as e:
-                self.log(f"Could not read preferences: {e}")
+                self.log(f"Could not read preferences: {e}", "WARNING")
                 # Fail silently - don't break session start
 
         # Add workflow information at startup with UVX support
@@ -222,36 +203,21 @@ class SessionStartHook(HookProcessor):
 
             startup_message = "\n".join(startup_msg_parts)
 
-            # CRITICAL: Add original request context to prevent requirement loss
-            if original_request_context:
-                # Inject original request at the top of context (highest priority)
-                full_context = original_request_context + "\n\n" + full_context
-
-            # CRITICAL: Add preference enforcement instructions to context
-            if preference_enforcement:
-                enforcement = (
-                    "🎯 USER PREFERENCES (MANDATORY):\n"
-                    + "\n".join(f"• {rule}" for rule in preference_enforcement)
-                    + "\n\n"
-                )
-                full_context = enforcement + full_context
-
-            # Inject original request context at top priority
+            # CRITICAL: Inject original request context at top priority
             if original_request_context:
                 full_context = original_request_context + "\n\n" + full_context
 
+            # Use correct SessionStart hook protocol format
             output = {
-                "additionalContext": full_context,
-                "message": startup_message,
-                "metadata": {
-                    "source": "amplihack_session_start",
-                    "timestamp": datetime.now().isoformat(),
-                    "original_request_captured": original_request_captured,
-                },
+                "hookSpecificOutput": {
+                    "hookEventName": "SessionStart",
+                    "additionalContext": full_context,
+                }
             }
             self.log(
                 f"Session initialized - Original request: {'✅' if original_request_captured else '❌'}"
             )
+            self.log(f"Injected {len(full_context)} characters of context")
 
         return output
 

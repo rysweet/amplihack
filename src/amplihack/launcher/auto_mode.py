@@ -104,6 +104,13 @@ class AutoMode:
             f.write(f"**SDK**: {sdk}\n")
             f.write(f"**Max Turns**: {max_turns}\n")
 
+        # Security: Session-level limits to prevent resource exhaustion
+        self.total_api_calls = 0
+        self.max_total_api_calls = 50  # Max API calls per session
+        self.max_session_duration = 3600  # 1 hour max
+        self.session_output_size = 0
+        self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
+
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
         print(f"[AUTO {self.sdk.upper()}] {msg}")
@@ -140,16 +147,16 @@ class AutoMode:
     def run_sdk(self, prompt: str) -> Tuple[int, str]:
         """Run SDK command with prompt, choosing method by provider.
 
-        For Claude: Use Python SDK with streaming (if available)
+        For Claude: Should NOT be called directly - use async path instead
         For Copilot: Use subprocess approach
 
         Returns:
             (exit_code, output)
         """
-        # Use SDK for Claude if available, subprocess otherwise
+        # Claude SDK should use the async session path to maintain single event loop
         if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
-            # Run async function in sync context
-            return asyncio.run(self._run_turn_with_sdk(prompt))
+            self.log("ERROR: Claude SDK should use _run_async_session(), not run_sdk()", level="ERROR")
+            return (1, "Internal error: Claude SDK requires async session mode")
         # Fallback to subprocess for Copilot or if SDK unavailable
         return self._run_sdk_subprocess(prompt)
 
@@ -334,6 +341,8 @@ Document your decisions and reasoning in comments/logs."""
         try:
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
+            turn_output_size = 0
+            MAX_TURN_OUTPUT = 10 * 1024 * 1024  # 10MB per turn limit
 
             # Configure SDK options
             options = ClaudeAgentOptions(
@@ -353,6 +362,20 @@ Document your decisions and reasoning in comments/logs."""
                         for block in getattr(message, "content", []):
                             if hasattr(block, "text"):
                                 text = block.text
+
+                                # Security: Check output size limits
+                                text_size = len(text.encode("utf-8"))
+                                turn_output_size += text_size
+                                self.session_output_size += text_size
+
+                                if turn_output_size > MAX_TURN_OUTPUT:
+                                    self.log(f"Turn output size limit exceeded ({turn_output_size} bytes)", level="ERROR")
+                                    return (1, "Turn output too large")
+
+                                if self.session_output_size > self.max_session_output:
+                                    self.log(f"Session output limit exceeded ({self.session_output_size} bytes)", level="ERROR")
+                                    return (1, "Session output too large")
+
                                 print(text, end="", flush=True)
                                 output_lines.append(text)
 
@@ -369,12 +392,101 @@ Document your decisions and reasoning in comments/logs."""
             full_output = "".join(output_lines)
             return (0, full_output)
 
+        except GeneratorExit:
+            # Graceful generator cleanup - this is expected during async cleanup
+            self.log("Async generator cleanup (normal)", level="DEBUG")
+            return (0, "".join(output_lines) if output_lines else "")
+        except RuntimeError as e:
+            # Catch cancel scope errors specifically - these occur during normal async cleanup
+            if "cancel scope" in str(e).lower():
+                self.log(f"Async cleanup complete (task coordination)", level="DEBUG")
+                # Don't propagate - this is expected during graceful shutdown
+                return (0, "".join(output_lines) if output_lines else "")
+            # Re-raise other RuntimeErrors
+            raise
         except Exception as e:
             self.log(f"SDK execution failed: {e}", level="ERROR")
             import traceback
 
             self.log(f"Traceback: {traceback.format_exc()}", level="ERROR")
             return (1, f"SDK Error: {e!s}")
+
+    def _is_retryable_error(self, error_text: str) -> bool:
+        """Check if error is transient and should be retried.
+
+        Args:
+            error_text: Error message text
+
+        Returns:
+            True if error is retryable (500, 429, 503, timeout, overloaded)
+        """
+        error_lower = error_text.lower()
+        retryable_patterns = [
+            "overloaded",
+            "rate limit",
+            "503",
+            "500",
+            "timeout",
+            "service unavailable",
+            "too many requests",
+            "429",
+        ]
+        return any(pattern in error_lower for pattern in retryable_patterns)
+
+    async def _run_turn_with_retry(
+        self,
+        prompt: str,
+        max_retries: int = 3,
+        base_delay: float = 2.0,
+    ) -> Tuple[int, str]:
+        """Execute turn with retry on transient errors.
+
+        Implements exponential backoff for transient API errors (500, 429, 503).
+        Permanent errors (400, 401, 403) fail immediately without retry.
+
+        Args:
+            prompt: The prompt for this turn
+            max_retries: Maximum retry attempts (default 3)
+            base_delay: Base delay for exponential backoff in seconds (default 2.0s)
+
+        Returns:
+            (exit_code, output_text)
+        """
+        # Security: Check session limits before attempting turn
+        if self.total_api_calls >= self.max_total_api_calls:
+            self.log(f"Session limit reached ({self.max_total_api_calls} API calls)", level="ERROR")
+            return (1, "Session limit exceeded - too many API calls")
+
+        elapsed = time.time() - self.start_time
+        if elapsed > self.max_session_duration:
+            self.log(f"Session duration limit reached ({elapsed:.0f}s)", level="ERROR")
+            return (1, "Session timeout - maximum duration exceeded")
+
+        for attempt in range(max_retries + 1):
+            self.total_api_calls += 1  # Track API call count
+            code, output = await self._run_turn_with_sdk(prompt)
+
+            if code == 0:
+                # Success - return immediately
+                return (code, output)
+
+            # Check if error is retryable
+            if self._is_retryable_error(output):
+                if attempt < max_retries:
+                    delay = base_delay * (2**attempt)  # Exponential backoff: 2s, 4s, 8s
+                    self.log(
+                        f"Retryable error detected (attempt {attempt + 1}/{max_retries + 1}), "
+                        f"waiting {delay:.1f}s before retry..."
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                else:
+                    self.log(f"Max retries ({max_retries}) exceeded for transient error")
+
+            # Non-retryable error or max retries exceeded
+            return (code, output)
+
+        return (code, output)
 
     def run_hook(self, hook: str):
         """Run hook for copilot and codex (Claude SDK handles hooks automatically)."""
@@ -428,7 +540,20 @@ Document your decisions and reasoning in comments/logs."""
             self.log(f"✗ Hook {hook} failed: {e}")
 
     def run(self) -> int:
-        """Execute agentic loop."""
+        """Execute agentic loop.
+
+        Routes to async session for Claude SDK or sync session for subprocess-based SDKs.
+        """
+        # Detect if using Claude SDK
+        if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
+            # Use single async event loop for entire session
+            return asyncio.run(self._run_async_session())
+        else:
+            # Use subprocess-based sync session
+            return self._run_sync_session()
+
+    def _run_sync_session(self) -> int:
+        """Execute agentic loop using subprocess-based SDK calls (Copilot/fallback)."""
         self.start_time = time.time()
         self.log(f"Starting auto mode (max {self.max_turns} turns)")
         self.log(f"Prompt: {self.prompt}")
@@ -566,6 +691,158 @@ Current Turn: {turn}/{self.max_turns}"""
             self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
             code, summary = self.run_sdk(
                 f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}"
+            )
+            if code == 0:
+                print(summary)
+            else:
+                self.log(f"Warning: Summary generation failed (exit {code})")
+
+        finally:
+            self.run_hook("stop")
+
+        return 0
+
+    async def _run_async_session(self) -> int:
+        """Execute agentic loop using Claude SDK in single async event loop.
+
+        This maintains a single event loop for the entire session, preventing
+        the "cancel scope in different task" error that occurs when repeatedly
+        calling asyncio.run() for each turn.
+        """
+        self.start_time = time.time()
+        self.log(f"Starting auto mode with Claude SDK (max {self.max_turns} turns)")
+        self.log(f"Prompt: {self.prompt}")
+
+        self.run_hook("session_start")
+
+        try:
+            # Turn 1: Clarify objective
+            self.turn = 1
+            self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
+            turn1_prompt = f"""{self._build_philosophy_context()}
+
+Task: Analyze this user request and clarify the objective with evaluation criteria.
+
+1. IDENTIFY EXPLICIT REQUIREMENTS: Extract any "must have", "all", "include everything", quoted specifications
+2. IDENTIFY IMPLICIT PREFERENCES: What user likely wants based on @.claude/context/USER_PREFERENCES.md
+3. APPLY PHILOSOPHY: Ruthless simplicity from @.claude/context/PHILOSOPHY.md, modular design, zero-BS implementation
+4. DEFINE SUCCESS CRITERIA: Clear, measurable, aligned with philosophy
+
+User Request:
+{self.prompt}"""
+
+            code, objective = await self._run_turn_with_retry(turn1_prompt, max_retries=3)
+            if code != 0:
+                self.log(f"Error clarifying objective (exit {code})")
+                return 1
+
+            # Turn 2: Create plan
+            self.turn = 2
+            self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
+            turn2_prompt = f"""{self._build_philosophy_context()}
+
+Reference:
+- @.claude/context/PHILOSOPHY.md for design principles
+- @.claude/workflow/DEFAULT_WORKFLOW.md for standard workflow steps
+- @.claude/context/USER_PREFERENCES.md for user-specific preferences
+
+Task: Create an execution plan that:
+1. PRESERVES all explicit user requirements from objective
+2. APPLIES ruthless simplicity and modular design principles
+3. IDENTIFIES parallel execution opportunities (agents, tasks, operations)
+4. FOLLOWS the brick philosophy (self-contained modules with clear contracts)
+5. IMPLEMENTS zero-BS approach (no stubs, no TODOs, no placeholders)
+
+Plan Structure:
+- List explicit requirements that CANNOT be changed
+- Break work into self-contained modules (bricks)
+- Identify what can execute in parallel
+- Define clear contracts between components
+- Specify success criteria for each step
+
+Objective:
+{objective}"""
+
+            code, plan = await self._run_turn_with_retry(turn2_prompt, max_retries=3)
+            if code != 0:
+                self.log(f"Error creating plan (exit {code})")
+                return 1
+
+            # Turns 3+: Execute and evaluate
+            for turn in range(3, self.max_turns + 1):
+                self.turn = turn
+                self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
+
+                # Execute
+                execute_prompt = f"""{self._build_philosophy_context()}
+
+Task: Execute the next part of the plan using specialized agents where possible.
+
+Execution Guidelines:
+- Use PARALLEL EXECUTION by default (multiple agents, multiple tasks)
+- Apply @.claude/context/PHILOSOPHY.md principles throughout
+- Delegate to specialized agents from .claude/agents/* when appropriate
+- Implement COMPLETE features (no stubs, no TODOs, no placeholders)
+- Make ALL implementation decisions autonomously
+- Log your decisions and reasoning
+
+Current Plan:
+{plan}
+
+Original Objective:
+{objective}
+
+Current Turn: {turn}/{self.max_turns}"""
+
+                code, execution_output = await self._run_turn_with_retry(execute_prompt, max_retries=3)
+                if code != 0:
+                    self.log(f"Warning: Execution returned exit code {code}")
+
+                # Evaluate
+                self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
+                eval_prompt = f"""{self._build_philosophy_context()}
+
+Task: Evaluate if the objective is achieved based on:
+1. All explicit user requirements met
+2. Philosophy principles applied (simplicity, modularity, zero-BS)
+3. Success criteria from Turn 1 satisfied
+4. No placeholders or incomplete implementations remain
+5. All work has actually been thoroughly tested and verified
+6. The required workflow has been fully executed
+
+Respond with one of:
+- "auto-mode EVALUATION: COMPLETE" - All criteria met, objective achieved
+- "auto-mode EVALUATION: IN PROGRESS" - Making progress, continue execution
+- "auto-mode EVALUATION: NEEDS ADJUSTMENT" - Issues identified, plan adjustment needed
+
+Include brief reasoning for your evaluation. If incomplete, specify next steps or adjustments needed.
+
+Objective:
+{objective}
+
+Current Turn: {turn}/{self.max_turns}"""
+
+                code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
+
+                # Check completion - look for strong completion signals
+                eval_lower = eval_result.lower()
+                if (
+                    "auto-mode evaluation: complete" in eval_lower
+                    or "objective achieved" in eval_lower
+                    or "all criteria met" in eval_lower
+                ):
+                    self.log("✓ Objective achieved!")
+                    break
+
+                if turn >= self.max_turns:
+                    self.log("Max turns reached")
+                    break
+
+            # Summary - display it directly
+            self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
+            code, summary = await self._run_turn_with_retry(
+                f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}",
+                max_retries=2,  # Fewer retries for summary (less critical)
             )
             if code == 0:
                 print(summary)

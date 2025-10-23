@@ -152,3 +152,11 @@ repos:
         language: system
         pass_filenames: false
         files: '^src/.*\.py$'
+
+      # Validate hooks synchronization between settings.json and UVX template
+      - id: sync-hooks-validation
+        name: Validate hooks sync between settings files
+        entry: python3 src/amplihack/utils/sync_validator.py
+        language: system
+        files: '^(\.claude/settings\.json|src/amplihack/utils/uvx_settings_template\.json)$'
+        pass_filenames: false
