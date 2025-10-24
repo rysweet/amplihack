@@ -50,8 +50,7 @@ class AutoModeCoordinator:
         if self.execution_thread and self.execution_thread.is_alive():
             raise RuntimeError("Auto mode already running")
 
-        # Initialize state
-        self.state.pid = os.getpid()
+        # Initialize state (session_id already set from AutoMode.log_dir.name)
         self.state.start_time = time.time()
         self.state.turn = 1
         self.state.max_turns = self.auto_mode.max_turns
