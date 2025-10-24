@@ -20,6 +20,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ui = [
+    "rich>=13.0.0",  # Required for --ui interactive TUI mode
+]
 tui-testing = [
     "pytest-asyncio>=0.21.0",
 ]
@@ -31,6 +34,7 @@ dev = [
     "ruff>=0.1.0",
     "build>=1.0.0",  # Required for test_uvx_packaging.py
     "pre-commit",
+    "rich>=13.0.0",  # Include Rich in dev dependencies for TUI development
 ]
 
 [project.scripts]
