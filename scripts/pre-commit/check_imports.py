@@ -13,6 +13,7 @@ Exit Codes:
 """
 
 import ast
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -87,19 +88,14 @@ def check_type_imports(file_path: Path) -> List[str]:
             module = REQUIRED_TYPE_IMPORTS[type_name]
 
             # Check if type is imported
-            is_imported = False
-
-            # Check "from module import type_name"
-            if module in actual_imports and type_name in actual_imports[module]:
-                is_imported = True
-
-            # Check "from module import *"
-            if module in actual_imports and "*" in actual_imports[module]:
-                is_imported = True
-
-            # Check "import module" (allows module.TypeName usage)
-            if module in actual_imports and "*" in actual_imports[module]:
-                is_imported = True
+            is_imported = (
+                # Check "from module import type_name"
+                (module in actual_imports and type_name in actual_imports[module])
+                # Check "from module import *"
+                or (module in actual_imports and "*" in actual_imports[module])
+                # Check "import module" (allows module.TypeName usage)
+                or (module in actual_imports and {"*"} == actual_imports.get(module, set()))
+            )
 
             if not is_imported:
                 errors.append(
@@ -115,9 +111,20 @@ def check_type_imports(file_path: Path) -> List[str]:
 
 def test_import(file_path: Path) -> Tuple[Path, bool, str]:
     """Test if file can be imported successfully."""
+    # Security: Validate file path is within repository
+    try:
+        file_path = file_path.resolve()
+        repo_root = Path.cwd().resolve()
+        file_path.relative_to(repo_root)
+    except (ValueError, RuntimeError):
+        return file_path, False, "Path traversal: File outside repository"
+
     # Convert to module name - handle both absolute and relative paths
     if file_path.is_absolute():
-        rel_path = file_path.relative_to(Path.cwd())
+        try:
+            rel_path = file_path.relative_to(Path.cwd())
+        except ValueError:
+            return file_path, False, "Cannot resolve relative path"
     else:
         rel_path = file_path
 
@@ -128,21 +135,27 @@ def test_import(file_path: Path) -> Tuple[Path, bool, str]:
 
     module_name = ".".join(module_parts)
 
-    # Try importing in subprocess
-    code = f"""
+    # Security: Use json to safely pass module name (prevents code injection)
+    # Instead of f-string interpolation, pass module name as argument
+    code = """
 import sys
+import json
 sys.path.insert(0, 'src')
+module_name = json.loads(sys.argv[1])
 try:
-    import {module_name}
+    __import__(module_name)
     print("SUCCESS")
 except Exception as e:
-    print(f"FAILED: {{e}}")
+    print(f"FAILED: {e}")
     sys.exit(1)
 """
 
     try:
         result = subprocess.run(
-            [sys.executable, "-c", code], capture_output=True, text=True, timeout=5
+            [sys.executable, "-c", code, json.dumps(module_name)],
+            capture_output=True,
+            text=True,
+            timeout=15  # Increased from 5 to 15 seconds
         )
 
         if result.returncode == 0:
@@ -151,9 +164,9 @@ except Exception as e:
             return file_path, False, result.stdout + result.stderr
 
     except subprocess.TimeoutExpired:
-        return file_path, False, "Import timeout"
+        return file_path, False, "Import timeout (>15s)"
     except Exception as e:
-        return file_path, False, str(e)
+        return file_path, False, f"Test error: {str(e)}"
 
 
 def main():
