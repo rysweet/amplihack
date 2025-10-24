@@ -5,7 +5,6 @@ providing methods to start and monitor execution while maintaining thread-safe
 communication with the UI.
 """
 
-import os
 import threading
 import time
 from pathlib import Path
