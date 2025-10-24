@@ -6,7 +6,7 @@ Monitors session duration and triggers SDK fork before hitting the
 
 import threading
 import time
-from typing import Optional
+from typing import Any, Optional
 
 
 # Try to import SDK, gracefully handle if unavailable
