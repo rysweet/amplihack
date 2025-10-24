@@ -19,7 +19,7 @@ class AutoModeState:
     and safe for concurrent access from multiple threads.
 
     Attributes:
-        pid: Process ID of auto mode execution
+        session_id: Session identifier (NOT process ID for security)
         start_time: Unix timestamp when session started
         turn: Current turn number
         max_turns: Maximum number of turns
@@ -33,7 +33,7 @@ class AutoModeState:
     """
 
     # Core session info
-    pid: int = 0
+    session_id: str = ""
     start_time: float = 0.0
     turn: int = 1
     max_turns: int = 10
@@ -65,7 +65,7 @@ class AutoModeState:
         """
         with self._lock:
             return {
-                'pid': self.pid,
+                'session_id': self.session_id,
                 'start_time': self.start_time,
                 'turn': self.turn,
                 'max_turns': self.max_turns,

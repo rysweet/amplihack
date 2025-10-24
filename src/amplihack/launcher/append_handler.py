@@ -262,22 +262,30 @@ def append_instructions(instruction: str, session_id: Optional[str] = None) -> A
     filename = f"{timestamp}.md"
     filepath = append_dir / filename
 
-    # Write instruction atomically using temp file
-    temp_filename = f".{filename}.tmp"
-    temp_filepath = append_dir / temp_filename
-
+    # Write instruction atomically using os.open() with O_CREAT|O_EXCL
+    # This ensures atomic creation with proper permissions from the start
     try:
-        # Write to temp file with restrictive permissions (owner only)
-        with open(temp_filepath, "w", encoding="utf-8") as f:
-            f.write(f"# Appended Instruction\n\n")
-            f.write(f"**Timestamp**: {datetime.now().isoformat()}\n\n")
-            f.write(f"{instruction}\n")
+        # Open file atomically with exclusive creation flag and restrictive permissions
+        # O_CREAT: Create file if it doesn't exist
+        # O_EXCL: Fail if file already exists (prevents race conditions)
+        # O_WRONLY: Write-only mode
+        # 0o600: Owner read/write only (set atomically during creation)
+        fd = os.open(
+            str(filepath),
+            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+            0o600
+        )
 
-        # Set restrictive permissions (0o600 = owner read/write only)
-        os.chmod(temp_filepath, 0o600)
+        try:
+            # Write content to file descriptor
+            content = f"# Appended Instruction\n\n"
+            content += f"**Timestamp**: {datetime.now().isoformat()}\n\n"
+            content += f"{instruction}\n"
 
-        # Atomic rename
-        temp_filepath.rename(filepath)
+            os.write(fd, content.encode("utf-8"))
+        finally:
+            # Always close file descriptor
+            os.close(fd)
 
         return AppendResult(
             success=True,
@@ -288,12 +296,12 @@ def append_instructions(instruction: str, session_id: Optional[str] = None) -> A
             message="Instruction appended successfully",
         )
 
+    except FileExistsError:
+        # File already exists (race condition or duplicate timestamp)
+        # This should be extremely rare due to microsecond precision
+        raise AppendError(
+            f"Instruction file already exists: {filename}. "
+            "Please retry - this is a rare timestamp collision."
+        )
     except Exception as e:
-        # Clean up temp file if it exists
-        if temp_filepath.exists():
-            try:
-                temp_filepath.unlink()
-            except Exception:
-                pass
-
         raise AppendError(f"Failed to write instruction: {e}")

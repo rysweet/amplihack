@@ -11,6 +11,8 @@ displaying auto mode execution state with 5 main panels:
 
 import sys
 import time
+import threading
+import select
 from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Deque, Dict, List, Optional
@@ -430,3 +432,92 @@ class AutoModeUI:
     def _append_to_buffer(self, message: str) -> None:
         """Internal method to append to buffer (for test mocking)."""
         self.state.add_log(message)
+
+    def _keyboard_listener_thread(self):
+        """Background thread to capture keyboard input without blocking.
+
+        Runs in daemon mode and listens for single-character commands.
+        Uses non-blocking stdin reading to avoid interfering with main thread.
+        """
+        # Configure terminal for non-blocking, non-canonical mode
+        # This allows reading single characters without Enter
+        import tty
+        import termios
+
+        # Save original terminal settings
+        old_settings = None
+        try:
+            old_settings = termios.tcgetattr(sys.stdin)
+            # Set terminal to raw mode (no echo, no line buffering)
+            tty.setcbreak(sys.stdin.fileno())
+
+            while not self._should_exit:
+                # Check if input is available (non-blocking)
+                if sys.stdin in select.select([sys.stdin], [], [], 0.1)[0]:
+                    key = sys.stdin.read(1)
+                    if key:
+                        self.handle_keyboard_input(key)
+
+        except Exception as e:
+            # Log error but don't crash the thread
+            self.state.add_log(f"Keyboard listener error: {e}")
+        finally:
+            # Restore original terminal settings
+            if old_settings is not None:
+                try:
+                    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+                except Exception:
+                    pass
+
+    def run(self, update_interval: float = 0.1) -> None:
+        """Main run loop - displays UI and handles keyboard input.
+
+        This is the main entry point for the UI. It:
+        1. Starts keyboard listener thread
+        2. Creates Rich Live context
+        3. Continuously updates display until exit requested
+
+        Args:
+            update_interval: Time between display updates in seconds (default 0.1)
+        """
+        # Start keyboard listener in background thread
+        keyboard_thread = threading.Thread(
+            target=self._keyboard_listener_thread,
+            daemon=True,
+            name="KeyboardListener"
+        )
+        keyboard_thread.start()
+
+        # Create Live display context and run update loop
+        try:
+            with Live(
+                self.layout,
+                console=self.console,
+                screen=True,
+                refresh_per_second=10
+            ) as live:
+                # Initial display
+                self.update_display(live)
+
+                # Main update loop
+                while not self._should_exit:
+                    # Update display with current state
+                    self.update_display(live)
+
+                    # Check if auto mode execution is complete
+                    status = self.state.get_status()
+                    if status in ["completed", "error", "stopped"]:
+                        # Give user a moment to see final state
+                        time.sleep(2)
+                        break
+
+                    # Sleep before next update
+                    time.sleep(update_interval)
+
+        except KeyboardInterrupt:
+            # Handle Ctrl+C gracefully
+            self.state.add_log("UI interrupted by user (Ctrl+C)")
+            self._should_exit = True
+        finally:
+            # Wait for keyboard thread to finish
+            keyboard_thread.join(timeout=1.0)
