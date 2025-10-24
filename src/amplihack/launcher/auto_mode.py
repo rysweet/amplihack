@@ -588,13 +588,19 @@ Objective:
                     elapsed = self.fork_manager.get_elapsed_time()
                     self.log(f"⚠️  Session approaching 60-minute limit ({self._format_elapsed(elapsed)}), forking...")
 
+                    # Export current session state before fork
+                    self._export_session_transcript()
+
                     # Accumulate session time before fork
                     self.total_session_time += elapsed
 
-                    # Note: SDK fork would be triggered here via options if SDK supports it
-                    # For now, we'll reset the timer and continue (graceful degradation)
+                    # Trigger SDK fork and get new options
+                    options = self.fork_manager.trigger_fork(options)
                     self.fork_manager.reset()
-                    self.log(f"✓ Session timer reset (Fork {self.fork_manager.get_fork_count()})")
+                    self.log(f"✓ Session forked (Fork {self.fork_manager.get_fork_count()})")
+
+                    # Clear message capture for new fork (fresh start)
+                    self.message_capture.clear()
 
                 self.message_capture.set_phase("executing", self.turn)  # Set phase for message capture
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
@@ -686,19 +692,22 @@ Current Turn: {turn}/{self.max_turns}"""
 
     def _export_session_transcript(self) -> None:
         """Export session transcript using ClaudeTranscriptBuilder.
-        
+
         Creates comprehensive transcript files in multiple formats (markdown, JSON, codex)
         using the captured messages from the session.
         """
         try:
-            # Import transcript builder (lazy import to avoid circular dependencies)
-            import sys
-            from pathlib import Path
-            tools_path = Path(__file__).parent.parent / "tools" / "amplihack" / "builders"
-            if str(tools_path.parent.parent) not in sys.path:
-                sys.path.insert(0, str(tools_path.parent.parent))
-            
-            from builders.claude_transcript_builder import ClaudeTranscriptBuilder
+            # Import transcript builder (try relative import first, fall back to sys.path)
+            try:
+                from ...tools.amplihack.builders.claude_transcript_builder import ClaudeTranscriptBuilder
+            except (ImportError, ValueError):
+                # Fallback for different execution contexts
+                import sys
+                from pathlib import Path
+                tools_path = Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack"
+                if str(tools_path) not in sys.path:
+                    sys.path.insert(0, str(tools_path))
+                from builders.claude_transcript_builder import ClaudeTranscriptBuilder
             
             builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
             messages = self.message_capture.get_messages()

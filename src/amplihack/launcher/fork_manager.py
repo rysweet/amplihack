@@ -4,6 +4,7 @@ Monitors session duration and triggers SDK fork before hitting the
 69-minute (4129 seconds) hard limit.
 """
 
+import threading
 import time
 from typing import Optional
 
@@ -34,6 +35,7 @@ class ForkManager:
         self.start_time = start_time
         self.fork_threshold = fork_threshold
         self._fork_count = 0
+        self._lock = threading.RLock()  # Thread safety for concurrent access
 
         # Validate threshold is reasonable (between 5 min and 68 min)
         if fork_threshold < 300:  # 5 minutes minimum
@@ -68,7 +70,8 @@ class ForkManager:
         Side Effects:
             Increments internal fork counter
         """
-        self._fork_count += 1
+        with self._lock:
+            self._fork_count += 1
 
         # If SDK not available, return options unchanged
         if not CLAUDE_SDK_AVAILABLE:
@@ -98,7 +101,8 @@ class ForkManager:
         Side Effects:
             None (read-only)
         """
-        return self._fork_count
+        with self._lock:
+            return self._fork_count
 
     def reset(self) -> None:
         """Reset fork manager for new session.
@@ -106,8 +110,9 @@ class ForkManager:
         Side Effects:
             Resets start time and fork counter
         """
-        self.start_time = time.time()
-        self._fork_count = 0
+        with self._lock:
+            self.start_time = time.time()
+            self._fork_count = 0
 
     def get_elapsed_time(self) -> float:
         """Get elapsed time since session start.
