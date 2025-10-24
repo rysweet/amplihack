@@ -334,6 +334,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         default=10,
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
+    copilot_parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
 
     # Codex command
     codex_parser = subparsers.add_parser("codex", help="Launch OpenAI Codex CLI")
@@ -347,6 +352,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         type=int,
         default=10,
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
+    codex_parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
 
     # UVX helper command
