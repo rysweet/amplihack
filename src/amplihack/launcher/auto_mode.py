@@ -19,6 +19,10 @@ try:
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
+# Import session management components
+from .session_capture import MessageCapture
+from .fork_manager import ForkManager
+
 
 class AutoMode:
     """Simple agentic loop orchestrator for Claude, Copilot, or Codex."""
@@ -45,6 +49,11 @@ class AutoMode:
         )
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
+        # Session management components
+        self.message_capture = MessageCapture()
+        self.fork_manager = ForkManager(start_time=0, fork_threshold=3600)  # 60 minutes
+        self.total_session_time = 0.0  # Cumulative duration across forks
+
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
         print(f"[AUTO {self.sdk.upper()}] {msg}")
@@ -67,16 +76,22 @@ class AutoMode:
         return f"{minutes}m {remaining_seconds}s"
 
     def _progress_str(self, phase: str) -> str:
-        """Build progress indicator string.
+        """Build progress indicator string with total duration across forks.
 
         Args:
             phase: Current phase name (Clarifying, Planning, Executing, Evaluating, Summarizing)
 
         Returns:
-            Progress string like "[Turn 2/10 | Planning | 1m 23s]"
+            Progress string like "[Turn 2/10 | Planning | 1m 23s]" or with fork info
         """
-        elapsed = time.time() - self.start_time
-        return f"[Turn {self.turn}/{self.max_turns} | {phase} | {self._format_elapsed(elapsed)}]"
+        current_fork_time = time.time() - self.start_time
+        total_time = self.total_session_time + current_fork_time
+
+        fork_info = ""
+        if self.fork_manager and self.fork_manager.get_fork_count() > 0:
+            fork_info = f" [Fork {self.fork_manager.get_fork_count() + 1}]"
+
+        return f"[Turn {self.turn}/{self.max_turns} | {phase} | {self._format_elapsed(total_time)}{fork_info}]"
 
     def run_sdk(self, prompt: str) -> Tuple[int, str]:
         """Run SDK command with prompt, choosing method by provider.
@@ -227,6 +242,9 @@ Document your decisions and reasoning in comments/logs."""
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
 
+            # Capture user message for transcript
+            self.message_capture.capture_user_message(prompt)
+
             # Configure SDK options
             options = ClaudeAgentOptions(
                 cwd=str(self.working_dir),
@@ -241,6 +259,9 @@ Document your decisions and reasoning in comments/logs."""
                     msg_type = message.__class__.__name__
 
                     if msg_type == "AssistantMessage":
+                        # Capture assistant message for transcript
+                        self.message_capture.capture_assistant_message(message)
+
                         # Extract text from content blocks
                         for block in getattr(message, "content", []):
                             if hasattr(block, "text"):
@@ -497,6 +518,7 @@ Current Turn: {turn}/{self.max_turns}"""
         calling asyncio.run() for each turn.
         """
         self.start_time = time.time()
+        self.fork_manager.start_time = self.start_time  # Initialize fork manager timer
         self.log(f"Starting auto mode with Claude SDK (max {self.max_turns} turns)")
         self.log(f"Prompt: {self.prompt}")
 
@@ -505,6 +527,7 @@ Current Turn: {turn}/{self.max_turns}"""
         try:
             # Turn 1: Clarify objective
             self.turn = 1
+            self.message_capture.set_phase("clarifying", self.turn)  # Set phase for message capture
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
 
@@ -525,6 +548,7 @@ User Request:
 
             # Turn 2: Create plan
             self.turn = 2
+            self.message_capture.set_phase("planning", self.turn)  # Set phase for message capture
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
 
@@ -558,6 +582,21 @@ Objective:
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+
+                # Check if fork needed before turn execution
+                if self.fork_manager.should_fork():
+                    elapsed = self.fork_manager.get_elapsed_time()
+                    self.log(f"⚠️  Session approaching 60-minute limit ({self._format_elapsed(elapsed)}), forking...")
+
+                    # Accumulate session time before fork
+                    self.total_session_time += elapsed
+
+                    # Note: SDK fork would be triggered here via options if SDK supports it
+                    # For now, we'll reset the timer and continue (graceful degradation)
+                    self.fork_manager.reset()
+                    self.log(f"✓ Session timer reset (Fork {self.fork_manager.get_fork_count()})")
+
+                self.message_capture.set_phase("executing", self.turn)  # Set phase for message capture
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
                 # Execute
@@ -586,6 +625,7 @@ Current Turn: {turn}/{self.max_turns}"""
                     self.log(f"Warning: Execution returned exit code {code}")
 
                 # Evaluate
+                self.message_capture.set_phase("evaluating", self.turn)  # Set phase for message capture
                 self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
                 eval_prompt = f"""{self._build_philosophy_context()}
 
@@ -626,6 +666,7 @@ Current Turn: {turn}/{self.max_turns}"""
                     break
 
             # Summary - display it directly
+            self.message_capture.set_phase("summarizing", self.turn)  # Set phase for message capture
             self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
             code, summary = await self._run_turn_with_sdk(
                 f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}"
@@ -636,6 +677,57 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log(f"Warning: Summary generation failed (exit {code})")
 
         finally:
+            # Export session transcript before stop hook
+            self._export_session_transcript()
+
             self.run_hook("stop")
 
         return 0
+
+    def _export_session_transcript(self) -> None:
+        """Export session transcript using ClaudeTranscriptBuilder.
+        
+        Creates comprehensive transcript files in multiple formats (markdown, JSON, codex)
+        using the captured messages from the session.
+        """
+        try:
+            # Import transcript builder (lazy import to avoid circular dependencies)
+            import sys
+            from pathlib import Path
+            tools_path = Path(__file__).parent.parent / "tools" / "amplihack" / "builders"
+            if str(tools_path.parent.parent) not in sys.path:
+                sys.path.insert(0, str(tools_path.parent.parent))
+            
+            from builders.claude_transcript_builder import ClaudeTranscriptBuilder
+            
+            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
+            messages = self.message_capture.get_messages()
+            
+            if not messages:
+                self.log("No messages captured for export", level="DEBUG")
+                return
+            
+            # Calculate total duration across all forks
+            total_duration = self.total_session_time + (time.time() - self.start_time)
+            
+            # Build comprehensive metadata
+            metadata = {
+                "sdk": self.sdk,
+                "total_turns": self.turn,
+                "fork_count": self.fork_manager.get_fork_count(),
+                "total_duration_seconds": total_duration,
+                "total_duration_formatted": self._format_elapsed(total_duration),
+                "max_turns": self.max_turns,
+                "session_id": self.log_dir.name
+            }
+            
+            # Generate transcript and export
+            builder.build_session_transcript(messages, metadata)
+            builder.export_for_codex(messages, metadata)
+            
+            self.log(f"✓ Session transcript exported ({len(messages)} messages, {self._format_elapsed(total_duration)})")
+            
+        except Exception as e:
+            self.log(f"Warning: Failed to export transcript: {e}", level="WARNING")
+            # Don't crash on export failure - just log and continue
+
