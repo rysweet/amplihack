@@ -137,6 +137,44 @@ def handle_auto_mode(
     return auto.run()
 
 
+def handle_append_instruction(args: argparse.Namespace) -> int:
+    """Handle --append flag to inject instructions into running auto mode.
+
+    Args:
+        args: Parsed command line arguments
+
+    Returns:
+        Exit code (0=success, 1=error)
+    """
+    if not getattr(args, "append", None):
+        return 0
+
+    from .launcher.append_handler import append_instructions, AppendError
+
+    instruction = args.append
+
+    try:
+        result = append_instructions(instruction)
+
+        # Print success message
+        print(f"✓ Instruction appended to session: {result.session_id}")
+        print(f"  File: {result.filename}")
+        print(f"  The auto mode session will process this on its next turn.")
+        return 0
+
+    except ValueError as e:
+        print(f"Error: {e}")
+        return 1
+
+    except AppendError as e:
+        print(f"Error: {e}")
+        return 1
+
+    except Exception as e:
+        print(f"Error: Failed to append instruction: {e}")
+        return 1
+
+
 def parse_args_with_passthrough(
     argv: Optional[List[str]] = None,
 ) -> "tuple[argparse.Namespace, List[str]]":
@@ -245,6 +283,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
     launch_parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
+    )
+    launch_parser.add_argument(
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
@@ -266,6 +309,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         type=int,
         default=10,
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
+    claude_parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
     )
     claude_parser.add_argument(
         "--ui",
@@ -479,6 +527,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "launch":
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
         # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
         if is_uvx_deployment():
             # Get the original directory (before we changed to temp)
@@ -497,6 +549,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         return launch_command(args, claude_args)
 
     elif args.command == "claude":
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
         # Claude is an alias for launch
         if is_uvx_deployment():
             original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
