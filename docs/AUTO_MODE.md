@@ -107,7 +107,10 @@ All auto mode sessions are logged to:
 ```
 .claude/runtime/logs/auto_{sdk}_{timestamp}/
   ├── auto.log          # Turn-by-turn log
-  └── DECISIONS.md      # Decision records (if any)
+  ├── prompt.md         # Original prompt and session metadata
+  ├── DECISIONS.md      # Decision records (if any)
+  ├── append/           # Pending instructions (for --append feature)
+  └── appended/         # Processed instructions (archived)
 ```
 
 ## Examples
@@ -167,6 +170,115 @@ amplihack copilot --auto -- -p "Add comprehensive test coverage for the payment 
 3. Executes: Writes test suite
 4. Evaluates: Checks coverage percentage, test quality
 5. Completes: Reports final coverage metrics
+
+## Injecting Instructions Mid-Session
+
+You can append new instructions to a running auto mode session without interrupting it using the `--append` flag. This allows you to steer the agent's work in real-time as you observe its progress.
+
+### Usage
+
+```bash
+# Terminal 1: Start auto mode
+amplihack claude --auto -- -p "Implement user authentication"
+
+# Terminal 2: After reviewing initial work, append a new instruction
+amplihack claude --append "Also add rate limiting to prevent brute force attacks"
+
+# Terminal 2: Add another instruction
+amplihack claude --append "Ensure all passwords are hashed with bcrypt"
+```
+
+### How It Works
+
+1. The `--append` flag finds the active auto mode session in the current project
+2. It writes your instruction to `.claude/runtime/logs/auto_<sdk>_<timestamp>/append/<timestamp>.md`
+3. Before the next turn, auto mode reads and processes all instructions in the `append/` directory
+4. The instructions are integrated into the turn prompt as additional requirements
+5. Processed instruction files are moved to `appended/` directory for tracking
+
+### Example Workflow
+
+```bash
+# Start auto mode with initial task
+$ amplihack claude --auto --max-turns 20 -- -p "Implement user authentication system"
+
+# Watch progress in logs
+$ tail -f .claude/runtime/logs/auto_claude_*/auto.log
+
+# After turn 3, you realize you need additional security
+$ amplihack claude --append "Add two-factor authentication support"
+✓ Instruction appended to session: auto_claude_1729699200
+  File: 20241023_120534_123456.md
+  The auto mode session will process this on its next turn.
+
+# Add another requirement
+$ amplihack claude --append "Include comprehensive input validation for all forms"
+✓ Instruction appended to session: auto_claude_1729699200
+  File: 20241023_120612_789012.md
+  The auto mode session will process this on its next turn.
+```
+
+### Best Practices for Appending
+
+1. **Be Specific**: Appended instructions are added as-is. Be clear and specific about what you want.
+
+   **Good**: `amplihack claude --append "Add input validation that checks password length is at least 12 characters"`
+
+   **Less Good**: `amplihack claude --append "improve security"`
+
+2. **Timing**: Instructions are processed before the next turn starts. Wait for the current turn to complete before expecting the new instruction to take effect.
+
+3. **Multiple Instructions**: You can append multiple instructions - they queue in order and are all processed before the next turn.
+
+4. **Monitor Progress**: Watch the logs to see when your appended instructions are processed:
+   ```bash
+   tail -f .claude/runtime/logs/auto_claude_*/auto.log
+   ```
+
+5. **Review Appended History**: Check what has been processed:
+   ```bash
+   ls -la .claude/runtime/logs/auto_claude_*/appended/
+   cat .claude/runtime/logs/auto_claude_*/appended/*.md
+   ```
+
+### Troubleshooting Append
+
+**Error: No active auto mode session found**
+- **Cause**: No auto mode is currently running in this project
+- **Solution**: Start an auto mode session first with `amplihack claude --auto -- -p "your task"`
+
+**Instruction not being processed**
+- **Cause**: Auto mode may have completed before processing
+- **Solution**: Check if auto mode reached max turns or completed the objective. Review logs to see what happened.
+
+**Multiple sessions detected**
+- **Behavior**: The system will use the most recent auto mode session
+- **Tip**: Only run one auto mode session per project to avoid confusion
+
+### Security and Limits
+
+The append feature includes several security controls:
+
+- **Size Limit**: Instructions are limited to 100KB each
+- **Rate Limiting**: Maximum 10 appends per minute, 100 pending instructions total
+- **Content Sanitization**: Suspicious patterns are detected and sanitized before injection
+- **File Permissions**: Instruction files are created with restrictive permissions (owner-only)
+
+### Log Directory Structure
+
+When using the append feature, your log directory will have this structure:
+
+```
+.claude/runtime/logs/auto_claude_1729699200/
+├── auto.log              # Turn-by-turn execution log
+├── prompt.md             # Original prompt and session metadata
+├── DECISIONS.md          # Decision records (if any)
+├── append/               # Pending instructions (waiting to be processed)
+│   ├── 20241023_120534_123456.md
+│   └── 20241023_120612_789012.md
+└── appended/             # Processed instructions (archived)
+    └── 20241023_120455_000000.md
+```
 
 ## Best Practices
 

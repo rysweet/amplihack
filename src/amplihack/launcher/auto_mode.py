@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import pty
+import re
 import subprocess
 import sys
 import threading
@@ -23,12 +24,58 @@ except ImportError:
 from .session_capture import MessageCapture
 from .fork_manager import ForkManager
 
+# Security constants for content sanitization
+MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
+PROMPT_INJECTION_PATTERNS = [
+    r"ignore\s+previous\s+instructions",
+    r"disregard\s+all\s+prior",
+    r"forget\s+everything",
+    r"new\s+instructions:",
+    r"system\s+prompt:",
+    r"you\s+are\s+now",
+    r"override\s+all",
+]
+
+
+def _sanitize_injected_content(content: str) -> str:
+    """Sanitize content before injecting into prompts.
+
+    Args:
+        content: Content to sanitize
+
+    Returns:
+        Sanitized content (truncated and with suspicious patterns removed)
+    """
+    if not content:
+        return content
+
+    # Truncate if too large
+    if len(content.encode("utf-8")) > MAX_INJECTED_CONTENT_SIZE:
+        # Truncate to size limit with warning
+        content = content[: MAX_INJECTED_CONTENT_SIZE // 2]  # UTF-8 safe truncation
+        content += "\n\n[Content truncated due to size limit]"
+
+    # Remove prompt injection patterns
+    content_lower = content.lower()
+    for pattern in PROMPT_INJECTION_PATTERNS:
+        if re.search(pattern, content_lower, re.IGNORECASE):
+            # Replace suspicious patterns with safe marker
+            content = re.sub(
+                pattern,
+                "[REDACTED: suspicious pattern]",
+                content,
+                flags=re.IGNORECASE,
+            )
+
+    return content
+
 
 class AutoMode:
     """Simple agentic loop orchestrator for Claude, Copilot, or Codex."""
 
     def __init__(
-        self, sdk: str, prompt: str, max_turns: int = 10, working_dir: Optional[Path] = None
+        self, sdk: str, prompt: str, max_turns: int = 10, working_dir: Optional[Path] = None,
+        ui_mode: bool = False
     ):
         """Initialize auto mode.
 
@@ -37,6 +84,7 @@ class AutoMode:
             prompt: User's initial prompt
             max_turns: Max iterations (default 10)
             working_dir: Working directory (defaults to current dir)
+            ui_mode: Enable interactive UI mode (requires Rich library)
         """
         self.sdk = sdk
         self.prompt = prompt
@@ -44,6 +92,8 @@ class AutoMode:
         self.turn = 0
         self.start_time = 0.0  # Will be set when run() starts
         self.working_dir = working_dir if working_dir is not None else Path.cwd()
+        self.ui_enabled = ui_mode
+        self.ui = None
         self.log_dir = (
             self.working_dir / ".claude" / "runtime" / "logs" / f"auto_{sdk}_{int(time.time())}"
         )
@@ -54,11 +104,58 @@ class AutoMode:
         self.fork_manager = ForkManager(start_time=0, fork_threshold=3600)  # 60 minutes
         self.total_session_time = 0.0  # Cumulative duration across forks
 
+        # Create directories for prompt injection feature
+        self.append_dir = self.log_dir / "append"
+        self.appended_dir = self.log_dir / "appended"
+        self.append_dir.mkdir(parents=True, exist_ok=True)
+        self.appended_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write original prompt to prompt.md
+        with open(self.log_dir / "prompt.md", "w") as f:
+            f.write(f"# Original Auto Mode Prompt\n\n{prompt}\n\n---\n\n")
+            f.write(f"**Session Started**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"**SDK**: {sdk}\n")
+            f.write(f"**Max Turns**: {max_turns}\n")
+
+        # Security: Session-level limits to prevent resource exhaustion
+        self.total_api_calls = 0
+        self.max_total_api_calls = 50  # Max API calls per session
+        self.max_session_duration = 3600  # 1 hour max
+        self.session_output_size = 0
+        self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
+
+        # Initialize UI if enabled
+        self.ui_thread = None
+        if self.ui_enabled:
+            try:
+                from .auto_mode_state import AutoModeState
+                from .auto_mode_ui import AutoModeUI
+
+                # Create shared state with session ID (not PID for security)
+                session_id = self.log_dir.name  # Use log directory name as session ID
+                self.state = AutoModeState(
+                    session_id=session_id,
+                    start_time=time.time(),
+                    max_turns=max_turns,
+                    objective=prompt
+                )
+
+                # Create UI
+                self.ui = AutoModeUI(self.state, self, self.working_dir)
+            except ImportError as e:
+                self.log(f"Warning: UI mode requires Rich library: {e}", level="WARNING")
+                self.ui_enabled = False
+                self.ui = None
+
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
         print(f"[AUTO {self.sdk.upper()}] {msg}")
         with open(self.log_dir / "auto.log", "a") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
+
+        # Update state if UI is enabled
+        if self.ui_enabled and hasattr(self, 'state'):
+            self.state.add_log(msg, timestamp=False)  # Already has timestamp from print
 
     def _format_elapsed(self, seconds: float) -> str:
         """Format elapsed time as Xm Ys or Xs.
@@ -162,14 +259,21 @@ class AutoMode:
                     except (BrokenPipeError, OSError):
                         # Process closed or pty closed
                         break
-            except Exception:
-                # Silently handle any other exceptions
+            except KeyboardInterrupt:
+                # Allow clean shutdown on Ctrl+C
                 pass
+            except Exception as e:
+                # Log unexpected errors for debugging
+                self.log(f"PTY stdin feed error: {e}", level="WARNING")
             finally:
                 try:
                     os.close(fd)
-                except Exception:
+                except (OSError, ValueError):
+                    # File descriptor already closed or invalid
                     pass
+                except Exception as e:
+                    # Log any other unexpected cleanup errors
+                    self.log(f"PTY cleanup error: {e}", level="WARNING")
 
         # Create threads to read stdout and stderr concurrently
         stdout_thread = threading.Thread(
@@ -204,6 +308,48 @@ class AutoMode:
             self.log(f"stderr: {stderr_output[:200]}...")
 
         return process.returncode, stdout_output
+
+    def _check_for_new_instructions(self) -> str:
+        """Check append directory for new instruction files and process them.
+
+        Returns:
+            String containing all new instructions (sanitized), or empty string if none.
+        """
+        new_instructions = []
+
+        # Get all .md files in append directory
+        md_files = sorted(self.append_dir.glob("*.md"))
+
+        if not md_files:
+            return ""
+
+        self.log(f"Found {len(md_files)} new instruction file(s) to process")
+
+        for md_file in md_files:
+            try:
+                # Read the instruction file
+                with open(md_file, "r") as f:
+                    content = f.read()
+
+                # Sanitize content before injection
+                sanitized_content = _sanitize_injected_content(content)
+
+                timestamp = md_file.stem
+                new_instructions.append(
+                    f"\n## Additional Instruction (appended at {timestamp})\n\n{sanitized_content}\n"
+                )
+
+                # Move file to appended directory
+                target_path = self.appended_dir / md_file.name
+                md_file.rename(target_path)
+                self.log(f"Processed and archived: {md_file.name}")
+
+            except Exception as e:
+                self.log(f"Error processing {md_file.name}: {e}", level="ERROR")
+
+        if new_instructions:
+            return "\n".join(new_instructions)
+        return ""
 
     def _build_philosophy_context(self) -> str:
         """Build comprehensive philosophy and decision-making context.
@@ -241,6 +387,8 @@ Document your decisions and reasoning in comments/logs."""
         try:
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
+            turn_output_size = 0
+            MAX_TURN_OUTPUT = 10 * 1024 * 1024  # 10MB per turn limit
 
             # Capture user message for transcript
             self.message_capture.capture_user_message(prompt)
@@ -266,6 +414,20 @@ Document your decisions and reasoning in comments/logs."""
                         for block in getattr(message, "content", []):
                             if hasattr(block, "text"):
                                 text = block.text
+
+                                # Security: Check output size limits
+                                text_size = len(text.encode("utf-8"))
+                                turn_output_size += text_size
+                                self.session_output_size += text_size
+
+                                if turn_output_size > MAX_TURN_OUTPUT:
+                                    self.log(f"Turn output size limit exceeded ({turn_output_size} bytes)", level="ERROR")
+                                    return (1, "Turn output too large")
+
+                                if self.session_output_size > self.max_session_output:
+                                    self.log(f"Session output limit exceeded ({self.session_output_size} bytes)", level="ERROR")
+                                    return (1, "Session output too large")
+
                                 print(text, end="", flush=True)
                                 output_lines.append(text)
 
@@ -283,14 +445,15 @@ Document your decisions and reasoning in comments/logs."""
             return (0, full_output)
 
         except GeneratorExit:
-            # Graceful generator cleanup
-            self.log("Generator exit during SDK execution", level="WARNING")
-            return (0, "".join(output_lines))
+            # Graceful generator cleanup - this is expected during async cleanup
+            self.log("Async generator cleanup (normal)", level="DEBUG")
+            return (0, "".join(output_lines) if output_lines else "")
         except RuntimeError as e:
-            # Catch cancel scope errors specifically
+            # Catch cancel scope errors specifically - these occur during normal async cleanup
             if "cancel scope" in str(e).lower():
-                self.log(f"Cancel scope error (non-fatal): {e}", level="WARNING")
-                return (0, "".join(output_lines))
+                self.log(f"Async cleanup complete (task coordination)", level="DEBUG")
+                # Don't propagate - this is expected during graceful shutdown
+                return (0, "".join(output_lines) if output_lines else "")
             # Re-raise other RuntimeErrors
             raise
         except Exception as e:
@@ -299,6 +462,83 @@ Document your decisions and reasoning in comments/logs."""
 
             self.log(f"Traceback: {traceback.format_exc()}", level="ERROR")
             return (1, f"SDK Error: {e!s}")
+
+    def _is_retryable_error(self, error_text: str) -> bool:
+        """Check if error is transient and should be retried.
+
+        Args:
+            error_text: Error message text
+
+        Returns:
+            True if error is retryable (500, 429, 503, timeout, overloaded)
+        """
+        error_lower = error_text.lower()
+        retryable_patterns = [
+            "overloaded",
+            "rate limit",
+            "503",
+            "500",
+            "timeout",
+            "service unavailable",
+            "too many requests",
+            "429",
+        ]
+        return any(pattern in error_lower for pattern in retryable_patterns)
+
+    async def _run_turn_with_retry(
+        self,
+        prompt: str,
+        max_retries: int = 3,
+        base_delay: float = 2.0,
+    ) -> Tuple[int, str]:
+        """Execute turn with retry on transient errors.
+
+        Implements exponential backoff for transient API errors (500, 429, 503).
+        Permanent errors (400, 401, 403) fail immediately without retry.
+
+        Args:
+            prompt: The prompt for this turn
+            max_retries: Maximum retry attempts (default 3)
+            base_delay: Base delay for exponential backoff in seconds (default 2.0s)
+
+        Returns:
+            (exit_code, output_text)
+        """
+        # Security: Check session limits before attempting turn
+        if self.total_api_calls >= self.max_total_api_calls:
+            self.log(f"Session limit reached ({self.max_total_api_calls} API calls)", level="ERROR")
+            return (1, "Session limit exceeded - too many API calls")
+
+        elapsed = time.time() - self.start_time
+        if elapsed > self.max_session_duration:
+            self.log(f"Session duration limit reached ({elapsed:.0f}s)", level="ERROR")
+            return (1, "Session timeout - maximum duration exceeded")
+
+        for attempt in range(max_retries + 1):
+            self.total_api_calls += 1  # Track API call count
+            code, output = await self._run_turn_with_sdk(prompt)
+
+            if code == 0:
+                # Success - return immediately
+                return (code, output)
+
+            # Check if error is retryable
+            if self._is_retryable_error(output):
+                if attempt < max_retries:
+                    delay = base_delay * (2**attempt)  # Exponential backoff: 2s, 4s, 8s
+                    self.log(
+                        f"Retryable error detected (attempt {attempt + 1}/{max_retries + 1}), "
+                        f"waiting {delay:.1f}s before retry..."
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                else:
+                    self.log(f"Max retries ({max_retries}) exceeded for transient error")
+
+            # Non-retryable error or max retries exceeded
+            return (code, output)
+
+        return (code, output)
 
     def run_hook(self, hook: str):
         """Run hook for copilot and codex (Claude SDK handles hooks automatically)."""
@@ -351,18 +591,57 @@ Document your decisions and reasoning in comments/logs."""
         except Exception as e:
             self.log(f"✗ Hook {hook} failed: {e}")
 
+    def _start_ui_thread(self) -> None:
+        """Start UI in a separate thread if UI mode is enabled."""
+        if not self.ui_enabled or not self.ui:
+            return
+
+        def ui_runner():
+            """Thread target to run the UI."""
+            try:
+                self.ui.run()
+            except Exception as e:
+                self.log(f"UI thread error: {e}", level="ERROR")
+
+        self.ui_thread = threading.Thread(
+            target=ui_runner,
+            daemon=False,  # Not daemon - we want to wait for it
+            name="AutoModeUI"
+        )
+        self.ui_thread.start()
+        self.log("UI thread started")
+
+    def _stop_ui_thread(self) -> None:
+        """Stop UI thread and wait for it to finish."""
+        if not self.ui_thread:
+            return
+
+        # Wait for UI thread to finish (with timeout)
+        self.ui_thread.join(timeout=5.0)
+        if self.ui_thread.is_alive():
+            self.log("Warning: UI thread did not stop cleanly", level="WARNING")
+        else:
+            self.log("UI thread stopped")
+
     def run(self) -> int:
         """Execute agentic loop.
 
         Routes to async session for Claude SDK or sync session for subprocess-based SDKs.
         """
-        # Detect if using Claude SDK
-        if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
-            # Use single async event loop for entire session
-            return asyncio.run(self._run_async_session())
-        else:
-            # Use subprocess-based sync session
-            return self._run_sync_session()
+        # Start UI thread if enabled
+        self._start_ui_thread()
+
+        try:
+            # Detect if using Claude SDK
+            if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
+                # Use single async event loop for entire session
+                return asyncio.run(self._run_async_session())
+            else:
+                # Use subprocess-based sync session
+                return self._run_sync_session()
+        finally:
+            # Always stop UI thread when done
+            self._stop_ui_thread()
 
     def _run_sync_session(self) -> int:
         """Execute agentic loop using subprocess-based SDK calls (Copilot/fallback)."""
@@ -375,6 +654,8 @@ Document your decisions and reasoning in comments/logs."""
         try:
             # Turn 1: Clarify objective
             self.turn = 1
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
 
@@ -391,10 +672,14 @@ User Request:
             code, objective = self.run_sdk(turn1_prompt)
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_status("error")
                 return 1
 
             # Turn 2: Create plan
             self.turn = 2
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
 
@@ -423,12 +708,19 @@ Objective:
             code, plan = self.run_sdk(turn2_prompt)
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_status("error")
                 return 1
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_turn(self.turn)
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
+
+                # Check for new instructions before executing
+                new_instructions = self._check_for_new_instructions()
 
                 # Execute
                 execute_prompt = f"""{self._build_philosophy_context()}
@@ -448,6 +740,7 @@ Current Plan:
 
 Original Objective:
 {objective}
+{new_instructions}
 
 Current Turn: {turn}/{self.max_turns}"""
 
@@ -489,10 +782,14 @@ Current Turn: {turn}/{self.max_turns}"""
                     or "all criteria met" in eval_lower
                 ):
                     self.log("✓ Objective achieved!")
+                    if self.ui_enabled and hasattr(self, 'state'):
+                        self.state.update_status("completed")
                     break
 
                 if turn >= self.max_turns:
                     self.log("Max turns reached")
+                    if self.ui_enabled and hasattr(self, 'state'):
+                        self.state.update_status("completed")
                     break
 
             # Summary - display it directly
@@ -528,6 +825,8 @@ Current Turn: {turn}/{self.max_turns}"""
             # Turn 1: Clarify objective
             self.turn = 1
             self.message_capture.set_phase("clarifying", self.turn)  # Set phase for message capture
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
 
@@ -541,14 +840,18 @@ Task: Analyze this user request and clarify the objective with evaluation criter
 User Request:
 {self.prompt}"""
 
-            code, objective = await self._run_turn_with_sdk(turn1_prompt)
+            code, objective = await self._run_turn_with_retry(turn1_prompt, max_retries=3)
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_status("error")
                 return 1
 
             # Turn 2: Create plan
             self.turn = 2
             self.message_capture.set_phase("planning", self.turn)  # Set phase for message capture
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
 
@@ -574,9 +877,11 @@ Plan Structure:
 Objective:
 {objective}"""
 
-            code, plan = await self._run_turn_with_sdk(turn2_prompt)
+            code, plan = await self._run_turn_with_retry(turn2_prompt, max_retries=3)
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_status("error")
                 return 1
 
             # Turns 3+: Execute and evaluate
@@ -603,7 +908,12 @@ Objective:
                     self.message_capture.clear()
 
                 self.message_capture.set_phase("executing", self.turn)  # Set phase for message capture
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_turn(self.turn)
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
+
+                # Check for new instructions before executing
+                new_instructions = self._check_for_new_instructions()
 
                 # Execute
                 execute_prompt = f"""{self._build_philosophy_context()}
@@ -623,10 +933,11 @@ Current Plan:
 
 Original Objective:
 {objective}
+{new_instructions}
 
 Current Turn: {turn}/{self.max_turns}"""
 
-                code, execution_output = await self._run_turn_with_sdk(execute_prompt)
+                code, execution_output = await self._run_turn_with_retry(execute_prompt, max_retries=3)
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
@@ -655,7 +966,7 @@ Objective:
 
 Current Turn: {turn}/{self.max_turns}"""
 
-                code, eval_result = await self._run_turn_with_sdk(eval_prompt)
+                code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
 
                 # Check completion - look for strong completion signals
                 eval_lower = eval_result.lower()
@@ -665,17 +976,22 @@ Current Turn: {turn}/{self.max_turns}"""
                     or "all criteria met" in eval_lower
                 ):
                     self.log("✓ Objective achieved!")
+                    if self.ui_enabled and hasattr(self, 'state'):
+                        self.state.update_status("completed")
                     break
 
                 if turn >= self.max_turns:
                     self.log("Max turns reached")
+                    if self.ui_enabled and hasattr(self, 'state'):
+                        self.state.update_status("completed")
                     break
 
             # Summary - display it directly
             self.message_capture.set_phase("summarizing", self.turn)  # Set phase for message capture
             self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
-            code, summary = await self._run_turn_with_sdk(
-                f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}"
+            code, summary = await self._run_turn_with_retry(
+                f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}",
+                max_retries=2,  # Fewer retries for summary (less critical)
             )
             if code == 0:
                 print(summary)
@@ -708,17 +1024,17 @@ Current Turn: {turn}/{self.max_turns}"""
                 if str(tools_path) not in sys.path:
                     sys.path.insert(0, str(tools_path))
                 from builders.claude_transcript_builder import ClaudeTranscriptBuilder
-            
+
             builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
             messages = self.message_capture.get_messages()
-            
+
             if not messages:
                 self.log("No messages captured for export", level="DEBUG")
                 return
-            
+
             # Calculate total duration across all forks
             total_duration = self.total_session_time + (time.time() - self.start_time)
-            
+
             # Build comprehensive metadata
             metadata = {
                 "sdk": self.sdk,
@@ -729,14 +1045,13 @@ Current Turn: {turn}/{self.max_turns}"""
                 "max_turns": self.max_turns,
                 "session_id": self.log_dir.name
             }
-            
+
             # Generate transcript and export
             builder.build_session_transcript(messages, metadata)
             builder.export_for_codex(messages, metadata)
-            
+
             self.log(f"✓ Session transcript exported ({len(messages)} messages, {self._format_elapsed(total_duration)})")
-            
+
         except Exception as e:
             self.log(f"Warning: Failed to export transcript: {e}", level="WARNING")
             # Don't crash on export failure - just log and continue
-
