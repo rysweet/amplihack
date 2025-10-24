@@ -70,7 +70,8 @@ class AutoMode:
     """Simple agentic loop orchestrator for Claude, Copilot, or Codex."""
 
     def __init__(
-        self, sdk: str, prompt: str, max_turns: int = 10, working_dir: Optional[Path] = None
+        self, sdk: str, prompt: str, max_turns: int = 10, working_dir: Optional[Path] = None,
+        ui_mode: bool = False
     ):
         """Initialize auto mode.
 
@@ -79,6 +80,7 @@ class AutoMode:
             prompt: User's initial prompt
             max_turns: Max iterations (default 10)
             working_dir: Working directory (defaults to current dir)
+            ui_mode: Enable interactive UI mode (requires Rich library)
         """
         self.sdk = sdk
         self.prompt = prompt
@@ -86,6 +88,8 @@ class AutoMode:
         self.turn = 0
         self.start_time = 0.0  # Will be set when run() starts
         self.working_dir = working_dir if working_dir is not None else Path.cwd()
+        self.ui_enabled = ui_mode
+        self.ui = None
         self.log_dir = (
             self.working_dir / ".claude" / "runtime" / "logs" / f"auto_{sdk}_{int(time.time())}"
         )
@@ -110,6 +114,26 @@ class AutoMode:
         self.max_session_duration = 3600  # 1 hour max
         self.session_output_size = 0
         self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
+
+        # Initialize UI if enabled
+        if self.ui_enabled:
+            try:
+                from .auto_mode_state import AutoModeState
+                from .auto_mode_ui import AutoModeUI
+
+                # Create shared state
+                self.state = AutoModeState(
+                    start_time=time.time(),
+                    max_turns=max_turns,
+                    objective=prompt
+                )
+
+                # Create UI
+                self.ui = AutoModeUI(self.state, self, self.working_dir)
+            except ImportError as e:
+                self.log(f"Warning: UI mode requires Rich library: {e}", level="WARNING")
+                self.ui_enabled = False
+                self.ui = None
 
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
