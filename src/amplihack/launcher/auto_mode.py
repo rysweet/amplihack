@@ -70,7 +70,8 @@ class AutoMode:
     """Simple agentic loop orchestrator for Claude, Copilot, or Codex."""
 
     def __init__(
-        self, sdk: str, prompt: str, max_turns: int = 10, working_dir: Optional[Path] = None
+        self, sdk: str, prompt: str, max_turns: int = 10, working_dir: Optional[Path] = None,
+        ui_mode: bool = False
     ):
         """Initialize auto mode.
 
@@ -79,6 +80,7 @@ class AutoMode:
             prompt: User's initial prompt
             max_turns: Max iterations (default 10)
             working_dir: Working directory (defaults to current dir)
+            ui_mode: Enable interactive UI mode (requires Rich library)
         """
         self.sdk = sdk
         self.prompt = prompt
@@ -86,6 +88,8 @@ class AutoMode:
         self.turn = 0
         self.start_time = 0.0  # Will be set when run() starts
         self.working_dir = working_dir if working_dir is not None else Path.cwd()
+        self.ui_enabled = ui_mode
+        self.ui = None
         self.log_dir = (
             self.working_dir / ".claude" / "runtime" / "logs" / f"auto_{sdk}_{int(time.time())}"
         )
@@ -111,11 +115,38 @@ class AutoMode:
         self.session_output_size = 0
         self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
 
+        # Initialize UI if enabled
+        self.ui_thread = None
+        if self.ui_enabled:
+            try:
+                from .auto_mode_state import AutoModeState
+                from .auto_mode_ui import AutoModeUI
+
+                # Create shared state with session ID (not PID for security)
+                session_id = self.log_dir.name  # Use log directory name as session ID
+                self.state = AutoModeState(
+                    session_id=session_id,
+                    start_time=time.time(),
+                    max_turns=max_turns,
+                    objective=prompt
+                )
+
+                # Create UI
+                self.ui = AutoModeUI(self.state, self, self.working_dir)
+            except ImportError as e:
+                self.log(f"Warning: UI mode requires Rich library: {e}", level="WARNING")
+                self.ui_enabled = False
+                self.ui = None
+
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
         print(f"[AUTO {self.sdk.upper()}] {msg}")
         with open(self.log_dir / "auto.log", "a") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
+
+        # Update state if UI is enabled
+        if self.ui_enabled and hasattr(self, 'state'):
+            self.state.add_log(msg, timestamp=False)  # Already has timestamp from print
 
     def _format_elapsed(self, seconds: float) -> str:
         """Format elapsed time as Xm Ys or Xs.
@@ -539,18 +570,57 @@ Document your decisions and reasoning in comments/logs."""
         except Exception as e:
             self.log(f"✗ Hook {hook} failed: {e}")
 
+    def _start_ui_thread(self) -> None:
+        """Start UI in a separate thread if UI mode is enabled."""
+        if not self.ui_enabled or not self.ui:
+            return
+
+        def ui_runner():
+            """Thread target to run the UI."""
+            try:
+                self.ui.run()
+            except Exception as e:
+                self.log(f"UI thread error: {e}", level="ERROR")
+
+        self.ui_thread = threading.Thread(
+            target=ui_runner,
+            daemon=False,  # Not daemon - we want to wait for it
+            name="AutoModeUI"
+        )
+        self.ui_thread.start()
+        self.log("UI thread started")
+
+    def _stop_ui_thread(self) -> None:
+        """Stop UI thread and wait for it to finish."""
+        if not self.ui_thread:
+            return
+
+        # Wait for UI thread to finish (with timeout)
+        self.ui_thread.join(timeout=5.0)
+        if self.ui_thread.is_alive():
+            self.log("Warning: UI thread did not stop cleanly", level="WARNING")
+        else:
+            self.log("UI thread stopped")
+
     def run(self) -> int:
         """Execute agentic loop.
 
         Routes to async session for Claude SDK or sync session for subprocess-based SDKs.
         """
-        # Detect if using Claude SDK
-        if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
-            # Use single async event loop for entire session
-            return asyncio.run(self._run_async_session())
-        else:
-            # Use subprocess-based sync session
-            return self._run_sync_session()
+        # Start UI thread if enabled
+        self._start_ui_thread()
+
+        try:
+            # Detect if using Claude SDK
+            if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
+                # Use single async event loop for entire session
+                return asyncio.run(self._run_async_session())
+            else:
+                # Use subprocess-based sync session
+                return self._run_sync_session()
+        finally:
+            # Always stop UI thread when done
+            self._stop_ui_thread()
 
     def _run_sync_session(self) -> int:
         """Execute agentic loop using subprocess-based SDK calls (Copilot/fallback)."""
@@ -563,6 +633,8 @@ Document your decisions and reasoning in comments/logs."""
         try:
             # Turn 1: Clarify objective
             self.turn = 1
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
 
@@ -579,10 +651,14 @@ User Request:
             code, objective = self.run_sdk(turn1_prompt)
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_status("error")
                 return 1
 
             # Turn 2: Create plan
             self.turn = 2
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
 
@@ -611,11 +687,15 @@ Objective:
             code, plan = self.run_sdk(turn2_prompt)
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_status("error")
                 return 1
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_turn(self.turn)
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
                 # Check for new instructions before executing
@@ -681,10 +761,14 @@ Current Turn: {turn}/{self.max_turns}"""
                     or "all criteria met" in eval_lower
                 ):
                     self.log("✓ Objective achieved!")
+                    if self.ui_enabled and hasattr(self, 'state'):
+                        self.state.update_status("completed")
                     break
 
                 if turn >= self.max_turns:
                     self.log("Max turns reached")
+                    if self.ui_enabled and hasattr(self, 'state'):
+                        self.state.update_status("completed")
                     break
 
             # Summary - display it directly
@@ -718,6 +802,8 @@ Current Turn: {turn}/{self.max_turns}"""
         try:
             # Turn 1: Clarify objective
             self.turn = 1
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
 
@@ -734,10 +820,14 @@ User Request:
             code, objective = await self._run_turn_with_retry(turn1_prompt, max_retries=3)
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_status("error")
                 return 1
 
             # Turn 2: Create plan
             self.turn = 2
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
 
@@ -766,11 +856,15 @@ Objective:
             code, plan = await self._run_turn_with_retry(turn2_prompt, max_retries=3)
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_status("error")
                 return 1
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+                if self.ui_enabled and hasattr(self, 'state'):
+                    self.state.update_turn(self.turn)
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
                 # Check for new instructions before executing
@@ -836,10 +930,14 @@ Current Turn: {turn}/{self.max_turns}"""
                     or "all criteria met" in eval_lower
                 ):
                     self.log("✓ Objective achieved!")
+                    if self.ui_enabled and hasattr(self, 'state'):
+                        self.state.update_status("completed")
                     break
 
                 if turn >= self.max_turns:
                     self.log("Max turns reached")
+                    if self.ui_enabled and hasattr(self, 'state'):
+                        self.state.update_status("completed")
                     break
 
             # Summary - display it directly

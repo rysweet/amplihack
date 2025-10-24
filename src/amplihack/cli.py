@@ -130,7 +130,10 @@ def handle_auto_mode(
         print(f'Error: --auto requires a prompt. Use: amplihack {sdk} --auto -- -p "your prompt"')
         return 1
 
-    auto = AutoMode(sdk, prompt, args.max_turns)
+    # Check if UI mode is enabled
+    ui_mode = getattr(args, "ui", False)
+
+    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode)
     return auto.run()
 
 
@@ -284,6 +287,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         metavar="PROMPT",
         help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
     )
+    launch_parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
@@ -306,6 +314,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--append",
         metavar="PROMPT",
         help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
+    )
+    claude_parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
 
     # Copilot command
