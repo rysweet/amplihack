@@ -1029,19 +1029,56 @@ Current Turn: {turn}/{self.max_turns}"""
         using the captured messages from the session.
         """
         try:
-            # Import transcript builder (try relative import first, fall back to sys.path)
+            # Import transcript builder with multiple fallback strategies
+            builder_imported = False
+
+            # Strategy 1: Try relative import (works in local development)
             try:
                 from ...tools.amplihack.builders.claude_transcript_builder import ClaudeTranscriptBuilder
+                builder_imported = True
             except (ImportError, ValueError):
-                # Fallback for different execution contexts
-                # __file__ is in src/amplihack/launcher/, need to go up 4 levels to project root
-                import sys
-                from pathlib import Path
-                project_root = Path(__file__).parent.parent.parent.parent  # Up to project root
-                tools_path = project_root / ".claude" / "tools" / "amplihack"
-                if str(tools_path) not in sys.path:
-                    sys.path.insert(0, str(tools_path))
-                from builders.claude_transcript_builder import ClaudeTranscriptBuilder
+                pass
+
+            # Strategy 2: Try from installed package location (UVX scenario)
+            if not builder_imported:
+                try:
+                    # When running via uvx, .claude is in site-packages/amplihack/.claude
+                    import sys
+                    from pathlib import Path
+
+                    # Find amplihack module location
+                    import amplihack
+                    amplihack_path = Path(amplihack.__file__).parent
+                    tools_path = amplihack_path / ".claude" / "tools" / "amplihack"
+
+                    if tools_path.exists():
+                        if str(tools_path) not in sys.path:
+                            sys.path.insert(0, str(tools_path))
+                        from builders.claude_transcript_builder import ClaudeTranscriptBuilder
+                        builder_imported = True
+                except (ImportError, ValueError, AttributeError):
+                    pass
+
+            # Strategy 3: Try from project root (local development fallback)
+            if not builder_imported:
+                try:
+                    import sys
+                    from pathlib import Path
+                    project_root = Path(__file__).parent.parent.parent.parent
+                    tools_path = project_root / ".claude" / "tools" / "amplihack"
+
+                    if tools_path.exists():
+                        if str(tools_path) not in sys.path:
+                            sys.path.insert(0, str(tools_path))
+                        from builders.claude_transcript_builder import ClaudeTranscriptBuilder
+                        builder_imported = True
+                except (ImportError, ValueError):
+                    pass
+
+            # If all strategies failed, skip export gracefully
+            if not builder_imported:
+                self.log("Info: Transcript builder not available, skipping export", level="INFO")
+                return
 
             builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
             messages = self.message_capture.get_messages()
