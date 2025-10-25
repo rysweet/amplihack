@@ -143,19 +143,57 @@ class AutoMode:
                 # Create UI
                 self.ui = AutoModeUI(self.state, self, self.working_dir)
             except ImportError as e:
-                # Print to stderr so user sees it immediately
-                print(f"\n⚠️  WARNING: --ui flag requires Rich library", file=sys.stderr)
-                print(f"   Error: {e}", file=sys.stderr)
-                print(f"\n   To enable TUI mode, install Rich:", file=sys.stderr)
-                print(f"     pip install 'microsofthackathon2025-agenticcoding[ui]'", file=sys.stderr)
-                print(f"   or:", file=sys.stderr)
-                print(f"     pip install rich>=13.0.0", file=sys.stderr)
-                print(f"\n   Continuing in non-UI mode...\n", file=sys.stderr)
+                # Auto-install Rich to make --ui "just work"
+                print(f"\n⚠️  Rich library not found, installing automatically...", file=sys.stderr)
 
-                # Also log for record-keeping
-                self.log(f"Warning: UI mode requires Rich library: {e}", level="WARNING")
-                self.ui_enabled = False
-                self.ui = None
+                try:
+                    # Try to install Rich using pip
+                    result = subprocess.run(
+                        [sys.executable, "-m", "pip", "install", "rich>=13.0.0"],
+                        capture_output=True,
+                        text=True,
+                        timeout=60
+                    )
+
+                    if result.returncode == 0:
+                        print(f"✅ Rich installed successfully, initializing UI...\n", file=sys.stderr)
+
+                        # Retry the import after installation
+                        from .auto_mode_state import AutoModeState
+                        from .auto_mode_ui import AutoModeUI
+
+                        # Create shared state with session ID
+                        session_id = self.log_dir.name
+                        self.state = AutoModeState(
+                            session_id=session_id,
+                            start_time=time.time(),
+                            max_turns=max_turns,
+                            objective=prompt
+                        )
+
+                        # Create UI
+                        self.ui = AutoModeUI(self.state, self, self.working_dir)
+                        print(f"✅ UI mode enabled\n", file=sys.stderr)
+                    else:
+                        # Installation failed
+                        print(f"\n⚠️  Failed to install Rich automatically", file=sys.stderr)
+                        print(f"   Error: {result.stderr}", file=sys.stderr)
+                        print(f"\n   Please install manually:", file=sys.stderr)
+                        print(f"     pip install rich>=13.0.0", file=sys.stderr)
+                        print(f"\n   Continuing in non-UI mode...\n", file=sys.stderr)
+                        self.ui_enabled = False
+                        self.ui = None
+
+                except Exception as install_error:
+                    # Auto-install failed, fall back to error message
+                    print(f"\n⚠️  Could not auto-install Rich: {install_error}", file=sys.stderr)
+                    print(f"\n   To enable TUI mode, install Rich manually:", file=sys.stderr)
+                    print(f"     pip install rich>=13.0.0", file=sys.stderr)
+                    print(f"\n   Continuing in non-UI mode...\n", file=sys.stderr)
+
+                    self.log(f"Warning: UI mode requires Rich library: {e}", level="WARNING")
+                    self.ui_enabled = False
+                    self.ui = None
 
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
