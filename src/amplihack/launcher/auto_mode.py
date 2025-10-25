@@ -143,54 +143,17 @@ class AutoMode:
                 # Create UI
                 self.ui = AutoModeUI(self.state, self, self.working_dir)
             except ImportError as e:
-                # Auto-install Rich using uv (works in UVX without pip)
-                print(f"\n⚠️  Rich library not found, installing automatically...", file=sys.stderr)
+                # Rich should be installed as required dependency
+                # If missing, something is wrong with the installation
+                print(f"\n⚠️  ERROR: Rich library required but not found", file=sys.stderr)
+                print(f"   This should not happen - Rich is a required dependency", file=sys.stderr)
+                print(f"   Error: {e}", file=sys.stderr)
+                print(f"\n   Try reinstalling: uvx --from git+https://... amplihack", file=sys.stderr)
+                print(f"\n   Continuing in non-UI mode...\n", file=sys.stderr)
 
-                try:
-                    # Try uv first (UVX environments)
-                    result = subprocess.run(
-                        ["uv", "pip", "install", "rich>=13.0.0"],
-                        capture_output=True,
-                        text=True,
-                        timeout=60
-                    )
-
-                    if result.returncode == 0:
-                        print(f"✅ Rich installed, initializing UI...\n", file=sys.stderr)
-                        from .auto_mode_state import AutoModeState
-                        from .auto_mode_ui import AutoModeUI
-                        session_id = self.log_dir.name
-                        self.state = AutoModeState(
-                            session_id=session_id,
-                            start_time=time.time(),
-                            max_turns=max_turns,
-                            objective=prompt
-                        )
-                        self.ui = AutoModeUI(self.state, self, self.working_dir)
-                        print(f"✅ UI enabled\n", file=sys.stderr)
-                    else:
-                        # Fallback to pip
-                        result = subprocess.run(
-                            [sys.executable, "-m", "pip", "install", "rich>=13.0.0"],
-                            capture_output=True,
-                            text=True,
-                            timeout=60
-                        )
-                        if result.returncode == 0:
-                            print(f"✅ Rich installed via pip\n", file=sys.stderr)
-                            from .auto_mode_state import AutoModeState
-                            from .auto_mode_ui import AutoModeUI
-                            session_id = self.log_dir.name
-                            self.state = AutoModeState(session_id=session_id, start_time=time.time(), max_turns=max_turns, objective=prompt)
-                            self.ui = AutoModeUI(self.state, self, self.working_dir)
-                        else:
-                            print(f"\n⚠️  Install failed, continuing in non-UI mode\n", file=sys.stderr)
-                            self.ui_enabled = False
-                            self.ui = None
-                except Exception:
-                    print(f"\n⚠️  Could not install Rich, continuing in non-UI mode\n", file=sys.stderr)
-                    self.ui_enabled = False
-                    self.ui = None
+                self.log(f"Error: Rich library missing despite being required dependency: {e}", level="ERROR")
+                self.ui_enabled = False
+                self.ui = None
 
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
