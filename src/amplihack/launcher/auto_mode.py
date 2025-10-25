@@ -831,6 +831,12 @@ Current Turn: {turn}/{self.max_turns}"""
 
         self.run_hook("session_start")
 
+        # Initialize options for potential forking
+        options = ClaudeAgentOptions(
+            cwd=str(self.working_dir),
+            permission_mode="bypassPermissions",
+        )
+
         try:
             # Turn 1: Clarify objective
             self.turn = 1
@@ -1028,9 +1034,11 @@ Current Turn: {turn}/{self.max_turns}"""
                 from ...tools.amplihack.builders.claude_transcript_builder import ClaudeTranscriptBuilder
             except (ImportError, ValueError):
                 # Fallback for different execution contexts
+                # __file__ is in src/amplihack/launcher/, need to go up 4 levels to project root
                 import sys
                 from pathlib import Path
-                tools_path = Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack"
+                project_root = Path(__file__).parent.parent.parent.parent  # Up to project root
+                tools_path = project_root / ".claude" / "tools" / "amplihack"
                 if str(tools_path) not in sys.path:
                     sys.path.insert(0, str(tools_path))
                 from builders.claude_transcript_builder import ClaudeTranscriptBuilder
