@@ -1029,79 +1029,58 @@ Current Turn: {turn}/{self.max_turns}"""
         using the captured messages from the session.
         """
         try:
-            # Import transcript builder with multiple fallback strategies
-            builder_imported = False
+            # Simple import using importlib - works in both UVX and local dev
+            import importlib.util
+            import sys
+            from pathlib import Path
 
-            # Strategy 1: Try relative import (works in local development)
+            # Find .claude/tools/amplihack/builders location
+            search_paths = []
+
+            # Path 1: Check if running from installed package (UVX)
             try:
-                from ...tools.amplihack.builders.claude_transcript_builder import ClaudeTranscriptBuilder
-                builder_imported = True
-            except (ImportError, ValueError):
+                import amplihack
+                pkg_path = Path(amplihack.__file__).parent.resolve()
+                claude_in_pkg = pkg_path / ".claude" / "tools" / "amplihack" / "builders"
+                if claude_in_pkg.exists():
+                    search_paths.append(claude_in_pkg)
+            except Exception:
                 pass
 
-            # Strategy 2: Try from installed package location (UVX scenario)
-            if not builder_imported:
+            # Path 2: Check project root (local development)
+            try:
+                current_file = Path(__file__).resolve()
+                # Go up from src/amplihack/launcher/auto_mode.py to project root
+                project_root = current_file.parent.parent.parent.parent
+                claude_in_root = project_root / ".claude" / "tools" / "amplihack" / "builders"
+                if claude_in_root.exists():
+                    search_paths.append(claude_in_root)
+            except Exception:
+                pass
+
+            # Try to load the builder from found paths
+            ClaudeTranscriptBuilder = None
+            for builders_path in search_paths:
                 try:
-                    # When running via uvx, .claude is in site-packages/amplihack/.claude
-                    import sys
-                    from pathlib import Path
+                    builder_file = builders_path / "claude_transcript_builder.py"
+                    if builder_file.exists():
+                        spec = importlib.util.spec_from_file_location(
+                            "claude_transcript_builder",
+                            builder_file
+                        )
+                        if spec and spec.loader:
+                            module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(module)
+                            ClaudeTranscriptBuilder = module.ClaudeTranscriptBuilder
+                            self.log(f"Builders: Loaded from {builders_path}", level="DEBUG")
+                            break
+                except Exception as load_err:
+                    self.log(f"Builders: Failed to load from {builders_path}: {load_err}", level="DEBUG")
+                    continue
 
-                    # Find amplihack module location
-                    import amplihack
-                    amplihack_path = Path(amplihack.__file__).parent.resolve(strict=True)
-                    tools_path = (amplihack_path / ".claude" / "tools" / "amplihack").resolve(strict=True)
-
-                    # Security: Validate path is within expected package
-                    if not str(tools_path).startswith(str(amplihack_path)):
-                        self.log("Security: Builders path validation failed in Strategy 2", level="DEBUG")
-                        raise ValueError("Path traversal detected")
-
-                    if tools_path.exists():
-                        tools_path_str = str(tools_path)
-                        if tools_path_str not in sys.path:
-                            # Security: Use append instead of insert to avoid hijacking stdlib
-                            sys.path.append(tools_path_str)
-                            self.log(f"Builders import: Added UVX path to sys.path", level="DEBUG")
-                        from builders.claude_transcript_builder import ClaudeTranscriptBuilder
-                        builder_imported = True
-                        self.log("Builders import: Strategy 2 (UVX) succeeded", level="DEBUG")
-                except (ImportError, ValueError, AttributeError, OSError) as e:
-                    self.log(f"Builders import: Strategy 2 failed - {type(e).__name__}", level="DEBUG")
-
-            # Strategy 3: Try from project root (local development fallback)
-            if not builder_imported:
-                try:
-                    import sys
-                    from pathlib import Path
-
-                    # Security: Resolve and validate project root
-                    current_file = Path(__file__).resolve(strict=True)
-                    project_root = current_file.parent.parent.parent.parent
-                    tools_path = (project_root / ".claude" / "tools" / "amplihack").resolve(strict=True)
-
-                    # Security: Ensure tools_path is under project_root
-                    try:
-                        tools_path.relative_to(project_root)
-                    except ValueError:
-                        self.log("Security: Path traversal detected in Strategy 3", level="DEBUG")
-                        raise ValueError("Path traversal detected")
-
-                    if tools_path.exists():
-                        tools_path_str = str(tools_path)
-                        if tools_path_str not in sys.path:
-                            # Security: Use append to avoid hijacking
-                            sys.path.append(tools_path_str)
-                            self.log(f"Builders import: Added project root path", level="DEBUG")
-                        from builders.claude_transcript_builder import ClaudeTranscriptBuilder
-                        builder_imported = True
-                        self.log("Builders import: Strategy 3 (project root) succeeded", level="DEBUG")
-                except (ImportError, ValueError, OSError) as e:
-                    self.log(f"Builders import: Strategy 3 failed - {type(e).__name__}", level="DEBUG")
-
-
-            # If all strategies failed, skip export gracefully
-            if not builder_imported:
-                self.log("Info: Transcript builder not available, skipping export", level="INFO")
+            # If couldn't load, skip export gracefully
+            if ClaudeTranscriptBuilder is None:
+                self.log("Transcript builder not found, skipping export", level="INFO")
                 return
 
             builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
