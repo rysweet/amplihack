@@ -143,6 +143,16 @@ class AutoMode:
                 # Create UI
                 self.ui = AutoModeUI(self.state, self, self.working_dir)
             except ImportError as e:
+                # Print to stderr so user sees it immediately
+                print(f"\n⚠️  WARNING: --ui flag requires Rich library", file=sys.stderr)
+                print(f"   Error: {e}", file=sys.stderr)
+                print(f"\n   To enable TUI mode, install Rich:", file=sys.stderr)
+                print(f"     pip install 'microsofthackathon2025-agenticcoding[ui]'", file=sys.stderr)
+                print(f"   or:", file=sys.stderr)
+                print(f"     pip install rich>=13.0.0", file=sys.stderr)
+                print(f"\n   Continuing in non-UI mode...\n", file=sys.stderr)
+
+                # Also log for record-keeping
                 self.log(f"Warning: UI mode requires Rich library: {e}", level="WARNING")
                 self.ui_enabled = False
                 self.ui = None
@@ -821,6 +831,12 @@ Current Turn: {turn}/{self.max_turns}"""
 
         self.run_hook("session_start")
 
+        # Initialize options for potential forking
+        options = ClaudeAgentOptions(
+            cwd=str(self.working_dir),
+            permission_mode="bypassPermissions",
+        )
+
         try:
             # Turn 1: Clarify objective
             self.turn = 1
@@ -1018,9 +1034,11 @@ Current Turn: {turn}/{self.max_turns}"""
                 from ...tools.amplihack.builders.claude_transcript_builder import ClaudeTranscriptBuilder
             except (ImportError, ValueError):
                 # Fallback for different execution contexts
+                # __file__ is in src/amplihack/launcher/, need to go up 4 levels to project root
                 import sys
                 from pathlib import Path
-                tools_path = Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack"
+                project_root = Path(__file__).parent.parent.parent.parent  # Up to project root
+                tools_path = project_root / ".claude" / "tools" / "amplihack"
                 if str(tools_path) not in sys.path:
                     sys.path.insert(0, str(tools_path))
                 from builders.claude_transcript_builder import ClaudeTranscriptBuilder

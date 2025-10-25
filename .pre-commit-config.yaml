@@ -160,3 +160,19 @@ repos:
         language: system
         files: '^(\.claude/settings\.json|src/amplihack/utils/uvx_settings_template\.json)$'
         pass_filenames: false
+
+      # Import validation - catches missing type hints and import errors
+      - id: check-imports
+        name: Validate Python imports and type hints
+        entry: python3 scripts/pre-commit/check_imports.py
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      # Dependency validation - ensures optional deps have try/except
+      - id: check-dependencies
+        name: Validate optional dependency handling
+        entry: python3 scripts/pre-commit/check_dependencies.py
+        language: system
+        types: [python]
+        pass_filenames: true
