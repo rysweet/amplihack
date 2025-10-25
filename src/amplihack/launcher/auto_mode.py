@@ -143,26 +143,22 @@ class AutoMode:
                 # Create UI
                 self.ui = AutoModeUI(self.state, self, self.working_dir)
             except ImportError as e:
-                # Auto-install Rich to make --ui "just work"
+                # Auto-install Rich using uv (works in UVX without pip)
                 print(f"\n⚠️  Rich library not found, installing automatically...", file=sys.stderr)
 
                 try:
-                    # Try to install Rich using pip
+                    # Try uv first (UVX environments)
                     result = subprocess.run(
-                        [sys.executable, "-m", "pip", "install", "rich>=13.0.0"],
+                        ["uv", "pip", "install", "rich>=13.0.0"],
                         capture_output=True,
                         text=True,
                         timeout=60
                     )
 
                     if result.returncode == 0:
-                        print(f"✅ Rich installed successfully, initializing UI...\n", file=sys.stderr)
-
-                        # Retry the import after installation
+                        print(f"✅ Rich installed, initializing UI...\n", file=sys.stderr)
                         from .auto_mode_state import AutoModeState
                         from .auto_mode_ui import AutoModeUI
-
-                        # Create shared state with session ID
                         session_id = self.log_dir.name
                         self.state = AutoModeState(
                             session_id=session_id,
@@ -170,28 +166,29 @@ class AutoMode:
                             max_turns=max_turns,
                             objective=prompt
                         )
-
-                        # Create UI
                         self.ui = AutoModeUI(self.state, self, self.working_dir)
-                        print(f"✅ UI mode enabled\n", file=sys.stderr)
+                        print(f"✅ UI enabled\n", file=sys.stderr)
                     else:
-                        # Installation failed
-                        print(f"\n⚠️  Failed to install Rich automatically", file=sys.stderr)
-                        print(f"   Error: {result.stderr}", file=sys.stderr)
-                        print(f"\n   Please install manually:", file=sys.stderr)
-                        print(f"     pip install rich>=13.0.0", file=sys.stderr)
-                        print(f"\n   Continuing in non-UI mode...\n", file=sys.stderr)
-                        self.ui_enabled = False
-                        self.ui = None
-
-                except Exception as install_error:
-                    # Auto-install failed, fall back to error message
-                    print(f"\n⚠️  Could not auto-install Rich: {install_error}", file=sys.stderr)
-                    print(f"\n   To enable TUI mode, install Rich manually:", file=sys.stderr)
-                    print(f"     pip install rich>=13.0.0", file=sys.stderr)
-                    print(f"\n   Continuing in non-UI mode...\n", file=sys.stderr)
-
-                    self.log(f"Warning: UI mode requires Rich library: {e}", level="WARNING")
+                        # Fallback to pip
+                        result = subprocess.run(
+                            [sys.executable, "-m", "pip", "install", "rich>=13.0.0"],
+                            capture_output=True,
+                            text=True,
+                            timeout=60
+                        )
+                        if result.returncode == 0:
+                            print(f"✅ Rich installed via pip\n", file=sys.stderr)
+                            from .auto_mode_state import AutoModeState
+                            from .auto_mode_ui import AutoModeUI
+                            session_id = self.log_dir.name
+                            self.state = AutoModeState(session_id=session_id, start_time=time.time(), max_turns=max_turns, objective=prompt)
+                            self.ui = AutoModeUI(self.state, self, self.working_dir)
+                        else:
+                            print(f"\n⚠️  Install failed, continuing in non-UI mode\n", file=sys.stderr)
+                            self.ui_enabled = False
+                            self.ui = None
+                except Exception:
+                    print(f"\n⚠️  Could not install Rich, continuing in non-UI mode\n", file=sys.stderr)
                     self.ui_enabled = False
                     self.ui = None
 
@@ -1067,80 +1064,19 @@ Current Turn: {turn}/{self.max_turns}"""
         using the captured messages from the session.
         """
         try:
-            # Import transcript builder with multiple fallback strategies
-            builder_imported = False
-
-            # Strategy 1: Try relative import (works in local development)
+            # Import transcript builder (try relative import first, fall back to sys.path)
             try:
                 from ...tools.amplihack.builders.claude_transcript_builder import ClaudeTranscriptBuilder
-                builder_imported = True
             except (ImportError, ValueError):
-                pass
-
-            # Strategy 2: Try from installed package location (UVX scenario)
-            if not builder_imported:
-                try:
-                    # When running via uvx, .claude is in site-packages/amplihack/.claude
-                    import sys
-                    from pathlib import Path
-
-                    # Find amplihack module location
-                    import amplihack
-                    amplihack_path = Path(amplihack.__file__).parent.resolve(strict=True)
-                    tools_path = (amplihack_path / ".claude" / "tools" / "amplihack").resolve(strict=True)
-
-                    # Security: Validate path is within expected package
-                    if not str(tools_path).startswith(str(amplihack_path)):
-                        self.log("Security: Builders path validation failed in Strategy 2", level="DEBUG")
-                        raise ValueError("Path traversal detected")
-
-                    if tools_path.exists():
-                        tools_path_str = str(tools_path)
-                        if tools_path_str not in sys.path:
-                            # Security: Use append instead of insert to avoid hijacking stdlib
-                            sys.path.append(tools_path_str)
-                            self.log(f"Builders import: Added UVX path to sys.path", level="DEBUG")
-                        from builders.claude_transcript_builder import ClaudeTranscriptBuilder
-                        builder_imported = True
-                        self.log("Builders import: Strategy 2 (UVX) succeeded", level="DEBUG")
-                except (ImportError, ValueError, AttributeError, OSError) as e:
-                    self.log(f"Builders import: Strategy 2 failed - {type(e).__name__}", level="DEBUG")
-
-            # Strategy 3: Try from project root (local development fallback)
-            if not builder_imported:
-                try:
-                    import sys
-                    from pathlib import Path
-
-                    # Security: Resolve and validate project root
-                    current_file = Path(__file__).resolve(strict=True)
-                    project_root = current_file.parent.parent.parent.parent
-                    tools_path = (project_root / ".claude" / "tools" / "amplihack").resolve(strict=True)
-
-                    # Security: Ensure tools_path is under project_root
-                    try:
-                        tools_path.relative_to(project_root)
-                    except ValueError:
-                        self.log("Security: Path traversal detected in Strategy 3", level="DEBUG")
-                        raise ValueError("Path traversal detected")
-
-                    if tools_path.exists():
-                        tools_path_str = str(tools_path)
-                        if tools_path_str not in sys.path:
-                            # Security: Use append to avoid hijacking
-                            sys.path.append(tools_path_str)
-                            self.log(f"Builders import: Added project root path", level="DEBUG")
-                        from builders.claude_transcript_builder import ClaudeTranscriptBuilder
-                        builder_imported = True
-                        self.log("Builders import: Strategy 3 (project root) succeeded", level="DEBUG")
-                except (ImportError, ValueError, OSError) as e:
-                    self.log(f"Builders import: Strategy 3 failed - {type(e).__name__}", level="DEBUG")
-
-
-            # If all strategies failed, skip export gracefully
-            if not builder_imported:
-                self.log("Info: Transcript builder not available, skipping export", level="INFO")
-                return
+                # Fallback for different execution contexts
+                # __file__ is in src/amplihack/launcher/, need to go up 4 levels to project root
+                import sys
+                from pathlib import Path
+                project_root = Path(__file__).parent.parent.parent.parent  # Up to project root
+                tools_path = project_root / ".claude" / "tools" / "amplihack"
+                if str(tools_path) not in sys.path:
+                    sys.path.insert(0, str(tools_path))
+                from builders.claude_transcript_builder import ClaudeTranscriptBuilder
 
             builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
             messages = self.message_capture.get_messages()
