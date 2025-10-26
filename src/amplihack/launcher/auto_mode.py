@@ -445,6 +445,10 @@ Document your decisions and reasoning in comments/logs."""
                                 print(text, end="", flush=True)
                                 output_lines.append(text)
 
+                                # Stream to UI logs if enabled
+                                if self.ui_enabled and hasattr(self, 'state'):
+                                    self.state.add_log(text, timestamp=False)
+
                     elif msg_type == "ResultMessage":
                         # Check if there was an error
                         if getattr(message, "is_error", False):
