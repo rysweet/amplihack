@@ -154,7 +154,7 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
 
         # Copy the directory
         try:
-            shutil.copytree(source_dir, target_dir)
+            shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
 
             # Fix: Set execute permissions on hook Python files
             # This fixes the "Permission denied" error when hooks are copied
