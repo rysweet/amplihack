@@ -1027,19 +1027,57 @@ Current Turn: {turn}/{self.max_turns}"""
         using the captured messages from the session.
         """
         try:
-            # Import transcript builder (try relative import first, fall back to sys.path)
+            # Import builder using importlib - works in both UVX and local dev
+            import importlib.util
+            from pathlib import Path
+
+            # Search paths for builders directory
+            search_paths = []
+
+            # Path 1: UVX package location
             try:
-                from ...tools.amplihack.builders.claude_transcript_builder import ClaudeTranscriptBuilder
-            except (ImportError, ValueError):
-                # Fallback for different execution contexts
-                # __file__ is in src/amplihack/launcher/, need to go up 4 levels to project root
-                import sys
-                from pathlib import Path
-                project_root = Path(__file__).parent.parent.parent.parent  # Up to project root
-                tools_path = project_root / ".claude" / "tools" / "amplihack"
-                if str(tools_path) not in sys.path:
-                    sys.path.insert(0, str(tools_path))
-                from builders.claude_transcript_builder import ClaudeTranscriptBuilder
+                import amplihack
+                pkg_path = Path(amplihack.__file__).parent.resolve()
+                builders_in_pkg = pkg_path / ".claude" / "tools" / "amplihack" / "builders"
+                if builders_in_pkg.exists():
+                    search_paths.append(builders_in_pkg)
+            except Exception:
+                pass
+
+            # Path 2: Project root (local development)
+            try:
+                current_file = Path(__file__).resolve()
+                project_root = current_file.parent.parent.parent.parent
+                builders_in_root = project_root / ".claude" / "tools" / "amplihack" / "builders"
+                if builders_in_root.exists():
+                    search_paths.append(builders_in_root)
+            except Exception:
+                pass
+
+            # Load builder from first valid path
+            ClaudeTranscriptBuilder = None
+            for builders_path in search_paths:
+                try:
+                    builder_file = builders_path / "claude_transcript_builder.py"
+                    if builder_file.exists():
+                        spec = importlib.util.spec_from_file_location(
+                            "claude_transcript_builder",
+                            builder_file
+                        )
+                        if spec and spec.loader:
+                            module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(module)
+                            ClaudeTranscriptBuilder = module.ClaudeTranscriptBuilder
+                            self.log(f"Builders: Loaded from {builders_path}", level="DEBUG")
+                            break
+                except Exception as e:
+                    self.log(f"Builders: Failed from {builders_path}: {e}", level="DEBUG")
+                    continue
+
+            # Skip export if builder couldn't be loaded
+            if ClaudeTranscriptBuilder is None:
+                self.log("Transcript builder not found, skipping export", level="INFO")
+                return
 
             builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
             messages = self.message_capture.get_messages()
