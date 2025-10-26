@@ -157,13 +157,17 @@ class AutoMode:
 
     def log(self, msg: str, level: str = "INFO"):
         """Log message with optional level."""
-        print(f"[AUTO {self.sdk.upper()}] {msg}")
+        # Only print INFO, WARNING, ERROR to console - skip DEBUG
+        if level in ("INFO", "WARNING", "ERROR"):
+            print(f"[AUTO {self.sdk.upper()}] {msg}")
+
+            # Update UI state if enabled (all levels)
+            if self.ui_enabled and hasattr(self, 'state'):
+                self.state.add_log(msg, timestamp=False)
+
+        # Always write to file (including DEBUG)
         with open(self.log_dir / "auto.log", "a") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
-
-        # Update state if UI is enabled
-        if self.ui_enabled and hasattr(self, 'state'):
-            self.state.add_log(msg, timestamp=False)  # Already has timestamp from print
 
     def _format_elapsed(self, seconds: float) -> str:
         """Format elapsed time as Xm Ys or Xs.
