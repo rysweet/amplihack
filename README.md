@@ -102,6 +102,14 @@ amplihack also supports GitHub Copilot CLI integration. See [docs/github-copilot
 | `/amplihack:transcripts` | Conversation transcript management |
 | `/amplihack:xpia` | Security analysis and threat detection |
 | `/amplihack:customize` | Manage user-specific preferences |
+| `/amplihack:ddd:0-help` | Document-Driven Development help and guidance |
+| `/amplihack:ddd:1-plan` | Phase 0: Planning & Alignment |
+| `/amplihack:ddd:2-docs` | Phase 1: Documentation Retcon |
+| `/amplihack:ddd:3-code-plan` | Phase 3: Implementation Planning |
+| `/amplihack:ddd:4-code` | Phase 4: Code Implementation |
+| `/amplihack:ddd:5-finish` | Phase 5: Testing & Phase 6: Cleanup |
+| `/amplihack:ddd:prime` | Prime context with DDD overview |
+| `/amplihack:ddd:status` | Check current DDD phase and progress |
 | `/amplihack:lock` | Enable continuous work mode |
 | `/amplihack:unlock` | Disable continuous work mode |
 | `/amplihack:install` | Install amplihack tools |
@@ -225,6 +233,12 @@ The iterative-step workflow is fully customizable. Edit `.claude/workflow/DEFAUL
 ### Development
 - [Developing amplihack](docs/DEVELOPING_AMPLIHACK.md) - Contributing guide
 - [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Architecture overview
+
+### Methodology
+- [Document-Driven Development](docs/document_driven_development/README.md) - Systematic approach for large features
+- [DDD Overview](docs/document_driven_development/overview.md) - Comprehensive guide to DDD principles
+- [Core Concepts](docs/document_driven_development/core_concepts/README.md) - Context poisoning, file crawling, retcon writing
+- [DDD Phases](docs/document_driven_development/phases/README.md) - Step-by-step implementation guide
 
 ### Security
 - [Security Recommendations](docs/SECURITY_RECOMMENDATIONS.md) - Best practices

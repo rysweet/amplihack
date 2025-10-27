@@ -23,6 +23,12 @@ When starting a session, import these files for context:
 @.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
 @.claude/context/DISCOVERIES.md
+@docs/document_driven_development/overview.md
+```
+
+**For large features or multi-file changes**, also import:
+```
+@docs/document_driven_development/README.md
 ```
 
 ## Working Philosophy
@@ -503,6 +509,41 @@ pragmatic → minimal ensures reliable completion.
 **Integration with UltraThink:** These patterns can be combined with
 `/ultrathink` by customizing the workflow file to include consensus or fallback
 stages at specific steps.
+
+### Document-Driven Development (DDD)
+
+**Systematic methodology for large features where documentation comes first and acts as the specification.**
+
+**Core Principle**: Documentation IS the specification. Code must match what documentation describes exactly.
+
+**When to Use DDD:**
+- New features requiring multiple files (10+ files)
+- System redesigns or major refactoring
+- API changes affecting documentation
+- High-stakes user-facing features
+- Complex integrations requiring clear contracts
+
+**Commands:**
+```bash
+/amplihack:ddd:0-help          # Get help and understand DDD
+/amplihack:ddd:prime           # Prime context with DDD overview
+/amplihack:ddd:1-plan          # Phase 0: Planning & Alignment
+/amplihack:ddd:2-docs          # Phase 1: Documentation Retcon
+                               # Phase 2: Approval Gate (manual review)
+/amplihack:ddd:3-code-plan     # Phase 3: Implementation Planning
+/amplihack:ddd:4-code          # Phase 4: Code Implementation
+/amplihack:ddd:5-finish        # Phase 5: Testing & Phase 6: Cleanup
+/amplihack:ddd:status          # Check current phase and progress
+```
+
+**Benefits:**
+- **Prevents context poisoning** - Single source of truth eliminates conflicting docs
+- **Reviewable design** - Catch design flaws before expensive implementation
+- **No drift** - Docs and code never diverge (docs come first by design)
+- **AI-optimized** - Clear specifications prevent wrong decisions
+- **Philosophy-aligned** - Natural fit with ruthless simplicity and modular design
+
+**Documentation**: See `docs/document_driven_development/` for complete guides, core concepts, and reference materials.
 
 ## Scenario Tools
 
