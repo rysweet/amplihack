@@ -191,7 +191,12 @@ class UVXStager:
             target_path = target_root / item_name
 
             # Check if target already exists
-            if target_path.exists() and not self.config.overwrite_existing:
+            # EXCEPTION: Always stage .claude directory to ensure hooks are present
+            if (
+                target_path.exists()
+                and not self.config.overwrite_existing
+                and item_name != ".claude"
+            ):
                 result.add_skipped(target_path, "Target already exists")
                 self._debug_log(f"Skipping existing: {target_path}")
                 continue

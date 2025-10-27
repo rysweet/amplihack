@@ -193,6 +193,72 @@ class TestUVXStager:
             assert (target_root / "CLAUDE.md").read_text() == "existing content"
             assert len(result.skipped) > 0
 
+    def test_claude_directory_always_staged_even_when_exists(self):
+        """Test that .claude directory is always staged, even with overwrite disabled.
+
+        This validates the fix for issue #1034 where UVX installations would skip
+        the .claude directory if it already existed, leaving hooks unavailable.
+        """
+        config = UVXConfiguration(overwrite_existing=False)
+        stager = UVXStager(config)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create source with .claude and hooks
+            amplihack_source = Path(temp_dir) / "amplihack"
+            amplihack_source.mkdir()
+            source_claude = amplihack_source / ".claude"
+            source_claude.mkdir()
+            hooks_dir = source_claude / "tools" / "amplihack" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            (hooks_dir / "stop.py").write_text("# Stop hook")
+            (hooks_dir / "session_start.py").write_text("# Session start hook")
+
+            # Create target with EXISTING .claude directory (but missing hooks)
+            target_root = Path(temp_dir) / "target"
+            target_root.mkdir()
+            target_claude = target_root / ".claude"
+            target_claude.mkdir()
+            (target_claude / "existing_file.txt").write_text("existing")
+
+            # Setup session
+            env_info = UVXEnvironmentInfo(
+                sys_path_entries=[str(temp_dir)], working_directory=target_root
+            )
+            detection_state = UVXDetectionState(
+                result=UVXDetectionResult.UVX_DEPLOYMENT, environment=env_info
+            )
+            location = FrameworkLocation(
+                root_path=target_root, strategy=PathResolutionStrategy.STAGING_REQUIRED
+            )
+            from amplihack.utils.uvx_models import PathResolutionResult
+
+            resolution = PathResolutionResult(location=location)
+
+            session_state = UVXSessionState(configuration=config)
+            session_state.initialize_detection(detection_state)
+            session_state.set_path_resolution(resolution)
+
+            # Stage should proceed despite .claude existing
+            result = stager.stage_framework_files(session_state)
+
+            # Verify .claude directory was staged (not skipped)
+            assert (
+                target_root / ".claude" / "tools" / "amplihack" / "hooks" / "stop.py"
+            ).exists(), "stop.py hook should be staged"
+            assert (
+                target_root / ".claude" / "tools" / "amplihack" / "hooks" / "session_start.py"
+            ).exists(), "session_start.py hook should be staged"
+            # Existing file should be preserved
+            assert (target_claude / "existing_file.txt").exists(), (
+                "Existing file should be preserved"
+            )
+            assert (target_claude / "existing_file.txt").read_text() == "existing", (
+                "Existing file content should be unchanged"
+            )
+            # .claude should NOT be in skipped list
+            skipped_names = [p.name for p in result.skipped]
+            assert ".claude" not in skipped_names, ".claude directory should not be skipped"
+
     def test_stage_framework_files_with_backup(self):
         """Test staging with backup creation enabled."""
         config = UVXConfiguration(overwrite_existing=True, create_backup=True)
