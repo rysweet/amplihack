@@ -226,6 +226,9 @@ The iterative-step workflow is fully customizable. Edit `.claude/workflow/DEFAUL
 - [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agent creation
 - [GitHub Copilot Integration](docs/github-copilot-litellm-integration.md) - Copilot CLI support
 
+### Patterns
+- [Workspace Pattern](docs/WORKSPACE_PATTERN.md) - Multi-project organization with git submodules
+
 ### Configuration
 - [Hook Configuration](docs/HOOK_CONFIGURATION_GUIDE.md) - Session hooks
 - [Workflow Customization](docs/WORKFLOW_COMPLETION.md) - Process customization
