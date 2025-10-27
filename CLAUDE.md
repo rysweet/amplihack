@@ -46,6 +46,8 @@ When starting a session, import these files for context:
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Ask for clarity**: If requirements are unclear, ask questions before
   proceeding
+- **Check discoveries before problem-solving**: Before solving complex problems,
+  check `@docs/DISCOVERIES.md` for known issues and solutions
 - **Document learnings**: Update .claude/context/DISCOVERIES.md with new
   insights
 - **Session Logs**: All interactions MUST be logged in

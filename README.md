@@ -247,6 +247,11 @@ The iterative-step workflow is fully customizable. Edit `.claude/workflow/DEFAUL
 - [Security Recommendations](docs/SECURITY_RECOMMENDATIONS.md) - Best practices
 - [Security Context Preservation](docs/SECURITY_CONTEXT_PRESERVATION.md) - Context handling
 
+### Patterns
+- [The Amplihack Way](docs/THIS_IS_THE_WAY.md) - Effective strategies for AI-agent development
+- [Discoveries](docs/DISCOVERIES.md) - Documented problems, solutions, and learnings
+- [Creating Tools](docs/CREATE_YOUR_OWN_TOOLS.md) - Build custom AI-powered tools
+
 ### Core Principles
 - [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles and patterns
 - [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Development process

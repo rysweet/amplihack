@@ -24,7 +24,10 @@ When starting a session, reference these files for context:
 @.claude/context/TRUST.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
 @.claude/context/DISCOVERIES.md
+@docs/THIS_IS_THE_WAY.md
 ```
+
+**Note**: For practical tips and real-world usage patterns, review `@docs/THIS_IS_THE_WAY.md` which contains battle-tested strategies for effective AI-agent development.
 
 ## USER PREFERENCES - MANDATORY across all sessions
 
