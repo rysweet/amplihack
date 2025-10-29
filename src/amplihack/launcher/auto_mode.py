@@ -449,6 +449,15 @@ Document your decisions and reasoning in comments/logs."""
                                 if self.ui_enabled and hasattr(self, 'state'):
                                     self.state.add_log(text, timestamp=False)
 
+                            # Check for tool use (TodoWrite)
+                            elif hasattr(block, "type") and block.type == "tool_use":
+                                if hasattr(block, "name") and block.name == "TodoWrite":
+                                    # Extract todos from tool input
+                                    if hasattr(block, "input") and hasattr(block.input, "todos"):
+                                        todos = block.input.todos
+                                        if self.ui_enabled and hasattr(self, 'state'):
+                                            self.state.update_todos(todos)
+
                     elif msg_type == "ResultMessage":
                         # Check if there was an error
                         if getattr(message, "is_error", False):
@@ -910,6 +919,29 @@ Objective:
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
+                # Check for pause/kill requests before starting turn
+                if self.ui_enabled and hasattr(self, 'state'):
+                    # Handle kill request
+                    if self.state.is_kill_requested():
+                        self.log("Kill requested - terminating execution")
+                        self.state.update_status("stopped")
+                        return 1
+
+                    # Handle pause request
+                    while self.state.is_pause_requested():
+                        self.state.update_status("paused")
+                        await asyncio.sleep(0.5)  # Check every 500ms
+                        # Check for kill while paused
+                        if self.state.is_kill_requested():
+                            self.log("Kill requested while paused - terminating")
+                            self.state.update_status("stopped")
+                            return 1
+
+                    # Resume if we were paused
+                    if self.state.get_status() == "paused":
+                        self.state.update_status("running")
+                        self.log("Resuming execution")
+
                 self.turn = turn
 
                 # Check if fork needed before turn execution

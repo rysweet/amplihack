@@ -89,22 +89,61 @@ class AutoModeUI:
     def _generate_title_from_prompt(self, prompt: str) -> str:
         """Generate short title from user prompt.
 
-        Simple truncation of prompt for display.
+        Uses Claude SDK to generate concise title, falls back to truncation.
 
         Args:
             prompt: User's original prompt
 
         Returns:
-            Title string (max 50 chars)
+            Title string (max 80 chars)
         """
         if not prompt or not prompt.strip():
             return "Auto Mode Session"
 
-        # Simple truncation
-        if len(prompt) <= 50:
+        # Try to use SDK to generate title
+        try:
+            # Try to import Claude SDK
+            try:
+                from claude_agent_sdk import query_sync, ClaudeAgentOptions
+                SDK_AVAILABLE = True
+            except ImportError:
+                SDK_AVAILABLE = False
+
+            if SDK_AVAILABLE:
+                # Use SDK to generate concise title
+                title_prompt = f"""Generate a concise, descriptive title (max 80 characters) for this auto mode session.
+The title should capture the key objective in a clear, brief phrase.
+
+User prompt: {prompt[:500]}
+
+Respond with ONLY the title text, nothing else."""
+
+                options = ClaudeAgentOptions(
+                    cwd=str(self.working_dir),
+                    permission_mode="bypassPermissions"
+                )
+
+                # Use synchronous query for title generation (fast, non-streaming)
+                response = query_sync(prompt=title_prompt, options=options)
+
+                # Extract text from response
+                if hasattr(response, 'content'):
+                    for block in response.content:
+                        if hasattr(block, 'text'):
+                            title = block.text.strip()
+                            # Truncate to 80 chars if needed
+                            if len(title) > 80:
+                                title = title[:77] + "..."
+                            return title
+        except Exception as e:
+            # Log error but don't crash - fall back to simple truncation
+            self.state.add_log(f"Title generation via SDK failed: {e}", timestamp=False)
+
+        # Fallback: Simple truncation
+        if len(prompt) <= 80:
             return prompt
 
-        return prompt[:47] + "..."
+        return prompt[:77] + "..."
 
     def _create_layout(self) -> Layout:
         """Create Rich layout structure.
@@ -117,10 +156,10 @@ class AutoModeUI:
         # Split into 5 rows
         layout.split(
             Layout(name="title", size=3),
-            Layout(name="session", size=3),
+            Layout(name="session", size=8),  # Increased for additional fields
             Layout(name="todos", size=10),
             Layout(name="logs", ratio=1),
-            Layout(name="input", size=5),
+            Layout(name="status", size=3),  # Renamed from input
         )
 
         return layout
@@ -137,17 +176,23 @@ class AutoModeUI:
     def _build_session_panel(self) -> Panel:
         """Build session details panel.
 
-        Shows turn counter, elapsed time, and cost tracking.
+        Shows session_id, datetime, objective summary, turn counter, elapsed time, and cost tracking.
 
         Returns:
             Rich Panel with session info
         """
         snapshot = self.state.snapshot()
 
+        # Format datetime (session start time)
+        start_time = snapshot['start_time']
+        if start_time > 0:
+            datetime_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time))
+        else:
+            datetime_str = "Unknown"
+
         # Format elapsed time
-        elapsed = snapshot['start_time']
-        if elapsed > 0:
-            elapsed_sec = time.time() - elapsed
+        if start_time > 0:
+            elapsed_sec = time.time() - start_time
             if elapsed_sec < 0:
                 elapsed_str = "0s"
             elif elapsed_sec < 60:
@@ -158,6 +203,13 @@ class AutoModeUI:
                 elapsed_str = f"{minutes}m {seconds}s"
         else:
             elapsed_str = "0s"
+
+        # Format objective summary (first 50 chars)
+        objective = snapshot.get('objective', '')
+        if objective:
+            objective_summary = objective[:50] + "..." if len(objective) > 50 else objective
+        else:
+            objective_summary = "N/A"
 
         # Format costs
         costs = snapshot['costs']
@@ -170,6 +222,11 @@ class AutoModeUI:
         output_str = f"{output_tokens:,}" if output_tokens else "0"
         cost_str = f"${estimated_cost:.4f}" if estimated_cost else "$0.0000"
 
+        # Session ID (truncate if too long)
+        session_id = snapshot.get('session_id', 'unknown')
+        if len(session_id) > 30:
+            session_id = session_id[:27] + "..."
+
         # Status indicator
         status = snapshot['status']
         if status == "running":
@@ -181,27 +238,36 @@ class AutoModeUI:
         elif status == "error":
             status_icon = "✗"
             status_style = "red"
+        elif status == "paused":
+            status_icon = "⏸"
+            status_style = "yellow"
         else:
             status_icon = "◆"
             status_style = "white"
 
         # Build table
-        table = Table.grid(padding=(0, 2))
-        table.add_column(justify="left")
-        table.add_column(justify="left")
+        table = Table.grid(padding=(0, 1))
         table.add_column(justify="left")
         table.add_column(justify="left")
 
         table.add_row(
-            f"[bold]Turn:[/bold] {snapshot['turn']}/{snapshot['max_turns']}",
-            f"[bold]Time:[/bold] {elapsed_str}",
-            f"[{status_style}]{status_icon} {status.upper()}[/{status_style}]",
+            f"[bold]Session:[/bold] {session_id}",
+            f"[bold]Started:[/bold] {datetime_str}"
+        )
+        table.add_row(
+            f"[bold]Objective:[/bold] {objective_summary}",
             ""
         )
         table.add_row(
-            f"[bold]Input:[/bold] {input_str}",
-            f"[bold]Output:[/bold] {output_str}",
-            f"[bold]Cost:[/bold] {cost_str}",
+            f"[bold]Turn:[/bold] {snapshot['turn']}/{snapshot['max_turns']}",
+            f"[bold]Elapsed:[/bold] {elapsed_str}"
+        )
+        table.add_row(
+            f"[bold]Tokens:[/bold] In:{input_str} Out:{output_str}",
+            f"[bold]Cost:[/bold] {cost_str}"
+        )
+        table.add_row(
+            f"[{status_style}]{status_icon} Status: {status.upper()}[/{status_style}]",
             ""
         )
 
@@ -270,24 +336,67 @@ class AutoModeUI:
             border_style="magenta"
         )
 
-    def _build_input_panel(self) -> Panel:
-        """Build prompt input panel.
+    def _render_status(self) -> Panel:
+        """Build status bar with system info and keyboard commands.
 
-        Shows instructions for injecting new prompts.
+        Shows git commit revision, Claude CLI version, and keyboard shortcuts.
 
         Returns:
-            Rich Panel with input instructions
+            Rich Panel with status information
         """
-        help_text = Text()
-        help_text.append("Commands: ", style="bold")
-        help_text.append("[x] Exit UI  ", style="cyan")
-        help_text.append("[h] Help", style="white")
+        import subprocess
 
-        if self._pending_input:
-            status = Text(f"\n✓ {len(self._pending_input)} instruction(s) queued", style="green")
-            help_text.append(status)
+        # Get git commit revision (short hash)
+        try:
+            git_rev = subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=self.working_dir,
+                stderr=subprocess.DEVNULL,
+                text=True
+            ).strip()
+            git_info = f"Git: {git_rev}"
+        except Exception:
+            git_info = "Git: N/A"
 
-        return Panel(help_text, title="Controls", box=box.ROUNDED, border_style="white")
+        # Get Claude CLI version
+        try:
+            # Try to get version from package or CLI
+            claude_version = subprocess.check_output(
+                ["claude", "--version"],
+                stderr=subprocess.DEVNULL,
+                text=True
+            ).strip()
+            # Extract just version number if present
+            if "version" in claude_version.lower():
+                claude_version = claude_version.split()[-1]
+            version_info = f"Claude: {claude_version}"
+        except Exception:
+            version_info = "Claude: N/A"
+
+        # Build status text with keyboard commands
+        status_text = Text()
+        status_text.append(f"{git_info}  |  {version_info}  |  ", style="dim")
+        status_text.append("Commands: ", style="bold")
+
+        # Show available commands based on current state
+        snapshot = self.state.snapshot()
+        status = snapshot['status']
+
+        if status == "running":
+            status_text.append("[p]", style="cyan bold")
+            status_text.append("=pause  ", style="white")
+        elif status == "paused":
+            status_text.append("[p]", style="cyan bold")
+            status_text.append("=resume  ", style="white")
+
+        if status in ["running", "paused"]:
+            status_text.append("[k]", style="red bold")
+            status_text.append("=kill  ", style="white")
+
+        status_text.append("[x]", style="yellow bold")
+        status_text.append("=exit", style="white")
+
+        return Panel(status_text, box=box.ROUNDED, border_style="white")
 
     def update_display(self, live: Live) -> None:
         """Update display with current state.
@@ -307,7 +416,7 @@ class AutoModeUI:
         self.layout["session"].update(self._build_session_panel())
         self.layout["todos"].update(self._build_todo_panel())
         self.layout["logs"].update(self._build_log_panel())
-        self.layout["input"].update(self._build_input_panel())
+        self.layout["status"].update(self._render_status())
 
         # Refresh display
         live.update(self.layout)
@@ -325,11 +434,25 @@ class AutoModeUI:
             self._should_exit = True
             self.state.add_log("UI exit requested (auto mode continues)")
 
+        elif key == 'p':
+            # Toggle pause
+            if self.state.is_pause_requested():
+                self.state.clear_pause_request()
+                self.state.add_log("Resume requested")
+            else:
+                self.state.request_pause()
+                self.state.add_log("Pause requested")
+
+        elif key == 'k':
+            # Kill execution
+            self.state.request_kill()
+            self.state.add_log("Kill requested - terminating execution")
+
         elif key == 'h':
             # Show help
             self._showing_help = not self._showing_help
             if self._showing_help:
-                self.state.add_log("Help: x=exit ui, h=help")
+                self.state.add_log("Help: p=pause/resume, k=kill, x=exit ui, h=help")
 
     def submit_input(self, text: str) -> None:
         """Submit new instruction via input panel.
@@ -411,6 +534,17 @@ class AutoModeUI:
     def update_todos(self, todos: List[Dict[str, str]]) -> None:
         """Update todo list in state."""
         self.state.update_todos(todos)
+
+    def register_todo_callback(self) -> None:
+        """Register SDK callback to auto-update todos when TodoWrite tool is used.
+
+        This should be called after SDK is initialized to hook into tool usage events.
+        Note: Implementation depends on SDK's callback mechanism.
+        """
+        # TODO: SDK callback registration for TodoWrite tool
+        # This will be implemented when SDK provides the callback mechanism
+        # For now, todos are updated via direct calls from auto_mode.py
+        pass
 
     def append_log(self, message: str) -> None:
         """Append log message to state."""
