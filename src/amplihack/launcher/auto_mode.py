@@ -1041,20 +1041,40 @@ Current Turn: {turn}/{self.max_turns}"""
             # Path 1: UVX package location
             try:
                 import amplihack
-                pkg_path = Path(amplihack.__file__).parent.resolve()
-                builders_in_pkg = pkg_path / ".claude" / "tools" / "amplihack" / "builders"
+                # Security: Use strict=True to prevent symlink attacks
+                pkg_path = Path(amplihack.__file__).parent.resolve(strict=True)
+                builders_in_pkg = (pkg_path / ".claude" / "tools" / "amplihack" / "builders").resolve(strict=True)
+
+                # Security: Validate path is within expected package
+                if not str(builders_in_pkg).startswith(str(pkg_path)):
+                    self.log("Security: Builders path validation failed in UVX", level="DEBUG")
+                    raise ValueError("Path traversal detected")
+
                 if builders_in_pkg.exists():
                     search_paths.append(builders_in_pkg)
+            except (ValueError, OSError) as e:
+                self.log(f"Path validation failed in UVX: {type(e).__name__}", level="DEBUG")
             except Exception:
                 pass
 
             # Path 2: Project root (local development)
             try:
-                current_file = Path(__file__).resolve()
+                # Security: Resolve and validate project root
+                current_file = Path(__file__).resolve(strict=True)
                 project_root = current_file.parent.parent.parent.parent
-                builders_in_root = project_root / ".claude" / "tools" / "amplihack" / "builders"
+                builders_in_root = (project_root / ".claude" / "tools" / "amplihack" / "builders").resolve(strict=True)
+
+                # Security: Ensure builders path is under project root
+                try:
+                    builders_in_root.relative_to(project_root)
+                except ValueError:
+                    self.log("Security: Path traversal detected in project root", level="DEBUG")
+                    raise ValueError("Path traversal detected")
+
                 if builders_in_root.exists():
                     search_paths.append(builders_in_root)
+            except (ValueError, OSError) as e:
+                self.log(f"Path validation failed in project root: {type(e).__name__}", level="DEBUG")
             except Exception:
                 pass
 
