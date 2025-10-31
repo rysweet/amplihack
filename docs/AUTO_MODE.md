@@ -280,6 +280,7 @@ $ amplihack claude --append "Include comprehensive input validation for all form
 3. **Multiple Instructions**: You can append multiple instructions - they queue in order and are all processed before the next turn.
 
 4. **Monitor Progress**: Watch the logs to see when your appended instructions are processed:
+
    ```bash
    tail -f .claude/runtime/logs/auto_claude_*/auto.log
    ```
@@ -293,14 +294,17 @@ $ amplihack claude --append "Include comprehensive input validation for all form
 ### Troubleshooting Append
 
 **Error: No active auto mode session found**
+
 - **Cause**: No auto mode is currently running in this project
 - **Solution**: Start an auto mode session first with `amplihack claude --auto -- -p "your task"`
 
 **Instruction not being processed**
+
 - **Cause**: Auto mode may have completed before processing
 - **Solution**: Check if auto mode reached max turns or completed the objective. Review logs to see what happened.
 
 **Multiple sessions detected**
+
 - **Behavior**: The system will use the most recent auto mode session
 - **Tip**: Only run one auto mode session per project to avoid confusion
 

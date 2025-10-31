@@ -21,9 +21,8 @@ import sys
 import tempfile
 import time
 import unittest
-from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, patch
 
 # Add project paths
 project_root = Path(__file__).resolve().parents[1]
@@ -80,9 +79,7 @@ class TestMessageTracking(unittest.TestCase):
             clarify_messages = [
                 msg for msg in self.auto_mode.messages if msg.get("phase") == "clarifying"
             ]
-            self.assertGreater(
-                len(clarify_messages), 0, "Should have messages from clarify phase"
-            )
+            self.assertGreater(len(clarify_messages), 0, "Should have messages from clarify phase")
 
     def test_messages_captured_during_planning_phase(self):
         """FAIL: Messages should be captured during planning phase.
@@ -650,9 +647,7 @@ class TestBackwardCompatibility(unittest.TestCase):
 
         # Overhead should be less than 5%
         overhead_ratio = (time_with_tracking - time_no_tracking) / time_no_tracking
-        self.assertLess(
-            overhead_ratio, 0.05, f"Overhead {overhead_ratio:.2%} should be < 5%"
-        )
+        self.assertLess(overhead_ratio, 0.05, f"Overhead {overhead_ratio:.2%} should be < 5%")
 
     def test_session_dir_structure_compatible(self):
         """FAIL: Session directory structure should be compatible with existing tools.

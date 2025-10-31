@@ -20,8 +20,8 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from queue import Queue, Empty
-from unittest.mock import MagicMock, Mock, patch, call
+from queue import Queue
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -53,7 +53,7 @@ class TestAutoModeBackgroundThread:
             prompt="Test prompt",
             max_turns=5,
             working_dir=temp_working_dir,
-            ui_mode=True
+            ui_mode=True,
         )
 
         # Mock the actual execution to prevent real SDK calls
@@ -63,7 +63,7 @@ class TestAutoModeBackgroundThread:
         # This will fail until threading is implemented
         with pytest.raises(AttributeError):
             auto_mode.start_background()
-            assert hasattr(auto_mode, 'execution_thread')
+            assert hasattr(auto_mode, "execution_thread")
             assert auto_mode.execution_thread.is_alive()
 
             # Cleanup
@@ -82,7 +82,7 @@ class TestAutoModeBackgroundThread:
             prompt="Test prompt",
             max_turns=5,
             working_dir=temp_working_dir,
-            ui_mode=True
+            ui_mode=True,
         )
 
         auto_mode.run_sdk = MagicMock(return_value=(0, "Mock response"))
@@ -108,7 +108,7 @@ class TestAutoModeBackgroundThread:
             prompt="Test prompt",
             max_turns=5,
             working_dir=temp_working_dir,
-            ui_mode=True
+            ui_mode=True,
         )
 
         auto_mode.run_sdk = MagicMock(return_value=(0, "Mock response"))
@@ -135,7 +135,7 @@ class TestThreadSafeStateSharing:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             auto_mode.run_sdk = MagicMock(return_value=(0, "Mock response"))
             auto_mode.run_hook = MagicMock()
@@ -152,7 +152,7 @@ class TestThreadSafeStateSharing:
 
         # This will fail until thread-safe state is implemented
         with pytest.raises(AttributeError):
-            assert hasattr(auto_mode, '_turn_lock')
+            assert hasattr(auto_mode, "_turn_lock")
 
             # Simulate concurrent reads/writes
             def read_turn():
@@ -188,7 +188,7 @@ class TestThreadSafeStateSharing:
 
         # This will fail until queue-based logging is implemented
         with pytest.raises(AttributeError):
-            assert hasattr(auto_mode, 'log_queue')
+            assert hasattr(auto_mode, "log_queue")
             assert isinstance(auto_mode.log_queue, Queue)
 
             # Test queue operations
@@ -213,7 +213,7 @@ class TestThreadSafeStateSharing:
 
         # This will fail until thread-safe todos are implemented
         with pytest.raises(AttributeError):
-            assert hasattr(auto_mode, '_todos_lock')
+            assert hasattr(auto_mode, "_todos_lock")
 
             todos = [
                 {"content": "Task 1", "status": "pending", "activeForm": "Working on task 1"},
@@ -258,16 +258,14 @@ class TestThreadSafeStateSharing:
 
         # This will fail until thread-safe cost tracking is implemented
         with pytest.raises(AttributeError):
-            assert hasattr(auto_mode, '_cost_lock')
+            assert hasattr(auto_mode, "_cost_lock")
 
             # Test concurrent updates
             def update_cost():
                 for i in range(100):
-                    auto_mode.update_cost_info({
-                        'input_tokens': i,
-                        'output_tokens': i * 2,
-                        'estimated_cost': i * 0.01
-                    })
+                    auto_mode.update_cost_info(
+                        {"input_tokens": i, "output_tokens": i * 2, "estimated_cost": i * 0.01}
+                    )
                     time.sleep(0.001)
 
             def read_cost():
@@ -299,7 +297,7 @@ class TestUIThreadCommunication:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             auto_mode.run_sdk = MagicMock(return_value=(0, "Mock response"))
             auto_mode.run_hook = MagicMock()
@@ -317,7 +315,7 @@ class TestUIThreadCommunication:
 
         # This will fail until pause mechanism is implemented
         with pytest.raises(AttributeError):
-            assert hasattr(auto_mode, 'pause_event')
+            assert hasattr(auto_mode, "pause_event")
             assert isinstance(auto_mode.pause_event, threading.Event)
 
             # Pause from UI thread
@@ -340,7 +338,7 @@ class TestUIThreadCommunication:
 
         # This will fail until kill mechanism is implemented
         with pytest.raises(AttributeError):
-            assert hasattr(auto_mode, 'stop_event')
+            assert hasattr(auto_mode, "stop_event")
             assert isinstance(auto_mode.stop_event, threading.Event)
 
             # Kill from UI thread
@@ -379,24 +377,24 @@ class TestUIThreadCommunication:
 
         # This will fail until command queue is implemented
         with pytest.raises(AttributeError):
-            assert hasattr(auto_mode, 'command_queue')
+            assert hasattr(auto_mode, "command_queue")
             assert isinstance(auto_mode.command_queue, Queue)
 
             # Queue commands from UI thread
-            auto_mode.queue_command('pause')
-            auto_mode.queue_command('resume')
-            auto_mode.queue_command('inject', 'New instruction')
+            auto_mode.queue_command("pause")
+            auto_mode.queue_command("resume")
+            auto_mode.queue_command("inject", "New instruction")
 
             # Process commands
             cmd1 = auto_mode.command_queue.get(timeout=1)
-            assert cmd1[0] == 'pause'
+            assert cmd1[0] == "pause"
 
             cmd2 = auto_mode.command_queue.get(timeout=1)
-            assert cmd2[0] == 'resume'
+            assert cmd2[0] == "resume"
 
             cmd3 = auto_mode.command_queue.get(timeout=1)
-            assert cmd3[0] == 'inject'
-            assert cmd3[1] == 'New instruction'
+            assert cmd3[0] == "inject"
+            assert cmd3[1] == "New instruction"
 
 
 class TestGracefulShutdown:
@@ -411,7 +409,7 @@ class TestGracefulShutdown:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             # Mock to prevent actual execution
             auto_mode.run_sdk = MagicMock(return_value=(0, "Mock response"))
@@ -546,7 +544,7 @@ class TestThreadSynchronization:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             auto_mode.run_sdk = MagicMock(return_value=(0, "Mock response"))
             auto_mode.run_hook = MagicMock()
@@ -564,7 +562,6 @@ class TestThreadSynchronization:
 
         # This will fail until proper synchronization is implemented
         with pytest.raises(AttributeError):
-            results = []
 
             def increment_turn():
                 for _ in range(100):
@@ -593,6 +590,7 @@ class TestThreadSynchronization:
 
         # This will fail until deadlock prevention is implemented
         with pytest.raises(AttributeError):
+
             def access_state():
                 for _ in range(100):
                     _ = auto_mode.get_current_turn()
@@ -647,7 +645,7 @@ class TestThreadErrorHandling:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -671,7 +669,7 @@ class TestThreadErrorHandling:
             time.sleep(0.5)
 
             # Thread should have caught exception
-            assert hasattr(auto_mode, 'thread_exception')
+            assert hasattr(auto_mode, "thread_exception")
             assert auto_mode.thread_exception is not None
 
     def test_ui_thread_exception_doesnt_kill_automode(self, auto_mode_with_ui):
@@ -691,7 +689,7 @@ class TestThreadErrorHandling:
             auto_mode.start_background()
 
             # Simulate UI exception
-            auto_mode.ui.crash = lambda: 1/0  # Raises ZeroDivisionError
+            auto_mode.ui.crash = lambda: 1 / 0  # Raises ZeroDivisionError
 
             try:
                 auto_mode.ui.crash()
