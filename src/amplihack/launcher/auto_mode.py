@@ -636,7 +636,8 @@ Document your decisions and reasoning in comments/logs."""
         def ui_runner():
             """Thread target to run the UI."""
             try:
-                self.ui.run()
+                if self.ui is not None:
+                    self.ui.run()
             except Exception as e:
                 self.log(f"UI thread error: {e}", level="ERROR")
 
