@@ -1,6 +1,11 @@
 import time
 from typing import List
-from .models import OrchestratorConfig, WorkflowRequest, WorkflowResult, AgentResult, AgentType
+
+try:
+    from .models import OrchestratorConfig, WorkflowRequest, WorkflowResult, AgentResult, AgentType
+except ImportError:
+    # Fallback for direct execution/testing
+    from models import OrchestratorConfig, WorkflowRequest, WorkflowResult, AgentResult, AgentType
 
 
 class Agent:
