@@ -48,6 +48,7 @@ class ClaudeLauncher:
         force_staging: bool = False,
         checkout_repo: Optional[str] = None,
         claude_args: Optional[List[str]] = None,
+        verbose: bool = False,
     ):
         """Initialize Claude launcher.
 
@@ -57,6 +58,7 @@ class ClaudeLauncher:
             force_staging: If True, force staging approach instead of --add-dir.
             checkout_repo: Optional GitHub repository URI to clone and use as working directory.
             claude_args: Additional arguments to forward to Claude.
+            verbose: If True, add --verbose flag to Claude command.
         """
         self.proxy_manager = proxy_manager
         self.append_system_prompt = append_system_prompt
@@ -64,6 +66,7 @@ class ClaudeLauncher:
         self.uvx_manager = UVXManager(force_staging=force_staging)
         self.checkout_repo = checkout_repo
         self.claude_args = claude_args or []
+        self.verbose = verbose
         self.claude_process: Optional[subprocess.Popen] = None
 
         # Cached computation results for performance optimization
@@ -311,7 +314,11 @@ class ClaudeLauncher:
             if claude_path:
                 cmd.extend(["--claude-path", claude_path])
 
-            claude_args = ["--dangerously-skip-permissions", "--verbose"]
+            claude_args = ["--dangerously-skip-permissions"]
+
+            # Add --verbose flag only if requested (auto mode)
+            if self.verbose:
+                claude_args.append("--verbose")
 
             # Add system prompt if provided
             if self.append_system_prompt and self.append_system_prompt.exists():
@@ -340,7 +347,11 @@ class ClaudeLauncher:
 
             return cmd
         # Standard claude command
-        cmd = [claude_binary, "--dangerously-skip-permissions", "--verbose"]
+        cmd = [claude_binary, "--dangerously-skip-permissions"]
+
+        # Add --verbose flag only if requested (auto mode)
+        if self.verbose:
+            cmd.append("--verbose")
 
         # Add system prompt if provided
         if self.append_system_prompt and self.append_system_prompt.exists():

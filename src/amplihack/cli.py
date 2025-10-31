@@ -92,6 +92,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         append_system_prompt=system_prompt_path,
         checkout_repo=getattr(args, "checkout_repo", None),
         claude_args=claude_args,
+        verbose=False,  # Interactive mode does not use --verbose
     )
 
     # Check if claude_args contains a prompt (-p) - if so, use non-interactive mode
@@ -495,7 +496,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 docker_args = ["launch", "--"] + claude_args
                 return docker_manager.run_command(docker_args)
 
-            launcher = ClaudeLauncher(claude_args=claude_args)
+            launcher = ClaudeLauncher(claude_args=claude_args, verbose=False)
             return launcher.launch_interactive()
         create_parser().print_help()
         return 1

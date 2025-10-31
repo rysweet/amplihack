@@ -240,7 +240,7 @@ class AutoMode:
         elif self.sdk == "codex":
             cmd = ["codex", "--dangerously-bypass-approvals-and-sandbox", "exec", prompt]
         else:
-            cmd = ["claude", "--dangerously-skip-permissions --verbose", "-p", prompt]
+            cmd = ["claude", "--dangerously-skip-permissions", "--verbose", "-p", prompt]
 
         self.log(f"Running: {cmd[0]} ...")
 
