@@ -1151,6 +1151,25 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("No messages captured for export", level="DEBUG")
                 return
 
+            # Validate export path BEFORE exporting
+            expected_session_dir = self.log_dir
+            actual_session_dir = builder.session_dir
+
+            # Check if builder's session_dir matches our expected location
+            if expected_session_dir.resolve() != actual_session_dir.resolve():
+                self.log("Warning: Transcript export path mismatch detected!", level="WARNING")
+                self.log(f"  Expected: {expected_session_dir}", level="WARNING")
+                self.log(f"  Actual:   {actual_session_dir}", level="WARNING")
+                self.log(
+                    "  This usually means project root detection failed. Files may be written to wrong location.",
+                    level="WARNING",
+                )
+                # Don't fail - let it export to wherever builder thinks is right
+                # But make the warning very visible
+
+            # Log where transcripts will be exported (helps debugging)
+            self.log(f"Exporting transcripts to: {actual_session_dir}", level="DEBUG")
+
             # Calculate total duration across all forks
             total_duration = self.total_session_time + (time.time() - self.start_time)
 
