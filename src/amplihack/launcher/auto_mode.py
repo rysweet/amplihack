@@ -454,9 +454,9 @@ Document your decisions and reasoning in comments/logs."""
             # Update message capture state (thread-safe)
             self.message_capture.update_todos(todos)
 
-            # Update UI state if enabled
+            # Update UI state if enabled (thread-safe)
             if self.ui_enabled and hasattr(self, "state"):
-                self.state.todos = todos
+                self.state.update_todos(todos)
 
             self.log(f"Updated todo list ({len(todos)} items)", level="DEBUG")
 
@@ -535,11 +535,18 @@ Document your decisions and reasoning in comments/logs."""
                             elif hasattr(block, "type") and block.type == "tool_use":
                                 tool_name = getattr(block, "name", None)
                                 if tool_name == "TodoWrite":
-                                    # Extract todos from input
-                                    tool_input = getattr(block, "input", {})
-                                    todos = tool_input.get("todos", [])
-                                    if todos:
-                                        self._handle_todo_write(todos)
+                                    # Extract todos from input object (not dict!)
+                                    # block.input is an object with attributes, not a dict
+                                    if hasattr(block, "input"):
+                                        tool_input = block.input
+                                        # Check if input has todos attribute
+                                        if hasattr(tool_input, "todos"):
+                                            todos = tool_input.todos
+                                            self._handle_todo_write(todos)
+                                        # Fallback: try dict-style access for backwards compatibility
+                                        elif isinstance(tool_input, dict) and "todos" in tool_input:
+                                            todos = tool_input["todos"]
+                                            self._handle_todo_write(todos)
 
                     elif msg_type == "ResultMessage":
                         # Check if there was an error
