@@ -10,6 +10,7 @@ from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
+from .version import __version__
 
 
 def ensure_ultrathink_command(prompt: str) -> str:
@@ -205,7 +206,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
         # Print success message
         print(f"✓ Instruction appended to session: {result.session_id}")
         print(f"  File: {result.filename}")
-        print(f"  The auto mode session will process this on its next turn.")
+        print("  The auto mode session will process this on its next turn.")
         return 0
 
     except ValueError as e:
@@ -426,6 +427,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     Returns:
         Exit code.
     """
+    # Display version at startup
+    print(f"Amplihack v{__version__}")
+
     # Initialize UVX staging if needed (before parsing args)
     temp_claude_dir = None
     if is_uvx_deployment():

@@ -1,0 +1,84 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write  # Required to push version bump commit
+
+jobs:
+  bump-version:
+    name: Auto-increment version
+    runs-on: ubuntu-latest
+    # Skip if commit message contains [skip ci] to prevent infinite loops
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: bump
+        run: |
+          python << 'EOF'
+          import tomllib
+          import re
+          import sys
+
+          try:
+              # Read pyproject.toml
+              with open('pyproject.toml', 'rb') as f:
+                  content_bytes = f.read()
+                  data = tomllib.loads(content_bytes.decode('utf-8'))
+
+              # Get current version
+              current_version = data['project']['version']
+              major, minor, patch = map(int, current_version.split('.'))
+              new_version = f"{major}.{minor}.{patch + 1}"
+
+              # Update file content (regex replace)
+              # Use ^ anchor with MULTILINE flag to match only at line start
+              # This prevents matching 'target-version' or other version fields
+              content_str = content_bytes.decode('utf-8')
+              updated_content = re.sub(
+                  r'^version = "[^"]+"',
+                  f'version = "{new_version}"',
+                  content_str,
+                  flags=re.MULTILINE
+              )
+
+              # Write updated content
+              with open('pyproject.toml', 'w') as f:
+                  f.write(updated_content)
+
+              print(f"Bumped version from {current_version} to {new_version}")
+
+              # Set output for use in commit message
+              with open(sys.argv[1], 'w') as f:
+                  f.write(f"NEW_VERSION={new_version}\n")
+
+          except Exception as e:
+              print(f"Error bumping version: {e}")
+              sys.exit(1)
+          EOF "$GITHUB_OUTPUT"
+
+      - name: Commit and push changes
+        run: |
+          git add pyproject.toml
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.NEW_VERSION }} [skip ci]"
+          git push origin main
