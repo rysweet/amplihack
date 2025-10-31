@@ -12,6 +12,47 @@ from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
 
+def ensure_ultrathink_command(prompt: str) -> str:
+    """Ensure auto mode prompt starts with /amplihack:ultrathink command.
+
+    Auto mode prompts should use ultrathink for optimal orchestration.
+    This function prepends the command if needed, but preserves
+    prompts that already specify a different slash command.
+
+    Args:
+        prompt: User's prompt string
+
+    Returns:
+        Prompt with /amplihack:ultrathink prepended if needed
+
+    Examples:
+        >>> ensure_ultrathink_command("implement feature X")
+        "/amplihack:ultrathink implement feature X"
+
+        >>> ensure_ultrathink_command("/analyze src")
+        "/analyze src"
+
+        >>> ensure_ultrathink_command("  trim spaces  ")
+        "/amplihack:ultrathink trim spaces"
+
+        >>> ensure_ultrathink_command("")
+        ""
+    """
+    # 1. Strip leading/trailing whitespace
+    prompt = prompt.strip()
+
+    # 2. Empty prompt: return as-is (existing validation will catch)
+    if not prompt:
+        return prompt
+
+    # 3. Already has slash command: user knows what they want
+    if prompt.startswith("/"):
+        return prompt
+
+    # 4. Normal prompt: prepend ultrathink command
+    return f"/amplihack:ultrathink {prompt}"
+
+
 def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
     """Handle the launch command.
 
@@ -126,6 +167,10 @@ def handle_auto_mode(
         idx = cmd_args.index("-p")
         if idx + 1 < len(cmd_args):
             prompt = cmd_args[idx + 1]
+
+    # Transform prompt to use ultrathink command if not already a slash command
+    if prompt:
+        prompt = ensure_ultrathink_command(prompt)
 
     if not prompt:
         print(f'Error: --auto requires a prompt. Use: amplihack {sdk} --auto -- -p "your prompt"')
