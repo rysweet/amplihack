@@ -398,6 +398,72 @@ Decision Authority:
 
 Document your decisions and reasoning in comments/logs."""
 
+    def _format_todos_for_terminal(self, todos: list) -> str:
+        """Format todo list for terminal display with ANSI colors.
+
+        Args:
+            todos: List of todo items with status and content
+
+        Returns:
+            Formatted string ready for terminal display
+        """
+        if not todos:
+            return ""
+
+        # ANSI color codes
+        BOLD = "\033[1m"
+        GREEN = "\033[32m"
+        YELLOW = "\033[33m"
+        BLUE = "\033[34m"
+        RESET = "\033[0m"
+
+        lines = [f"\n{BOLD}📋 Todo List:{RESET}"]
+
+        for i, todo in enumerate(todos, 1):
+            status = todo.get("status", "pending")
+            content = todo.get("content", "")
+            active_form = todo.get("activeForm", content)
+
+            # Choose status indicator and color
+            if status == "completed":
+                indicator = f"{GREEN}✓{RESET}"
+                text = content
+            elif status == "in_progress":
+                indicator = f"{YELLOW}⟳{RESET}"
+                text = active_form
+            else:  # pending
+                indicator = f"{BLUE}○{RESET}"
+                text = content
+
+            lines.append(f"  {indicator} {text}")
+
+        return "\n".join(lines) + "\n"
+
+    def _handle_todo_write(self, todos: list) -> None:
+        """Process TodoWrite tool use and update UI state.
+
+        Args:
+            todos: List of todo items from TodoWrite tool
+        """
+        try:
+            # Format for terminal display
+            formatted = self._format_todos_for_terminal(todos)
+            if formatted:
+                print(formatted, flush=True)
+
+            # Update message capture state (thread-safe)
+            self.message_capture.update_todos(todos)
+
+            # Update UI state if enabled
+            if self.ui_enabled and hasattr(self, "state"):
+                self.state.todos = todos
+
+            self.log(f"Updated todo list ({len(todos)} items)", level="DEBUG")
+
+        except Exception as e:
+            # Never break conversation flow for todo formatting errors
+            self.log(f"Error formatting todos: {e}", level="WARNING")
+
     async def _run_turn_with_sdk(self, prompt: str) -> Tuple[int, str]:
         """Execute one turn using Claude Python SDK with streaming.
 
@@ -437,8 +503,9 @@ Document your decisions and reasoning in comments/logs."""
                         # Capture assistant message for transcript
                         self.message_capture.capture_assistant_message(message)
 
-                        # Extract text from content blocks
+                        # Process content blocks
                         for block in getattr(message, "content", []):
+                            # Handle text blocks
                             if hasattr(block, "text"):
                                 text = block.text
 
@@ -463,6 +530,16 @@ Document your decisions and reasoning in comments/logs."""
 
                                 print(text, end="", flush=True)
                                 output_lines.append(text)
+
+                            # Handle tool_use blocks (TodoWrite)
+                            elif hasattr(block, "type") and block.type == "tool_use":
+                                tool_name = getattr(block, "name", None)
+                                if tool_name == "TodoWrite":
+                                    # Extract todos from input
+                                    tool_input = getattr(block, "input", {})
+                                    todos = tool_input.get("todos", [])
+                                    if todos:
+                                        self._handle_todo_write(todos)
 
                     elif msg_type == "ResultMessage":
                         # Check if there was an error
