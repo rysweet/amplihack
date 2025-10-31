@@ -74,8 +74,12 @@ class AutoMode:
     """Simple agentic loop orchestrator for Claude, Copilot, or Codex."""
 
     def __init__(
-        self, sdk: str, prompt: str, max_turns: int = 10, working_dir: Optional[Path] = None,
-        ui_mode: bool = False
+        self,
+        sdk: str,
+        prompt: str,
+        max_turns: int = 10,
+        working_dir: Optional[Path] = None,
+        ui_mode: bool = False,
     ):
         """Initialize auto mode.
 
@@ -137,7 +141,7 @@ class AutoMode:
                     session_id=session_id,
                     start_time=time.time(),
                     max_turns=max_turns,
-                    objective=prompt
+                    objective=prompt,
                 )
 
                 # Create UI
@@ -145,13 +149,18 @@ class AutoMode:
             except ImportError as e:
                 # Rich should be installed as required dependency
                 # If missing, something is wrong with the installation
-                print(f"\n⚠️  ERROR: Rich library required but not found", file=sys.stderr)
-                print(f"   This should not happen - Rich is a required dependency", file=sys.stderr)
+                print("\n⚠️  ERROR: Rich library required but not found", file=sys.stderr)
+                print("   This should not happen - Rich is a required dependency", file=sys.stderr)
                 print(f"   Error: {e}", file=sys.stderr)
-                print(f"\n   Try reinstalling: uvx --from git+https://... amplihack", file=sys.stderr)
-                print(f"\n   Continuing in non-UI mode...\n", file=sys.stderr)
+                print(
+                    "\n   Try reinstalling: uvx --from git+https://... amplihack", file=sys.stderr
+                )
+                print("\n   Continuing in non-UI mode...\n", file=sys.stderr)
 
-                self.log(f"Error: Rich library missing despite being required dependency: {e}", level="ERROR")
+                self.log(
+                    f"Error: Rich library missing despite being required dependency: {e}",
+                    level="ERROR",
+                )
                 self.ui_enabled = False
                 self.ui = None
 
@@ -162,7 +171,7 @@ class AutoMode:
             print(f"[AUTO {self.sdk.upper()}] {msg}")
 
             # Update UI state if enabled (all levels)
-            if self.ui_enabled and hasattr(self, 'state'):
+            if self.ui_enabled and hasattr(self, "state"):
                 self.state.add_log(msg, timestamp=False)
 
         # Always write to file (including DEBUG)
@@ -213,7 +222,9 @@ class AutoMode:
         """
         # Claude SDK should use the async session path to maintain single event loop
         if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
-            self.log("ERROR: Claude SDK should use _run_async_session(), not run_sdk()", level="ERROR")
+            self.log(
+                "ERROR: Claude SDK should use _run_async_session(), not run_sdk()", level="ERROR"
+            )
             return (1, "Internal error: Claude SDK requires async session mode")
         # Fallback to subprocess for Copilot or if SDK unavailable
         return self._run_sdk_subprocess(prompt)
@@ -315,9 +326,13 @@ class AutoMode:
         stdout_output = "".join(stdout_lines)
         stderr_output = "".join(stderr_lines)
 
-        # Log stderr if present
+        # Log stdout if present (FULL output per user requirement)
+        if stdout_output:
+            self.log(f"stdout ({len(stdout_output)} chars): {stdout_output}")
+
+        # Log stderr if present (FULL output per user requirement)
         if stderr_output:
-            self.log(f"stderr: {stderr_output[:200]}...")
+            self.log(f"stderr ({len(stderr_output)} chars): {stderr_output}")
 
         return process.returncode, stdout_output
 
@@ -340,7 +355,7 @@ class AutoMode:
         for md_file in md_files:
             try:
                 # Read the instruction file
-                with open(md_file, "r") as f:
+                with open(md_file) as f:
                     content = f.read()
 
                 # Sanitize content before injection
@@ -433,11 +448,17 @@ Document your decisions and reasoning in comments/logs."""
                                 self.session_output_size += text_size
 
                                 if turn_output_size > MAX_TURN_OUTPUT:
-                                    self.log(f"Turn output size limit exceeded ({turn_output_size} bytes)", level="ERROR")
+                                    self.log(
+                                        f"Turn output size limit exceeded ({turn_output_size} bytes)",
+                                        level="ERROR",
+                                    )
                                     return (1, "Turn output too large")
 
                                 if self.session_output_size > self.max_session_output:
-                                    self.log(f"Session output limit exceeded ({self.session_output_size} bytes)", level="ERROR")
+                                    self.log(
+                                        f"Session output limit exceeded ({self.session_output_size} bytes)",
+                                        level="ERROR",
+                                    )
                                     return (1, "Session output too large")
 
                                 print(text, end="", flush=True)
@@ -454,6 +475,11 @@ Document your decisions and reasoning in comments/logs."""
 
             # Success
             full_output = "".join(output_lines)
+
+            # Log output if present (FULL output per user requirement)
+            if full_output:
+                self.log(f"stdout ({len(full_output)} chars): {full_output}")
+
             return (0, full_output)
 
         except GeneratorExit:
@@ -463,7 +489,7 @@ Document your decisions and reasoning in comments/logs."""
         except RuntimeError as e:
             # Catch cancel scope errors specifically - these occur during normal async cleanup
             if "cancel scope" in str(e).lower():
-                self.log(f"Async cleanup complete (task coordination)", level="DEBUG")
+                self.log("Async cleanup complete (task coordination)", level="DEBUG")
                 # Don't propagate - this is expected during graceful shutdown
                 return (0, "".join(output_lines) if output_lines else "")
             # Re-raise other RuntimeErrors
@@ -544,8 +570,7 @@ Document your decisions and reasoning in comments/logs."""
                     )
                     await asyncio.sleep(delay)
                     continue
-                else:
-                    self.log(f"Max retries ({max_retries}) exceeded for transient error")
+                self.log(f"Max retries ({max_retries}) exceeded for transient error")
 
             # Non-retryable error or max retries exceeded
             return (code, output)
@@ -618,7 +643,7 @@ Document your decisions and reasoning in comments/logs."""
         self.ui_thread = threading.Thread(
             target=ui_runner,
             daemon=False,  # Not daemon - we want to wait for it
-            name="AutoModeUI"
+            name="AutoModeUI",
         )
         self.ui_thread.start()
         self.log("UI thread started")
@@ -648,9 +673,8 @@ Document your decisions and reasoning in comments/logs."""
             if self.sdk == "claude" and CLAUDE_SDK_AVAILABLE:
                 # Use single async event loop for entire session
                 return asyncio.run(self._run_async_session())
-            else:
-                # Use subprocess-based sync session
-                return self._run_sync_session()
+            # Use subprocess-based sync session
+            return self._run_sync_session()
         finally:
             # Always stop UI thread when done
             self._stop_ui_thread()
@@ -666,7 +690,7 @@ Document your decisions and reasoning in comments/logs."""
         try:
             # Turn 1: Clarify objective
             self.turn = 1
-            if self.ui_enabled and hasattr(self, 'state'):
+            if self.ui_enabled and hasattr(self, "state"):
                 self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
@@ -684,13 +708,13 @@ User Request:
             code, objective = self.run_sdk(turn1_prompt)
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
-                if self.ui_enabled and hasattr(self, 'state'):
+                if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
 
             # Turn 2: Create plan
             self.turn = 2
-            if self.ui_enabled and hasattr(self, 'state'):
+            if self.ui_enabled and hasattr(self, "state"):
                 self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
@@ -720,14 +744,14 @@ Objective:
             code, plan = self.run_sdk(turn2_prompt)
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
-                if self.ui_enabled and hasattr(self, 'state'):
+                if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
-                if self.ui_enabled and hasattr(self, 'state'):
+                if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_turn(self.turn)
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
@@ -794,13 +818,13 @@ Current Turn: {turn}/{self.max_turns}"""
                     or "all criteria met" in eval_lower
                 ):
                     self.log("✓ Objective achieved!")
-                    if self.ui_enabled and hasattr(self, 'state'):
+                    if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
                     break
 
                 if turn >= self.max_turns:
                     self.log("Max turns reached")
-                    if self.ui_enabled and hasattr(self, 'state'):
+                    if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
                     break
 
@@ -843,7 +867,7 @@ Current Turn: {turn}/{self.max_turns}"""
             # Turn 1: Clarify objective
             self.turn = 1
             self.message_capture.set_phase("clarifying", self.turn)  # Set phase for message capture
-            if self.ui_enabled and hasattr(self, 'state'):
+            if self.ui_enabled and hasattr(self, "state"):
                 self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
@@ -861,14 +885,14 @@ User Request:
             code, objective = await self._run_turn_with_retry(turn1_prompt, max_retries=3)
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
-                if self.ui_enabled and hasattr(self, 'state'):
+                if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
 
             # Turn 2: Create plan
             self.turn = 2
             self.message_capture.set_phase("planning", self.turn)  # Set phase for message capture
-            if self.ui_enabled and hasattr(self, 'state'):
+            if self.ui_enabled and hasattr(self, "state"):
                 self.state.update_turn(self.turn)
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
@@ -898,7 +922,7 @@ Objective:
             code, plan = await self._run_turn_with_retry(turn2_prompt, max_retries=3)
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
-                if self.ui_enabled and hasattr(self, 'state'):
+                if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
 
@@ -909,7 +933,9 @@ Objective:
                 # Check if fork needed before turn execution
                 if self.fork_manager.should_fork():
                     elapsed = self.fork_manager.get_elapsed_time()
-                    self.log(f"⚠️  Session approaching 60-minute limit ({self._format_elapsed(elapsed)}), forking...")
+                    self.log(
+                        f"⚠️  Session approaching 60-minute limit ({self._format_elapsed(elapsed)}), forking..."
+                    )
 
                     # Export current session state before fork
                     self._export_session_transcript()
@@ -925,8 +951,10 @@ Objective:
                     # Clear message capture for new fork (fresh start)
                     self.message_capture.clear()
 
-                self.message_capture.set_phase("executing", self.turn)  # Set phase for message capture
-                if self.ui_enabled and hasattr(self, 'state'):
+                self.message_capture.set_phase(
+                    "executing", self.turn
+                )  # Set phase for message capture
+                if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_turn(self.turn)
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
@@ -955,12 +983,16 @@ Original Objective:
 
 Current Turn: {turn}/{self.max_turns}"""
 
-                code, execution_output = await self._run_turn_with_retry(execute_prompt, max_retries=3)
+                code, execution_output = await self._run_turn_with_retry(
+                    execute_prompt, max_retries=3
+                )
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
                 # Evaluate
-                self.message_capture.set_phase("evaluating", self.turn)  # Set phase for message capture
+                self.message_capture.set_phase(
+                    "evaluating", self.turn
+                )  # Set phase for message capture
                 self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
                 eval_prompt = f"""{self._build_philosophy_context()}
 
@@ -994,18 +1026,20 @@ Current Turn: {turn}/{self.max_turns}"""
                     or "all criteria met" in eval_lower
                 ):
                     self.log("✓ Objective achieved!")
-                    if self.ui_enabled and hasattr(self, 'state'):
+                    if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
                     break
 
                 if turn >= self.max_turns:
                     self.log("Max turns reached")
-                    if self.ui_enabled and hasattr(self, 'state'):
+                    if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
                     break
 
             # Summary - display it directly
-            self.message_capture.set_phase("summarizing", self.turn)  # Set phase for message capture
+            self.message_capture.set_phase(
+                "summarizing", self.turn
+            )  # Set phase for message capture
             self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
             code, summary = await self._run_turn_with_retry(
                 f"Summarize auto mode session:\nTurns: {self.turn}\nObjective: {objective}",
@@ -1041,9 +1075,12 @@ Current Turn: {turn}/{self.max_turns}"""
             # Path 1: UVX package location
             try:
                 import amplihack
+
                 # Security: Use strict=True to prevent symlink attacks
                 pkg_path = Path(amplihack.__file__).parent.resolve(strict=True)
-                builders_in_pkg = (pkg_path / ".claude" / "tools" / "amplihack" / "builders").resolve(strict=True)
+                builders_in_pkg = (
+                    pkg_path / ".claude" / "tools" / "amplihack" / "builders"
+                ).resolve(strict=True)
 
                 # Security: Validate path is within expected package
                 if not str(builders_in_pkg).startswith(str(pkg_path)):
@@ -1062,7 +1099,9 @@ Current Turn: {turn}/{self.max_turns}"""
                 # Security: Resolve and validate project root
                 current_file = Path(__file__).resolve(strict=True)
                 project_root = current_file.parent.parent.parent.parent
-                builders_in_root = (project_root / ".claude" / "tools" / "amplihack" / "builders").resolve(strict=True)
+                builders_in_root = (
+                    project_root / ".claude" / "tools" / "amplihack" / "builders"
+                ).resolve(strict=True)
 
                 # Security: Ensure builders path is under project root
                 try:
@@ -1074,7 +1113,9 @@ Current Turn: {turn}/{self.max_turns}"""
                 if builders_in_root.exists():
                     search_paths.append(builders_in_root)
             except (ValueError, OSError) as e:
-                self.log(f"Path validation failed in project root: {type(e).__name__}", level="DEBUG")
+                self.log(
+                    f"Path validation failed in project root: {type(e).__name__}", level="DEBUG"
+                )
             except Exception:
                 pass
 
@@ -1085,8 +1126,7 @@ Current Turn: {turn}/{self.max_turns}"""
                     builder_file = builders_path / "claude_transcript_builder.py"
                     if builder_file.exists():
                         spec = importlib.util.spec_from_file_location(
-                            "claude_transcript_builder",
-                            builder_file
+                            "claude_transcript_builder", builder_file
                         )
                         if spec and spec.loader:
                             module = importlib.util.module_from_spec(spec)
@@ -1121,14 +1161,16 @@ Current Turn: {turn}/{self.max_turns}"""
                 "total_duration_seconds": total_duration,
                 "total_duration_formatted": self._format_elapsed(total_duration),
                 "max_turns": self.max_turns,
-                "session_id": self.log_dir.name
+                "session_id": self.log_dir.name,
             }
 
             # Generate transcript and export
             builder.build_session_transcript(messages, metadata)
             builder.export_for_codex(messages, metadata)
 
-            self.log(f"✓ Session transcript exported ({len(messages)} messages, {self._format_elapsed(total_duration)})")
+            self.log(
+                f"✓ Session transcript exported ({len(messages)} messages, {self._format_elapsed(total_duration)})"
+            )
 
         except Exception as e:
             self.log(f"Warning: Failed to export transcript: {e}", level="WARNING")
