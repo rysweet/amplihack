@@ -27,6 +27,7 @@ When starting a session, import these files for context:
 ```
 
 **For large features or multi-file changes**, also import:
+
 ```
 @docs/document_driven_development/README.md
 ```
@@ -514,11 +515,14 @@ stages at specific steps.
 
 ### Document-Driven Development (DDD)
 
-**Systematic methodology for large features where documentation comes first and acts as the specification.**
+**Systematic methodology for large features where documentation comes first and
+acts as the specification.**
 
-**Core Principle**: Documentation IS the specification. Code must match what documentation describes exactly.
+**Core Principle**: Documentation IS the specification. Code must match what
+documentation describes exactly.
 
 **When to Use DDD:**
+
 - New features requiring multiple files (10+ files)
 - System redesigns or major refactoring
 - API changes affecting documentation
@@ -526,6 +530,7 @@ stages at specific steps.
 - Complex integrations requiring clear contracts
 
 **Commands:**
+
 ```bash
 /amplihack:ddd:0-help          # Get help and understand DDD
 /amplihack:ddd:prime           # Prime context with DDD overview
@@ -539,13 +544,17 @@ stages at specific steps.
 ```
 
 **Benefits:**
-- **Prevents context poisoning** - Single source of truth eliminates conflicting docs
+
+- **Prevents context poisoning** - Single source of truth eliminates conflicting
+  docs
 - **Reviewable design** - Catch design flaws before expensive implementation
 - **No drift** - Docs and code never diverge (docs come first by design)
 - **AI-optimized** - Clear specifications prevent wrong decisions
-- **Philosophy-aligned** - Natural fit with ruthless simplicity and modular design
+- **Philosophy-aligned** - Natural fit with ruthless simplicity and modular
+  design
 
-**Documentation**: See `docs/document_driven_development/` for complete guides, core concepts, and reference materials.
+**Documentation**: See `docs/document_driven_development/` for complete guides,
+core concepts, and reference materials.
 
 ## Scenario Tools
 

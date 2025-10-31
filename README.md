@@ -1,6 +1,7 @@
 # amplihack
 
-Development framework for Claude Code with specialized agents and automated workflows.
+Development framework for Claude Code with specialized agents and automated
+workflows.
 
 ```sh
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
@@ -38,7 +39,8 @@ amplihack launch --checkout-repo owner/repo
 - GitHub CLI (`gh`) for PR/issue management
 - uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 
-For detailed installation instructions, see [docs/PREREQUISITES.md](docs/PREREQUISITES.md).
+For detailed installation instructions, see
+[docs/PREREQUISITES.md](docs/PREREQUISITES.md).
 
 ### Basic Usage
 
@@ -53,13 +55,16 @@ amplihack launch --with-proxy-config ./azure.env
 amplihack launch --checkout-repo owner/repo
 ```
 
-Not sure where to start? Use the command above to run from uvx, then tell Claude Code to `cd /path/to/my/project` and `/amplihack:ultrathink <my first prompt here>`.
+Not sure where to start? Use the command above to run from uvx, then tell Claude
+Code to `cd /path/to/my/project` and
+`/amplihack:ultrathink <my first prompt here>`.
 
 ## Model Configuration
 
 ### Anthropic (Default)
 
-amplihack works with Claude Code and Anthropic models out of the box. No additional configuration needed.
+amplihack works with Claude Code and Anthropic models out of the box. No
+additional configuration needed.
 
 ### Azure OpenAI
 
@@ -80,81 +85,83 @@ amplihack launch --with-proxy-config ./azure.env
 
 ### GitHub Copilot CLI
 
-amplihack also supports GitHub Copilot CLI integration. See [docs/github-copilot-litellm-integration.md](docs/github-copilot-litellm-integration.md) for setup instructions.
+amplihack also supports GitHub Copilot CLI integration. See
+[docs/github-copilot-litellm-integration.md](docs/github-copilot-litellm-integration.md)
+for setup instructions.
 
 ## Quick Reference - Commands
 
-| Command | Description |
-|---------|-------------|
-| `/amplihack:ultrathink` | Deep multi-agent analysis for complex tasks |
-| `/amplihack:analyze` | Code analysis and philosophy compliance review |
-| `/amplihack:auto` | Autonomous agentic loop (clarify → plan → execute) |
-| `/amplihack:cascade` | Fallback cascade for resilient operations |
-| `/amplihack:debate` | Multi-agent debate for complex decisions |
-| `/amplihack:expert-panel` | Multi-expert review with voting |
-| `/amplihack:n-version` | N-version programming for critical code |
-| `/amplihack:socratic` | Generate Socratic questions to challenge claims |
-| `/amplihack:reflect` | Session reflection and improvement analysis |
-| `/amplihack:improve` | Capture learnings and implement improvements |
-| `/amplihack:fix` | Fix common errors and code issues |
-| `/amplihack:modular-build` | Build self-contained modules with clear contracts |
-| `/amplihack:knowledge-builder` | Build comprehensive knowledge base |
-| `/amplihack:transcripts` | Conversation transcript management |
-| `/amplihack:xpia` | Security analysis and threat detection |
-| `/amplihack:customize` | Manage user-specific preferences |
-| `/amplihack:ddd:0-help` | Document-Driven Development help and guidance |
-| `/amplihack:ddd:1-plan` | Phase 0: Planning & Alignment |
-| `/amplihack:ddd:2-docs` | Phase 1: Documentation Retcon |
-| `/amplihack:ddd:3-code-plan` | Phase 3: Implementation Planning |
-| `/amplihack:ddd:4-code` | Phase 4: Code Implementation |
-| `/amplihack:ddd:5-finish` | Phase 5: Testing & Phase 6: Cleanup |
-| `/amplihack:ddd:prime` | Prime context with DDD overview |
-| `/amplihack:ddd:status` | Check current DDD phase and progress |
-| `/amplihack:lock` | Enable continuous work mode |
-| `/amplihack:unlock` | Disable continuous work mode |
-| `/amplihack:install` | Install amplihack tools |
-| `/amplihack:uninstall` | Uninstall amplihack tools |
+| Command                        | Description                                        |
+| ------------------------------ | -------------------------------------------------- |
+| `/amplihack:ultrathink`        | Deep multi-agent analysis for complex tasks        |
+| `/amplihack:analyze`           | Code analysis and philosophy compliance review     |
+| `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute) |
+| `/amplihack:cascade`           | Fallback cascade for resilient operations          |
+| `/amplihack:debate`            | Multi-agent debate for complex decisions           |
+| `/amplihack:expert-panel`      | Multi-expert review with voting                    |
+| `/amplihack:n-version`         | N-version programming for critical code            |
+| `/amplihack:socratic`          | Generate Socratic questions to challenge claims    |
+| `/amplihack:reflect`           | Session reflection and improvement analysis        |
+| `/amplihack:improve`           | Capture learnings and implement improvements       |
+| `/amplihack:fix`               | Fix common errors and code issues                  |
+| `/amplihack:modular-build`     | Build self-contained modules with clear contracts  |
+| `/amplihack:knowledge-builder` | Build comprehensive knowledge base                 |
+| `/amplihack:transcripts`       | Conversation transcript management                 |
+| `/amplihack:xpia`              | Security analysis and threat detection             |
+| `/amplihack:customize`         | Manage user-specific preferences                   |
+| `/amplihack:ddd:0-help`        | Document-Driven Development help and guidance      |
+| `/amplihack:ddd:1-plan`        | Phase 0: Planning & Alignment                      |
+| `/amplihack:ddd:2-docs`        | Phase 1: Documentation Retcon                      |
+| `/amplihack:ddd:3-code-plan`   | Phase 3: Implementation Planning                   |
+| `/amplihack:ddd:4-code`        | Phase 4: Code Implementation                       |
+| `/amplihack:ddd:5-finish`      | Phase 5: Testing & Phase 6: Cleanup                |
+| `/amplihack:ddd:prime`         | Prime context with DDD overview                    |
+| `/amplihack:ddd:status`        | Check current DDD phase and progress               |
+| `/amplihack:lock`              | Enable continuous work mode                        |
+| `/amplihack:unlock`            | Disable continuous work mode                       |
+| `/amplihack:install`           | Install amplihack tools                            |
+| `/amplihack:uninstall`         | Uninstall amplihack tools                          |
 
 ## Agents Reference
 
 ### Core Agents (6)
 
-| Agent | Purpose |
-|-------|---------|
-| **api-designer** | API design and endpoint structure |
-| **architect** | System design and architecture decisions |
-| **builder** | Code generation and implementation |
-| **optimizer** | Performance optimization and efficiency |
-| **reviewer** | Code quality and best practices review |
-| **tester** | Test generation and validation |
+| Agent            | Purpose                                  |
+| ---------------- | ---------------------------------------- |
+| **api-designer** | API design and endpoint structure        |
+| **architect**    | System design and architecture decisions |
+| **builder**      | Code generation and implementation       |
+| **optimizer**    | Performance optimization and efficiency  |
+| **reviewer**     | Code quality and best practices review   |
+| **tester**       | Test generation and validation           |
 
 ### Specialized Agents (23)
 
-| Agent | Purpose |
-|-------|---------|
-| **ambiguity** | Clarify ambiguous requirements |
-| **amplifier-cli-architect** | CLI tool design and architecture |
-| **analyzer** | Deep code analysis |
-| **azure-kubernetes-expert** | Azure Kubernetes Service expertise |
-| **ci-diagnostic-workflow** | CI/CD pipeline diagnostics |
-| **cleanup** | Remove artifacts and enforce philosophy |
-| **database** | Database design and optimization |
-| **fallback-cascade** | Resilient fallback strategies |
-| **fix-agent** | Automated error fixing |
-| **integration** | System integration patterns |
-| **knowledge-archaeologist** | Extract and preserve knowledge |
-| **memory-manager** | Context and state management |
-| **multi-agent-debate** | Facilitate multi-perspective debates |
-| **n-version-validator** | Validate N-version implementations |
-| **patterns** | Design pattern recommendations |
-| **pre-commit-diagnostic** | Pre-commit hook diagnostics |
-| **preference-reviewer** | User preference validation |
-| **prompt-writer** | Effective prompt engineering |
-| **rust-programming-expert** | Rust language expertise |
-| **security** | Security analysis and vulnerability detection |
-| **visualization-architect** | Data visualization design |
-| **xpia-defense** | Advanced threat detection |
-| **zen-architect** | Minimalist architecture design |
+| Agent                       | Purpose                                       |
+| --------------------------- | --------------------------------------------- |
+| **ambiguity**               | Clarify ambiguous requirements                |
+| **amplifier-cli-architect** | CLI tool design and architecture              |
+| **analyzer**                | Deep code analysis                            |
+| **azure-kubernetes-expert** | Azure Kubernetes Service expertise            |
+| **ci-diagnostic-workflow**  | CI/CD pipeline diagnostics                    |
+| **cleanup**                 | Remove artifacts and enforce philosophy       |
+| **database**                | Database design and optimization              |
+| **fallback-cascade**        | Resilient fallback strategies                 |
+| **fix-agent**               | Automated error fixing                        |
+| **integration**             | System integration patterns                   |
+| **knowledge-archaeologist** | Extract and preserve knowledge                |
+| **memory-manager**          | Context and state management                  |
+| **multi-agent-debate**      | Facilitate multi-perspective debates          |
+| **n-version-validator**     | Validate N-version implementations            |
+| **patterns**                | Design pattern recommendations                |
+| **pre-commit-diagnostic**   | Pre-commit hook diagnostics                   |
+| **preference-reviewer**     | User preference validation                    |
+| **prompt-writer**           | Effective prompt engineering                  |
+| **rust-programming-expert** | Rust language expertise                       |
+| **security**                | Security analysis and vulnerability detection |
+| **visualization-architect** | Data visualization design                     |
+| **xpia-defense**            | Advanced threat detection                     |
+| **zen-architect**           | Minimalist architecture design                |
 
 ## Core Concepts
 
@@ -186,7 +193,8 @@ Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
 
 ## Configuration
 
-amplihack works with Claude Code and Anthropic models by default. For additional capabilities, you can configure Azure OpenAI integration.
+amplihack works with Claude Code and Anthropic models by default. For additional
+capabilities, you can configure Azure OpenAI integration.
 
 ### Azure OpenAI
 
@@ -199,11 +207,16 @@ AZURE_OPENAI_API_VERSION=2024-02-15-preview
 AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 ```
 
-**Security Warning**: Never commit API keys to version control. Use environment variables or secure key management systems.
+**Security Warning**: Never commit API keys to version control. Use environment
+variables or secure key management systems.
 
 ### Custom Workflows
 
-The iterative-step workflow is fully customizable. Edit `.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process - changes apply immediately to `/ultrathink` and other commands. See [docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed customization instructions.
+The iterative-step workflow is fully customizable. Edit
+`.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process -
+changes apply immediately to `/ultrathink` and other commands. See
+[docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed
+customization instructions.
 
 ### Project Structure
 
@@ -218,41 +231,61 @@ The iterative-step workflow is fully customizable. Edit `.claude/workflow/DEFAUL
 ## Documentation
 
 ### Getting Started
+
 - [Prerequisites](docs/PREREQUISITES.md) - Platform setup and dependencies
 - [Proxy Configuration](docs/PROXY_CONFIG_GUIDE.md) - Azure OpenAI proxy setup
 
 ### Features
+
 - [Auto Mode](docs/AUTO_MODE.md) - Autonomous agentic loop
 - [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agent creation
-- [GitHub Copilot Integration](docs/github-copilot-litellm-integration.md) - Copilot CLI support
+- [GitHub Copilot Integration](docs/github-copilot-litellm-integration.md) -
+  Copilot CLI support
 
 ### Patterns
-- [Workspace Pattern](docs/WORKSPACE_PATTERN.md) - Multi-project organization with git submodules
+
+- [Workspace Pattern](docs/WORKSPACE_PATTERN.md) - Multi-project organization
+  with git submodules
 
 ### Configuration
+
 - [Hook Configuration](docs/HOOK_CONFIGURATION_GUIDE.md) - Session hooks
 - [Workflow Customization](docs/WORKFLOW_COMPLETION.md) - Process customization
 
 ### Development
+
 - [Developing amplihack](docs/DEVELOPING_AMPLIHACK.md) - Contributing guide
-- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Architecture overview
+- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Architecture
+  overview
 
 ### Methodology
-- [Document-Driven Development](docs/document_driven_development/README.md) - Systematic approach for large features
-- [DDD Overview](docs/document_driven_development/overview.md) - Comprehensive guide to DDD principles
-- [Core Concepts](docs/document_driven_development/core_concepts/README.md) - Context poisoning, file crawling, retcon writing
-- [DDD Phases](docs/document_driven_development/phases/README.md) - Step-by-step implementation guide
+
+- [Document-Driven Development](docs/document_driven_development/README.md) -
+  Systematic approach for large features
+- [DDD Overview](docs/document_driven_development/overview.md) - Comprehensive
+  guide to DDD principles
+- [Core Concepts](docs/document_driven_development/core_concepts/README.md) -
+  Context poisoning, file crawling, retcon writing
+- [DDD Phases](docs/document_driven_development/phases/README.md) - Step-by-step
+  implementation guide
 
 ### Security
+
 - [Security Recommendations](docs/SECURITY_RECOMMENDATIONS.md) - Best practices
-- [Security Context Preservation](docs/SECURITY_CONTEXT_PRESERVATION.md) - Context handling
+- [Security Context Preservation](docs/SECURITY_CONTEXT_PRESERVATION.md) -
+  Context handling
 
 ### Patterns
-- [The Amplihack Way](docs/THIS_IS_THE_WAY.md) - Effective strategies for AI-agent development
-- [Discoveries](docs/DISCOVERIES.md) - Documented problems, solutions, and learnings
-- [Creating Tools](docs/CREATE_YOUR_OWN_TOOLS.md) - Build custom AI-powered tools
+
+- [The Amplihack Way](docs/THIS_IS_THE_WAY.md) - Effective strategies for
+  AI-agent development
+- [Discoveries](docs/DISCOVERIES.md) - Documented problems, solutions, and
+  learnings
+- [Creating Tools](docs/CREATE_YOUR_OWN_TOOLS.md) - Build custom AI-powered
+  tools
 
 ### Core Principles
+
 - [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles and patterns
 - [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Development process
 
@@ -260,7 +293,8 @@ The iterative-step workflow is fully customizable. Edit `.claude/workflow/DEFAUL
 
 ### Contributing
 
-Fork, submit PRs. Add agents to `.claude/agents/`, patterns to `.claude/context/PATTERNS.md`.
+Fork, submit PRs. Add agents to `.claude/agents/`, patterns to
+`.claude/context/PATTERNS.md`.
 
 ### Local Development
 
@@ -279,13 +313,13 @@ pytest tests/
 
 ## Command Reference
 
-| Task | Command |
-|------|---------|
-| Launch | `amplihack launch` |
-| With Azure | Add `--with-proxy-config ./azure.env` |
-| With repo | Add `--checkout-repo owner/repo` |
-| From branch | Use `@branch-name` after URL |
-| Uninstall | `amplihack uninstall` |
+| Task        | Command                               |
+| ----------- | ------------------------------------- |
+| Launch      | `amplihack launch`                    |
+| With Azure  | Add `--with-proxy-config ./azure.env` |
+| With repo   | Add `--checkout-repo owner/repo`      |
+| From branch | Use `@branch-name` after URL          |
+| Uninstall   | `amplihack uninstall`                 |
 
 ## License
 

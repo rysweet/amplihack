@@ -16,10 +16,9 @@ Test Coverage:
 
 import sys
 import tempfile
-import threading
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -41,7 +40,7 @@ class TestFullUIWorkflow:
                 prompt="Build a REST API with authentication",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
 
             # Mock SDK calls to prevent real API usage
@@ -77,7 +76,7 @@ class TestFullUIWorkflow:
 
             todos = ui.get_todos()
             assert len(todos) > 0
-            assert any("Clarify" in t['content'] for t in todos)
+            assert any("Clarify" in t["content"] for t in todos)
 
             logs = ui.get_log_content()
             assert "Session" in logs or "Starting" in logs
@@ -100,11 +99,13 @@ class TestFullUIWorkflow:
             updates = []
 
             def capture_update():
-                updates.append({
-                    'turn': auto_mode.get_current_turn(),
-                    'todos': auto_mode.get_todos(),
-                    'logs': auto_mode.get_queued_logs()
-                })
+                updates.append(
+                    {
+                        "turn": auto_mode.get_current_turn(),
+                        "todos": auto_mode.get_todos(),
+                        "logs": auto_mode.get_queued_logs(),
+                    }
+                )
 
             # Start execution in background
             auto_mode.start_background()
@@ -116,8 +117,8 @@ class TestFullUIWorkflow:
 
             # Verify progression
             assert len(updates) >= 3
-            assert updates[0]['turn'] < updates[-1]['turn']
-            assert len(updates[-1]['logs']) > len(updates[0]['logs'])
+            assert updates[0]["turn"] < updates[-1]["turn"]
+            assert len(updates[-1]["logs"]) > len(updates[0]["logs"])
 
             # Cleanup
             auto_mode.stop()
@@ -147,7 +148,7 @@ class TestFullUIWorkflow:
 
             # Check completion state
             todos = ui.get_todos()
-            completed_count = sum(1 for t in todos if t['status'] == 'completed')
+            completed_count = sum(1 for t in todos if t["status"] == "completed")
             assert completed_count == len(todos)
 
             logs = ui.get_log_content()
@@ -205,7 +206,7 @@ class TestPromptInjectionViaUI:
                 prompt="Build authentication system",
                 max_turns=10,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
 
             # Mock to control execution
@@ -353,7 +354,7 @@ class TestPauseAndResume:
                 prompt="Test prompt",
                 max_turns=10,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
 
             # Mock with slow execution to test pause
@@ -388,7 +389,7 @@ class TestPauseAndResume:
             turn_before_pause = auto_mode.get_current_turn()
 
             # Pause
-            auto_mode.ui.handle_keyboard_input('p')
+            auto_mode.ui.handle_keyboard_input("p")
             time.sleep(2)  # Wait longer than turn duration
 
             # Turn should not have advanced
@@ -415,12 +416,12 @@ class TestPauseAndResume:
             time.sleep(0.5)
 
             # Pause
-            auto_mode.ui.handle_keyboard_input('p')
+            auto_mode.ui.handle_keyboard_input("p")
             turn_at_pause = auto_mode.get_current_turn()
             time.sleep(1)
 
             # Resume
-            auto_mode.ui.handle_keyboard_input('p')
+            auto_mode.ui.handle_keyboard_input("p")
             time.sleep(2)
 
             # Should have advanced
@@ -447,14 +448,14 @@ class TestPauseAndResume:
             time.sleep(0.5)
 
             # Pause
-            ui.handle_keyboard_input('p')
+            ui.handle_keyboard_input("p")
             time.sleep(0.1)
 
             session_text = ui.get_session_details()
             assert "PAUSED" in session_text or "⏸" in session_text
 
             # Resume
-            ui.handle_keyboard_input('p')
+            ui.handle_keyboard_input("p")
             time.sleep(0.1)
 
             session_text = ui.get_session_details()
@@ -482,7 +483,7 @@ class TestPauseAndResume:
             time.sleep(0.5)
 
             # Pause
-            ui.handle_keyboard_input('p')
+            ui.handle_keyboard_input("p")
             time.sleep(0.1)
 
             # Inject while paused
@@ -493,7 +494,7 @@ class TestPauseAndResume:
             assert len(md_files) > 0
 
             # Resume
-            ui.handle_keyboard_input('p')
+            ui.handle_keyboard_input("p")
             time.sleep(2)
 
             # Instruction should be processed
@@ -515,7 +516,7 @@ class TestExitUIAutoModeContinues:
                 prompt="Long running task",
                 max_turns=10,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
 
             # Mock with controlled execution
@@ -542,7 +543,7 @@ class TestExitUIAutoModeContinues:
             time.sleep(0.5)
 
             # Exit UI
-            auto_mode.ui.handle_keyboard_input('x')
+            auto_mode.ui.handle_keyboard_input("x")
             time.sleep(0.1)
 
             # UI should be exiting
@@ -571,7 +572,7 @@ class TestExitUIAutoModeContinues:
             time.sleep(0.5)
 
             # Exit UI
-            auto_mode.ui.handle_keyboard_input('x')
+            auto_mode.ui.handle_keyboard_input("x")
 
             # Check that terminal output mode is active
             assert not auto_mode.ui_mode or auto_mode.terminal_fallback_active
@@ -601,11 +602,12 @@ class TestExitUIAutoModeContinues:
             # Capture stdout
             from io import StringIO
             import sys
+
             captured = StringIO()
             sys.stdout = captured
 
             # Exit UI (should flush logs)
-            auto_mode.ui.handle_keyboard_input('x')
+            auto_mode.ui.handle_keyboard_input("x")
             time.sleep(0.2)
 
             sys.stdout = sys.__stdout__
@@ -631,7 +633,7 @@ class TestErrorRecoveryScenarios:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             auto_mode.run_hook = MagicMock()
             yield auto_mode
@@ -690,7 +692,7 @@ class TestErrorRecoveryScenarios:
             time.sleep(0.5)
 
             # Simulate UI crash
-            auto_mode.ui._internal_crash = lambda: 1/0
+            auto_mode.ui._internal_crash = lambda: 1 / 0
 
             try:
                 auto_mode.ui._internal_crash()
@@ -715,14 +717,14 @@ class TestErrorRecoveryScenarios:
         # This will fail until dependency checking is implemented
         with pytest.raises(AttributeError):
             # Simulate Rich unavailable
-            with patch.dict('sys.modules', {'rich': None}):
+            with patch.dict("sys.modules", {"rich": None}):
                 with tempfile.TemporaryDirectory() as temp_dir:
                     auto_mode = AutoMode(
                         sdk="claude",
                         prompt="Test",
                         max_turns=3,
                         working_dir=Path(temp_dir),
-                        ui_mode=True
+                        ui_mode=True,
                     )
 
                     # Should fall back to terminal mode

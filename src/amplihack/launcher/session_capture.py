@@ -5,7 +5,6 @@ for export via ClaudeTranscriptBuilder.
 """
 
 import threading
-import time
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -54,7 +53,7 @@ class MessageCapture:
             "content": prompt,
             "timestamp": datetime.now().isoformat(),
             "phase": self._current_phase,
-            "turn": self._current_turn
+            "turn": self._current_turn,
         }
         with self._lock:
             self._messages.append(message)
@@ -86,7 +85,7 @@ class MessageCapture:
                 "content": "".join(text_parts),
                 "timestamp": datetime.now().isoformat(),
                 "phase": self._current_phase,
-                "turn": self._current_turn
+                "turn": self._current_turn,
             }
             self._messages.append(captured_message)
 
@@ -109,7 +108,7 @@ class MessageCapture:
             "content": text,
             "timestamp": datetime.now().isoformat(),
             "phase": self._current_phase,
-            "turn": self._current_turn
+            "turn": self._current_turn,
         }
         self._messages.append(message)
 
