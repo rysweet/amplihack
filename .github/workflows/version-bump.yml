@@ -35,7 +35,7 @@ jobs:
       - name: Bump version
         id: bump
         run: |
-          python << 'EOF'
+          python "$GITHUB_OUTPUT" << 'EOF'
           import tomllib
           import re
           import sys
@@ -75,7 +75,7 @@ jobs:
           except Exception as e:
               print(f"Error bumping version: {e}")
               sys.exit(1)
-          EOF "$GITHUB_OUTPUT"
+          EOF
 
       - name: Commit and push changes
         run: |
