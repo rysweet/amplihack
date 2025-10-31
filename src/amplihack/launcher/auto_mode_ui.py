@@ -36,6 +36,7 @@ except ImportError:
         Live = Any
 
 from .auto_mode_state import AutoModeState
+from ..version import __version__
 
 
 class AutoModeUI:
@@ -62,9 +63,7 @@ class AutoModeUI:
             working_dir: Working directory for instruction files
         """
         if not RICH_AVAILABLE:
-            raise ImportError(
-                "Rich library required for UI mode. Install with: pip install rich"
-            )
+            raise ImportError("Rich library required for UI mode. Install with: pip install rich")
 
         self.state = state
         self.auto_mode = auto_mode
@@ -129,9 +128,15 @@ class AutoModeUI:
         """Build title panel.
 
         Returns:
-            Rich Panel with session title
+            Rich Panel with session title and version
         """
-        title_text = Text(self.title, style="bold cyan", justify="center")
+        # Build title with version
+        title_text = Text()
+        title_text.append(f"Amplihack v{__version__}", style="dim cyan")
+        title_text.append(" - ", style="dim")
+        title_text.append(self.title, style="bold cyan")
+        title_text.justify = "center"
+
         return Panel(title_text, box=box.ROUNDED, border_style="cyan")
 
     def _build_session_panel(self) -> Panel:
@@ -145,7 +150,7 @@ class AutoModeUI:
         snapshot = self.state.snapshot()
 
         # Format elapsed time
-        elapsed = snapshot['start_time']
+        elapsed = snapshot["start_time"]
         if elapsed > 0:
             elapsed_sec = time.time() - elapsed
             if elapsed_sec < 0:
@@ -160,10 +165,10 @@ class AutoModeUI:
             elapsed_str = "0s"
 
         # Format costs
-        costs = snapshot['costs']
-        input_tokens = costs.get('input_tokens', 0)
-        output_tokens = costs.get('output_tokens', 0)
-        estimated_cost = costs.get('estimated_cost', 0.0)
+        costs = snapshot["costs"]
+        input_tokens = costs.get("input_tokens", 0)
+        output_tokens = costs.get("output_tokens", 0)
+        estimated_cost = costs.get("estimated_cost", 0.0)
 
         # Format numbers with commas
         input_str = f"{input_tokens:,}" if input_tokens else "0"
@@ -171,7 +176,7 @@ class AutoModeUI:
         cost_str = f"${estimated_cost:.4f}" if estimated_cost else "$0.0000"
 
         # Status indicator
-        status = snapshot['status']
+        status = snapshot["status"]
         if status == "running":
             status_icon = "▶"
             status_style = "green"
@@ -196,13 +201,13 @@ class AutoModeUI:
             f"[bold]Turn:[/bold] {snapshot['turn']}/{snapshot['max_turns']}",
             f"[bold]Time:[/bold] {elapsed_str}",
             f"[{status_style}]{status_icon} {status.upper()}[/{status_style}]",
-            ""
+            "",
         )
         table.add_row(
             f"[bold]Input:[/bold] {input_str}",
             f"[bold]Output:[/bold] {output_str}",
             f"[bold]Cost:[/bold] {cost_str}",
-            ""
+            "",
         )
 
         return Panel(table, title="Session Details", box=box.ROUNDED, border_style="blue")
@@ -216,7 +221,7 @@ class AutoModeUI:
             Rich Panel with todo list
         """
         snapshot = self.state.snapshot()
-        todos = snapshot['todos']
+        todos = snapshot["todos"]
 
         if not todos:
             content = Text("No tasks yet", style="dim")
@@ -226,13 +231,13 @@ class AutoModeUI:
             table.add_column("Task")
 
             for todo in todos:
-                status = todo.get('status', 'pending')
-                content = todo.get('content', '')
+                status = todo.get("status", "pending")
+                content = todo.get("content", "")
 
-                if status == 'completed':
+                if status == "completed":
                     icon = "✓"
                     style = "green"
-                elif status == 'in_progress':
+                elif status == "in_progress":
                     icon = "▶"
                     style = "yellow bold"
                 else:  # pending
@@ -254,7 +259,7 @@ class AutoModeUI:
             Rich Panel with logs
         """
         snapshot = self.state.snapshot()
-        logs = snapshot['logs']
+        logs = snapshot["logs"]
 
         if not logs:
             content = Text("Waiting for logs...", style="dim")
@@ -263,12 +268,7 @@ class AutoModeUI:
             recent_logs = logs[-50:]
             content = Text("\n".join(recent_logs))
 
-        return Panel(
-            content,
-            title="Logs",
-            box=box.ROUNDED,
-            border_style="magenta"
-        )
+        return Panel(content, title="Logs", box=box.ROUNDED, border_style="magenta")
 
     def _build_input_panel(self) -> Panel:
         """Build prompt input panel.
@@ -320,12 +320,12 @@ class AutoModeUI:
         """
         key = key.lower()
 
-        if key == 'x':
+        if key == "x":
             # Exit UI but continue auto mode
             self._should_exit = True
             self.state.add_log("UI exit requested (auto mode continues)")
 
-        elif key == 'h':
+        elif key == "h":
             # Show help
             self._showing_help = not self._showing_help
             if self._showing_help:
@@ -406,7 +406,7 @@ class AutoModeUI:
     def get_log_content(self) -> str:
         """Get log content as text."""
         snapshot = self.state.snapshot()
-        return "\n".join(snapshot['logs'])
+        return "\n".join(snapshot["logs"])
 
     def update_todos(self, todos: List[Dict[str, str]]) -> None:
         """Update todo list in state."""
@@ -482,19 +482,14 @@ class AutoModeUI:
         """
         # Start keyboard listener in background thread
         keyboard_thread = threading.Thread(
-            target=self._keyboard_listener_thread,
-            daemon=True,
-            name="KeyboardListener"
+            target=self._keyboard_listener_thread, daemon=True, name="KeyboardListener"
         )
         keyboard_thread.start()
 
         # Create Live display context and run update loop
         try:
             with Live(
-                self.layout,
-                console=self.console,
-                screen=True,
-                refresh_per_second=10
+                self.layout, console=self.console, screen=True, refresh_per_second=10
             ) as live:
                 # Initial display
                 self.update_display(live)
