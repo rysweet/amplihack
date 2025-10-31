@@ -61,15 +61,31 @@ except ImportError:
 class ClaudeTranscriptBuilder:
     """Builds and manages Claude session transcripts for documentation and knowledge extraction."""
 
-    def __init__(self, session_id: Optional[str] = None):
+    def __init__(self, session_id: Optional[str] = None, working_dir: Optional[Path] = None):
         """Initialize transcript builder.
 
         Args:
             session_id: Optional session ID. If not provided, generates one from timestamp.
+            working_dir: Optional working directory for transcript output.
+                        If provided, transcripts will be written to:
+                        working_dir/.claude/runtime/logs/{session_id}/
+                        If not provided, falls back to get_project_root() for
+                        backward compatibility.
+
+        Raises:
+            OSError: If directory creation fails due to permissions or disk space.
+            ValueError: If the resolved path is invalid or inaccessible.
         """
         self.session_id = session_id or datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.project_root = get_project_root()
-        self.session_dir = self.project_root / ".claude" / "runtime" / "logs" / self.session_id
+
+        # Use explicit working_dir if provided, otherwise fall back to project root
+        if working_dir is not None:
+            base_dir = Path(working_dir).resolve()
+        else:
+            base_dir = get_project_root()
+
+        self.project_root = base_dir
+        self.session_dir = base_dir / ".claude" / "runtime" / "logs" / self.session_id
         self.session_dir.mkdir(parents=True, exist_ok=True)
 
     def build_session_transcript(
