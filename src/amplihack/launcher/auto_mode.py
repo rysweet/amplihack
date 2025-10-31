@@ -1144,7 +1144,9 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("Transcript builder not found, skipping export", level="INFO")
                 return
 
-            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
+            builder = ClaudeTranscriptBuilder(
+                session_id=self.log_dir.name, working_dir=self.working_dir
+            )
             messages = self.message_capture.get_messages()
 
             if not messages:
