@@ -71,6 +71,10 @@ class ClaudeTranscriptBuilder:
                         working_dir/.claude/runtime/logs/{session_id}/
                         If not provided, falls back to get_project_root() for
                         backward compatibility.
+
+        Raises:
+            OSError: If directory creation fails due to permissions or disk space.
+            ValueError: If the resolved path is invalid or inaccessible.
         """
         self.session_id = session_id or datetime.now().strftime("%Y%m%d_%H%M%S")
 
