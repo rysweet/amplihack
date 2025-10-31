@@ -98,32 +98,36 @@ class TestGetVersion:
                 )
 
     def test_get_version_pyproject_not_found(self):
-        """Verify FileNotFoundError raised when pyproject.toml is missing."""
+        """Verify RuntimeError raised when both pyproject.toml and package metadata are unavailable."""
         with patch("pathlib.Path.exists", return_value=False):
-            with pytest.raises(FileNotFoundError) as exc_info:
-                # Need to reload module to trigger the error
-                from amplihack.version import get_version as gv
+            # Also mock importlib.metadata.version to fail
+            with patch("importlib.metadata.version", side_effect=Exception("Package not found")):
+                with pytest.raises(RuntimeError) as exc_info:
+                    # Need to reload module to trigger the error
+                    from amplihack.version import get_version as gv
 
-                gv()
+                    gv()
 
-            assert "pyproject.toml not found" in str(exc_info.value)
-            assert "Cannot determine version" in str(exc_info.value)
+                assert "Cannot determine version" in str(exc_info.value)
+                assert "Neither pyproject.toml nor package metadata available" in str(exc_info.value)
 
     def test_get_version_missing_version_field(self):
-        """Verify KeyError raised when version field is missing from pyproject.toml."""
+        """Verify RuntimeError raised when version field is missing and package metadata unavailable."""
         # Mock pyproject.toml content without version field
         mock_toml_data = {"project": {"name": "test-project"}}
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", mock_open(read_data=b"")):
                 with patch.object(tomllib, "load", return_value=mock_toml_data):
-                    with pytest.raises(KeyError) as exc_info:
-                        from amplihack.version import get_version as gv
+                    # Also mock importlib.metadata.version to fail
+                    with patch("importlib.metadata.version", side_effect=Exception("Package not found")):
+                        with pytest.raises(RuntimeError) as exc_info:
+                            from amplihack.version import get_version as gv
 
-                        gv()
+                            gv()
 
-                    assert "Version field not found" in str(exc_info.value)
-                    assert "Expected format" in str(exc_info.value)
+                        assert "Cannot determine version" in str(exc_info.value)
+                        assert "Neither pyproject.toml nor package metadata available" in str(exc_info.value)
 
     def test_get_version_consistency(self):
         """Verify get_version() returns consistent results across multiple calls."""
