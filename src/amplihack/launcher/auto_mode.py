@@ -451,10 +451,8 @@ Document your decisions and reasoning in comments/logs."""
             if formatted:
                 print(formatted, flush=True)
 
-            # Update message capture state
-            if not hasattr(self.message_capture, "todos"):
-                self.message_capture.todos = []
-            self.message_capture.todos = todos
+            # Update message capture state (thread-safe)
+            self.message_capture.update_todos(todos)
 
             # Update UI state if enabled
             if self.ui_enabled and hasattr(self, "state"):

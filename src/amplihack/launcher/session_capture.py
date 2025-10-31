@@ -145,3 +145,15 @@ class MessageCapture:
             Number of messages in buffer
         """
         return len(self._messages)
+
+    def update_todos(self, todos: List[Dict[str, Any]]) -> None:
+        """Update todos with thread safety.
+
+        Args:
+            todos: New todo list
+
+        Side Effects:
+            Updates internal todos list (thread-safe)
+        """
+        with self._lock:
+            self.todos = list(todos)  # Copy to avoid reference issues
