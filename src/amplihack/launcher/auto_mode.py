@@ -326,13 +326,13 @@ class AutoMode:
         stdout_output = "".join(stdout_lines)
         stderr_output = "".join(stderr_lines)
 
-        # Log stdout if present
+        # Log stdout if present (FULL output per user requirement)
         if stdout_output:
-            self.log(f"stdout: {stdout_output[:200]}...")
+            self.log(f"stdout ({len(stdout_output)} chars): {stdout_output}")
 
-        # Log stderr if present
+        # Log stderr if present (FULL output per user requirement)
         if stderr_output:
-            self.log(f"stderr: {stderr_output[:200]}...")
+            self.log(f"stderr ({len(stderr_output)} chars): {stderr_output}")
 
         return process.returncode, stdout_output
 
@@ -476,9 +476,9 @@ Document your decisions and reasoning in comments/logs."""
             # Success
             full_output = "".join(output_lines)
 
-            # Log output if present (similar to subprocess mode)
+            # Log output if present (FULL output per user requirement)
             if full_output:
-                self.log(f"SDK output: {full_output[:200]}...")
+                self.log(f"stdout ({len(full_output)} chars): {full_output}")
 
             return (0, full_output)
 
