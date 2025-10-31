@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write  # Required to push version bump commit
+
 jobs:
   bump-version:
     name: Auto-increment version
@@ -49,11 +52,14 @@ jobs:
               new_version = f"{major}.{minor}.{patch + 1}"
 
               # Update file content (regex replace)
+              # Use ^ anchor with MULTILINE flag to match only at line start
+              # This prevents matching 'target-version' or other version fields
               content_str = content_bytes.decode('utf-8')
               updated_content = re.sub(
-                  r'version = "[^"]+"',
+                  r'^version = "[^"]+"',
                   f'version = "{new_version}"',
-                  content_str
+                  content_str,
+                  flags=re.MULTILINE
               )
 
               # Write updated content
