@@ -168,7 +168,7 @@ class AutoMode:
         """Log message with optional level."""
         # Only print INFO, WARNING, ERROR to console - skip DEBUG
         if level in ("INFO", "WARNING", "ERROR"):
-            print(f"[AUTO {self.sdk.upper()}] {msg}")
+            print(f"[AUTO {self.sdk.upper()}] {msg}\n", flush=True)
 
             # Update UI state if enabled (all levels)
             if self.ui_enabled and hasattr(self, "state"):
