@@ -25,6 +25,7 @@ class MessageCapture:
         self._current_phase: str = "initializing"
         self._current_turn: int = 0
         self._lock = threading.RLock()  # Thread safety for concurrent access
+        self.todos: List[Dict[str, Any]] = []  # TodoWrite state tracking
 
     def set_phase(self, phase: str, turn: int) -> None:
         """Set current execution phase and turn number.
@@ -129,12 +130,13 @@ class MessageCapture:
         """Clear message buffer.
 
         Side Effects:
-            Resets internal message list
+            Resets internal message list and todos
         """
         with self._lock:
             self._messages.clear()
             self._current_phase = "initializing"
             self._current_turn = 0
+            self.todos = []
 
     def get_message_count(self) -> int:
         """Get count of captured messages.
