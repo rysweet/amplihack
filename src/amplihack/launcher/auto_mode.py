@@ -636,7 +636,8 @@ Document your decisions and reasoning in comments/logs."""
         def ui_runner():
             """Thread target to run the UI."""
             try:
-                self.ui.run()
+                if self.ui is not None:
+                    self.ui.run()
             except Exception as e:
                 self.log(f"UI thread error: {e}", level="ERROR")
 
@@ -1150,6 +1151,25 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("No messages captured for export", level="DEBUG")
                 return
 
+            # Validate export path BEFORE exporting
+            expected_session_dir = self.log_dir
+            actual_session_dir = builder.session_dir
+
+            # Check if builder's session_dir matches our expected location
+            if expected_session_dir.resolve() != actual_session_dir.resolve():
+                error_msg = (
+                    f"Transcript export path mismatch detected!\n"
+                    f"  Expected: {expected_session_dir}\n"
+                    f"  Actual:   {actual_session_dir}\n"
+                    f"  This usually means project root detection failed.\n"
+                    f"  Refusing to export to wrong location to prevent silent data loss."
+                )
+                self.log(error_msg, level="ERROR")
+                raise ValueError(error_msg)
+
+            # Log where transcripts will be exported (helps debugging)
+            self.log(f"Exporting transcripts to: {actual_session_dir}", level="DEBUG")
+
             # Calculate total duration across all forks
             total_duration = self.total_session_time + (time.time() - self.start_time)
 
@@ -1168,10 +1188,42 @@ Current Turn: {turn}/{self.max_turns}"""
             builder.build_session_transcript(messages, metadata)
             builder.export_for_codex(messages, metadata)
 
+            # Verify files were actually written to expected location
+            expected_files = [
+                actual_session_dir / "CONVERSATION_TRANSCRIPT.md",
+                actual_session_dir / "conversation_transcript.json",
+                actual_session_dir / "codex_export.json",
+            ]
+            missing_files = [f for f in expected_files if not f.exists()]
+
+            if missing_files:
+                error_msg = (
+                    f"Transcript export verification failed!\n"
+                    f"Expected files were not created at {actual_session_dir}:\n"
+                    + "\n".join(f"  Missing: {f.name}" for f in missing_files)
+                )
+                self.log(error_msg, level="ERROR")
+                raise FileNotFoundError(error_msg)
+
             self.log(
                 f"✓ Session transcript exported ({len(messages)} messages, {self._format_elapsed(total_duration)})"
             )
 
+        except (ValueError, FileNotFoundError) as e:
+            # Path mismatch or file verification failures - these are critical errors
+            # Re-raise to fail loudly and alert user to the problem
+            self.log(f"Critical transcript export error: {e}", level="ERROR")
+            raise
+        except (ImportError, AttributeError) as e:
+            # Builder loading issues - log but don't crash the session
+            self.log(f"Transcript builder unavailable: {e}", level="WARNING")
+        except OSError as e:
+            # File system errors - these could be transient, log but continue
+            self.log(f"File system error during transcript export: {e}", level="WARNING")
         except Exception as e:
-            self.log(f"Warning: Failed to export transcript: {e}", level="WARNING")
-            # Don't crash on export failure - just log and continue
+            # Unexpected errors - log with full details but don't crash session
+            self.log(
+                f"Unexpected error during transcript export: {type(e).__name__}: {e}", level="ERROR"
+            )
+            # In case of unexpected errors, still try to continue the session
+            # but make it clear this is an unusual situation

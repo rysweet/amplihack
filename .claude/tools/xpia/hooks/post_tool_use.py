@@ -13,8 +13,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
-# Add project src to path for imports
-project_root = Path(__file__).parents[4]
+# Add project src to path for imports - find project root by .claude marker
+current = Path(__file__).resolve()
+project_root = None
+for parent in current.parents:
+    if (parent / ".claude").exists() and (parent / "CLAUDE.md").exists():
+        project_root = parent
+        break
+if project_root is None:
+    raise ImportError("Could not locate project root - missing .claude directory")
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "Specs"))
 
