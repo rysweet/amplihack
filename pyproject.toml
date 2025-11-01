@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "microsofthackathon2025-agenticcoding"
-version = "0.1.3"
+version = "0.1.4"
 description = "Agentic Coding Framework for Microsoft Hackathon 2025"
 requires-python = ">=3.8"
 dependencies = [
