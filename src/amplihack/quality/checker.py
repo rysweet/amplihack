@@ -147,7 +147,7 @@ class QualityChecker:
 
         return results
 
-    def get_summary(self, results: List[ValidationResult]) -> Dict[str, any]:
+    def get_summary(self, results: List[ValidationResult]) -> Dict[str, Any]:
         """Generate summary of validation results.
 
         Args:
