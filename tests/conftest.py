@@ -314,15 +314,22 @@ This agent monitors API endpoints and tracks performance metrics.
 """
     (bundle_dir / "agents" / "monitoring-agent.md").write_text(agent_content)
 
-    # Create test file
+    # Create test file with actual working test
     test_content = '''"""Tests for monitoring agent."""
 
 import pytest
 
 
-def test_monitoring_agent():
-    """Test monitoring agent functionality."""
-    assert True  # Placeholder test
+def test_monitoring_agent_structure():
+    """Test monitoring agent file exists and has expected structure."""
+    from pathlib import Path
+
+    agent_file = Path(__file__).parent.parent / "agents" / "monitoring-agent.md"
+    assert agent_file.exists(), "Monitoring agent file should exist"
+
+    content = agent_file.read_text()
+    assert "Monitor API performance" in content, "Agent should have monitoring role"
+    assert "Capabilities" in content, "Agent should define capabilities"
 '''
     (bundle_dir / "tests" / "test_monitoring_agent.py").write_text(test_content)
 
