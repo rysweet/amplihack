@@ -27,18 +27,10 @@ try:
         AppendError,
     )
 except ImportError:
-    # Define placeholders so tests can be written
-    def append_instructions(instruction: str, session_id: str = None) -> dict:
-        """Placeholder - to be implemented."""
-        raise NotImplementedError("append_instructions not yet implemented")
-
-    class AppendResult:
-        """Placeholder - to be implemented."""
-        pass
-
-    class AppendError(Exception):
-        """Placeholder - to be implemented."""
-        pass
+    # Module not available - skip tests that require it
+    append_instructions = None
+    AppendResult = None
+    AppendError = None
 
 
 class TestAppendInstructionsBasic:
