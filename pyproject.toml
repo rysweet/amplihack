@@ -110,3 +110,22 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+
+[tool.amplihack.quality]
+# Quality checking configuration for post-tool-use hooks
+enabled = true
+fast_mode = true
+fast_mode_timeout = 5
+full_mode_timeout = 30
+validators = ["python", "shell", "markdown", "yaml", "json"]
+exclude = [
+    "**/__pycache__/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.pytest_cache/**",
+    "**/dist/**",
+    "**/build/**",
+]
+severity = ["error", "warning"]
