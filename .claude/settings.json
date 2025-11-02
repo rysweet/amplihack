@@ -43,6 +43,18 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_tool_use.py",
+            "timeout": 5000
+          }
+        ]
+      }
     ]
   }
 }
