@@ -320,9 +320,14 @@ This agent monitors API endpoints and tracks performance metrics.
 import pytest
 
 
-def test_monitoring_agent():
-    """Test monitoring agent functionality."""
-    assert True  # Placeholder test
+def test_monitoring_agent_exists():
+    """Verify monitoring agent file exists and has content."""
+    from pathlib import Path
+    agent_path = Path(__file__).parent.parent / "agents" / "monitoring-agent.md"
+    assert agent_path.exists(), "Monitoring agent file should exist"
+    content = agent_path.read_text()
+    assert len(content) > 0, "Monitoring agent should have content"
+    assert "monitoring" in content.lower(), "Agent should reference monitoring"
 '''
     (bundle_dir / "tests" / "test_monitoring_agent.py").write_text(test_content)
 

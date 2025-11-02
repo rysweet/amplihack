@@ -214,14 +214,12 @@ class GitHubDistributor:
         self, repository: str, package: PackagedBundle, options: Dict[str, Any]
     ) -> str:
         """Prepare repository using git directly."""
-        # Simplified implementation - would use git commands
-        if self.organization:
-            repo_url = f"https://github.com/{self.organization}/{repository}"
-        else:
-            repo_url = f"https://github.com/user/{repository}"
-
-        logger.warning("Direct git implementation not complete, using placeholder URL")
-        return repo_url
+        raise DistributionError(
+            "GitHub CLI (gh) is required for repository preparation. "
+            "Install it from https://cli.github.com/ or use the gh CLI-based workflow.",
+            platform="github",
+            operation="repository_preparation",
+        )
 
     def _upload_package(
         self, repo_url: str, package: PackagedBundle, options: Dict[str, Any]

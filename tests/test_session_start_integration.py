@@ -285,14 +285,3 @@ class TestSessionStartErrorHandling:
                 # Should not crash even with missing directories
                 result = session_hook.process(input_data)
                 assert isinstance(result, dict)
-
-
-# Simplified test for future implementation
-class TestFutureImplementations:
-    """Tests for functionality that may be added later."""
-
-    def test_agent_context_injection_placeholder(self):
-        """Placeholder for agent context injection testing."""
-        # This functionality is working but we keep this test as a placeholder
-        # for future enhancements to the context injection system
-        assert True  # Placeholder - actual implementation exists
