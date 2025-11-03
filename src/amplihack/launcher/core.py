@@ -84,7 +84,10 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Handle repository checkout if needed
+        # 2. Start Neo4j memory system in background (non-blocking)
+        self._start_neo4j_background()
+
+        # 3. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
@@ -543,6 +546,54 @@ class ClaudeLauncher:
             # Clean up proxy
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
+
+    def _start_neo4j_background(self):
+        """Start Neo4j in background thread (non-blocking).
+
+        Starts container in separate thread so session start is not blocked.
+        Any failures are logged as warnings but don't fail session start.
+        """
+        import threading
+
+        def start_neo4j():
+            """Background thread function to start Neo4j."""
+            try:
+                # Lazy import to avoid circular dependencies
+                from ..memory.neo4j.lifecycle import (
+                    check_neo4j_prerequisites,
+                    ensure_neo4j_running,
+                )
+
+                # Check prerequisites
+                prereqs = check_neo4j_prerequisites()
+
+                if not prereqs["all_passed"]:
+                    print("[WARN] Neo4j memory system unavailable:")
+                    for issue in prereqs["issues"]:
+                        print(f"  - {issue}")
+                    print("[INFO] Falling back to existing memory system")
+                    print("[INFO] To enable Neo4j, fix issues above")
+                    return
+
+                # Start Neo4j (non-blocking)
+                print("[INFO] Starting Neo4j memory system in background...")
+                if ensure_neo4j_running(blocking=False):
+                    print("[INFO] Neo4j container started (health check in progress)")
+                else:
+                    print("[WARN] Neo4j failed to start, using existing memory system")
+
+            except Exception as e:
+                # Never crash session start due to Neo4j issues
+                print(f"[WARN] Neo4j initialization error: {e}")
+                print("[INFO] Continuing with existing memory system")
+
+        # Start in background thread
+        thread = threading.Thread(
+            target=start_neo4j, name="neo4j-startup", daemon=True  # Don't block process exit
+        )
+        thread.start()
+
+        # Don't wait - return immediately
 
     def _paths_are_same_with_cache(self, path1: Path, path2: Path) -> bool:
         """Compare paths with caching for resolved paths.
