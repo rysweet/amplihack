@@ -26,6 +26,10 @@ Public API:
     # Memory Models
     EpisodicMemory, ShortTermMemory, ProceduralMemory,
     DeclarativeMemory, ProspectiveMemory
+
+    # Code Graph Integration
+    BlarifyIntegration
+    run_blarify
 """
 
 from .agent_memory import AgentMemoryManager
@@ -75,6 +79,7 @@ from .monitoring import (
     get_global_metrics,
     log_structured,
 )
+from .code_graph import BlarifyIntegration, run_blarify
 
 __all__ = [
     # Configuration
@@ -127,4 +132,7 @@ __all__ = [
     "HealthMonitor",
     "get_global_metrics",
     "log_structured",
+    # Code Graph Integration
+    "BlarifyIntegration",
+    "run_blarify",
 ]
