@@ -17,6 +17,10 @@ services:
       # Plugins
       - NEO4J_PLUGINS=["apoc"]
 
+      # APOC Configuration (required for blarify and advanced queries)
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*
+
       # Memory configuration
       - NEO4J_dbms_memory_heap_max__size=${NEO4J_HEAP_SIZE:-2G}
       - NEO4J_dbms_memory_pagecache_size=${NEO4J_PAGE_CACHE_SIZE:-1G}
