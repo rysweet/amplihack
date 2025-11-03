@@ -30,6 +30,13 @@ Public API:
     # Code Graph Integration
     BlarifyIntegration
     run_blarify
+
+    # Documentation Graph Integration
+    DocGraphIntegration
+
+    # External Knowledge Integration
+    KnowledgeSource, ExternalDoc, APIReference
+    ExternalKnowledgeManager
 """
 
 from .agent_memory import AgentMemoryManager
@@ -80,6 +87,13 @@ from .monitoring import (
     log_structured,
 )
 from .code_graph import BlarifyIntegration, run_blarify
+from .doc_graph import DocGraphIntegration
+from .external_knowledge import (
+    KnowledgeSource,
+    ExternalDoc,
+    APIReference,
+    ExternalKnowledgeManager,
+)
 
 __all__ = [
     # Configuration
@@ -135,4 +149,11 @@ __all__ = [
     # Code Graph Integration
     "BlarifyIntegration",
     "run_blarify",
+    # Documentation Graph Integration
+    "DocGraphIntegration",
+    # External Knowledge Integration
+    "KnowledgeSource",
+    "ExternalDoc",
+    "APIReference",
+    "ExternalKnowledgeManager",
 ]
