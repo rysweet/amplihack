@@ -161,8 +161,12 @@ def inject_memory_context(
             limit=max_memories * 2,  # Get extras for filtering
         )
 
+        logger.debug(f"Recalled {len(memories)} memories for {agent_type} / {task_category}")
+        logger.debug(f"First memory type: {type(memories[0]) if memories else 'no memories'}")
+
         # Filter by relevance to task (simple keyword matching)
         relevant_memories = _filter_by_relevance(memories, task)[:max_memories]
+        logger.debug(f"Filtered to {len(relevant_memories)} relevant memories")
 
         # Also query cross-agent learnings for certain agent types
         cross_agent_memories = []
@@ -185,7 +189,9 @@ def inject_memory_context(
         )
 
     except Exception as e:
+        import traceback
         logger.error(f"Failed to inject memory context: {e}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return ""  # Non-fatal: agent continues without memory
 
 
@@ -321,6 +327,11 @@ def _filter_by_relevance(memories: List[Dict[str, Any]], task: str) -> List[Dict
     # Score each memory by keyword overlap
     scored_memories = []
     for mem in memories:
+        # Skip non-dict entries (defensive programming)
+        if not isinstance(mem, dict):
+            logger.warning(f"Skipping non-dict memory entry: {type(mem)}")
+            continue
+
         content = mem.get("content", "").lower()
         content_keywords = set(re.findall(r'\w+', content))
 
@@ -375,9 +386,16 @@ def _format_memory_context(
             lines.append(f"**{i}. {category}** (quality: {quality:.2f})")
             lines.append(f"   {content}")
 
-            # Add outcome if available
+            # Add outcome if available (metadata may be string from Neo4j)
             metadata = mem.get("metadata", {})
-            if metadata.get("outcome"):
+            if isinstance(metadata, str):
+                try:
+                    import json
+                    metadata = json.loads(metadata)
+                except (json.JSONDecodeError, ValueError):
+                    metadata = {}
+
+            if isinstance(metadata, dict) and metadata.get("outcome"):
                 lines.append(f"   *Outcome: {metadata['outcome']}*")
 
             lines.append("")
