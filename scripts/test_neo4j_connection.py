@@ -2,8 +2,17 @@
 """
 Test Neo4j connection and basic operations.
 """
+import os
 import sys
 from pathlib import Path
+
+# Load .env if it exists
+env_file = Path(__file__).parent.parent / '.env'
+if env_file.exists():
+    for line in env_file.read_text().splitlines():
+        if line and not line.startswith('#') and '=' in line:
+            key, value = line.split('=', 1)
+            os.environ[key] = value
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))

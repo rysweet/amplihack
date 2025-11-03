@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+import os
+from pathlib import Path
+env_file = Path(__file__).parent.parent / ".env"
+if env_file.exists():
+    for line in env_file.read_text().splitlines():
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            os.environ[key] = value
 """Simplified test script for Phase 5-6 features.
 
 Assumes Neo4j is already running (via existing container).

@@ -77,6 +77,7 @@ class MemoryStore:
         CREATE (m:Memory {
             id: $memory_id,
             content: $content,
+            agent_type: $agent_type,
             category: $category,
             memory_type: $memory_type,
             quality_score: $quality_score,
@@ -258,7 +259,7 @@ class MemoryStore:
         agent_type: str,
         project_id: Optional[str] = None,
         category: Optional[str] = None,
-        min_quality: float = 0.6,
+        min_quality: float = 0.0,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
         """Retrieve memories for a specific agent type.
