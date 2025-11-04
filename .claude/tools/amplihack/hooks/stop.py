@@ -66,70 +66,10 @@ class StopHook(HookProcessor):
         Args:
             input_data: Input from Claude Code Stop hook
         """
-        # Memory extraction temporarily disabled - requires agent_memory_hook module
-        # TODO: Re-enable in future PR when module is properly implemented
+        # Memory extraction temporarily disabled
+        # TODO: Re-enable when agent_memory_hook module is implemented
+        self.log("Memory extraction disabled (module not yet implemented)", "DEBUG")
         return
-
-            # Read conversation from session file if available
-            session_id = self.get_session_id()
-
-            # Try to find recent session files
-            session_dirs = sorted(self.log_dir.glob("*"), key=lambda p: p.stat().st_mtime, reverse=True)
-
-            conversation_text = ""
-            agent_types = []
-
-            # Look for DECISIONS.md or agent-specific logs in recent session
-            for session_dir in session_dirs[:3]:  # Check last 3 sessions
-                if not session_dir.is_dir():
-                    continue
-
-                # Check for DECISIONS.md
-                decisions_file = session_dir / "DECISIONS.md"
-                if decisions_file.exists():
-                    try:
-                        with open(decisions_file, "r") as f:
-                            conversation_text += f"\n\n## Session Decisions\n{f.read()}"
-                    except Exception as e:
-                        self.log(f"Failed to read decisions: {e}", "DEBUG")
-
-                # Check metrics for agent usage
-                metrics_files = list(self.metrics_dir.glob("user_prompt_submit_metrics.jsonl"))
-                if metrics_files:
-                    try:
-                        import json
-                        with open(metrics_files[0], "r") as f:
-                            for line in f:
-                                metric = json.loads(line)
-                                if metric.get("metric") == "agents_detected" and metric.get("metadata"):
-                                    detected = metric["metadata"].get("agent_types", [])
-                                    agent_types.extend(detected)
-                    except Exception as e:
-                        self.log(f"Failed to read metrics: {e}", "DEBUG")
-
-            # If we have agent types and some conversation text, extract learnings
-            if agent_types and conversation_text:
-                self.log(f"Extracting learnings for agents: {agent_types}")
-
-                metadata = extract_learnings_from_conversation(
-                    conversation_text=conversation_text,
-                    agent_types=list(set(agent_types)),  # Deduplicate
-                    session_id=session_id,
-                )
-
-                # Log results
-                notice = format_learning_extraction_notice(metadata)
-                if notice:
-                    self.log(notice)
-                    self.save_metric("agent_learnings_stored", metadata.get("learnings_stored", 0))
-            else:
-                self.log("No agent activity detected in session - skipping learning extraction", "DEBUG")
-
-        except ImportError as e:
-            self.log(f"Memory integration not available: {e}", "DEBUG")
-        except Exception as e:
-            # Never block on learning extraction - just log and continue
-            self.log(f"Non-critical: Failed to extract learnings: {e}", "WARNING")
 
     def _trigger_reflection_if_enabled(self):
         """Trigger reflection analysis if enabled and not already running."""
