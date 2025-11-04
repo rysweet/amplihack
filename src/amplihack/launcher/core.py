@@ -560,24 +560,27 @@ class ClaudeLauncher:
 
         def start_neo4j():
             """Background thread function with auto-setup."""
+            import logging
+            thread_logger = logging.getLogger(__name__)
+
             try:
                 # Auto-setup prerequisites
                 from ..memory.neo4j.auto_setup import ensure_prerequisites
 
                 if not ensure_prerequisites():
-                    logger.warning("Neo4j prerequisites not met, falling back to SQLite")
+                    thread_logger.warning("Neo4j prerequisites not met, falling back to SQLite")
                     return
 
                 # Start Neo4j
                 from ..memory.neo4j.lifecycle import ensure_neo4j_running
 
-                logger.info("Starting Neo4j memory system...")
+                thread_logger.info("Starting Neo4j memory system...")
                 ensure_neo4j_running(blocking=False)
 
             except Exception as e:
                 # Never crash session start due to Neo4j issues
-                logger.warning("Neo4j initialization error: %s", e)
-                logger.info("Continuing with existing memory system")
+                thread_logger.warning("Neo4j initialization error: %s", e)
+                thread_logger.info("Continuing with existing memory system")
 
         # Start in background thread
         thread = threading.Thread(
