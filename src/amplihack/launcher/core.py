@@ -557,15 +557,18 @@ class ClaudeLauncher:
         Returns:
             True to continue, False to exit
         """
+        import logging
+        method_logger = logging.getLogger(__name__)
+
         try:
             from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
             return interactive_neo4j_startup()
         except ImportError:
             # Neo4j modules not available - continue without
-            logger.debug("Neo4j modules not found")
+            method_logger.debug("Neo4j modules not found")
             return True
         except Exception as e:
-            logger.error("Neo4j startup failed: %s", e)
+            method_logger.error("Neo4j startup failed: %s", e)
             print(f"\n⚠️  Neo4j startup error: {e}")
             print("Continuing with basic memory system...\n")
             return True

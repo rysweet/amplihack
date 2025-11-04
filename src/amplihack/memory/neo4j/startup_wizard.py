@@ -45,7 +45,6 @@ def wait_for_neo4j_with_feedback(max_wait: int = 60) -> bool:
     Returns:
         True if ready, False if timeout
     """
-    from .lifecycle import is_neo4j_running
     from .connector import Neo4jConnector
 
     print("\n⏳ Waiting for Neo4j to be ready...")
