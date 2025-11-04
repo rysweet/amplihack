@@ -66,14 +66,9 @@ class StopHook(HookProcessor):
         Args:
             input_data: Input from Claude Code Stop hook
         """
-        try:
-            # Import agent memory integration
-            sys.path.insert(0, str(Path(__file__).parent))
-            # DISABLED - memory extraction not yet ready
-            # from agent_memory_hook import (
-                extract_learnings_from_conversation,
-                format_learning_extraction_notice,
-            )
+        # Memory extraction temporarily disabled - requires agent_memory_hook module
+        # TODO: Re-enable in future PR when module is properly implemented
+        return
 
             # Read conversation from session file if available
             session_id = self.get_session_id()
