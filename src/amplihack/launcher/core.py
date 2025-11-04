@@ -84,8 +84,8 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Start Neo4j memory system in background (non-blocking)
-        self._start_neo4j_background()
+        # 2. Auto-setup and start Neo4j memory system
+        self._auto_setup_and_start_neo4j()
 
         # 3. Handle repository checkout if needed
         if self.checkout_repo:
