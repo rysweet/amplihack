@@ -573,9 +573,12 @@ class ClaudeLauncher:
 
                 # Start Neo4j
                 from ..memory.neo4j.lifecycle import ensure_neo4j_running
+                from ..memory.neo4j.diagnostics import verify_neo4j_working
 
                 thread_logger.info("Starting Neo4j memory system...")
-                ensure_neo4j_running(blocking=False)
+                if ensure_neo4j_running(blocking=True):
+                    # Verify and show stats
+                    verify_neo4j_working()
 
             except Exception as e:
                 # Never crash session start due to Neo4j issues
