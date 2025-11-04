@@ -161,25 +161,57 @@ class Neo4jConfig:
 def get_password_from_env() -> str:
     """Get Neo4j password from environment variable.
 
+    Auto-loads from .env if environment variable not set.
+
     Returns:
         Neo4j password from NEO4J_PASSWORD environment variable
 
     Raises:
-        ValueError: If NEO4J_PASSWORD not set in environment
+        ValueError: If NEO4J_PASSWORD not set and .env doesn't exist
 
     Note:
         Set NEO4J_PASSWORD in your .env file or shell environment.
         See .env.example for configuration template.
     """
+    # First check environment
     password = os.getenv("NEO4J_PASSWORD")
-    if not password:
-        raise ValueError(
-            "NEO4J_PASSWORD environment variable not set.\n"
-            "Set it in your .env file or shell environment:\n"
-            "  export NEO4J_PASSWORD='your_secure_password'\n"
-            "Or copy .env.example to .env and configure."
-        )
-    return password
+    if password:
+        return password
+
+    # Try to load from .env if not in environment
+    try:
+        _load_env_file()
+        password = os.getenv("NEO4J_PASSWORD")
+        if password:
+            return password
+    except Exception as e:
+        logger.debug("Could not load .env: %s", e)
+
+    # Still not found
+    raise ValueError(
+        "NEO4J_PASSWORD environment variable not set.\n"
+        "Set it in your .env file or shell environment:\n"
+        "  export NEO4J_PASSWORD='your_secure_password'\n"
+        "Or copy .env.example to .env and configure."
+    )
+
+
+def _load_env_file():
+    """Load .env file into environment if it exists."""
+    env_file = Path.cwd() / ".env"
+    if not env_file.exists():
+        # Try project root
+        for parent in [Path.cwd()] + list(Path.cwd().parents):
+            if (parent / ".env").exists():
+                env_file = parent / ".env"
+                break
+
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                os.environ[key] = value
+        logger.debug("Loaded .env from %s", env_file)
 
 
 def generate_neo4j_password() -> str:  # ggignore
