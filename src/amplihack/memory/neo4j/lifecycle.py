@@ -269,8 +269,6 @@ class Neo4jContainerManager:
                 capture_output=True,
                 text=True,
                 timeout=60,
-                cwd=self.config.compose_file.parent.parent,  # Project root
-                env=env,
             )
 
             if result.returncode != 0:
