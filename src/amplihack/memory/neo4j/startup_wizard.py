@@ -220,7 +220,34 @@ def interactive_neo4j_startup() -> bool:
     # 4. Show stats
     show_neo4j_stats_or_empty()
 
+    # 5. Check Code Understanding Engine freshness
+    _check_code_understanding_freshness()
+
     return True  # Continue with Neo4j ready
+
+
+def _check_code_understanding_freshness():
+    """Check if Code Understanding Engine needs updating."""
+    try:
+        from .code_freshness import is_code_index_stale
+        from .connector import Neo4jConnector
+
+        with Neo4jConnector() as conn:
+            project_root = Path.cwd()
+            is_stale, reason = is_code_index_stale(project_root, conn, max_age_minutes=120)
+
+            if is_stale:
+                print("="*70)
+                print("📚 Code Understanding Engine")
+                print("="*70)
+                print(f"\n{reason}")
+                print("\n💡 The Code Understanding Engine helps agents understand your codebase")
+                print("   by maintaining a graph of code structure and relationships.")
+                print(f"\nTo update: amplihack memory update-code-index")
+                print("="*70 + "\n")
+
+    except Exception as e:
+        logger.debug("Code freshness check failed: %s", e)
 
 
 if __name__ == "__main__":
