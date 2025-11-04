@@ -5,6 +5,7 @@ Validates configuration and provides clear error messages.
 Implements secure password generation and storage.
 """
 
+import logging
 import os
 import secrets
 import string
@@ -12,6 +13,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
