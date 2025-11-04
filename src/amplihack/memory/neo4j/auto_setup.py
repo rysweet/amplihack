@@ -20,15 +20,19 @@ logger = logging.getLogger(__name__)
 
 
 def generate_secure_password(length: int = 32) -> str:
-    """Generate cryptographically secure password.
+    """Generate cryptographically secure password safe for Neo4j.
+
+    Uses alphanumeric + safe punctuation (no special chars that break Neo4j auth).
 
     Args:
         length: Password length (default 32 = ~190 bits entropy)
 
     Returns:
-        Random password
+        Random password safe for Neo4j/Docker
     """
-    alphabet = string.ascii_letters + string.digits + string.punctuation
+    # Only use safe characters - no /, ?, #, @, etc that break Neo4j AUTH string
+    # Still maintains high entropy with 62 possible characters
+    alphabet = string.ascii_letters + string.digits + "-_=+"
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
