@@ -84,8 +84,10 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Auto-setup and start Neo4j memory system
-        self._auto_setup_and_start_neo4j()
+        # 2. Interactive Neo4j startup (blocks until ready or user decides)
+        if not self._interactive_neo4j_startup():
+            # User chose to exit rather than continue without Neo4j
+            return False
 
         # 3. Handle repository checkout if needed
         if self.checkout_repo:
@@ -547,7 +549,28 @@ class ClaudeLauncher:
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
 
-    def _auto_setup_and_start_neo4j(self):
+    def _interactive_neo4j_startup(self) -> bool:
+        """Interactive Neo4j startup with user feedback.
+
+        BLOCKS until Neo4j ready or user decides to continue without it.
+
+        Returns:
+            True to continue, False to exit
+        """
+        try:
+            from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
+            return interactive_neo4j_startup()
+        except ImportError:
+            # Neo4j modules not available - continue without
+            logger.debug("Neo4j modules not found")
+            return True
+        except Exception as e:
+            logger.error("Neo4j startup failed: %s", e)
+            print(f"\n⚠️  Neo4j startup error: {e}")
+            print("Continuing with basic memory system...\n")
+            return True
+
+    def _auto_setup_and_start_neo4j_OLD(self):
         """Auto-setup prerequisites and start Neo4j in background.
 
         Self-healing approach:
