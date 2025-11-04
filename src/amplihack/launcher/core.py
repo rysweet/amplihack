@@ -547,27 +547,31 @@ class ClaudeLauncher:
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
 
-    def _start_neo4j_background(self):
-        """Start Neo4j in background thread (non-blocking).
+    def _auto_setup_and_start_neo4j(self):
+        """Auto-setup prerequisites and start Neo4j in background.
 
-        Starts container in separate thread so session start is not blocked.
-        Any failures are logged as warnings but don't fail session start.
+        Self-healing approach:
+        - Creates .env with password if missing
+        - Starts Docker if not running
+        - Starts Neo4j container
+        All in background thread, non-blocking.
         """
         import threading
 
         def start_neo4j():
-            """Background thread function to start Neo4j."""
+            """Background thread function with auto-setup."""
             try:
-                # Lazy import to avoid circular dependencies
-                from ..memory.neo4j.lifecycle import (
-                    check_neo4j_prerequisites,
-                    ensure_neo4j_running,
-                )
+                # Auto-setup prerequisites
+                from ..memory.neo4j.auto_setup import ensure_prerequisites
 
-                # Check prerequisites
-                prereqs = check_neo4j_prerequisites()
+                if not ensure_prerequisites():
+                    logger.warning("Neo4j prerequisites not met, falling back to SQLite")
+                    return
 
-                if not prereqs["all_passed"]:
+                # Start Neo4j
+                from ..memory.neo4j.lifecycle import ensure_neo4j_running
+
+                ensure_neo4j_running(blocking=False)
                     print("[WARN] Neo4j memory system unavailable:")
                     for issue in prereqs["issues"]:
                         print(f"  - {issue}")
