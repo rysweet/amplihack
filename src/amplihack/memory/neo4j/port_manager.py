@@ -162,20 +162,35 @@ def resolve_port_conflicts(
         is_neo4j, can_connect = detect_neo4j_on_port(bolt_port, password)
 
         if is_neo4j and can_connect:
-            messages.append(f"✅ Found existing Neo4j on port {bolt_port} (credentials work)")
+            messages.append(f"✅ Found existing Neo4j on port {bolt_port} (our credentials work - reusing)")
             return bolt_port, http_port, messages
-        elif is_neo4j:
-            messages.append(f"⚠️  Neo4j on port {bolt_port} but wrong password (different instance)")
+        elif is_neo4j and not can_connect:
+            # Neo4j on port but WRONG password - belongs to ANOTHER app!
+            messages.append(f"⚠️  CONFLICT: Neo4j on port {bolt_port} belongs to another application")
+            messages.append(f"    (Cannot authenticate - different instance)")
+            messages.append(f"    Selecting alternative port to avoid interference...")
+
+            # MUST select different port - can't use this one
+            new_bolt = find_available_port(bolt_port + 100)
+            if new_bolt:
+                messages.append(f"✅ Selected safe alternative bolt port: {new_bolt}")
+                bolt_port = new_bolt
+            else:
+                messages.append(f"❌ Could not find available bolt port")
+                # Try wider range
+                new_bolt = find_available_port(8000, max_attempts=1000)
+                if new_bolt:
+                    messages.append(f"✅ Found alternative in range 8000+: {new_bolt}")
+                    bolt_port = new_bolt
         else:
             messages.append(f"⚠️  Port {bolt_port} in use by another application")
-
-        # Find alternative port
-        new_bolt = find_available_port(bolt_port + 100)
-        if new_bolt:
-            messages.append(f"✅ Selected alternative bolt port: {new_bolt}")
-            bolt_port = new_bolt
-        else:
-            messages.append(f"❌ Could not find available bolt port")
+            # Find alternative port
+            new_bolt = find_available_port(bolt_port + 100)
+            if new_bolt:
+                messages.append(f"✅ Selected alternative bolt port: {new_bolt}")
+                bolt_port = new_bolt
+            else:
+                messages.append(f"❌ Could not find available bolt port")
 
     if http_in_use:
         new_http = find_available_port(http_port + 100)
