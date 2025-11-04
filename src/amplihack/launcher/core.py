@@ -572,10 +572,6 @@ class ClaudeLauncher:
                 from ..memory.neo4j.lifecycle import ensure_neo4j_running
 
                 ensure_neo4j_running(blocking=False)
-                    print("[WARN] Neo4j memory system unavailable:")
-                    for issue in prereqs["issues"]:
-                        print(f"  - {issue}")
-                    print("[INFO] Falling back to existing memory system")
                     print("[INFO] To enable Neo4j, fix issues above")
                     return
 
