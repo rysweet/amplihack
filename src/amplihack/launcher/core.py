@@ -571,21 +571,13 @@ class ClaudeLauncher:
                 # Start Neo4j
                 from ..memory.neo4j.lifecycle import ensure_neo4j_running
 
+                logger.info("Starting Neo4j memory system...")
                 ensure_neo4j_running(blocking=False)
-                    print("[INFO] To enable Neo4j, fix issues above")
-                    return
-
-                # Start Neo4j (non-blocking)
-                print("[INFO] Starting Neo4j memory system in background...")
-                if ensure_neo4j_running(blocking=False):
-                    print("[INFO] Neo4j container started (health check in progress)")
-                else:
-                    print("[WARN] Neo4j failed to start, using existing memory system")
 
             except Exception as e:
                 # Never crash session start due to Neo4j issues
-                print(f"[WARN] Neo4j initialization error: {e}")
-                print("[INFO] Continuing with existing memory system")
+                logger.warning("Neo4j initialization error: %s", e)
+                logger.info("Continuing with existing memory system")
 
         # Start in background thread
         thread = threading.Thread(
