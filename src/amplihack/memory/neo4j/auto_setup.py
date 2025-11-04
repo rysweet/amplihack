@@ -174,6 +174,7 @@ def auto_setup_prerequisites() -> Tuple[bool, list[str]]:
 
     Fixes what it can automatically:
     - Creates .env with password
+    - Detects port conflicts and selects safe alternatives
     - Starts Docker if not running
 
     Guides user for what it can't fix:
@@ -193,7 +194,32 @@ def auto_setup_prerequisites() -> Tuple[bool, list[str]]:
     if not success:
         all_good = False
 
-    # 2. Check Docker installed
+    # 2. Check/resolve port conflicts
+    try:
+        from .port_manager import resolve_port_conflicts, DEFAULT_BOLT_PORT, DEFAULT_HTTP_PORT
+
+        # Get password (might have just been created)
+        password = os.getenv("NEO4J_PASSWORD", "")
+        bolt_port = int(os.getenv("NEO4J_BOLT_PORT", str(DEFAULT_BOLT_PORT)))
+        http_port = int(os.getenv("NEO4J_HTTP_PORT", str(DEFAULT_HTTP_PORT)))
+
+        # Check for conflicts and resolve
+        final_bolt, final_http, port_messages = resolve_port_conflicts(
+            bolt_port, http_port, password, Path.cwd()
+        )
+
+        messages.extend(port_messages)
+
+        # Update environment with final ports
+        os.environ["NEO4J_BOLT_PORT"] = str(final_bolt)
+        os.environ["NEO4J_HTTP_PORT"] = str(final_http)
+        os.environ["NEO4J_URI"] = f"bolt://localhost:{final_bolt}"
+
+    except Exception as e:
+        logger.warning("Port conflict resolution failed: %s", e)
+        messages.append(f"⚠️  Using default ports (conflict check failed)")
+
+    # 3. Check Docker installed
     if not check_docker_installed():
         messages.append("""
 ❌ Docker not installed

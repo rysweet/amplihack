@@ -58,9 +58,10 @@ class Neo4jConfig:
         # Get password from environment (REQUIRED)
         password = get_password_from_env()
 
-        # Ports with defaults
-        bolt_port = int(os.getenv("NEO4J_BOLT_PORT", "7687"))
-        http_port = int(os.getenv("NEO4J_HTTP_PORT", "7474"))
+        # Ports with SAFER defaults (not standard Neo4j ports)
+        # Using non-standard ports to avoid conflicts with other Neo4j instances
+        bolt_port = int(os.getenv("NEO4J_BOLT_PORT", "7787"))  # Not 7687
+        http_port = int(os.getenv("NEO4J_HTTP_PORT", "7774"))  # Not 7474
 
         # Validate ports
         if not (1024 <= bolt_port <= 65535):
