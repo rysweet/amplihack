@@ -238,24 +238,31 @@ class Neo4jContainerManager:
             return False
 
     def _create_container(self, wait_for_ready: bool) -> bool:
-        """Create and start new container using docker-compose."""
-        if not self.config.compose_file.exists():
-            logger.error("Docker Compose file not found: %s", self.config.compose_file)
-            return False
+        """Create and start new container using direct docker run.
+
+        No longer requires docker-compose file.
+        """
+        logger.info("Creating new Neo4j container with direct docker command")
 
         try:
-            cmd = self.config.compose_cmd.split() + [
-                "-f",
-                str(self.config.compose_file),
-                "up",
-                "-d",  # Detached mode
+            # Use direct docker run (no compose file needed)
+            cmd = [
+                "docker", "run", "-d",
+                "--name", self.config.container_name,
+                "--restart", "unless-stopped",
+                "-p", f"127.0.0.1:{self.config.http_port}:7474",
+                "-p", f"127.0.0.1:{self.config.bolt_port}:7687",
+                "-e", f"NEO4J_AUTH=neo4j/{self.config.password}",
+                "-e", 'NEO4J_PLUGINS=["apoc"]',
+                "-e", "NEO4J_dbms_security_procedures_unrestricted=apoc.*",
+                "-e", "NEO4J_dbms_security_procedures_allowlist=apoc.*",
+                "-e", f"NEO4J_dbms_memory_heap_max__size={self.config.heap_size}",
+                "-e", f"NEO4J_dbms_memory_pagecache_size={self.config.page_cache_size}",
+                "-v", f"{self.config.container_name}-data:/data",
+                self.config.image,
             ]
 
             logger.debug("Running: %s", " ".join(cmd))
-
-            # Inject password via environment
-            env = os.environ.copy()
-            env["NEO4J_PASSWORD"] = self.config.password
 
             result = subprocess.run(
                 cmd,
