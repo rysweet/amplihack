@@ -66,10 +66,49 @@ class StopHook(HookProcessor):
         Args:
             input_data: Input from Claude Code Stop hook
         """
-        # Memory extraction temporarily disabled
-        # TODO: Re-enable when agent_memory_hook module is implemented
-        self.log("Memory extraction disabled (module not yet implemented)", "DEBUG")
-        return
+        try:
+            # Try to import Neo4j memory system
+            import sys
+
+            # Add src to path if exists
+            if self.project_root and (self.project_root / "src").exists():
+                sys.path.insert(0, str(self.project_root / "src"))
+
+            from amplihack.memory.neo4j import lifecycle
+            from amplihack.memory.neo4j.agent_integration import extract_and_store_learnings
+
+            # Check if Neo4j is running
+            if not lifecycle.is_neo4j_running():
+                self.log("Neo4j not running, skipping memory extraction", "DEBUG")
+                return
+
+            # Extract conversation from input
+            conversation = input_data.get("conversation", "")
+            if not conversation:
+                self.log("No conversation data in stop hook input", "DEBUG")
+                return
+
+            # Try to detect agent type from metrics
+            agent_type = "general"  # Default
+
+            # Store learnings in Neo4j
+            memory_ids = extract_and_store_learnings(
+                agent_type=agent_type,
+                output=conversation,
+                task="session_work",
+                success=True,
+                project_id=str(self.project_root.name) if self.project_root else "unknown"
+            )
+
+            if memory_ids:
+                self.log(f"Stored {len(memory_ids)} learnings in Neo4j memory", "INFO")
+                self.save_metric("neo4j_learnings_stored", len(memory_ids))
+
+        except ImportError as e:
+            self.log(f"Neo4j modules not available: {e}", "DEBUG")
+        except Exception as e:
+            # Don't crash stop hook - just log
+            self.log(f"Memory extraction failed (non-critical): {e}", "WARNING")
 
     def _trigger_reflection_if_enabled(self):
         """Trigger reflection analysis if enabled and not already running."""
