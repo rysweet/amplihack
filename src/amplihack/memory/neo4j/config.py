@@ -74,7 +74,8 @@ class Neo4jConfig:
         # Docker Compose command detection
         compose_cmd = cls._detect_compose_command()
 
-        # Find project root (where docker/ directory will be)
+        # Docker Compose file (not required - we use direct docker commands)
+        # Keep for backwards compatibility but don't require it
         project_root = cls._find_project_root()
         compose_file = project_root / "docker" / "docker-compose.neo4j.yml"
 
