@@ -221,7 +221,7 @@ def auto_setup_prerequisites() -> Tuple[bool, list[str]]:
 
     except Exception as e:
         logger.warning("Port conflict resolution failed: %s", e)
-        messages.append(f"⚠️  Using default ports (conflict check failed)")
+        messages.append("⚠️  Using default ports (conflict check failed)")
 
     # 3. Check Docker installed
     if not check_docker_installed():

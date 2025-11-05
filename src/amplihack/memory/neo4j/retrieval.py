@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
 from .exceptions import Neo4jConnectionError
@@ -144,7 +144,6 @@ class RetrievalStrategy(ABC):
         Raises:
             Neo4jConnectionError: If query fails
         """
-        pass
 
     def _build_isolation_clause(self, context: RetrievalContext) -> tuple[str, Dict[str, Any]]:
         """Build Cypher WHERE clause for isolation.

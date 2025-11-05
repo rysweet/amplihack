@@ -55,7 +55,7 @@ def test_task_without_memory():
 
     print(f"✅ Completed in {elapsed:.2f}s")
     print(f"📊 Output length: {len(output)} characters")
-    print(f"📝 Decisions made: 3 (token strategy, security, endpoints)")
+    print("📝 Decisions made: 3 (token strategy, security, endpoints)")
 
     return {
         "time": elapsed,
@@ -139,7 +139,7 @@ def test_task_with_memory():
 
     print(f"✅ Completed in {elapsed:.2f}s")
     print(f"📊 Output length: {len(output)} characters")
-    print(f"📝 Decisions made: 5 (includes learnings from memory)")
+    print("📝 Decisions made: 5 (includes learnings from memory)")
     print(f"🧠 Memory items used: {len(memories)}")
 
     # Store this as a learning for future
@@ -176,27 +176,27 @@ def compare_results(without, with_mem):
     decision_improvement = with_mem["decisions"] - without["decisions"]
     quality_improvement = len(with_mem["quality_items"]) - len(without["quality_items"])
 
-    print(f"\n⏱️  Time:")
+    print("\n⏱️  Time:")
     print(f"   Without memory: {without['time']:.2f}s")
     print(f"   With memory:    {with_mem['time']:.2f}s")
     print(f"   → {time_improvement:+.1f}% ({'FASTER' if time_improvement > 0 else 'SLOWER'})")
 
-    print(f"\n📊 Output Quality:")
+    print("\n📊 Output Quality:")
     print(f"   Without memory: {without['output_length']} chars")
     print(f"   With memory:    {with_mem['output_length']} chars")
     print(f"   → {output_improvement:+.1f}% more detailed")
 
-    print(f"\n📝 Decisions:")
+    print("\n📝 Decisions:")
     print(f"   Without memory: {without['decisions']}")
     print(f"   With memory:    {with_mem['decisions']}")
     print(f"   → {decision_improvement:+d} additional decision(s)")
 
-    print(f"\n🎯 Quality Items:")
+    print("\n🎯 Quality Items:")
     print(f"   Without memory: {len(without['quality_items'])} items")
     print(f"   With memory:    {len(with_mem['quality_items'])} items")
     print(f"   → {quality_improvement:+d} additional considerations")
 
-    print(f"\n🧠 Memory Usage:")
+    print("\n🧠 Memory Usage:")
     print(f"   Memories retrieved: {with_mem.get('memories_used', 0)}")
 
     print("\n" + "="*70)

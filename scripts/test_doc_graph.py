@@ -12,7 +12,6 @@ This script tests the documentation graph system end-to-end:
 import logging
 import sys
 from pathlib import Path
-from typing import List
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))

@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -102,12 +101,12 @@ def show_neo4j_stats_or_empty():
                 print("\n📊 Database Status: EMPTY (expected on first startup)")
                 print("   The database is ready and will accumulate memories as you work.")
             else:
-                print(f"\n📈 Graph Statistics:")
+                print("\n📈 Graph Statistics:")
                 print(f"   Nodes: {node_count:,}")
                 print(f"   Relationships: {rel_count:,}")
 
                 if stats.get("label_counts"):
-                    print(f"\n📋 Node Types:")
+                    print("\n📋 Node Types:")
                     for label, count in list(stats["label_counts"].items())[:5]:
                         print(f"   {label}: {count:,}")
 
@@ -140,13 +139,12 @@ def ask_user_continue_without_neo4j() -> bool:
         if response == "1":
             print("\n✅ Continuing with basic memory system...\n")
             return True
-        elif response == "2":
+        if response == "2":
             return _troubleshoot_and_retry()
-        elif response == "3":
+        if response == "3":
             print("\n👋 Exiting. Fix Neo4j and try again.\n")
             return False
-        else:
-            print("Please enter 1, 2, or 3")
+        print("Please enter 1, 2, or 3")
 
 
 def _troubleshoot_and_retry() -> bool:
@@ -176,14 +174,12 @@ def _troubleshoot_and_retry() -> bool:
             if wait_for_neo4j_with_feedback(max_wait=30):
                 show_neo4j_stats_or_empty()
                 return True
-            else:
-                print("\n❌ Still cannot connect")
-                return ask_user_continue_without_neo4j()
-        elif response == "n":
+            print("\n❌ Still cannot connect")
+            return ask_user_continue_without_neo4j()
+        if response == "n":
             print("\n👋 Exiting. Fix and try again later.\n")
             return False
-        else:
-            print("Please enter y or n")
+        print("Please enter y or n")
 
 
 def interactive_neo4j_startup() -> bool:
@@ -247,7 +243,7 @@ def _check_code_understanding_freshness():
                 print("\n🆕 Your codebase has not been indexed yet!")
                 print("\n💡 The Code Understanding Engine analyzes your code to help agents")
                 print("   understand structure, relationships, and patterns.")
-                print(f"\n📊 Estimated: ~5 seconds for small projects, ~30s for large ones")
+                print("\n📊 Estimated: ~5 seconds for small projects, ~30s for large ones")
 
                 response = input("\n🤔 Index codebase now? (y/n/background): ").strip().lower()
 

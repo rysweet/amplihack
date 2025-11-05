@@ -170,7 +170,6 @@ class TestClaudeTraceValidation:
 
 def run_tests():
     """Run all tests."""
-    import inspect
 
     test_class = TestClaudeTraceValidation()
     test_methods = [
@@ -201,9 +200,8 @@ def run_tests():
     if failed == 0:
         print("✅ All tests passed!")
         return 0
-    else:
-        print("❌ Some tests failed")
-        return 1
+    print("❌ Some tests failed")
+    return 1
 
 
 if __name__ == "__main__":

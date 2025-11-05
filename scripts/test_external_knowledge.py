@@ -11,10 +11,8 @@ Tests:
 - Cleanup
 """
 
-import json
 import sys
 import tempfile
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -291,7 +289,7 @@ class TestExternalKnowledge:
         stats = self.manager.get_knowledge_stats()
 
         if isinstance(stats, dict):
-            print(f"✅ Statistics retrieved:")
+            print("✅ Statistics retrieved:")
             print(f"   Total docs: {stats.get('total_docs', 0)}")
             print(f"   Sources: {stats.get('sources', 0)}")
             print(f"   Avg trust: {stats.get('avg_trust_score', 0.0):.2f}")

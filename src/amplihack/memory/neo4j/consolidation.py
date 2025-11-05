@@ -10,7 +10,7 @@ Handles:
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .connector import Neo4jConnector
 from .exceptions import Neo4jConnectionError

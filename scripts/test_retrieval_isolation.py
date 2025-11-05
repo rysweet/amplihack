@@ -11,8 +11,7 @@ Tests:
 """
 
 import sys
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # Add src to path
@@ -24,25 +23,19 @@ from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
 from amplihack.memory.neo4j.schema import SchemaManager
 from amplihack.memory.neo4j.retrieval import (
     RetrievalContext,
-    IsolationLevel,
     TemporalRetrieval,
     SimilarityRetrieval,
     GraphTraversal,
     HybridRetrieval,
-    retrieve_recent_memories,
-    retrieve_similar_memories,
 )
 from amplihack.memory.neo4j.consolidation import (
     MemoryConsolidator,
-    QualityMetrics,
-    run_consolidation,
 )
 from amplihack.memory.neo4j.monitoring import (
     MetricsCollector,
     MonitoredConnector,
     HealthMonitor,
     OperationType,
-    OperationStatus,
 )
 
 
@@ -70,7 +63,7 @@ class TestResults:
         print(f"\n{'='*70}")
         print(f"Test Results: {self.passed}/{total} passed")
         if self.errors:
-            print(f"\nFailed Tests:")
+            print("\nFailed Tests:")
             for name, error in self.errors:
                 print(f"  - {name}: {error}")
         print(f"{'='*70}\n")

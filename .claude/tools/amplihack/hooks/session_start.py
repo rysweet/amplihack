@@ -6,7 +6,6 @@ Uses unified HookProcessor for common functionality.
 
 # Import the base processor
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 

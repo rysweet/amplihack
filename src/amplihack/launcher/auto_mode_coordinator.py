@@ -7,7 +7,6 @@ communication with the UI.
 
 import threading
 import time
-from pathlib import Path
 from typing import Callable, Optional
 
 from .auto_mode_state import AutoModeState

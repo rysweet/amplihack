@@ -14,8 +14,7 @@ Tests retrieval, consolidation, and monitoring features.
 """
 
 import sys
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # Add src to path
@@ -26,7 +25,6 @@ from amplihack.memory.neo4j.connector import Neo4jConnector, CircuitBreaker, Cir
 from amplihack.memory.neo4j.schema import SchemaManager
 from amplihack.memory.neo4j.retrieval import (
     RetrievalContext,
-    IsolationLevel,
     TemporalRetrieval,
     SimilarityRetrieval,
     GraphTraversal,

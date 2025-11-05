@@ -76,7 +76,7 @@ model: inherit
   - Extracts requirements at session start
   - Stores in `.claude/runtime/logs/<session_id>/ORIGINAL_REQUEST.md`
   - Pre-compact hook exports conversations
-  
+
 - **Session Logging** (`.claude/runtime/logs/<session_id>/`)
   - DECISIONS.md: Decision tracking and rationale
   - Session metadata and progress tracking
@@ -178,10 +178,10 @@ Agents use **automatic mode selection** based on context:
    ```markdown
    ## Original User Request (from ORIGINAL_REQUEST_PRESERVATION.md)
    [Extracted requirements injected at top]
-   
+
    ## User Preferences (from USER_PREFERENCES.md)
    [Communication style, verbosity, etc.]
-   
+
    ## Task Context
    [Specific task for this invocation]
    ```
@@ -199,7 +199,7 @@ Agents use **automatic mode selection** based on context:
    Architect, design this system with these explicit requirements:
    - [Requirement 1]
    - [Requirement 2]
-   
+
    Constraints:
    - [Constraint 1]
    ```
@@ -716,16 +716,16 @@ def invoke_agent(agent_name, task_prompt):
 ```python
 def invoke_agent(agent_name, task_prompt):
     agent_def = load_agent_definition(agent_name)
-    
+
     # NEW: Memory enhancement (3 lines)
     memory_context = memory_system.query_pre_execution(agent_name)
     augmented_prompt = f"{memory_context}\n\n{task_prompt}"
-    
+
     response = send_to_claude(agent_def, augmented_prompt)
-    
+
     # NEW: Memory recording (2 lines)
     memory_system.record_decision(agent_name, response)
-    
+
     record_decision(agent_name, response)
     return response
 ```
@@ -820,4 +820,3 @@ The Claude Code agent architecture provides excellent natural integration points
 5. Fully backward compatible
 
 **Maximum Value with Minimum Changes**: That's the amplihack way.
-

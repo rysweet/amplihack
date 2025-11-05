@@ -280,7 +280,7 @@ def main():
 
     print(f"Files processed: {stats['files_imported']}")
     print(f"Errors: {stats['errors']}")
-    print(f"\nNodes created:")
+    print("\nNodes created:")
     print(f"  DocFiles: {stats['doc_files']}")
     print(f"  Sections: {stats['sections']}")
     print(f"  Concepts: {stats['concepts']}")
@@ -292,7 +292,7 @@ def main():
     if 'memory_links' in stats:
         print(f"Doc-Memory links: {stats['memory_links']}")
 
-    print(f"\nFinal graph stats:")
+    print("\nFinal graph stats:")
     print(f"  Total documents: {stats.get('total_docs', 0)}")
     print(f"  Total concepts: {stats.get('total_concepts', 0)}")
     print(f"  Total sections: {stats.get('total_sections', 0)}")

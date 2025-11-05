@@ -4,7 +4,6 @@ Manual Neo4j container starter using docker-py library.
 Bypasses docker-compose dependency issues.
 """
 import docker
-import os
 import time
 import secrets
 import string
@@ -43,10 +42,9 @@ def start_neo4j_container():
         if existing.status == 'running':
             print(f"✅ Container {container_name} already running")
             return existing
-        else:
-            print(f"🔄 Starting existing container {container_name}")
-            existing.start()
-            return existing
+        print(f"🔄 Starting existing container {container_name}")
+        existing.start()
+        return existing
     except docker.errors.NotFound:
         pass
 
@@ -143,10 +141,10 @@ if __name__ == "__main__":
         if wait_for_neo4j(container):
             if test_connection():
                 print("\n✅ Neo4j is fully operational!")
-                print(f"   - UI: http://localhost:7474")
-                print(f"   - Bolt: bolt://localhost:7687")
-                print(f"   - Username: neo4j")
-                print(f"   - Password: (stored in ~/.amplihack/.neo4j_password)")
+                print("   - UI: http://localhost:7474")
+                print("   - Bolt: bolt://localhost:7687")
+                print("   - Username: neo4j")
+                print("   - Password: (stored in ~/.amplihack/.neo4j_password)")
             else:
                 print("\n⚠️  Container started but connection test failed")
                 print("   - Check logs: docker logs amplihack-neo4j")

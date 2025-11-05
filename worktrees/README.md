@@ -23,4 +23,3 @@ Or prune references to deleted worktrees:
 ```bash
 git worktree prune
 ```
-

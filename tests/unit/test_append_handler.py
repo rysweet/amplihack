@@ -11,7 +11,7 @@ import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -34,11 +34,9 @@ except ImportError:
 
     class AppendResult:
         """Placeholder - to be implemented."""
-        pass
 
     class AppendError(Exception):
         """Placeholder - to be implemented."""
-        pass
 
 
 class TestAppendInstructionsBasic:

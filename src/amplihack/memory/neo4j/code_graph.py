@@ -9,7 +9,7 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
 from .config import get_config
@@ -132,7 +132,7 @@ class BlarifyIntegration:
 
         logger.info("Importing blarify output from %s", blarify_json_path)
 
-        with open(blarify_json_path, "r") as f:
+        with open(blarify_json_path) as f:
             blarify_data = json.load(f)
 
         counts = {

@@ -17,7 +17,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
-from .exceptions import Neo4jConnectionError
 
 logger = logging.getLogger(__name__)
 

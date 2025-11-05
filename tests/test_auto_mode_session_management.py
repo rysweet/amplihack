@@ -21,9 +21,8 @@ import sys
 import tempfile
 import time
 import unittest
-from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, patch
 
 # Add project paths
 project_root = Path(__file__).resolve().parents[1]

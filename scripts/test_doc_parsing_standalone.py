@@ -37,7 +37,7 @@ class DocParser:
         if file_path.suffix.lower() not in ['.md', '.markdown']:
             raise ValueError(f"Not a markdown file: {file_path}")
 
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
 
         # Extract title (first heading)
@@ -339,10 +339,9 @@ def main():
         logger.info("\n✓ ALL TESTS PASSED - Documentation parsing works!")
         logger.info("=" * 60)
         return 0
-    else:
-        logger.error("\n✗ TESTS FAILED")
-        logger.info("=" * 60)
-        return 1
+    logger.error("\n✗ TESTS FAILED")
+    logger.info("=" * 60)
+    return 1
 
 
 if __name__ == '__main__':

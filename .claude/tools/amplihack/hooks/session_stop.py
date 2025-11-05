@@ -9,7 +9,6 @@ Extracts patterns, decisions, and outcomes for future agent use.
 import json
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Add project src to path
@@ -29,7 +28,7 @@ def main():
     """Capture session learnings and store in Neo4j."""
     try:
         # Import memory system
-        from amplihack.memory.neo4j import AgentMemoryManager, lifecycle
+        from amplihack.memory.neo4j import lifecycle
         from amplihack.memory.neo4j.agent_integration import extract_and_store_learnings
 
         # Check if Neo4j is available

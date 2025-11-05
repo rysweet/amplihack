@@ -41,7 +41,7 @@ def test_connection():
         print("\n🔌 Connecting to Neo4j...")
         with connector.Neo4jConnector(cfg.uri, cfg.user, cfg.password) as conn:
             result = conn.execute_query("RETURN 1 AS num, 'Hello Neo4j!' AS msg")
-            print(f"✅ Connection successful!")
+            print("✅ Connection successful!")
             print(f"   Result: {result}")
 
             # Test schema initialization

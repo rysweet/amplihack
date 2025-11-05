@@ -6,7 +6,7 @@ error handling, circuit breaker, and context manager support.
 
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -104,7 +104,7 @@ class CircuitBreaker:
             self._on_success()
             return result
 
-        except Exception as e:
+        except Exception:
             self._on_failure()
             raise
 
@@ -270,8 +270,7 @@ class Neo4jConnector:
 
         if self._circuit_breaker:
             return self._circuit_breaker.call(_execute)
-        else:
-            return _execute()
+        return _execute()
 
     def _execute_query_internal(
         self, query: str, parameters: Optional[Dict[str, Any]] = None
@@ -343,8 +342,7 @@ class Neo4jConnector:
 
         if self._circuit_breaker:
             return self._circuit_breaker.call(_execute)
-        else:
-            return _execute()
+        return _execute()
 
     def _execute_write_internal(
         self, query: str, parameters: Optional[Dict[str, Any]] = None

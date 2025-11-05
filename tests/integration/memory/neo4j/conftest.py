@@ -8,7 +8,6 @@ Uses testcontainers when available, falls back to requiring real Docker.
 import pytest
 import time
 import subprocess
-from pathlib import Path
 
 
 # =============================================================================

@@ -24,7 +24,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 
 def _is_uvx_mode() -> bool:
@@ -164,7 +164,7 @@ def _install_claude_cli() -> bool:
                     else:
                         print(f"Could not determine npm prefix: {prefix_stderr}")
                 except Exception as e:
-                    print(f"Could not determine actual npm prefix: {type(e).__name__}: {str(e)}")
+                    print(f"Could not determine actual npm prefix: {type(e).__name__}: {e!s}")
 
                 print("\nManual installation:")
                 _print_manual_install_instructions()
@@ -202,7 +202,7 @@ def _install_claude_cli() -> bool:
         return False
     except Exception as e:
         print(f"❌ Unexpected error installing Claude CLI: {type(e).__name__}")
-        print(f"Error: {str(e)}")
+        print(f"Error: {e!s}")
         print("Try manually:")
         _print_manual_install_instructions()
         return False

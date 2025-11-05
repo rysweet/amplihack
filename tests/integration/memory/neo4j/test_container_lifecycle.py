@@ -14,7 +14,6 @@ All tests should FAIL initially (TDD approach).
 
 import pytest
 import time
-from pathlib import Path
 
 
 @pytest.mark.integration

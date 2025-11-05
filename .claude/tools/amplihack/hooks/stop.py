@@ -61,7 +61,7 @@ Also trigger reflection analysis and memory extraction if enabled.
 
         # Not locked - extract learnings and run reflection
         self._extract_agent_learnings(input_data)
-        
+
         # Check if reflection should run
         if not self._should_run_reflection():
             self.log("Reflection not enabled - allowing stop after memory extraction")

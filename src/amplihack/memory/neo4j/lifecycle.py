@@ -8,7 +8,6 @@ Handles Docker container operations with idempotent design:
 """
 
 import logging
-import os
 import subprocess
 import time
 from enum import Enum
@@ -146,8 +145,7 @@ class Neo4jContainerManager:
                 # Container running - check if healthy
                 if self.is_healthy():
                     return ContainerStatus.RUNNING
-                else:
-                    return ContainerStatus.UNHEALTHY
+                return ContainerStatus.UNHEALTHY
 
             return ContainerStatus.STOPPED
 
@@ -326,7 +324,6 @@ def check_neo4j_prerequisites() -> dict:
             'issues': List[str],  # Human-readable fix instructions
         }
     """
-    import os
 
     issues = []
 

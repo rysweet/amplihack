@@ -495,7 +495,6 @@ class AgentMemoryManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         # Could add cleanup here if needed
-        pass
 
     def __repr__(self) -> str:
         """String representation."""

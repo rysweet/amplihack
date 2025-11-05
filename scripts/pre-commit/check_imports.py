@@ -160,13 +160,12 @@ except Exception as e:
 
         if result.returncode == 0:
             return file_path, True, ""
-        else:
-            return file_path, False, result.stdout + result.stderr
+        return file_path, False, result.stdout + result.stderr
 
     except subprocess.TimeoutExpired:
         return file_path, False, "Import timeout (>15s)"
     except Exception as e:
-        return file_path, False, f"Test error: {str(e)}"
+        return file_path, False, f"Test error: {e!s}"
 
 
 def main():

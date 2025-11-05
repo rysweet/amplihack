@@ -7,13 +7,11 @@ Handles fetching, caching, and linking external documentation sources
 import hashlib
 import json
 import logging
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional
 
 try:
     import requests
@@ -315,7 +313,7 @@ class ExternalKnowledgeManager:
             with open(cache_path, "w") as f:
                 json.dump(cache_data, f, indent=2)
             logger.debug("Cached doc: %s", cache_path)
-        except IOError as e:
+        except OSError as e:
             logger.warning("Failed to cache doc: %s", e)
 
     def _get_cached_doc(self, url: str) -> Optional[ExternalDoc]:
@@ -333,7 +331,7 @@ class ExternalKnowledgeManager:
             return None
 
         try:
-            with open(cache_path, "r") as f:
+            with open(cache_path) as f:
                 cache_data = json.load(f)
 
             fetched_at = datetime.fromisoformat(cache_data["fetched_at"])
@@ -360,7 +358,7 @@ class ExternalKnowledgeManager:
 
             return doc
 
-        except (IOError, json.JSONDecodeError, KeyError) as e:
+        except (OSError, json.JSONDecodeError, KeyError) as e:
             logger.warning("Failed to read cached doc: %s", e)
             return None
 

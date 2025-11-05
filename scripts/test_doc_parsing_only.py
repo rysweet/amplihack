@@ -143,10 +143,9 @@ def main():
         logger.info("\n✓ ALL TESTS PASSED")
         logger.info("=" * 60)
         return 0
-    else:
-        logger.error("\n✗ TESTS FAILED (%d errors)", errors)
-        logger.info("=" * 60)
-        return 1
+    logger.error("\n✗ TESTS FAILED (%d errors)", errors)
+    logger.info("=" * 60)
+    return 1
 
 
 if __name__ == '__main__':

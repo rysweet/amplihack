@@ -46,7 +46,7 @@ def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
                 # Handle different data structures
                 if isinstance(data, list):
                     return data
-                elif isinstance(data, dict) and "messages" in data:
+                if isinstance(data, dict) and "messages" in data:
                     return data["messages"]
             except (OSError, json.JSONDecodeError):
                 continue

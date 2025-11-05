@@ -30,12 +30,10 @@ Usage:
 
 import logging
 import os
-import subprocess
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -48,17 +46,8 @@ from amplihack.memory.neo4j.connector import Neo4jConnector, CircuitState
 from amplihack.memory.neo4j.schema import SchemaManager
 from amplihack.memory.neo4j.memory_store import MemoryStore
 from amplihack.memory.neo4j.agent_memory import AgentMemoryManager
-from amplihack.memory.neo4j.retrieval import (
-    TemporalRetrieval,
-    SimilarityRetrieval,
-    GraphTraversal,
-    HybridRetrieval,
-    RetrievalContext,
-    IsolationLevel,
-)
 from amplihack.memory.neo4j.monitoring import (
     HealthMonitor,
-    MetricsCollector,
     get_global_metrics,
 )
 

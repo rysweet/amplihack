@@ -7,7 +7,6 @@ requiring real Docker or Neo4j instances.
 
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from pathlib import Path
 
 
 # =============================================================================

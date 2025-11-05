@@ -13,7 +13,6 @@ All tests should FAIL initially (TDD approach).
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-import subprocess
 
 
 class TestDockerDaemonCheck:

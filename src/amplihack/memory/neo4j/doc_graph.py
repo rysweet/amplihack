@@ -17,7 +17,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
 from .config import get_config
@@ -154,7 +154,7 @@ class DocGraphIntegration:
 
         logger.info("Parsing markdown documentation: %s", file_path)
 
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
 
         # Extract title (first heading)

@@ -20,8 +20,8 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from queue import Queue, Empty
-from unittest.mock import MagicMock, Mock, patch, call
+from queue import Queue
+from unittest.mock import MagicMock
 
 import pytest
 

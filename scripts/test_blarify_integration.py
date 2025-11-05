@@ -190,9 +190,8 @@ def test_schema_initialization(integration: BlarifyIntegration) -> bool:
     if success:
         logger.info("✓ Code schema initialized successfully")
         return True
-    else:
-        logger.error("✗ Schema initialization failed")
-        return False
+    logger.error("✗ Schema initialization failed")
+    return False
 
 
 def test_sample_import(integration: BlarifyIntegration, temp_file: Path) -> bool:
@@ -233,11 +232,10 @@ def test_sample_import(integration: BlarifyIntegration, temp_file: Path) -> bool
         if all_match:
             logger.info("✓ All counts match expected values")
             return True
-        else:
-            logger.warning("⚠ Some counts don't match expected values")
-            logger.warning("  Expected: %s", expected)
-            logger.warning("  Got:      %s", counts)
-            return False
+        logger.warning("⚠ Some counts don't match expected values")
+        logger.warning("  Expected: %s", expected)
+        logger.warning("  Got:      %s", counts)
+        return False
 
     except Exception as e:
         logger.error("✗ Import failed: %s", e)
@@ -280,9 +278,8 @@ def test_code_memory_relationships(
         if context["files"] or context["functions"]:
             logger.info("✓ Memory successfully linked to code")
             return True
-        else:
-            logger.warning("⚠ Memory not linked to any code")
-            return False
+        logger.warning("⚠ Memory not linked to any code")
+        return False
 
     except Exception as e:
         logger.error("✗ Code-memory linking failed: %s", e)
@@ -372,9 +369,8 @@ def test_incremental_update(integration: BlarifyIntegration, temp_file: Path) ->
         if stats["file_count"] == 4:  # 3 original + 1 new
             logger.info("✓ New file successfully added")
             return True
-        else:
-            logger.warning("⚠ File count unexpected: %d", stats["file_count"])
-            return False
+        logger.warning("⚠ File count unexpected: %d", stats["file_count"])
+        return False
 
     except Exception as e:
         logger.error("✗ Incremental update failed: %s", e)
@@ -438,9 +434,8 @@ def main():
             if passed == total:
                 logger.info("\n🎉 All tests passed! Blarify integration is working.")
                 return 0
-            else:
-                logger.warning("\n⚠ Some tests failed. Check logs above for details.")
-                return 1
+            logger.warning("\n⚠ Some tests failed. Check logs above for details.")
+            return 1
 
     except Exception as e:
         logger.error("Test suite failed: %s", e, exc_info=True)

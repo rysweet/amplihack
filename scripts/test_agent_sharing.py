@@ -25,7 +25,6 @@ from pathlib import Path
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from datetime import datetime
 
 from amplihack.memory.neo4j import (
     AgentMemoryManager,
@@ -250,7 +249,7 @@ def test_memory_usage_tracking():
 
     # Check updated statistics
     stats = architect.get_stats()
-    print(f"\nArchitect agent stats:")
+    print("\nArchitect agent stats:")
     print(f"  Total memories: {stats.get('total_memories', 0)}")
     print(f"  Average quality: {stats.get('avg_quality', 0.0):.2f}")
     print(f"  Total applications: {stats.get('total_applications', 0)}")

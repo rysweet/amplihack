@@ -8,7 +8,6 @@ import logging
 import os
 import platform
 import subprocess
-import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -76,10 +75,9 @@ class OSDetector:
 
         if system == "linux":
             return OSDetector._detect_linux()
-        elif system == "darwin":
+        if system == "darwin":
             return OSDetector._detect_macos()
-        else:
-            return {"type": "unknown", "version": "", "name": system}
+        return {"type": "unknown", "version": "", "name": system}
 
     @staticmethod
     def _detect_linux() -> Dict[str, str]:
@@ -126,17 +124,14 @@ class InstallStrategy(ABC):
     @abstractmethod
     def install_docker(self) -> Dependency:
         """Return dependency definition for Docker installation."""
-        pass
 
     @abstractmethod
     def install_docker_compose(self) -> Dependency:
         """Return dependency definition for Docker Compose installation."""
-        pass
 
     @abstractmethod
     def install_system_package(self, package: str) -> Dependency:
         """Return dependency definition for system package installation."""
-        pass
 
     def install_python_package(self, package: str) -> Dependency:
         """Return dependency definition for Python package installation.
@@ -542,7 +537,7 @@ class DependencyInstaller:
             }
         """
         self._log("=" * 60)
-        self._log(f"Starting dependency installation check")
+        self._log("Starting dependency installation check")
         self._log(f"OS: {self.os_info['name']} {self.os_info['version']}")
 
         # Phase 1: Detection

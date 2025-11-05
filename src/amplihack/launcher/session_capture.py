@@ -5,7 +5,6 @@ for export via ClaudeTranscriptBuilder.
 """
 
 import threading
-import time
 from datetime import datetime
 from typing import Any, Dict, List
 

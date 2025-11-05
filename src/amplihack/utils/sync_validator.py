@@ -109,13 +109,13 @@ def validate_hooks_sync(source_path: Path, template_path: Path) -> Tuple[bool, L
     """
     try:
         # Load source settings
-        with open(source_path, 'r', encoding='utf-8') as f:
+        with open(source_path, encoding='utf-8') as f:
             source_data = json.load(f)
 
         source_hooks = source_data.get('hooks', {})
 
         # Load template settings
-        with open(template_path, 'r', encoding='utf-8') as f:
+        with open(template_path, encoding='utf-8') as f:
             template_data = json.load(f)
 
         template_hooks = template_data.get('hooks', {})
@@ -153,15 +153,14 @@ def main() -> int:
     if is_valid:
         print("✅ Hooks are synchronized")
         return 0
-    else:
-        print("❌ Hooks are OUT OF SYNC")
-        print()
-        for error in errors:
-            print(f"  • {error}")
-        print()
-        print("To fix, run:")
-        print("  python scripts/sync_hooks.py")
-        return 1
+    print("❌ Hooks are OUT OF SYNC")
+    print()
+    for error in errors:
+        print(f"  • {error}")
+    print()
+    print("To fix, run:")
+    print("  python scripts/sync_hooks.py")
+    return 1
 
 
 if __name__ == '__main__':

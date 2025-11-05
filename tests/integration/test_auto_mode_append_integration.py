@@ -12,9 +12,8 @@ Following TDD approach - these tests should FAIL initially until all components 
 import sys
 import tempfile
 import time
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

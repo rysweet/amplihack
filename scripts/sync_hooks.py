@@ -85,7 +85,7 @@ def sync_hooks(
     try:
         # Load source settings
         print(f"Reading source: {source_path}")
-        with open(source_path, 'r', encoding='utf-8') as f:
+        with open(source_path, encoding='utf-8') as f:
             source_data = json.load(f)
 
         source_hooks = source_data.get('hooks', {})
@@ -93,7 +93,7 @@ def sync_hooks(
 
         # Load template settings
         print(f"Reading template: {template_path}")
-        with open(template_path, 'r', encoding='utf-8') as f:
+        with open(template_path, encoding='utf-8') as f:
             template_data = json.load(f)
 
         # Transform and update hooks
@@ -107,7 +107,7 @@ def sync_hooks(
             return True
 
         # Write atomically (temp file + rename)
-        print(f"Writing updated template...")
+        print("Writing updated template...")
         temp_fd, temp_path = tempfile.mkstemp(
             suffix='.json',
             dir=template_path.parent,
@@ -159,11 +159,10 @@ def check_sync(source_path: Path, template_path: Path) -> bool:
     if is_valid:
         print("✅ Hooks are synchronized")
         return True
-    else:
-        print("❌ Hooks are OUT OF SYNC")
-        for error in errors:
-            print(f"  • {error}")
-        return False
+    print("❌ Hooks are OUT OF SYNC")
+    for error in errors:
+        print(f"  • {error}")
+    return False
 
 
 def main() -> int:

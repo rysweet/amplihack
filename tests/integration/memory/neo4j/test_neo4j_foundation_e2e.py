@@ -14,8 +14,7 @@ All tests should FAIL initially (TDD approach).
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+from unittest.mock import patch, MagicMock
 import time
 
 

@@ -20,8 +20,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
-from threading import Event
+from unittest.mock import patch
 
 import pytest
 

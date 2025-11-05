@@ -108,7 +108,7 @@ print("Output (without memory):")
 print(baseline_output)
 print(f"\n⏱️  Time: {baseline_time:.2f}s")
 print(f"📊 Output length: {len(baseline_output)} characters")
-print(f"📝 Key points covered: 4")
+print("📝 Key points covered: 4")
 
 # Step 4: Simulate agent working WITH memory
 print("\n" + "="*70)
@@ -176,7 +176,7 @@ Based on {len(memories)} past implementations:
     print(memory_output)
     print(f"\n⏱️  Time: {memory_time:.2f}s")
     print(f"📊 Output length: {len(memory_output)} characters")
-    print(f"📝 Key points covered: 13")
+    print("📝 Key points covered: 13")
     print(f"🧠 Memories used: {len(memories)}")
 
 except Exception as e:
@@ -200,18 +200,18 @@ points_without = 4
 points_with = 13
 points_improvement = points_with - points_without
 
-print(f"\n⏱️  Execution Time:")
+print("\n⏱️  Execution Time:")
 print(f"   Without memory: {baseline_time:.2f}s")
 print(f"   With memory:    {memory_time:.2f}s")
 print(f"   → {time_improvement:+.1f}% {'faster' if time_improvement > 0 else 'slower'}")
 
-print(f"\n📊 Output Comprehensiveness:")
+print("\n📊 Output Comprehensiveness:")
 print(f"   Without memory: {len(baseline_output)} chars, 4 points")
 print(f"   With memory:    {len(memory_output)} chars, 13 points")
 print(f"   → {length_improvement:+.1f}% more detailed")
 print(f"   → {points_improvement:+d} additional considerations")
 
-print(f"\n🎯 Quality Improvements WITH Memory:")
+print("\n🎯 Quality Improvements WITH Memory:")
 print("   ✅ Token rotation (security improvement)")
 print("   ✅ httpOnly cookies (XSS protection)")
 print("   ✅ CSRF protection (SameSite cookies)")

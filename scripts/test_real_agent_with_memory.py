@@ -12,7 +12,6 @@ Usage:
     python scripts/test_real_agent_with_memory.py
 """
 
-import json
 import sys
 from pathlib import Path
 from typing import Any, Dict
@@ -314,9 +313,8 @@ def test_learning_extraction(agent_output: str, agent_types: list) -> bool:
             memory_ids = metadata.get("memory_ids", [])
             print(f"   Memory IDs: {memory_ids[:3]}...")  # Show first 3
             return True
-        else:
-            print("⚠️  No learnings extracted (may be expected for simple responses)")
-            return True  # Not a failure
+        print("⚠️  No learnings extracted (may be expected for simple responses)")
+        return True  # Not a failure
 
     except Exception as e:
         print(f"❌ Failed to extract learnings: {e}")
@@ -349,11 +347,10 @@ def verify_memory_persistence(memory_id: str) -> bool:
         found = any(mem.get("id") == memory_id for mem in memories)
 
         if found:
-            print(f"✅ Seeded memory still exists in Neo4j")
+            print("✅ Seeded memory still exists in Neo4j")
             return True
-        else:
-            print(f"❌ Seeded memory not found (may have been deleted)")
-            return False
+        print("❌ Seeded memory not found (may have been deleted)")
+        return False
 
     except Exception as e:
         print(f"❌ Failed to verify memory: {e}")

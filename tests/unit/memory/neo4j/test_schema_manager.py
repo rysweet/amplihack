@@ -11,7 +11,7 @@ All tests should FAIL initially (TDD approach).
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock
 
 
 class TestSchemaInitialization:

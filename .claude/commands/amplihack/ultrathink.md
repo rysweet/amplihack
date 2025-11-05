@@ -17,11 +17,59 @@ Deep analysis mode for complex tasks. Orchestrates multiple agents to break down
 When this command is invoked, you MUST:
 
 1. **First, read the workflow file** using FrameworkPathResolver.resolve_workflow_file() to get the correct path, then use the Read tool
-2. **Create a comprehensive todo list** using TodoWrite that includes all 13 workflow steps
+2. **Create a comprehensive todo list** using TodoWrite that includes all 15 workflow steps
 3. **Execute each step systematically**, marking todos as in_progress and completed
 4. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
 5. **Track decisions** by creating `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
 6. **End with cleanup agent** to ensure code quality
+
+## MANDATORY: Workflow Phase Announcements
+
+**CRITICAL REQUIREMENT**: For each workflow step you execute, you MUST announce the phase using this exact format:
+
+**Format**: 🎯 **STEP [N]: [PHASE NAME]** - [One-sentence purpose]
+
+**When to Announce**:
+
+1. **At Step Start**: Before beginning any work on a workflow step
+2. **When Adapting Workflow**: Explain how steps are being adapted for the task type
+3. **In Todo Lists**: Include step numbers in todo items for progress tracking
+
+**Examples**:
+
+```
+🎯 **STEP 1: REQUIREMENTS CLARIFICATION** - Removing ambiguity and defining success criteria
+🎯 **STEP 4: RESEARCH & DESIGN** - Architecting solution with TDD approach
+🎯 **STEP 5: IMPLEMENTATION** - Building solution following architecture design
+🎯 **STEP 11: PR REVIEW** - Conducting comprehensive code review
+```
+
+**Workflow Adaptation Announcement**:
+When adapting the development workflow for investigation, debugging, or other task types, announce:
+
+```
+🗺️ **WORKFLOW ADAPTATION** - Adapting development workflow for [task type]:
+- STEP 4: Architecture Design → Exploration Strategy
+- STEP 5: Implementation → Verification & Testing
+- STEP 15: Final Cleanup → Synthesis & Documentation
+```
+
+**Why This Matters**:
+
+- **Transparency**: Users know which workflow phase is active
+- **Auditability**: Reflection can verify workflow adherence
+- **Progress Tracking**: Users understand completion status (Step N of 15)
+- **Trust Building**: Demonstrates systematic approach is being followed
+
+**Todo List Format**:
+
+```
+- [in_progress] 🎯 STEP 1: Requirements Clarification
+- [pending] 🎯 STEP 2: GitHub Issue Creation
+- [pending] 🎯 STEP 3: Worktree & Branch Setup
+```
+
+See `.claude/context/WORKFLOW_PHASE_EXAMPLES.md` for comprehensive examples across different task types.
 
 ## PROMPT-BASED WORKFLOW EXECUTION
 
@@ -30,7 +78,7 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
 ### Step-by-Step Execution:
 
 1. **Initialize**:
-   - Read workflow file using FrameworkPathResolver to get the current 13-step process
+   - Read workflow file using FrameworkPathResolver to get the current 15-step process
    - Create TodoWrite list with all workflow steps
    - Create session directory for decision logging
 

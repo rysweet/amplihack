@@ -77,12 +77,12 @@ def print_neo4j_status(conn):
     print("📊 Neo4j Memory System - Status")
     print("="*70)
     print(f"\n✅ Connected to {stats['database']} {stats['version']}")
-    print(f"\n📈 Graph Statistics:")
+    print("\n📈 Graph Statistics:")
     print(f"   Nodes: {stats['node_count']:,}")
     print(f"   Relationships: {stats['relationship_count']:,}")
 
     if stats.get("label_counts"):
-        print(f"\n📋 Node Types:")
+        print("\n📋 Node Types:")
         for label, count in list(stats["label_counts"].items())[:10]:
             print(f"   {label}: {count:,}")
 

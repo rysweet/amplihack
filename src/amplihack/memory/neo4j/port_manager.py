@@ -8,7 +8,6 @@ Handles:
 """
 
 import logging
-import os
 import socket
 import subprocess
 from pathlib import Path
@@ -164,11 +163,11 @@ def resolve_port_conflicts(
         if is_neo4j and can_connect:
             messages.append(f"✅ Found existing Neo4j on port {bolt_port} (our credentials work - reusing)")
             return bolt_port, http_port, messages
-        elif is_neo4j and not can_connect:
+        if is_neo4j and not can_connect:
             # Neo4j on port but WRONG password - belongs to ANOTHER app!
             messages.append(f"⚠️  CONFLICT: Neo4j on port {bolt_port} belongs to another application")
-            messages.append(f"    (Cannot authenticate - different instance)")
-            messages.append(f"    Selecting alternative port to avoid interference...")
+            messages.append("    (Cannot authenticate - different instance)")
+            messages.append("    Selecting alternative port to avoid interference...")
 
             # MUST select different port - can't use this one
             new_bolt = find_available_port(bolt_port + 100)
@@ -176,7 +175,7 @@ def resolve_port_conflicts(
                 messages.append(f"✅ Selected safe alternative bolt port: {new_bolt}")
                 bolt_port = new_bolt
             else:
-                messages.append(f"❌ Could not find available bolt port")
+                messages.append("❌ Could not find available bolt port")
                 # Try wider range
                 new_bolt = find_available_port(8000, max_attempts=1000)
                 if new_bolt:
@@ -190,7 +189,7 @@ def resolve_port_conflicts(
                 messages.append(f"✅ Selected alternative bolt port: {new_bolt}")
                 bolt_port = new_bolt
             else:
-                messages.append(f"❌ Could not find available bolt port")
+                messages.append("❌ Could not find available bolt port")
 
     if http_in_use:
         new_http = find_available_port(http_port + 100)

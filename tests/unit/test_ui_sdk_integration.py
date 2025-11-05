@@ -19,8 +19,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, AsyncMock
-from typing import AsyncIterator
+from unittest.mock import Mock, patch
 
 import pytest
 
