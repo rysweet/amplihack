@@ -21,8 +21,8 @@ except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 # Import session management components
-from .session_capture import MessageCapture
-from .fork_manager import ForkManager
+from amplihack.launcher.session_capture import MessageCapture
+from amplihack.launcher.fork_manager import ForkManager
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
