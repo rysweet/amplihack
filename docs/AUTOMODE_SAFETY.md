@@ -150,19 +150,117 @@ wait
 git worktree remove ./worktrees/automode-{1..5}
 ```
 
+## Automatic Safety Validation (NEW - Strategy 3)
+
+**As of PR #XXXX (Issue #1090), automode now includes automatic git state validation:**
+
+### Pre-Flight Checks
+
+Before automode starts, it automatically validates:
+
+1. **Uncommitted Changes Check**: Detects uncommitted, staged, or untracked files
+2. **Active Session Detection**: Identifies existing Claude Code sessions
+
+If validation fails, automode **will not start** and displays:
+- Clear error message showing what's blocking execution
+- List of affected files (first 10, with count if more)
+- Specific suggestions to resolve the issue
+- Override option for advanced users
+
+### Example Error Message
+
+```
+PRE-FLIGHT VALIDATION FAILED
+================================================================================
+
+UNCOMMITTED CHANGES DETECTED
+  Directory: /Users/you/project
+  Risk: Automode operations may conflict with or overwrite uncommitted work
+  Uncommitted files:
+    Staged (2):
+      M src/module.py
+      M tests/test_module.py
+    Modified (1):
+      M README.md
+    Untracked (3):
+      ? new_feature.py
+      ? draft.md
+      ? .env.local
+
+  Recommendation: Commit or stash changes first
+    git add -A && git commit -m 'WIP: before automode'
+    # or
+    git stash
+
+================================================================================
+SAFETY OVERRIDE
+================================================================================
+If you understand the risks and want to proceed anyway:
+  amplihack claude --auto --force -- -p 'your task'
+================================================================================
+```
+
+### Override for Advanced Users
+
+If you need to bypass validation (use with caution):
+
+```bash
+amplihack claude --auto --force -- -p "your task"
+```
+
+**Warning:** Using `--force` disables all safety checks. Only use if you:
+- Understand the risks of data loss
+- Have backed up your work
+- Know what you're doing
+
+## Automatic Worktree Isolation (Strategy 2) ✅
+
+**NOW IMPLEMENTED**: Automode automatically uses git worktrees for complete isolation!
+
+### How It Works
+
+Automode now creates worktrees by default:
+
+```bash
+# Automatic worktree isolation (default behavior)
+amplihack claude --auto --max-turns 10 -- -p "implement feature"
+
+# Creates worktree: ./worktrees/automode-implement-feature-{timestamp}
+# Runs in complete isolation
+# Cleans up automatically when done
+```
+
+### Benefits
+
+- **Zero Manual Setup**: Worktrees created and cleaned up automatically
+- **Complete Isolation**: No conflicts with active session
+- **Parallel Safe**: Run multiple automode sessions simultaneously
+- **Data Protection**: Active directory never touched
+
+### Disable If Needed
+
+To run without worktree isolation (not recommended):
+
+```bash
+amplihack claude --auto --no-worktree -- -p "task"
+```
+
+**See [Automode Worktree Guide](AUTOMODE_WORKTREE_GUIDE.md) for complete documentation.**
+
 ## Future Improvements
 
-See issue #1090 for planned improvements:
-- Add safety warnings to /amplihack:auto command
-- Pre-flight validation (uncommitted changes warning)
-- --working-dir flag for explicit directory control
-- Automatic worktree creation option
+Additional improvements planned (see issue #1090):
+- ✅ **DONE**: Pre-flight validation (uncommitted changes warning) - Strategy 3
+- ✅ **DONE**: Automatic worktree creation - Strategy 2
+- Strategy 1 under evaluation in parallel PR
+- Compare all 3 strategies for best approach
 
 ## Related
-- Issue #1090: Automode safety improvements
+- Issue #1090: Automode safety improvements (3 parallel strategies)
+- PR #XXXX: Strategy 3 - Git State Guard (this implementation)
 - PR #1083: Had to reconstruct lost changes
 - `.claude/commands/amplihack/auto.md`: Automode documentation
 
 ---
 
-**Remember:** Automode is powerful but needs isolation. Always commit first or use worktrees!
+**Remember:** Automode now protects you automatically, but you can still use worktrees for complete isolation!

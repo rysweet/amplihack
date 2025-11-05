@@ -80,6 +80,8 @@ class AutoMode:
         max_turns: int = 10,
         working_dir: Optional[Path] = None,
         ui_mode: bool = False,
+        allow_dirty: bool = False,
+        use_worktree: bool = True,
     ):
         """Initialize auto mode.
 
@@ -89,15 +91,28 @@ class AutoMode:
             max_turns: Max iterations (default 10)
             working_dir: Working directory (defaults to current dir)
             ui_mode: Enable interactive UI mode (requires Rich library)
+            allow_dirty: Allow running with uncommitted git changes (advanced users only)
+            use_worktree: Use git worktree for isolation (default True)
         """
         self.sdk = sdk
         self.prompt = prompt
         self.max_turns = max_turns
         self.turn = 0
         self.start_time = 0.0  # Will be set when run() starts
-        self.working_dir = working_dir if working_dir is not None else Path.cwd()
+        self.use_worktree = use_worktree
+        self.worktree_manager = None
+        self.original_dir = Path.cwd()
+
+        # Set working directory based on worktree mode
+        if use_worktree:
+            # Will be set after worktree creation in run()
+            self.working_dir = self.original_dir
+        else:
+            self.working_dir = working_dir if working_dir is not None else Path.cwd()
+
         self.ui_enabled = ui_mode
         self.ui = None
+        self.allow_dirty = allow_dirty
         self.log_dir = (
             self.working_dir / ".claude" / "runtime" / "logs" / f"auto_{sdk}_{int(time.time())}"
         )
@@ -749,7 +764,50 @@ Document your decisions and reasoning in comments/logs."""
         """Execute agentic loop.
 
         Routes to async session for Claude SDK or sync session for subprocess-based SDKs.
+
+        Note: Git state validation happens in CLI layer via preflight.py before AutoMode is created.
+        The allow_dirty parameter is preserved for potential future use but validation occurs earlier.
         """
+        # Set up worktree if enabled
+        if self.use_worktree:
+            try:
+                from .worktree_manager import WorktreeManager, WorktreeError
+
+                self.worktree_manager = WorktreeManager(self.original_dir)
+
+                # Extract task hint from prompt (first 50 chars, sanitized)
+                task_hint = self.prompt[:50].strip()
+
+                self.log(f"Creating isolated worktree for automode session...")
+                worktree_path, branch_name = self.worktree_manager.create_worktree(task_hint)
+                self.working_dir = worktree_path
+                self.log(f"✓ Worktree created: {worktree_path}")
+                self.log(f"✓ Branch: {branch_name}")
+
+                # Update log_dir to be in the worktree
+                self.log_dir = (
+                    self.working_dir
+                    / ".claude"
+                    / "runtime"
+                    / "logs"
+                    / f"auto_{self.sdk}_{int(time.time())}"
+                )
+                self.log_dir.mkdir(parents=True, exist_ok=True)
+
+                # Recreate append directories in worktree
+                self.append_dir = self.log_dir / "append"
+                self.appended_dir = self.log_dir / "appended"
+                self.append_dir.mkdir(parents=True, exist_ok=True)
+                self.appended_dir.mkdir(parents=True, exist_ok=True)
+
+            except WorktreeError as e:
+                self.log(f"Failed to create worktree: {e}", level="ERROR")
+                self.log("Falling back to current directory (not recommended)", level="WARNING")
+                self.use_worktree = False
+            except ImportError:
+                self.log("WorktreeManager not available, running in current directory", level="WARNING")
+                self.use_worktree = False
+
         # Start UI thread if enabled
         self._start_ui_thread()
 
@@ -763,6 +821,15 @@ Document your decisions and reasoning in comments/logs."""
         finally:
             # Always stop UI thread when done
             self._stop_ui_thread()
+
+            # Clean up worktree if created
+            if self.use_worktree and self.worktree_manager:
+                try:
+                    self.log("Cleaning up worktree...")
+                    self.worktree_manager.cleanup_worktree()
+                    self.log("✓ Worktree cleaned up")
+                except Exception as e:
+                    self.log(f"Warning: Failed to clean up worktree: {e}", level="WARNING")
 
     def _run_sync_session(self) -> int:
         """Execute agentic loop using subprocess-based SDK calls (Copilot/fallback)."""
