@@ -50,6 +50,61 @@ This workflow should be followed for:
 - [ ] Document acceptance criteria
 - [ ] **CRITICAL: Pass explicit requirements to ALL subsequent agents**
 
+### Step 1.5: Analyze Task for Verbosity Adjustment
+
+**Purpose**: Dynamically adjust message frequency based on task complexity and type to match user's verbosity preference appropriately.
+
+**Reference**: See `.claude/context/VERBOSITY_MATRIX.md` for complete guidance.
+
+Before proceeding with execution:
+
+1. **Assess Task Complexity** (1-13 scale):
+   - Count affected files/components (1-2 = Simple, 3-7 = Moderate, 8+ = Complex)
+   - Identify integration points (external dependencies, APIs, services)
+   - Evaluate architectural impact (breaking changes, new modules, refactoring)
+   - Assign complexity score: Simple (1-4), Moderate (5-8), Complex (9-13)
+
+2. **Identify Task Type** (keyword analysis):
+   - **Investigation**: "investigate", "explain", "understand", "how does", "why", "analyze"
+   - **Implementation**: "add", "create", "build", "implement", "develop", "write"
+   - **Debugging**: "fix", "debug", "resolve", "error", "issue", "problem"
+   - **Refactoring**: "refactor", "restructure", "simplify", "cleanup", "reorganize"
+   - Select primary type based on keyword matches
+
+3. **Look Up Verbosity Setting**:
+   - Read `.claude/context/USER_PREFERENCES.md`
+   - Extract current verbosity value: concise/balanced/detailed
+
+4. **Calculate Target Message Count**:
+   - Use VERBOSITY_MATRIX.md table
+   - Look up [user preference × complexity level × task type]
+   - Note target message range (e.g., "30-45 messages")
+   - Note update frequency (Minimal/Regular/Frequent/Verbose)
+
+5. **Log Verbosity Decision** (in session logs):
+
+   ```
+   Verbosity Analysis:
+   - Task Complexity: [score]/13 ([Simple/Moderate/Complex])
+   - Task Type: [Investigation/Implementation/Debugging/Refactoring]
+   - User Preference: [concise/balanced/detailed]
+   - Target Message Count: [min-max] messages
+   - Update Frequency: [Minimal/Regular/Frequent/Verbose]
+   ```
+
+6. **Apply Message Batching Rules** (throughout session):
+   - **Rule 1**: Batch independent tool calls (5 messages → 1 message, 80% reduction)
+   - **Rule 2**: Combine status with action (3 messages → 1-2 messages, 33-50% reduction)
+   - **Rule 3**: Summary over play-by-play (5 messages → 1-2 messages, 60-80% reduction)
+   - Follow update frequency guidelines from matrix
+   - Aim for target message range (some variance acceptable)
+
+**Examples**:
+
+- **Moderate Investigation + Balanced**: Target 30-45 messages, Regular frequency
+- **Simple Implementation + Concise**: Target 12-18 messages, Minimal frequency
+- **Complex Debugging + Detailed**: Target 100-140 messages, Verbose frequency
+
 ### Step 2: Create GitHub Issue
 
 - [ ] **Use** GitHub issue creation tool via agent
@@ -154,9 +209,11 @@ This workflow should be followed for:
 - [ ] Request appropriate reviewers
 
 **Important**: When using `gh` commands, always pipe through `cat` to ensure output is displayed:
+
 ```bash
 gh pr create --title "..." --body "..." 2>&1 | cat
 ```
+
 This ensures you see success messages, error details, and PR URLs.
 
 ### Step 11: Review the PR
