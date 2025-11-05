@@ -100,11 +100,21 @@ class ClaudeLauncher:
             print("Failed to determine target directory")
             return False
 
-        # 4. Handle directory change if needed (unless UVX with --add-dir)
+        # 4. Ensure required runtime directories exist
+        if not self._ensure_runtime_directories(target_dir):
+            print("Warning: Could not create runtime directories")
+            # Don't fail - just warn
+
+        # 5. Fix hook paths in settings.json to use absolute paths
+        if not self._fix_hook_paths_in_settings(target_dir):
+            print("Warning: Could not fix hook paths in settings.json")
+            # Don't fail - hooks might still work
+
+        # 6. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 5. Start proxy if needed
+        # 7. Start proxy if needed
         return self._start_proxy_if_needed()
 
     def _handle_repo_checkout(self) -> bool:
@@ -380,6 +390,104 @@ class ClaudeLauncher:
             cmd.extend(self.claude_args)
 
         return cmd
+
+    def _ensure_runtime_directories(self, target_dir: Path) -> bool:
+        """Ensure required runtime directories exist.
+
+        Creates:
+        - .claude/runtime/locks (for lock-based continuous work)
+        - .claude/runtime/reflection (for reflection system)
+        - .claude/runtime/logs (for session logs)
+        - .claude/runtime/metrics (for hook metrics)
+
+        Args:
+            target_dir: Project root directory
+
+        Returns:
+            True if successful, False on error
+        """
+        try:
+            runtime_dir = target_dir / ".claude" / "runtime"
+
+            # Create all required directories
+            required_dirs = [
+                runtime_dir / "locks",
+                runtime_dir / "reflection",
+                runtime_dir / "logs",
+                runtime_dir / "metrics",
+            ]
+
+            for dir_path in required_dirs:
+                dir_path.mkdir(parents=True, exist_ok=True)
+
+            print(f"✓ Runtime directories ensured in {runtime_dir}")
+            return True
+
+        except (OSError, PermissionError) as e:
+            print(f"Warning: Could not create runtime directories: {e}")
+            return False
+
+    def _fix_hook_paths_in_settings(self, target_dir: Path) -> bool:
+        """Fix hook paths in settings.json to use absolute paths.
+
+        Replaces $CLAUDE_PROJECT_DIR with actual absolute project path.
+        This ensures hooks work reliably even when Claude Code doesn't
+        properly evaluate environment variables.
+
+        Args:
+            target_dir: Project root directory
+
+        Returns:
+            True if successful or no changes needed, False on error
+        """
+        import json
+
+        settings_file = target_dir / ".claude" / "settings.json"
+
+        if not settings_file.exists():
+            # No settings file, nothing to fix
+            return True
+
+        try:
+            # Read current settings
+            with open(settings_file) as f:
+                settings = json.load(f)
+
+            # Check if hooks exist and contain $CLAUDE_PROJECT_DIR
+            if "hooks" not in settings:
+                return True
+
+            hooks_modified = False
+            project_dir_str = str(target_dir.resolve())
+
+            # Recursively replace $CLAUDE_PROJECT_DIR in hook commands
+            def replace_in_hooks(obj):
+                nonlocal hooks_modified
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        if key == "command" and isinstance(value, str):
+                            if "$CLAUDE_PROJECT_DIR" in value:
+                                obj[key] = value.replace("$CLAUDE_PROJECT_DIR", project_dir_str)
+                                hooks_modified = True
+                        else:
+                            replace_in_hooks(value)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        replace_in_hooks(item)
+
+            replace_in_hooks(settings["hooks"])
+
+            if hooks_modified:
+                # Write back with absolute paths
+                with open(settings_file, "w") as f:
+                    json.dump(settings, f, indent=2)
+                print(f"✓ Fixed hook paths in {settings_file.relative_to(target_dir)}")
+
+            return True
+
+        except (OSError, json.JSONDecodeError, PermissionError) as e:
+            print(f"Warning: Could not fix hook paths: {e}")
+            return False
 
     def launch(self) -> int:
         """Launch Claude Code with configuration.
