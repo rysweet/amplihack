@@ -226,24 +226,72 @@ def interactive_neo4j_startup() -> bool:
 
 
 def _check_code_understanding_freshness():
-    """Check if Code Understanding Engine needs updating."""
+    """Check if Code Understanding Engine needs updating or initial ingestion."""
     try:
-        from .code_freshness import is_code_index_stale
+        from .code_freshness import is_code_index_stale, get_code_index_last_updated
         from .connector import Neo4jConnector
+        from .code_graph import BlarifyIntegration
+        import threading
 
         with Neo4jConnector() as conn:
             project_root = Path.cwd()
-            is_stale, reason = is_code_index_stale(project_root, conn, max_age_minutes=120)
 
-            if is_stale:
+            # Check if EVER indexed
+            last_updated = get_code_index_last_updated(conn)
+
+            if last_updated is None:
+                # Never indexed - offer to ingest
                 print("="*70)
-                print("📚 Code Understanding Engine")
+                print("📚 Code Understanding Engine - Initial Setup")
                 print("="*70)
-                print(f"\n{reason}")
-                print("\n💡 The Code Understanding Engine helps agents understand your codebase")
-                print("   by maintaining a graph of code structure and relationships.")
-                print(f"\nTo update: amplihack memory update-code-index")
+                print("\n🆕 Your codebase has not been indexed yet!")
+                print("\n💡 The Code Understanding Engine analyzes your code to help agents")
+                print("   understand structure, relationships, and patterns.")
+                print(f"\n📊 Estimated: ~5 seconds for small projects, ~30s for large ones")
+
+                response = input("\n🤔 Index codebase now? (y/n/background): ").strip().lower()
+
+                if response == "y":
+                    print("\n⏳ Indexing codebase (this may take a moment)...")
+                    blarify = BlarifyIntegration(conn)
+                    try:
+                        result = blarify.run_blarify(str(project_root))
+                        if result:
+                            print(f"✅ Indexed! Created {result.get('files', 0)} files, {result.get('classes', 0)} classes, {result.get('functions', 0)} functions")
+                    except Exception as e:
+                        print(f"⚠️  Indexing failed: {e}")
+                        print("   You can index later with: amplihack memory update-code-index")
+
+                elif response == "background":
+                    print("\n🔄 Starting background indexing...")
+                    def _index_in_background():
+                        try:
+                            with Neo4jConnector() as bg_conn:
+                                blarify = BlarifyIntegration(bg_conn)
+                                blarify.run_blarify(str(project_root))
+                        except Exception as e:
+                            logger.error("Background indexing failed: %s", e)
+
+                    thread = threading.Thread(target=_index_in_background, daemon=True)
+                    thread.start()
+                    print("✅ Indexing started in background (won't block startup)")
+
+                else:
+                    print("\n⏭️  Skipped. You can index later with: amplihack memory update-code-index")
+
                 print("="*70 + "\n")
+
+            else:
+                # Previously indexed - check freshness
+                is_stale, reason = is_code_index_stale(project_root, conn, max_age_minutes=120)
+
+                if is_stale:
+                    print("="*70)
+                    print("📚 Code Understanding Engine")
+                    print("="*70)
+                    print(f"\n{reason}")
+                    print("\n💡 To update: amplihack memory update-code-index")
+                    print("="*70 + "\n")
 
     except Exception as e:
         logger.debug("Code freshness check failed: %s", e)
