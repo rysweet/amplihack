@@ -109,7 +109,9 @@ class TestGetVersion:
                     gv()
 
                 assert "Cannot determine version" in str(exc_info.value)
-                assert "Neither pyproject.toml nor package metadata available" in str(exc_info.value)
+                assert "Neither pyproject.toml nor package metadata available" in str(
+                    exc_info.value
+                )
 
     def test_get_version_missing_version_field(self):
         """Verify RuntimeError raised when version field is missing and package metadata unavailable."""
@@ -120,14 +122,18 @@ class TestGetVersion:
             with patch("builtins.open", mock_open(read_data=b"")):
                 with patch.object(tomllib, "load", return_value=mock_toml_data):
                     # Also mock importlib.metadata.version to fail
-                    with patch("importlib.metadata.version", side_effect=Exception("Package not found")):
+                    with patch(
+                        "importlib.metadata.version", side_effect=Exception("Package not found")
+                    ):
                         with pytest.raises(RuntimeError) as exc_info:
                             from amplihack.version import get_version as gv
 
                             gv()
 
                         assert "Cannot determine version" in str(exc_info.value)
-                        assert "Neither pyproject.toml nor package metadata available" in str(exc_info.value)
+                        assert "Neither pyproject.toml nor package metadata available" in str(
+                            exc_info.value
+                        )
 
     def test_get_version_consistency(self):
         """Verify get_version() returns consistent results across multiple calls."""

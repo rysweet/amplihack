@@ -7,7 +7,6 @@ communication with the UI.
 
 import threading
 import time
-from pathlib import Path
 from typing import Callable, Optional
 
 from .auto_mode_state import AutoModeState
@@ -27,8 +26,12 @@ class AutoModeCoordinator:
         state_callback: Optional callback for state updates
     """
 
-    def __init__(self, auto_mode, state: AutoModeState,
-                 state_callback: Optional[Callable[[AutoModeState], None]] = None):
+    def __init__(
+        self,
+        auto_mode,
+        state: AutoModeState,
+        state_callback: Optional[Callable[[AutoModeState], None]] = None,
+    ):
         """Initialize coordinator.
 
         Args:
@@ -58,9 +61,7 @@ class AutoModeCoordinator:
 
         # Create and start execution thread
         self.execution_thread = threading.Thread(
-            target=self._run_with_state_updates,
-            name="AutoModeExecution",
-            daemon=False
+            target=self._run_with_state_updates, name="AutoModeExecution", daemon=False
         )
         self.execution_thread.start()
 

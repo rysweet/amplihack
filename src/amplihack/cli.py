@@ -277,10 +277,18 @@ def create_parser() -> argparse.ArgumentParser:
   amplihack install -- --verbose             # Install with Claude args forwarded
 
 Auto Mode Examples:
+  Auto mode runs an autonomous agentic loop: clarify → plan → execute → evaluate
+  Note: Requires '-- -p' syntax to pass prompt to the underlying CLI
+
   amplihack launch --auto -- -p "implement user authentication"
   amplihack claude --auto --max-turns 20 -- -p "refactor the API module"
   amplihack copilot --auto -- -p "add logging to all services"
   amplihack codex --auto -- -p "optimize database queries"
+
+  Max-turns guidance:
+    5-10   - Simple tasks (bug fixes, small features)
+    10-15  - Medium complexity (module refactoring, feature additions)
+    15-30  - Complex tasks (multi-module changes, system redesigns)
 
 For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -321,13 +329,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     launch_parser.add_argument(
         "--auto",
         action="store_true",
-        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+        help="Run in autonomous agentic mode. Executes an iterative workflow: (1) clarify objectives with measurable criteria, (2) create detailed execution plan identifying parallel opportunities, (3) execute autonomously, (4) evaluate progress after each turn. Continues until objective achieved or max turns reached. Required syntax: --auto -- -p 'your task'. See docs/AUTO_MODE.md for full documentation.",
     )
     launch_parser.add_argument(
         "--max-turns",
         type=int,
         default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+        help="Maximum turns for auto mode (default: 10). Choose based on task complexity: 5-10 for simple tasks (bug fixes, small features), 10-15 for medium complexity (module refactoring, feature additions), 15-30 for complex tasks (multi-module changes, system redesigns). Auto mode will stop early if objective is achieved before reaching max turns.",
     )
     launch_parser.add_argument(
         "--append",
@@ -349,13 +357,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     claude_parser.add_argument(
         "--auto",
         action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Required syntax: --auto -- -p 'your task'. See docs/AUTO_MODE.md for full documentation.",
     )
     claude_parser.add_argument(
         "--max-turns",
         type=int,
         default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+        help="Maximum turns for auto mode (default: 10). Complexity guidance: 5-10 (simple), 10-15 (medium), 15-30 (complex). Auto mode stops early if objective achieved.",
     )
     claude_parser.add_argument(
         "--append",
@@ -373,13 +381,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     copilot_parser.add_argument(
         "--auto",
         action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Required syntax: --auto -- -p 'your task'. See docs/AUTO_MODE.md for full documentation.",
     )
     copilot_parser.add_argument(
         "--max-turns",
         type=int,
         default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+        help="Maximum turns for auto mode (default: 10). Complexity guidance: 5-10 (simple), 10-15 (medium), 15-30 (complex). Auto mode stops early if objective achieved.",
     )
     copilot_parser.add_argument(
         "--ui",
@@ -392,13 +400,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     codex_parser.add_argument(
         "--auto",
         action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Required syntax: --auto -- -p 'your task'. See docs/AUTO_MODE.md for full documentation.",
     )
     codex_parser.add_argument(
         "--max-turns",
         type=int,
         default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+        help="Maximum turns for auto mode (default: 10). Complexity guidance: 5-10 (simple), 10-15 (medium), 15-30 (complex). Auto mode stops early if objective achieved.",
     )
     codex_parser.add_argument(
         "--ui",

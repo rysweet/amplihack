@@ -34,7 +34,9 @@ def template_path(project_root):
 def test_normalize_hook_path():
     """Test hook path normalization."""
     # Test with $CLAUDE_PROJECT_DIR prefix
-    assert normalize_hook_path("$CLAUDE_PROJECT_DIR/.claude/tools/hook.py") == ".claude/tools/hook.py"
+    assert (
+        normalize_hook_path("$CLAUDE_PROJECT_DIR/.claude/tools/hook.py") == ".claude/tools/hook.py"
+    )
 
     # Test without prefix
     assert normalize_hook_path(".claude/tools/hook.py") == ".claude/tools/hook.py"
@@ -84,7 +86,7 @@ def test_normalize_hooks_dict_preserves_structure():
                     {
                         "type": "command",
                         "command": "$CLAUDE_PROJECT_DIR/.claude/tools/hook.py",
-                        "timeout": 10000
+                        "timeout": 10000,
                     }
                 ]
             }
@@ -102,13 +104,8 @@ def test_normalize_hooks_dict_preserves_structure():
 
 def test_compare_hooks_detects_missing():
     """Test that compare_hooks detects missing hooks."""
-    source = {
-        "SessionStart": [],
-        "UserPromptSubmit": []
-    }
-    template = {
-        "SessionStart": []
-    }
+    source = {"SessionStart": [], "UserPromptSubmit": []}
+    template = {"SessionStart": []}
 
     errors = compare_hooks(source, template)
     assert len(errors) > 0
@@ -117,13 +114,8 @@ def test_compare_hooks_detects_missing():
 
 def test_compare_hooks_detects_extra():
     """Test that compare_hooks detects unexpected hooks."""
-    source = {
-        "SessionStart": []
-    }
-    template = {
-        "SessionStart": [],
-        "UnknownHook": []
-    }
+    source = {"SessionStart": []}
+    template = {"SessionStart": [], "UnknownHook": []}
 
     errors = compare_hooks(source, template)
     assert len(errors) > 0

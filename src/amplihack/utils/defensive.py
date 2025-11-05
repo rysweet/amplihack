@@ -21,25 +21,17 @@ T = TypeVar("T")
 class DefensiveError(Exception):
     """Base exception for defensive utility errors."""
 
-    pass
-
 
 class JSONExtractionError(DefensiveError):
     """Failed to extract valid JSON from LLM response."""
-
-    pass
 
 
 class RetryExhaustedError(DefensiveError):
     """Retry attempts exhausted without success."""
 
-    pass
-
 
 class FileOperationError(DefensiveError):
     """File operation failed after retries."""
-
-    pass
 
 
 def parse_llm_json(response: str, strict: bool = False) -> Dict[str, Any]:
@@ -94,7 +86,7 @@ def parse_llm_json(response: str, strict: bool = False) -> Dict[str, Any]:
     # Strategy 3: Find JSON object or array in text
     # Look for balanced braces/brackets (greedy to capture full structure)
     # Start by finding opening brace/bracket and count to find matching closing
-    for start_char, end_char in [('{', '}'), ('[', ']')]:
+    for start_char, end_char in [("{", "}"), ("[", "]")]:
         start_idx = response.find(start_char)
         if start_idx == -1:
             continue
@@ -108,7 +100,7 @@ def parse_llm_json(response: str, strict: bool = False) -> Dict[str, Any]:
                 depth -= 1
                 if depth == 0:
                     # Found complete JSON structure
-                    candidate = response[start_idx:i+1]
+                    candidate = response[start_idx : i + 1]
                     try:
                         return json.loads(candidate)
                     except json.JSONDecodeError:
@@ -125,8 +117,7 @@ def parse_llm_json(response: str, strict: bool = False) -> Dict[str, Any]:
 
     # All strategies failed
     raise JSONExtractionError(
-        f"Could not extract valid JSON from response. "
-        f"First 200 chars: {response[:200]}"
+        f"Could not extract valid JSON from response. First 200 chars: {response[:200]}"
     )
 
 
@@ -194,8 +185,7 @@ def retry_with_feedback(
             if feedback is not None and error_handler is not None:
                 # Function should accept feedback kwarg
                 return func(feedback=feedback)
-            else:
-                return func()
+            return func()
 
         except Exception as exc:
             last_exception = exc
@@ -285,7 +275,10 @@ def _sanitize_prompt_injection(prompt: str) -> str:
     # Remove common injection patterns - match whole phrases
     dangerous_patterns = [
         (r"ignore\s+(?:all\s+)?(?:previous|above|prior)\s+instructions?", "ignore instructions"),
-        (r"disregard\s+(?:all\s+)?(?:previous|above|prior)\s+instructions?", "disregard instructions"),
+        (
+            r"disregard\s+(?:all\s+)?(?:previous|above|prior)\s+instructions?",
+            "disregard instructions",
+        ),
         (r"forget\s+(?:all\s+)?(?:previous|above|prior)\s+instructions?", "forget instructions"),
         (r"new\s+instructions?\s*:", "new instructions"),
         (r"(?:^|\s)system\s*:", "system:"),
@@ -339,7 +332,7 @@ def read_file_with_retry(
         try:
             return path.read_text(encoding=encoding)
 
-        except (OSError, IOError, PermissionError) as exc:
+        except (OSError, PermissionError) as exc:
             last_exception = exc
 
             # Last attempt - don't retry
@@ -405,7 +398,7 @@ def write_file_with_retry(
             path.write_text(content, encoding=encoding)
             return  # Success
 
-        except (OSError, IOError, PermissionError) as exc:
+        except (OSError, PermissionError) as exc:
             last_exception = exc
 
             # Last attempt - don't retry

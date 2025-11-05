@@ -164,7 +164,7 @@ cd my-project
 
 Create `AGENTS.md` with your project's context:
 
-```markdown
+````markdown
 # My Blog Platform Context
 
 This file provides guidance to AI agents working on this blog platform.
@@ -202,6 +202,7 @@ src/
 content/            # Blog posts (Markdown)
 public/             # Static assets
 ```
+````
 
 ## Development Workflow
 
@@ -231,7 +232,8 @@ This project leverages amplihack's design philosophy:
 - **Modular design**: Follow @.claude/context/PHILOSOPHY.md for architectural decisions
 - **Agent support**: Use `/amplihack:ultrathink` for architectural analysis
 - **Code transformations**: Use `/amplihack:codemod` for refactoring tasks
-```
+
+````
 
 The key is making this document useful for both AI agents and human developers. It should answer: What is this project? How is it architected? What conventions do we follow? What should I avoid?
 
@@ -241,7 +243,7 @@ For larger projects, consider documenting your architectural principles separate
 
 ```bash
 mkdir -p docs
-```
+````
 
 Create `docs/DESIGN_PHILOSOPHY.md`:
 
@@ -309,18 +311,21 @@ This establishes boundaries from the start. The `@` prefix creates namespace cla
 amplihack's command system is available throughout your workspace and provides powerful capabilities for project work:
 
 **Analysis and Planning:**
+
 ```
 /amplihack:ultrathink - Deep analysis with extended thinking time
 /amplihack:modular-build - Build self-contained modules with clear contracts
 ```
 
 **Code Transformations:**
+
 ```
 /amplihack:fix - Automated error fixing and code improvements
 /amplihack:improve - Capture learnings and implement improvements
 ```
 
 **Knowledge and Context:**
+
 ```
 /amplihack:analyze - Comprehensive codebase analysis
 /amplihack:knowledge-builder - Build comprehensive knowledge base
@@ -437,6 +442,7 @@ amplihack's agent system provides powerful project-level customization. Your pro
 ### Agent Constraints
 
 When working with amplihack agents on this project:
+
 - All suggestions must maintain static-first architecture
 - Database proposals should be immediately rejected
 - New dependencies require explicit justification

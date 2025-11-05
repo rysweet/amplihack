@@ -6,7 +6,6 @@ Uses unified HookProcessor for common functionality.
 
 # Import the base processor
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
@@ -139,7 +138,9 @@ class SessionStartHook(HookProcessor):
 
                 # Inject FULL preferences content with MANDATORY enforcement
                 context_parts.append("\n## 🎯 USER PREFERENCES (MANDATORY - MUST FOLLOW)")
-                context_parts.append("\nThe following preferences are REQUIRED and CANNOT be ignored:\n")
+                context_parts.append(
+                    "\nThe following preferences are REQUIRED and CANNOT be ignored:\n"
+                )
                 context_parts.append(full_prefs_content)
 
                 self.log("Injected full USER_PREFERENCES.md content into session")

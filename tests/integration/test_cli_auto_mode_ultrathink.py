@@ -8,7 +8,7 @@ Following test pyramid: 30% integration tests for workflow verification.
 """
 
 import argparse
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

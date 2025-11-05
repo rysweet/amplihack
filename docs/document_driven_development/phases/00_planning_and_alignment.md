@@ -17,6 +17,7 @@ Establish clear, shared understanding of what will be built before touching any 
 ### Step 1: Problem Framing
 
 **Human presents**:
+
 - High-level problem or requirement
 - Scope and constraints
 - Success criteria
@@ -27,6 +28,7 @@ Establish clear, shared understanding of what will be built before touching any 
 ### Step 2: Reconnaissance
 
 **AI performs reconnaissance**:
+
 - "What's the current state of X in the codebase?"
 - "What files would be affected?"
 - "What patterns exist to follow?"
@@ -36,12 +38,14 @@ Establish clear, shared understanding of what will be built before touching any 
 ### Step 3: Brainstorming & Proposals
 
 **AI generates 2-3 options**:
+
 - Different approaches
 - Trade-offs for each
 - Complexity assessment
 - Philosophy alignment
 
 **Iterate together**:
+
 - Human injects domain knowledge
 - AI identifies technical constraints
 - Discuss and refine
@@ -49,6 +53,7 @@ Establish clear, shared understanding of what will be built before touching any 
 ### Step 4: Shared Understanding Check
 
 **Verification**:
+
 - Ask AI to articulate the plan back
 - Does AI's explanation match your mental model?
 - Are there any gaps or misunderstandings?
@@ -58,11 +63,13 @@ Establish clear, shared understanding of what will be built before touching any 
 ### Step 5: Capture the Plan
 
 **For within-turn work**:
+
 - AI uses TodoWrite to track steps
 - System enforces completion
 - AI can modify as discoveries made
 
 **For multi-turn work**:
+
 - Create file in `ai_working/` directory
 - Track phases and blockers
 - Update as work progresses
@@ -75,6 +82,7 @@ Establish clear, shared understanding of what will be built before touching any 
 ## Output of Phase 0
 
 When complete:
+
 - ✅ Shared mental model established
 - ✅ Plan captured (TodoWrite or ai_working/ file)
 - ✅ Reconnaissance complete
@@ -89,12 +97,14 @@ When complete:
 ## Tips
 
 **For Humans**:
+
 - Be patient - get this right before proceeding
 - Challenge AI's assumptions
 - Provide clear direction
 - Approve explicitly when aligned
 
 **For AI**:
+
 - Show your reconnaissance findings
 - Present multiple options
 - Be honest about trade-offs

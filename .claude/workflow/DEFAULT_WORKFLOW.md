@@ -154,9 +154,11 @@ This workflow should be followed for:
 - [ ] Request appropriate reviewers
 
 **Important**: When using `gh` commands, always pipe through `cat` to ensure output is displayed:
+
 ```bash
 gh pr create --title "..." --body "..." 2>&1 | cat
 ```
+
 This ensures you see success messages, error details, and PR URLs.
 
 ### Step 11: Review the PR
