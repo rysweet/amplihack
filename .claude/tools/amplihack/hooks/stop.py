@@ -17,7 +17,15 @@ from typing import Any, Dict, Optional
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
-from hook_processor import HookProcessor
+
+# Import HookProcessor - wrap in try/except for robustness
+try:
+    from hook_processor import HookProcessor  # type: ignore[import]
+except ImportError as e:
+    # If import fails, provide helpful error message
+    print(f"Failed to import hook_processor: {e}", file=sys.stderr)
+    print("Make sure hook_processor.py exists in the same directory", file=sys.stderr)
+    sys.exit(1)
 
 
 class StopHook(HookProcessor):
@@ -29,7 +37,7 @@ class StopHook(HookProcessor):
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Check lock flag and block stop if active.
-Also trigger reflection analysis and memory extraction if enabled.
+        Run synchronous reflection analysis if enabled.
 
         Args:
             input_data: Input from Claude Code
@@ -59,73 +67,35 @@ Also trigger reflection analysis and memory extraction if enabled.
                 "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
             }
 
-        # Not locked - extract learnings and run reflection
-        self._extract_agent_learnings(input_data)
-        
         # Check if reflection should run
         if not self._should_run_reflection():
-            self.log("Reflection not enabled - allowing stop after memory extraction")
+            self.log("Reflection not enabled or skipped - allowing stop")
             self.log("=== STOP HOOK ENDED (decision: approve - no reflection) ===")
             return {"decision": "approve"}
 
         # FIX #2: Check for reflection semaphore (prevents infinite loop)
         session_id = self._get_current_session_id()
         semaphore_file = (
-            self.project_root / ".claude" / "runtime" / "reflection" / f".reflection_presented_{session_id}"
+            self.project_root
+            / ".claude"
+            / "runtime"
+            / "reflection"
+            / f".reflection_presented_{session_id}"
         )
 
-    def _extract_agent_learnings(self, input_data: Dict[str, Any]):
-        """Extract learnings from session for memory storage.
-
-        Args:
-            input_data: Input from Claude Code Stop hook
-        """
-        try:
-            # Try to import Neo4j memory system
-            import sys
-
-            # Add src to path if exists
-            if self.project_root and (self.project_root / "src").exists():
-                sys.path.insert(0, str(self.project_root / "src"))
-
-            from amplihack.memory.neo4j import lifecycle
-            from amplihack.memory.neo4j.agent_integration import extract_and_store_learnings
-
-            # Check if Neo4j is running
-            if not lifecycle.is_neo4j_running():
-                self.log("Neo4j not running, skipping memory extraction", "DEBUG")
-                return
-
-            # Extract conversation from input
-            conversation = input_data.get("conversation", "")
-            if not conversation:
-                self.log("No conversation data in stop hook input", "DEBUG")
-                return
-
-            # Try to detect agent type from metrics
-            agent_type = "general"  # Default
-
-            # Store learnings in Neo4j
-            memory_ids = extract_and_store_learnings(
-                agent_type=agent_type,
-                output=conversation,
-                task="session_work",
-                success=True,
-                project_id=str(self.project_root.name) if self.project_root else "unknown"
+        if semaphore_file.exists():
+            # Reflection already presented - remove semaphore and allow stop
+            self.log(
+                f"Reflection already presented for session {session_id} - removing semaphore and allowing stop"
             )
+            try:
+                semaphore_file.unlink()
+            except OSError:
+                pass
+            self.log("=== STOP HOOK ENDED (decision: approve - reflection already shown) ===")
+            return {"decision": "approve"}
 
-            if memory_ids:
-                self.log(f"Stored {len(memory_ids)} learnings in Neo4j memory", "INFO")
-                self.save_metric("neo4j_learnings_stored", len(memory_ids))
-
-        except ImportError as e:
-            self.log(f"Neo4j modules not available: {e}", "DEBUG")
-        except Exception as e:
-            # Don't crash stop hook - just log
-            self.log(f"Memory extraction failed (non-critical): {e}", "WARNING")
-
-    def _trigger_reflection_if_enabled(self):
-        """Trigger reflection analysis if enabled and not already running."""
+        # RUN REFLECTION SYNCHRONOUSLY (blocks here)
         try:
             # FIX #4: Announce reflection start (STAGE 1)
             self._announce_reflection_start()
@@ -197,9 +167,7 @@ Also trigger reflection analysis and memory extraction if enabled.
             return False
 
         # Load reflection config
-        config_path = (
-            self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
-        )
+        config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
         if not config_path.exists():
             self.log("Reflection config not found - skipping reflection", "DEBUG")
             return False
@@ -301,10 +269,12 @@ Also trigger reflection analysis and memory extraction if enabled.
                                         text_parts.append(block.get("text", ""))
                                 content = "\n".join(text_parts)
 
-                            conversation.append({
-                                "role": msg.get("role", entry.get("type", "user")),
-                                "content": content
-                            })
+                            conversation.append(
+                                {
+                                    "role": msg.get("role", entry.get("type", "user")),
+                                    "content": content,
+                                }
+                            )
                 self.log(f"Loaded {len(conversation)} conversation turns from transcript")
             except Exception as e:
                 self.log(f"Failed to load transcript: {e}", "WARNING")
@@ -379,7 +349,8 @@ Also trigger reflection analysis and memory extraction if enabled.
                 first_sentence = summary_section.split(".")[0][:100]
                 # Convert to slug
                 import re
-                task_slug = re.sub(r'[^a-z0-9]+', '-', first_sentence.lower()).strip('-')
+
+                task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
                 # Limit length
                 task_slug = task_slug[:50]
         except Exception:
