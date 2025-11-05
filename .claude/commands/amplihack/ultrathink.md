@@ -16,6 +16,26 @@ Deep analysis mode for complex tasks. Orchestrates multiple agents to break down
 
 When this command is invoked, you MUST:
 
+### ⚓ MANDATORY: Workflow File Validation (BLOCKING PREREQUISITE)
+
+**CRITICAL ENFORCEMENT**: Before executing ANY steps below, you MUST validate workflow file access:
+
+**VALIDATION CHECKLIST** (Cannot be skipped):
+1. ☐ Use `FrameworkPathResolver.resolve_workflow_file()` to resolve the workflow file path
+2. ☐ Use Read tool to load the workflow file content
+3. ☐ Verify the file contains workflow step definitions
+4. ☐ ONLY THEN proceed to numbered execution steps below
+
+**IF VALIDATION FAILS**:
+- ⛔ **STOP immediately** - do not proceed with any other steps
+- Report error: "Cannot execute ultrathink - workflow file must be read first"
+- Provide path resolution details for debugging
+- Exit command execution
+
+**Validation Complete** ✓ → Proceed to execution steps:
+
+---
+
 1. **First, read the workflow file** using FrameworkPathResolver.resolve_workflow_file() to get the correct path, then use the Read tool
 2. **Create a comprehensive todo list** using TodoWrite that includes all 13 workflow steps
 3. **Execute each step systematically**, marking todos as in_progress and completed
