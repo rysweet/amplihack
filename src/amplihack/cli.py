@@ -25,6 +25,10 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
 
+    # Handle --no-reflection flag (disable always wins priority)
+    if getattr(args, "no_reflection", False):
+        os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
     if use_docker:
         print(
             "Docker mode enabled"
@@ -118,6 +122,10 @@ def handle_auto_mode(
     if not getattr(args, "auto", False):
         return None
 
+    # Handle --no-reflection flag (disable always wins priority)
+    if getattr(args, "no_reflection", False):
+        os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
     from .launcher.auto_mode import AutoMode
 
     # Extract prompt from args
@@ -160,7 +168,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
         # Print success message
         print(f"✓ Instruction appended to session: {result.session_id}")
         print(f"  File: {result.filename}")
-        print(f"  The auto mode session will process this on its next turn.")
+        print("  The auto mode session will process this on its next turn.")
         return 0
 
     except ValueError as e:
@@ -293,6 +301,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    launch_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
@@ -321,6 +334,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    claude_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
@@ -340,6 +358,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    copilot_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
 
     # Codex command
     codex_parser = subparsers.add_parser("codex", help="Launch OpenAI Codex CLI")
@@ -358,6 +381,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    codex_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
     )
 
     # UVX helper command
@@ -577,6 +605,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if exit_code is not None:
             return exit_code
 
+        # Handle --no-reflection flag (disable always wins priority)
+        if getattr(args, "no_reflection", False):
+            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
         # Normal copilot launch
         has_prompt = claude_args and "-p" in claude_args
         return launch_copilot(claude_args, interactive=not has_prompt)
@@ -588,6 +620,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         exit_code = handle_auto_mode("codex", args, claude_args)
         if exit_code is not None:
             return exit_code
+
+        # Handle --no-reflection flag (disable always wins priority)
+        if getattr(args, "no_reflection", False):
+            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
         # Normal codex launch
         has_prompt = claude_args and "-p" in claude_args
