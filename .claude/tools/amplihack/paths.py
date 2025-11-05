@@ -19,13 +19,17 @@ def _initialize_paths():
     """Initialize project paths once per session using multi-strategy detection.
 
     Tries multiple strategies to find project root:
-    1. Check inside amplihack package (UVX/pip installs)
-    2. Walk up from current working directory
-    3. Check AMPLIHACK_ROOT environment variable
+    1. Walk up from current working directory (FIRST - most reliable for hooks)
+    2. Check AMPLIHACK_ROOT environment variable
+    3. Check inside amplihack package (UVX/pip installs - fallback)
     4. Walk up from __file__ as last resort
+
+    CRITICAL: CWD strategy must come BEFORE package check to avoid finding
+    bundled .claude directory in uv cache instead of actual project directory.
 
     This ensures the function works from:
     - Project directory (dev mode)
+    - Hooks (Claude Code sets CWD correctly)
     - Installed package (pip install)
     - UVX cache (uvx amplihack)
     """
@@ -36,7 +40,32 @@ def _initialize_paths():
 
     errors = []
 
-    # Strategy 1: Check inside amplihack package (UVX/pip installs)
+    # Strategy 1: Walk up from current working directory (HIGHEST PRIORITY)
+    # Claude Code sets CWD to project root when running hooks
+    current = Path.cwd()
+    while current != current.parent:
+        if (current / ".claude").exists():
+            _PROJECT_ROOT = current
+            _PATHS_INITIALIZED = True
+            _add_essential_paths(_PROJECT_ROOT)
+            return _PROJECT_ROOT
+        current = current.parent
+    errors.append("Strategy 1 (cwd walk): .claude not found in any parent directory")
+
+    # Strategy 2: Check AMPLIHACK_ROOT environment variable
+    if "AMPLIHACK_ROOT" in os.environ:
+        env_path = Path(os.environ["AMPLIHACK_ROOT"])
+        if env_path.exists() and (env_path / ".claude").exists():
+            _PROJECT_ROOT = env_path
+            _PATHS_INITIALIZED = True
+            _add_essential_paths(_PROJECT_ROOT)
+            return _PROJECT_ROOT
+        errors.append(f"Strategy 2 (AMPLIHACK_ROOT): Path {env_path} invalid or missing .claude")
+    else:
+        errors.append("Strategy 2 (AMPLIHACK_ROOT): Environment variable not set")
+
+    # Strategy 3: Check inside amplihack package (FALLBACK for non-hook contexts)
+    # Only used when CWD doesn't have .claude (e.g., running from Python REPL)
     try:
         import amplihack
 
@@ -55,30 +84,7 @@ def _initialize_paths():
             _add_essential_paths(_PROJECT_ROOT)
             return _PROJECT_ROOT
     except (ImportError, AttributeError) as e:
-        errors.append(f"Strategy 1 (amplihack package): {e}")
-
-    # Strategy 2: Walk up from current working directory
-    current = Path.cwd()
-    while current != current.parent:
-        if (current / ".claude").exists():
-            _PROJECT_ROOT = current
-            _PATHS_INITIALIZED = True
-            _add_essential_paths(_PROJECT_ROOT)
-            return _PROJECT_ROOT
-        current = current.parent
-    errors.append("Strategy 2 (cwd walk): .claude not found in any parent directory")
-
-    # Strategy 3: Check environment variable
-    if "AMPLIHACK_ROOT" in os.environ:
-        env_path = Path(os.environ["AMPLIHACK_ROOT"])
-        if env_path.exists() and (env_path / ".claude").exists():
-            _PROJECT_ROOT = env_path
-            _PATHS_INITIALIZED = True
-            _add_essential_paths(_PROJECT_ROOT)
-            return _PROJECT_ROOT
-        errors.append(f"Strategy 3 (AMPLIHACK_ROOT): Path {env_path} invalid or missing .claude")
-    else:
-        errors.append("Strategy 3 (AMPLIHACK_ROOT): Environment variable not set")
+        errors.append(f"Strategy 3 (amplihack package): {e}")
 
     # Strategy 4: Last resort - walk up from __file__ looking for .claude marker
     current = Path(__file__).resolve().parent

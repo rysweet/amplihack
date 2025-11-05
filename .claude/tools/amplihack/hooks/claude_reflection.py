@@ -1,0 +1,268 @@
+#!/usr/bin/env python3
+"""
+Claude SDK-based session reflection.
+
+Uses Claude Agent SDK to intelligently analyze sessions and fill out
+the FEEDBACK_SUMMARY template, replacing simple pattern matching with
+AI-powered reflection.
+"""
+
+import asyncio
+import json
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional
+
+# Try to import Claude SDK
+try:
+    from claude_agent_sdk import query, ClaudeAgentOptions
+
+    CLAUDE_SDK_AVAILABLE = True
+except ImportError:
+    CLAUDE_SDK_AVAILABLE = False
+
+
+def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
+    """Load conversation messages from session directory.
+
+    Args:
+        session_dir: Path to session log directory
+
+    Returns:
+        List of message dicts, or None if not found
+    """
+    # Try different possible file locations
+    candidates = [
+        session_dir / "conversation_transcript.json",
+        session_dir / "messages.json",
+        session_dir / "session.json",
+    ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            try:
+                with open(candidate) as f:
+                    data = json.load(f)
+                # Handle different data structures
+                if isinstance(data, list):
+                    return data
+                elif isinstance(data, dict) and "messages" in data:
+                    return data["messages"]
+            except (OSError, json.JSONDecodeError):
+                continue
+
+    return None
+
+
+def load_feedback_template(project_root: Path) -> str:
+    """Load FEEDBACK_SUMMARY template.
+
+    Args:
+        project_root: Project root directory
+
+    Returns:
+        Template content as string
+    """
+    template_path = project_root / ".claude" / "templates" / "FEEDBACK_SUMMARY.md"
+
+    if not template_path.exists():
+        # Fallback minimal template
+        return """## Task Summary
+[What was accomplished]
+
+## Feedback Summary
+**User Interactions:** [Observations]
+**Workflow Adherence:** [Did workflow get followed?]
+**Subagent Usage:** [Which agents used?]
+**Learning Opportunities:** [What to improve]
+"""
+
+    return template_path.read_text()
+
+
+async def analyze_session_with_claude(
+    conversation: List[Dict], template: str, project_root: Path
+) -> Optional[str]:
+    """Use Claude SDK to analyze session and fill out template.
+
+    Args:
+        conversation: Session conversation messages
+        template: FEEDBACK_SUMMARY template
+        project_root: Project root directory
+
+    Returns:
+        Filled template as string, or None if analysis fails
+    """
+    if not CLAUDE_SDK_AVAILABLE:
+        print("Claude SDK not available - cannot run AI-powered reflection", file=sys.stderr)
+        return None
+
+    # Load USER_PREFERENCES for context (same as session_start does)
+    user_preferences_context = ""
+    try:
+        # Try to use FrameworkPathResolver if available
+        try:
+            sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
+            from amplihack.utils.paths import FrameworkPathResolver
+            preferences_file = FrameworkPathResolver.resolve_preferences_file()
+        except ImportError:
+            # Fallback to default location
+            preferences_file = project_root / ".claude" / "context" / "USER_PREFERENCES.md"
+
+        if preferences_file and preferences_file.exists():
+            with open(preferences_file) as f:
+                prefs_content = f.read()
+            user_preferences_context = f"""
+## User Preferences (MANDATORY - MUST FOLLOW)
+
+The following preferences are REQUIRED and CANNOT be ignored:
+
+{prefs_content}
+
+**IMPORTANT**: When analyzing this session, consider whether Claude followed these user preferences. Do NOT criticize behavior that aligns with configured preferences.
+"""
+    except Exception as e:
+        print(f"Warning: Could not load USER_PREFERENCES: {e}", file=sys.stderr)
+        # Continue without preferences
+
+    # Build reflection prompt
+    prompt = f"""You are analyzing a completed Claude Code session to provide feedback and identify learning opportunities.
+{user_preferences_context}
+
+## Session Conversation
+
+The session had {len(conversation)} messages. Here are key excerpts:
+
+{_format_conversation_summary(conversation)}
+
+## Your Task
+
+Please analyze this session and fill out the following feedback template:
+
+{template}
+
+## Guidelines
+
+1. **Be specific and actionable** - Reference actual events from the session
+2. **Identify patterns** - What worked well? What could improve?
+3. **Track workflow adherence** - Did Claude follow the DEFAULT_WORKFLOW.md steps?
+4. **Note subagent usage** - Which specialized agents were used (architect, builder, reviewer, etc.)?
+5. **Suggest improvements** - What would make future similar sessions better?
+
+Please provide the filled-out template now.
+"""
+
+    try:
+        # Configure SDK
+        options = ClaudeAgentOptions(
+            cwd=str(project_root),
+            permission_mode="bypassPermissions",
+        )
+
+        # Collect response
+        response_parts = []
+        async for message in query(prompt=prompt, options=options):
+            if hasattr(message, "text"):
+                response_parts.append(message.text)
+            elif hasattr(message, "content"):
+                response_parts.append(str(message.content))
+
+        # Join all parts
+        filled_template = "".join(response_parts)
+        return filled_template if filled_template.strip() else None
+
+    except Exception as e:
+        print(f"Error during Claude reflection: {e}", file=sys.stderr)
+        return None
+
+
+def _format_conversation_summary(conversation: List[Dict], max_length: int = 5000) -> str:
+    """Format conversation summary for analysis.
+
+    Args:
+        conversation: List of message dicts
+        max_length: Maximum summary length
+
+    Returns:
+        Formatted conversation summary
+    """
+    summary_parts = []
+    current_length = 0
+
+    for i, msg in enumerate(conversation):
+        role = msg.get("role", "unknown")
+        content = str(msg.get("content", ""))
+
+        # Truncate long messages
+        if len(content) > 500:
+            content = content[:497] + "..."
+
+        msg_summary = f"\n**Message {i+1} ({role}):** {content}\n"
+
+        # Check if adding this would exceed limit
+        if current_length + len(msg_summary) > max_length:
+            summary_parts.append(f"\n[... {len(conversation) - i} more messages ...]")
+            break
+
+        summary_parts.append(msg_summary)
+        current_length += len(msg_summary)
+
+    return "".join(summary_parts)
+
+
+def run_claude_reflection(
+    session_dir: Path, project_root: Path, conversation: Optional[List[Dict]] = None
+) -> Optional[str]:
+    """Run Claude SDK-based reflection on a session.
+
+    Args:
+        session_dir: Session log directory
+        project_root: Project root directory
+        conversation: Optional pre-loaded conversation (if None, loads from session_dir)
+
+    Returns:
+        Filled FEEDBACK_SUMMARY template, or None if failed
+    """
+    # Load conversation if not provided
+    if conversation is None:
+        conversation = load_session_conversation(session_dir)
+        if not conversation:
+            print(f"No conversation found in {session_dir}", file=sys.stderr)
+            return None
+
+    # Load template
+    template = load_feedback_template(project_root)
+
+    # Run async analysis
+    try:
+        result = asyncio.run(
+            analyze_session_with_claude(conversation, template, project_root)
+        )
+        return result
+    except Exception as e:
+        print(f"Claude reflection failed: {e}", file=sys.stderr)
+        return None
+
+
+# For testing
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run Claude-powered session reflection")
+    parser.add_argument("session_dir", type=Path, help="Session directory path")
+    parser.add_argument(
+        "--project-root", type=Path, default=Path.cwd(), help="Project root directory"
+    )
+
+    args = parser.parse_args()
+
+    result = run_claude_reflection(args.session_dir, args.project_root)
+    if result:
+        print("\n" + "=" * 70)
+        print("CLAUDE REFLECTION RESULT")
+        print("=" * 70)
+        print(result)
+        print("=" * 70)
+    else:
+        print("Reflection failed")
+        sys.exit(1)
