@@ -183,6 +183,79 @@ Regardless of mode:
 → TRIAGE → DEEP → SYNTHESIS pipeline
 ```
 
+## Diagram Generation
+
+When investigating or explaining systems, create visual diagrams to enhance understanding:
+
+### Automatic Diagram Detection
+
+**Always create a diagram when:**
+
+1. User asks "how does X work?" or "explain the architecture"
+2. System has 3+ interacting components
+3. Data flows through multiple stages
+4. Process has a sequence of steps
+5. Understanding relationships is key to the explanation
+
+**Trigger Keywords:**
+
+- "how does", "explain", "architecture", "flow"
+- "components", "modules", "parts", "interact"
+- "process", "workflow", "sequence", "happens when"
+- "transforms", "processes", "pipeline", "stages"
+
+### Template Selection
+
+Reference `.claude/templates/diagrams/` for pre-built mermaid templates:
+
+| System Type             | Template                   | When to Use                           |
+| ----------------------- | -------------------------- | ------------------------------------- |
+| Hook/Middleware Systems | HOOK_SYSTEM_FLOW.md        | Interceptors, event handlers          |
+| Configuration Systems   | PREFERENCE_SYSTEM.md       | Settings, preferences, config loading |
+| Data Processing         | DATA_FLOW.md               | Pipelines, transformations, ETL       |
+| Component Architecture  | COMPONENT_RELATIONSHIPS.md | Module dependencies, services         |
+| Sequential Workflows    | EXECUTION_SEQUENCE.md      | Request/response, API calls           |
+
+### Diagram Placement
+
+**Best Practices:**
+
+- Include diagram EARLY in explanation (after executive summary)
+- Add clear caption explaining what diagram shows
+- Reference diagram in text: "As shown in the diagram above..."
+- Keep text explanation focused on details not visible in diagram
+
+### Quality Validation
+
+Before including any diagram, verify:
+
+- [ ] Labels are concise but descriptive
+- [ ] Shows all major components/flows
+- [ ] Matches actual implementation (accurate)
+- [ ] Uses color coding for clarity
+- [ ] Focuses on essential relationships (not cluttered)
+- [ ] Has explanatory caption
+- [ ] Complements text without duplicating it
+- [ ] Mermaid syntax is valid (renders correctly)
+
+### Example Integration
+
+When analyzing a system like user preferences:
+
+```markdown
+## Architecture Overview
+
+This diagram shows how user preferences flow from storage through hooks:
+
+[Insert customized diagram from PREFERENCE_SYSTEM.md template]
+
+**Caption:** Two-layer enforcement ensures preferences are loaded at session start and re-applied on every message.
+
+[Continue with detailed text analysis...]
+```
+
 ## Remember
 
 Automatically select optimal mode but explain choice. Switch modes if task evolves. Provide exactly the right level of analysis for maximum value with minimum overhead.
+
+**For investigations (DEEP mode):** Always consider whether a diagram would enhance understanding. If trigger keywords are present or system has multiple components, create a diagram using appropriate template from `.claude/templates/diagrams/`.
