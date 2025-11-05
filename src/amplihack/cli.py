@@ -118,6 +118,10 @@ def handle_auto_mode(
     if not getattr(args, "auto", False):
         return None
 
+    # Disable reflection in auto mode (Issue #1146)
+    # Reflection is interactive and blocks autonomous execution
+    os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
     from .launcher.auto_mode import AutoMode
 
     # Extract prompt from args
@@ -160,7 +164,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
         # Print success message
         print(f"✓ Instruction appended to session: {result.session_id}")
         print(f"  File: {result.filename}")
-        print(f"  The auto mode session will process this on its next turn.")
+        print("  The auto mode session will process this on its next turn.")
         return 0
 
     except ValueError as e:
