@@ -6,6 +6,7 @@ Uses unified HookProcessor for common functionality.
 
 # Import the base processor
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -32,6 +33,47 @@ class PostToolUseHook(HookProcessor):
 
         self.save_metric("tool_usage", tool_name, metadata)
 
+    def process_todowrite_metrics(
+        self, tool_use: Dict[str, Any], conversation_context: Dict[str, Any]
+    ):
+        """Capture TodoWrite task transitions for performance metrics.
+
+        Args:
+            tool_use: TodoWrite tool use data
+            conversation_context: Context with message number info
+        """
+        try:
+            # Extract todos array from tool parameters
+            params = tool_use.get("parameters", {})
+            todos = params.get("todos", [])
+
+            # Get message number from conversation context
+            message_number = conversation_context.get("messageNumber", 0)
+
+            # Get session timestamp
+            session_timestamp = datetime.now().isoformat()
+
+            # Process each todo to detect transitions
+            for todo in todos:
+                status = todo.get("status", "unknown")
+                content = todo.get("content", "")
+                active_form = todo.get("activeForm", "")
+
+                # Track transitions for performance metrics
+                if status in ["in_progress", "completed"]:
+                    metadata = {
+                        "task_content": content,
+                        "task_active_form": active_form,
+                        "message_number": message_number,
+                        "session_timestamp": session_timestamp,
+                    }
+
+                    self.save_metric("todo_transition", status, metadata)
+                    self.log(f"TodoWrite transition: {status} - {content[:50]}...")
+
+        except Exception as e:
+            self.log(f"Error processing TodoWrite metrics: {e}", "WARNING")
+
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process post tool use event.
 
@@ -48,6 +90,9 @@ class PostToolUseHook(HookProcessor):
         # Extract result if available (not currently used but could be useful)
         result = input_data.get("result", {})
 
+        # Extract conversation context for message numbers
+        conversation_context = input_data.get("conversationContext", {})
+
         self.log(f"Tool used: {tool_name}")
 
         # Save metrics - could extract duration from result if available
@@ -57,6 +102,10 @@ class PostToolUseHook(HookProcessor):
             duration_ms = result.get("duration_ms")
 
         self.save_tool_metric(tool_name, duration_ms)
+
+        # Capture TodoWrite performance metrics
+        if tool_name == "TodoWrite":
+            self.process_todowrite_metrics(tool_use, conversation_context)
 
         # Check for specific tool types that might need validation
         output = {}
