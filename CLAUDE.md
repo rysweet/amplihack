@@ -27,6 +27,7 @@ When starting a session, import these files for context:
 ```
 
 **For large features or multi-file changes**, also import:
+
 ```
 @docs/document_driven_development/README.md
 ```
@@ -514,11 +515,14 @@ stages at specific steps.
 
 ### Document-Driven Development (DDD)
 
-**Systematic methodology for large features where documentation comes first and acts as the specification.**
+**Systematic methodology for large features where documentation comes first and
+acts as the specification.**
 
-**Core Principle**: Documentation IS the specification. Code must match what documentation describes exactly.
+**Core Principle**: Documentation IS the specification. Code must match what
+documentation describes exactly.
 
 **When to Use DDD:**
+
 - New features requiring multiple files (10+ files)
 - System redesigns or major refactoring
 - API changes affecting documentation
@@ -526,6 +530,7 @@ stages at specific steps.
 - Complex integrations requiring clear contracts
 
 **Commands:**
+
 ```bash
 /amplihack:ddd:0-help          # Get help and understand DDD
 /amplihack:ddd:prime           # Prime context with DDD overview
@@ -539,13 +544,78 @@ stages at specific steps.
 ```
 
 **Benefits:**
-- **Prevents context poisoning** - Single source of truth eliminates conflicting docs
+
+- **Prevents context poisoning** - Single source of truth eliminates conflicting
+  docs
 - **Reviewable design** - Catch design flaws before expensive implementation
 - **No drift** - Docs and code never diverge (docs come first by design)
 - **AI-optimized** - Clear specifications prevent wrong decisions
-- **Philosophy-aligned** - Natural fit with ruthless simplicity and modular design
+- **Philosophy-aligned** - Natural fit with ruthless simplicity and modular
+  design
 
-**Documentation**: See `docs/document_driven_development/` for complete guides, core concepts, and reference materials.
+**Documentation**: See `docs/document_driven_development/` for complete guides,
+core concepts, and reference materials.
+
+### Investigation Workflow
+
+**Systematic workflow for code investigations that preserves findings in
+persistent documentation.**
+
+**Core Principle**: Investigation knowledge should be preserved for future
+sessions, not lost in chat history.
+
+**When to Use Investigation Workflow:**
+
+- Analyzing existing codebase structure
+- Understanding system architecture
+- Investigating how components work
+- Diagnosing complex bugs
+- Researching integration patterns
+- Exploring feature implementations
+
+**Workflow Steps:**
+
+1. **Clarify Scope** - Define investigation objectives
+2. **Initial Discovery** - High-level code scanning
+3. **Deep Dive** - Detailed analysis with knowledge-archaeologist agent
+4. **Verification** - Test understanding with practical examples
+5. **Synthesis** - Present findings to user
+6. **Documentation** (Optional) - Capture findings in persistent docs
+
+**Key Feature - Auto-Documentation:**
+
+After completing an investigation, the knowledge-archaeologist agent offers to
+create persistent documentation:
+
+```
+Shall I create a permanent record of this investigation in the ship's logs (documentation)?
+
+This would create `.claude/docs/[TYPE]_[TOPIC].md` with:
+- Findings summary
+- Architecture diagrams
+- Key files and their purposes
+- System integration details
+- Verification steps
+- Examples
+```
+
+**Documentation Types:**
+
+- `ARCHITECTURE_[TOPIC].md` - System architecture investigations
+- `INVESTIGATION_[TOPIC].md` - General investigations
+
+**Benefits:**
+
+- **Knowledge Preservation**: Findings persist across sessions
+- **No Repeated Work**: Don't re-investigate the same systems
+- **Faster Onboarding**: New team members read past investigations
+- **Organic Growth**: Documentation grows naturally from actual investigations
+
+**Workflow File**: `.claude/workflow/INVESTIGATION_WORKFLOW.md` **Templates**:
+`.claude/templates/investigation-doc-template.md`,
+`.claude/templates/architecture-doc-template.md` **Agent**:
+knowledge-archaeologist (generates documentation) **Storage**: `.claude/docs/`
+(all generated documentation)
 
 ## Scenario Tools
 
