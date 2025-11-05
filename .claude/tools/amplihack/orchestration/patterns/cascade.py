@@ -8,10 +8,9 @@ Based on: .claude/workflow/CASCADE_WORKFLOW.md
 """
 
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from ..session import OrchestratorSession
-
 
 # Timeout strategies
 TIMEOUT_STRATEGIES = {

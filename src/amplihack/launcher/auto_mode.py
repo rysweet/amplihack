@@ -14,15 +14,15 @@ from typing import Optional, Tuple
 
 # Try to import Claude SDK, fall back gracefully
 try:
-    from claude_agent_sdk import query, ClaudeAgentOptions  # type: ignore
+    from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 # Import session management components
-from .session_capture import MessageCapture
 from .fork_manager import ForkManager
+from .session_capture import MessageCapture
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content

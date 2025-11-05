@@ -5,8 +5,9 @@ Tests the hook running as a subprocess with real stdin/stdout/stderr.
 """
 
 import json
-import pytest
 import time
+
+import pytest
 
 
 def test_integ_subprocess_001_hook_executed_with_no_lock(captured_subprocess):

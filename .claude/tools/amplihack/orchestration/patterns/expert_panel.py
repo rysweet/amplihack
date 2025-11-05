@@ -9,11 +9,11 @@ Based on: Specs/expert-panel-pattern.md
 """
 
 import re
-from enum import Enum
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from ..execution import run_parallel
 from ..session import OrchestratorSession

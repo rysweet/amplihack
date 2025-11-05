@@ -22,9 +22,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 # append_instructions function to be implemented
 try:
     from amplihack.launcher.append_handler import (
-        append_instructions,
-        AppendResult,
         AppendError,
+        AppendResult,
+        append_instructions,
     )
 except ImportError:
     # Define placeholders so tests can be written

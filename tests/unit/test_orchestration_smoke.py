@@ -7,7 +7,6 @@ Full integration tests require spawning Claude subprocesses and are better done 
 import sys
 from pathlib import Path
 
-
 # Add orchestration to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / ".claude/tools/amplihack"))
 
@@ -99,9 +98,9 @@ def test_claude_process_signature():
 
 def test_n_version_signature():
     """Verify run_n_version has expected signature."""
-    from orchestration.patterns.n_version import run_n_version
-
     import inspect
+
+    from orchestration.patterns.n_version import run_n_version
 
     sig = inspect.signature(run_n_version)
     params = list(sig.parameters.keys())
@@ -115,9 +114,9 @@ def test_n_version_signature():
 
 def test_debate_signature():
     """Verify run_debate has expected signature."""
-    from orchestration.patterns.debate import run_debate
-
     import inspect
+
+    from orchestration.patterns.debate import run_debate
 
     sig = inspect.signature(run_debate)
     params = list(sig.parameters.keys())
@@ -131,9 +130,9 @@ def test_debate_signature():
 
 def test_cascade_signature():
     """Verify run_cascade has expected signature."""
-    from orchestration.patterns.cascade import run_cascade
-
     import inspect
+
+    from orchestration.patterns.cascade import run_cascade
 
     sig = inspect.signature(run_cascade)
     params = list(sig.parameters.keys())
