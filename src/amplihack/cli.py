@@ -161,6 +161,7 @@ def handle_auto_mode(
         return None
 
     from .launcher.auto_mode import AutoMode
+    from .launcher.preflight import PreflightError, validate_automode_safety
 
     # Extract prompt from args
     prompt = None
@@ -177,10 +178,21 @@ def handle_auto_mode(
         print(f'Error: --auto requires a prompt. Use: amplihack {sdk} --auto -- -p "your prompt"')
         return 1
 
+    # PRE-FLIGHT VALIDATION: Check for safety issues before starting
+    force = getattr(args, "force", False)
+    try:
+        validate_automode_safety(working_dir=Path.cwd(), force=force)
+    except PreflightError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+
     # Check if UI mode is enabled
     ui_mode = getattr(args, "ui", False)
 
-    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode)
+    # Check if worktree mode is enabled (default True)
+    use_worktree = getattr(args, "use_worktree", True)
+
+    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode, use_worktree=use_worktree)
     return auto.run()
 
 
@@ -330,6 +342,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
     launch_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force auto mode to run even in unsafe conditions (skip pre-flight validation). Use with caution.",
+    )
+    launch_parser.add_argument(
         "--append",
         metavar="PROMPT",
         help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
@@ -338,6 +355,18 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    launch_parser.add_argument(
+        "--use-worktree",
+        action="store_true",
+        default=True,
+        help="Use git worktree for isolation (default: True). Creates worktree in ./worktrees/automode-{timestamp}. Prevents conflicts with active session.",
+    )
+    launch_parser.add_argument(
+        "--no-worktree",
+        action="store_false",
+        dest="use_worktree",
+        help="Disable automatic worktree creation and run in current directory (not recommended).",
     )
 
     # Claude command (alias for launch)
@@ -358,6 +387,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
     claude_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force auto mode to run even in unsafe conditions (skip pre-flight validation). Use with caution.",
+    )
+    claude_parser.add_argument(
         "--append",
         metavar="PROMPT",
         help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
@@ -366,6 +400,18 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    claude_parser.add_argument(
+        "--use-worktree",
+        action="store_true",
+        default=True,
+        help="Use git worktree for isolation (default: True). Creates worktree in ./worktrees/automode-{timestamp}. Prevents conflicts with active session.",
+    )
+    claude_parser.add_argument(
+        "--no-worktree",
+        action="store_false",
+        dest="use_worktree",
+        help="Disable automatic worktree creation and run in current directory (not recommended).",
     )
 
     # Copilot command
@@ -382,9 +428,26 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
     copilot_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force auto mode to run even in unsafe conditions (skip pre-flight validation). Use with caution.",
+    )
+    copilot_parser.add_argument(
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    copilot_parser.add_argument(
+        "--use-worktree",
+        action="store_true",
+        default=True,
+        help="Use git worktree for isolation (default: True). Creates worktree in ./worktrees/automode-{timestamp}. Prevents conflicts with active session.",
+    )
+    copilot_parser.add_argument(
+        "--no-worktree",
+        action="store_false",
+        dest="use_worktree",
+        help="Disable automatic worktree creation and run in current directory (not recommended).",
     )
 
     # Codex command
@@ -401,9 +464,26 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
     codex_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force auto mode to run even in unsafe conditions (skip pre-flight validation). Use with caution.",
+    )
+    codex_parser.add_argument(
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    codex_parser.add_argument(
+        "--use-worktree",
+        action="store_true",
+        default=True,
+        help="Use git worktree for isolation (default: True). Creates worktree in ./worktrees/automode-{timestamp}. Prevents conflicts with active session.",
+    )
+    codex_parser.add_argument(
+        "--no-worktree",
+        action="store_false",
+        dest="use_worktree",
+        help="Disable automatic worktree creation and run in current directory (not recommended).",
     )
 
     # UVX helper command
