@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write  # Required to push version bump commit
+  contents: write # Required to push version bump commit
 
 jobs:
   bump-version:

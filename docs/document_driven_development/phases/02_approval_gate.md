@@ -30,6 +30,7 @@ Human reviews uncommitted documentation:
 ### Review Questions
 
 **Ask yourself**:
+
 - Can I understand this without reading code?
 - Would this guide someone to build the right thing?
 - Are examples realistic? Will they work?
@@ -81,11 +82,13 @@ Reviewed and approved by: [human name]"
 ## Why Wait Until Approval
 
 **Prevents**:
+
 - Git log thrashing with wrong commits
 - Implementing against flawed design
 - Wasted iteration time
 
 **Ensures**:
+
 - Clean git history (only approved designs)
 - Design is right before implementation
 - Documentation remains authoritative
@@ -95,6 +98,7 @@ Reviewed and approved by: [human name]"
 ## Output of Phase 2
 
 When complete:
+
 - ✅ Documentation reviewed by human
 - ✅ Design approved
 - ✅ **Documentation committed** (with approval note)
@@ -108,12 +112,14 @@ When complete:
 ## Tips
 
 **For Humans**:
+
 - Review thoroughly - cheapest checkpoint
 - Iterate until right before approving
 - Be specific about what needs changing
 - Approve explicitly when satisfied
 
 **For AI**:
+
 - Don't commit until explicit approval
 - Apply feedback systematically
 - Return to Phase 1 process for fixes

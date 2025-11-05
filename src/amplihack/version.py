@@ -44,6 +44,7 @@ def get_version() -> str:
     # Fall back to importlib.metadata (installed package mode)
     try:
         from importlib.metadata import version
+
         return version("microsofthackathon2025-agenticcoding")
     except Exception as e:
         raise RuntimeError(

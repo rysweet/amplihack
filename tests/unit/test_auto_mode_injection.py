@@ -6,7 +6,6 @@ Following TDD approach - these tests should FAIL initially.
 
 import sys
 import tempfile
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -35,10 +34,7 @@ class TestAutoModeDirectoryCreation:
         - Directory should be created with parents=True
         """
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
         expected_append_dir = auto_mode.log_dir / "append"
@@ -53,10 +49,7 @@ class TestAutoModeDirectoryCreation:
         - Directory should be created with parents=True
         """
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
         expected_appended_dir = auto_mode.log_dir / "appended"
@@ -70,10 +63,7 @@ class TestAutoModeDirectoryCreation:
         - Both directories should exist but contain no files
         """
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
         append_files = list(auto_mode.append_dir.glob("*"))
@@ -102,10 +92,7 @@ class TestAutoModePromptWriting:
         test_prompt = "Implement authentication system with JWT tokens"
 
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt=test_prompt,
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt=test_prompt, max_turns=5, working_dir=temp_working_dir
         )
 
         prompt_file = auto_mode.log_dir / "prompt.md"
@@ -124,10 +111,7 @@ class TestAutoModePromptWriting:
         - Should include max_turns
         """
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=10,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=10, working_dir=temp_working_dir
         )
 
         prompt_file = auto_mode.log_dir / "prompt.md"
@@ -145,10 +129,7 @@ class TestAutoModePromptWriting:
         - Should have proper structure
         """
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
         prompt_file = auto_mode.log_dir / "prompt.md"
@@ -166,10 +147,7 @@ class TestCheckForNewInstructions:
         """Create AutoMode instance with temporary directory."""
         with tempfile.TemporaryDirectory() as temp_dir:
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="Test prompt",
-                max_turns=5,
-                working_dir=Path(temp_dir)
+                sdk="claude", prompt="Test prompt", max_turns=5, working_dir=Path(temp_dir)
             )
             yield auto_mode
 
@@ -301,10 +279,7 @@ class TestCheckForNewInstructionsErrorHandling:
         """Create AutoMode instance with temporary directory."""
         with tempfile.TemporaryDirectory() as temp_dir:
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="Test prompt",
-                max_turns=5,
-                working_dir=Path(temp_dir)
+                sdk="claude", prompt="Test prompt", max_turns=5, working_dir=Path(temp_dir)
             )
             yield auto_mode
 
@@ -331,7 +306,7 @@ class TestCheckForNewInstructionsErrorHandling:
                 raise PermissionError("Cannot read file")
             return original_read(self, *args, **kwargs)
 
-        with patch.object(Path, 'read_text', mock_read_text):
+        with patch.object(Path, "read_text", mock_read_text):
             result = auto_mode_with_temp_dir._check_for_new_instructions()
 
         # Should still process good file
@@ -350,7 +325,7 @@ class TestCheckForNewInstructionsErrorHandling:
         instruction_file.write_text("Test content")
 
         # Mock rename to raise error
-        with patch.object(Path, 'rename', side_effect=OSError("Move failed")):
+        with patch.object(Path, "rename", side_effect=OSError("Move failed")):
             # Should not raise exception
             result = auto_mode_with_temp_dir._check_for_new_instructions()
 
@@ -366,7 +341,7 @@ class TestCheckForNewInstructionsErrorHandling:
         """
         # Create a binary file with .md extension
         binary_file = auto_mode_with_temp_dir.append_dir / "binary.md"
-        binary_file.write_bytes(b'\x80\x81\x82\x83')
+        binary_file.write_bytes(b"\x80\x81\x82\x83")
 
         # Should not crash
         try:
@@ -404,10 +379,7 @@ class TestInstructionIntegrationWithRunLoop:
         """Create AutoMode with mocked SDK calls."""
         with tempfile.TemporaryDirectory() as temp_dir:
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="Test prompt",
-                max_turns=3,
-                working_dir=Path(temp_dir)
+                sdk="claude", prompt="Test prompt", max_turns=3, working_dir=Path(temp_dir)
             )
 
             # Mock run_sdk to avoid actual SDK calls
@@ -490,13 +462,10 @@ class TestAutoModeAttributes:
         - append_dir should be log_dir / "append"
         """
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
-        assert hasattr(auto_mode, 'append_dir'), "AutoMode should have append_dir attribute"
+        assert hasattr(auto_mode, "append_dir"), "AutoMode should have append_dir attribute"
         assert isinstance(auto_mode.append_dir, Path), "append_dir should be a Path"
         assert auto_mode.append_dir.name == "append", "append_dir should be named 'append'"
 
@@ -508,13 +477,10 @@ class TestAutoModeAttributes:
         - appended_dir should be log_dir / "appended"
         """
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
-        assert hasattr(auto_mode, 'appended_dir'), "AutoMode should have appended_dir attribute"
+        assert hasattr(auto_mode, "appended_dir"), "AutoMode should have appended_dir attribute"
         assert isinstance(auto_mode.appended_dir, Path), "appended_dir should be a Path"
         assert auto_mode.appended_dir.name == "appended", "appended_dir should be named 'appended'"
 
@@ -526,13 +492,12 @@ class TestAutoModeAttributes:
         - Method should be callable
         """
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
-        assert hasattr(auto_mode, '_check_for_new_instructions'), \
+        assert hasattr(auto_mode, "_check_for_new_instructions"), (
             "AutoMode should have _check_for_new_instructions method"
-        assert callable(auto_mode._check_for_new_instructions), \
+        )
+        assert callable(auto_mode._check_for_new_instructions), (
             "_check_for_new_instructions should be callable"
+        )

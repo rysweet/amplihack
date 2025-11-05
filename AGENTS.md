@@ -27,7 +27,9 @@ When starting a session, reference these files for context:
 @docs/THIS_IS_THE_WAY.md
 ```
 
-**Note**: For practical tips and real-world usage patterns, review `@docs/THIS_IS_THE_WAY.md` which contains battle-tested strategies for effective AI-agent development.
+**Note**: For practical tips and real-world usage patterns, review
+`@docs/THIS_IS_THE_WAY.md` which contains battle-tested strategies for effective
+AI-agent development.
 
 ## USER PREFERENCES - MANDATORY across all sessions
 
