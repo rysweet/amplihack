@@ -23,6 +23,7 @@ except ImportError:
 # Import session management components
 from .session_capture import MessageCapture
 from .fork_manager import ForkManager
+from .message_consolidation import MessageBuffer
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -486,6 +487,10 @@ Document your decisions and reasoning in comments/logs."""
             # Capture user message for transcript
             self.message_capture.capture_user_message(prompt)
 
+            # Create message buffer for consolidation
+            message_buffer = MessageBuffer()
+            message_buffer.start_turn()
+
             # Configure SDK options
             options = ClaudeAgentOptions(
                 cwd=str(self.working_dir),
@@ -500,8 +505,8 @@ Document your decisions and reasoning in comments/logs."""
                     msg_type = message.__class__.__name__
 
                     if msg_type == "AssistantMessage":
-                        # Capture assistant message for transcript
-                        self.message_capture.capture_assistant_message(message)
+                        # Buffer assistant message instead of immediate capture
+                        message_buffer.add_message(message)
 
                         # Process content blocks
                         for block in getattr(message, "content", []):
@@ -556,6 +561,14 @@ Document your decisions and reasoning in comments/logs."""
                             return (1, "".join(output_lines))
 
                     # SystemMessage and other types are informational - skip
+
+            # Consolidate and capture buffered messages at end of turn
+            consolidated = message_buffer.consolidate_turn()
+            if consolidated and not message_buffer.is_empty_message(consolidated):
+                self.message_capture.capture_assistant_message(consolidated)
+                self.log("📝 Captured consolidated assistant message", level="INFO")
+            elif message_buffer.has_buffered_messages():
+                self.log("⚠️  Skipped empty consolidated message", level="DEBUG")
 
             # Success
             full_output = "".join(output_lines)
