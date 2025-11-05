@@ -21,6 +21,16 @@ try:
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
+# Import context detector
+try:
+    from ..reflection.context_detector import ContextDetector, WorkContext
+
+    CONTEXT_DETECTOR_AVAILABLE = True
+except ImportError:
+    CONTEXT_DETECTOR_AVAILABLE = False
+    ContextDetector = None
+    WorkContext = None
+
 
 def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
     """Load conversation messages from session directory.
@@ -97,6 +107,20 @@ async def analyze_session_with_claude(
         print("Claude SDK not available - cannot run AI-powered reflection", file=sys.stderr)
         return None
 
+    # Detect work context
+    work_context = None
+    if CONTEXT_DETECTOR_AVAILABLE:
+        try:
+            detector = ContextDetector(project_root)
+            work_context = detector.detect_context()
+            print(
+                f"Reflection context: {'Amplihack-internal' if work_context.is_amplihack_internal else 'User project'}",
+                file=sys.stderr,
+            )
+        except Exception as e:
+            print(f"Warning: Context detection failed: {e}", file=sys.stderr)
+            # Continue with default prompt
+
     # Load USER_PREFERENCES for context (same as session_start does)
     user_preferences_context = ""
     try:
@@ -104,6 +128,7 @@ async def analyze_session_with_claude(
         try:
             sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
             from amplihack.utils.paths import FrameworkPathResolver
+
             preferences_file = FrameworkPathResolver.resolve_preferences_file()
         except ImportError:
             # Fallback to default location
@@ -125,8 +150,25 @@ The following preferences are REQUIRED and CANNOT be ignored:
         print(f"Warning: Could not load USER_PREFERENCES: {e}", file=sys.stderr)
         # Continue without preferences
 
-    # Build reflection prompt
-    prompt = f"""You are analyzing a completed Claude Code session to provide feedback and identify learning opportunities.
+    # Build context-aware reflection prompt
+    if work_context and CONTEXT_DETECTOR_AVAILABLE:
+        # Use context-aware template
+        detector = ContextDetector(project_root)
+        base_prompt = detector.get_reflection_prompt_template(work_context)
+
+        # Fill in the template variables
+        prompt = base_prompt.format(
+            message_count=len(conversation),
+            conversation_summary=_format_conversation_summary(conversation),
+            template=template,
+        )
+
+        # Add user preferences context if available
+        if user_preferences_context:
+            prompt = user_preferences_context + "\n\n" + prompt
+    else:
+        # Fallback to original generic prompt
+        prompt = f"""You are analyzing a completed Claude Code session to provide feedback and identify learning opportunities.
 {user_preferences_context}
 
 ## Session Conversation
