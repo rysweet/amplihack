@@ -23,6 +23,10 @@ from hook_processor import HookProcessor
 class StopHook(HookProcessor):
     """Hook processor for stop events with lock support."""
 
+    # Message count thresholds for reflection
+    MIN_TOTAL_MESSAGES = 30  # Minimum messages for first reflection
+    MIN_NEW_MESSAGES = 50    # Minimum new messages for subsequent reflections
+
     def __init__(self):
         super().__init__("stop")
         self.lock_flag = self.project_root / ".claude" / "runtime" / "locks" / ".lock_active"
@@ -63,6 +67,16 @@ class StopHook(HookProcessor):
         if not self._should_run_reflection():
             self.log("Reflection not enabled or skipped - allowing stop")
             self.log("=== STOP HOOK ENDED (decision: approve - no reflection) ===")
+            return {"decision": "approve"}
+
+        # Check if session has enough content for reflection
+        transcript_path = input_data.get("transcript_path")
+        is_substantial, reason = self._is_session_substantial(transcript_path)
+
+        if not is_substantial:
+            self.log(f"Session not substantial enough for reflection: {reason}")
+            self.save_metric("reflection_skipped_insufficient_content", 1)
+            self.log("=== STOP HOOK ENDED (decision: approve - insufficient content) ===")
             return {"decision": "approve"}
 
         # FIX #2: Check for reflection semaphore (prevents infinite loop)
@@ -181,6 +195,173 @@ class StopHook(HookProcessor):
             return False
 
         return True
+
+    def _is_session_substantial(self, transcript_path: Optional[str]) -> tuple[bool, str]:
+        """Check if session has enough content to warrant reflection.
+
+        Prevents reflection chaining by ensuring sufficient new conversation since last reflection.
+
+        Args:
+            transcript_path: Path to JSONL transcript file from Claude Code
+
+        Returns:
+            Tuple of (is_substantial: bool, reason: str)
+            - (True, "reason") if session is substantial enough
+            - (False, "reason") if session should skip reflection
+        """
+        # Fail-safe: If no transcript path, allow reflection (benefit of doubt)
+        if not transcript_path:
+            self.log("No transcript path provided - allowing reflection (fail-safe)", "DEBUG")
+            return (True, "No transcript path available (fail-safe default)")
+
+        transcript_file = Path(transcript_path)
+        if not transcript_file.exists():
+            self.log(f"Transcript file not found: {transcript_file} - allowing reflection (fail-safe)", "DEBUG")
+            return (True, "Transcript file not found (fail-safe default)")
+
+        # Count total messages in current transcript
+        total_messages = self._count_transcript_messages(transcript_file)
+        if total_messages is None:
+            # Error reading transcript - fail-safe to allow reflection
+            self.log("Error counting messages - allowing reflection (fail-safe)", "DEBUG")
+            return (True, "Could not count messages (fail-safe default)")
+
+        self.log(f"Total messages in transcript: {total_messages}", "DEBUG")
+
+        # Find most recent reflection file
+        last_reflection_path = self._find_last_reflection()
+
+        if last_reflection_path is None:
+            # No previous reflection - check if we have minimum total messages
+            if total_messages < self.MIN_TOTAL_MESSAGES:
+                reason = f"First reflection requires {self.MIN_TOTAL_MESSAGES} messages, found {total_messages}"
+                self.log(reason, "INFO")
+                return (False, reason)
+            else:
+                reason = f"First reflection threshold met: {total_messages} >= {self.MIN_TOTAL_MESSAGES} messages"
+                self.log(reason, "INFO")
+                return (True, reason)
+
+        # Previous reflection exists - check if we have enough NEW messages
+        self.log(f"Found previous reflection: {last_reflection_path}", "DEBUG")
+
+        analyzed_count = self._extract_analyzed_message_count(last_reflection_path)
+        if analyzed_count is None:
+            # Can't determine previous count - fail-safe to allow reflection
+            self.log("Could not extract previous message count - allowing reflection (fail-safe)", "DEBUG")
+            return (True, "Could not determine previous message count (fail-safe default)")
+
+        self.log(f"Messages analyzed in last reflection: {analyzed_count}", "DEBUG")
+
+        new_messages = total_messages - analyzed_count
+        self.log(f"New messages since last reflection: {new_messages}", "DEBUG")
+
+        if new_messages < self.MIN_NEW_MESSAGES:
+            reason = f"Insufficient new messages: {new_messages} < {self.MIN_NEW_MESSAGES} (need {self.MIN_NEW_MESSAGES - new_messages} more)"
+            self.log(reason, "INFO")
+            return (False, reason)
+        else:
+            reason = f"Sufficient new messages: {new_messages} >= {self.MIN_NEW_MESSAGES}"
+            self.log(reason, "INFO")
+            return (True, reason)
+
+    def _count_transcript_messages(self, transcript_file: Path) -> Optional[int]:
+        """Count number of user/assistant messages in JSONL transcript.
+
+        Args:
+            transcript_file: Path to JSONL transcript file
+
+        Returns:
+            Number of messages, or None if error
+        """
+        try:
+            message_count = 0
+            with open(transcript_file) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        if entry.get("type") in ["user", "assistant"]:
+                            message_count += 1
+                    except json.JSONDecodeError:
+                        # Skip malformed lines
+                        continue
+            return message_count
+        except Exception as e:
+            self.log(f"Error counting transcript messages: {e}", "ERROR")
+            return None
+
+    def _find_last_reflection(self) -> Optional[Path]:
+        """Find the most recent reflection file.
+
+        Searches .claude/runtime/reflection/ for reflection-*.md files.
+
+        Returns:
+            Path to most recent reflection file, or None if no reflections found
+        """
+        reflection_dir = self.project_root / ".claude" / "runtime" / "reflection"
+        if not reflection_dir.exists():
+            self.log("Reflection directory does not exist", "DEBUG")
+            return None
+
+        try:
+            # Find all reflection-*.md files
+            reflection_files = list(reflection_dir.glob("reflection-*.md"))
+            if not reflection_files:
+                self.log("No previous reflection files found", "DEBUG")
+                return None
+
+            # Sort by modification time, most recent first
+            reflection_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            most_recent = reflection_files[0]
+            self.log(f"Most recent reflection: {most_recent}", "DEBUG")
+            return most_recent
+
+        except Exception as e:
+            self.log(f"Error finding last reflection: {e}", "ERROR")
+            return None
+
+    def _extract_analyzed_message_count(self, reflection_file: Path) -> Optional[int]:
+        """Extract the number of messages analyzed from a reflection file.
+
+        Looks for lines like:
+        - "Total Messages Analyzed: 42"
+        - "Analyzed 42 messages"
+        - Similar patterns
+
+        Args:
+            reflection_file: Path to reflection markdown file
+
+        Returns:
+            Number of messages analyzed, or None if not found
+        """
+        try:
+            content = reflection_file.read_text()
+
+            # Try pattern: "Total Messages Analyzed: N"
+            import re
+            patterns = [
+                r'Total Messages Analyzed:\s*(\d+)',
+                r'Analyzed\s+(\d+)\s+messages',
+                r'Message Count:\s*(\d+)',
+                r'(\d+)\s+messages analyzed',
+            ]
+
+            for pattern in patterns:
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    count = int(match.group(1))
+                    self.log(f"Extracted message count: {count} using pattern: {pattern}", "DEBUG")
+                    return count
+
+            self.log("Could not find message count in reflection file", "WARNING")
+            return None
+
+        except Exception as e:
+            self.log(f"Error extracting analyzed message count: {e}", "ERROR")
+            return None
 
     def _get_current_session_id(self) -> str:
         """Detect current session ID from environment or logs.
