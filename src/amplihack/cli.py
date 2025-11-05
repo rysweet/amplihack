@@ -64,6 +64,11 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
+    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
+    if getattr(args, "use_graph_mem", False):
+        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
+        print("Neo4j graph memory enabled")
+
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
 
@@ -339,6 +344,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    launch_parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
@@ -366,6 +376,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    claude_parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
     )
 
     # Copilot command
