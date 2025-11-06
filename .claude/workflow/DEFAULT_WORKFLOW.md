@@ -75,6 +75,7 @@ This workflow should be followed for:
 - [ ] **Use** database agent for data model design (if applicable)
 - [ ] **Use** tester agent to write failing tests (TDD approach)
 - [ ] **Use** security agent to identify security requirements
+- [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy)
 - [ ] Document module specifications
 - [ ] Create detailed implementation plan
 - [ ] Identify risks and dependencies
@@ -103,6 +104,7 @@ This workflow should be followed for:
 ### Step 7: Run Tests and Pre-commit Hooks
 
 - [ ] **Use** pre-commit-diagnostic agent if hooks fail
+- [ ] **💡 TIP**: For test failures, use [parallel investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
 - [ ] Run all unit tests
 - [ ] Execute `pre-commit run --all-files`
 - [ ] Fix any linting issues
@@ -197,6 +199,7 @@ This ensures you see success messages, error details, and PR URLs.
 
 - [ ] Check CI status (all checks passing)
 - [ ] **Always use** ci-diagnostic-workflow agent if CI fails
+- [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
 - [ ] Resolve any merge conflicts
 - [ ] Verify all review comments addressed
 - [ ] Confirm PR is approved
