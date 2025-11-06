@@ -122,9 +122,10 @@ def handle_auto_mode(
     if not getattr(args, "auto", False):
         return None
 
-    # Handle --no-reflection flag (disable always wins priority)
-    if getattr(args, "no_reflection", False):
-        os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+    # Disable reflection in auto mode (Issue #1146)
+    # Reflection is interactive and blocks autonomous execution
+    # Note: --no-reflection flag (Issue #1147) is also handled in non-auto mode paths
+    os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
     from .launcher.auto_mode import AutoMode
 
