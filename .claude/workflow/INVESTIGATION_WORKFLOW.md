@@ -1,279 +1,416 @@
 # Investigation Workflow
 
-This workflow defines the process for conducting thorough investigations of codebases, systems, and architectures.
+This file defines the workflow for investigation and research tasks. Unlike DEFAULT_WORKFLOW.md which is optimized for development (implementation → testing → deployment), this workflow is optimized for exploration and understanding.
 
-## When to Use This Workflow
+## How This Workflow Works
 
-Use this workflow when:
+**This workflow is the single source of truth for investigation tasks:**
 
-- Analyzing existing codebase structure
-- Investigating how a system works
-- Understanding architecture and design patterns
-- Exploring feature implementations
-- Diagnosing complex bugs
-- Researching integration patterns
-- Mapping dependencies and relationships
+- The order of phases (6 phases must be followed sequentially, except Phase 3 which uses parallel execution)
+- Agent deployment strategies for each phase
+- Knowledge capture and documentation requirements
+- Success criteria for investigations
 
-## Investigation Workflow Steps
+**Execution approach:**
 
-### Step 1: Clarify Investigation Scope
+- Start with `/ultrathink` which will detect investigation keywords and suggest this workflow
+- UltraThink reads this workflow and orchestrates agents to execute it
+- Each phase leverages specialized agents for maximum effectiveness
+- The workflow defines the process; agents execute the work
 
-- [ ] Define what needs to be investigated
-- [ ] Identify specific questions to answer
-- [ ] Determine investigation boundaries (what to include/exclude)
-- [ ] Set success criteria (what constitutes complete understanding)
-- [ ] Use **ambiguity agent** if scope is unclear
+## When This Workflow Applies
 
-**Output**: Clear investigation objectives and scope
+This workflow should be followed for tasks containing these keywords or patterns:
 
----
+### Investigation Keywords
 
-### Step 2: Initial Discovery
+- "investigate"
+- "explain"
+- "understand"
+- "how does"
+- "why does"
+- "analyze"
+- "research"
+- "explore"
+- "examine"
+- "study"
 
-- [ ] Use **analyzer agent** to scan relevant code and structure
-- [ ] Identify key files, modules, and components
-- [ ] Map dependencies and relationships
-- [ ] Note patterns, conventions, and design decisions
-- [ ] Document initial hypotheses
+### Example Investigation Tasks
 
-**Output**: High-level map of the investigation area
+- "Investigate how the authentication system works"
+- "Explain the neo4j memory integration"
+- "Understand why CI is failing consistently"
+- "Analyze the reflection system architecture"
+- "Research what hooks are triggered during session start"
 
----
+**Not for development tasks** - If the task involves "implement", "build", "create", "add feature", use DEFAULT_WORKFLOW.md instead.
 
-### Step 3: Deep Dive Investigation
+## The 6-Phase Investigation Workflow
 
-- [ ] Use **knowledge-archaeologist agent** for deep research
-- [ ] Examine git history for context and decisions
-- [ ] Trace execution flows and data flows
-- [ ] Identify integration points and boundaries
-- [ ] Test hypotheses with code exploration
-- [ ] Create diagrams to visualize findings (mermaid format)
+### Phase 1: Scope Definition
 
-**Output**: Comprehensive understanding with supporting evidence
+**Purpose:** Define investigation boundaries and success criteria before any exploration.
 
----
+**Mapping to DEFAULT_WORKFLOW:** Similar to Step 1 (Rewrite and Clarify Requirements)
 
-### Step 4: Verification and Validation
+**Tasks:**
 
-- [ ] Test understanding with practical examples
-- [ ] Verify assumptions against actual behavior
-- [ ] Run code examples to confirm findings
-- [ ] Check edge cases and special conditions
-- [ ] Document verification steps for reproducibility
+- [ ] **FIRST: Identify explicit user requirements** - What specific questions must be answered?
+- [ ] **Use** prompt-writer agent to clarify investigation scope
+- [ ] **Use** ambiguity agent if questions are unclear
+- [ ] Define what counts as "understanding achieved"
+- [ ] List specific questions that must be answered
+- [ ] Identify known unknowns (what we know we don't know)
+- [ ] Set boundaries: What's in scope vs. out of scope
+- [ ] Estimate investigation depth needed (surface-level vs. deep dive)
 
-**Output**: Validated findings with working examples
+**Success Criteria:**
 
----
+- Clear list of questions to answer
+- Defined scope boundaries
+- Measurable success criteria (e.g., "can explain system flow", "can diagram architecture")
 
-### Step 5: Synthesis and Presentation
+**Deliverables:**
 
-- [ ] Synthesize findings into coherent narrative
-- [ ] Organize discoveries logically
-- [ ] Create architecture diagrams (if applicable)
-- [ ] Prepare examples demonstrating key concepts
-- [ ] Present findings to user with clear explanations
+- Investigation scope document with:
+  - Core questions to answer
+  - Success criteria
+  - Scope boundaries (what's included/excluded)
+  - Estimated depth and timeline
 
-**Output**: Clear, comprehensive investigation report
+### Phase 2: Exploration Strategy
 
----
+**Purpose:** Plan which agents to deploy and what to investigate, preventing inefficient random exploration.
 
-### Step 6: Capture Findings in Documentation (Optional)
+**Mapping to DEFAULT_WORKFLOW:** Similar to Step 4 (Research and Design with TDD)
 
-**This step preserves investigation knowledge for future sessions.**
+**Tasks:**
 
-- [ ] **knowledge-archaeologist agent** prompts user:
+- [ ] **Use** architect agent to design exploration strategy
+- [ ] **Use** patterns agent to check for similar past investigations
+- [ ] Identify key areas to explore (code paths, configurations, documentation)
+- [ ] Select specialized agents for parallel deployment in Phase 3
+- [ ] Create investigation roadmap with priorities
+- [ ] Identify potential dead ends to avoid
+- [ ] Plan verification approach (how to test understanding)
 
-  > "Shall I create a permanent record of this investigation in the ship's logs (documentation)?"
-  >
-  > This would create `.claude/docs/[TYPE]_[TOPIC].md` with:
-  > - Findings summary
-  > - Architecture diagrams
-  > - Key files and their purposes
-  > - System integration details
-  > - Verification steps
-  > - Examples
-  >
-  > **[Yes/No]**
+**Agent Selection Guidelines:**
 
-- [ ] **If user accepts**:
-  - [ ] Determine topic name from investigation focus
-  - [ ] Select template type:
-    - **ARCHITECTURE** for system architecture investigations
-    - **INVESTIGATION** for general investigations
-  - [ ] Generate documentation from findings using template
-  - [ ] Populate all sections with investigation content
-  - [ ] Save to `.claude/docs/[TYPE]_[TOPIC].md`
-  - [ ] Confirm documentation created and location
+- **For code understanding:** analyzer, patterns agents
+- **For system architecture:** architect, api-designer agents
+- **For performance issues:** optimizer, analyzer agents
+- **For security concerns:** security, patterns agents
+- **For integration flows:** integration, database agents
 
-- [ ] **If user declines**:
-  - [ ] Continue without documentation
-  - [ ] Investigation complete
+**Success Criteria:**
 
-**Output**: Optional persistent documentation file
+- Clear exploration roadmap
+- List of agents to deploy in Phase 3
+- Prioritized investigation areas
 
----
+**Deliverables:**
 
-## Investigation Best Practices
+- Exploration strategy document with:
+  - Investigation roadmap
+  - Agent deployment plan for Phase 3
+  - Priority order for exploration
+  - Expected outputs from each exploration
 
-### Start Broad, Then Narrow
+### Phase 3: Parallel Deep Dives
 
-1. Begin with high-level overview
-2. Identify areas requiring deep dive
-3. Focus investigation on specific components
-4. Connect detailed findings back to big picture
+**Purpose:** Deploy multiple exploration agents simultaneously to gather information efficiently.
 
-### Document as You Go
+**Mapping to DEFAULT_WORKFLOW:** Similar to Step 5 (Implementation) but for investigation.
 
-- Take notes during investigation
-- Capture interesting patterns immediately
-- Create diagrams while understanding is fresh
-- Note questions as they arise
+**CRITICAL: This phase uses PARALLEL EXECUTION by default.**
 
-### Use Multiple Perspectives
+**Tasks:**
 
-- **analyzer**: Technical structure analysis
-- **knowledge-archaeologist**: Historical context and patterns
-- **patterns agent**: Design pattern identification
-- **security agent**: Security implications (if relevant)
+- [ ] **Deploy selected agents in PARALLEL** based on Phase 2 strategy
+- [ ] **Common parallel patterns:**
+  - `[analyzer(module1), analyzer(module2), analyzer(module3)]` - Multiple code areas
+  - `[analyzer, patterns, security]` - Multiple perspectives on same area
+  - `[architect, database, integration]` - System architecture exploration
+- [ ] Each agent explores their assigned area independently
+- [ ] Collect findings from all parallel explorations
+- [ ] Identify connections and dependencies between findings
+- [ ] Note any unexpected discoveries or anomalies
 
-### Verify Understanding
+**Parallel Agent Examples:**
 
-- Run actual code examples
-- Test assumptions
-- Confirm hypotheses with evidence
-- Don't assume - validate
+```
+Investigation: "How does the reflection system work?"
+→ [analyzer(.claude/tools/amplihack/hooks/), patterns(reflection), integration(logging)]
 
-### Create Visual Aids
+Investigation: "Why is CI failing?"
+→ [analyzer(ci-config), patterns(ci-failures), integration(github-actions)]
 
-Use mermaid diagrams to visualize:
-
-- System architecture
-- Component relationships
-- Data flow
-- Sequence diagrams
-- State machines
-
-Example:
-```mermaid
-graph TD
-    A[Component A] -->|calls| B[Component B]
-    B -->|returns| A
-    B -->|writes| C[Database]
+Investigation: "Understand authentication flow"
+→ [analyzer(auth-module), security(auth), patterns(auth), integration(external-auth)]
 ```
 
-## Documentation Guidelines
+**Success Criteria:**
 
-### When to Create Documentation
+- All planned agents deployed and completed
+- Findings from each exploration collected
+- Connections between findings identified
 
-**Always offer** documentation for:
-- Architecture investigations
-- System integration analysis
-- Complex component relationships
-- Multi-file investigations
-- Significant discoveries
+**Deliverables:**
 
-**Optional** for:
-- Simple single-file analysis
-- Quick bug checks
-- Trivial investigations
+- Findings report with:
+  - Summary from each parallel exploration
+  - Code paths and flow diagrams
+  - Architectural insights
+  - Unexpected discoveries
+  - Open questions for verification
 
-### Choosing Documentation Type
+### Phase 4: Verification & Testing
 
-**ARCHITECTURE_[TOPIC].md** when:
-- Investigating system architecture
-- Analyzing component relationships
-- Mapping integration flows
-- Documenting design patterns
-- Recording architectural decisions
+**Purpose:** Test and validate understanding through practical application.
 
-**INVESTIGATION_[TOPIC].md** when:
-- General code investigation
-- Bug analysis and diagnosis
-- Performance investigation
-- Feature exploration
-- Behavior analysis
+**Mapping to DEFAULT_WORKFLOW:** Similar to Steps 7-8 (Testing and Mandatory Local Testing)
 
-### Topic Naming
+**Tasks:**
 
-Use UPPER_SNAKE_CASE for clarity:
+- [ ] Create hypotheses based on Phase 3 findings
+- [ ] **Design practical tests** to verify understanding:
+  - Trace specific code paths manually
+  - Examine logs and outputs
+  - Test edge cases and assumptions
+  - Verify configuration effects
+- [ ] Run verification tests
+- [ ] **Document what was tested and results**
+- [ ] Identify gaps in understanding
+- [ ] Refine hypotheses based on test results
+- [ ] Repeat verification for any unclear areas
 
-**Good Examples:**
-- `USER_PREFERENCES_HOOKS`
-- `NEO4J_MEMORY_SYSTEM`
-- `HOOK_EXECUTION_ORDER`
-- `AMPLIHACK_CLI_ARCHITECTURE`
+**Verification Examples:**
 
-**Bad Examples:**
-- `userPreferencesHooks` (wrong case)
-- `user-preferences` (incomplete)
-- `investigation_of_hooks` (too verbose)
+```
+Understanding: "Authentication uses JWT tokens"
+Verification: Trace actual token creation and validation in code
 
-## Templates
+Understanding: "CI fails because of dependency conflict"
+Verification: Check CI logs, reproduce locally, verify fix works
 
-Templates are located in `.claude/templates/`:
+Understanding: "Reflection analyzes all user messages"
+Verification: Examine reflection logs, trace message processing
+```
 
-1. **investigation-doc-template.md**: General investigations
-2. **architecture-doc-template.md**: Architecture investigations
+**Success Criteria:**
 
-See `.claude/templates/README.md` for template usage details.
+- All hypotheses tested
+- Understanding verified through practical tests
+- Gaps in understanding identified and filled
 
-## Integration Points
+**Deliverables:**
 
-This workflow integrates with:
+- Verification report with:
+  - Tests performed
+  - Results and observations
+  - Confirmed understanding
+  - Remaining gaps or uncertainties
 
-- **analyzer agent**: Initial code analysis
-- **knowledge-archaeologist agent**: Deep research and documentation
-- **patterns agent**: Pattern identification
-- **ambiguity agent**: Scope clarification
-- **Default workflow**: Can be used within broader development workflow
+### Phase 5: Synthesis
 
-## Success Criteria
+**Purpose:** Compile findings into coherent explanation that answers original questions.
 
-Investigation is complete when:
+**Mapping to DEFAULT_WORKFLOW:** Similar to Step 11 (Review the PR)
 
-- [ ] All investigation objectives answered
-- [ ] Understanding verified with examples
-- [ ] Key components and relationships documented
-- [ ] Integration points identified
-- [ ] Verification steps documented
-- [ ] Findings presented clearly
-- [ ] Optional documentation created (if user accepts)
+**Tasks:**
 
-## Examples
+- [ ] **Use** reviewer agent to check completeness of findings
+- [ ] **Use** patterns agent to identify reusable patterns discovered
+- [ ] Synthesize findings from Phases 3-4 into coherent explanation
+- [ ] Create visual artifacts (diagrams, flow charts) if helpful
+- [ ] Answer each question from Phase 1 scope definition
+- [ ] Identify what worked well vs. what was unexpected
+- [ ] Note any assumptions or uncertainties remaining
+- [ ] Prepare clear explanation suitable for user
 
-### Example 1: Architecture Investigation
+**Synthesis Outputs:**
 
-**Objective**: Understand how user preferences integrate with hooks system
+1. **Executive Summary**: 2-3 sentence answer to main question
+2. **Detailed Explanation**: Complete explanation with supporting evidence
+3. **Visual Aids**: Diagrams showing system flow, architecture, etc.
+4. **Key Insights**: Non-obvious discoveries or patterns
+5. **Remaining Unknowns**: What's still unclear or uncertain
 
-**Steps Followed:**
-1. Clarified scope: preferences storage, hook integration, and lifecycle
-2. Analyzed key files: `USER_PREFERENCES.md`, hook implementations
-3. Deep dive: traced preference loading and hook execution
-4. Verified: tested preference changes with hook reactions
-5. Synthesized: created integration flow diagram
-6. **Documented**: Created `ARCHITECTURE_USER_PREFERENCES_HOOKS.md`
+**Success Criteria:**
 
-### Example 2: Bug Investigation
+- All Phase 1 questions answered
+- Explanation is clear and complete
+- Findings supported by evidence from verification
+- Visual aids clarify complex areas
 
-**Objective**: Why are hooks not firing in certain scenarios?
+**Deliverables:**
 
-**Steps Followed:**
-1. Clarified: identified specific failure scenarios
-2. Analyzed: examined hook registration and execution code
-3. Deep dive: traced execution path in failing cases
-4. Verified: reproduced bug and confirmed fix
-5. Synthesized: explained root cause and solution
-6. **Documented**: Created `INVESTIGATION_HOOK_EXECUTION_BUG.md`
+- Investigation report with all 5 synthesis outputs
+- Ready for knowledge capture in Phase 6
+
+### Phase 6: Knowledge Capture
+
+**Purpose:** Create durable documentation so this investigation never needs to be repeated.
+
+**Mapping to DEFAULT_WORKFLOW:** Similar to Step 15 (Final Cleanup and Verification)
+
+**Tasks:**
+
+- [ ] **Update .claude/context/DISCOVERIES.md** with key insights
+- [ ] **Update .claude/context/PATTERNS.md** if reusable patterns found
+- [ ] Create or update relevant documentation files
+- [ ] Add inline code comments for critical understanding
+- [ ] **Optional:** Create GitHub issue for follow-up improvements
+- [ ] **Optional:** Update architecture diagrams if needed
+- [ ] Ensure future investigators can find this knowledge easily
+
+**Documentation Guidelines:**
+
+```markdown
+## Discovery: [Brief Title]
+
+**Context**: What was investigated and why
+**Key Findings**:
+
+- Main insight 1
+- Main insight 2
+  **Supporting Evidence**: Links to code, logs, or verification tests
+  **Implications**: How this affects the project
+  **Related Patterns**: Links to similar patterns in PATTERNS.md
+```
+
+**Success Criteria:**
+
+- DISCOVERIES.md updated with investigation results
+- Relevant documentation files updated
+- Knowledge is discoverable by future investigators
+- No information loss
+
+**Deliverables:**
+
+- Updated DISCOVERIES.md
+- Updated PATTERNS.md (if applicable)
+- Updated project documentation
+- Optional: GitHub issues for improvements
+- Investigation session log in `.claude/runtime/logs/`
+
+## Efficiency Targets
+
+**This workflow aims for 30-40% reduction in message count compared to ad-hoc investigation:**
+
+| Ad-Hoc Approach         | Investigation Workflow    |
+| ----------------------- | ------------------------- |
+| 70-90 messages          | 40-60 messages            |
+| Frequent backtracking   | Planned exploration       |
+| Redundant investigation | Parallel deep dives       |
+| Unclear scope           | Explicit scope definition |
+| Lost knowledge          | Documented insights       |
+
+**Efficiency Gains Come From:**
+
+1. **Scope Definition** prevents scope creep and wandering
+2. **Exploration Strategy** prevents random unproductive exploration
+3. **Parallel Deep Dives** maximize information gathering speed
+4. **Verification Phase** catches misunderstandings early
+5. **Synthesis** ensures all questions answered
+6. **Knowledge Capture** prevents repeat investigations
+
+## Comparison to DEFAULT_WORKFLOW.md
+
+### Similarities (Structural Consistency)
+
+Both workflows share core principles:
+
+- Explicit phases with clear deliverables
+- Agent-driven execution at each phase
+- Quality gates preventing premature progression
+- Knowledge capture and documentation
+- TodoWrite tracking for progress management
+
+### Differences (Investigation vs. Development)
+
+| Aspect             | Investigation Workflow     | DEFAULT_WORKFLOW.md      |
+| ------------------ | -------------------------- | ------------------------ |
+| **Goal**           | Understanding              | Implementation           |
+| **Phases**         | 6 phases                   | 15 steps                 |
+| **Execution**      | Exploration-first          | Implementation-first     |
+| **Parallel Focus** | Phase 3 (Deep Dives)       | Various steps            |
+| **Testing**        | Understanding verification | Code validation          |
+| **Deliverable**    | Documentation              | Working code             |
+| **Git Usage**      | Optional                   | Required (branches, PRs) |
+
+### Phase Mapping (For User Familiarity)
+
+| Investigation Phase           | DEFAULT_WORKFLOW Equivalent        | Purpose                              |
+| ----------------------------- | ---------------------------------- | ------------------------------------ |
+| Phase 1: Scope Definition     | Step 1: Requirements Clarification | Define what success looks like       |
+| Phase 2: Exploration Strategy | Step 4: Research and Design        | Plan the approach                    |
+| Phase 3: Parallel Deep Dives  | Step 5: Implementation             | Execute the plan (explore vs. build) |
+| Phase 4: Verification         | Steps 7-8: Testing                 | Validate results                     |
+| Phase 5: Synthesis            | Step 11: Review                    | Ensure quality and completeness      |
+| Phase 6: Knowledge Capture    | Step 15: Cleanup                   | Make results durable                 |
+
+## Integration with UltraThink
+
+**UltraThink Workflow Detection:**
+
+When `/ultrathink` is invoked, it should detect investigation tasks by checking for keywords:
+
+```python
+investigation_keywords = [
+    "investigate", "explain", "understand", "how does", "why does",
+    "analyze", "research", "explore", "examine", "study"
+]
+
+if any(keyword in task_description.lower() for keyword in investigation_keywords):
+    workflow_file = "INVESTIGATION_WORKFLOW.md"
+    message = "Detected investigation task. Using INVESTIGATION_WORKFLOW.md"
+else:
+    workflow_file = "DEFAULT_WORKFLOW.md"
+    message = "Using DEFAULT_WORKFLOW.md for development task"
+```
+
+**Automatic Workflow Suggestion:**
+
+```
+User: "/ultrathink investigate how authentication works"
+
+UltraThink: Detected investigation task. Using INVESTIGATION_WORKFLOW.md
+→ Reading workflow from .claude/workflow/INVESTIGATION_WORKFLOW.md
+→ Following 6-phase investigation workflow
+→ Starting Phase 1: Scope Definition
+```
 
 ## Customization
 
 To customize this workflow:
 
-1. Edit this file to modify, add, or remove steps
-2. Adjust agent usage to match your project needs
-3. Modify documentation requirements
-4. Save changes to persist customizations
+1. Edit this file to modify, add, or remove phases
+2. Adjust agent deployment strategies for your needs
+3. Add project-specific investigation patterns
+4. Update efficiency targets based on your metrics
 
----
+Changes take effect immediately for future investigations.
 
-**Remember**: The goal of investigation is not just to understand, but to preserve that understanding for future sessions. Always consider creating documentation to capture valuable insights.
+## Success Metrics
+
+Track these metrics to validate workflow effectiveness:
+
+- **Message Count**: Target 30-40% reduction vs. ad-hoc
+- **Investigation Time**: Track time to completion
+- **Knowledge Reuse**: How often DISCOVERIES.md prevents repeat work
+- **Completeness**: Percentage of investigations with full documentation
+- **User Satisfaction**: Clear understanding achieved
+
+## Remember
+
+- **Scope first, explore second** - Define boundaries before diving in
+- **Parallel exploration is key** - Deploy multiple agents simultaneously in Phase 3
+- **Verify understanding** - Test your hypotheses in Phase 4
+- **Capture knowledge** - Always update DISCOVERIES.md in Phase 6
+- **This workflow optimizes for understanding, not implementation**
+
+When in doubt about investigation vs. development:
+
+- **Investigation:** "I need to understand X"
+- **Development:** "I need to build/fix/implement X"

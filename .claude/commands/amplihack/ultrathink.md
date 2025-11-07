@@ -10,38 +10,23 @@
 
 ## Purpose
 
-Deep analysis mode for complex tasks. Orchestrates multiple agents to break down, analyze, and solve challenging problems by following the default workflow.
+Deep analysis mode for complex tasks. Orchestrates multiple agents to break down, analyze, and solve challenging problems by following the appropriate workflow (investigation or development).
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
 When this command is invoked, you MUST:
 
-### ⚓ MANDATORY: Workflow File Validation (BLOCKING PREREQUISITE)
-
-**CRITICAL ENFORCEMENT**: Before executing ANY steps below, you MUST validate workflow file access:
-
-**VALIDATION CHECKLIST** (Cannot be skipped):
-1. ☐ Use `FrameworkPathResolver.resolve_workflow_file()` to resolve the workflow file path
-2. ☐ Use Read tool to load the workflow file content
-3. ☐ Verify the file contains workflow step definitions
-4. ☐ ONLY THEN proceed to numbered execution steps below
-
-**IF VALIDATION FAILS**:
-- ⛔ **STOP immediately** - do not proceed with any other steps
-- Report error: "Cannot execute ultrathink - workflow file must be read first"
-- Provide path resolution details for debugging
-- Exit command execution
-
-**Validation Complete** ✓ → Proceed to execution steps:
-
----
-
-1. **First, read the workflow file** using FrameworkPathResolver.resolve_workflow_file() to get the correct path, then use the Read tool
-2. **Create a comprehensive todo list** using TodoWrite that includes all 13 workflow steps
-3. **Execute each step systematically**, marking todos as in_progress and completed
-4. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
-5. **Track decisions** by creating `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
-6. **End with cleanup agent** to ensure code quality
+1. **First, detect task type** - Check if task is investigation or development
+   - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
+   - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
+   - If investigation keywords found: Use INVESTIGATION_WORKFLOW.md (6 phases)
+   - If development keywords found: Use DEFAULT_WORKFLOW.md (15 steps)
+2. **Read the appropriate workflow file** using FrameworkPathResolver.resolve_workflow_file() to get the correct path, then use the Read tool
+3. **Create a comprehensive todo list** using TodoWrite that includes all workflow steps/phases
+4. **Execute each step systematically**, marking todos as in_progress and completed
+5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
+6. **Track decisions** by creating `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
+7. **End with cleanup agent** (development) or knowledge capture (investigation)
 
 ## PROMPT-BASED WORKFLOW EXECUTION
 
@@ -50,8 +35,13 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
 ### Step-by-Step Execution:
 
 1. **Initialize**:
-   - Read workflow file using FrameworkPathResolver to get the current 13-step process
-   - Create TodoWrite list with all workflow steps
+   - Detect task type (investigation vs. development)
+   - Select appropriate workflow:
+     - Investigation: INVESTIGATION_WORKFLOW.md (6 phases)
+     - Development: DEFAULT_WORKFLOW.md (15 steps)
+   - Inform user which workflow is being used
+   - Read workflow file using FrameworkPathResolver
+   - Create TodoWrite list with all workflow steps/phases
    - Create session directory for decision logging
 
 2. **For Each Workflow Step**:
@@ -127,13 +117,37 @@ Always use TodoWrite to:
 
 ## Example Flow
 
+### Development Task Example
+
 ```
-1. Read workflow using FrameworkPathResolver.resolve_workflow_file()
-2. Begin executing workflow steps with deep analysis
-3. Orchestrate multiple agents where complexity requires
-4. Follow all workflow steps as defined
-5. Adapt to any user customizations automatically
-6. MANDATORY: Invoke cleanup agent at task completion
+User: "/ultrathink implement JWT authentication"
+
+1. Detect: Development task (contains "implement")
+2. Select: DEFAULT_WORKFLOW.md (15 steps)
+3. Read workflow using FrameworkPathResolver.resolve_workflow_file()
+4. Begin executing workflow steps with deep analysis
+5. Orchestrate multiple agents where complexity requires
+6. Follow all workflow steps as defined
+7. Adapt to any user customizations automatically
+8. MANDATORY: Invoke cleanup agent at task completion
+```
+
+### Investigation Task Example
+
+```
+User: "/ultrathink investigate how the reflection system works"
+
+1. Detect: Investigation task (contains "investigate")
+2. Select: INVESTIGATION_WORKFLOW.md (6 phases)
+3. Inform user: "Detected investigation task. Using INVESTIGATION_WORKFLOW.md"
+4. Read workflow using FrameworkPathResolver.resolve_workflow_file()
+5. Execute Phase 1: Scope Definition
+6. Execute Phase 2: Exploration Strategy
+7. Execute Phase 3: Parallel Deep Dives (multiple agents simultaneously)
+8. Execute Phase 4: Verification & Testing
+9. Execute Phase 5: Synthesis
+10. Execute Phase 6: Knowledge Capture
+11. MANDATORY: Update DISCOVERIES.md with findings
 ```
 
 ## Mandatory Cleanup Phase
