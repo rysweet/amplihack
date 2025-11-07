@@ -558,64 +558,35 @@ core concepts, and reference materials.
 
 ### Investigation Workflow
 
-**Systematic workflow for code investigations that preserves findings in
-persistent documentation.**
+Deep knowledge excavation for understanding existing codebases, systems, and architectures.
 
-**Core Principle**: Investigation knowledge should be preserved for future
-sessions, not lost in chat history.
+**When to Use:**
 
-**When to Use Investigation Workflow:**
+- Analyzing codebase structure or system architecture
+- Understanding how components integrate
+- Diagnosing complex bugs with historical context
+- Researching implementation patterns
+- Exploring feature designs before modifications
 
-- Analyzing existing codebase structure
-- Understanding system architecture
-- Investigating how components work
-- Diagnosing complex bugs
-- Researching integration patterns
-- Exploring feature implementations
+**What It Does:**
 
-**Workflow Steps:**
-
-1. **Clarify Scope** - Define investigation objectives
-2. **Initial Discovery** - High-level code scanning
-3. **Deep Dive** - Detailed analysis with knowledge-archaeologist agent
-4. **Verification** - Test understanding with practical examples
-5. **Synthesis** - Present findings to user
-6. **Documentation** (Optional) - Capture findings in persistent docs
+Systematic 6-stage investigation workflow that preserves findings in persistent documentation:
+- Clarifies investigation scope and objectives
+- Discovers and maps code structure
+- Deep dives with knowledge-archaeologist agent
+- Verifies understanding with practical examples
+- Synthesizes findings into clear reports
+- Optionally generates permanent documentation
 
 **Key Feature - Auto-Documentation:**
 
-After completing an investigation, the knowledge-archaeologist agent offers to
-create persistent documentation:
+After investigations, the agent offers to create persistent docs in `.claude/docs/` (ARCHITECTURE_* or INVESTIGATION_*) so knowledge persists across sessions instead of being lost in chat history.
 
-```
-Shall I create a permanent record of this investigation in the ship's logs (documentation)?
-
-This would create `.claude/docs/[TYPE]_[TOPIC].md` with:
-- Findings summary
-- Architecture diagrams
-- Key files and their purposes
-- System integration details
-- Verification steps
-- Examples
-```
-
-**Documentation Types:**
-
-- `ARCHITECTURE_[TOPIC].md` - System architecture investigations
-- `INVESTIGATION_[TOPIC].md` - General investigations
-
-**Benefits:**
-
-- **Knowledge Preservation**: Findings persist across sessions
-- **No Repeated Work**: Don't re-investigate the same systems
-- **Faster Onboarding**: New team members read past investigations
-- **Organic Growth**: Documentation grows naturally from actual investigations
-
-**Workflow File**: `.claude/workflow/INVESTIGATION_WORKFLOW.md` **Templates**:
-`.claude/templates/investigation-doc-template.md`,
-`.claude/templates/architecture-doc-template.md` **Agent**:
-knowledge-archaeologist (generates documentation) **Storage**: `.claude/docs/`
-(all generated documentation)
+**Details:**
+- **Complete Workflow**: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+- **Agent Implementation**: `.claude/agents/amplihack/specialized/knowledge-archaeologist.md`
+- **Templates**: `.claude/templates/{investigation,architecture}-doc-template.md`
+- **Storage**: `.claude/docs/` (all generated documentation)
 
 ## Scenario Tools
 
