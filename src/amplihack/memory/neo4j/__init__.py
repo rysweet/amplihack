@@ -2,6 +2,7 @@
 
 Provides container lifecycle management, connection handling,
 schema initialization, and configuration for Neo4j-based memory storage.
+Also includes code ingestion metadata tracking for codebase identity and versioning.
 
 Public API:
     # Lifecycle
@@ -31,6 +32,10 @@ Public API:
     BlarifyIntegration
     run_blarify
 
+    # Code Ingestion Metadata
+    CodebaseIdentifier, CodebaseIdentity, IngestionMetadata,
+    IngestionResult, IngestionTracker
+
     # Documentation Graph Integration
     DocGraphIntegration
 
@@ -40,8 +45,19 @@ Public API:
 """
 
 from .agent_memory import AgentMemoryManager
+from .code_graph import BlarifyIntegration, run_blarify
 from .config import Neo4jConfig, get_config, reset_config
-from .connector import Neo4jConnector, CircuitBreaker, CircuitState
+from .connector import CircuitBreaker, CircuitState, Neo4jConnector
+from .consolidation import MemoryConsolidator, QualityMetrics, run_consolidation
+from .doc_graph import DocGraphIntegration
+from .external_knowledge import (
+    APIReference,
+    ExternalDoc,
+    ExternalKnowledgeManager,
+    KnowledgeSource,
+)
+from .identifier import CodebaseIdentifier
+from .ingestion_tracker import IngestionTracker
 from .lifecycle import (
     ContainerStatus,
     Neo4jContainerManager,
@@ -50,50 +66,40 @@ from .lifecycle import (
 )
 from .memory_store import MemoryStore
 from .models import (
+    CodebaseIdentity,
     DeclarativeMemory,
     EpisodicMemory,
+    IngestionMetadata,
+    IngestionResult,
     MemoryBase,
     ProceduralMemory,
     ProspectiveMemory,
     ShortTermMemory,
     memory_from_dict,
 )
-from .schema import SchemaManager
-from .retrieval import (
-    RetrievalContext,
-    IsolationLevel,
-    MemoryResult,
-    TemporalRetrieval,
-    SimilarityRetrieval,
-    GraphTraversal,
-    HybridRetrieval,
-    retrieve_recent_memories,
-    retrieve_similar_memories,
-)
-from .consolidation import (
-    QualityMetrics,
-    MemoryConsolidator,
-    run_consolidation,
-)
 from .monitoring import (
-    OperationType,
-    OperationStatus,
-    OperationMetric,
-    SystemHealth,
+    HealthMonitor,
     MetricsCollector,
     MonitoredConnector,
-    HealthMonitor,
+    OperationMetric,
+    OperationStatus,
+    OperationType,
+    SystemHealth,
     get_global_metrics,
     log_structured,
 )
-from .code_graph import BlarifyIntegration, run_blarify
-from .doc_graph import DocGraphIntegration
-from .external_knowledge import (
-    KnowledgeSource,
-    ExternalDoc,
-    APIReference,
-    ExternalKnowledgeManager,
+from .retrieval import (
+    GraphTraversal,
+    HybridRetrieval,
+    IsolationLevel,
+    MemoryResult,
+    RetrievalContext,
+    SimilarityRetrieval,
+    TemporalRetrieval,
+    retrieve_recent_memories,
+    retrieve_similar_memories,
 )
+from .schema import SchemaManager
 
 __all__ = [
     # Configuration
@@ -122,7 +128,13 @@ __all__ = [
     "DeclarativeMemory",
     "ProspectiveMemory",
     "memory_from_dict",
-    # Retrieval (Phase 5)
+    # Code Ingestion Metadata
+    "CodebaseIdentifier",
+    "CodebaseIdentity",
+    "IngestionMetadata",
+    "IngestionResult",
+    "IngestionTracker",
+    # Retrieval
     "RetrievalContext",
     "IsolationLevel",
     "MemoryResult",
@@ -132,11 +144,11 @@ __all__ = [
     "HybridRetrieval",
     "retrieve_recent_memories",
     "retrieve_similar_memories",
-    # Consolidation (Phase 5)
+    # Consolidation
     "QualityMetrics",
     "MemoryConsolidator",
     "run_consolidation",
-    # Monitoring (Phase 6)
+    # Monitoring
     "OperationType",
     "OperationStatus",
     "OperationMetric",

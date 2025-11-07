@@ -1,312 +1,386 @@
-# Neo4j Memory System Foundation
+# Neo4j Code Ingestion Metadata Tracking
 
-**Status**: Foundation Implementation (Phase 1-2)
-**Version**: 1.0.0
-**GitHub Issue**: #1071
+This module provides functionality for tracking code ingestion metadata in Neo4j, including codebase identity, ingestion timestamps, and audit trails.
 
 ## Overview
 
-This module provides the foundation for a Neo4j-based memory system for the amplihack framework. It manages Docker container lifecycle, connections, schema initialization, and provides graceful fallback to the existing memory system if Neo4j is unavailable.
+The code ingestion tracker solves the problem of identifying when a codebase has been indexed and whether a new ingestion represents a new codebase or an update to an existing one.
 
-## Features
+### Core Concepts
 
-- **Automatic Container Management**: Neo4j starts automatically on session start
-- **Secure Password Generation**: 190-bit entropy passwords with secure storage
-- **Localhost-Only Binding**: Ports bound to 127.0.0.1 for security
-- **Graceful Degradation**: Falls back to existing memory if Neo4j unavailable
-- **Goal-Seeking Agent**: Guides users to working state with clear instructions
-- **Idempotent Operations**: Safe to call multiple times, handles existing containers
+- **Codebase Identity**: Unique identification of a codebase based on Git remote URL and branch
+- **Ingestion Metadata**: Timestamp and commit SHA of when code was ingested
+- **Audit Trail**: Historical record of all ingestions with SUPERSEDED_BY relationships
 
-## Architecture
+### Decision Logic
+
+The tracker uses the following logic:
+
+1. **Same unique_key** (repo + branch) → **UPDATE**
+   - Increment ingestion counter
+   - Create new Ingestion node
+   - Link to previous ingestion via SUPERSEDED_BY
+
+2. **Different unique_key** → **NEW**
+   - Create Codebase node
+   - Create Ingestion node
+   - Link via INGESTION_OF relationship
+
+## Module Structure
 
 ```
-amplihack.launcher.core
-    ↓ (background thread)
-amplihack.memory.neo4j.lifecycle
-    ↓ (checks prerequisites)
-amplihack.memory.neo4j.connector
-    ↓ (initializes schema)
-amplihack.memory.neo4j.schema
-```
-
-## Prerequisites
-
-1. **Docker Engine** (20.10+)
-2. **Docker Compose** (V2 preferred, V1 acceptable)
-3. **Python neo4j driver** (>=5.15.0) - auto-installed via pip
-
-## Quick Start
-
-### Automatic Setup (Recommended)
-
-The Neo4j memory system starts automatically when you launch amplihack:
-
-```bash
-amplihack
-```
-
-If prerequisites are missing, you'll see clear guidance on what to install.
-
-### Manual Setup
-
-If you want to set up Neo4j manually before first use:
-
-```bash
-# 1. Install Docker (if needed)
-# Ubuntu/Debian
-sudo apt-get install docker.io
-
-# macOS
-brew install --cask docker
-
-# 2. Start Docker daemon
-sudo systemctl start docker
-
-# 3. Add your user to docker group (Linux only)
-sudo usermod -aG docker $USER
-# Then log out and log back in
-
-# 4. Verify Docker is working
-docker ps
-
-# 5. Start amplihack (Neo4j will start automatically)
-amplihack
-```
-
-### Password Management
-
-Neo4j passwords are auto-generated and stored securely:
-
-- **Location**: `~/.amplihack/.neo4j_password`
-- **Permissions**: 0o600 (owner read/write only)
-- **Entropy**: 190 bits (32 characters)
-
-To override the auto-generated password:
-
-```bash
-export NEO4J_PASSWORD='YOUR_PASSWORD_HERE'  # ggignore
-```
-
-## Configuration
-
-All configuration via environment variables:
-
-```bash
-# Connection (optional, has defaults)
-export NEO4J_URI=bolt://localhost:7687
-export NEO4J_USER=neo4j
-export NEO4J_PASSWORD='your_password'  # Auto-generated if not set
-
-# Ports (optional, defaults: 7687/7474)
-export NEO4J_BOLT_PORT=7687
-export NEO4J_HTTP_PORT=7474
-
-# Resources (optional)
-export NEO4J_HEAP_SIZE=2G
-export NEO4J_PAGE_CACHE_SIZE=1G
+neo4j/
+├── __init__.py              # Public API exports
+├── models.py                # Data models (CodebaseIdentity, IngestionMetadata, IngestionResult)
+├── identifier.py            # Extract codebase identity from Git
+├── neo4j_schema.py         # Schema initialization and management
+├── query_builder.py        # Secure Cypher query construction
+├── ingestion_tracker.py    # Main tracking logic
+└── README.md               # This file
 ```
 
 ## Usage
 
-### Python API
+### Basic Usage
 
 ```python
-# Start Neo4j container
-from amplihack.memory.neo4j import ensure_neo4j_running
-ensure_neo4j_running(blocking=True)
+from pathlib import Path
+from neo4j import GraphDatabase
+from amplihack.memory.neo4j import IngestionTracker
 
 # Connect to Neo4j
-from amplihack.memory.neo4j import Neo4jConnector
-with Neo4jConnector() as conn:
-    results = conn.execute_query("RETURN 1 as num")
-    print(results[0]["num"])  # 1
+driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "password"))
 
-# Initialize schema
-from amplihack.memory.neo4j import SchemaManager
-with Neo4jConnector() as conn:
-    manager = SchemaManager(conn)
-    manager.initialize_schema()
-    assert manager.verify_schema()
+# Create tracker
+tracker = IngestionTracker(driver)
 
-# Check prerequisites
-from amplihack.memory.neo4j import check_neo4j_prerequisites
-prereqs = check_neo4j_prerequisites()
-if not prereqs['all_passed']:
-    for issue in prereqs['issues']:
-        print(issue)
+# Track ingestion from Git repository
+repo_path = Path("/path/to/repo")
+result = tracker.track_ingestion(repo_path)
+
+if result.is_new():
+    print(f"New codebase tracked: {result.codebase_identity.unique_key}")
+elif result.is_update():
+    print(f"Updated codebase: counter={result.ingestion_metadata.ingestion_counter}")
+elif result.is_error():
+    print(f"Error: {result.error_message}")
+
+# Get ingestion history
+history = tracker.get_ingestion_history(result.codebase_identity.unique_key)
+for record in history:
+    print(f"Ingestion {record['ingestion_counter']}: {record['timestamp']}")
+
+# Clean up
+tracker.close()
 ```
 
-### Docker Commands
+### Context Manager
 
-```bash
-# Check container status
-docker ps | grep amplihack-neo4j
-
-# View container logs
-docker logs amplihack-neo4j
-
-# Stop container
-docker-compose -f docker/docker-compose.neo4j.yml down
-
-# Start container manually
-docker-compose -f docker/docker-compose.neo4j.yml up -d
-
-# Access Neo4j browser
-# Open http://localhost:7474 in browser
-# Username: neo4j
-# Password: (from ~/.amplihack/.neo4j_password)
+```python
+with IngestionTracker(driver) as tracker:
+    result = tracker.track_ingestion(repo_path)
+    # tracker.close() called automatically
 ```
 
-## Troubleshooting
+### Manual Identity Creation
 
-### Container Won't Start
+```python
+from amplihack.memory.neo4j import CodebaseIdentifier
 
-```bash
-# Check Docker is running
-docker ps
+# Create identity without Git access
+identity = CodebaseIdentifier.create_manual_identity(
+    remote_url="https://github.com/org/repo.git",
+    branch="main",
+    commit_sha="a" * 40,
+)
 
-# Check ports are available
-sudo lsof -i :7687
-sudo lsof -i :7474
-
-# Check container logs
-docker logs amplihack-neo4j
-
-# Check prerequisites
-python -c "from amplihack.memory.neo4j import check_neo4j_prerequisites; import json; print(json.dumps(check_neo4j_prerequisites(), indent=2))"
+result = tracker.track_manual_ingestion(identity)
 ```
 
-### Permission Denied
+### Custom Metadata
 
-```bash
-# Add user to docker group (Linux)
-sudo usermod -aG docker $USER
-# Then log out and log back in
+```python
+# Add custom metadata to ingestion
+metadata = {
+    "source": "cli",
+    "user": "admin",
+    "environment": "production"
+}
 
-# Verify permissions
-docker ps
+result = tracker.track_ingestion(repo_path, metadata=metadata)
 ```
 
-### Port Conflicts
+## Neo4j Schema
 
-If ports 7687 or 7474 are in use:
+### Nodes
 
-```bash
-# Option 1: Change Neo4j ports
-export NEO4J_BOLT_PORT=7688
-export NEO4J_HTTP_PORT=7475
+**Codebase**
+- `unique_key` (string, unique): SHA-256 hash of remote_url + branch
+- `remote_url` (string): Normalized Git remote URL
+- `branch` (string): Branch name
+- `commit_sha` (string): Current commit SHA
+- `created_at` (datetime): When first tracked
+- `updated_at` (datetime): When last updated
+- `ingestion_count` (integer): Number of times ingested
 
-# Option 2: Stop conflicting service
-sudo lsof -i :7687  # Find process using port
-sudo kill <PID>     # Stop the process
-```
+**Ingestion**
+- `ingestion_id` (string, unique): UUID for this ingestion
+- `timestamp` (datetime): When ingestion occurred
+- `commit_sha` (string): Commit SHA at ingestion time
+- `ingestion_counter` (integer): Sequential counter for this codebase
 
-### Neo4j Unavailable
+### Relationships
 
-If Neo4j fails to start, amplihack will:
-1. Display warning with specific issue
-2. Provide fix instructions
-3. Fall back to existing memory system
-4. Continue working normally
+- `(Ingestion)-[:INGESTION_OF]->(Codebase)`: Links ingestion to its codebase
+- `(Ingestion)-[:SUPERSEDED_BY]->(Ingestion)`: Audit trail of ingestions
+- `(Codebase)-[:FROM_CODEBASE]->(Ingestion)`: Implicit via INGESTION_OF
+
+### Constraints
+
+- `codebase_unique_key`: Ensures Codebase.unique_key is unique
+- `ingestion_id`: Ensures Ingestion.ingestion_id is unique
+
+### Indexes
+
+- `codebase_remote_url`: Fast lookups by repository URL
+- `codebase_branch`: Fast lookups by branch
+- `ingestion_timestamp`: Temporal queries
+- `ingestion_commit_sha`: Commit-based queries
 
 ## Security
 
-- **Localhost-Only**: Ports bound to 127.0.0.1 (not accessible from network)
-- **Secure Passwords**: 190-bit entropy, stored with 0o600 permissions
-- **No Default Passwords**: Random password generated on first use
-- **Authenticated Access**: Neo4j requires authentication (no anonymous access)
-- **Data Persistence**: Docker volume with restricted permissions
+### Parameterized Queries
 
-## File Structure
+All queries use parameter binding to prevent Cypher injection:
 
+```python
+# Safe - uses parameters
+query = "MATCH (c:Codebase {unique_key: $unique_key}) RETURN c"
+session.run(query, unique_key=user_input)
+
+# Unsafe - string concatenation (NOT used)
+query = f"MATCH (c:Codebase {{unique_key: '{user_input}'}}) RETURN c"
 ```
-docker/
-├── docker-compose.neo4j.yml          # Container configuration
-└── neo4j/init/
-    ├── 01_constraints.cypher         # Unique constraints
-    ├── 02_indexes.cypher             # Performance indexes
-    └── 03_agent_types.cypher         # Seed data
 
-src/amplihack/memory/neo4j/
-├── __init__.py                       # Public API
-├── config.py                         # Configuration & password management
-├── connector.py                      # Neo4j driver wrapper
-├── lifecycle.py                      # Container lifecycle management
-├── schema.py                         # Schema initialization
-└── exceptions.py                     # Custom exceptions
+### Query Validation
 
-.claude/agents/amplihack/infrastructure/
-└── neo4j-setup-agent.md              # Goal-seeking dependency agent
+The `QueryBuilder.validate_query_params()` method checks for dangerous patterns:
 
-tests/
-├── unit/memory/neo4j/                # Unit tests
-└── integration/memory/neo4j/         # Integration tests
+```python
+params = {"key": "MATCH (n) DELETE n"}
+QueryBuilder.validate_query_params(params)  # Returns False
+```
+
+### URL Normalization
+
+Remote URLs are normalized to remove authentication:
+
+```python
+# Input: https://user:pass@github.com/org/repo.git
+# Output: https://github.com/org/repo.git
+```
+
+## Data Models
+
+### CodebaseIdentity
+
+Represents a codebase with stable identification:
+
+```python
+@dataclass
+class CodebaseIdentity:
+    remote_url: str       # Normalized Git URL
+    branch: str           # Branch name
+    commit_sha: str       # Current commit (40-char hex)
+    unique_key: str       # SHA-256 hash (64-char hex)
+    metadata: Dict[str, str]  # Additional metadata
+```
+
+### IngestionMetadata
+
+Tracks a single ingestion operation:
+
+```python
+@dataclass
+class IngestionMetadata:
+    ingestion_id: str     # UUID
+    timestamp: datetime   # When ingestion occurred
+    commit_sha: str       # Commit at ingestion time
+    ingestion_counter: int  # Sequential counter (>= 1)
+    metadata: Dict[str, str]  # Additional metadata
+```
+
+### IngestionResult
+
+Result of tracking operation:
+
+```python
+@dataclass
+class IngestionResult:
+    status: IngestionStatus  # NEW, UPDATE, or ERROR
+    codebase_identity: CodebaseIdentity
+    ingestion_metadata: IngestionMetadata
+    previous_ingestion_id: Optional[str]  # If UPDATE
+    error_message: Optional[str]  # If ERROR
 ```
 
 ## Testing
 
+### Running Tests
+
 ```bash
-# Install test dependencies
-pip install pytest neo4j
-
-# Run unit tests (no Docker required)
-pytest tests/unit/memory/neo4j/ -v
-
-# Run integration tests (requires Docker)
-pytest tests/integration/memory/neo4j/ -v
+# Set Neo4j connection
+export NEO4J_URI=bolt://localhost:7687
+export NEO4J_USER=neo4j
+export NEO4J_PASSWORD=password
 
 # Run all tests
-pytest tests/ -k neo4j -v
+pytest tests/neo4j/
+
+# Run with coverage
+pytest tests/neo4j/ --cov=amplihack.memory.neo4j --cov-report=term-missing
 ```
 
-## Limitations (Foundation Phase)
+### Test Organization
 
-This is the foundation implementation. Not yet included:
+- `test_models.py`: Data model validation
+- `test_identifier.py`: Git extraction and normalization
+- `test_schema.py`: Schema initialization and constraints
+- `test_query_builder.py`: Query construction and security
+- `test_ingestion_tracker.py`: End-to-end tracking logic
 
-- Full memory CRUD API (Phase 3)
-- Agent type memory sharing (Phase 5)
-- Code graph integration with Blarify (Phase 4)
-- Vector embeddings for semantic search (Future)
-- Production hardening and monitoring (Phase 6)
+### Coverage Target
 
-These will be implemented in future phases.
+The test suite maintains >85% coverage following the 60/30/10 pyramid:
+- 60% unit tests (models, identifier, query builder)
+- 30% integration tests (schema, tracker)
+- 10% end-to-end tests (full tracking workflows)
 
-## Development
+## Examples
 
-### Adding New Schema Elements
-
-1. Create Cypher script in `docker/neo4j/init/`
-2. Add constraint/index creation in `schema.py`
-3. Update verification methods
-4. Add tests
-
-### Debugging
-
-Enable debug logging:
+### Example 1: First Ingestion
 
 ```python
-import logging
-logging.basicConfig(level=logging.DEBUG)
+# First time indexing a codebase
+result = tracker.track_ingestion(Path("/path/to/repo"))
+
+assert result.is_new()
+assert result.ingestion_metadata.ingestion_counter == 1
+assert result.previous_ingestion_id is None
 ```
 
-View container logs:
+### Example 2: Subsequent Ingestion
 
-```bash
-docker logs amplihack-neo4j --tail 100 -f
+```python
+# Second time indexing the same codebase
+result = tracker.track_ingestion(Path("/path/to/repo"))
+
+assert result.is_update()
+assert result.ingestion_metadata.ingestion_counter == 2
+assert result.previous_ingestion_id is not None
 ```
 
-## Support
+### Example 3: Different Branch
 
-- **Documentation**: See `docs/memory/` for detailed guides
-- **GitHub Issue**: #1071
-- **Troubleshooting**: See `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
+```python
+# Different branch = different codebase
+result_main = tracker.track_ingestion(main_branch_path)
+result_dev = tracker.track_ingestion(dev_branch_path)
 
-## Version History
+assert result_main.is_new()
+assert result_dev.is_new()
+assert result_main.codebase_identity.unique_key != result_dev.codebase_identity.unique_key
+```
 
-### 1.0.0 (2025-11-02)
-- Initial foundation implementation
-- Docker container management
-- Secure password generation
-- Session integration
-- Goal-seeking agent
-- Basic schema (constraints, indexes, agent types)
+### Example 4: Error Handling
+
+```python
+# Invalid path
+result = tracker.track_ingestion(Path("/nonexistent"))
+
+assert result.is_error()
+assert result.error_message is not None
+print(f"Error: {result.error_message}")
+```
+
+## Performance
+
+### Query Performance
+
+All queries are optimized with proper indexes:
+- Codebase lookups by unique_key: O(1) with constraint index
+- Latest ingestion query: O(log n) with timestamp index
+- History queries: O(n) where n = number of ingestions for codebase
+
+### Transaction Safety
+
+Operations use Neo4j transactions for ACID guarantees:
+- New codebase: Single transaction creates both nodes and relationship
+- Update: Single transaction updates codebase and creates ingestion
+- Rollback on failure
+
+## Troubleshooting
+
+### Connection Issues
+
+```python
+from neo4j.exceptions import ServiceUnavailable
+
+try:
+    tracker = IngestionTracker(driver)
+except ServiceUnavailable:
+    print("Neo4j is not running or not accessible")
+```
+
+### Schema Issues
+
+```python
+# Verify schema is initialized
+if not tracker.schema.verify_schema():
+    tracker.schema.initialize_schema()
+```
+
+### Clearing Test Data
+
+```python
+# WARNING: Deletes all data
+tracker.schema.clear_all_data()
+```
+
+## Integration
+
+### With Existing Memory System
+
+```python
+from amplihack.memory.manager import MemoryManager
+from amplihack.memory.neo4j import IngestionTracker
+
+# Use alongside existing SQLite memory
+memory = MemoryManager()
+ingestion_tracker = IngestionTracker(neo4j_driver)
+
+# Track ingestion before indexing
+result = ingestion_tracker.track_ingestion(repo_path)
+if result.is_new():
+    # First time - do full indexing
+    memory.index_codebase(repo_path)
+elif result.is_update():
+    # Update - do incremental indexing
+    memory.update_codebase(repo_path)
+```
+
+## Future Enhancements
+
+Possible future additions:
+- Query by commit SHA to find which ingestion indexed specific commit
+- Query by timestamp range to find ingestions in time window
+- Support for multiple remotes per repository
+- Ingestion metadata tags for categorization
+- Performance metrics tracking per ingestion
+
+## References
+
+- [Neo4j Python Driver](https://neo4j.com/docs/python-manual/current/)
+- [Cypher Query Language](https://neo4j.com/docs/cypher-manual/current/)
+- [Neo4j Constraints](https://neo4j.com/docs/cypher-manual/current/constraints/)
+- [Issue #1181](https://github.com/amplihack/repo/issues/1181)
