@@ -274,9 +274,9 @@ Verification: Examine reflection logs, trace message processing
 
 - Main insight 1
 - Main insight 2
-  **Supporting Evidence**: Links to code, logs, or verification tests
-  **Implications**: How this affects the project
-  **Related Patterns**: Links to similar patterns in PATTERNS.md
+  - **Supporting Evidence**: Links to code, logs, or verification tests
+  - **Implications**: How this affects the project
+  - **Related Patterns**: Links to similar patterns in PATTERNS.md
 ```
 
 **Success Criteria:**
@@ -327,7 +327,9 @@ Phase 2: Development
 
 ## Efficiency Targets
 
-**This workflow aims for 30-40% reduction in message count compared to ad-hoc investigation:**
+**Target Efficiency**: This workflow targets a 30-40% reduction in message count compared to ad-hoc investigation:
+
+_Note: These are target metrics to be validated through usage tracking._
 
 | Ad-Hoc Approach         | Investigation Workflow    |
 | ----------------------- | ------------------------- |
@@ -385,21 +387,7 @@ Both workflows share core principles:
 
 **UltraThink Workflow Detection:**
 
-When `/ultrathink` is invoked, it should detect investigation tasks by checking for keywords:
-
-```python
-investigation_keywords = [
-    "investigate", "explain", "understand", "how does", "why does",
-    "analyze", "research", "explore", "examine", "study"
-]
-
-if any(keyword in task_description.lower() for keyword in investigation_keywords):
-    workflow_file = "INVESTIGATION_WORKFLOW.md"
-    message = "Detected investigation task. Using INVESTIGATION_WORKFLOW.md"
-else:
-    workflow_file = "DEFAULT_WORKFLOW.md"
-    message = "Using DEFAULT_WORKFLOW.md for development task"
-```
+When `/ultrathink` is invoked, it automatically detects investigation tasks using the keywords defined in `.claude/commands/amplihack/ultrathink.md`. See the ultrathink command documentation for the complete keyword list and detection logic.
 
 **Automatic Workflow Suggestion:**
 
@@ -427,7 +415,7 @@ Changes take effect immediately for future investigations.
 
 Track these metrics to validate workflow effectiveness:
 
-- **Message Count**: Target 30-40% reduction vs. ad-hoc
+- **Message Count**: Target 30-40% reduction vs. ad-hoc (to be validated)
 - **Investigation Time**: Track time to completion
 - **Knowledge Reuse**: How often DISCOVERIES.md prevents repeat work
 - **Completeness**: Percentage of investigations with full documentation

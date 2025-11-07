@@ -19,9 +19,12 @@ When this command is invoked, you MUST:
 1. **First, detect task type** - Check if task is investigation or development
    - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
    - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
-   - If investigation keywords found: Use INVESTIGATION_WORKFLOW.md (6 phases)
-   - If development keywords found: Use DEFAULT_WORKFLOW.md (15 steps)
-2. **Read the appropriate workflow file** using FrameworkPathResolver.resolve_workflow_file() to get the correct path, then use the Read tool
+   - **If both types detected**: Use hybrid workflow (investigation first, then development)
+   - If only investigation keywords found: Use INVESTIGATION_WORKFLOW.md (6 phases)
+   - If only development keywords found: Use DEFAULT_WORKFLOW.md (15 steps)
+2. **Read the appropriate workflow file** using the Read tool:
+   - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+   - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
 3. **Create a comprehensive todo list** using TodoWrite that includes all workflow steps/phases
 4. **Execute each step systematically**, marking todos as in_progress and completed
 5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
@@ -40,7 +43,7 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
      - Investigation: INVESTIGATION_WORKFLOW.md (6 phases)
      - Development: DEFAULT_WORKFLOW.md (15 steps)
    - Inform user which workflow is being used
-   - Read workflow file using FrameworkPathResolver
+   - Read the selected workflow file using Read tool
    - Create TodoWrite list with all workflow steps/phases
    - Create session directory for decision logging
 
@@ -124,7 +127,7 @@ User: "/ultrathink implement JWT authentication"
 
 1. Detect: Development task (contains "implement")
 2. Select: DEFAULT_WORKFLOW.md (15 steps)
-3. Read workflow using FrameworkPathResolver.resolve_workflow_file()
+3. Read workflow: `.claude/workflow/DEFAULT_WORKFLOW.md`
 4. Begin executing workflow steps with deep analysis
 5. Orchestrate multiple agents where complexity requires
 6. Follow all workflow steps as defined
@@ -140,7 +143,7 @@ User: "/ultrathink investigate how the reflection system works"
 1. Detect: Investigation task (contains "investigate")
 2. Select: INVESTIGATION_WORKFLOW.md (6 phases)
 3. Inform user: "Detected investigation task. Using INVESTIGATION_WORKFLOW.md"
-4. Read workflow using FrameworkPathResolver.resolve_workflow_file()
+4. Read workflow: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
 5. Execute Phase 1: Scope Definition
 6. Execute Phase 2: Exploration Strategy
 7. Execute Phase 3: Parallel Deep Dives (multiple agents simultaneously)
