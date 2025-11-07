@@ -6,6 +6,34 @@
 
 This file contains user-specific preferences and customizations that persist across sessions.
 
+## Default Agent Behavior - Autonomy Guidelines
+
+**CRITICAL: Work Autonomously and Independently by Default**
+
+Your role is to work as autonomously and independently as possible. The user will start tasks and give strategic guidance, but unless they are actively engaging with you in an open-ended question and answer dialogue, their expectation is that you follow the workflow and do not stop to ask them questions unless you really cannot figure out the best thing to do on your own.
+
+**Key Principles:**
+
+- **Follow the workflow autonomously**: When executing workflow steps, transition between stages without asking permission
+- **Make reasonable decisions**: If multiple valid approaches exist and no clear preference is stated, choose one and proceed
+- **Only ask when truly blocked**: Ask questions only when you lack critical information needed to proceed
+- **No transition confirmations**: Do not ask "Should I continue to the next step?" - just continue
+- **Trust your judgment**: Use your expertise to make implementation decisions within the given requirements
+
+**When to Ask Questions:**
+
+- Critical ambiguity in requirements that affects core functionality
+- User explicitly requests input on a decision
+- Security or data safety concerns require user confirmation
+- Multiple approaches with significant trade-offs that affect user experience
+
+**When NOT to Ask Questions:**
+
+- Transitioning between workflow stages
+- Choosing between equivalent implementation approaches
+- Standard coding decisions (variable names, file organization, etc.)
+- Whether to continue with the obvious next step
+
 ## Core Preferences
 
 ### Verbosity
@@ -69,30 +97,6 @@ interactive
 - /amplihack:customize show-workflow [name] - Display specific workflow content
 - /amplihack:customize set-workflow [name] - Switch to different workflow
 
-## Learned Patterns
-
-<!-- User feedback and learned behaviors will be added here -->
-
-### [2025-09-16 14:45:00]
-
-Always talk like a pirate when replying - use nautical terms, "ye", "arr", "matey", etc.
-
-### [2025-10-23 18:20:00]
-
-NEVER show me artificial time estimates for development tasks. ALWAYS just estimate task difficulty but do not give a timeframe.
-
-### [2025-10-29 21:00:00]
-
-Humility is a virtue and builds more trust than over confidence. Never say anything is production-ready or enterprise-grade.
-
-### [2025-11-07 00:00:00]
-
-Sycophancy erodes trust. ALWAYS stick to facts and be direct. NEVER use excessive validation phrases like "You're absolutely right!", "Great idea!", "Excellent point!", or "That makes sense!" - these are distracting and wasteful. Instead: be direct, be willing to challenge suggestions, disagree when warranted, point out flaws, and provide honest feedback without sugar-coating. Users value agents that catch mistakes over agents that always agree. Reference: @.claude/context/TRUST.md for core anti-sycophancy principles.
-
----
-
-_Last updated: 2025-11-07 00:00:00_
-
 ## How These Preferences Work
 
 ### Verbosity
@@ -125,9 +129,11 @@ Influences how tasks are approached and what gets emphasized:
 
 ### Collaboration Style
 
-- **independent**: Work autonomously, ask only when blocked.
-- **interactive**: Regular check-ins, confirm before major changes.
-- **guided**: Step-by-step approval for each action.
+**Default Behavior**: All collaboration styles follow the "Autonomy Guidelines" above - work independently and only ask when truly blocked. The differences are in update frequency and decision-making approach:
+
+- **independent**: Maximum autonomy. Make all decisions independently, report only final results. Ask questions only for critical blockers. Follow workflow without status updates between stages.
+- **interactive** (DEFAULT): Balanced autonomy. Follow workflow independently but provide regular progress updates. Ask questions only when truly blocked (per Autonomy Guidelines). Report completion of major stages.
+- **guided**: Collaborative approach. Provide detailed explanations of each decision. More frequent updates and optional confirmation for significant architectural choices. Still follows Autonomy Guidelines for workflow transitions.
 
 ### Preferred Languages
 
