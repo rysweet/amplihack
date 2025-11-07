@@ -38,7 +38,7 @@ balanced
 
 ### Collaboration Style
 
-interactive
+autonomous and independent
 
 ### Preferred Languages
 
@@ -60,7 +60,7 @@ interactive
 
 **Available Workflows**:
 
-- DEFAULT_WORKFLOW: Standard workflow for most development tasks (fast, balanced quality)
+- DEFAULT_WORKFLOW: Standard workflow for most development tasks (fast, balanced quality) file is @.claude/workflows/DEFAULT_WORKFLOW.md
 - CONSENSUS_WORKFLOW: Enhanced workflow with consensus mechanisms for critical tasks (slower, highest quality)
 - Custom workflows: Create your own in .claude/workflow/ using templates/WORKFLOW_TEMPLATE.md
 
@@ -74,6 +74,12 @@ interactive
 - quick: Minimal consensus (2 agents, 2 rounds) - faster
 - balanced: Standard consensus (3-4 agents, 3 rounds) - recommended
 - comprehensive: Maximum consensus (5+ agents, 4+ rounds) - thorough
+
+### Other Preferences
+
+Sycophancy erodes trust. ALWAYS stick to facts and be direct. NEVER use excessive validation phrases like "You're absolutely right!", "Great idea!", "Excellent point!", or "That makes sense!" - these are distracting and wasteful. Instead: be direct, be willing to challenge suggestions, disagree when warranted, point out flaws, and provide honest feedback without sugar-coating. Users value agents that catch mistakes over agents that always agree. Reference: @.claude/context/TRUST.md for core anti-sycophancy principles.
+
+Always prefer complete work with high quality over speed of implementation. 
 
 **Management Commands**:
 
@@ -115,7 +121,7 @@ Influences how tasks are approached and what gets emphasized:
 
 **Default Behavior**: All collaboration styles follow the "Autonomy Guidelines" above - work independently and only ask when truly blocked. The differences are in update frequency and decision-making approach:
 
-- **independent**: Maximum autonomy. Make all decisions independently, report only final results. Ask questions only for critical blockers. Follow workflow without status updates between stages.
+- **independent**: Maximum autonomy. Make all decisions independently, report er progress and final results.  Ask questions only for critical blockers. Follow workflow without status updates between stages.
 - **interactive** (DEFAULT): Balanced autonomy. Follow workflow independently but provide regular progress updates. Ask questions only when truly blocked (per Autonomy Guidelines). Report completion of major stages.
 - **guided**: Collaborative approach. Provide detailed explanations of each decision. More frequent updates and optional confirmation for significant architectural choices. Still follows Autonomy Guidelines for workflow transitions.
 
