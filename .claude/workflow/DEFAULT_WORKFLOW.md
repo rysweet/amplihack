@@ -52,28 +52,36 @@ When using TodoWrite during workflow execution:
   - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
   - Example: `Step 4: Research and Design - Use architect agent for solution design`
 
+- **Workstream Prefixes** (Optional): When running multiple workflows in parallel, prefix todos with workstream name
+  - Format: `[WORKSTREAM] Step N: Description`
+  - Example: `[PR1090 TASK] Step 1: Rewrite and Clarify Requirements`
+  - Example: `[FEATURE-X] Step 4: Research and Design - Use architect agent`
+  - This helps track which todos belong to which parallel workstream
+
 - **Be Specific**: Include the specific agent or action for each step
   - Example: `Step 5: Implement the Solution - Use builder agent from specifications`
 
 - **Track Progress**: Users can see exactly which step is active (e.g., "Step 5 of 15")
 
-**Example Todo Structure:**
+**Example Todo Structure (Single Workflow):**
 ```
 Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent to clarify task
 Step 2: Create GitHub Issue - Define requirements and constraints using gh issue create
 Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch in worktrees/
 Step 4: Research and Design - Use architect agent for solution design
 Step 5: Implement the Solution - Use builder agent to implement from specifications
-Step 6: Refactor and Simplify - Use cleanup agent for ruthless simplification
-Step 7: Run Tests and Pre-commit Hooks - Execute pre-commit run --all-files
-Step 8: Mandatory Local Testing - Test changes locally in realistic scenarios
-Step 9: Commit and Push - Write detailed commit message and push to remote
-Step 10: Open Pull Request - Create PR using gh pr create with comprehensive description
-Step 11: Review the PR - Use reviewer agent for comprehensive code review
-Step 12: Implement Review Feedback - Address all review comments
-Step 13: Philosophy Compliance Check - Use reviewer agent for final philosophy check
-Step 14: Ensure PR is Mergeable - Check CI status and resolve any issues
-Step 15: Final Cleanup and Verification - Use cleanup agent for final quality pass
+...
+```
+
+**Example Todo Structure (Multiple Parallel Workflows):**
+```
+[PR1090 TASK] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
+[PR1090 TASK] Step 2: Create GitHub Issue - Define requirements using gh issue create
+[PR1090 TASK] Step 4: Research and Design - Use architect agent for solution design
+[FEATURE-X] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
+[FEATURE-X] Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch
+[BUGFIX-Y] Step 5: Implement the Solution - Use builder agent from specifications
+...
 ```
 
 This step-based structure helps users understand:
