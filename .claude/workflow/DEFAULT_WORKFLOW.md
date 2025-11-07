@@ -28,14 +28,6 @@ You can customize this workflow by editing this file.
 - UltraThink orchestrates parallel agent execution for maximum efficiency
 - When you customize this workflow, UltraThink adapts automatically
 
-**TodoWrite Usage During UltraThink Execution:**
-
-- Create initial todo list with all workflow phases labeled (see TodoWrite Best Practices below)
-- Update todos frequently during phase transitions to show progress
-- Include phase context in task descriptions (e.g., "PHASE 2: DESIGN - Use architect agent...")
-- Mark entire phases as completed when transitioning to the next phase
-- This helps users track progress and understand which workflow phase is active
-
 ## When This Workflow Applies
 
 This workflow should be followed for:
@@ -45,40 +37,9 @@ This workflow should be followed for:
 - Refactoring
 - Any non-trivial code changes
 
-## TodoWrite Best Practices
-
-When using TodoWrite during workflow execution:
-
-- **Group by Phase**: Label related tasks with phase context for clarity
-  - Example: `PHASE 1: PLANNING - Create GitHub issue`
-  - Example: `PHASE 2: DESIGN - Use architect agent to design solution`
-
-- **Update Frequently**: Update todo status during phase transitions to show progress
-
-- **Be Descriptive**: Include agent names and specific actions in task descriptions
-
-- **Show Progress**: When transitioning between major phases, update the entire todo list to reflect new phase focus
-
-**Example Todo Structure:**
-```
-PHASE 1: PLANNING - Create GitHub issue
-PHASE 1: PLANNING - Setup worktree and branch
-PHASE 2: DESIGN - Use architect agent to design solution
-PHASE 2: DESIGN - Use tester agent to write failing tests
-PHASE 3: IMPLEMENTATION - Use builder agent to implement from specs
-PHASE 4: VALIDATION - Run tests and pre-commit hooks
-PHASE 5: FINALIZATION - Use cleanup agent for final quality pass
-```
-
-This phase labeling helps users understand:
-- Which workflow phase they're currently in
-- How much progress has been made overall
-- What's coming next in the workflow
-
 ## The 15-Step Workflow
 
 ### Step 1: Rewrite and Clarify Requirements
-**WORKFLOW PHASE: PLANNING (Phase 1 of 5)**
 
 - [ ] **FIRST: Identify explicit user requirements** that CANNOT be optimized away
 - [ ] **Always use** prompt-writer agent to clarify task requirements
@@ -90,7 +51,6 @@ This phase labeling helps users understand:
 - [ ] **CRITICAL: Pass explicit requirements to ALL subsequent agents**
 
 ### Step 2: Create GitHub Issue
-**WORKFLOW PHASE: PLANNING (Phase 1 of 5)**
 
 - [ ] **Use** GitHub issue creation tool via agent
 - [ ] Create issue using `gh issue create`
@@ -100,7 +60,6 @@ This phase labeling helps users understand:
 - [ ] Assign appropriate labels
 
 ### Step 3: Setup Worktree and Branch
-**WORKFLOW PHASE: PLANNING (Phase 1 of 5)**
 
 - [ ] **Always use** worktree-manager agent for worktree operations
 - [ ] Create new git worktree in `./worktrees/{branch-name}` for isolated development
@@ -109,12 +68,7 @@ This phase labeling helps users understand:
 - [ ] Push branch to remote with tracking: `git push -u origin {branch-name}`
 - [ ] Switch to new worktree directory: `cd ./worktrees/{branch-name}`
 
----
-**📊 PROGRESS CHECKPOINT**: Planning phase complete! Update your todo list to reflect transition to Design phase.
----
-
 ### Step 4: Research and Design with TDD
-**WORKFLOW PHASE: DESIGN (Phase 2 of 5)**
 
 - [ ] **Use** architect agent to design solution architecture
 - [ ] **Use** api-designer agent for API contracts (if applicable)
@@ -126,12 +80,7 @@ This phase labeling helps users understand:
 - [ ] Create detailed implementation plan
 - [ ] Identify risks and dependencies
 
----
-**📊 PROGRESS CHECKPOINT**: Design phase complete! Update your todo list to reflect transition to Implementation phase.
----
-
 ### Step 5: Implement the Solution
-**WORKFLOW PHASE: IMPLEMENTATION (Phase 3 of 5)**
 
 - [ ] **Always use** builder agent to implement from specifications
 - [ ] **Use** integration agent for external service connections
@@ -140,12 +89,7 @@ This phase labeling helps users understand:
 - [ ] Ensure all requirements are met
 - [ ] Add inline documentation
 
----
-**📊 PROGRESS CHECKPOINT**: Implementation complete! Update your todo list to reflect transition to Validation phase.
----
-
 ### Step 6: Refactor and Simplify
-**WORKFLOW PHASE: VALIDATION (Phase 4 of 5)**
 
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements**
 - [ ] **Always use** cleanup agent for ruthless simplification WITHIN user constraints
@@ -158,7 +102,6 @@ This phase labeling helps users understand:
 - [ ] **VALIDATE: All explicit user requirements still preserved**
 
 ### Step 7: Run Tests and Pre-commit Hooks
-**WORKFLOW PHASE: VALIDATION (Phase 4 of 5)**
 
 - [ ] **Use** pre-commit-diagnostic agent if hooks fail
 - [ ] **💡 TIP**: For test failures, use [parallel investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
@@ -170,7 +113,6 @@ This phase labeling helps users understand:
 - [ ] Iterate until all checks pass
 
 ### Step 8: Mandatory Local Testing (NOT in CI)
-**WORKFLOW PHASE: VALIDATION (Phase 4 of 5)**
 
 **CRITICAL: Test all changes locally in realistic scenarios BEFORE committing.**
 
@@ -196,7 +138,6 @@ This phase labeling helps users understand:
 - Prevents embarrassing failures after merge
 
 ### Step 9: Commit and Push
-**WORKFLOW PHASE: VALIDATION (Phase 4 of 5)**
 
 - [ ] Stage all changes
 - [ ] Write detailed commit message
@@ -206,7 +147,6 @@ This phase labeling helps users understand:
 - [ ] Verify push succeeded
 
 ### Step 10: Open Pull Request
-**WORKFLOW PHASE: VALIDATION (Phase 4 of 5)**
 
 - [ ] Create PR using `gh pr create` (pipe through `| cat` for reliable output)
 - [ ] Link to the GitHub issue
@@ -222,7 +162,6 @@ gh pr create --title "..." --body "..." 2>&1 | cat
 This ensures you see success messages, error details, and PR URLs.
 
 ### Step 11: Review the PR
-**WORKFLOW PHASE: VALIDATION (Phase 4 of 5)**
 
 - [ ] **Always use** reviewer agent for comprehensive code review
 - [ ] **Use** security agent for security review
@@ -235,7 +174,6 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Post the review as a comment on the PR
 
 ### Step 12: Implement Review Feedback
-**WORKFLOW PHASE: VALIDATION (Phase 4 of 5)**
 
 - [ ] Review all feedback comments, think very carefully about each one and decide how to address it (or if you should disagree, explain why in a comment)
 - [ ] **Always use** builder agent to implement changes
@@ -247,12 +185,7 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Ensure PR is still mergeable
 - [ ] Request re-review if needed
 
----
-**📊 PROGRESS CHECKPOINT**: Validation phase complete! Update your todo list to reflect transition to Finalization phase.
----
-
 ### Step 13: Philosophy Compliance Check
-**WORKFLOW PHASE: FINALIZATION (Phase 5 of 5)**
 
 - [ ] **Always use** reviewer agent for final philosophy check
 - [ ] **Use** patterns agent to verify pattern compliance
@@ -263,7 +196,6 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Check documentation completeness
 
 ### Step 14: Ensure PR is Mergeable
-**WORKFLOW PHASE: FINALIZATION (Phase 5 of 5)**
 
 - [ ] Check CI status (all checks passing)
 - [ ] **Always use** ci-diagnostic-workflow agent if CI fails
@@ -274,7 +206,6 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Notify that PR is ready to merge
 
 ### Step 15: Final Cleanup and Verification
-**WORKFLOW PHASE: FINALIZATION (Phase 5 of 5)**
 
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
 - [ ] **Always use** cleanup agent for final quality pass
