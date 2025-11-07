@@ -28,6 +28,13 @@ You can customize this workflow by editing this file.
 - UltraThink orchestrates parallel agent execution for maximum efficiency
 - When you customize this workflow, UltraThink adapts automatically
 
+**TodoWrite Usage During Workflow Execution:**
+
+When creating todos during workflow execution, reference the workflow steps directly:
+- Format: `Step N: [Step Name] - [Specific Action]`
+- Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
+- This helps users track exactly which workflow step is active (Step X of 15)
+
 ## When This Workflow Applies
 
 This workflow should be followed for:
@@ -36,6 +43,51 @@ This workflow should be followed for:
 - Bug fixes
 - Refactoring
 - Any non-trivial code changes
+
+## TodoWrite Best Practices
+
+When using TodoWrite during workflow execution:
+
+- **Reference Step Numbers**: Include the workflow step number in todo content
+  - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
+  - Example: `Step 4: Research and Design - Use architect agent for solution design`
+
+- **Workstream Prefixes** (Optional): When running multiple workflows in parallel, prefix todos with workstream name
+  - Format: `[WORKSTREAM] Step N: Description`
+  - Example: `[PR1090 TASK] Step 1: Rewrite and Clarify Requirements`
+  - Example: `[FEATURE-X] Step 4: Research and Design - Use architect agent`
+  - This helps track which todos belong to which parallel workstream
+
+- **Be Specific**: Include the specific agent or action for each step
+  - Example: `Step 5: Implement the Solution - Use builder agent from specifications`
+
+- **Track Progress**: Users can see exactly which step is active (e.g., "Step 5 of 15")
+
+**Example Todo Structure (Single Workflow):**
+```
+Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent to clarify task
+Step 2: Create GitHub Issue - Define requirements and constraints using gh issue create
+Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch in worktrees/
+Step 4: Research and Design - Use architect agent for solution design
+Step 5: Implement the Solution - Use builder agent to implement from specifications
+...
+```
+
+**Example Todo Structure (Multiple Parallel Workflows):**
+```
+[PR1090 TASK] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
+[PR1090 TASK] Step 2: Create GitHub Issue - Define requirements using gh issue create
+[PR1090 TASK] Step 4: Research and Design - Use architect agent for solution design
+[FEATURE-X] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
+[FEATURE-X] Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch
+[BUGFIX-Y] Step 5: Implement the Solution - Use builder agent from specifications
+...
+```
+
+This step-based structure helps users understand:
+- Exactly which workflow step is currently active
+- How many steps remain (e.g., Step 5 of 15 means 10 steps left)
+- What comes next in the workflow
 
 ## The 15-Step Workflow
 
