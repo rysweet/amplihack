@@ -7,7 +7,7 @@ NOTE: The sanitize_message_content() function is used by BOTH:
 This ensures thinking blocks are filtered in all code paths.
 """
 
-from amplihack.proxy.server import sanitize_message_content, Message
+from amplihack.proxy.server import Message, sanitize_message_content
 
 
 def get_block_type(block):

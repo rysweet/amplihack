@@ -164,7 +164,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
     if not getattr(args, "append", None):
         return 0
 
-    from .launcher.append_handler import append_instructions, AppendError
+    from .launcher.append_handler import AppendError, append_instructions
 
     instruction = args.append
 
