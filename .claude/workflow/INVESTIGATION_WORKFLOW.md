@@ -294,6 +294,37 @@ Verification: Examine reflection logs, trace message processing
 - Optional: GitHub issues for improvements
 - Investigation session log in `.claude/runtime/logs/`
 
+### 🔄 Transitioning to Development Workflow
+
+**After investigation completes**, if the task requires implementation (not just understanding), transition to **DEFAULT_WORKFLOW.md**:
+
+1. **Resume at Step 4** (Research and Design) with the knowledge gained from investigation
+2. **Or resume at Step 5** (Implement the Solution) if the investigation already provided clear design guidance
+3. **Use investigation findings** from DISCOVERIES.md and session logs to inform design decisions
+
+**Example Hybrid Workflow:**
+
+```
+User: "/ultrathink investigate how authentication works, then add OAuth support"
+
+Phase 1: Investigation
+→ Run INVESTIGATION_WORKFLOW.md (6 phases)
+→ Complete understanding of existing auth system
+→ Document findings in DISCOVERIES.md
+
+Phase 2: Development
+→ Transition to DEFAULT_WORKFLOW.md
+→ Resume at Step 4 (Research and Design)
+→ Use investigation insights to design OAuth integration
+→ Continue through Step 15 (implementation → testing → PR)
+```
+
+**When to Transition:**
+
+- Investigation reveals implementation is needed
+- User explicitly requested both investigation + development
+- Follow-up work identified during knowledge capture
+
 ## Efficiency Targets
 
 **This workflow aims for 30-40% reduction in message count compared to ad-hoc investigation:**

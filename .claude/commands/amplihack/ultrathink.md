@@ -150,6 +150,36 @@ User: "/ultrathink investigate how the reflection system works"
 11. MANDATORY: Update DISCOVERIES.md with findings
 ```
 
+### Hybrid Workflow Example (Investigation → Development)
+
+```
+User: "/ultrathink investigate how authentication works, then add OAuth support"
+
+Phase 1: Investigation
+1. Detect: Investigation keywords present ("investigate")
+2. Select: INVESTIGATION_WORKFLOW.md (6 phases)
+3. Execute full investigation workflow
+4. Document findings in DISCOVERIES.md
+
+Phase 2: Transition to Development
+5. Detect: Development work needed ("add OAuth support")
+6. Transition to DEFAULT_WORKFLOW.md
+7. Resume at Step 4 (Research and Design) using investigation insights
+8. Continue through Step 15 (implementation → testing → PR)
+9. MANDATORY: Invoke cleanup agent at completion
+```
+
+**When Investigation Leads to Development:**
+
+Some development tasks require investigation first (Step 4 of DEFAULT_WORKFLOW.md):
+
+- Unfamiliar codebase areas
+- Complex subsystems requiring understanding
+- Unclear architecture or integration points
+- Need to understand existing patterns before designing new ones
+
+In these cases, pause development workflow at Step 4, run full INVESTIGATION_WORKFLOW.md, then resume development with the knowledge gained.
+
 ## Mandatory Cleanup Phase
 
 **CRITICAL**: Every ultrathink task MUST end with cleanup agent invocation.

@@ -70,6 +70,15 @@ This workflow should be followed for:
 
 ### Step 4: Research and Design with TDD
 
+**⚠️ INVESTIGATION-FIRST PATTERN**: If the existing codebase or system is unfamiliar/complex, consider running the **INVESTIGATION_WORKFLOW.md** (6 phases) FIRST, then return here to continue development. This is especially valuable when:
+
+- The codebase area is unfamiliar or poorly documented
+- The feature touches multiple complex subsystems
+- You need to understand existing patterns before designing new ones
+- The architecture or integration points are unclear
+
+After investigation completes, continue with these tasks:
+
 - [ ] **Use** architect agent to design solution architecture
 - [ ] **Use** api-designer agent for API contracts (if applicable)
 - [ ] **Use** database agent for data model design (if applicable)
@@ -156,9 +165,11 @@ This workflow should be followed for:
 - [ ] Request appropriate reviewers
 
 **Important**: When using `gh` commands, always pipe through `cat` to ensure output is displayed:
+
 ```bash
 gh pr create --title "..." --body "..." 2>&1 | cat
 ```
+
 This ensures you see success messages, error details, and PR URLs.
 
 ### Step 11: Review the PR
