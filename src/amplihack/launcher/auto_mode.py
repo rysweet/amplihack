@@ -14,15 +14,15 @@ from typing import Optional, Tuple
 
 # Try to import Claude SDK, fall back gracefully
 try:
-    from claude_agent_sdk import query, ClaudeAgentOptions  # type: ignore
+    from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 # Import session management components
-from .session_capture import MessageCapture
 from .fork_manager import ForkManager
+from .session_capture import MessageCapture
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -446,17 +446,27 @@ Document your decisions and reasoning in comments/logs."""
             todos: List of todo items from TodoWrite tool
         """
         try:
+            # LOG ENTRY POINT - Confirm method is called
+            self.log(f"🎯 TodoWrite CALLED with {len(todos)} items", level="INFO")
+
             # Format for terminal display
             formatted = self._format_todos_for_terminal(todos)
             if formatted:
                 print(formatted, flush=True)
+                self.log("✅ TodoWrite formatted output printed to terminal", level="INFO")
+            else:
+                self.log("⚠️  TodoWrite formatting returned empty string", level="WARNING")
 
             # Update message capture state (thread-safe)
             self.message_capture.update_todos(todos)
+            self.log("✅ TodoWrite updated message_capture state", level="INFO")
 
             # Update UI state if enabled (thread-safe)
             if self.ui_enabled and hasattr(self, "state"):
                 self.state.update_todos(todos)
+                self.log("✅ TodoWrite updated UI state", level="INFO")
+            else:
+                self.log(f"⚠️  TodoWrite UI update skipped (ui_enabled={self.ui_enabled})", level="INFO")
 
             self.log(f"Updated todo list ({len(todos)} items)", level="DEBUG")
 
@@ -478,6 +488,7 @@ Document your decisions and reasoning in comments/logs."""
             return self._run_sdk_subprocess(prompt)
 
         try:
+            print("\n[DEBUG] 🚀 START _run_turn_with_sdk", flush=True)
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
             turn_output_size = 0
@@ -490,14 +501,19 @@ Document your decisions and reasoning in comments/logs."""
             options = ClaudeAgentOptions(
                 cwd=str(self.working_dir),
                 permission_mode="bypassPermissions",  # Auto mode needs non-interactive permissions
+                allowed_tools=["TodoWrite"],  # Enable TodoWrite for progress tracking
                 # Note: verbose flag can be added via extra_args if needed
             )
 
             # Stream response - messages are typed objects, not dicts
+            print("\n[DEBUG] 🔄 Starting async for message loop", flush=True)
             async for message in query(prompt=prompt, options=options):
+                print("\n[DEBUG] 💬 Got a message from query()", flush=True)
                 # Handle different message types
                 if hasattr(message, "__class__"):
                     msg_type = message.__class__.__name__
+                    print(f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True)  # Direct print to bypass log()
+                    self.log(f"📨 Received message type: {msg_type}", level="INFO")
 
                     if msg_type == "AssistantMessage":
                         # Capture assistant message for transcript
@@ -505,6 +521,9 @@ Document your decisions and reasoning in comments/logs."""
 
                         # Process content blocks
                         for block in getattr(message, "content", []):
+                            block_type = getattr(block, "type", "unknown")
+                            self.log(f"  📦 Block type: {block_type}", level="INFO")
+
                             # Handle text blocks
                             if hasattr(block, "text"):
                                 text = block.text
@@ -534,19 +553,30 @@ Document your decisions and reasoning in comments/logs."""
                             # Handle tool_use blocks (TodoWrite)
                             elif hasattr(block, "type") and block.type == "tool_use":
                                 tool_name = getattr(block, "name", None)
+                                self.log(f"🔍 Detected tool_use block: {tool_name}", level="INFO")
+
                                 if tool_name == "TodoWrite":
+                                    self.log("🎯 TodoWrite tool detected!", level="INFO")
                                     # Extract todos from input object (not dict!)
                                     # block.input is an object with attributes, not a dict
                                     if hasattr(block, "input"):
                                         tool_input = block.input
+                                        self.log(f"✓ Block has input attribute, type: {type(tool_input)}", level="INFO")
+
                                         # Check if input has todos attribute
                                         if hasattr(tool_input, "todos"):
                                             todos = tool_input.todos
+                                            self.log(f"✓ Input has todos attribute with {len(todos)} items", level="INFO")
                                             self._handle_todo_write(todos)
                                         # Fallback: try dict-style access for backwards compatibility
                                         elif isinstance(tool_input, dict) and "todos" in tool_input:
                                             todos = tool_input["todos"]
+                                            self.log(f"✓ Input is dict with todos key ({len(todos)} items)", level="INFO")
                                             self._handle_todo_write(todos)
+                                        else:
+                                            self.log(f"⚠️  Input has no todos attribute or key. Attributes: {dir(tool_input)}", level="WARNING")
+                                    else:
+                                        self.log("⚠️  Block has no input attribute", level="WARNING")
 
                     elif msg_type == "ResultMessage":
                         # Check if there was an error
@@ -946,6 +976,7 @@ Current Turn: {turn}/{self.max_turns}"""
         options = ClaudeAgentOptions(
             cwd=str(self.working_dir),
             permission_mode="bypassPermissions",
+            allowed_tools=["TodoWrite"],  # Enable TodoWrite for progress tracking
         )
 
         try:
@@ -1228,9 +1259,7 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("Transcript builder not found, skipping export", level="INFO")
                 return
 
-            builder = ClaudeTranscriptBuilder(
-                session_id=self.log_dir.name, working_dir=self.working_dir
-            )
+            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
             messages = self.message_capture.get_messages()
 
             if not messages:
