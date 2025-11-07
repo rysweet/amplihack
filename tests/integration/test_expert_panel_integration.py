@@ -4,17 +4,18 @@ Tests the full orchestrator function with mocked ClaudeProcess.
 """
 
 import sys
-from pathlib import Path
-import pytest
-from unittest.mock import Mock
 from dataclasses import dataclass
+from pathlib import Path
+from unittest.mock import Mock
+
+import pytest
 
 # Add orchestration to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / ".claude/tools/amplihack"))
 
 from orchestration.patterns.expert_panel import (
-    run_expert_panel,
     VoteChoice,
+    run_expert_panel,
 )
 
 

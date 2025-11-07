@@ -26,7 +26,8 @@ from amplihack.launcher.auto_mode import AutoMode
 # Import components to be implemented
 try:
     from amplihack.launcher.session_finder import SessionFinder, SessionInfo
-    from amplihack.launcher.append_handler import append_instructions, AppendResult
+
+    from amplihack.launcher.append_handler import AppendResult, append_instructions
 except ImportError:
     # Placeholders for not-yet-implemented components
     class SessionFinder:

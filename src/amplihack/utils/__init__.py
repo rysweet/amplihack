@@ -12,6 +12,7 @@ from .defensive import (
     validate_json_schema,
     write_file_with_retry,
 )
+from .hello_world import hello_world
 from .paths import FrameworkPathResolver
 from .process import ProcessManager
 from .uvx_staging import stage_uvx_framework
@@ -30,6 +31,8 @@ __all__ = [
     "FrameworkPathResolver",
     # Process utilities
     "ProcessManager",
+    # Hello world
+    "hello_world",
     # UVX utilities
     "is_uvx_deployment",
     "stage_uvx_framework",
