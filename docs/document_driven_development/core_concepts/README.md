@@ -47,16 +47,19 @@ These core concepts are used repeatedly throughout the DDD process. Understandin
 ## How They Work Together
 
 **File Crawling** enables systematic processing:
+
 - Prevents forgetting files
 - Efficient token usage
 - Clear progress tracking
 
 **Context Poisoning** prevention maintains quality:
+
 - Each concept in ONE place
 - No duplicate information
 - Always current, never stale
 
 **Retcon Writing** ensures clarity:
+
 - Write as if already implemented
 - No historical references
 - Single timeline (now)
@@ -68,11 +71,13 @@ These core concepts are used repeatedly throughout the DDD process. Understandin
 ## Quick Reference
 
 **For AI Assistants**:
+
 - Use file crawling for any 10+ file operation
 - Check for context poisoning when loading multiple sources
 - Apply retcon writing rules when updating docs
 
 **For Humans**:
+
 - File crawling: External checklist, process one at a time
 - Context poisoning: Delete duplicates, single source of truth
 - Retcon: Write present tense, as if already exists

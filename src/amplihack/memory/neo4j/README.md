@@ -204,6 +204,7 @@ sudo kill <PID>     # Stop the process
 ### Neo4j Unavailable
 
 If Neo4j fails to start, amplihack will:
+
 1. Display warning with specific issue
 2. Provide fix instructions
 3. Fall back to existing memory system
@@ -304,6 +305,7 @@ docker logs amplihack-neo4j --tail 100 -f
 ## Version History
 
 ### 1.0.0 (2025-11-02)
+
 - Initial foundation implementation
 - Docker container management
 - Secure password generation

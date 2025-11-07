@@ -5,6 +5,7 @@ Complete blarify integration with Neo4j memory system - code graph and memory gr
 ## Status: PRODUCTION READY ✅
 
 All components implemented and tested:
+
 - ✅ Code graph schema
 - ✅ Blarify JSON import
 - ✅ Code-memory linking
@@ -27,6 +28,7 @@ python scripts/import_codebase_to_neo4j.py
 ## Files Created
 
 ### Core Implementation
+
 - `src/amplihack/memory/neo4j/code_graph.py` - BlarifyIntegration class
   - Schema initialization
   - Import blarify output
@@ -35,6 +37,7 @@ python scripts/import_codebase_to_neo4j.py
   - Incremental updates
 
 ### CLI Tools
+
 - `scripts/import_codebase_to_neo4j.py` - Import codebase CLI
   - Run blarify
   - Import to Neo4j
@@ -47,6 +50,7 @@ python scripts/import_codebase_to_neo4j.py
   - No blarify required
 
 ### Documentation
+
 - `docs/blarify_integration.md` - Complete documentation
   - Architecture
   - Usage examples
@@ -61,6 +65,7 @@ python scripts/import_codebase_to_neo4j.py
 ## Architecture
 
 ### Node Types
+
 ```
 CodeFile (path, language, lines_of_code)
 Class (name, docstring, is_abstract)
@@ -68,6 +73,7 @@ Function (name, parameters, return_type, complexity)
 ```
 
 ### Relationships
+
 ```
 (Function)-[:DEFINED_IN]->(CodeFile)
 (Function)-[:METHOD_OF]->(Class)
@@ -81,6 +87,7 @@ Function (name, parameters, return_type, complexity)
 ## API Usage
 
 ### Import Code Graph
+
 ```python
 from amplihack.memory.neo4j import Neo4jConnector, BlarifyIntegration
 
@@ -101,6 +108,7 @@ with Neo4jConnector() as conn:
 ```
 
 ### Query Code Context
+
 ```python
 # Get code context for memory
 context = integration.query_code_context("memory-id")
@@ -113,6 +121,7 @@ for func in context["functions"]:
 ```
 
 ### Run Blarify
+
 ```python
 from amplihack.memory.neo4j import run_blarify
 from pathlib import Path
@@ -127,11 +136,13 @@ success = run_blarify(
 ## Testing
 
 ### Test Suite (No Blarify Required)
+
 ```bash
 python scripts/test_blarify_integration.py
 ```
 
 Tests:
+
 1. Schema initialization
 2. Sample code import (3 files, 4 classes, 4 functions)
 3. Code-memory relationships
@@ -139,6 +150,7 @@ Tests:
 5. Incremental updates
 
 ### Manual Testing with Sample Data
+
 ```python
 from scripts.test_blarify_integration import create_sample_blarify_output
 import json
@@ -209,36 +221,43 @@ python scripts/import_codebase_to_neo4j.py --blarify-json sample.json
 ## CLI Examples
 
 ### Basic Import
+
 ```bash
 python scripts/import_codebase_to_neo4j.py
 ```
 
 ### Import Specific Directory
+
 ```bash
 python scripts/import_codebase_to_neo4j.py --path ./src/amplihack
 ```
 
 ### Filter Languages
+
 ```bash
 python scripts/import_codebase_to_neo4j.py --languages python,javascript
 ```
 
 ### Use Existing Output
+
 ```bash
 python scripts/import_codebase_to_neo4j.py --blarify-json /path/to/output.json
 ```
 
 ### Incremental Update
+
 ```bash
 python scripts/import_codebase_to_neo4j.py --incremental
 ```
 
 ### Skip Memory Linking
+
 ```bash
 python scripts/import_codebase_to_neo4j.py --skip-link
 ```
 
 ### Custom Neo4j
+
 ```bash
 python scripts/import_codebase_to_neo4j.py \
     --neo4j-uri bolt://localhost:7687 \
@@ -249,6 +268,7 @@ python scripts/import_codebase_to_neo4j.py \
 ## Neo4j Queries
 
 ### View Code Files
+
 ```cypher
 MATCH (cf:CodeFile)
 RETURN cf.path, cf.language, cf.lines_of_code
@@ -257,6 +277,7 @@ LIMIT 10
 ```
 
 ### View Classes and Methods
+
 ```cypher
 MATCH (c:Class)<-[:METHOD_OF]-(f:Function)
 RETURN c.name, count(f) as method_count
@@ -264,6 +285,7 @@ ORDER BY method_count DESC
 ```
 
 ### View Function Calls
+
 ```cypher
 MATCH (source:Function)-[:CALLS]->(target:Function)
 RETURN source.name, target.name
@@ -271,6 +293,7 @@ LIMIT 20
 ```
 
 ### Find Code-Memory Relationships
+
 ```cypher
 MATCH (m:Memory)-[:RELATES_TO_FILE]->(cf:CodeFile)
 RETURN m.content, cf.path
@@ -278,6 +301,7 @@ LIMIT 10
 ```
 
 ### Find Complex Functions Without Documentation
+
 ```cypher
 MATCH (f:Function)
 WHERE f.complexity > 10
@@ -290,6 +314,7 @@ ORDER BY f.complexity DESC
 ## Integration with Memory System
 
 ### Create Memory with Code Reference
+
 ```python
 memory_store.create_memory(
     content="Always use circuit breaker for database calls",
@@ -300,12 +325,14 @@ memory_store.create_memory(
 ```
 
 ### Query Memories by Code
+
 ```cypher
 MATCH (cf:CodeFile {path: 'connector.py'})<-[:RELATES_TO_FILE]-(m:Memory)
 RETURN m.content, m.agent_type
 ```
 
 ### Find Code Changes Affecting Memories
+
 ```cypher
 MATCH (cf:CodeFile)<-[:DEFINED_IN]-(f:Function)
 WHERE cf.last_modified > '2025-01-01T00:00:00Z'
@@ -316,33 +343,38 @@ RETURN DISTINCT m.id, m.content, cf.path
 ## Performance
 
 ### With SCIP (Recommended)
+
 ```bash
 npm install -g @sourcegraph/scip-python
 ```
+
 - 330x faster than LSP
 - 1000 files in ~2 seconds
 
 ### Without SCIP
+
 - 1000 files in ~10 minutes
 - Still works, just slower
 
 ### Benchmarks (1000 files, 100K LOC)
 
-| Operation          | Time (SCIP) | Time (LSP) |
-|--------------------|-------------|------------|
-| Blarify Analysis   | ~2 sec      | ~10 min    |
-| Neo4j Import       | ~30 sec     | ~30 sec    |
-| Memory Linking     | ~10 sec     | ~10 sec    |
-| **Total**          | **~42 sec** | **~11 min** |
+| Operation        | Time (SCIP) | Time (LSP)  |
+| ---------------- | ----------- | ----------- |
+| Blarify Analysis | ~2 sec      | ~10 min     |
+| Neo4j Import     | ~30 sec     | ~30 sec     |
+| Memory Linking   | ~10 sec     | ~10 sec     |
+| **Total**        | **~42 sec** | **~11 min** |
 
 ## Troubleshooting
 
 ### Neo4j Not Running
+
 ```bash
 python -c "from amplihack.memory.neo4j import ensure_neo4j_running; ensure_neo4j_running()"
 ```
 
 ### Blarify Not Installed
+
 ```bash
 # Option 1: Install blarify
 pip install blarify
@@ -352,12 +384,14 @@ python scripts/test_blarify_integration.py
 ```
 
 ### Import Failed
+
 ```bash
 # Check blarify output
 cat .amplihack/blarify_output.json | python -m json.tool
 ```
 
 ### Schema Issues
+
 ```python
 # Reinitialize schema
 from amplihack.memory.neo4j import Neo4jConnector, BlarifyIntegration
@@ -370,6 +404,7 @@ with Neo4jConnector() as conn:
 ## Future Enhancements
 
 Potential additions:
+
 1. Real-time file watching
 2. Vector embeddings for semantic search
 3. Diff analysis (track code evolution)
@@ -379,6 +414,7 @@ Potential additions:
 ## Contributing
 
 To extend integration:
+
 1. Add parsers in `code_graph.py`
 2. Add tests in `test_blarify_integration.py`
 3. Update documentation

@@ -18,12 +18,14 @@
 ## Essential Node Types
 
 ### Code Nodes (from blarify)
+
 - `CodeModule` - Python files
 - `CodeClass` - Class definitions
 - `CodeFunction` - Functions/methods
 - `CodePattern` - Identified patterns (with signature_hash for deduplication)
 
 ### Memory Nodes (agent experiences)
+
 - `Episode` - Raw events (conversations, decisions, errors)
 - `MemoryEntity` - Extracted knowledge (bugs, features, concepts)
 - `Procedure` - Learned workflows (steps to fix problems)
@@ -34,6 +36,7 @@
 ## Essential Relationships
 
 ### Code Structure
+
 ```cypher
 (CodeModule)-[:CONTAINS]->(CodeClass)
 (CodeFunction)-[:CALLS]->(CodeFunction)
@@ -41,6 +44,7 @@
 ```
 
 ### Memory Hierarchy
+
 ```cypher
 (Episode)-[:MENTIONS]->(MemoryEntity)
 (Episode)-[:PERFORMED_BY]->(AgentType)
@@ -48,6 +52,7 @@
 ```
 
 ### Bridge (Code ↔ Memory) - THE KEY!
+
 ```cypher
 (Episode)-[:WORKED_ON]->(CodeFunction|CodeClass|CodeModule)
 (Episode)-[:DECIDED_ABOUT]->(Code elements)
@@ -236,13 +241,13 @@ SET entity.t_invalid = datetime(),
 
 ## Performance Targets
 
-| Operation | Target | Notes |
-|-----------|--------|-------|
-| Agent type memory lookup | < 50ms | Use agent_type index |
-| Code-memory bridge query | < 100ms | Use composite indexes |
-| Cross-project pattern search | < 200ms | Use signature_hash index |
-| Incremental update | < 1s/file | Batch with UNWIND |
-| Hybrid search | < 300ms | Multi-stage pipeline |
+| Operation                    | Target    | Notes                    |
+| ---------------------------- | --------- | ------------------------ |
+| Agent type memory lookup     | < 50ms    | Use agent_type index     |
+| Code-memory bridge query     | < 100ms   | Use composite indexes    |
+| Cross-project pattern search | < 200ms   | Use signature_hash index |
+| Incremental update           | < 1s/file | Batch with UNWIND        |
+| Hybrid search                | < 300ms   | Multi-stage pipeline     |
 
 ---
 
@@ -276,6 +281,7 @@ CREATE (ep)-[:WORKED_ON {
 ## Common Pitfalls
 
 ### ❌ DON'T: Delete code nodes
+
 ```cypher
 // WRONG: Breaks memory links!
 MATCH (f:CodeFunction {id: $func_id})
@@ -283,6 +289,7 @@ DETACH DELETE f
 ```
 
 ### ✅ DO: Soft delete
+
 ```cypher
 // CORRECT: Preserve history
 MATCH (f:CodeFunction {id: $func_id})
@@ -290,6 +297,7 @@ SET f.deleted_at = datetime()
 ```
 
 ### ❌ DON'T: Delete old memories
+
 ```cypher
 // WRONG: Lose history!
 MATCH (entity:MemoryEntity)
@@ -298,12 +306,14 @@ DELETE entity
 ```
 
 ### ✅ DO: Mark as invalid
+
 ```cypher
 // CORRECT: Keep for temporal queries
 SET entity.t_invalid = datetime()
 ```
 
 ### ❌ DON'T: Individual creates in loop
+
 ```cypher
 // WRONG: 100x slower!
 for node in nodes:
@@ -311,6 +321,7 @@ for node in nodes:
 ```
 
 ### ✅ DO: Batch with UNWIND
+
 ```cypher
 // CORRECT: Fast!
 UNWIND $nodes as node

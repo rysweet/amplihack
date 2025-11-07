@@ -646,6 +646,7 @@ python -m pytest tests/integration/memory/neo4j/ -m integration -v
 ## Success Criteria
 
 All tests pass when:
+
 - ✅ All classes and methods implemented
 - ✅ All error cases handled
 - ✅ Idempotency guaranteed (safe to call multiple times)

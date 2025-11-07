@@ -34,6 +34,7 @@ tests/
 **Purpose**: Test individual components in isolation without external dependencies.
 
 **Characteristics**:
+
 - No real Docker required (all mocked)
 - No real Neo4j required (all mocked)
 - Fast execution (< 100ms per test)
@@ -42,7 +43,9 @@ tests/
 **Test Files**:
 
 #### `test_container_manager.py`
+
 Tests for Neo4j container lifecycle management:
+
 - ✅ `test_WHEN_start_container_called_THEN_docker_compose_up_executed`
 - ✅ `test_WHEN_container_already_running_THEN_start_is_idempotent`
 - ✅ `test_WHEN_docker_not_available_THEN_appropriate_error_raised`
@@ -55,7 +58,9 @@ Tests for Neo4j container lifecycle management:
 **Total**: 20+ tests covering startup, shutdown, health checks, and status monitoring.
 
 #### `test_schema_manager.py`
+
 Tests for Neo4j schema initialization:
+
 - ✅ `test_WHEN_initialize_schema_called_THEN_constraints_created`
 - ✅ `test_WHEN_initialize_schema_called_twice_THEN_no_errors` (idempotency)
 - ✅ `test_WHEN_create_agent_type_constraint_THEN_unique_id_enforced`
@@ -66,7 +71,9 @@ Tests for Neo4j schema initialization:
 **Total**: 25+ tests covering constraints, indexes, verification, and agent types.
 
 #### `test_dependency_agent.py`
+
 Tests for goal-seeking dependency agent:
+
 - ✅ `test_WHEN_docker_installed_and_running_THEN_check_passes`
 - ✅ `test_WHEN_docker_not_installed_THEN_check_fails_with_guidance`
 - ✅ `test_WHEN_docker_compose_v2_available_THEN_check_passes`
@@ -82,6 +89,7 @@ Tests for goal-seeking dependency agent:
 **Purpose**: Test components working together with real Neo4j instances.
 
 **Characteristics**:
+
 - Requires Docker daemon
 - Uses testcontainers or real Neo4j
 - Slower execution (< 30 seconds per test)
@@ -90,7 +98,9 @@ Tests for goal-seeking dependency agent:
 **Test Files**:
 
 #### `test_neo4j_foundation_e2e.py`
+
 End-to-end workflow tests:
+
 - ✅ `test_WHEN_session_starts_THEN_neo4j_container_starts_automatically`
 - ✅ `test_WHEN_neo4j_ready_THEN_can_connect_successfully`
 - ✅ `test_WHEN_schema_initialized_THEN_constraints_exist`
@@ -101,7 +111,9 @@ End-to-end workflow tests:
 **Total**: 15+ tests covering full startup flow and basic operations.
 
 #### `test_container_lifecycle.py`
+
 Container lifecycle integration tests:
+
 - ✅ `test_WHEN_container_started_THEN_status_is_running`
 - ✅ `test_WHEN_container_restarted_THEN_becomes_running_again`
 - ✅ `test_WHEN_data_created_and_container_stopped_THEN_data_persists_on_restart`
@@ -113,37 +125,44 @@ Container lifecycle integration tests:
 ## Running Tests
 
 ### Run All Tests
+
 ```bash
 pytest tests/unit/memory/neo4j/ tests/integration/memory/neo4j/
 ```
 
 ### Run Only Unit Tests (Fast)
+
 ```bash
 pytest tests/unit/memory/neo4j/ -m unit
 ```
 
 ### Run Only Integration Tests (Requires Docker)
+
 ```bash
 pytest tests/integration/memory/neo4j/ -m integration
 ```
 
 ### Run Specific Test File
+
 ```bash
 pytest tests/unit/memory/neo4j/test_container_manager.py -v
 ```
 
 ### Run Tests Matching Pattern
+
 ```bash
 pytest -k "docker" -v  # Run all Docker-related tests
 pytest -k "schema" -v  # Run all schema tests
 ```
 
 ### Skip Slow Tests
+
 ```bash
 pytest -m "not slow"
 ```
 
 ### Run with Coverage
+
 ```bash
 pytest --cov=amplihack.memory.neo4j tests/unit/memory/neo4j/
 ```
@@ -164,48 +183,58 @@ Tests use pytest markers for categorization:
 ### Unit Test Fixtures (`tests/unit/memory/neo4j/conftest.py`)
 
 **Mock Docker**:
+
 - `mock_docker_client`: Mock Docker client for container operations
 - `mock_docker_subprocess`: Mock subprocess calls for Docker commands
 - `mock_docker_available`: Mock Docker as available
 - `mock_docker_not_available`: Mock Docker as unavailable
 
 **Mock Neo4j**:
+
 - `mock_neo4j_connector`: Mock Neo4j connector
 - `mock_neo4j_driver`: Mock Neo4j driver (low-level)
 
 **Configuration**:
+
 - `neo4j_config`: Test configuration dictionary
 - `docker_compose_file`: Temporary docker-compose file
 
 **Test Data**:
+
 - `sample_agent_types`: Sample agent type data
 - `sample_memory_nodes`: Sample memory node data
 - `sample_cypher_queries`: Sample Cypher queries
 
 **Helpers**:
+
 - `assert_cypher_valid`: Validate Cypher query syntax
 - `assert_docker_command_safe`: Validate Docker command safety
 
 ### Integration Test Fixtures (`tests/integration/memory/neo4j/conftest.py`)
 
 **Real Containers**:
+
 - `neo4j_test_container`: Session-scoped Neo4j container (testcontainers)
 - `running_neo4j_container`: Running container for tests
 - `container_manager`: ContainerManager instance
 
 **Connections**:
+
 - `neo4j_connector`: Connected Neo4j connector
 - `clean_neo4j_db`: Neo4j with clean database (cleanup before/after)
 
 **Components**:
+
 - `schema_manager`: SchemaManager instance
 - `initialized_schema`: Neo4j with initialized schema
 - `dependency_agent`: DependencyAgent instance
 
 **Performance**:
+
 - `performance_benchmark`: Helper for timing operations
 
 **Cleanup**:
+
 - `cleanup_test_containers`: Auto-cleanup test containers
 - `cleanup_test_volumes`: Auto-cleanup test volumes
 
@@ -214,6 +243,7 @@ Tests use pytest markers for categorization:
 Tests follow the pattern: `test_WHEN_<condition>_THEN_<expected_outcome>`
 
 **Examples**:
+
 - `test_WHEN_container_started_THEN_status_is_running`
 - `test_WHEN_docker_not_available_THEN_appropriate_error_raised`
 - `test_WHEN_schema_initialized_THEN_constraints_exist`
@@ -223,12 +253,14 @@ This makes test intent crystal clear and improves readability.
 ## Mocking Strategy
 
 ### Unit Tests: Full Mocking
+
 - **Docker operations**: Mock `subprocess.run` for all Docker commands
 - **Neo4j operations**: Mock connector, driver, and query execution
 - **File system**: Mock file I/O when needed
 - **Network**: Mock port checks with `socket.socket`
 
 ### Integration Tests: Minimal Mocking
+
 - **Use real Docker**: Via testcontainers or local Docker daemon
 - **Use real Neo4j**: Running in container
 - **Real database operations**: Actual Cypher queries
@@ -237,6 +269,7 @@ This makes test intent crystal clear and improves readability.
 ## Test Isolation
 
 ### Unit Tests
+
 - Each test is completely isolated
 - No shared state between tests
 - All external dependencies mocked
@@ -244,6 +277,7 @@ This makes test intent crystal clear and improves readability.
 - Tests can run in parallel
 
 ### Integration Tests
+
 - Tests share Neo4j container (session-scoped)
 - Database cleaned between tests (`clean_neo4j_db` fixture)
 - Tests use unique IDs to avoid collisions
@@ -256,11 +290,13 @@ This makes test intent crystal clear and improves readability.
 ### Expected Failures
 
 1. **Import Errors**: Modules not yet created
+
    ```
    ImportError: cannot import name 'ContainerManager' from 'amplihack.memory.neo4j.container_manager'
    ```
 
 2. **Module Not Found**: Files not created
+
    ```
    ModuleNotFoundError: No module named 'amplihack.memory.neo4j'
    ```
@@ -273,6 +309,7 @@ This makes test intent crystal clear and improves readability.
 ### Making Tests Pass
 
 As implementation progresses, tests should transition from:
+
 1. ❌ **Import Error** → ✅ **File/class created**
 2. ❌ **Attribute Error** → ✅ **Method implemented**
 3. ❌ **Assertion Error** → ✅ **Correct behavior implemented**
@@ -283,6 +320,7 @@ As implementation progresses, tests should transition from:
 Tests validate performance requirements from `IMPLEMENTATION_REQUIREMENTS.md`:
 
 ### Session Start Time
+
 ```python
 @pytest.mark.performance
 def test_WHEN_session_starts_THEN_completes_within_500ms():
@@ -291,6 +329,7 @@ def test_WHEN_session_starts_THEN_completes_within_500ms():
 ```
 
 ### Container Start Time
+
 ```python
 @pytest.mark.performance
 def test_WHEN_container_starts_THEN_ready_within_30_seconds():
@@ -299,6 +338,7 @@ def test_WHEN_container_starts_THEN_ready_within_30_seconds():
 ```
 
 ### Query Performance
+
 ```python
 @pytest.mark.performance
 def test_WHEN_query_executed_THEN_completes_within_100ms():
@@ -362,18 +402,21 @@ pytest --cov=amplihack.memory.neo4j \
 ### Test Failures
 
 **Import errors**:
+
 ```bash
 # Expected during TDD - implementation not yet created
 # Solution: Create the missing module/class
 ```
 
 **Docker not available**:
+
 ```bash
 # Integration tests require Docker
 pytest -m "not integration"  # Skip integration tests
 ```
 
 **Port conflicts**:
+
 ```bash
 # Neo4j ports already in use
 docker ps  # Check for existing containers
@@ -381,6 +424,7 @@ docker stop amplihack-neo4j  # Stop if needed
 ```
 
 **Testcontainers issues**:
+
 ```bash
 # Install testcontainers
 pip install testcontainers
@@ -391,21 +435,25 @@ pytest -k "not container"
 ### Debugging Tests
 
 **Verbose output**:
+
 ```bash
 pytest -v -s tests/unit/memory/neo4j/test_container_manager.py
 ```
 
 **Show print statements**:
+
 ```bash
 pytest -s tests/unit/memory/neo4j/
 ```
 
 **Debug specific test**:
+
 ```bash
 pytest --pdb tests/unit/memory/neo4j/test_container_manager.py::TestClass::test_method
 ```
 
 **See all fixtures**:
+
 ```bash
 pytest --fixtures tests/unit/memory/neo4j/
 ```
@@ -413,6 +461,7 @@ pytest --fixtures tests/unit/memory/neo4j/
 ## Best Practices
 
 ### 1. Test One Thing Per Test
+
 ```python
 # Good: Tests one specific behavior
 def test_WHEN_container_started_THEN_status_is_running():
@@ -427,6 +476,7 @@ def test_container_operations():
 ```
 
 ### 2. Use Descriptive Test Names
+
 ```python
 # Good: Intent is clear
 def test_WHEN_docker_not_installed_THEN_check_fails_with_guidance()
@@ -436,6 +486,7 @@ def test_docker_check()
 ```
 
 ### 3. Arrange-Act-Assert Pattern
+
 ```python
 def test_example():
     # Arrange: Set up test conditions
@@ -449,6 +500,7 @@ def test_example():
 ```
 
 ### 4. Clean Up Resources
+
 ```python
 @pytest.fixture
 def resource():
@@ -458,6 +510,7 @@ def resource():
 ```
 
 ### 5. Mock External Dependencies
+
 ```python
 # Good: Mock external Docker calls
 with patch('subprocess.run') as mock_run:

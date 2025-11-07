@@ -5,6 +5,7 @@ Get started with blarify code graph integration in 5 minutes.
 ## Prerequisites
 
 1. **Neo4j Running**:
+
    ```bash
    # Check if Neo4j is running
    docker ps | grep neo4j
@@ -25,6 +26,7 @@ python scripts/test_blarify_integration.py
 ```
 
 Expected output:
+
 ```
 ✓ Connected to Neo4j
 ✓ PASS: Schema initialization
@@ -60,6 +62,7 @@ python scripts/import_codebase_to_neo4j.py --path ./src/amplihack
 ```
 
 Expected output:
+
 ```
 Step 1: Running blarify on src/
 Step 2: Connecting to Neo4j
@@ -136,6 +139,7 @@ with Neo4jConnector() as conn:
 Open Neo4j Browser at `http://localhost:7474` and try these queries:
 
 ### View All Code Files
+
 ```cypher
 MATCH (cf:CodeFile)
 RETURN cf.path, cf.language, cf.lines_of_code
@@ -144,6 +148,7 @@ LIMIT 10
 ```
 
 ### View Function Call Graph
+
 ```cypher
 MATCH (source:Function)-[:CALLS]->(target:Function)
 RETURN source.name as caller, target.name as callee
@@ -151,6 +156,7 @@ LIMIT 20
 ```
 
 ### View Code-Memory Relationships
+
 ```cypher
 MATCH (m:Memory)-[:RELATES_TO_FILE]->(cf:CodeFile)
 RETURN m.content, cf.path
@@ -158,6 +164,7 @@ LIMIT 10
 ```
 
 ### Find Complex Functions Without Memories
+
 ```cypher
 MATCH (f:Function)
 WHERE f.complexity > 10
@@ -173,6 +180,7 @@ LIMIT 10
 ### Issue: "Cannot connect to Neo4j"
 
 **Solution**: Start Neo4j container
+
 ```bash
 # Use amplihack memory system tools
 python -c "from amplihack.memory.neo4j import ensure_neo4j_running; ensure_neo4j_running()"
@@ -181,6 +189,7 @@ python -c "from amplihack.memory.neo4j import ensure_neo4j_running; ensure_neo4j
 ### Issue: "blarify not found"
 
 **Solution**: Either install blarify or use test with sample data
+
 ```bash
 # Option 1: Install blarify
 pip install blarify
@@ -192,6 +201,7 @@ python scripts/test_blarify_integration.py
 ### Issue: "Import failed - invalid JSON"
 
 **Solution**: Check blarify output format
+
 ```bash
 # View blarify output
 cat .amplihack/blarify_output.json | python -m json.tool

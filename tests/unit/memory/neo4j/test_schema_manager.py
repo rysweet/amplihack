@@ -11,7 +11,7 @@ All tests should FAIL initially (TDD approach).
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock
 
 
 class TestSchemaInitialization:
@@ -29,7 +29,7 @@ class TestSchemaInitialization:
 
         # Verify constraints were created
         calls = mock_connector.execute_write.call_args_list
-        constraint_calls = [c for c in calls if 'CONSTRAINT' in str(c)]
+        constraint_calls = [c for c in calls if "CONSTRAINT" in str(c)]
         assert len(constraint_calls) > 0
 
     def test_WHEN_initialize_schema_called_THEN_indexes_created(self):
@@ -44,7 +44,7 @@ class TestSchemaInitialization:
 
         # Verify indexes were created
         calls = mock_connector.execute_write.call_args_list
-        index_calls = [c for c in calls if 'INDEX' in str(c)]
+        index_calls = [c for c in calls if "INDEX" in str(c)]
         assert len(index_calls) > 0
 
     def test_WHEN_initialize_schema_called_THEN_agent_types_seeded(self):
@@ -59,7 +59,7 @@ class TestSchemaInitialization:
 
         # Verify agent types were created
         calls = mock_connector.execute_write.call_args_list
-        agent_type_calls = [c for c in calls if 'AgentType' in str(c)]
+        agent_type_calls = [c for c in calls if "AgentType" in str(c)]
         assert len(agent_type_calls) > 0
 
     def test_WHEN_schema_initialization_fails_THEN_error_raised(self):
@@ -144,10 +144,7 @@ class TestConstraintCreation:
 
         # Verify AgentType unique constraint
         calls = [str(c) for c in mock_connector.execute_write.call_args_list]
-        agent_type_constraint = any(
-            'AgentType' in c and 'UNIQUE' in c and 'id' in c
-            for c in calls
-        )
+        agent_type_constraint = any("AgentType" in c and "UNIQUE" in c and "id" in c for c in calls)
         assert agent_type_constraint is True
 
     def test_WHEN_create_project_constraint_THEN_unique_id_enforced(self):
@@ -162,10 +159,7 @@ class TestConstraintCreation:
 
         # Verify Project unique constraint
         calls = [str(c) for c in mock_connector.execute_write.call_args_list]
-        project_constraint = any(
-            'Project' in c and 'UNIQUE' in c and 'id' in c
-            for c in calls
-        )
+        project_constraint = any("Project" in c and "UNIQUE" in c and "id" in c for c in calls)
         assert project_constraint is True
 
     def test_WHEN_create_memory_constraint_THEN_unique_id_enforced(self):
@@ -180,10 +174,7 @@ class TestConstraintCreation:
 
         # Verify Memory unique constraint
         calls = [str(c) for c in mock_connector.execute_write.call_args_list]
-        memory_constraint = any(
-            'Memory' in c and 'UNIQUE' in c and 'id' in c
-            for c in calls
-        )
+        memory_constraint = any("Memory" in c and "UNIQUE" in c and "id" in c for c in calls)
         assert memory_constraint is True
 
 
@@ -203,8 +194,7 @@ class TestIndexCreation:
         # Verify timestamp indexes
         calls = [str(c) for c in mock_connector.execute_write.call_args_list]
         has_timestamp_index = any(
-            'INDEX' in c and ('created_at' in c or 'timestamp' in c)
-            for c in calls
+            "INDEX" in c and ("created_at" in c or "timestamp" in c) for c in calls
         )
         assert has_timestamp_index is True
 
@@ -220,10 +210,7 @@ class TestIndexCreation:
 
         # Verify AgentType name index
         calls = [str(c) for c in mock_connector.execute_write.call_args_list]
-        has_name_index = any(
-            'AgentType' in c and 'INDEX' in c and 'name' in c
-            for c in calls
-        )
+        has_name_index = any("AgentType" in c and "INDEX" in c and "name" in c for c in calls)
         assert has_name_index is True
 
 
@@ -236,11 +223,13 @@ class TestSchemaVerification:
 
         mock_connector = Mock()
         # Simulate successful constraint/index checks
-        mock_connector.execute_query = Mock(return_value=[
-            {"name": "agent_type_id", "type": "UNIQUENESS"},
-            {"name": "project_id", "type": "UNIQUENESS"},
-            {"name": "memory_id", "type": "UNIQUENESS"},
-        ])
+        mock_connector.execute_query = Mock(
+            return_value=[
+                {"name": "agent_type_id", "type": "UNIQUENESS"},
+                {"name": "project_id", "type": "UNIQUENESS"},
+                {"name": "memory_id", "type": "UNIQUENESS"},
+            ]
+        )
 
         manager = SchemaManager(mock_connector)
         is_valid = manager.verify_schema()
@@ -272,7 +261,7 @@ class TestSchemaVerification:
 
         assert is_valid is False
         assert isinstance(details, dict)
-        assert 'missing_constraints' in details or 'errors' in details
+        assert "missing_constraints" in details or "errors" in details
 
     def test_WHEN_agent_types_missing_THEN_verify_detects_issue(self):
         """Test verification checks for seeded agent types."""
@@ -280,12 +269,14 @@ class TestSchemaVerification:
 
         mock_connector = Mock()
         # Constraints exist but no agent types
-        mock_connector.execute_query = Mock(side_effect=[
-            # First call: constraints check (pass)
-            [{"name": "agent_type_id"}],
-            # Second call: agent types check (fail)
-            []
-        ])
+        mock_connector.execute_query = Mock(
+            side_effect=[
+                # First call: constraints check (pass)
+                [{"name": "agent_type_id"}],
+                # Second call: agent types check (fail)
+                [],
+            ]
+        )
 
         manager = SchemaManager(mock_connector)
         is_valid = manager.verify_schema()
@@ -301,17 +292,19 @@ class TestSchemaStatus:
         from amplihack.memory.neo4j.schema_manager import SchemaManager
 
         mock_connector = Mock()
-        mock_connector.execute_query = Mock(return_value=[
-            {"name": "agent_type_id", "type": "UNIQUENESS"},
-        ])
+        mock_connector.execute_query = Mock(
+            return_value=[
+                {"name": "agent_type_id", "type": "UNIQUENESS"},
+            ]
+        )
 
         manager = SchemaManager(mock_connector)
         status = manager.get_schema_status()
 
         assert isinstance(status, dict)
-        assert 'constraints' in status
-        assert 'indexes' in status
-        assert 'agent_types' in status
+        assert "constraints" in status
+        assert "indexes" in status
+        assert "agent_types" in status
 
     def test_WHEN_get_schema_status_with_error_THEN_error_included(self):
         """Test that errors are included in status."""
@@ -323,7 +316,7 @@ class TestSchemaStatus:
         manager = SchemaManager(mock_connector)
         status = manager.get_schema_status()
 
-        assert 'error' in status or 'errors' in status
+        assert "error" in status or "errors" in status
 
 
 class TestAgentTypeSeeding:
@@ -346,7 +339,7 @@ class TestAgentTypeSeeding:
         # Check for some expected agent types
         call_strs = [str(c) for c in calls]
         # Should have at least one agent type creation
-        has_agent_creation = any('AgentType' in s for s in call_strs)
+        has_agent_creation = any("AgentType" in s for s in call_strs)
         assert has_agent_creation is True
 
     def test_WHEN_seed_agent_types_with_duplicates_THEN_handled_gracefully(self):
@@ -355,9 +348,7 @@ class TestAgentTypeSeeding:
 
         mock_connector = Mock()
         # Simulate duplicate key error
-        mock_connector.execute_write = Mock(
-            side_effect=Exception("already exists")
-        )
+        mock_connector.execute_write = Mock(side_effect=Exception("already exists"))
 
         manager = SchemaManager(mock_connector)
 
@@ -393,9 +384,7 @@ class TestSchemaCypherGeneration:
 
         manager = SchemaManager(Mock())
         cypher = manager._generate_constraint_cypher(
-            constraint_name="test_constraint",
-            node_label="TestNode",
-            property_name="id"
+            constraint_name="test_constraint", node_label="TestNode", property_name="id"
         )
 
         assert "IF NOT EXISTS" in cypher
@@ -409,9 +398,7 @@ class TestSchemaCypherGeneration:
 
         manager = SchemaManager(Mock())
         cypher = manager._generate_index_cypher(
-            index_name="test_index",
-            node_label="TestNode",
-            property_name="created_at"
+            index_name="test_index", node_label="TestNode", property_name="created_at"
         )
 
         assert "IF NOT EXISTS" in cypher

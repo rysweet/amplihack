@@ -142,6 +142,7 @@ except Exception as e:
 ## Error Scenarios
 
 ### Neo4j Not Enabled
+
 ```
 ❌ Error: Neo4j graph memory not enabled
 
@@ -152,6 +153,7 @@ See docs/NEO4J.md for more information
 ```
 
 ### Neo4j Not Running
+
 ```
 ❌ Error: Cannot connect to Neo4j: Connection refused
 
@@ -162,11 +164,13 @@ If not running, restart amplihack with --use-graph-mem
 ```
 
 ### Path Not Found
+
 ```
 ❌ Error: Path not found: /path/to/nonexistent
 ```
 
 ### Ingestion Failure
+
 ```
 ❌ Error during ingestion: Blarify not found
 

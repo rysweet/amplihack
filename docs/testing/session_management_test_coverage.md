@@ -13,6 +13,7 @@ This document describes the comprehensive failing tests created for session mana
 **Purpose**: Ensure all messages are captured during auto mode execution for transcript generation.
 
 #### Tests:
+
 - `test_auto_mode_has_messages_list` - AutoMode must have `self.messages` list
 - `test_messages_captured_during_clarify_phase` - Messages captured in Turn 1 (clarify)
 - `test_messages_captured_during_planning_phase` - Messages captured in Turn 2 (plan)
@@ -22,6 +23,7 @@ This document describes the comprehensive failing tests created for session mana
 - `test_all_phases_captured_in_complete_session` - All phases present in complete session
 
 **Expected Message Format**:
+
 ```python
 {
     'role': 'user' | 'assistant',
@@ -33,6 +35,7 @@ This document describes the comprehensive failing tests created for session mana
 ```
 
 **Success Criteria**:
+
 - ✓ Messages list exists and starts empty
 - ✓ Messages captured at each phase
 - ✓ Message format compatible with ClaudeTranscriptBuilder
@@ -45,6 +48,7 @@ This document describes the comprehensive failing tests created for session mana
 **Purpose**: Track session duration and format it human-readable for logs and transcripts.
 
 #### Tests:
+
 - `test_session_duration_calculated_correctly` - Duration = current_time - start_time
 - `test_duration_formatted_as_seconds_for_short_sessions` - "45s" for 45 seconds
 - `test_duration_formatted_as_minutes_and_seconds` - "2m 5s" for 125 seconds
@@ -53,6 +57,7 @@ This document describes the comprehensive failing tests created for session mana
 - `test_duration_formatted_for_export` - Both seconds and formatted duration in metadata
 
 **Success Criteria**:
+
 - ✓ Duration calculated from start to current time
 - ✓ Format: "<60s" → "Xs", ">=60s" → "Xm Ys"
 - ✓ Duration visible in progress logs
@@ -65,6 +70,7 @@ This document describes the comprehensive failing tests created for session mana
 **Purpose**: Automatically fork sessions at 60-minute threshold to prevent context loss.
 
 #### Tests:
+
 - `test_fork_not_triggered_before_60_minutes` - No fork at 59 minutes
 - `test_fork_triggered_at_60_minutes` - Fork triggers at exactly 60 minutes
 - `test_fork_triggered_after_60_minutes` - Fork triggers after 60 minutes
@@ -73,6 +79,7 @@ This document describes the comprehensive failing tests created for session mana
 - `test_fork_logs_continuation_marker` - Log fork event with new session ID
 
 **Fork Workflow**:
+
 ```python
 if session_duration >= 60 minutes:
     1. Export current session transcript
@@ -84,6 +91,7 @@ if session_duration >= 60 minutes:
 ```
 
 **Success Criteria**:
+
 - ✓ Fork detection at 60-minute threshold
 - ✓ Export before forking
 - ✓ Context carried forward
@@ -96,6 +104,7 @@ if session_duration >= 60 minutes:
 **Purpose**: Export session data to transcript files compatible with ClaudeTranscriptBuilder.
 
 #### Tests:
+
 - `test_export_method_exists` - `_export_session_transcript()` method exists
 - `test_export_creates_transcript_file` - Creates `CONVERSATION_TRANSCRIPT.md`
 - `test_export_includes_all_messages` - All messages from `self.messages` in transcript
@@ -104,6 +113,7 @@ if session_duration >= 60 minutes:
 - `test_export_creates_json_for_programmatic_access` - JSON version created
 
 **Export File Structure**:
+
 ```
 .claude/runtime/logs/<session_id>/
 ├── CONVERSATION_TRANSCRIPT.md  (markdown, human-readable)
@@ -112,6 +122,7 @@ if session_duration >= 60 minutes:
 ```
 
 **Success Criteria**:
+
 - ✓ Export method exists and is callable
 - ✓ Markdown and JSON transcripts created
 - ✓ All messages included in transcript
@@ -125,6 +136,7 @@ if session_duration >= 60 minutes:
 **Purpose**: Ensure session management doesn't break existing auto_mode usage.
 
 #### Tests:
+
 - `test_auto_mode_works_without_session_tracking` - Optional `enable_session_management` flag
 - `test_existing_public_api_unchanged` - Public methods unchanged
 - `test_session_management_minimal_overhead` - <5% performance overhead
@@ -132,6 +144,7 @@ if session_duration >= 60 minutes:
 - `test_existing_hooks_still_called` - `session_start` and `stop` hooks still called
 
 **Backward Compatibility Requirements**:
+
 ```python
 # Old code still works
 auto_mode = AutoMode(sdk="claude", prompt="Test")
@@ -143,6 +156,7 @@ auto_mode.run()  # Includes message tracking and export
 ```
 
 **Success Criteria**:
+
 - ✓ Existing code works without changes
 - ✓ Session management is optional
 - ✓ No required new parameters
@@ -156,11 +170,13 @@ auto_mode.run()  # Includes message tracking and export
 **Purpose**: Collect structured metadata for transcript builder and analysis.
 
 #### Tests:
+
 - `test_session_metadata_structure` - Metadata has all required fields
 - `test_session_metadata_phase_breakdown` - Time spent in each phase
 - `test_session_metadata_compatible_with_transcript_builder` - JSON-serializable format
 
 **Metadata Structure**:
+
 ```python
 {
     "session_id": "auto_claude_1234567890",
@@ -183,6 +199,7 @@ auto_mode.run()  # Includes message tracking and export
 ```
 
 **Success Criteria**:
+
 - ✓ Complete metadata structure
 - ✓ Phase time breakdown
 - ✓ JSON-serializable
@@ -195,6 +212,7 @@ auto_mode.run()  # Includes message tracking and export
 ### Current Status: ALL TESTS FAILING (Expected)
 
 This is correct TDD behavior:
+
 1. ✓ Write failing tests FIRST
 2. ⏳ Implement functionality to make tests pass
 3. ⏳ Refactor while keeping tests green
@@ -232,6 +250,7 @@ python tests/test_auto_mode_session_management.py
 ## Implementation Roadmap
 
 ### Phase 1: Basic Message Tracking
+
 1. Add `self.messages = []` to `__init__()`
 2. Add `_capture_message()` helper method
 3. Call `_capture_message()` at each phase
@@ -240,6 +259,7 @@ python tests/test_auto_mode_session_management.py
 **Tests to pass**: TestMessageTracking (8 tests)
 
 ### Phase 2: Duration Tracking
+
 1. Add `self.session_metadata = {}` to `__init__()`
 2. Track phase start/end times
 3. Calculate phase durations
@@ -248,6 +268,7 @@ python tests/test_auto_mode_session_management.py
 **Tests to pass**: TestDurationTracking (6 tests)
 
 ### Phase 3: Export Integration
+
 1. Add `_export_session_transcript()` method
 2. Integrate with ClaudeTranscriptBuilder
 3. Call export in `finally` block
@@ -256,6 +277,7 @@ python tests/test_auto_mode_session_management.py
 **Tests to pass**: TestExportIntegration (7 tests)
 
 ### Phase 4: Fork Detection
+
 1. Add `_should_fork_session()` method
 2. Add `_fork_session()` method
 3. Check duration at each turn
@@ -265,6 +287,7 @@ python tests/test_auto_mode_session_management.py
 **Tests to pass**: TestForkDetection (6 tests)
 
 ### Phase 5: Metadata & Compatibility
+
 1. Complete metadata structure
 2. Add `enable_session_management` flag
 3. Ensure backward compatibility
@@ -277,20 +300,24 @@ python tests/test_auto_mode_session_management.py
 ## Success Metrics
 
 ### Code Coverage
+
 - **Target**: >95% coverage of new session management code
 - **Focus**: All new methods and attributes
 
 ### Test Coverage
+
 - **Total Tests**: 35
 - **Categories**: 6 (Message Tracking, Duration, Fork, Export, Compatibility, Metadata)
 - **Current Status**: 0/35 passing (Expected - TDD approach)
 
 ### Performance Requirements
+
 - **Overhead**: <5% performance impact when enabled
 - **Memory**: <10MB additional memory for typical session
 - **Export Time**: <1s for 100 messages
 
 ### Quality Gates
+
 - ✓ All 35 tests passing
 - ✓ No breaking changes to public API
 - ✓ Backward compatible with existing code
@@ -302,9 +329,11 @@ python tests/test_auto_mode_session_management.py
 ## Integration Points
 
 ### 1. ClaudeTranscriptBuilder
+
 **File**: `.claude/tools/amplihack/builders/claude_transcript_builder.py`
 
 **Interface**:
+
 ```python
 from builders.claude_transcript_builder import ClaudeTranscriptBuilder
 
@@ -316,11 +345,13 @@ transcript_path = builder.build_session_transcript(
 ```
 
 ### 2. Stop Hook
+
 **File**: `.claude/tools/amplihack/hooks/stop.py`
 
 **Integration**: Export should be called before stop hook runs, allowing stop hook to process the transcript.
 
 ### 3. Session Start Hook
+
 **File**: `.claude/tools/amplihack/hooks/session_start.py`
 
 **Integration**: Session start hook should receive session metadata, including whether this is a forked session.
@@ -330,16 +361,19 @@ transcript_path = builder.build_session_transcript(
 ## Testing Strategy
 
 ### Unit Tests (Current)
+
 - Test individual methods in isolation
 - Mock external dependencies
 - Focus on logic correctness
 
 ### Integration Tests (Future)
+
 - Test interaction with ClaudeTranscriptBuilder
 - Test interaction with hooks
 - Test complete session lifecycle
 
 ### E2E Tests (Future)
+
 - Test real auto mode sessions
 - Validate transcript quality
 - Test fork workflow in real scenarios
@@ -388,6 +422,7 @@ transcript_path = builder.build_session_transcript(
 ## Conclusion
 
 These tests provide complete coverage for session management functionality:
+
 - ✓ Message tracking across all phases
 - ✓ Duration tracking and formatting
 - ✓ Fork detection at 60 minutes

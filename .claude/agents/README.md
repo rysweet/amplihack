@@ -9,6 +9,7 @@ This directory contains specialized agents that extend Claude Code's capabilitie
 These agents were ported from amplifier to enhance amplihack's knowledge processing and complexity management capabilities:
 
 #### 1. ambiguity-guardian
+
 **Value: HIGHEST** - Preserves productive contradictions and navigates uncertainty
 
 - Use when: Fundamental disagreements between sources, paradoxes, multiple valid interpretations
@@ -16,6 +17,7 @@ These agents were ported from amplifier to enhance amplihack's knowledge process
 - Output: Tension maps, uncertainty cartography, paradox preservation, ambiguity indices
 
 #### 2. knowledge-archaeologist
+
 **Value: HIGH** - Traces evolution of knowledge and identifies valuable abandoned approaches
 
 - Use when: Understanding concept evolution, paradigm shifts, discovering old solutions for new problems
@@ -23,6 +25,7 @@ These agents were ported from amplifier to enhance amplihack's knowledge process
 - Output: Temporal layers, lineage trees, paradigm shifts, decay patterns, revival candidates
 
 #### 3. post-task-cleanup
+
 **Value: MEDIUM** - Ensures codebase hygiene after task completion
 
 - Use when: After completing major tasks or todo lists
@@ -30,6 +33,7 @@ These agents were ported from amplifier to enhance amplihack's knowledge process
 - Output: Cleanup report with specific actions and philosophy adherence score
 
 #### 4. concept-extractor
+
 **Value: MEDIUM** - Extracts structured knowledge from documents
 
 - Use when: Processing articles, papers, or documents for knowledge synthesis
@@ -37,6 +41,7 @@ These agents were ported from amplifier to enhance amplihack's knowledge process
 - Output: Structured JSON with concepts, relationships, tensions, uncertainties
 
 #### 5. insight-synthesizer
+
 **Value: MEDIUM** - Discovers revolutionary connections and breakthrough insights
 
 - Use when: Stuck on complex problems, seeking innovative solutions, need unexpected connections
@@ -56,30 +61,35 @@ These agents complement amplihack's existing capabilities:
 ## Usage Examples
 
 ### Using ambiguity-guardian for complex requirements:
+
 ```
 User: "Our authentication system needs to support both OAuth and SAML, but the requirements conflict"
 Claude: "I'll use the ambiguity-guardian agent to map these tensions and create a solution that preserves both approaches"
 ```
 
 ### Using knowledge-archaeologist for code understanding:
+
 ```
 User: "Why did we choose this specific architecture pattern?"
 Claude: "Let me invoke the knowledge-archaeologist agent to trace the evolution of this pattern and document the reasoning"
 ```
 
 ### Using post-task-cleanup after major work:
+
 ```
 User: "Feature implementation complete"
 Claude: "I'll run the post-task-cleanup agent to ensure no temporary files or unnecessary complexity remains"
 ```
 
 ### Using concept-extractor for documentation:
+
 ```
 User: "Process these design documents and extract the key concepts"
 Claude: "I'll use the concept-extractor agent to build a structured knowledge base from these documents"
 ```
 
 ### Using insight-synthesizer for innovation:
+
 ```
 User: "We need a breakthrough approach to this performance bottleneck"
 Claude: "Let me deploy the insight-synthesizer agent to explore revolutionary connections and find simplification cascades"
@@ -88,6 +98,7 @@ Claude: "Let me deploy the insight-synthesizer agent to explore revolutionary co
 ## Agent Interaction Patterns
 
 ### Sequential Pattern (Common)
+
 1. **concept-extractor** → Extract knowledge from documents
 2. **insight-synthesizer** → Find revolutionary connections
 3. **architect** → Design implementation
@@ -95,10 +106,12 @@ Claude: "Let me deploy the insight-synthesizer agent to explore revolutionary co
 5. **post-task-cleanup** → Ensure quality
 
 ### Parallel Pattern (When Appropriate)
+
 - **ambiguity-guardian** + **architect** → Handle complex requirements simultaneously
 - **knowledge-archaeologist** + **analyzer** → Understand code and history in parallel
 
 ### Iterative Pattern (For Exploration)
+
 1. **insight-synthesizer** → Generate multiple approaches
 2. **ambiguity-guardian** → Preserve tensions between approaches
 3. **architect** → Design solution that accommodates multiple paths
@@ -114,6 +127,7 @@ All agents strictly follow amplihack's core principles:
 - **Test-driven**: Tests before implementation
 
 The new agents enhance these principles by:
+
 - Preserving valuable complexity (ambiguity-guardian)
 - Learning from past simplifications (knowledge-archaeologist)
 - Enforcing simplicity post-implementation (post-task-cleanup)
@@ -123,6 +137,7 @@ The new agents enhance these principles by:
 ## Contributing New Agents
 
 When adding new agents:
+
 1. Follow the agent template format (see existing agents)
 2. Define clear use cases with examples
 3. Specify tool requirements
@@ -134,6 +149,7 @@ When adding new agents:
 ## Testing Agents
 
 Test new agents with:
+
 ```bash
 # Test agent loads correctly
 claude --agent ambiguity-guardian

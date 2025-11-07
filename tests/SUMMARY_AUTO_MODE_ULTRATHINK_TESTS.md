@@ -3,12 +3,14 @@
 ## Quick Reference
 
 ### Test Files Created
+
 1. ✅ **Unit Tests**: `tests/unit/test_cli_ensure_ultrathink.py` (40 tests)
 2. ✅ **Integration Tests**: `tests/integration/test_cli_auto_mode_ultrathink.py` (30 tests)
 3. ✅ **E2E Tests**: `tests/e2e/test_cli_auto_mode_ultrathink_e2e.py` (12 tests)
 4. ✅ **Coverage Doc**: `tests/TEST_COVERAGE_AUTO_MODE_ULTRATHINK.md`
 
 ### Total Test Coverage
+
 - **82 comprehensive tests** following test pyramid (60/30/10)
 - **100% edge case coverage** (empty, whitespace, multiline, unicode, etc.)
 - **TDD-ready** (all tests will fail until implementation)
@@ -16,6 +18,7 @@
 ## Running the Tests
 
 ### Quick Start
+
 ```bash
 # Run all tests
 pytest tests/unit/test_cli_ensure_ultrathink.py -v
@@ -28,7 +31,9 @@ pytest tests/unit/test_cli_ensure_ultrathink.py \
 ```
 
 ### Expected Behavior (TDD)
+
 **Before Implementation**: All tests FAIL with ImportError
+
 ```
 ImportError: cannot import name 'ensure_ultrathink_command' from 'amplihack.cli'
 ```
@@ -38,7 +43,9 @@ ImportError: cannot import name 'ensure_ultrathink_command' from 'amplihack.cli'
 ## Test Highlights
 
 ### Unit Tests (40 tests)
+
 **Comprehensive coverage of**:
+
 - ✅ Normal prompts → ultrathink prepended
 - ✅ Slash commands → unchanged
 - ✅ Whitespace → stripped correctly
@@ -50,7 +57,9 @@ ImportError: cannot import name 'ensure_ultrathink_command' from 'amplihack.cli'
 - ✅ Idempotency → no double-prepending
 
 ### Integration Tests (30 tests)
+
 **Workflow verification**:
+
 - ✅ Integration with handle_auto_mode()
 - ✅ All SDKs (claude, copilot, codex)
 - ✅ max_turns configuration
@@ -59,7 +68,9 @@ ImportError: cannot import name 'ensure_ultrathink_command' from 'amplihack.cli'
 - ✅ Exit code propagation
 
 ### E2E Tests (12 tests)
+
 **Complete user workflows**:
+
 - ✅ CLI invocation scenarios
 - ✅ Manual test documentation
 - ✅ Test checklist
@@ -68,6 +79,7 @@ ImportError: cannot import name 'ensure_ultrathink_command' from 'amplihack.cli'
 ## Implementation Requirements
 
 The function must:
+
 ```python
 def ensure_ultrathink_command(prompt: str) -> str:
     """Ensure prompt has /amplihack:ultrathink prepended if no slash command.
@@ -87,26 +99,31 @@ def ensure_ultrathink_command(prompt: str) -> str:
 ## Key Test Cases
 
 ### Test 1: Normal Prompt
+
 ```python
 assert ensure_ultrathink_command("implement feature") == "/amplihack:ultrathink implement feature"
 ```
 
 ### Test 2: Slash Command
+
 ```python
 assert ensure_ultrathink_command("/analyze src") == "/analyze src"
 ```
 
 ### Test 3: Whitespace
+
 ```python
 assert ensure_ultrathink_command("  test  ") == "/amplihack:ultrathink test"
 ```
 
 ### Test 4: Empty
+
 ```python
 assert ensure_ultrathink_command("") == ""
 ```
 
 ### Test 5: Idempotency
+
 ```python
 result1 = ensure_ultrathink_command("test")
 result2 = ensure_ultrathink_command(result1)
@@ -130,12 +147,14 @@ tests/
 ## Next Steps
 
 ### For Builder Agent
+
 1. Read test requirements from tests
 2. Implement `ensure_ultrathink_command()` in `src/amplihack/cli.py`
 3. Integrate into `handle_auto_mode()`
 4. Run tests to verify all pass
 
 ### For Verification
+
 ```bash
 # 1. Verify tests fail before implementation (TDD)
 pytest tests/unit/test_cli_ensure_ultrathink.py::test_unit_ultrathink_001_normal_prompt -v

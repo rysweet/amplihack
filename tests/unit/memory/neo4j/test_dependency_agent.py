@@ -13,7 +13,6 @@ All tests should FAIL initially (TDD approach).
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-import subprocess
 
 
 class TestDockerDaemonCheck:
@@ -24,7 +23,7 @@ class TestDockerDaemonCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="Docker version 24.0.0")
 
             result = agent.check_docker_daemon()
@@ -37,7 +36,7 @@ class TestDockerDaemonCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("docker: command not found")
 
             result = agent.check_docker_daemon()
@@ -51,11 +50,8 @@ class TestDockerDaemonCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=1,
-                stderr="Cannot connect to the Docker daemon"
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=1, stderr="Cannot connect to the Docker daemon")
 
             result = agent.check_docker_daemon()
 
@@ -67,11 +63,8 @@ class TestDockerDaemonCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=1,
-                stderr="permission denied"
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=1, stderr="permission denied")
 
             result = agent.check_docker_daemon()
 
@@ -88,11 +81,8 @@ class TestDockerComposeCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout="Docker Compose version v2.20.0"
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="Docker Compose version v2.20.0")
 
             result = agent.check_docker_compose()
 
@@ -104,11 +94,11 @@ class TestDockerComposeCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call (docker compose) fails, second call (docker-compose) succeeds
             mock_run.side_effect = [
                 Mock(returncode=1, stderr="unknown command"),
-                Mock(returncode=0, stdout="docker-compose version 1.29.0")
+                Mock(returncode=0, stdout="docker-compose version 1.29.0"),
             ]
 
             result = agent.check_docker_compose()
@@ -121,10 +111,10 @@ class TestDockerComposeCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 Mock(returncode=1, stderr="unknown command"),  # V2 check
-                FileNotFoundError("docker-compose not found")  # V1 check
+                FileNotFoundError("docker-compose not found"),  # V1 check
             ]
 
             result = agent.check_docker_compose()
@@ -142,7 +132,7 @@ class TestPythonPackageCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('importlib.metadata.version') as mock_version:
+        with patch("importlib.metadata.version") as mock_version:
             mock_version.return_value = "5.15.0"
 
             result = agent.check_python_packages()
@@ -155,7 +145,7 @@ class TestPythonPackageCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('importlib.metadata.version') as mock_version:
+        with patch("importlib.metadata.version") as mock_version:
             mock_version.side_effect = ModuleNotFoundError("No module named 'neo4j'")
 
             result = agent.check_python_packages()
@@ -169,7 +159,7 @@ class TestPythonPackageCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('importlib.metadata.version') as mock_version:
+        with patch("importlib.metadata.version") as mock_version:
             mock_version.return_value = "4.0.0"  # Too old
 
             result = agent.check_python_packages()
@@ -183,10 +173,10 @@ class TestPythonPackageCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('importlib.metadata.version') as mock_version:
+        with patch("importlib.metadata.version") as mock_version:
             mock_version.side_effect = ModuleNotFoundError("No module named 'neo4j'")
 
-            with patch('subprocess.run') as mock_run:
+            with patch("subprocess.run") as mock_run:
                 mock_run.return_value = Mock(returncode=0)
 
                 result = agent.check_python_packages(auto_install=True)
@@ -194,8 +184,8 @@ class TestPythonPackageCheck:
                 # Should have attempted pip install
                 mock_run.assert_called_once()
                 call_args = mock_run.call_args[0][0]
-                assert 'pip' in call_args
-                assert 'install' in call_args
+                assert "pip" in call_args
+                assert "install" in call_args
 
 
 class TestPortAvailability:
@@ -206,7 +196,7 @@ class TestPortAvailability:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('socket.socket') as mock_socket:
+        with patch("socket.socket") as mock_socket:
             # Simulate ports being available (bind succeeds)
             mock_sock = MagicMock()
             mock_socket.return_value.__enter__.return_value = mock_sock
@@ -221,7 +211,7 @@ class TestPortAvailability:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('socket.socket') as mock_socket:
+        with patch("socket.socket") as mock_socket:
             mock_sock = MagicMock()
             mock_socket.return_value.__enter__.return_value = mock_sock
             # Simulate port 7687 in use
@@ -238,7 +228,7 @@ class TestPortAvailability:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('socket.socket') as mock_socket:
+        with patch("socket.socket") as mock_socket:
             mock_sock = MagicMock()
             mock_socket.return_value.__enter__.return_value = mock_sock
             # HTTP port in use, Bolt port available
@@ -248,14 +238,17 @@ class TestPortAvailability:
 
             assert result.success is False
             assert "7474" in str(result.details) or "7474" in result.remediation
-            assert "NEO4J_HTTP_PORT" in result.remediation or "environment" in result.remediation.lower()
+            assert (
+                "NEO4J_HTTP_PORT" in result.remediation
+                or "environment" in result.remediation.lower()
+            )
 
     def test_WHEN_custom_ports_specified_THEN_those_ports_checked(self):
         """Test checking custom port configuration."""
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch('socket.socket') as mock_socket:
+        with patch("socket.socket") as mock_socket:
             mock_sock = MagicMock()
             mock_socket.return_value.__enter__.return_value = mock_sock
 
@@ -275,10 +268,10 @@ class TestFullPrerequisiteCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch.object(agent, 'check_docker_daemon') as mock_docker:
-            with patch.object(agent, 'check_docker_compose') as mock_compose:
-                with patch.object(agent, 'check_python_packages') as mock_packages:
-                    with patch.object(agent, 'check_port_availability') as mock_ports:
+        with patch.object(agent, "check_docker_daemon") as mock_docker:
+            with patch.object(agent, "check_docker_compose") as mock_compose:
+                with patch.object(agent, "check_python_packages") as mock_packages:
+                    with patch.object(agent, "check_port_availability") as mock_ports:
                         # All checks pass
                         mock_docker.return_value = Mock(success=True)
                         mock_compose.return_value = Mock(success=True)
@@ -295,10 +288,10 @@ class TestFullPrerequisiteCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch.object(agent, 'check_docker_daemon') as mock_docker:
-            with patch.object(agent, 'check_docker_compose') as mock_compose:
-                with patch.object(agent, 'check_python_packages') as mock_packages:
-                    with patch.object(agent, 'check_port_availability') as mock_ports:
+        with patch.object(agent, "check_docker_daemon") as mock_docker:
+            with patch.object(agent, "check_docker_compose") as mock_compose:
+                with patch.object(agent, "check_python_packages") as mock_packages:
+                    with patch.object(agent, "check_port_availability") as mock_ports:
                         mock_docker.return_value = Mock(success=False, remediation="Install Docker")
                         mock_compose.return_value = Mock(success=True)
                         mock_packages.return_value = Mock(success=True)
@@ -315,12 +308,14 @@ class TestFullPrerequisiteCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch.object(agent, 'check_docker_daemon') as mock_docker:
-            with patch.object(agent, 'check_docker_compose') as mock_compose:
-                with patch.object(agent, 'check_python_packages') as mock_packages:
-                    with patch.object(agent, 'check_port_availability') as mock_ports:
+        with patch.object(agent, "check_docker_daemon") as mock_docker:
+            with patch.object(agent, "check_docker_compose") as mock_compose:
+                with patch.object(agent, "check_python_packages") as mock_packages:
+                    with patch.object(agent, "check_port_availability") as mock_ports:
                         mock_docker.return_value = Mock(success=False, remediation="Fix Docker")
-                        mock_compose.return_value = Mock(success=False, remediation="Install Compose")
+                        mock_compose.return_value = Mock(
+                            success=False, remediation="Install Compose"
+                        )
                         mock_packages.return_value = Mock(success=True)
                         mock_ports.return_value = Mock(success=True)
 
@@ -334,11 +329,11 @@ class TestFullPrerequisiteCheck:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        with patch.object(agent, 'check_python_packages') as mock_packages:
+        with patch.object(agent, "check_python_packages") as mock_packages:
             # First call: fails, second call after auto-fix: passes
             mock_packages.side_effect = [
                 Mock(success=False, remediation="pip install neo4j"),
-                Mock(success=True)
+                Mock(success=True),
             ]
 
             report = agent.check_all_prerequisites(auto_fix=True)
@@ -414,10 +409,7 @@ class TestWorkflowGuidance:
         from amplihack.memory.neo4j.dependency_agent import DependencyAgent
 
         agent = DependencyAgent()
-        failures = [
-            {"check": "docker", "blocker": True},
-            {"check": "ports", "blocker": False}
-        ]
+        failures = [{"check": "docker", "blocker": True}, {"check": "ports", "blocker": False}]
 
         workflow = agent.generate_fix_workflow(failures)
 
@@ -440,7 +432,7 @@ class TestCheckResult:
             check_name="test_check",
             success=True,
             message="Check passed",
-            remediation="No action needed"
+            remediation="No action needed",
         )
 
         assert result.check_name == "test_check"
@@ -456,7 +448,7 @@ class TestCheckResult:
             check_name="docker_check",
             success=False,
             message="Docker not found",
-            remediation="Install Docker from https://docker.com"
+            remediation="Install Docker from https://docker.com",
         )
 
         assert result.success is False

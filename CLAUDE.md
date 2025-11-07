@@ -558,7 +558,8 @@ core concepts, and reference materials.
 
 ### Investigation Workflow
 
-Deep knowledge excavation for understanding existing codebases, systems, and architectures.
+Deep knowledge excavation for understanding existing codebases, systems, and
+architectures.
 
 **When to Use:**
 
@@ -570,7 +571,9 @@ Deep knowledge excavation for understanding existing codebases, systems, and arc
 
 **What It Does:**
 
-Systematic 6-stage investigation workflow that preserves findings in persistent documentation:
+Systematic 6-stage investigation workflow that preserves findings in persistent
+documentation:
+
 - Clarifies investigation scope and objectives
 - Discovers and maps code structure
 - Deep dives with knowledge-archaeologist agent
@@ -580,12 +583,17 @@ Systematic 6-stage investigation workflow that preserves findings in persistent 
 
 **Key Feature - Auto-Documentation:**
 
-After investigations, the agent offers to create persistent docs in `.claude/docs/` (ARCHITECTURE_* or INVESTIGATION_*) so knowledge persists across sessions instead of being lost in chat history.
+After investigations, the agent offers to create persistent docs in
+`.claude/docs/` (ARCHITECTURE*\* or INVESTIGATION*\*) so knowledge persists
+across sessions instead of being lost in chat history.
 
 **Details:**
+
 - **Complete Workflow**: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
-- **Agent Implementation**: `.claude/agents/amplihack/specialized/knowledge-archaeologist.md`
-- **Templates**: `.claude/templates/{investigation,architecture}-doc-template.md`
+- **Agent Implementation**:
+  `.claude/agents/amplihack/specialized/knowledge-archaeologist.md`
+- **Templates**:
+  `.claude/templates/{investigation,architecture}-doc-template.md`
 - **Storage**: `.claude/docs/` (all generated documentation)
 
 ## Scenario Tools

@@ -34,7 +34,7 @@ def demo_basic_usage():
         content="Prefer composition over inheritance for flexibility",
         category="design_principle",
         tags=["design", "oop", "composition"],
-        confidence=0.9
+        confidence=0.9,
     )
     print(f"  ✓ Stored: {mem1[:8]}...")
 
@@ -42,7 +42,7 @@ def demo_basic_usage():
         content="Keep modules loosely coupled with clear interfaces",
         category="design_principle",
         tags=["design", "modularity", "coupling"],
-        confidence=0.85
+        confidence=0.85,
     )
     print(f"  ✓ Stored: {mem2[:8]}...")
 
@@ -70,13 +70,13 @@ def demo_cross_agent_learning():
         content="Use f-strings for string formatting (faster and cleaner)",
         category="python_idiom",
         tags=["python", "performance", "readability"],
-        confidence=0.95
+        confidence=0.95,
     )
     builder1.remember(
         content="Use context managers for resource cleanup",
         category="python_idiom",
         tags=["python", "resources", "cleanup"],
-        confidence=0.9
+        confidence=0.9,
     )
     print("  ✓ Stored 2 Python idioms")
 
@@ -85,11 +85,7 @@ def demo_cross_agent_learning():
     print(f"\n✓ Builder 2: {builder2.instance_id}")
 
     print("\nBuilder 2 learning from other builders...")
-    patterns = builder2.learn_from_others(
-        topic="python",
-        min_quality=0.6,
-        min_validations=0
-    )
+    patterns = builder2.learn_from_others(topic="python", min_quality=0.6, min_validations=0)
     print(f"  Found {len(patterns)} patterns:")
     for i, pattern in enumerate(patterns, 1):
         print(f"    {i}. {pattern['content']}")
@@ -97,15 +93,13 @@ def demo_cross_agent_learning():
     # Apply a pattern
     if patterns:
         print("\nBuilder 2 applying learned pattern...")
-        mem_id = patterns[0]['id']
+        mem_id = patterns[0]["id"]
         builder2.apply_memory(mem_id, outcome="successful", feedback_score=0.95)
         print("  ✓ Pattern applied successfully")
 
         # Validate it
         builder2.validate_memory(
-            mem_id,
-            feedback_score=0.9,
-            notes="Pattern worked great in production code"
+            mem_id, feedback_score=0.9, notes="Pattern worked great in production code"
         )
         print("  ✓ Pattern validated")
 
@@ -126,7 +120,7 @@ def demo_project_scoping():
         content="Project A uses microservices architecture",
         category="architecture_decision",
         tags=["microservices", "project-a"],
-        global_scope=False
+        global_scope=False,
     )
     print("  ✓ Stored (project-specific)")
 
@@ -136,7 +130,7 @@ def demo_project_scoping():
         content="Always log errors with stack traces for debugging",
         category="best_practice",
         tags=["logging", "errors", "debugging"],
-        global_scope=True
+        global_scope=True,
     )
     print("  ✓ Stored (global)")
 
@@ -177,10 +171,7 @@ def demo_quality_tracking():
 
     for content, confidence in patterns:
         security.remember(
-            content=content,
-            category="security_practice",
-            tags=["security"],
-            confidence=confidence
+            content=content, category="security_practice", tags=["security"], confidence=confidence
         )
     print(f"  ✓ Stored {len(patterns)} patterns")
 
@@ -223,7 +214,7 @@ def demo_search():
             content=tip,
             category="optimization_tip",
             tags=["performance", "optimization"],
-            confidence=0.85
+            confidence=0.85,
         )
     print(f"  ✓ Stored {len(tips)} tips")
 
@@ -269,6 +260,7 @@ def main():
     except Exception as e:
         print(f"\n✗ Demo failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

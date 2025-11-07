@@ -190,6 +190,7 @@ def inject_memory_context(
 
     except Exception as e:
         import traceback
+
         logger.error(f"Failed to inject memory context: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         return ""  # Non-fatal: agent continues without memory
@@ -302,8 +303,7 @@ def extract_and_store_learnings(
                 continue
 
         logger.info(
-            f"Stored {len(memory_ids)} learnings from {agent_type} "
-            f"(category: {task_category})"
+            f"Stored {len(memory_ids)} learnings from {agent_type} (category: {task_category})"
         )
         return memory_ids
 
@@ -322,7 +322,7 @@ def _filter_by_relevance(memories: List[Dict[str, Any]], task: str) -> List[Dict
     Returns:
         Filtered and sorted list of memories
     """
-    task_keywords = set(re.findall(r'\w+', task.lower()))
+    task_keywords = set(re.findall(r"\w+", task.lower()))
 
     # Score each memory by keyword overlap
     scored_memories = []
@@ -333,7 +333,7 @@ def _filter_by_relevance(memories: List[Dict[str, Any]], task: str) -> List[Dict
             continue
 
         content = mem.get("content", "").lower()
-        content_keywords = set(re.findall(r'\w+', content))
+        content_keywords = set(re.findall(r"\w+", content))
 
         # Calculate relevance score
         overlap = len(task_keywords & content_keywords)
@@ -391,6 +391,7 @@ def _format_memory_context(
             if isinstance(metadata, str):
                 try:
                     import json
+
                     metadata = json.loads(metadata)
                 except (json.JSONDecodeError, ValueError):
                     metadata = {}

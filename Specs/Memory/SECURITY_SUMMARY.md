@@ -29,7 +29,7 @@ password_file.chmod(0o600)  # Owner only
 ```yaml
 # docker-compose.neo4j.yml
 ports:
-  - "127.0.0.1:7474:7474"  # NOT 0.0.0.0
+  - "127.0.0.1:7474:7474" # NOT 0.0.0.0
   - "127.0.0.1:7687:7687"
 ```
 
@@ -43,7 +43,7 @@ ports:
 ```yaml
 # docker-compose.neo4j.yml
 environment:
-  - NEO4J_AUTH=${NEO4J_AUTH}  # Reference, not value
+  - NEO4J_AUTH=${NEO4J_AUTH} # Reference, not value
 ```
 
 ```python
@@ -63,7 +63,7 @@ subprocess.run(["docker-compose", "up"], env=env)
 ```yaml
 # NEVER do this
 environment:
-  - NEO4J_AUTH=none  # WRONG: Disables auth
+  - NEO4J_AUTH=none # WRONG: Disables auth
 ```
 
 **Why**: Defense in depth. Even on localhost, require authentication.
@@ -102,17 +102,20 @@ print("[IMPORTANT] Run this command manually")
 ### Threat Model
 
 **Protected Assets:**
+
 1. Neo4j credentials (HIGH)
 2. Agent memories with code/patterns (MEDIUM-HIGH)
 3. Code graph data (MEDIUM)
 
 **Threat Actors (In Scope):**
+
 - Malicious dependencies (supply chain)
 - Accidental credential exposure (developer error)
 - Network-adjacent attackers (same LAN)
 - Other processes on dev machine
 
 **Threat Actors (Out of Scope):**
+
 - Physical access attackers
 - Remote attackers (Neo4j not exposed)
 - Compromised OS kernel
@@ -162,6 +165,7 @@ Layer 5: Supply Chain
 - [ ] SEC-016: Authentication enforcement
 
 **Validation**:
+
 ```bash
 # Password file exists and secured
 ls -la ~/.amplihack/.neo4j_password  # -rw-------
@@ -188,6 +192,7 @@ docker exec amplihack-neo4j cypher-shell "RETURN 1"  # Requires password
 - [ ] SEC-018: Project memory isolation
 
 **Validation**:
+
 ```bash
 # Volume permissions
 ls -ld ~/.amplihack/neo4j-data  # drwx------
@@ -223,21 +228,21 @@ pytest tests/memory/test_isolation.py
 
 ### Accepted Trade-offs (Developer Tool Context)
 
-| Security Feature | Status | Rationale |
-|------------------|--------|-----------|
-| TLS for localhost | ❌ Not implemented | Performance > paranoia for localhost |
-| Encryption at rest | ❌ Defer to OS | FileVault/BitLocker available |
-| Keyring integration | ❌ v2.0 feature | File-based sufficient for v1 |
-| Auto-install Docker | ❌ Advisory only | User controls system changes |
+| Security Feature    | Status             | Rationale                            |
+| ------------------- | ------------------ | ------------------------------------ |
+| TLS for localhost   | ❌ Not implemented | Performance > paranoia for localhost |
+| Encryption at rest  | ❌ Defer to OS     | FileVault/BitLocker available        |
+| Keyring integration | ❌ v2.0 feature    | File-based sufficient for v1         |
+| Auto-install Docker | ❌ Advisory only   | User controls system changes         |
 
 ### Non-Negotiable Security
 
-| Security Feature | Status | Rationale |
-|------------------|--------|-----------|
-| Random passwords | ✅ MANDATORY | Default passwords trivially exploited |
-| Localhost binding | ✅ MANDATORY | No legitimate network use case |
-| Authentication | ✅ MANDATORY | Defense in depth |
-| Credential isolation | ✅ MANDATORY | Prevent accidental git commits |
+| Security Feature     | Status       | Rationale                             |
+| -------------------- | ------------ | ------------------------------------- |
+| Random passwords     | ✅ MANDATORY | Default passwords trivially exploited |
+| Localhost binding    | ✅ MANDATORY | No legitimate network use case        |
+| Authentication       | ✅ MANDATORY | Defense in depth                      |
+| Credential isolation | ✅ MANDATORY | Prevent accidental git commits        |
 
 ---
 

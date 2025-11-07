@@ -31,6 +31,7 @@ This research project comprehensively evaluates **Neo4j Community Edition as a m
 ### For Decision Makers
 
 **Start Here**: [Executive Report](00-executive-summary/NEO4J_MEMORY_COMPREHENSIVE_REPORT.md) (47KB)
+
 - Strategic recommendations
 - ROI analysis and phased implementation plan
 - Risk assessment and success metrics
@@ -39,12 +40,14 @@ This research project comprehensively evaluates **Neo4j Community Edition as a m
 ### For Architects
 
 **Start Here**: [Technical Research](01-technical-research/) (86KB total)
+
 - [Neo4j Deep Dive](01-technical-research/KNOWLEDGE_GRAPH_RESEARCH_EXCAVATION.md) - Neo4j capabilities, blarify integration, memory systems
 - [Agent Architecture Analysis](01-technical-research/AGENT_ARCHITECTURE_ANALYSIS.md) - Claude Code integration points
 
 ### For Developers
 
 **Start Here**: [Integration Guides](03-integration-guides/) (70KB total)
+
 - [Code Examples](03-integration-guides/MEMORY_INTEGRATION_CODE_EXAMPLES.md) - Production-ready Python implementations
 - [Quick Reference](03-integration-guides/MEMORY_INTEGRATION_QUICK_REFERENCE.md) - Integration patterns and hooks
 - [Memory Requirements](03-integration-guides/README_AGENT_MEMORY_ANALYSIS.md) - What agents need from memory
@@ -53,6 +56,7 @@ This research project comprehensively evaluates **Neo4j Community Edition as a m
 ### For Pattern Enthusiasts
 
 **Start Here**: [Design Patterns](02-design-patterns/) (119KB total)
+
 - [Full Catalog](02-design-patterns/NEO4J_MEMORY_DESIGN_PATTERNS.md) - 25+ patterns with examples
 - [Summary Guide](02-design-patterns/NEO4J_MEMORY_PATTERNS_SUMMARY.md) - Quick reference and decision flows
 - [README](02-design-patterns/NEO4J_MEMORY_PATTERNS_README.md) - Pattern overview and navigation
@@ -61,6 +65,7 @@ This research project comprehensively evaluates **Neo4j Community Edition as a m
 ### For External Knowledge Integration
 
 **Start Here**: [External Knowledge](04-external-knowledge/) (115KB total)
+
 - [Getting Started](04-external-knowledge/EXTERNAL_KNOWLEDGE_README.md) - Overview and FAQ
 - [Architecture Design](04-external-knowledge/EXTERNAL_KNOWLEDGE_NEO4J_DESIGN.md) - Complete specification
 - [Implementation Guide](04-external-knowledge/EXTERNAL_KNOWLEDGE_IMPLEMENTATION_GUIDE.md) - Code examples and testing
@@ -167,18 +172,19 @@ docs/research/neo4j_memory_system/
 
 ### 1. Technology Recommendations
 
-| Component | Recommendation | Rationale |
-|-----------|---------------|-----------|
-| **Initial Database** | SQLite | Sufficient for 100k records, 10-50ms latency, zero infrastructure |
-| **Future Database** | Neo4j Community | Only if measurements justify migration |
-| **Code Graph** | blarify + SCIP | 330x faster than LSP, supports 6 languages |
-| **Memory Architecture** | Three-tier hierarchy | Proven by Zep (94.8% accuracy) |
-| **Retrieval** | Hybrid search | Vector + graph + temporal = best results |
-| **Deployment** | Docker | Recommended over embedded approaches |
+| Component               | Recommendation       | Rationale                                                         |
+| ----------------------- | -------------------- | ----------------------------------------------------------------- |
+| **Initial Database**    | SQLite               | Sufficient for 100k records, 10-50ms latency, zero infrastructure |
+| **Future Database**     | Neo4j Community      | Only if measurements justify migration                            |
+| **Code Graph**          | blarify + SCIP       | 330x faster than LSP, supports 6 languages                        |
+| **Memory Architecture** | Three-tier hierarchy | Proven by Zep (94.8% accuracy)                                    |
+| **Retrieval**           | Hybrid search        | Vector + graph + temporal = best results                          |
+| **Deployment**          | Docker               | Recommended over embedded approaches                              |
 
 ### 2. Architecture Decisions
 
 **Memory Types** (5 modular implementations):
+
 - Episodic Memory: Time-stamped events and experiences
 - Short-Term Memory: Current task context (automatic expiration)
 - Procedural Memory: Workflows and patterns with success tracking
@@ -186,12 +192,14 @@ docs/research/neo4j_memory_system/
 - Prospective Memory: Plans and intentions with triggers
 
 **Integration Approach**:
+
 - Context injection into agent prompts (minimal changes)
 - Post-execution memory capture
 - Error pattern learning
 - Workflow adaptation based on history
 
 **Design Principles**:
+
 - Memory is advisory, never prescriptive
 - User requirements always override memory
 - Graceful degradation if memory unavailable
@@ -200,6 +208,7 @@ docs/research/neo4j_memory_system/
 ### 3. Implementation Roadmap
 
 **Phase 1 (Weeks 1-4)**: SQLite Foundation + Quick Wins
+
 - Implement episodic memory with SQLite
 - Basic agent integration (context injection)
 - Simple retrieval strategies
@@ -207,6 +216,7 @@ docs/research/neo4j_memory_system/
 - **Decision Gate**: Is memory providing value?
 
 **Phase 2 (Weeks 5-8)**: Learning and Optimization
+
 - Add procedural memory (learn from resolutions)
 - Implement similarity search
 - Error pattern recognition
@@ -214,6 +224,7 @@ docs/research/neo4j_memory_system/
 - **Decision Gate**: Should we migrate to Neo4j?
 
 **Phase 3 (Month 3+)**: Neo4j Migration (ONLY IF Phase 2 metrics justify)
+
 - Migrate to Neo4j for graph capabilities
 - Implement blarify code graph integration
 - Advanced graph queries and traversals
@@ -222,16 +233,19 @@ docs/research/neo4j_memory_system/
 ### 4. Success Metrics
 
 **Performance Targets**:
+
 - Query latency: <100ms (SQLite: 10-50ms, Neo4j: 20-100ms)
 - Cache hit rate: >80% after warm-up
 - Memory overhead: <100MB per project
 
 **Quality Targets**:
+
 - Agent decision quality: +25-40% improvement
 - Error resolution: +50-70% success rate
 - Repeat task efficiency: +20-35% faster
 
 **Value Targets**:
+
 - Break-even: 4-6 weeks after Phase 1
 - ROI: Positive within 3-4 months
 - Time saved: 2-4 hours per developer per week
@@ -240,13 +254,13 @@ docs/research/neo4j_memory_system/
 
 **Overall Risk**: MEDIUM (manageable with mitigations)
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Memory corruption | Medium | Medium | Advisory only, quality scoring |
-| Performance degradation | Low | High | Caching, monitoring, fallback |
-| Over-engineering | Medium | Medium | Start simple (SQLite), measure first |
-| User surprise | Low | Medium | Transparency, clear labeling |
-| Integration complexity | Low | Low | Minimal changes (<50 lines) |
+| Risk                    | Probability | Impact | Mitigation                           |
+| ----------------------- | ----------- | ------ | ------------------------------------ |
+| Memory corruption       | Medium      | Medium | Advisory only, quality scoring       |
+| Performance degradation | Low         | High   | Caching, monitoring, fallback        |
+| Over-engineering        | Medium      | Medium | Start simple (SQLite), measure first |
+| User surprise           | Low         | Medium | Transparency, clear labeling         |
+| Integration complexity  | Low         | Low    | Minimal changes (<50 lines)          |
 
 ---
 
@@ -300,21 +314,25 @@ See [Design Patterns](02-design-patterns/) for complete catalog with implementat
 The research designed a **three-tier strategy** for integrating external documentation:
 
 **Tier 1: Project Memory** (SQLite - HIGHEST PRIORITY)
+
 - Always checked first
 - Project-specific learnings
 - Instant retrieval (<10ms)
 
 **Tier 2: File-Based Cache** (ADVISORY)
+
 - External docs cached locally
 - 7-30 day TTL depending on source
 - Works offline after warm-up
 
 **Tier 3: Neo4j Metadata** (OPTIONAL - Phase 4+)
+
 - Added only if file cache becomes bottleneck
 - Metadata in graph, content in files
 - Fast queries with hybrid storage
 
 **Knowledge Sources**:
+
 - API Documentation (MS Learn, Python.org, MDN)
 - Developer Guides (Real Python, FreeCodeCamp)
 - Community Knowledge (StackOverflow, GitHub examples)
@@ -368,12 +386,14 @@ See [External Knowledge](04-external-knowledge/) for complete architecture.
 ### Decision Gates
 
 **Week 4 Gate**: Phase 1 → Phase 2 Decision
+
 - Are performance metrics acceptable? (query latency, cache hit rate)
 - Is memory providing value? (decision quality, error prevention)
 - Are users seeing benefits? (time saved, fewer repeated errors)
 - **Decision**: Proceed to Phase 2 or adjust approach
 
 **Week 8 Gate**: Phase 2 → Phase 3 Decision
+
 - Has SQLite become a bottleneck? (query latency >100ms, >100k records)
 - Is graph traversal critical? (code relationships, knowledge connections)
 - Do measurements justify Neo4j complexity?
@@ -398,19 +418,23 @@ This research was conducted by a multi-agent team:
 ## References and Resources
 
 ### Neo4j Resources
+
 - Neo4j Community Edition: https://neo4j.com/download/
 - Neo4j Python Driver: https://neo4j.com/docs/python-manual/current/
 - Cypher Query Language: https://neo4j.com/docs/cypher-manual/current/
 
 ### Code Graph Tools
+
 - blarify: https://github.com/blarApp/blarify
 - SCIP Protocol: https://github.com/sourcegraph/scip
 
 ### Memory Systems Research
+
 - Zep Memory System: https://www.getzep.com/
 - MIRIX Multi-Modal Memory: Research paper implementations
 
 ### Claude Code Documentation
+
 - Agent Architecture: `.claude/agents/`
 - Workflow Definition: `.claude/workflow/DEFAULT_WORKFLOW.md`
 - Philosophy: `.claude/context/PHILOSOPHY.md`
