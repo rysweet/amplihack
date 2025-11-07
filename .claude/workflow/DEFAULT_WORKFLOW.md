@@ -31,6 +31,7 @@ You can customize this workflow by editing this file.
 **TodoWrite Usage During Workflow Execution:**
 
 When creating todos during workflow execution, reference the workflow steps directly:
+
 - Format: `Step N: [Step Name] - [Specific Action]`
 - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
 - This helps users track exactly which workflow step is active (Step X of 15)
@@ -64,6 +65,7 @@ When using TodoWrite during workflow execution:
 - **Track Progress**: Users can see exactly which step is active (e.g., "Step 5 of 15")
 
 **Example Todo Structure (Single Workflow):**
+
 ```
 Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent to clarify task
 Step 2: Create GitHub Issue - Define requirements and constraints using gh issue create
@@ -74,6 +76,7 @@ Step 5: Implement the Solution - Use builder agent to implement from specificati
 ```
 
 **Example Todo Structure (Multiple Parallel Workflows):**
+
 ```
 [PR1090 TASK] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
 [PR1090 TASK] Step 2: Create GitHub Issue - Define requirements using gh issue create
@@ -85,6 +88,7 @@ Step 5: Implement the Solution - Use builder agent to implement from specificati
 ```
 
 This step-based structure helps users understand:
+
 - Exactly which workflow step is currently active
 - How many steps remain (e.g., Step 5 of 15 means 10 steps left)
 - What comes next in the workflow

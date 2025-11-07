@@ -141,12 +141,12 @@ def build_agent_context(agent_id: str, task: str, memory: MemoryManager) -> str:
 
 ## Performance Targets
 
-| Metric | Target | How to Measure |
-|--------|--------|----------------|
-| Cache hit rate | >80% | `cache.get_stats()["hit_rate"]` |
-| Query time | <100ms | Use monitoring decorator |
-| Cache size | <100MB | `du -sh ~/.amplihack/external_knowledge` |
-| Project memory first | 100% | Always check before external |
+| Metric               | Target | How to Measure                           |
+| -------------------- | ------ | ---------------------------------------- |
+| Cache hit rate       | >80%   | `cache.get_stats()["hit_rate"]`          |
+| Query time           | <100ms | Use monitoring decorator                 |
+| Cache size           | <100MB | `du -sh ~/.amplihack/external_knowledge` |
+| Project memory first | 100%   | Always check before external             |
 
 ---
 
@@ -183,14 +183,14 @@ Structure:
 
 ## Source Credibility
 
-| Source | Trust Score | TTL | Use For |
-|--------|-------------|-----|---------|
-| Python.org | 0.95 | 30d | API reference |
-| MS Learn | 0.95 | 30d | Azure, .NET docs |
-| MDN | 0.95 | 30d | Web APIs |
-| Real Python | 0.85 | 90d | Tutorials |
-| StackOverflow (accepted) | 0.75 | 7d | Solutions |
-| GitHub (maintainer) | 0.80 | 14d | Library docs |
+| Source                   | Trust Score | TTL | Use For          |
+| ------------------------ | ----------- | --- | ---------------- |
+| Python.org               | 0.95        | 30d | API reference    |
+| MS Learn                 | 0.95        | 30d | Azure, .NET docs |
+| MDN                      | 0.95        | 30d | Web APIs         |
+| Real Python              | 0.85        | 90d | Tutorials        |
+| StackOverflow (accepted) | 0.75        | 7d  | Solutions        |
+| GitHub (maintainer)      | 0.80        | 14d | Library docs     |
 
 ---
 
@@ -485,6 +485,7 @@ tests/test_external_knowledge/
 **Ready to implement?** Start with Phase 1: `src/amplihack/external_knowledge/cache.py`
 
 **Questions?** Refer to:
+
 - Design details → `EXTERNAL_KNOWLEDGE_NEO4J_DESIGN.md`
 - Code examples → `EXTERNAL_KNOWLEDGE_IMPLEMENTATION_GUIDE.md`
 - Architecture → `EXTERNAL_KNOWLEDGE_INTEGRATION_SUMMARY.md`

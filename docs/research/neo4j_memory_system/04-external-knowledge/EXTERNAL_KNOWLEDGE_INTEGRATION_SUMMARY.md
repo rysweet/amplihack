@@ -43,20 +43,20 @@
 
 ### 2. **Phased Implementation**
 
-| Phase | What | Why | Timeline |
-|-------|------|-----|----------|
-| 1 | File cache + Python docs | Prove value with simplest approach | Week 1 |
-| 2 | Memory integration | Connect to existing system | Week 2 |
-| 3 | Multiple sources | Add MS Learn, MDN, StackOverflow | Week 3 |
-| 4 | Neo4j metadata | Only if queries slow or relationships complex | Week 4+ |
+| Phase | What                     | Why                                           | Timeline |
+| ----- | ------------------------ | --------------------------------------------- | -------- |
+| 1     | File cache + Python docs | Prove value with simplest approach            | Week 1   |
+| 2     | Memory integration       | Connect to existing system                    | Week 2   |
+| 3     | Multiple sources         | Add MS Learn, MDN, StackOverflow              | Week 3   |
+| 4     | Neo4j metadata           | Only if queries slow or relationships complex | Week 4+  |
 
 ### 3. **Source Credibility Tiers**
 
-| Tier | Sources | Trust Score | Use Case |
-|------|---------|-------------|----------|
-| **Tier 1** | Official docs (MS Learn, Python.org, MDN) | 0.9-1.0 | Primary reference |
-| **Tier 2** | Curated tutorials (Real Python, FreeCodeCamp) | 0.7-0.9 | Learning resources |
-| **Tier 3** | Community (StackOverflow, GitHub) | 0.4-0.8 | Practical solutions |
+| Tier       | Sources                                       | Trust Score | Use Case            |
+| ---------- | --------------------------------------------- | ----------- | ------------------- |
+| **Tier 1** | Official docs (MS Learn, Python.org, MDN)     | 0.9-1.0     | Primary reference   |
+| **Tier 2** | Curated tutorials (Real Python, FreeCodeCamp) | 0.7-0.9     | Learning resources  |
+| **Tier 3** | Community (StackOverflow, GitHub)             | 0.4-0.8     | Practical solutions |
 
 ---
 
@@ -171,12 +171,12 @@ def get_knowledge(context: str) -> Optional[Dict]:
 
 ### TTL by Source Type
 
-| Source Type | TTL | Reason |
-|-------------|-----|--------|
-| Official API docs | 30 days | Stable, version-specific |
-| Tutorials | 90 days | Slow-changing content |
-| Community solutions | 7 days | Dynamic, may have better answers |
-| Library READMEs | 14 days | Updated with releases |
+| Source Type         | TTL     | Reason                           |
+| ------------------- | ------- | -------------------------------- |
+| Official API docs   | 30 days | Stable, version-specific         |
+| Tutorials           | 90 days | Slow-changing content            |
+| Community solutions | 7 days  | Dynamic, may have better answers |
+| Library READMEs     | 14 days | Updated with releases            |
 
 ### Refresh Strategy
 
@@ -316,21 +316,21 @@ def build_agent_context(agent_id: str, task: str) -> str:
 
 ### Query Performance
 
-| Operation | Target | Actual (Measured) |
-|-----------|--------|-------------------|
-| Project memory lookup | <10ms | 2-5ms ✅ |
-| Cache lookup | <20ms | 5-15ms ✅ |
-| Neo4j metadata query | <50ms | TBD (Phase 4) |
-| External fetch | <500ms | 100-300ms ✅ |
-| **End-to-end** | **<100ms** | **60-80ms** ✅ |
+| Operation             | Target     | Actual (Measured) |
+| --------------------- | ---------- | ----------------- |
+| Project memory lookup | <10ms      | 2-5ms ✅          |
+| Cache lookup          | <20ms      | 5-15ms ✅         |
+| Neo4j metadata query  | <50ms      | TBD (Phase 4)     |
+| External fetch        | <500ms     | 100-300ms ✅      |
+| **End-to-end**        | **<100ms** | **60-80ms** ✅    |
 
 ### Storage Efficiency
 
-| Metric | Target | Notes |
-|--------|--------|-------|
-| Cache size | <100MB for 10k docs | Metadata only in Neo4j, full content in files |
-| Cache hit rate | >80% | After warm-up period |
-| Database size | <50MB | Neo4j metadata (Phase 4) |
+| Metric         | Target              | Notes                                         |
+| -------------- | ------------------- | --------------------------------------------- |
+| Cache size     | <100MB for 10k docs | Metadata only in Neo4j, full content in files |
+| Cache hit rate | >80%                | After warm-up period                          |
+| Database size  | <50MB               | Neo4j metadata (Phase 4)                      |
 
 ---
 
@@ -396,6 +396,7 @@ Flow:
 ### File-Based Cache (Phase 1-2)
 
 **Benefits:**
+
 - Simple to implement (1-2 days)
 - Zero runtime dependencies
 - Easy to debug (just look at files)
@@ -403,6 +404,7 @@ Flow:
 - Works offline after warm-up
 
 **Costs:**
+
 - No complex relationship queries
 - Linear search for some operations
 - Manual index management
@@ -412,22 +414,25 @@ Flow:
 ### Neo4j Integration (Phase 4)
 
 **Benefits:**
+
 - Fast relationship traversal
 - Complex version queries
 - Built-in graph algorithms
 - Powerful analytics
 
 **Costs:**
+
 - Additional infrastructure
 - Learning curve
 - Deployment complexity
 - Maintenance overhead
 
 **Verdict**: Add only if:
+
 - File cache queries >100ms consistently
 - Need complex relationship queries
 - Building recommendation engine
-- >10k documents with complex relationships
+- > 10k documents with complex relationships
 
 ---
 
@@ -467,6 +472,7 @@ if cache_hit_rate < 0.7 or avg_query_time > 100:
 ## Success Metrics
 
 ### Must Have (Phase 1-2)
+
 - ✅ No breaking changes to existing system
 - ✅ Project memory always checked first
 - ✅ External knowledge is advisory only
@@ -474,12 +480,14 @@ if cache_hit_rate < 0.7 or avg_query_time > 100:
 - ✅ Query performance <100ms
 
 ### Should Have (Phase 3)
+
 - ✅ Multiple source support
 - ✅ Source credibility scoring
 - ✅ Automatic cache refresh
 - ✅ Usage tracking
 
 ### Nice to Have (Phase 4)
+
 - ⏳ Neo4j relationship queries
 - ⏳ Complex version tracking
 - ⏳ Recommendation engine
@@ -562,6 +570,7 @@ tests/test_external_knowledge/
 ## Next Steps
 
 ### Immediate (This Week)
+
 1. ✅ Review design documents
 2. ⏳ Implement `ExternalKnowledgeCache` class
 3. ⏳ Implement `PythonDocsFetcher` class
@@ -569,6 +578,7 @@ tests/test_external_knowledge/
 5. ⏳ Test with real Python documentation
 
 ### Short-Term (Next 2 Weeks)
+
 1. Integrate with existing `MemoryManager`
 2. Add external knowledge to agent context builder
 3. Test with architect agent
@@ -576,6 +586,7 @@ tests/test_external_knowledge/
 5. Add MS Learn and MDN fetchers
 
 ### Long-Term (Optional)
+
 1. Add Neo4j integration if file cache becomes bottleneck
 2. Implement automatic code-to-doc linking
 3. Build recommendation engine

@@ -42,6 +42,7 @@ The `test_complete_e2e.py` script provides comprehensive validation of ALL phase
 ## Test Scenarios
 
 ### Scenario 1: New Project Setup
+
 **Tests cold start initialization**
 
 - ✅ Container startup and readiness
@@ -52,6 +53,7 @@ The `test_complete_e2e.py` script provides comprehensive validation of ALL phase
 **Duration**: ~3 seconds
 
 ### Scenario 2: Multi-Agent Collaboration
+
 **Tests multiple agents working together**
 
 - ✅ Multiple agent types (architect, builder, reviewer)
@@ -63,6 +65,7 @@ The `test_complete_e2e.py` script provides comprehensive validation of ALL phase
 **Duration**: ~1 second
 
 ### Scenario 3: Cross-Project Learning
+
 **Tests project isolation and global memory promotion**
 
 - ✅ Project-specific memories (isolated to one project)
@@ -74,6 +77,7 @@ The `test_complete_e2e.py` script provides comprehensive validation of ALL phase
 **Duration**: <1 second
 
 ### Scenario 4: Resilience Testing
+
 **Tests failure handling and recovery**
 
 - ✅ Circuit breaker opening on failures
@@ -85,6 +89,7 @@ The `test_complete_e2e.py` script provides comprehensive validation of ALL phase
 **Duration**: ~15 seconds (due to retry delays)
 
 ### Scenario 5: Memory Evolution
+
 **Tests quality improvement through usage**
 
 - ✅ Low-quality memory creation
@@ -101,6 +106,7 @@ The `test_complete_e2e.py` script provides comprehensive validation of ALL phase
 ### Prerequisites
 
 1. **Neo4j Container Running**
+
    ```bash
    docker ps | grep amplihack-neo4j
    ```
@@ -128,6 +134,7 @@ The `test_complete_e2e.py` script provides comprehensive validation of ALL phase
 ### Interpreting Results
 
 **Success Output:**
+
 ```
 ================================================================================
 TEST SUMMARY
@@ -149,6 +156,7 @@ Total Duration: 20.40s
 ```
 
 **Failure Output:**
+
 ```
 ❌ FAILED - Scenario X: Test Name (duration)
     Error: Detailed error message explaining what went wrong
@@ -189,12 +197,14 @@ Total Duration: 20.40s
 ### Key Components
 
 **E2ETestRunner Class**
+
 - Orchestrates all test scenarios
 - Manages shared resources (connector, container)
 - Tracks results and timing
 - Provides detailed logging
 
 **Test Scenarios (Methods)**
+
 - `test_new_project_setup()` - Infrastructure validation
 - `test_multi_agent_collaboration()` - Agent interactions
 - `test_cross_project_learning()` - Memory sharing
@@ -203,24 +213,26 @@ Total Duration: 20.40s
 
 ## Expected Performance
 
-| Scenario | Duration | Operations |
-|----------|----------|------------|
-| Setup | ~3s | Container start, schema init |
-| Collaboration | ~1s | 3 agent memories, learning |
-| Cross-Project | <1s | 3 projects, isolation checks |
-| Resilience | ~15s | Circuit breaker + retries |
-| Evolution | <1s | 5 applications, 3 validations |
-| **Total** | **~20s** | **Complete system validation** |
+| Scenario      | Duration | Operations                     |
+| ------------- | -------- | ------------------------------ |
+| Setup         | ~3s      | Container start, schema init   |
+| Collaboration | ~1s      | 3 agent memories, learning     |
+| Cross-Project | <1s      | 3 projects, isolation checks   |
+| Resilience    | ~15s     | Circuit breaker + retries      |
+| Evolution     | <1s      | 5 applications, 3 validations  |
+| **Total**     | **~20s** | **Complete system validation** |
 
 ## What Gets Validated
 
 ### Infrastructure (Phase 1-2)
+
 - ✅ Container lifecycle (start, health check)
 - ✅ Schema creation (constraints, indexes)
 - ✅ Agent type seeding (14 types)
 - ✅ Health monitoring (version, response time)
 
 ### Memory Operations (Phase 3)
+
 - ✅ Memory creation with metadata
 - ✅ Memory retrieval by ID
 - ✅ Project scoping (project-specific vs global)
@@ -228,18 +240,21 @@ Total Duration: 20.40s
 - ✅ Statistics tracking
 
 ### Agent Collaboration (Phase 4)
+
 - ✅ Agent type isolation
 - ✅ Cross-agent learning
 - ✅ Memory sharing rules
 - ✅ Instance identification
 
 ### Retrieval Strategies (Phase 5)
+
 - ✅ Quality-based filtering
 - ✅ Tag-based search
 - ✅ Category filtering
 - ✅ Project-scoped queries
 
 ### Quality Tracking (Phase 6)
+
 - ✅ Usage recording
 - ✅ Validation tracking
 - ✅ Quality score calculation
@@ -247,6 +262,7 @@ Total Duration: 20.40s
 - ✅ Best practices identification
 
 ### Resilience
+
 - ✅ Circuit breaker pattern
 - ✅ Retry logic with exponential backoff
 - ✅ Graceful degradation
@@ -258,6 +274,7 @@ Total Duration: 20.40s
 ### Common Issues
 
 **1. Neo4j Not Running**
+
 ```
 Error: Cannot connect to Neo4j
 Solution: Start Neo4j container
@@ -265,12 +282,14 @@ Solution: Start Neo4j container
 ```
 
 **2. Schema Already Exists**
+
 ```
 Warning: Constraint already exists
 Solution: This is normal and safe - schema operations are idempotent
 ```
 
 **3. Circuit Breaker Test Slow**
+
 ```
 Issue: Scenario 4 takes ~15 seconds
 Reason: Testing retry logic with exponential backoff
@@ -278,6 +297,7 @@ Solution: This is expected behavior
 ```
 
 **4. Port Already in Use**
+
 ```
 Error: Address already in use (7687)
 Solution: Stop existing Neo4j instance or change port
@@ -373,6 +393,7 @@ The test suite is considered successful when:
 ## Contact
 
 For issues with this test:
+
 - Check existing Neo4j memory tests: `tests/unit/memory/neo4j/`
 - Review integration tests: `tests/integration/memory/neo4j/`
 - Consult architecture docs: `docs/neo4j_memory/ARCHITECTURE.md`

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 from pathlib import Path
+
 env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
     for line in env_file.read_text().splitlines():
@@ -14,8 +15,7 @@ Tests retrieval, consolidation, and monitoring features.
 """
 
 import sys
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # Add src to path
@@ -26,7 +26,6 @@ from amplihack.memory.neo4j.connector import Neo4jConnector, CircuitBreaker, Cir
 from amplihack.memory.neo4j.schema import SchemaManager
 from amplihack.memory.neo4j.retrieval import (
     RetrievalContext,
-    IsolationLevel,
     TemporalRetrieval,
     SimilarityRetrieval,
     GraphTraversal,
@@ -70,7 +69,7 @@ def test_circuit_breaker():
         # Test failures
         for _ in range(3):
             try:
-                breaker.call(lambda: 1/0)
+                breaker.call(lambda: 1 / 0)
             except:
                 pass
 
@@ -135,7 +134,9 @@ def test_health_check():
             assert health.response_time_ms > 0
             print(f"✓ Response time: {health.response_time_ms:.2f}ms")
 
-            print(f"✓ Memories: {health.total_memories}, Projects: {health.total_projects}, Agents: {health.total_agents}")
+            print(
+                f"✓ Memories: {health.total_memories}, Projects: {health.total_projects}, Agents: {health.total_agents}"
+            )
 
             return True
     except Exception as e:
@@ -158,7 +159,8 @@ def setup_test_data(conn):
 
         # Create test memories
         now = int(datetime.now().timestamp() * 1000)
-        conn.execute_write("""
+        conn.execute_write(
+            """
             CREATE (m1:Memory {
                 id: 'test-mem-1',
                 content: 'Test memory 1',
@@ -185,7 +187,9 @@ def setup_test_data(conn):
             CREATE (m2)-[:BELONGS_TO]->(p)
             CREATE (m2)-[:CREATED_BY]->(at)
             CREATE (m1)-[:RELATED_TO]->(m2)
-        """, {"now": now})
+        """,
+            {"now": now},
+        )
 
         print("✓ Test data created")
         return True
@@ -341,9 +345,9 @@ def test_quality_scoring(conn):
 
 def main():
     """Run all tests."""
-    print("="*70)
+    print("=" * 70)
     print("Neo4j Memory System - Phase 5-6 Simplified Tests")
-    print("="*70)
+    print("=" * 70)
 
     passed = 0
     total = 0
@@ -390,12 +394,13 @@ def main():
     except Exception as e:
         print(f"\n✗ Test suite error: {e}")
         import traceback
+
         traceback.print_exc()
 
     # Summary
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Test Results: {passed}/{total} passed")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
     sys.exit(0 if passed == total else 1)
 

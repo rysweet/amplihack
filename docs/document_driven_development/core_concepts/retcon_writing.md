@@ -17,6 +17,7 @@
 ### The Problem with Traditional Documentation
 
 **Traditional approach**:
+
 ```markdown
 ## Provider Configuration (Updated 2025-01-15)
 
@@ -31,6 +32,7 @@ For now, both work, but we recommend using `init`.
 ```
 
 **What's wrong**:
+
 - AI doesn't know which approach is current
 - Mix of past, present, and future
 - Unclear if `setup` still works
@@ -42,7 +44,8 @@ For now, both work, but we recommend using `init`.
 ### The Retcon Solution
 
 **Retcon approach**:
-```markdown
+
+````markdown
 ## Provider Configuration
 
 Configure your provider using the init wizard:
@@ -50,9 +53,11 @@ Configure your provider using the init wizard:
 ```bash
 amplifier init
 ```
+````
 
 The wizard guides you through provider selection and configuration.
-```
+
+````
 
 **What's right**:
 - Single timeline: NOW
@@ -116,10 +121,11 @@ amplifier setup
 
 Example (new way - recommended):
 amplifier init
-```
+````
 
 **GOOD** (retcon):
-```markdown
+
+````markdown
 ## Initial Configuration
 
 Configure Amplifier on first use:
@@ -127,9 +133,11 @@ Configure Amplifier on first use:
 ```bash
 amplifier init
 ```
+````
 
 The init wizard guides you through provider and profile selection.
-```
+
+````
 
 ### Example 2: Configuration Files
 
@@ -145,9 +153,10 @@ Old location (deprecated): `~/.amplifier/config.json`
 New location: `~/.amplifier/settings.yaml`
 
 If you're upgrading from v1.0, run `amplifier migrate` to convert your settings.
-```
+````
 
 **GOOD** (retcon):
+
 ```markdown
 ## Settings Files
 
@@ -161,23 +170,25 @@ Amplifier stores settings in YAML format:
 ### Example 3: API Changes
 
 **BAD** (traditional):
+
 ```markdown
 ## Profile Management
 
 The profile API changed in v2.0:
 
 Old API (v1.0):
-  amplifier profile apply dev
+amplifier profile apply dev
 
 New API (v2.0):
-  amplifier profile use dev
+amplifier profile use dev
 
 We kept `apply` as an alias for backward compatibility,
 but `use` is now the preferred command.
 ```
 
 **GOOD** (retcon):
-```markdown
+
+````markdown
 ## Profile Management
 
 Activate a profile:
@@ -185,9 +196,11 @@ Activate a profile:
 ```bash
 amplifier profile use dev
 ```
+````
 
 This loads the profile's capability set and makes it active.
-```
+
+````
 
 ---
 
@@ -209,7 +222,7 @@ This loads the profile's capability set and makes it active.
 
 ### Migration
 Run `amplifier migrate` to update v1.0 settings to v2.0 format.
-```
+````
 
 ### Git Commit Messages
 
@@ -226,7 +239,7 @@ Migration: Manual update required for existing users."
 
 ### Migration Guides (If Necessary)
 
-```markdown
+````markdown
 # Migration Guide: v1.0 → v2.0
 
 ## For Existing Users
@@ -237,6 +250,7 @@ If upgrading from v1.0:
    ```bash
    amplifier migrate
    ```
+````
 
 2. Verify settings:
    ```bash
@@ -248,7 +262,8 @@ If upgrading from v1.0:
 - Command: `setup` → `init`
 - Config format: JSON → YAML
 - Profile activation: `apply` → `use`
-```
+
+````
 
 **Key point**: Migration info goes in dedicated migration docs, CHANGELOG, and git history. NOT in main user-facing documentation.
 
@@ -298,16 +313,19 @@ If upgrading from v1.0:
 ```markdown
 The new approach is better because it's simpler and more intuitive.
 We apologize for the inconvenience of changing the command.
-```
+````
 
 **GOOD**:
-```markdown
+
+````markdown
 Configure Amplifier:
 
 ```bash
 amplifier init
 ```
-```
+````
+
+````
 
 **Why**: Apologies imply something else was standard. Just describe how it works.
 
@@ -317,16 +335,19 @@ amplifier init
 ```markdown
 Note: If you're used to the old `setup` command, you'll need to
 learn the new `init` command instead. The syntax is different.
-```
+````
 
 **GOOD**:
-```markdown
+
+````markdown
 Initialize Amplifier configuration:
 
 ```bash
 amplifier init
 ```
-```
+````
+
+````
 
 **Why**: Assumes users know old way. New users don't. Just describe current way.
 
@@ -337,9 +358,10 @@ amplifier init
 ## Profile Management (v2.0+)
 
 New in version 2.0: Profile management commands
-```
+````
 
 **GOOD**:
+
 ```markdown
 ## Profile Management
 
@@ -396,6 +418,7 @@ Before committing documentation:
 ### Quick Fixes
 
 **Find non-retcon language**:
+
 ```bash
 # Check for future tense
 grep -rn "will be\|coming soon\|planned" docs/
@@ -411,6 +434,7 @@ grep -rn "instead of\|rather than\|no longer" docs/
 ```
 
 **Fix systematically**:
+
 ```bash
 # Remove identified issues
 # Rewrite in present tense

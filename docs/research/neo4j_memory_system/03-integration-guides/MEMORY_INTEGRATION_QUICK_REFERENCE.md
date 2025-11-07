@@ -50,9 +50,12 @@ AGENT ARCHITECTURE LAYERS
 **How**: Augment prompt with memory insights
 
 **Example**:
+
 ```markdown
 ## Memory Context (Auto-Injected)
+
 Past similar tasks: 3 previous authentication designs
+
 - Pattern A: Worked well, used 2x (RECOMMENDED)
 - Pattern B: Had issues, fixed but slower
 - Error watch-out: Password reset flow - watch for race conditions
@@ -71,6 +74,7 @@ Past similar tasks: 3 previous authentication designs
 **How**: Extract decision metadata, index for retrieval
 
 **Example**:
+
 ```json
 {
   "agent": "architect",
@@ -97,6 +101,7 @@ Past similar tasks: 3 previous authentication designs
 **How**: Query workflow history, adapt based on patterns
 
 **Example**:
+
 ```
 Step 4 (Architecture) → Query memory
 Memory: "Step 4 succeeds 85% of time, takes avg 20 min"
@@ -119,6 +124,7 @@ Decision: Add api-designer agent in parallel
 **How**: Query error patterns, provide solution templates
 
 **Example**:
+
 ```
 Error: "ModuleNotFoundError: No module named 'xyz'"
 Memory lookup: Found 7 previous occurrences
@@ -153,6 +159,7 @@ Lifecycle: Auto-cleanup, archival, summarization
 ## Integration Hooks (Minimal Code Changes)
 
 ### Hook 1: Query Memory Before Agent Execution
+
 ```python
 # Location: Wherever agents are invoked
 memory_context = memory_system.query_pre_execution(
@@ -164,6 +171,7 @@ memory_context = memory_system.query_pre_execution(
 ```
 
 ### Hook 2: Store Decision After Agent Completes
+
 ```python
 # Location: Decision logging (after DECISIONS.md written)
 memory_system.record_decision(
@@ -178,6 +186,7 @@ memory_system.record_decision(
 ```
 
 ### Hook 3: Query Workflow History During Orchestration
+
 ```python
 # Location: UltraThink workflow loop
 step_stats = memory_system.get_workflow_stats(
@@ -188,6 +197,7 @@ step_stats = memory_system.get_workflow_stats(
 ```
 
 ### Hook 4: Query Error Patterns When Fixing Issues
+
 ```python
 # Location: Error handler / fix-agent input
 error_record = memory_system.query_error_pattern(
@@ -200,18 +210,21 @@ error_record = memory_system.query_error_pattern(
 ## What Doesn't Change (Critical)
 
 ### Agent Definitions - UNCHANGED
+
 - `.claude/agents/amplihack/core/*.md` - No changes needed
 - `.claude/agents/amplihack/specialized/*.md` - No changes needed
 - Agent prompts remain identical
 - Agent execution remains stateless
 
 ### Existing Workflows - UNCHANGED
+
 - DEFAULT_WORKFLOW.md - No changes needed
 - Agent orchestration logic - Minimal changes
 - Context preservation - Works as before
 - User requirements - Fully preserved
 
 ### Backwards Compatibility - MAINTAINED
+
 - System works without memory
 - All existing commands work identically
 - No breaking changes to prompts/outputs
@@ -220,26 +233,31 @@ error_record = memory_system.query_error_pattern(
 ## How Memory Enhances Each Agent
 
 ### Architect Agent
+
 - Input: "Similar designs we've tried before"
 - Outcome: Faster, more informed design decisions
 - Pattern: Reuse successful patterns, avoid failures
 
 ### Builder Agent
+
 - Input: "Implementation patterns that worked"
 - Outcome: Consistent, proven implementation patterns
 - Pattern: Use templates, reduce rework
 
 ### Reviewer Agent
+
 - Input: "Common issues in this codebase"
 - Outcome: Targeted review focusing on high-impact issues
 - Pattern: Find problems before merge
 
 ### Fix Agent
+
 - Input: "Previous fixes for this error type"
 - Outcome: Quick diagnosis, proven solutions
 - Pattern: Instant fixes, root cause analysis, prevention
 
 ### Cleanup Agent
+
 - Input: "Artifacts we usually leave behind"
 - Outcome: More thorough cleanup
 - Pattern: Systematic temporary file removal
@@ -247,6 +265,7 @@ error_record = memory_system.query_error_pattern(
 ## Implementation Roadmap
 
 ### Phase 1: Foundation
+
 - [ ] Create memory storage structure
 - [ ] Implement basic retrieval interface
 - [ ] Add pre-execution memory injection
@@ -255,6 +274,7 @@ error_record = memory_system.query_error_pattern(
 - **Risk**: Minimal (read-only)
 
 ### Phase 2: Decision Recording
+
 - [ ] Implement post-execution storage
 - [ ] Extract decision metadata
 - [ ] Build retrieval index
@@ -263,6 +283,7 @@ error_record = memory_system.query_error_pattern(
 - **Risk**: Low (metadata only)
 
 ### Phase 3: Workflow Enhancement
+
 - [ ] Track workflow step statistics
 - [ ] Implement adaptive ordering
 - [ ] Test with known workflows
@@ -270,6 +291,7 @@ error_record = memory_system.query_error_pattern(
 - **Risk**: Low (backwards compatible)
 
 ### Phase 4: Error Learning
+
 - [ ] Extract error patterns from logs
 - [ ] Build solution templates
 - [ ] Enhance fix-agent
@@ -278,6 +300,7 @@ error_record = memory_system.query_error_pattern(
 - **Risk**: Low (advisory only)
 
 ### Phase 5: User Learning
+
 - [ ] Analyze user preferences
 - [ ] Implement learning feedback
 - [ ] Test preference adaptation
@@ -285,6 +308,7 @@ error_record = memory_system.query_error_pattern(
 - **Risk**: Low (opt-in)
 
 ### Phase 6: Cross-Session
+
 - [ ] Enable persistence
 - [ ] Implement archival
 - [ ] Build long-term patterns
@@ -294,6 +318,7 @@ error_record = memory_system.query_error_pattern(
 ## Success Criteria
 
 ### Must Have
+
 - No breaking changes to existing workflows
 - Agents work identically without memory
 - Memory never corrupts agent decisions
@@ -301,12 +326,14 @@ error_record = memory_system.query_error_pattern(
 - System works even if memory fails
 
 ### Should Have
+
 - Memory reduces agent execution time by 10-20%
 - Memory improves decision quality by 15-25%
 - Memory prevents 30-40% of repeated errors
 - Memory learns user patterns within 5-10 sessions
 
 ### Nice to Have
+
 - Memory enables adaptive workflows
 - Memory generates proactive suggestions
 - Memory provides learning insights
@@ -363,4 +390,3 @@ Integration Hooks:
 3. **Test Retrieval**: Implement memory_retrieval.py
 4. **Integrate Pre-Execution**: Add pre-execution hook to architect agent
 5. **Test & Iterate**: Measure impact and refine
-

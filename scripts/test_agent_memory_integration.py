@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 from pathlib import Path
+
 env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
     for line in env_file.read_text().splitlines():
@@ -35,7 +36,6 @@ from amplihack.memory.neo4j.agent_integration import (
 from amplihack.memory.neo4j.lifecycle import (
     Neo4jContainerManager,
     check_neo4j_prerequisites,
-    ensure_neo4j_running,
 )
 
 # Configure logging
@@ -174,10 +174,9 @@ def test_memory_injection_empty():
         print("✓ No memory context (expected for first run)")
         print("\n✅ Memory injection (empty) test passed!")
         return True
-    else:
-        print(f"⚠️  Unexpected context found:\n{context}")
-        print("\n⚠️  Memory injection (empty) test returned context (may be from previous runs)")
-        return True  # Not a failure, just unexpected
+    print(f"⚠️  Unexpected context found:\n{context}")
+    print("\n⚠️  Memory injection (empty) test returned context (may be from previous runs)")
+    return True  # Not a failure, just unexpected
 
 
 def test_learning_extraction():
@@ -232,9 +231,8 @@ Solution: Enforce minimum 12 characters with complexity requirements
     if len(memory_ids) >= 5:  # Should extract at least 5 learnings
         print(f"\n✅ Learning extraction test passed! ({len(memory_ids)} learnings stored)")
         return True
-    else:
-        print(f"\n✗ Learning extraction test failed! Expected >= 5, got {len(memory_ids)}")
-        return False
+    print(f"\n✗ Learning extraction test failed! Expected >= 5, got {len(memory_ids)}")
+    return False
 
 
 def test_memory_injection_with_context():
@@ -259,10 +257,9 @@ def test_memory_injection_with_context():
         print(f"Total context length: {len(context)} characters")
         print("\n✅ Memory injection (with context) test passed!")
         return True
-    else:
-        print("⚠️  No context injected (learnings may not have been stored)")
-        print("\n⚠️  Memory injection (with context) test inconclusive")
-        return False
+    print("⚠️  No context injected (learnings may not have been stored)")
+    print("\n⚠️  Memory injection (with context) test inconclusive")
+    return False
 
 
 def test_cross_agent_learning():
@@ -285,10 +282,9 @@ def test_cross_agent_learning():
         print("-" * 60)
         print("\n✅ Cross-agent learning test passed!")
         return True
-    else:
-        print("⚠️  No cross-agent learning detected")
-        print("\n⚠️  Cross-agent learning test inconclusive")
-        return False
+    print("⚠️  No cross-agent learning detected")
+    print("\n⚠️  Cross-agent learning test inconclusive")
+    return False
 
 
 def test_error_solution_pattern():
@@ -322,9 +318,10 @@ Resolution: Increased connection timeout to 30 seconds
     if len(memory_ids) >= 3:
         print("\n✅ Error-solution pattern extraction test passed!")
         return True
-    else:
-        print(f"\n✗ Error-solution pattern extraction test failed! Expected >= 3, got {len(memory_ids)}")
-        return False
+    print(
+        f"\n✗ Error-solution pattern extraction test failed! Expected >= 3, got {len(memory_ids)}"
+    )
+    return False
 
 
 def test_memory_retrieval_by_category():

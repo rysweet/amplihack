@@ -29,7 +29,7 @@ def transform_hook_path(path: str) -> str:
         Template-formatted path
     """
     # Remove $CLAUDE_PROJECT_DIR prefix
-    return re.sub(r'^\$CLAUDE_PROJECT_DIR/', '', path)
+    return re.sub(r"^\$CLAUDE_PROJECT_DIR/", "", path)
 
 
 def transform_hooks_dict(hooks: Dict[str, Any]) -> Dict[str, Any]:
@@ -49,16 +49,16 @@ def transform_hooks_dict(hooks: Dict[str, Any]) -> Dict[str, Any]:
         for config in hook_configs:
             transformed_config = config.copy()
 
-            if 'hooks' in transformed_config:
+            if "hooks" in transformed_config:
                 transformed_hooks = []
-                for hook_def in transformed_config['hooks']:
+                for hook_def in transformed_config["hooks"]:
                     transformed_hook = hook_def.copy()
-                    if 'command' in transformed_hook:
-                        transformed_hook['command'] = transform_hook_path(
-                            transformed_hook['command']
+                    if "command" in transformed_hook:
+                        transformed_hook["command"] = transform_hook_path(
+                            transformed_hook["command"]
                         )
                     transformed_hooks.append(transformed_hook)
-                transformed_config['hooks'] = transformed_hooks
+                transformed_config["hooks"] = transformed_hooks
 
             transformed_configs.append(transformed_config)
 
@@ -67,11 +67,7 @@ def transform_hooks_dict(hooks: Dict[str, Any]) -> Dict[str, Any]:
     return transformed
 
 
-def sync_hooks(
-    source_path: Path,
-    template_path: Path,
-    dry_run: bool = False
-) -> bool:
+def sync_hooks(source_path: Path, template_path: Path, dry_run: bool = False) -> bool:
     """Sync hooks from source to template.
 
     Args:
@@ -85,20 +81,20 @@ def sync_hooks(
     try:
         # Load source settings
         print(f"Reading source: {source_path}")
-        with open(source_path, 'r', encoding='utf-8') as f:
+        with open(source_path, encoding="utf-8") as f:
             source_data = json.load(f)
 
-        source_hooks = source_data.get('hooks', {})
+        source_hooks = source_data.get("hooks", {})
         print(f"Found {len(source_hooks)} hook types in source")
 
         # Load template settings
         print(f"Reading template: {template_path}")
-        with open(template_path, 'r', encoding='utf-8') as f:
+        with open(template_path, encoding="utf-8") as f:
             template_data = json.load(f)
 
         # Transform and update hooks
         transformed_hooks = transform_hooks_dict(source_hooks)
-        template_data['hooks'] = transformed_hooks
+        template_data["hooks"] = transformed_hooks
 
         if dry_run:
             print("\n[DRY RUN] Would update template with:")
@@ -107,17 +103,13 @@ def sync_hooks(
             return True
 
         # Write atomically (temp file + rename)
-        print(f"Writing updated template...")
-        temp_fd, temp_path = tempfile.mkstemp(
-            suffix='.json',
-            dir=template_path.parent,
-            text=True
-        )
+        print("Writing updated template...")
+        temp_fd, temp_path = tempfile.mkstemp(suffix=".json", dir=template_path.parent, text=True)
 
         try:
-            with open(temp_fd, 'w', encoding='utf-8') as f:
+            with open(temp_fd, "w", encoding="utf-8") as f:
                 json.dump(template_data, f, indent=2, ensure_ascii=False)
-                f.write('\n')  # Add trailing newline
+                f.write("\n")  # Add trailing newline
 
             # Atomic replace
             shutil.move(temp_path, template_path)
@@ -151,7 +143,7 @@ def check_sync(source_path: Path, template_path: Path) -> bool:
         True if in sync, False otherwise
     """
     # Import the validator
-    sys.path.insert(0, str(source_path.parent.parent / 'src'))
+    sys.path.insert(0, str(source_path.parent.parent / "src"))
     from amplihack.utils.sync_validator import validate_hooks_sync
 
     is_valid, errors = validate_hooks_sync(source_path, template_path)
@@ -159,35 +151,28 @@ def check_sync(source_path: Path, template_path: Path) -> bool:
     if is_valid:
         print("✅ Hooks are synchronized")
         return True
-    else:
-        print("❌ Hooks are OUT OF SYNC")
-        for error in errors:
-            print(f"  • {error}")
-        return False
+    print("❌ Hooks are OUT OF SYNC")
+    for error in errors:
+        print(f"  • {error}")
+    return False
 
 
 def main() -> int:
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description='Sync hooks from settings.json to UVX template'
+    parser = argparse.ArgumentParser(description="Sync hooks from settings.json to UVX template")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be done without modifying files"
     )
     parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Show what would be done without modifying files'
-    )
-    parser.add_argument(
-        '--check',
-        action='store_true',
-        help='Check if hooks are in sync without modifying files'
+        "--check", action="store_true", help="Check if hooks are in sync without modifying files"
     )
 
     args = parser.parse_args()
 
     # Determine paths (run from project root)
     script_dir = Path(__file__).parent.parent
-    source_path = script_dir / '.claude' / 'settings.json'
-    template_path = script_dir / 'src' / 'amplihack' / 'utils' / 'uvx_settings_template.json'
+    source_path = script_dir / ".claude" / "settings.json"
+    template_path = script_dir / "src" / "amplihack" / "utils" / "uvx_settings_template.json"
 
     if args.check:
         return 0 if check_sync(source_path, template_path) else 1
@@ -207,5 +192,5 @@ def main() -> int:
     return 0 if success else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

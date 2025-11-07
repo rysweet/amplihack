@@ -18,6 +18,7 @@ docker ps | grep amplihack-neo4j
 ```
 
 **Expected output:**
+
 ```
 amplihack-neo4j   neo4j:5.13.0   "tini -g -- /startup..."   Up 5 minutes   7474/tcp, 7687/tcp
 ```
@@ -32,6 +33,7 @@ python scripts/test_agent_memory_integration.py
 ```
 
 **Expected output:**
+
 ```
 ================================================================================
 AGENT MEMORY INTEGRATION TEST SUITE
@@ -77,6 +79,7 @@ memory_ids = extract_and_store_learnings(
 ### Option B: Automatic Integration (built-in agents)
 
 Memory integration is **automatic** for amplihack's built-in agents:
+
 - architect
 - builder
 - reviewer
@@ -107,6 +110,7 @@ tail -f .claude/runtime/logs/session_start.log
 ```
 
 Look for:
+
 ```
 [INFO] Neo4j container started
 [INFO] Stored 5 learnings from architect
@@ -120,6 +124,7 @@ open http://localhost:7474
 ```
 
 Run query:
+
 ```cypher
 MATCH (m:Memory)
 RETURN m.content, m.quality_score, m.agent_type
@@ -130,6 +135,7 @@ LIMIT 10
 ## That's It!
 
 Your agents now have memory. They will:
+
 - ✅ Learn from past experiences
 - ✅ Share knowledge across agent types
 - ✅ Improve over time with quality scoring

@@ -5,10 +5,17 @@ It follows the Zero-BS philosophy - all functions work or don't exist.
 """
 
 import json
+import logging
 import re
 import subprocess
 from dataclasses import dataclass
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
+
+# Neo4j default port numbers
+BOLT_PORT = 7687  # Neo4j Bolt protocol port (connections)
+HTTP_PORT = 7474  # Neo4j HTTP protocol port (browser, REST API)
 
 
 @dataclass
@@ -43,20 +50,20 @@ class Neo4jContainer:
         return "running" in status_lower or "up" in status_lower
 
     def get_bolt_port(self) -> Optional[str]:
-        """Get the Bolt protocol port (7687).
+        """Get the Bolt protocol port.
 
         Returns:
             Port number as string, or None if not exposed
         """
-        return self._get_port("7687")
+        return self._get_port(str(BOLT_PORT))
 
     def get_http_port(self) -> Optional[str]:
-        """Get the HTTP port (7474).
+        """Get the HTTP port.
 
         Returns:
             Port number as string, or None if not exposed
         """
-        return self._get_port("7474")
+        return self._get_port(str(HTTP_PORT))
 
     def _get_port(self, port_num: str) -> Optional[str]:
         """Get a specific port number from container port mappings.
@@ -106,10 +113,7 @@ class Neo4jContainerDetector:
 
         try:
             result = subprocess.run(
-                ["docker", "info"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=5
+                ["docker", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5
             )
             self._docker_available = result.returncode == 0
             return self._docker_available
@@ -132,7 +136,7 @@ class Neo4jContainerDetector:
                 ["docker", "ps", "-a", "--format", "{{json .}}"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode != 0:
@@ -181,7 +185,9 @@ class Neo4jContainerDetector:
             True if container matches amplihack patterns
         """
         combined = f"{name} {image}".lower()
-        return any(re.search(pattern, combined, re.IGNORECASE) for pattern in self.AMPLIHACK_PATTERNS)
+        return any(
+            re.search(pattern, combined, re.IGNORECASE) for pattern in self.AMPLIHACK_PATTERNS
+        )
 
     def _parse_container(self, container_data: dict) -> Optional[Neo4jContainer]:
         """Parse container data into Neo4jContainer object.
@@ -203,11 +209,7 @@ class Neo4jContainerDetector:
 
             # Create container object (credentials will be extracted separately)
             return Neo4jContainer(
-                container_id=container_id,
-                name=name,
-                image=image,
-                status=status,
-                ports=ports
+                container_id=container_id, name=name, image=image, status=status, ports=ports
             )
 
         except (KeyError, ValueError):
@@ -257,14 +259,25 @@ class Neo4jContainerDetector:
                 ["docker", "inspect", container.container_id],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode != 0:
+                logger.warning(
+                    "Failed to inspect container %s: docker command returned %d. "
+                    "Neo4j credentials cannot be extracted. User should verify Neo4j configuration manually.",
+                    container.container_id[:12],
+                    result.returncode,
+                )
                 return
 
             inspect_data = json.loads(result.stdout)
             if not inspect_data:
+                logger.warning(
+                    "Container %s returned empty inspection data. "
+                    "Neo4j credentials cannot be extracted.",
+                    container.container_id[:12],
+                )
                 return
 
             # Extract environment variables
@@ -288,9 +301,26 @@ class Neo4jContainerDetector:
                 elif key == "NEO4J_PASSWORD":
                     container.password = value
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, json.JSONDecodeError, KeyError, IndexError):
-            # Failed to extract credentials, leave them as None
-            pass
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                "Timeout while inspecting container %s (10s timeout). "
+                "Neo4j credentials cannot be extracted in time.",
+                container.container_id[:12],
+            )
+        except subprocess.SubprocessError as e:
+            logger.warning(
+                "Subprocess error while inspecting container %s: %s. "
+                "Neo4j credentials cannot be extracted.",
+                container.container_id[:12],
+                str(e),
+            )
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            logger.warning(
+                "Failed to parse container inspection data for %s: %s. "
+                "Neo4j credentials cannot be extracted. Container configuration may be malformed.",
+                container.container_id[:12],
+                str(e),
+            )
 
     def get_running_containers(self) -> List[Neo4jContainer]:
         """Get all running amplihack Neo4j containers with credentials.

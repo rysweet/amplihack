@@ -80,11 +80,13 @@ Comprehensive failing test suite created for Neo4j memory system foundation foll
 ### Total Tests: 80+
 
 **By Category**:
+
 - Unit Tests: 75+ (60% of suite)
 - Integration Tests: 30+ (30% of suite)
 - E2E Tests: 5-10 (10% of suite)
 
 **By Component**:
+
 - Container Manager: 20 tests
 - Schema Manager: 25 tests
 - Dependency Agent: 30 tests
@@ -92,6 +94,7 @@ Comprehensive failing test suite created for Neo4j memory system foundation foll
 - Lifecycle: 15 tests
 
 **By Type**:
+
 - Happy path: 40%
 - Error cases: 35%
 - Edge cases: 15%
@@ -102,30 +105,38 @@ Comprehensive failing test suite created for Neo4j memory system foundation foll
 All tests WILL fail initially with these error types:
 
 ### 1. Module Not Found
+
 ```python
 ModuleNotFoundError: No module named 'amplihack.memory.neo4j'
 ```
+
 **Reason**: Implementation modules not created yet
 **Solution**: Create module structure in `src/amplihack/memory/neo4j/`
 
 ### 2. Import Errors
+
 ```python
 ImportError: cannot import name 'ContainerManager'
 ```
+
 **Reason**: Classes not defined yet
 **Solution**: Implement ContainerManager, SchemaManager, DependencyAgent
 
 ### 3. Attribute Errors
+
 ```python
 AttributeError: 'ContainerManager' object has no attribute 'start_container'
 ```
+
 **Reason**: Methods not implemented yet
 **Solution**: Implement methods as tests specify
 
 ### 4. Exception Classes
+
 ```python
 ImportError: cannot import name 'DockerNotAvailableError'
 ```
+
 **Reason**: Exception classes not defined
 **Solution**: Create exception classes in `amplihack.memory.neo4j.exceptions`
 
@@ -134,11 +145,13 @@ ImportError: cannot import name 'DockerNotAvailableError'
 To make tests pass, implement in this order:
 
 ### Phase 1: Module Structure
+
 - [ ] Create `src/amplihack/memory/neo4j/__init__.py`
 - [ ] Create `src/amplihack/memory/neo4j/exceptions.py`
 - [ ] Create `src/amplihack/memory/neo4j/models.py`
 
 ### Phase 2: Container Manager
+
 - [ ] Create `src/amplihack/memory/neo4j/container_manager.py`
 - [ ] Implement `ContainerManager` class
 - [ ] Implement `start_container()`, `stop_container()`
@@ -147,6 +160,7 @@ To make tests pass, implement in this order:
 - [ ] Run: `pytest tests/unit/memory/neo4j/test_container_manager.py`
 
 ### Phase 3: Schema Manager
+
 - [ ] Create `src/amplihack/memory/neo4j/schema_manager.py`
 - [ ] Implement `SchemaManager` class
 - [ ] Implement `initialize_schema()`
@@ -156,6 +170,7 @@ To make tests pass, implement in this order:
 - [ ] Run: `pytest tests/unit/memory/neo4j/test_schema_manager.py`
 
 ### Phase 4: Dependency Agent
+
 - [ ] Create `src/amplihack/memory/neo4j/dependency_agent.py`
 - [ ] Implement `DependencyAgent` class
 - [ ] Implement `check_docker_daemon()`
@@ -167,6 +182,7 @@ To make tests pass, implement in this order:
 - [ ] Run: `pytest tests/unit/memory/neo4j/test_dependency_agent.py`
 
 ### Phase 5: Neo4j Connector
+
 - [ ] Create `src/amplihack/memory/neo4j/connector.py`
 - [ ] Implement `Neo4jConnector` class
 - [ ] Implement `connect()`, `close()`
@@ -174,6 +190,7 @@ To make tests pass, implement in this order:
 - [ ] Implement `verify_connectivity()`
 
 ### Phase 6: Lifecycle Management
+
 - [ ] Create `src/amplihack/memory/neo4j/lifecycle.py`
 - [ ] Implement `ensure_neo4j_running()`
 - [ ] Implement `check_neo4j_prerequisites()`
@@ -181,11 +198,13 @@ To make tests pass, implement in this order:
 - [ ] Implement `is_neo4j_healthy()`
 
 ### Phase 7: Integration
+
 - [ ] Run: `pytest tests/integration/memory/neo4j/ -m integration`
 - [ ] Fix any integration issues
 - [ ] Verify performance requirements
 
 ### Phase 8: Session Integration
+
 - [ ] Integrate with `src/amplihack/launcher/core.py`
 - [ ] Add session start hook
 - [ ] Test with real amplihack session
@@ -193,16 +212,19 @@ To make tests pass, implement in this order:
 ## Running Tests
 
 ### Run All Tests (Will Fail Initially)
+
 ```bash
 python -m pytest tests/unit/memory/neo4j/ tests/integration/memory/neo4j/ -v
 ```
 
 ### Run Only Unit Tests
+
 ```bash
 python -m pytest tests/unit/memory/neo4j/ -v
 ```
 
 ### Run Specific Component
+
 ```bash
 python -m pytest tests/unit/memory/neo4j/test_container_manager.py -v
 python -m pytest tests/unit/memory/neo4j/test_schema_manager.py -v
@@ -210,11 +232,13 @@ python -m pytest tests/unit/memory/neo4j/test_dependency_agent.py -v
 ```
 
 ### Run Integration Tests (Requires Docker)
+
 ```bash
 python -m pytest tests/integration/memory/neo4j/ -m integration -v
 ```
 
 ### Skip Integration Tests
+
 ```bash
 python -m pytest tests/unit/memory/neo4j/ -m "not integration" -v
 ```
@@ -226,6 +250,7 @@ python -m pytest tests/unit/memory/neo4j/ -m "not integration" -v
 - **Combined**: 85%+ total coverage
 
 ### Measure Coverage
+
 ```bash
 python -m pytest --cov=amplihack.memory.neo4j \
                  --cov-report=html \
@@ -236,22 +261,26 @@ python -m pytest --cov=amplihack.memory.neo4j \
 ## Key Testing Principles Applied
 
 ### 1. Testing Pyramid
+
 - ✅ 60% unit tests (fast, isolated)
 - ✅ 30% integration tests (real Neo4j)
 - ✅ 10% E2E tests (full workflow)
 
 ### 2. Test Naming
+
 - ✅ Descriptive: `test_WHEN_<condition>_THEN_<outcome>`
 - ✅ Intent clear from name
 - ✅ Searchable and categorizable
 
 ### 3. Test Independence
+
 - ✅ Each test is isolated
 - ✅ No shared state
 - ✅ Tests can run in any order
 - ✅ Tests can run in parallel
 
 ### 4. Comprehensive Coverage
+
 - ✅ Happy path scenarios
 - ✅ Error handling
 - ✅ Edge cases
@@ -259,6 +288,7 @@ python -m pytest --cov=amplihack.memory.neo4j \
 - ✅ Performance requirements
 
 ### 5. Fixtures and Mocking
+
 - ✅ Reusable fixtures
 - ✅ Clear mocking strategy
 - ✅ Unit tests fully mocked
@@ -268,15 +298,16 @@ python -m pytest --cov=amplihack.memory.neo4j \
 
 Tests validate all requirements from `IMPLEMENTATION_REQUIREMENTS.md`:
 
-| Requirement | Test | Target |
-|------------|------|--------|
-| Session start | `test_WHEN_session_starts_THEN_completes_within_500ms` | < 500ms |
-| Container ready | `test_WHEN_container_starts_THEN_ready_within_30_seconds` | < 30s |
-| Query speed | `test_WHEN_query_executed_THEN_completes_within_100ms` | < 100ms |
+| Requirement     | Test                                                      | Target  |
+| --------------- | --------------------------------------------------------- | ------- |
+| Session start   | `test_WHEN_session_starts_THEN_completes_within_500ms`    | < 500ms |
+| Container ready | `test_WHEN_container_starts_THEN_ready_within_30_seconds` | < 30s   |
+| Query speed     | `test_WHEN_query_executed_THEN_completes_within_100ms`    | < 100ms |
 
 ## Next Steps
 
 1. **Verify Tests Fail**: Run test suite to confirm TDD setup
+
    ```bash
    python -m pytest tests/unit/memory/neo4j/ -v
    # Expected: All tests fail with ImportError/ModuleNotFoundError

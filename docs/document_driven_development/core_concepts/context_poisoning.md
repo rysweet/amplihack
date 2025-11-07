@@ -15,6 +15,7 @@
 ## Why It's Critical
 
 When AI tools load context for a task, they may:
+
 - Load stale doc instead of current one
 - Load conflicting docs and guess wrong
 - Not know which source is authoritative
@@ -22,6 +23,7 @@ When AI tools load context for a task, they may:
 - Make wrong decisions confidently
 
 **Real-world impact**:
+
 - Wasted hours implementing wrong design
 - Bugs from mixing incompatible approaches
 - Rework when conflicts discovered later
@@ -33,27 +35,33 @@ When AI tools load context for a task, they may:
 ## Common Sources
 
 ### 1. Duplicate Documentation
+
 Same concept described differently in multiple files
 
 **Example**:
+
 - `docs/USER_GUIDE.md`: "Workflows configure your environment"
 - `docs/API.md`: "Profiles define capability sets"
 
 **Impact**: AI doesn't know if "workflow" == "profile" or they're different
 
 ### 2. Stale Documentation
+
 Docs don't match current code
 
 **Example**:
+
 - Docs: "Use `amplifier setup` to configure"
 - Code: Only `amplifier init` works
 
 **Impact**: AI generates code using removed command
 
 ### 3. Inconsistent Terminology
+
 Multiple terms for same concept
 
 **Example**:
+
 - README: "workflow"
 - USER_GUIDE: "profile"
 - API: "capability set"
@@ -61,9 +69,11 @@ Multiple terms for same concept
 **Impact**: AI confused about canonical term
 
 ### 4. Partial Updates
+
 Updated some files but not others
 
 **Example**:
+
 - Updated README with new flags (`--model`)
 - Forgot to update COMMAND_REFERENCE
 - COMMAND_REFERENCE now has wrong syntax
@@ -71,9 +81,11 @@ Updated some files but not others
 **Impact**: AI uses outdated syntax from COMMAND_REFERENCE
 
 ### 5. Historical References
+
 Old approaches mentioned alongside new
 
 **Example**:
+
 ```markdown
 Previously, use `setup`. Now use `init`.
 For now, both work.
@@ -120,10 +132,12 @@ For now, both work.
 
 ```markdown
 # docs/USER_GUIDE.md
+
 Use workflows to configure environment.
 Run: amplifier workflow apply dev
 
 # docs/API.md
+
 Profiles define capability sets.
 Run: amplifier profile use dev
 
@@ -134,9 +148,11 @@ Run: amplifier profile use dev
 
 ```markdown
 # docs/USER_GUIDE.md
+
 The --model flag is optional. Defaults to claude-sonnet-4-5.
 
 # docs/API.md
+
 The --model flag is required. Command fails without it.
 
 # POISON: Is --model required or optional?
@@ -146,9 +162,11 @@ The --model flag is required. Command fails without it.
 
 ```markdown
 # README.md
+
 amplifier provider use anthropic
 
 # docs/USER_GUIDE.md
+
 amplifier provider use anthropic --model claude-opus-4
 
 # POISON: Which example is correct?
@@ -158,6 +176,7 @@ amplifier provider use anthropic --model claude-opus-4
 
 ```markdown
 # docs/MIGRATION.md
+
 Previously, use `amplifier setup`.
 Now, use `amplifier init` instead.
 The old `setup` command still works.
@@ -169,9 +188,11 @@ The old `setup` command still works.
 
 ```markdown
 # docs/ARCHITECTURE.md
+
 Provider configuration is immutable per session.
 
 # docs/USER_GUIDE.md
+
 Use --local flag to override provider per project.
 
 # POISON: Is provider immutable or overridable?
@@ -186,11 +207,13 @@ Use --local flag to override provider per project.
 **Rule**: Each concept lives in exactly ONE place.
 
 **Good organization**:
+
 - ✅ Command syntax → `docs/USER_ONBOARDING.md#quick-reference`
 - ✅ Architecture → `docs/ARCHITECTURE.md`
 - ✅ API reference → `docs/API.md`
 
 **Cross-reference, don't duplicate**:
+
 ```markdown
 For command syntax, see [USER_ONBOARDING.md#quick-reference](...)
 
@@ -200,16 +223,19 @@ NOT: Duplicating all command syntax inline
 ### 2. Aggressive Deletion
 
 When you find duplication:
+
 1. Identify which doc is canonical
 2. **Delete** the duplicate entirely (don't update it)
 3. Update cross-references to canonical source
 
 **Why delete vs. update?**
+
 - Prevents future divergence
 - If it exists, it will drift
 - Deletion is permanent elimination
 
 **Example**:
+
 ```bash
 # Found duplication: COMMAND_GUIDE.md duplicates USER_ONBOARDING.md
 
@@ -226,6 +252,7 @@ grep -r "COMMAND_GUIDE" docs/  # Should find nothing
 ### 3. Retcon, Don't Evolve
 
 **BAD** (creates poison):
+
 ```markdown
 Previously, use `amplifier setup`.
 As of version 2.0, use `amplifier init`.
@@ -234,13 +261,16 @@ For now, both work.
 ```
 
 **GOOD** (clean retcon):
-```markdown
+
+````markdown
 ## Provider Configuration
 
 Configure your provider:
+
 ```bash
 amplifier init
 ```
+````
 
 Historical info belongs in git history and CHANGELOG, not docs.
 
@@ -249,6 +279,7 @@ See [Retcon Writing](retcon_writing.md) for details.
 ### 4. Systematic Global Updates
 
 When terminology changes:
+
 ```bash
 # 1. Global replace (first pass only)
 find docs/ -name "*.md" -exec sed -i 's/\bworkflow\b/profile/g' {} +
@@ -278,6 +309,7 @@ See [Phase 1: Step 6](../phases/01_documentation_retcon.md#step-6-detecting-and-
 ### During Documentation Phase
 
 **Watch for**:
+
 - Conflicting definitions
 - Duplicate content
 - Inconsistent examples
@@ -288,6 +320,7 @@ See [Phase 1: Step 6](../phases/01_documentation_retcon.md#step-6-detecting-and-
 ### During Implementation Phase
 
 **Watch for AI saying**:
+
 - "I see from COMMAND_REFERENCE.md that..." (when that file was deleted)
 - "According to the old approach..." (no old approaches should be documented)
 - "Both X and Y are valid..." (when only Y should be documented)
@@ -301,26 +334,33 @@ See [Phase 1: Step 6](../phases/01_documentation_retcon.md#step-6-detecting-and-
 # CONFLICT DETECTED - User guidance needed
 
 ## Issue
+
 [Describe what conflicts]
 
 ## Instances
+
 1. file1.md:42: says X
 2. file2.md:15: says Y
 3. file3.md:8: says Z
 
 ## Analysis
+
 [What's most common, what matches code, etc.]
 
 ## Suggested Resolutions
+
 Option A: [description]
+
 - Pro: [benefits]
 - Con: [drawbacks]
 
 Option B: [description]
+
 - Pro: [benefits]
 - Con: [drawbacks]
 
 ## Recommendation
+
 [AI's suggestion with reasoning]
 
 Please advise which resolution to apply.
@@ -370,10 +410,12 @@ Before committing any documentation:
 ### Example 1: Command Reference Duplication
 
 **Setup**:
+
 - Created COMMAND_REFERENCE.md with all command syntax
 - README.md also documents commands
 
 **What happened**:
+
 - Updated README with new flags
 - Forgot COMMAND_REFERENCE
 - Future AI loaded COMMAND_REFERENCE (wrong syntax)
@@ -383,11 +425,13 @@ Before committing any documentation:
 ### Example 2: Terminology Inconsistency
 
 **Setup**:
+
 - Some docs say "workflow"
 - Some docs say "profile"
 - Some docs say "capability set"
 
 **What happened**:
+
 - AI confused about canonical term
 - Generated code mixing terms
 - User confused reading docs
@@ -397,10 +441,12 @@ Before committing any documentation:
 ### Example 3: Historical References
 
 **Setup**:
+
 - Docs mentioned both old `setup` and new `init` commands
 - Said "both work for now"
 
 **What happened**:
+
 - AI implemented both commands
 - Maintained old approach unnecessarily
 - More code to maintain
@@ -414,6 +460,7 @@ Before committing any documentation:
 ### Detection
 
 **Ask yourself**:
+
 - Can same information be found in multiple places?
 - Are there multiple terms for same concept?
 - Do docs reference "old" vs "new" approaches?
@@ -424,6 +471,7 @@ Before committing any documentation:
 ### Prevention
 
 **Core rules**:
+
 1. Each concept in ONE place only
 2. Delete duplicates (don't update)
 3. Use retcon (not evolution)
@@ -433,6 +481,7 @@ Before committing any documentation:
 ### Resolution
 
 **When detected**:
+
 1. PAUSE all work
 2. Collect all instances
 3. Present to human with options

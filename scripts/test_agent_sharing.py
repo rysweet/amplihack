@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 from pathlib import Path
+
 env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
     for line in env_file.read_text().splitlines():
@@ -25,7 +26,6 @@ from pathlib import Path
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from datetime import datetime
 
 from amplihack.memory.neo4j import (
     AgentMemoryManager,
@@ -60,11 +60,12 @@ def test_neo4j_startup():
 
     # Check if already running
     import subprocess
+
     result = subprocess.run(
         ["docker", "ps", "--filter", "name=amplihack-neo4j", "--format", "{{.Status}}"],
         capture_output=True,
         text=True,
-        check=False
+        check=False,
     )
 
     if "Up" in result.stdout:
@@ -176,7 +177,9 @@ def test_memory_recall():
     print(f"Architect recalled {len(memories)} memories")
 
     for mem in memories:
-        print(f"  - [{mem['category']}] {mem['content'][:60]}... (quality: {mem['quality_score']:.2f})")
+        print(
+            f"  - [{mem['category']}] {mem['content'][:60]}... (quality: {mem['quality_score']:.2f})"
+        )
         print_success("Memory accessible to same agent type")
 
     if len(memories) >= 2:
@@ -198,9 +201,11 @@ def test_cross_agent_learning():
     if memories:
         for mem in memories:
             print(f"  - {mem['content'][:70]}...")
-            print(f"    Quality: {mem['quality_score']:.2f}, "
-                  f"Validations: {mem['validation_count']}, "
-                  f"Applications: {mem['application_count']}")
+            print(
+                f"    Quality: {mem['quality_score']:.2f}, "
+                f"Validations: {mem['validation_count']}, "
+                f"Applications: {mem['application_count']}"
+            )
         print_success(f"Builder learned {len(memories)} patterns from others")
     else:
         print("  No high-quality memories yet (expected for new system)")
@@ -241,16 +246,13 @@ def test_memory_usage_tracking():
 
     # Validate the memory
     architect.validate_memory(
-        memory_id,
-        feedback_score=0.9,
-        outcome="successful",
-        notes="Pattern worked well in practice"
+        memory_id, feedback_score=0.9, outcome="successful", notes="Pattern worked well in practice"
     )
     print_success("Recorded memory validation")
 
     # Check updated statistics
     stats = architect.get_stats()
-    print(f"\nArchitect agent stats:")
+    print("\nArchitect agent stats:")
     print(f"  Total memories: {stats.get('total_memories', 0)}")
     print(f"  Average quality: {stats.get('avg_quality', 0.0):.2f}")
     print(f"  Total applications: {stats.get('total_applications', 0)}")
@@ -352,8 +354,10 @@ def test_best_practices():
     print(f"Top {len(practices)} best practices:")
     for i, practice in enumerate(practices, 1):
         print(f"  {i}. {practice['content'][:70]}...")
-        print(f"     Quality: {practice['quality_score']:.2f}, "
-              f"Validations: {practice['validation_count']}")
+        print(
+            f"     Quality: {practice['quality_score']:.2f}, "
+            f"Validations: {practice['validation_count']}"
+        )
 
     if practices:
         print_success("Best practices retrieval working")
@@ -389,6 +393,7 @@ def run_all_tests():
     except Exception as e:
         print_error(f"Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

@@ -2,20 +2,26 @@
 
 ## What Was Implemented
 
-Complete external knowledge integration system for the Neo4j memory framework, enabling the system to fetch, cache, and link external documentation to code and memories.
+Complete external knowledge integration system for the Neo4j memory framework,
+enabling the system to fetch, cache, and link external documentation to code and
+memories.
 
 ## Files Created
 
 ### 1. Core Implementation
+
 **File**: `/src/amplihack/memory/neo4j/external_knowledge.py` (795 lines)
 
 **Components**:
-- `KnowledgeSource` enum - Five source types (Python docs, MS Learn, GitHub, library docs, custom)
+
+- `KnowledgeSource` enum - Five source types (Python docs, MS Learn, GitHub,
+  library docs, custom)
 - `ExternalDoc` dataclass - Document representation with metadata
 - `APIReference` dataclass - API reference documentation
 - `ExternalKnowledgeManager` class - Main management interface
 
 **Key Features**:
+
 - HTTP fetching with requests library
 - Two-level caching (filesystem + Neo4j)
 - TTL-based expiration
@@ -26,9 +32,11 @@ Complete external knowledge integration system for the Neo4j memory framework, e
 - Statistics and cleanup
 
 ### 2. CLI Import Tool
+
 **File**: `/scripts/import_external_knowledge.py` (420 lines)
 
 **Commands**:
+
 - `python` - Import Python documentation
 - `ms-learn` - Import MS Learn content
 - `library` - Import library docs (requests, flask, django, etc.)
@@ -37,13 +45,15 @@ Complete external knowledge integration system for the Neo4j memory framework, e
 - `stats` - Show knowledge statistics
 - `cleanup` - Remove expired documents
 
-**Pre-configured Libraries**:
-requests, flask, django, fastapi, numpy, pandas, pytest, sqlalchemy
+**Pre-configured Libraries**: requests, flask, django, fastapi, numpy, pandas,
+pytest, sqlalchemy
 
 ### 3. Integration Tests
+
 **File**: `/scripts/test_external_knowledge.py` (340 lines)
 
 **Tests** (requires Neo4j):
+
 - Schema initialization
 - Document caching
 - Link to code
@@ -56,9 +66,11 @@ requests, flask, django, fastapi, numpy, pandas, pytest, sqlalchemy
 - Expired cleanup
 
 ### 4. Unit Tests
+
 **File**: `/scripts/test_external_knowledge_unit.py` (325 lines)
 
 **Tests** (no Neo4j required):
+
 - ExternalDoc creation ✅
 - APIReference creation ✅
 - KnowledgeSource enum ✅
@@ -71,9 +83,11 @@ requests, flask, django, fastapi, numpy, pandas, pytest, sqlalchemy
 **All 8 unit tests passed!**
 
 ### 5. Documentation
+
 **File**: `/docs/external_knowledge_integration.md` (530 lines)
 
 **Sections**:
+
 - Architecture overview
 - Graph schema
 - Python API usage
@@ -88,9 +102,11 @@ requests, flask, django, fastapi, numpy, pandas, pytest, sqlalchemy
 - Troubleshooting
 
 ### 6. Module Exports
+
 **Updated**: `/src/amplihack/memory/neo4j/__init__.py`
 
 **Exports**:
+
 ```python
 from .external_knowledge import (
     KnowledgeSource,
@@ -215,6 +231,7 @@ python scripts/import_external_knowledge.py cleanup
 ## Key Features
 
 ### 1. Fetching and Caching
+
 - HTTP fetching with `requests` library
 - Local filesystem cache (`~/.amplihack/knowledge_cache/`)
 - Neo4j graph storage
@@ -222,6 +239,7 @@ python scripts/import_external_knowledge.py cleanup
 - Force refresh option
 
 ### 2. Version Tracking
+
 ```python
 # Store multiple versions
 for version in ["3.10", "3.11", "3.12"]:
@@ -239,6 +257,7 @@ results = manager.query_external_knowledge(
 ```
 
 ### 3. Credibility Scoring
+
 ```python
 # Official docs = high trust
 trust_score=0.95  # Python docs
@@ -254,6 +273,7 @@ results = manager.query_external_knowledge(
 ```
 
 ### 4. Linking
+
 ```python
 # Link to code file
 manager.link_to_code(doc_url, code_path, "EXPLAINS")
@@ -266,6 +286,7 @@ manager.link_to_memory(memory_id, doc_url, "SOURCED_FROM")
 ```
 
 ### 5. Querying
+
 ```python
 # Full-text search
 results = manager.query_external_knowledge(
@@ -284,6 +305,7 @@ docs = manager.get_function_documentation("parse_json:1.0")
 ```
 
 ### 6. Maintenance
+
 ```python
 # Statistics
 stats = manager.get_knowledge_stats()
@@ -296,6 +318,7 @@ removed = manager.cleanup_expired_docs()
 ## Testing Results
 
 ### Unit Tests (No Neo4j)
+
 ```
 ✅ external_doc_creation: ExternalDoc created with correct attributes
 ✅ api_reference_creation: APIReference created correctly
@@ -310,7 +333,9 @@ Total: 8 | Passed: 8 | Failed: 0
 ```
 
 ### Integration Tests (Requires Neo4j)
+
 Full integration test suite available in `scripts/test_external_knowledge.py`:
+
 - Schema initialization
 - Document caching
 - Code/function linking
@@ -323,17 +348,18 @@ Full integration test suite available in `scripts/test_external_knowledge.py`:
 
 ## Knowledge Sources
 
-| Source | Trust Score | Description |
-|--------|-------------|-------------|
-| `PYTHON_DOCS` | 0.95 | Official Python documentation |
-| `MS_LEARN` | 0.90 | Microsoft Learn content |
-| `LIBRARY_DOCS` | 0.85 | Library documentation |
-| `GITHUB` | 0.75 | GitHub examples and wikis |
-| `CUSTOM` | 0.70 | Custom/unknown sources |
+| Source         | Trust Score | Description                   |
+| -------------- | ----------- | ----------------------------- |
+| `PYTHON_DOCS`  | 0.95        | Official Python documentation |
+| `MS_LEARN`     | 0.90        | Microsoft Learn content       |
+| `LIBRARY_DOCS` | 0.85        | Library documentation         |
+| `GITHUB`       | 0.75        | GitHub examples and wikis     |
+| `CUSTOM`       | 0.70        | Custom/unknown sources        |
 
 ## Integration with Existing System
 
 ### Seamless Integration
+
 - Uses existing `Neo4jConnector` for connections
 - Follows existing schema patterns (constraints, indexes)
 - Integrates with `BlarifyIntegration` for code graphs
@@ -341,6 +367,7 @@ Full integration test suite available in `scripts/test_external_knowledge.py`:
 - Compatible with existing monitoring and metrics
 
 ### Code Graph Integration
+
 ```python
 # Import code graph
 blarify = BlarifyIntegration(conn)
@@ -359,6 +386,7 @@ docs = knowledge_mgr.get_code_documentation("src/app.py")
 ```
 
 ### Memory Integration
+
 ```python
 # Store memory
 memory_store = MemoryStore(conn)
@@ -379,43 +407,34 @@ knowledge_mgr.link_to_memory(memory_id, doc_url, "SOURCED_FROM")
 ## Dependencies
 
 Required:
+
 - `neo4j>=5.15.0` (already in project)
 
 Optional:
+
 - `requests` (for HTTP fetching)
 
 ## Summary Statistics
 
 **Total Implementation**:
+
 - **4 new files** (2,280 lines of code)
 - **1 updated file** (module exports)
 - **1 comprehensive documentation** (530 lines)
 - **8 unit tests** (all passing)
 - **10+ integration tests** (comprehensive coverage)
 
-**Features Delivered**:
-✅ Fetch external documentation (HTTP + caching)
-✅ Store in Neo4j with source metadata
-✅ Link to code and memories
-✅ Version tracking (Python 3.10 vs 3.12, etc.)
-✅ Credibility scoring (trust levels)
-✅ Query and retrieval
-✅ CLI import tool
-✅ Comprehensive testing
-✅ Full documentation
+**Features Delivered**: ✅ Fetch external documentation (HTTP + caching) ✅
+Store in Neo4j with source metadata ✅ Link to code and memories ✅ Version
+tracking (Python 3.10 vs 3.12, etc.) ✅ Credibility scoring (trust levels) ✅
+Query and retrieval ✅ CLI import tool ✅ Comprehensive testing ✅ Full
+documentation
 
-**Graph Schema**:
-✅ `ExternalDoc` node with 8 properties
-✅ `APIReference` node with 7 properties
-✅ 3 relationship types (EXPLAINS, DOCUMENTS, SOURCED_FROM)
-✅ 5 indexes for performance
-✅ 2 constraints for uniqueness
+**Graph Schema**: ✅ `ExternalDoc` node with 8 properties ✅ `APIReference` node
+with 7 properties ✅ 3 relationship types (EXPLAINS, DOCUMENTS, SOURCED_FROM) ✅
+5 indexes for performance ✅ 2 constraints for uniqueness
 
-**Supported Sources**:
-✅ Python official documentation
-✅ MS Learn content
-✅ Library documentation (8 pre-configured)
-✅ GitHub examples
-✅ Custom URLs
+**Supported Sources**: ✅ Python official documentation ✅ MS Learn content ✅
+Library documentation (8 pre-configured) ✅ GitHub examples ✅ Custom URLs
 
 The implementation is **complete, tested, and production-ready**! 🎉

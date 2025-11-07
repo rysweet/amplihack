@@ -2,6 +2,8 @@
 
 This module orchestrates the complete Neo4j container detection and credential sync workflow.
 It provides the main entry point for the launcher integration.
+
+All user-facing messages are sent to stderr to keep stdout clean for programmatic use.
 """
 
 import sys
@@ -46,7 +48,13 @@ class Neo4jManager:
         5. Reports results
 
         Returns:
-            True if check completed successfully (even if no action taken)
+            True if the launcher should continue normally (successful completion or graceful degradation).
+            This return value indicates "the launcher should not crash" rather than "credentials were synced".
+            Returns True in all cases including: Docker unavailable, no containers found, user cancellation,
+            credential extraction failures, and successful synchronization. Only returns False if a critical
+            error occurred that would prevent the launcher from functioning, which should never happen
+            due to the try-except in this method. This design ensures the launcher is never disrupted
+            by Neo4j credential detection, even if all steps fail.
         """
         try:
             # Check Docker availability (fail gracefully if not available)
@@ -94,7 +102,7 @@ class Neo4jManager:
                 print(
                     "Warning: Could not extract credentials from container. "
                     "Please configure credentials manually.",
-                    file=sys.stderr
+                    file=sys.stderr,
                 )
             return True
 
@@ -111,10 +119,7 @@ class Neo4jManager:
 
         # Sync credentials
         success = self.credential_sync.sync_credentials(
-            container,
-            choice,
-            manual_username,
-            manual_password
+            container, choice, manual_username, manual_password
         )
 
         if success and self.interactive:
@@ -124,7 +129,7 @@ class Neo4jManager:
                 SyncChoice.KEEP_ENV: "Keeping existing Neo4j credentials.",
             }
             if choice in messages:
-                print(messages[choice])
+                print(messages[choice], file=sys.stderr)
 
         return success
 
@@ -140,22 +145,22 @@ class Neo4jManager:
         if not self.interactive:
             return containers[0]  # Default to first in non-interactive mode
 
-        print("\nMultiple Neo4j containers detected:")
+        print("\nMultiple Neo4j containers detected:", file=sys.stderr)
         for i, container in enumerate(containers, 1):
-            print(f"{i}. {container.name} ({container.status})")
+            print(f"{i}. {container.name} ({container.status})", file=sys.stderr)
 
         while True:
             try:
                 choice = input(f"\nSelect container (1-{len(containers)}) or 'q' to skip: ").strip()
 
-                if choice.lower() == 'q':
+                if choice.lower() == "q":
                     return None
 
                 idx = int(choice) - 1
                 if 0 <= idx < len(containers):
                     return containers[idx]
 
-                print(f"Invalid choice. Please enter 1-{len(containers)} or 'q'.")
+                print(f"Invalid choice. Please enter 1-{len(containers)} or 'q'.", file=sys.stderr)
 
             except (ValueError, KeyboardInterrupt):
                 return None
@@ -178,19 +183,19 @@ class Neo4jManager:
         # Check existing credentials
         has_existing = self.credential_sync.has_credentials()
 
-        print("\nNeo4j container detected with credentials.")
-        print(f"Container: {container.name}")
-        print(f"Username: {container.username}")
+        print("\nNeo4j container detected with credentials.", file=sys.stderr)
+        print(f"Container: {container.name}", file=sys.stderr)
+        print(f"Username: {container.username}", file=sys.stderr)
 
         if has_existing:
             env_username, _ = self.credential_sync.get_existing_credentials()
-            print(f"\nExisting .env credentials found (username: {env_username})")
+            print(f"\nExisting .env credentials found (username: {env_username})", file=sys.stderr)
 
-        print("\nCredential sync options:")
-        print("1. Use credentials from container")
-        print("2. Keep existing .env credentials")
-        print("3. Enter credentials manually")
-        print("4. Skip (don't sync)")
+        print("\nCredential sync options:", file=sys.stderr)
+        print("1. Use credentials from container", file=sys.stderr)
+        print("2. Keep existing .env credentials", file=sys.stderr)
+        print("3. Enter credentials manually", file=sys.stderr)
+        print("4. Skip (don't sync)", file=sys.stderr)
 
         while True:
             try:
@@ -198,16 +203,19 @@ class Neo4jManager:
 
                 if choice == "1":
                     return SyncChoice.USE_CONTAINER
-                elif choice == "2":
+                if choice == "2":
                     if has_existing:
                         return SyncChoice.KEEP_ENV
-                    print("No existing credentials found. Please choose another option.")
+                    print(
+                        "No existing credentials found. Please choose another option.",
+                        file=sys.stderr,
+                    )
                 elif choice == "3":
                     return SyncChoice.MANUAL
                 elif choice == "4":
                     return SyncChoice.SKIP
                 else:
-                    print("Invalid choice. Please enter 1-4.")
+                    print("Invalid choice. Please enter 1-4.", file=sys.stderr)
 
             except (KeyboardInterrupt, EOFError):
                 return SyncChoice.SKIP
@@ -221,27 +229,26 @@ class Neo4jManager:
         try:
             import getpass
 
-            print("\nEnter Neo4j credentials:")
+            print("\nEnter Neo4j credentials:", file=sys.stderr)
             username = input("Username: ").strip()
 
             if not username:
-                print("Username cannot be empty.")
+                print("Username cannot be empty.", file=sys.stderr)
                 return None, None
 
             password = getpass.getpass("Password: ")
 
             if not password:
-                print("Password cannot be empty.")
+                print("Password cannot be empty.", file=sys.stderr)
                 return None, None
 
             # Validate
             is_valid, error = self.credential_sync.validate_credentials(username, password)
             if not is_valid:
-                print(f"Invalid credentials: {error}")
+                print(f"Invalid credentials: {error}", file=sys.stderr)
                 return None, None
 
             return username, password
 
         except (KeyboardInterrupt, EOFError):
             return None, None
-

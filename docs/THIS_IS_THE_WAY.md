@@ -57,12 +57,14 @@ The `/amplihack:ultrathink` command is your power tool for complex, multi-step d
 ### When to Use UltraThink
 
 **Perfect for:**
+
 - Multi-step features requiring planning, implementation, testing, and documentation
 - Complex refactoring across multiple modules
 - Creating new features that need architecture design first
 - Tasks that benefit from parallel agent execution
 
 **Skip for:**
+
 - Single file edits
 - Simple bug fixes
 - Straightforward documentation updates
@@ -71,6 +73,7 @@ The `/amplihack:ultrathink` command is your power tool for complex, multi-step d
 ### UltraThink Best Practices
 
 **1. Be Specific About Requirements:**
+
 ```
 /amplihack:ultrathink Add user authentication with JWT tokens. Must support:
 - Token refresh mechanism
@@ -80,6 +83,7 @@ The `/amplihack:ultrathink` command is your power tool for complex, multi-step d
 ```
 
 **2. Provide Context:**
+
 ```
 /amplihack:ultrathink Looking at @src/api/endpoints.py, add rate limiting.
 Use the existing middleware pattern and integrate with Redis.
@@ -88,6 +92,7 @@ Follow the pattern in @src/middleware/auth.py.
 
 **3. Trust the Workflow:**
 UltraThink follows the DEFAULT_WORKFLOW.md pattern:
+
 - Creates GitHub issues
 - Sets up worktrees
 - Implements with TDD
@@ -103,6 +108,7 @@ Let it orchestrate—don't micromanage the steps.
 Amplihack provides specialized agents for different tasks. Understanding when to use each one accelerates development.
 
 **Core Workflow Agents:**
+
 - **prompt-writer**: Clarify and structure task requirements
 - **architect**: Design system architecture and module structure
 - **builder**: Implement code from specifications
@@ -110,6 +116,7 @@ Amplihack provides specialized agents for different tasks. Understanding when to
 - **cleanup**: Ruthless simplification and philosophy compliance
 
 **Specialized Agents:**
+
 - **knowledge-builder**: Build comprehensive knowledge bases
 - **worktree-manager**: Manage git worktrees and branches
 - **ci-diagnostic-workflow**: Debug CI/CD failures
@@ -119,17 +126,20 @@ Amplihack provides specialized agents for different tasks. Understanding when to
 ### Agent Invocation Patterns
 
 **Direct invocation** for specific tasks:
+
 ```
 Can you have the security agent review @src/auth/jwt.py for vulnerabilities?
 ```
 
 **Workflow invocation** for complex tasks:
+
 ```
 /amplihack:ultrathink [task description]
 # UltraThink will invoke appropriate agents automatically
 ```
 
 **Parallel agent execution** for speed:
+
 ```
 Please run these agents in parallel:
 1. reviewer agent on @src/api/
@@ -146,6 +156,7 @@ Amplihack follows the philosophy documented in `.claude/context/PHILOSOPHY.md`. 
 **1. Start Minimal, Grow as Needed**
 
 ❌ **Don't do this:**
+
 ```python
 # Create generic, future-proof abstraction
 class DataStore(ABC):
@@ -160,6 +171,7 @@ class DataStore(ABC):
 ```
 
 ✅ **Do this:**
+
 ```python
 # Simple, direct implementation
 def save_config(config: dict, path: Path) -> None:
@@ -172,6 +184,7 @@ def load_config(path: Path) -> dict:
 **2. No Placeholders or TODOs**
 
 ❌ **Don't do this:**
+
 ```python
 def process_data(data):
     # TODO: Add validation
@@ -180,6 +193,7 @@ def process_data(data):
 ```
 
 ✅ **Do this:**
+
 ```python
 def process_data(data: list[dict]) -> list[dict]:
     if not data:
@@ -190,6 +204,7 @@ def process_data(data: list[dict]) -> list[dict]:
 **3. Explicit Error Handling**
 
 ❌ **Don't do this:**
+
 ```python
 try:
     result = dangerous_operation()
@@ -198,6 +213,7 @@ except:
 ```
 
 ✅ **Do this:**
+
 ```python
 try:
     result = dangerous_operation()
@@ -225,6 +241,7 @@ Amplihack uses git worktrees for parallel development. This enables working on m
 ### The Worktree Pattern
 
 **Standard structure:**
+
 ```
 ./worktrees/
 ├── feat/issue-123-auth-system/
@@ -234,12 +251,14 @@ Amplihack uses git worktrees for parallel development. This enables working on m
 ```
 
 **Using the worktree-manager agent:**
+
 ```
 Please have the worktree-manager create a worktree for implementing user authentication.
 This is for issue #123.
 ```
 
 The agent will:
+
 1. Create worktree at `./worktrees/feat/issue-123-user-authentication/`
 2. Create and push branch `feat/issue-123-user-authentication`
 3. Set up tracking with remote
@@ -247,6 +266,7 @@ The agent will:
 ### Working Across Worktrees
 
 **Switch between worktrees:**
+
 ```bash
 cd worktrees/feat/issue-123-auth-system/
 # Work on auth
@@ -256,6 +276,7 @@ cd ../feat/issue-456-api-refactor/
 ```
 
 **Cleanup merged worktrees:**
+
 ```bash
 git worktree prune
 ```
@@ -267,6 +288,7 @@ When working with large codebases, context limits become real constraints.
 ### Strategies for Context Management
 
 **1. Use Targeted Reads**
+
 ```
 Read just the files I need:
 @src/auth/jwt.py
@@ -277,12 +299,14 @@ Not the entire src/ directory.
 ```
 
 **2. Leverage Agent Memory**
+
 ```
 First, have the knowledge-builder agent create a knowledge base of @src/api/.
 Then use that knowledge base for subsequent questions.
 ```
 
 **3. Work in Vertical Slices**
+
 ```
 Let's implement user registration end-to-end first:
 - API endpoint
@@ -296,16 +320,20 @@ Then we'll do login as a separate slice.
 **4. Use Session State**
 
 Maintain `ai_working/session_state.md` with current context:
+
 ```markdown
 ## Current Focus
+
 Implementing JWT authentication
 
 ## Recent Decisions
+
 - Using RS256 algorithm (not HS256) for better key management
 - Token expiry: 15 minutes access, 7 days refresh
 - Storing refresh tokens in Redis, not database
 
 ## Next Steps
+
 1. Implement token refresh endpoint
 2. Add middleware for token validation
 3. Write integration tests
@@ -325,6 +353,7 @@ Amplihack enforces test-driven development through the workflow.
 ```
 
 **Unit tests** for business logic:
+
 ```python
 def test_generate_jwt_token():
     token = generate_jwt(user_id="123", role="admin")
@@ -334,6 +363,7 @@ def test_generate_jwt_token():
 ```
 
 **Integration tests** for system interactions:
+
 ```python
 def test_authentication_flow(client):
     # Register
@@ -350,6 +380,7 @@ def test_authentication_flow(client):
 ```
 
 **End-to-end tests** for critical flows:
+
 ```python
 def test_complete_user_journey():
     # Registration → Login → Profile Update → Logout
@@ -379,18 +410,21 @@ Amplihack's workflow enforces quality gates through CI/CD and pre-commit hooks.
 ### Pre-commit Hook Success
 
 **If pre-commit fails:**
+
 1. The workflow will automatically fix what it can (formatting, imports)
 2. Review the changes
 3. Fix any remaining issues (type errors, linting)
 4. Re-run: `pre-commit run --all-files`
 
 **Common failures:**
+
 - **Ruff linting**: Code style violations
 - **Type checking**: mypy or pyright errors
 - **Import sorting**: isort violations
 - **Formatting**: Black/Prettier violations
 
 **Using the pre-commit-diagnostic agent:**
+
 ```
 Pre-commit is failing on the type-check hook.
 Can you have the pre-commit-diagnostic agent investigate and fix it?
@@ -406,6 +440,7 @@ Can you have the ci-diagnostic-workflow agent investigate and fix the issues?
 ```
 
 The agent will:
+
 1. Fetch CI logs
 2. Identify failure root cause
 3. Implement fixes
@@ -419,26 +454,32 @@ Amplihack improves itself through usage. You're part of that process.
 ### Contributing to Amplihack
 
 **Found a useful pattern?** Document it in `docs/DISCOVERIES.md`:
+
 ```markdown
 ## [Problem Title] (YYYY-MM-DD)
 
 ### Issue
+
 [What went wrong]
 
 ### Solution
+
 [How you fixed it]
 
 ### Key Learnings
+
 [What you learned]
 ```
 
 **Created a useful agent?** Consider contributing:
+
 1. Document the agent's purpose and use cases
 2. Provide examples of invocation
 3. Test with multiple scenarios
 4. Submit a PR
 
 **Improved a workflow?** Update the relevant documentation:
+
 - `DEFAULT_WORKFLOW.md` for process improvements
 - `PHILOSOPHY.md` for principle refinements
 - `THIS_IS_THE_WAY.md` for practical patterns

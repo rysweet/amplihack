@@ -69,18 +69,21 @@ neo4j/
 ### Module Responsibilities
 
 **detector.py**
+
 - Detect Docker availability
 - Find amplihack Neo4j containers
 - Extract credentials from containers
 - Parse port mappings
 
 **credential_sync.py**
+
 - Read/write .env files securely
 - Validate credentials
 - Atomic file operations
 - Handle 4 sync choices
 
 **manager.py**
+
 - Orchestrate complete workflow
 - Handle user interaction
 - Coordinate detector and sync
@@ -95,6 +98,7 @@ When credentials need synchronization, users get 4 options:
 Syncs the credentials detected in the running container to your `.env` file.
 
 **When to use:**
+
 - First time setup
 - Container has updated credentials
 - Want to match container exactly
@@ -104,6 +108,7 @@ Syncs the credentials detected in the running container to your `.env` file.
 Keeps your current `.env` credentials unchanged.
 
 **When to use:**
+
 - Happy with current credentials
 - .env has custom credentials
 - Don't want to change anything
@@ -113,6 +118,7 @@ Keeps your current `.env` credentials unchanged.
 Prompts you to enter username and password.
 
 **When to use:**
+
 - Want different credentials
 - Container has no credentials
 - Need to update both container and .env
@@ -122,6 +128,7 @@ Prompts you to enter username and password.
 Skips synchronization entirely.
 
 **When to use:**
+
 - Will configure later
 - Using different credential source
 - Testing without Neo4j
@@ -338,6 +345,7 @@ for c in status['containers']:
 **Problem:** "Docker is not available"
 
 **Solutions:**
+
 1. Start Docker Desktop
 2. Check Docker is in PATH: `which docker`
 3. Verify Docker is running: `docker info`
@@ -347,11 +355,12 @@ for c in status['containers']:
 **Problem:** No amplihack Neo4j containers detected
 
 **Solutions:**
+
 1. Check container name matches patterns:
    - amplihack-neo4j
    - neo4j-amplihack
-   - amplihack.*neo4j
-   - neo4j.*amplihack
+   - amplihack.\*neo4j
+   - neo4j.\*amplihack
 2. Verify container is running: `docker ps | grep neo4j`
 3. Check container image: `docker inspect <container> | grep Image`
 
@@ -360,6 +369,7 @@ for c in status['containers']:
 **Problem:** Can't write to .env file
 
 **Solutions:**
+
 1. Check file ownership: `ls -l .env`
 2. Check permissions: Should be 0600 (rw-------)
 3. Fix: `chmod 600 .env`
@@ -370,6 +380,7 @@ for c in status['containers']:
 **Problem:** Credentials validation fails
 
 **Requirements:**
+
 - Username: 1-64 chars, no special chars (\n, \r, \0, =, #)
 - Password: 8-128 chars, no null bytes
 
@@ -397,6 +408,7 @@ pyright src/amplihack/neo4j/ --pythonpath src
 ### Code Style
 
 Follows project conventions:
+
 - Zero-BS: No stubs, all code works
 - Ruthless simplicity: Direct implementations
 - Modular design: Clear boundaries

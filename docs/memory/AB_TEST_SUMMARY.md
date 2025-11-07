@@ -15,6 +15,7 @@
 **Key Question**: Does memory provide measurable value?
 
 **Answer Approach**:
+
 1. Run baseline tests (no memory) - 3 weeks
 2. Run SQLite memory tests - 3 weeks
 3. Statistical comparison with 95% confidence
@@ -25,10 +26,12 @@
 ### For Implementers
 
 **Start Here**:
+
 1. [Test Design](EFFECTIVENESS_TEST_DESIGN.md) - Complete methodology
 2. [Test Harness](../scripts/memory_test_harness.py) - Skeleton implementation
 
 **Next Steps**:
+
 1. Review and approve test design
 2. Implement scenario execution logic
 3. Run baseline tests (Phase 1)
@@ -43,6 +46,7 @@
 **File**: `docs/memory/EFFECTIVENESS_TEST_DESIGN.md`
 
 **Contents**:
+
 - Complete A/B test methodology
 - 10 realistic test scenarios
 - Statistical analysis approach
@@ -51,6 +55,7 @@
 - Risk assessment and mitigation
 
 **Key Features**:
+
 - **Three-way comparison**: Control, SQLite, Neo4j
 - **Statistical rigor**: Proper sample sizes, confidence intervals
 - **Fair comparison**: Controlled variables, randomization
@@ -61,6 +66,7 @@
 **File**: `scripts/memory_test_harness.py`
 
 **What's Implemented**:
+
 - ✅ Data models (TestRun, Metrics, Scenarios)
 - ✅ Metrics collection framework
 - ✅ Statistical analysis (t-tests, effect sizes, power analysis)
@@ -70,6 +76,7 @@
 - ✅ CLI interface
 
 **What Needs Implementation**:
+
 - ⏳ Actual scenario execution logic
 - ⏳ Integration with amplihack agents
 - ⏳ Automated code quality analysis
@@ -82,11 +89,11 @@
 
 ### Three Configurations
 
-| Configuration | Description | Purpose |
-|---------------|-------------|---------|
-| **Control** | No memory system | Establish if memory provides value |
-| **SQLite** | SQLite-based memory | Measure basic memory effectiveness |
-| **Neo4j** | Neo4j-based memory | Measure graph capabilities value |
+| Configuration | Description         | Purpose                            |
+| ------------- | ------------------- | ---------------------------------- |
+| **Control**   | No memory system    | Establish if memory provides value |
+| **SQLite**    | SQLite-based memory | Measure basic memory effectiveness |
+| **Neo4j**     | Neo4j-based memory  | Measure graph capabilities value   |
 
 ### Four Phases
 
@@ -130,6 +137,7 @@ Phase 4: Final Report + Recommendation
 10. **Performance Optimization** - Recall previous optimization strategies
 
 Each scenario:
+
 - Runs 5 times per configuration
 - Has clear success criteria
 - Measures time, quality, errors, memory usage
@@ -141,12 +149,14 @@ Each scenario:
 ### Primary Metrics (Automated)
 
 **Time Metrics**:
+
 - Total execution time
 - Time to first action
 - Decision time
 - Implementation time
 
 **Quality Metrics**:
+
 - Test pass rate
 - Code complexity
 - Error count
@@ -154,12 +164,14 @@ Each scenario:
 - PyLint score
 
 **Memory Metrics**:
+
 - Memory retrievals
 - Memory hits
 - Memory applied
 - Retrieval time
 
 **Output Metrics**:
+
 - Lines of code
 - Files modified
 - Test coverage
@@ -186,12 +198,14 @@ Each scenario:
 ### Decision Criteria
 
 **Proceed with SQLite if**:
+
 - ✅ Statistical significance (p < 0.05)
 - ✅ Medium-to-large effect (d > 0.5)
 - ✅ Practical benefit (>20% time reduction)
 - ✅ No negative side effects
 
 **Proceed with Neo4j if**:
+
 - ✅ Statistical significance vs SQLite
 - ✅ Meaningful improvement (>15% over SQLite)
 - ✅ Benefit justifies complexity
@@ -199,40 +213,45 @@ Each scenario:
 
 ### Effect Size Interpretation
 
-| Cohen's d | Interpretation | Action |
-|-----------|----------------|--------|
-| < 0.2 | Negligible | Stop or adjust |
-| 0.2 - 0.5 | Small | Consider alternatives |
-| 0.5 - 0.8 | Medium | **Proceed** ✅ |
-| > 0.8 | Large | **Strong proceed** ✅✅ |
+| Cohen's d | Interpretation | Action                  |
+| --------- | -------------- | ----------------------- |
+| < 0.2     | Negligible     | Stop or adjust          |
+| 0.2 - 0.5 | Small          | Consider alternatives   |
+| 0.5 - 0.8 | Medium         | **Proceed** ✅          |
+| > 0.8     | Large          | **Strong proceed** ✅✅ |
 
 ---
 
 ## Implementation Timeline
 
 ### Week 1-2: Test Harness Development
+
 - Implement scenario execution logic
 - Integrate with amplihack agents
 - Add automated code analysis
 - Validate with dry runs
 
 ### Week 3: Phase 1 - Baseline Testing
+
 - Run 50 control tests (no memory)
 - Collect all metrics
 - Analyze baseline statistics
 - Document baseline results
 
 ### Week 4: Phase 2 - SQLite Testing
+
 - Run 50 SQLite memory tests
 - Statistical comparison to baseline
 - **Decision Gate**: Proceed to Phase 3?
 
 ### Week 5: Phase 3 - Neo4j Testing (conditional)
+
 - Run 50 Neo4j memory tests (if Phase 2 succeeds)
 - Statistical comparison to SQLite
 - **Decision Gate**: Recommend Neo4j?
 
 ### Week 6: Phase 4 - Analysis & Reporting
+
 - Comprehensive analysis
 - Generate visualizations
 - Write final report
@@ -248,20 +267,20 @@ Based on research findings, we hypothesize:
 
 ### Memory vs No Memory (Control vs SQLite)
 
-| Metric | Expected Improvement | Confidence |
-|--------|---------------------|-----------|
-| Execution Time | **-20% to -35%** | Medium |
-| Error Count | **-50% to -70%** | High |
-| Quality Score | **+25% to +40%** | Medium |
-| Pattern Reuse | **+60% to +80%** | High |
+| Metric         | Expected Improvement | Confidence |
+| -------------- | -------------------- | ---------- |
+| Execution Time | **-20% to -35%**     | Medium     |
+| Error Count    | **-50% to -70%**     | High       |
+| Quality Score  | **+25% to +40%**     | Medium     |
+| Pattern Reuse  | **+60% to +80%**     | High       |
 
 ### Neo4j vs SQLite
 
-| Metric | Expected Improvement | Confidence |
-|--------|---------------------|-----------|
-| Execution Time | **-5% to -15%** | Low-Medium |
-| Query Performance | **-10% to -30%** | Medium (at scale) |
-| Graph Queries | **+40% to +60%** | High (if needed) |
+| Metric            | Expected Improvement | Confidence        |
+| ----------------- | -------------------- | ----------------- |
+| Execution Time    | **-5% to -15%**      | Low-Medium        |
+| Query Performance | **-10% to -30%**     | Medium (at scale) |
+| Graph Queries     | **+40% to +60%**     | High (if needed)  |
 
 **Key Insight**: Neo4j benefit only appears at scale (>100k nodes) or when graph traversal is critical.
 
@@ -271,13 +290,13 @@ Based on research findings, we hypothesize:
 
 ### Overall Risk: MEDIUM (Manageable)
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Insufficient samples | Low | Medium | Run additional iterations if needed |
-| Confounding variables | Medium | High | Strict environment control |
-| Test harness bugs | Medium | Medium | Extensive validation before main runs |
-| Long test duration | Medium | Low | Parallelize where possible |
-| Memory provides no value | Low | High | **Decision gates prevent over-investment** |
+| Risk                     | Probability | Impact | Mitigation                                 |
+| ------------------------ | ----------- | ------ | ------------------------------------------ |
+| Insufficient samples     | Low         | Medium | Run additional iterations if needed        |
+| Confounding variables    | Medium      | High   | Strict environment control                 |
+| Test harness bugs        | Medium      | Medium | Extensive validation before main runs      |
+| Long test duration       | Medium      | Low    | Parallelize where possible                 |
+| Memory provides no value | Low         | High   | **Decision gates prevent over-investment** |
 
 ---
 
@@ -306,6 +325,7 @@ Based on research findings, we hypothesize:
 **Decision**: Test Control, SQLite, AND Neo4j
 
 **Rationale**:
+
 - Establishes if memory provides ANY value (Control vs SQLite)
 - Establishes if Neo4j provides INCREMENTAL value (SQLite vs Neo4j)
 - Prevents premature optimization (start with SQLite)
@@ -315,6 +335,7 @@ Based on research findings, we hypothesize:
 **Decision**: Phase 2 gates Phase 3
 
 **Rationale**:
+
 - Don't test Neo4j if SQLite fails to show benefit
 - Prevents wasted effort on advanced system if basic doesn't work
 - Aligns with project philosophy (ruthless simplicity)
@@ -324,6 +345,7 @@ Based on research findings, we hypothesize:
 **Decision**: 10 scenarios × 5 iterations = 50 runs
 
 **Rationale**:
+
 - 75% power to detect 20% improvement
 - Reasonable time investment (8-10 hours per config)
 - Better than 64 (80% power) would require
@@ -333,6 +355,7 @@ Based on research findings, we hypothesize:
 **Decision**: Use paired t-test comparing same scenarios
 
 **Rationale**:
+
 - Higher statistical power (controls for scenario difficulty)
 - More sensitive to differences
 - Appropriate for within-subjects design
@@ -342,6 +365,7 @@ Based on research findings, we hypothesize:
 **Decision**: Test harness uses mock data until scenarios implemented
 
 **Rationale**:
+
 - Can validate statistical analysis independently
 - Can test harness orchestration
 - Realistic metrics can be swapped in later
@@ -391,6 +415,7 @@ Based on research findings, we hypothesize:
 ### Q: Why not just implement memory and see if it works?
 
 **A**: Because:
+
 1. "See if it works" is subjective - we need objective measures
 2. Without baseline, can't prove memory is the improvement factor
 3. Statistical rigor prevents confirmation bias
@@ -399,6 +424,7 @@ Based on research findings, we hypothesize:
 ### Q: Why test Neo4j if research says SQLite is sufficient?
 
 **A**: Because:
+
 1. Research is theoretical - testing validates assumptions
 2. May discover graph benefits not anticipated
 3. Provides data for future migration decision
@@ -407,6 +433,7 @@ Based on research findings, we hypothesize:
 ### Q: What if SQLite shows no benefit?
 
 **A**: Then we:
+
 1. Stop testing (don't proceed to Neo4j)
 2. Investigate WHY (wrong metrics? bad scenarios? memory not helpful?)
 3. Adjust approach or abandon memory system
@@ -415,6 +442,7 @@ Based on research findings, we hypothesize:
 ### Q: 50 runs seems like a lot - can we use fewer?
 
 **A**: We could, but:
+
 - 30 runs → 60% power (too low)
 - 40 runs → 70% power (marginal)
 - 50 runs → 75% power (acceptable)
@@ -425,6 +453,7 @@ Based on research findings, we hypothesize:
 ### Q: How do we ensure fair comparison?
 
 **A**: By:
+
 1. Same scenarios across all configs
 2. Same agent prompts
 3. Same environment (machine, model)

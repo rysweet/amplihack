@@ -67,7 +67,7 @@ class CredentialSync:
             username = None
             password = None
 
-            with open(self.env_file, "r") as f:
+            with open(self.env_file) as f:
                 for line in f:
                     line = line.strip()
 
@@ -148,7 +148,7 @@ class CredentialSync:
         container: Neo4jContainer,
         choice: SyncChoice,
         manual_username: Optional[str] = None,
-        manual_password: Optional[str] = None
+        manual_password: Optional[str] = None,
     ) -> bool:
         """Synchronize credentials based on user choice.
 
@@ -214,7 +214,7 @@ class CredentialSync:
             existing_lines = []
             if self.env_file.exists():
                 try:
-                    with open(self.env_file, "r") as f:
+                    with open(self.env_file) as f:
                         existing_lines = f.readlines()
                 except (OSError, PermissionError):
                     # Can't read existing file, start fresh
@@ -224,7 +224,9 @@ class CredentialSync:
             filtered_lines = []
             for line in existing_lines:
                 stripped = line.strip()
-                if not stripped.startswith("NEO4J_USERNAME=") and not stripped.startswith("NEO4J_PASSWORD="):
+                if not stripped.startswith("NEO4J_USERNAME=") and not stripped.startswith(
+                    "NEO4J_PASSWORD="
+                ):
                     filtered_lines.append(line)
 
             # Write to temporary file

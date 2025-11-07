@@ -57,8 +57,7 @@ def extract_learnings(
     learnings = [l for l in learnings if _is_substantial(l["content"])]
 
     logger.debug(
-        f"Extracted {len(learnings)} learnings from {agent_type} output "
-        f"(category: {task_category})"
+        f"Extracted {len(learnings)} learnings from {agent_type} output (category: {task_category})"
     )
 
     return learnings
@@ -75,19 +74,23 @@ def _extract_decisions(output: str, category: str) -> List[Dict[str, Any]]:
     learnings = []
 
     # Pattern 1: Structured decision format (from DECISIONS.md)
-    decision_pattern = r"##\s+Decision\s*\d*:?\s*([^\n]+)\n\*\*What\*\*:([^\n]+)\n\*\*Why\*\*:([^\n]+)"
+    decision_pattern = (
+        r"##\s+Decision\s*\d*:?\s*([^\n]+)\n\*\*What\*\*:([^\n]+)\n\*\*Why\*\*:([^\n]+)"
+    )
     for match in re.finditer(decision_pattern, output, re.IGNORECASE):
         title = match.group(1).strip()
         what = match.group(2).strip()
         why = match.group(3).strip()
 
-        learnings.append({
-            "type": "decision",
-            "content": f"{title}: {what}",
-            "reasoning": why,
-            "category": category,
-            "confidence": 0.85,  # High confidence - structured format
-        })
+        learnings.append(
+            {
+                "type": "decision",
+                "content": f"{title}: {what}",
+                "reasoning": why,
+                "category": category,
+                "confidence": 0.85,  # High confidence - structured format
+            }
+        )
 
     # Pattern 2: Inline decision statements
     inline_pattern = r"(?:Decision|Decided) to ([^.!?\n]{20,}?)(?:\.|because|since) ([^.!?\n]{20,})"
@@ -95,13 +98,15 @@ def _extract_decisions(output: str, category: str) -> List[Dict[str, Any]]:
         decision = match.group(1).strip()
         reasoning = match.group(2).strip()
 
-        learnings.append({
-            "type": "decision",
-            "content": f"Decided to {decision}",
-            "reasoning": reasoning,
-            "category": category,
-            "confidence": 0.75,
-        })
+        learnings.append(
+            {
+                "type": "decision",
+                "content": f"Decided to {decision}",
+                "reasoning": reasoning,
+                "category": category,
+                "confidence": 0.75,
+            }
+        )
 
     return learnings
 
@@ -117,29 +122,35 @@ def _extract_recommendations(output: str, category: str) -> List[Dict[str, Any]]
     learnings = []
 
     # Pattern 1: Bulleted recommendations
-    rec_section_pattern = r"##\s+(?:Recommendation|Best Practice|Key Points?)s?:?\s*\n((?:[-*]\s+[^\n]+\n?)+)"
+    rec_section_pattern = (
+        r"##\s+(?:Recommendation|Best Practice|Key Points?)s?:?\s*\n((?:[-*]\s+[^\n]+\n?)+)"
+    )
     for match in re.finditer(rec_section_pattern, output, re.IGNORECASE):
         items = re.findall(r"[-*]\s+([^\n]+)", match.group(1))
         for item in items:
             if len(item) > 20:  # Substantial content
-                learnings.append({
-                    "type": "recommendation",
-                    "content": item.strip(),
-                    "category": category,
-                    "confidence": 0.75,
-                })
+                learnings.append(
+                    {
+                        "type": "recommendation",
+                        "content": item.strip(),
+                        "category": category,
+                        "confidence": 0.75,
+                    }
+                )
 
     # Pattern 2: Inline recommendations
     inline_pattern = r"(?:Should always|Always|Recommend|Best practice:?)\s+([^.!?\n]{30,})"
     for match in re.finditer(inline_pattern, output, re.IGNORECASE):
         recommendation = match.group(1).strip()
 
-        learnings.append({
-            "type": "recommendation",
-            "content": recommendation,
-            "category": category,
-            "confidence": 0.70,
-        })
+        learnings.append(
+            {
+                "type": "recommendation",
+                "content": recommendation,
+                "category": category,
+                "confidence": 0.70,
+            }
+        )
 
     return learnings
 
@@ -160,12 +171,14 @@ def _extract_anti_patterns(output: str, category: str) -> List[Dict[str, Any]]:
     for match in re.finditer(warning_pattern, output, re.IGNORECASE):
         warning = match.group(1).strip()
 
-        learnings.append({
-            "type": "anti_pattern",
-            "content": warning,
-            "category": category,
-            "confidence": 0.85,  # High confidence - explicit warnings
-        })
+        learnings.append(
+            {
+                "type": "anti_pattern",
+                "content": warning,
+                "category": category,
+                "confidence": 0.85,  # High confidence - explicit warnings
+            }
+        )
 
     # Pattern 2: Avoid/Never statements
     avoid_pattern = r"(?:Avoid|Never|Don't)\s+([^.!?\n]{30,}?)(?:\.|because) ([^.!?\n]{20,})"
@@ -173,13 +186,15 @@ def _extract_anti_patterns(output: str, category: str) -> List[Dict[str, Any]]:
         action = match.group(1).strip()
         reasoning = match.group(2).strip()
 
-        learnings.append({
-            "type": "anti_pattern",
-            "content": f"Avoid: {action}",
-            "reasoning": reasoning,
-            "category": category,
-            "confidence": 0.80,
-        })
+        learnings.append(
+            {
+                "type": "anti_pattern",
+                "content": f"Avoid: {action}",
+                "reasoning": reasoning,
+                "category": category,
+                "confidence": 0.80,
+            }
+        )
 
     return learnings
 
@@ -195,17 +210,21 @@ def _extract_error_solutions(output: str, category: str) -> List[Dict[str, Any]]
     learnings = []
 
     # Pattern: Problem-solution pairs
-    problem_solution_pattern = r"(?:Error|Issue|Problem|Bug):([^\n]{20,})\n+(?:Solution|Fix|Resolution):([^\n]{20,})"
+    problem_solution_pattern = (
+        r"(?:Error|Issue|Problem|Bug):([^\n]{20,})\n+(?:Solution|Fix|Resolution):([^\n]{20,})"
+    )
     for match in re.finditer(problem_solution_pattern, output, re.IGNORECASE):
         problem = match.group(1).strip()
         solution = match.group(2).strip()
 
-        learnings.append({
-            "type": "error_solution",
-            "content": f"Error: {problem} | Solution: {solution}",
-            "category": "error_handling",  # Force category
-            "confidence": 0.90,  # High confidence - structured format
-        })
+        learnings.append(
+            {
+                "type": "error_solution",
+                "content": f"Error: {problem} | Solution: {solution}",
+                "category": "error_handling",  # Force category
+                "confidence": 0.90,  # High confidence - structured format
+            }
+        )
 
     return learnings
 
@@ -225,12 +244,14 @@ def _extract_implementation_patterns(output: str, category: str) -> List[Dict[st
     for match in re.finditer(pattern_match, output, re.IGNORECASE):
         pattern = match.group(1).strip()
 
-        learnings.append({
-            "type": "pattern",
-            "content": pattern,
-            "category": category,
-            "confidence": 0.75,
-        })
+        learnings.append(
+            {
+                "type": "pattern",
+                "content": pattern,
+                "category": category,
+                "confidence": 0.75,
+            }
+        )
 
     return learnings
 
@@ -250,24 +271,28 @@ def _extract_diagnostic_patterns(output: str, category: str) -> List[Dict[str, A
     for match in re.finditer(root_cause_pattern, output, re.IGNORECASE):
         cause = match.group(1).strip()
 
-        learnings.append({
-            "type": "procedural",
-            "content": f"Root cause: {cause}",
-            "category": "error_handling",
-            "confidence": 0.80,
-        })
+        learnings.append(
+            {
+                "type": "procedural",
+                "content": f"Root cause: {cause}",
+                "category": "error_handling",
+                "confidence": 0.80,
+            }
+        )
 
     # Pattern: Test strategies
     test_strategy_pattern = r"Test strategy:?\s+([^\n]{30,})"
     for match in re.finditer(test_strategy_pattern, output, re.IGNORECASE):
         strategy = match.group(1).strip()
 
-        learnings.append({
-            "type": "procedural",
-            "content": f"Test strategy: {strategy}",
-            "category": "testing",
-            "confidence": 0.75,
-        })
+        learnings.append(
+            {
+                "type": "procedural",
+                "content": f"Test strategy: {strategy}",
+                "category": "testing",
+                "confidence": 0.75,
+            }
+        )
 
     return learnings
 
@@ -299,7 +324,7 @@ def _is_substantial(content: str) -> bool:
         return False
 
     # Check if it has actual words
-    words = re.findall(r'\w+', content)
+    words = re.findall(r"\w+", content)
     if len(words) < 5:
         return False
 

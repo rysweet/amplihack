@@ -8,12 +8,12 @@ Uses testcontainers when available, falls back to requiring real Docker.
 import pytest
 import time
 import subprocess
-from pathlib import Path
 
 
 # =============================================================================
 # Neo4j Container Fixtures (using testcontainers or real Docker)
 # =============================================================================
+
 
 @pytest.fixture(scope="session")
 def neo4j_test_container():
@@ -54,12 +54,7 @@ def neo4j_test_container():
 def docker_available():
     """Check if Docker is available for integration tests."""
     try:
-        result = subprocess.run(
-            ["docker", "ps"],
-            capture_output=True,
-            timeout=5,
-            check=True
-        )
+        result = subprocess.run(["docker", "ps"], capture_output=True, timeout=5, check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         pytest.skip("Docker not available - skipping integration tests")
@@ -85,6 +80,7 @@ def neo4j_connection_params(docker_available):
 # =============================================================================
 # Container Manager Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def container_manager():
@@ -119,6 +115,7 @@ def running_neo4j_container(container_manager):
 # =============================================================================
 # Neo4j Connection Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def neo4j_connector(neo4j_connection_params):
@@ -171,6 +168,7 @@ def clean_neo4j_db(neo4j_connector):
 # Schema Manager Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def schema_manager(neo4j_connector):
     """Provide SchemaManager instance."""
@@ -196,6 +194,7 @@ def initialized_schema(schema_manager):
 # Dependency Agent Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def dependency_agent():
     """Provide DependencyAgent instance."""
@@ -208,6 +207,7 @@ def dependency_agent():
 # =============================================================================
 # Test Data Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def test_memory_data():
@@ -238,6 +238,7 @@ def test_agent_type_data():
 # Performance Testing Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def performance_benchmark():
     """Helper for performance benchmarking in integration tests."""
@@ -249,6 +250,7 @@ def performance_benchmark():
 
         def measure(self, name):
             """Context manager for measuring operation time."""
+
             class Timer:
                 def __init__(self, benchmark, name):
                     self.benchmark = benchmark
@@ -269,8 +271,7 @@ def performance_benchmark():
             """Assert that operation completed within time limit."""
             actual_ms = self.results.get(name)
             assert actual_ms is not None, f"No measurement for {name}"
-            assert actual_ms < max_ms, \
-                f"{name} took {actual_ms:.2f}ms (limit: {max_ms}ms)"
+            assert actual_ms < max_ms, f"{name} took {actual_ms:.2f}ms (limit: {max_ms}ms)"
 
     return Benchmark()
 
@@ -279,6 +280,7 @@ def performance_benchmark():
 # Cleanup Helpers
 # =============================================================================
 
+
 @pytest.fixture
 def cleanup_test_containers():
     """Ensure test containers are cleaned up after session."""
@@ -286,11 +288,7 @@ def cleanup_test_containers():
 
     # Session cleanup
     try:
-        subprocess.run(
-            ["docker", "rm", "-f", "test-neo4j"],
-            capture_output=True,
-            timeout=10
-        )
+        subprocess.run(["docker", "rm", "-f", "test-neo4j"], capture_output=True, timeout=10)
     except Exception:
         pass  # Best effort cleanup
 
@@ -303,9 +301,7 @@ def cleanup_test_volumes():
     # Remove test volumes
     try:
         subprocess.run(
-            ["docker", "volume", "rm", "-f", "test_neo4j_data"],
-            capture_output=True,
-            timeout=10
+            ["docker", "volume", "rm", "-f", "test_neo4j_data"], capture_output=True, timeout=10
         )
     except Exception:
         pass  # Best effort cleanup
@@ -315,17 +311,13 @@ def cleanup_test_volumes():
 # Skip Markers
 # =============================================================================
 
+
 @pytest.fixture(autouse=True)
 def skip_if_docker_unavailable(request):
     """Auto-skip integration tests if Docker is not available."""
     if request.node.get_closest_marker("integration"):
         try:
-            subprocess.run(
-                ["docker", "ps"],
-                capture_output=True,
-                timeout=5,
-                check=True
-            )
+            subprocess.run(["docker", "ps"], capture_output=True, timeout=5, check=True)
         except Exception:
             pytest.skip("Docker not available - skipping integration test")
 
@@ -333,6 +325,7 @@ def skip_if_docker_unavailable(request):
 # =============================================================================
 # Logging Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def integration_test_logger(tmp_path):
@@ -347,9 +340,7 @@ def integration_test_logger(tmp_path):
     handler = logging.FileHandler(log_file)
     handler.setLevel(logging.DEBUG)
 
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
 
     logger.addHandler(handler)

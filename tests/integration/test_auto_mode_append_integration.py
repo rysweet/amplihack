@@ -12,9 +12,8 @@ Following TDD approach - these tests should FAIL initially until all components 
 import sys
 import tempfile
 import time
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -77,10 +76,7 @@ class TestFullWorkflowStartAutoAppendProcess:
         original_prompt = "Implement authentication system"
 
         auto_mode = AutoMode(
-            sdk="claude",
-            prompt=original_prompt,
-            max_turns=3,
-            working_dir=workspace
+            sdk="claude", prompt=original_prompt, max_turns=3, working_dir=workspace
         )
 
         # Mock SDK to avoid actual calls
@@ -102,7 +98,7 @@ class TestFullWorkflowStartAutoAppendProcess:
         new_instruction = "Add rate limiting to API endpoints"
 
         # Change to workspace to simulate CLI call
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             # This will fail until append_instructions is implemented
             try:
                 result = append_instructions(new_instruction)
@@ -116,14 +112,15 @@ class TestFullWorkflowStartAutoAppendProcess:
                 instructions = auto_mode._check_for_new_instructions()
 
                 # Verify instruction was found
-                assert new_instruction in instructions, \
-                    "Should find and return new instruction"
+                assert new_instruction in instructions, "Should find and return new instruction"
 
                 # Verify file moved to appended/
-                assert len(list(auto_mode.append_dir.glob("*.md"))) == 0, \
+                assert len(list(auto_mode.append_dir.glob("*.md"))) == 0, (
                     "append/ should be empty after processing"
-                assert len(list(auto_mode.appended_dir.glob("*.md"))) == 1, \
+                )
+                assert len(list(auto_mode.appended_dir.glob("*.md"))) == 1, (
                     "appended/ should contain processed instruction"
+                )
 
             except (NotImplementedError, ImportError, AttributeError):
                 pytest.skip("append_instructions not yet implemented")
@@ -138,12 +135,7 @@ class TestFullWorkflowStartAutoAppendProcess:
         """
         workspace = workspace_setup
 
-        auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Build API",
-            max_turns=3,
-            working_dir=workspace
-        )
+        auto_mode = AutoMode(sdk="claude", prompt="Build API", max_turns=3, working_dir=workspace)
 
         # Create instruction files directly
         instruction1 = auto_mode.append_dir / "20241023_120000.md"
@@ -175,10 +167,7 @@ class TestMultipleAppendOperationsQueuing:
             workspace = Path(temp_dir)
 
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="Test prompt",
-                max_turns=5,
-                working_dir=workspace
+                sdk="claude", prompt="Test prompt", max_turns=5, working_dir=workspace
             )
 
             # Mock SDK
@@ -204,7 +193,7 @@ class TestMultipleAppendOperationsQueuing:
             "Third instruction",
         ]
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             try:
                 # Add multiple instructions
                 for instruction in instructions:
@@ -262,7 +251,7 @@ class TestMultipleAppendOperationsQueuing:
         """
         auto_mode, workspace = active_auto_mode
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             try:
                 # Rapid appends
                 for i in range(5):
@@ -298,23 +287,20 @@ class TestAppendFromSubdirectory:
 
             # Start auto mode session
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="Develop API",
-                max_turns=5,
-                working_dir=workspace
+                sdk="claude", prompt="Develop API", max_turns=5, working_dir=workspace
             )
 
             auto_mode.run_sdk = MagicMock(return_value=(0, "Mock"))
             auto_mode.run_hook = MagicMock()
 
             yield {
-                'workspace': workspace,
-                'auto_mode': auto_mode,
-                'subdirs': {
-                    'api': workspace / "src" / "api",
-                    'tests': workspace / "tests" / "unit",
-                    'docs': workspace / "docs",
-                }
+                "workspace": workspace,
+                "auto_mode": auto_mode,
+                "subdirs": {
+                    "api": workspace / "src" / "api",
+                    "tests": workspace / "tests" / "unit",
+                    "docs": workspace / "docs",
+                },
             }
 
     def test_append_from_api_subdirectory(self, project_with_subdirs):
@@ -325,13 +311,13 @@ class TestAppendFromSubdirectory:
         - Should find active session in workspace root
         - Should write to session's append/ directory
         """
-        workspace = project_with_subdirs['workspace']
-        auto_mode = project_with_subdirs['auto_mode']
-        api_dir = project_with_subdirs['subdirs']['api']
+        workspace = project_with_subdirs["workspace"]
+        auto_mode = project_with_subdirs["auto_mode"]
+        api_dir = project_with_subdirs["subdirs"]["api"]
 
         instruction = "Add validation to API endpoints"
 
-        with patch('pathlib.Path.cwd', return_value=api_dir):
+        with patch("pathlib.Path.cwd", return_value=api_dir):
             try:
                 result = append_instructions(instruction)
 
@@ -350,19 +336,19 @@ class TestAppendFromSubdirectory:
         - All instructions should go to same session
         - All should be discoverable from workspace root
         """
-        workspace = project_with_subdirs['workspace']
-        auto_mode = project_with_subdirs['auto_mode']
-        subdirs = project_with_subdirs['subdirs']
+        workspace = project_with_subdirs["workspace"]
+        auto_mode = project_with_subdirs["auto_mode"]
+        subdirs = project_with_subdirs["subdirs"]
 
         instructions = [
-            ("api", "API instruction", subdirs['api']),
-            ("tests", "Test instruction", subdirs['tests']),
-            ("docs", "Documentation instruction", subdirs['docs']),
+            ("api", "API instruction", subdirs["api"]),
+            ("tests", "Test instruction", subdirs["tests"]),
+            ("docs", "Documentation instruction", subdirs["docs"]),
         ]
 
         try:
             for name, instruction, subdir in instructions:
-                with patch('pathlib.Path.cwd', return_value=subdir):
+                with patch("pathlib.Path.cwd", return_value=subdir):
                     append_instructions(instruction)
 
             # All should be in same session
@@ -386,8 +372,8 @@ class TestAppendFromSubdirectory:
         - Should find workspace root
         - Should successfully write instruction
         """
-        workspace = project_with_subdirs['workspace']
-        auto_mode = project_with_subdirs['auto_mode']
+        workspace = project_with_subdirs["workspace"]
+        auto_mode = project_with_subdirs["auto_mode"]
 
         # Create deeply nested directory
         deep_dir = workspace / "src" / "api" / "v1" / "handlers" / "auth"
@@ -395,7 +381,7 @@ class TestAppendFromSubdirectory:
 
         instruction = "From deeply nested directory"
 
-        with patch('pathlib.Path.cwd', return_value=deep_dir):
+        with patch("pathlib.Path.cwd", return_value=deep_dir):
             try:
                 result = append_instructions(instruction)
 
@@ -443,7 +429,7 @@ class TestSessionFinderIntegration:
 
         instruction = "Target most recent session"
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             try:
                 result = append_instructions(instruction)
 
@@ -475,7 +461,7 @@ class TestSessionFinderIntegration:
 
         instruction = "For Copilot session"
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             try:
                 # Append with SDK filter
                 result = append_instructions(instruction, sdk_filter="copilot")
@@ -507,16 +493,11 @@ class TestErrorRecoveryAndEdgeCases:
         - Should log error
         - Should not crash
         """
-        auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test",
-            max_turns=3,
-            working_dir=workspace
-        )
+        auto_mode = AutoMode(sdk="claude", prompt="Test", max_turns=3, working_dir=workspace)
 
         # Create mix of valid and corrupted files
         (auto_mode.append_dir / "valid.md").write_text("Valid instruction")
-        (auto_mode.append_dir / "corrupted.md").write_bytes(b'\x80\x81\x82')
+        (auto_mode.append_dir / "corrupted.md").write_bytes(b"\x80\x81\x82")
 
         # Should handle gracefully
         try:
@@ -536,21 +517,16 @@ class TestErrorRecoveryAndEdgeCases:
         - Should return appropriate error
         - Should not crash
         """
-        auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test",
-            max_turns=3,
-            working_dir=workspace
-        )
+        auto_mode = AutoMode(sdk="claude", prompt="Test", max_turns=3, working_dir=workspace)
 
         # Remove append directory
         import shutil
+
         shutil.rmtree(auto_mode.append_dir)
 
         # Should handle gracefully
         instructions = auto_mode._check_for_new_instructions()
-        assert instructions == "" or instructions is None, \
-            "Should handle missing directory"
+        assert instructions == "" or instructions is None, "Should handle missing directory"
 
     def test_concurrent_append_and_check(self, workspace):
         """Test concurrent append and check operations.
@@ -560,12 +536,7 @@ class TestErrorRecoveryAndEdgeCases:
         - Files being written should not cause errors
         - Either processed or left for next check
         """
-        auto_mode = AutoMode(
-            sdk="claude",
-            prompt="Test",
-            max_turns=3,
-            working_dir=workspace
-        )
+        auto_mode = AutoMode(sdk="claude", prompt="Test", max_turns=3, working_dir=workspace)
 
         # Create file during check (simulate race condition)
         def create_file_during_check():
@@ -573,6 +544,7 @@ class TestErrorRecoveryAndEdgeCases:
             (auto_mode.append_dir / "concurrent.md").write_text("Concurrent")
 
         import threading
+
         thread = threading.Thread(target=create_file_during_check)
         thread.start()
 
@@ -614,7 +586,7 @@ class TestEndToEndWithRealWorkflow:
                 sdk="claude",
                 prompt="Build REST API with authentication",
                 max_turns=5,
-                working_dir=workspace
+                working_dir=workspace,
             )
 
             # Mock SDK
@@ -632,15 +604,14 @@ class TestEndToEndWithRealWorkflow:
                 # Developer appends new instruction
                 new_requirement = "Add rate limiting: 100 requests per minute per API key"
 
-                with patch('pathlib.Path.cwd', return_value=workspace):
+                with patch("pathlib.Path.cwd", return_value=workspace):
                     append_instructions(new_requirement)
 
                 # Step 4: Auto mode checks for instructions (next turn)
                 instructions = auto_mode._check_for_new_instructions()
 
                 # Verify instruction picked up
-                assert new_requirement in instructions, \
-                    "New requirement should be discovered"
+                assert new_requirement in instructions, "New requirement should be discovered"
 
                 # Verify instruction would be included in execution
                 # (in real workflow, this happens in the execute phase)

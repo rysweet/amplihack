@@ -29,6 +29,7 @@ Once you have a problem in mind, **outline the approach** an expert (or you, on 
 ### Break the Task into Steps
 
 Divide the problem into logical phases or sub-tasks. Each step should be something the AI can tackle in a single go. For example, a documentation generator might have steps for:
+
 1. _Analyzing code structure_
 2. _Extracting function signatures and docstrings_
 3. _Generating API reference_
@@ -48,6 +49,7 @@ A tool recipe might include a loop where the AI evaluates its own output or seek
 ### Plan for Errors or Ambiguity
 
 Metacognitive recipes often include fallback plans. Think about what the AI should do if a step produces incomplete or low-quality results. For example:
+
 - "If the code analysis is incomplete, have the AI refine it again"
 - "If no usage examples can be generated, the tool should explain the issue rather than proceeding blindly"
 
@@ -90,6 +92,7 @@ When you submit this prompt, amplihack will spring into action:
 ### Planning and Generation
 
 Amplihack's AI will interpret your description and begin creating the tool. It will:
+
 - Outline the plan using the architect agent
 - Create necessary code modules
 - Implement each step with the builder agent
@@ -100,6 +103,7 @@ Remember, _you_ are not writing the code – amplihack is, based on your instruc
 ### Interactive Clarification
 
 Depending on the complexity, amplihack may ask clarifying questions:
+
 - "Should the documentation include authentication examples?"
 - "Do you want to generate OpenAPI/Swagger specs?"
 - "Should deprecated endpoints be included or excluded?"
@@ -109,6 +113,7 @@ Answer these questions to guide the build. This is amplihack making sure it corr
 ### Automatic Documentation
 
 Amplihack automatically creates documentation for your new tool as part of the build process. This includes:
+
 - Usage instructions
 - Example invocations
 - Configuration options
@@ -127,25 +132,30 @@ Create a new agent that can be invoked for specific tasks.
 **Location:** `.claude/agents/your-agent-name.md`
 
 **Example:**
+
 ```markdown
 # Your Agent Name
 
 You are a specialized agent for [purpose].
 
 ## Capabilities
+
 - [What the agent can do]
 - [Specific skills or knowledge]
 
 ## Approach
+
 1. [Step 1 of the agent's process]
 2. [Step 2]
 3. [Step 3]
 
 ## Output Format
+
 [What the agent produces]
 ```
 
 **Invocation:**
+
 ```
 Can you have the your-agent-name agent analyze @src/api/endpoints.py?
 ```
@@ -159,21 +169,25 @@ Create a reusable slash command for common workflows.
 **Location:** `.claude/commands/your-command.md`
 
 **Example command structure:**
+
 ```markdown
 # Your Command
 
 Description of what this command does.
 
 ## Steps
+
 1. [Action 1]
 2. [Action 2]
 3. [Action 3]
 
 ## Usage
+
 /your-command [arguments]
 ```
 
 **Invocation:**
+
 ```
 /your-command [arguments]
 ```
@@ -187,6 +201,7 @@ Create executable code for complex processing.
 **Location:** `src/amplihack/tools/your_tool.py`
 
 **Structure:**
+
 ```python
 """
 Your tool description.
@@ -233,6 +248,7 @@ The tool should execute its steps and produce an output (like generated markdown
 ### Observe and Note Issues
 
 As it runs, watch for any steps that seem off. Does it skip a step? Is the output of a phase not what you expected? For instance:
+
 - Maybe it didn't include usage examples
 - The generated docs are too verbose
 - Some endpoints weren't discovered
@@ -268,16 +284,19 @@ so it can handle nested route definitions correctly.
 All tools should adhere to amplihack's philosophy (see `.claude/context/PHILOSOPHY.md`):
 
 ✅ **Ruthless Simplicity**
+
 - Start with minimal implementation
 - Add features only when needed
 - Avoid premature abstractions
 
 ✅ **Zero-BS Implementation**
+
 - No placeholder functions or TODOs
 - Complete, working code only
 - Explicit error handling
 
 ✅ **Modular Design**
+
 - Clear separation of concerns
 - Self-contained modules
 - Well-defined interfaces
@@ -285,6 +304,7 @@ All tools should adhere to amplihack's philosophy (see `.claude/context/PHILOSOP
 ### Error Handling
 
 ❌ **Don't do this:**
+
 ```python
 try:
     result = process()
@@ -293,6 +313,7 @@ except:
 ```
 
 ✅ **Do this:**
+
 ```python
 try:
     result = process()
@@ -304,6 +325,7 @@ except ProcessingError as e:
 ### Logging and Visibility
 
 ✅ **Always provide feedback:**
+
 ```python
 logger.info(f"Found {len(files)} files to process")
 for file in files[:5]:  # Show first 5
@@ -315,6 +337,7 @@ if len(files) > 5:
 ### Input Validation
 
 ✅ **Validate early:**
+
 ```python
 def generate_docs(source_dir: Path, output_dir: Path) -> None:
     if not source_dir.exists():

@@ -11,6 +11,7 @@ After completing investigations (code analysis, architecture reviews, system exp
 ### 1. investigation-doc-template.md
 
 **Use for:**
+
 - General code investigations
 - Bug analysis and root cause investigations
 - Performance investigations
@@ -18,6 +19,7 @@ After completing investigations (code analysis, architecture reviews, system exp
 - System behavior analysis
 
 **Sections:**
+
 - Findings Summary
 - Architecture Diagrams (optional)
 - Key Files
@@ -30,6 +32,7 @@ After completing investigations (code analysis, architecture reviews, system exp
 ### 2. architecture-doc-template.md
 
 **Use for:**
+
 - System architecture analysis
 - Component relationship mapping
 - Integration flow investigations
@@ -37,6 +40,7 @@ After completing investigations (code analysis, architecture reviews, system exp
 - Architectural decision records
 
 **Sections:**
+
 - Findings Summary
 - Architecture Diagrams (overview, relationships, data flow)
 - Key Files
@@ -89,11 +93,13 @@ See `.claude/docs/` directory for examples of generated documentation.
 **Format**: `[TYPE]_[TOPIC].md`
 
 **Examples:**
+
 - `ARCHITECTURE_NEO4J_MEMORY_SYSTEM.md`
 - `INVESTIGATION_HOOK_EXECUTION_ORDER.md`
 - `ARCHITECTURE_USER_PREFERENCES_INTEGRATION.md`
 
 **Rules:**
+
 - Use UPPER_SNAKE_CASE for visibility and consistency
 - Be specific but concise in TOPIC naming
 - TYPE is either `ARCHITECTURE` or `INVESTIGATION`

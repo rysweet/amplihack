@@ -6,7 +6,7 @@ error handling, circuit breaker, and context manager support.
 
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -17,17 +17,21 @@ try:
     NEO4J_AVAILABLE = True
 except ImportError:
     NEO4J_AVAILABLE = False
+
     # Create placeholder classes for when neo4j not installed
     class GraphDatabase:
         @staticmethod
         def driver(*args, **kwargs):
-            raise ImportError("neo4j package not installed. Install with: pip install neo4j>=5.15.0")
+            raise ImportError(
+                "neo4j package not installed. Install with: pip install neo4j>=5.15.0"
+            )
 
     class Neo4jError(Exception):
         pass
 
     class ServiceUnavailable(Exception):
         pass
+
 
 from .config import get_config
 
@@ -104,7 +108,7 @@ class CircuitBreaker:
             self._on_success()
             return result
 
-        except Exception as e:
+        except Exception:
             self._on_failure()
             raise
 
@@ -157,9 +161,7 @@ class CircuitBreaker:
             "state": self.state.value,
             "failure_count": self.failure_count,
             "success_count": self.success_count,
-            "last_failure": self.last_failure_time.isoformat()
-            if self.last_failure_time
-            else None,
+            "last_failure": self.last_failure_time.isoformat() if self.last_failure_time else None,
         }
 
 
@@ -202,8 +204,7 @@ class Neo4jConnector:
         """
         if not NEO4J_AVAILABLE:
             raise ImportError(
-                "neo4j package not installed. Install with:\n"
-                "  pip install neo4j>=5.15.0"
+                "neo4j package not installed. Install with:\n  pip install neo4j>=5.15.0"
             )
 
         config = get_config()
@@ -229,9 +230,7 @@ class Neo4jConnector:
             return self  # Already connected
 
         try:
-            self._driver = GraphDatabase.driver(
-                self.uri, auth=(self.user, self.password)
-            )
+            self._driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
             logger.debug("Connected to Neo4j: %s", self.uri)
             return self
 
@@ -270,8 +269,7 @@ class Neo4jConnector:
 
         if self._circuit_breaker:
             return self._circuit_breaker.call(_execute)
-        else:
-            return _execute()
+        return _execute()
 
     def _execute_query_internal(
         self, query: str, parameters: Optional[Dict[str, Any]] = None
@@ -300,7 +298,7 @@ class Neo4jConnector:
             except ServiceUnavailable as e:
                 last_error = e
                 if attempt < self.max_retries - 1:
-                    wait_time = 2 ** attempt  # Exponential backoff
+                    wait_time = 2**attempt  # Exponential backoff
                     logger.warning(
                         "Query failed (attempt %d/%d), retrying in %ds: %s",
                         attempt + 1,
@@ -343,8 +341,7 @@ class Neo4jConnector:
 
         if self._circuit_breaker:
             return self._circuit_breaker.call(_execute)
-        else:
-            return _execute()
+        return _execute()
 
     def _execute_write_internal(
         self, query: str, parameters: Optional[Dict[str, Any]] = None
@@ -366,6 +363,7 @@ class Neo4jConnector:
         for attempt in range(self.max_retries):
             try:
                 with self._driver.session() as session:
+
                     def _execute_tx(tx):
                         result = tx.run(query, parameters or {})
                         # IMPORTANT: Consume result INSIDE transaction
@@ -376,7 +374,7 @@ class Neo4jConnector:
             except ServiceUnavailable as e:
                 last_error = e
                 if attempt < self.max_retries - 1:
-                    wait_time = 2 ** attempt  # Exponential backoff
+                    wait_time = 2**attempt  # Exponential backoff
                     logger.warning(
                         "Write failed (attempt %d/%d), retrying in %ds: %s",
                         attempt + 1,

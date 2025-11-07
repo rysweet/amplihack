@@ -667,10 +667,12 @@ class ClaudeLauncher:
             True to continue, False to exit
         """
         import logging
+
         method_logger = logging.getLogger(__name__)
 
         try:
             from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
+
             return interactive_neo4j_startup()
         except ImportError:
             # Neo4j modules not available - continue without
@@ -696,6 +698,7 @@ class ClaudeLauncher:
         def start_neo4j():
             """Background thread function with auto-setup."""
             import logging
+
             thread_logger = logging.getLogger(__name__)
 
             try:
@@ -722,7 +725,9 @@ class ClaudeLauncher:
 
         # Start in background thread
         thread = threading.Thread(
-            target=start_neo4j, name="neo4j-startup", daemon=True  # Don't block process exit
+            target=start_neo4j,
+            name="neo4j-startup",
+            daemon=True,  # Don't block process exit
         )
         thread.start()
 

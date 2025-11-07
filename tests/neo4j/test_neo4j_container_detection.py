@@ -14,7 +14,7 @@ import stat
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, mock_open
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -33,7 +33,7 @@ class TestNeo4jContainer:
             name="amplihack-neo4j",
             image="neo4j:5.0",
             status="Up 2 hours",
-            ports={}
+            ports={},
         )
         assert container.is_running() is True
 
@@ -44,7 +44,7 @@ class TestNeo4jContainer:
             name="amplihack-neo4j",
             image="neo4j:5.0",
             status="Exited (0) 1 hour ago",
-            ports={}
+            ports={},
         )
         assert container.is_running() is False
 
@@ -55,7 +55,7 @@ class TestNeo4jContainer:
             name="amplihack-neo4j",
             image="neo4j:5.0",
             status="running",
-            ports={"7687/tcp": "7687", "7474/tcp": "7474"}
+            ports={"7687/tcp": "7687", "7474/tcp": "7474"},
         )
         assert container.get_bolt_port() == "7687"
 
@@ -66,7 +66,7 @@ class TestNeo4jContainer:
             name="amplihack-neo4j",
             image="neo4j:5.0",
             status="running",
-            ports={"7687/tcp": "7687", "7474/tcp": "7474"}
+            ports={"7687/tcp": "7687", "7474/tcp": "7474"},
         )
         assert container.get_http_port() == "7474"
 
@@ -77,7 +77,7 @@ class TestNeo4jContainer:
             name="amplihack-neo4j",
             image="neo4j:5.0",
             status="running",
-            ports={}
+            ports={},
         )
         assert container.get_bolt_port() is None
 
@@ -138,20 +138,19 @@ class TestNeo4jContainerDetector:
         """Test detecting amplihack Neo4j containers."""
         detector = Neo4jContainerDetector()
 
-        container_data = json.dumps({
-            "ID": "abc123",
-            "Names": "amplihack-neo4j",
-            "Image": "neo4j:5.0",
-            "Status": "Up 2 hours",
-            "Ports": "0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp"
-        })
+        container_data = json.dumps(
+            {
+                "ID": "abc123",
+                "Names": "amplihack-neo4j",
+                "Image": "neo4j:5.0",
+                "Status": "Up 2 hours",
+                "Ports": "0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp",
+            }
+        )
 
         with patch.object(detector, "is_docker_available", return_value=True):
             with patch("subprocess.run") as mock_run:
-                mock_run.return_value = Mock(
-                    returncode=0,
-                    stdout=container_data + "\n"
-                )
+                mock_run.return_value = Mock(returncode=0, stdout=container_data + "\n")
 
                 result = detector.detect_containers()
                 assert len(result) == 1
@@ -162,29 +161,32 @@ class TestNeo4jContainerDetector:
         """Test that non-Neo4j containers are filtered out."""
         detector = Neo4jContainerDetector()
 
-        containers_data = "\n".join([
-            json.dumps({
-                "ID": "abc123",
-                "Names": "postgres",
-                "Image": "postgres:14",
-                "Status": "Up 2 hours",
-                "Ports": ""
-            }),
-            json.dumps({
-                "ID": "def456",
-                "Names": "amplihack-neo4j",
-                "Image": "neo4j:5.0",
-                "Status": "Up 1 hour",
-                "Ports": ""
-            })
-        ])
+        containers_data = "\n".join(
+            [
+                json.dumps(
+                    {
+                        "ID": "abc123",
+                        "Names": "postgres",
+                        "Image": "postgres:14",
+                        "Status": "Up 2 hours",
+                        "Ports": "",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "ID": "def456",
+                        "Names": "amplihack-neo4j",
+                        "Image": "neo4j:5.0",
+                        "Status": "Up 1 hour",
+                        "Ports": "",
+                    }
+                ),
+            ]
+        )
 
         with patch.object(detector, "is_docker_available", return_value=True):
             with patch("subprocess.run") as mock_run:
-                mock_run.return_value = Mock(
-                    returncode=0,
-                    stdout=containers_data + "\n"
-                )
+                mock_run.return_value = Mock(returncode=0, stdout=containers_data + "\n")
 
                 result = detector.detect_containers()
                 assert len(result) == 1
@@ -194,29 +196,32 @@ class TestNeo4jContainerDetector:
         """Test that non-amplihack Neo4j containers are filtered out."""
         detector = Neo4jContainerDetector()
 
-        containers_data = "\n".join([
-            json.dumps({
-                "ID": "abc123",
-                "Names": "other-neo4j",
-                "Image": "neo4j:5.0",
-                "Status": "Up 2 hours",
-                "Ports": ""
-            }),
-            json.dumps({
-                "ID": "def456",
-                "Names": "amplihack-neo4j",
-                "Image": "neo4j:5.0",
-                "Status": "Up 1 hour",
-                "Ports": ""
-            })
-        ])
+        containers_data = "\n".join(
+            [
+                json.dumps(
+                    {
+                        "ID": "abc123",
+                        "Names": "other-neo4j",
+                        "Image": "neo4j:5.0",
+                        "Status": "Up 2 hours",
+                        "Ports": "",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "ID": "def456",
+                        "Names": "amplihack-neo4j",
+                        "Image": "neo4j:5.0",
+                        "Status": "Up 1 hour",
+                        "Ports": "",
+                    }
+                ),
+            ]
+        )
 
         with patch.object(detector, "is_docker_available", return_value=True):
             with patch("subprocess.run") as mock_run:
-                mock_run.return_value = Mock(
-                    returncode=0,
-                    stdout=containers_data + "\n"
-                )
+                mock_run.return_value = Mock(returncode=0, stdout=containers_data + "\n")
 
                 result = detector.detect_containers()
                 assert len(result) == 1
@@ -231,24 +236,23 @@ class TestNeo4jContainerDetector:
             name="amplihack-neo4j",
             image="neo4j:5.0",
             status="Up 2 hours",
-            ports={}
+            ports={},
         )
 
-        inspect_data = [{
-            "Config": {
-                "Env": [
-                    "PATH=/usr/local/bin",
-                    "NEO4J_AUTH=neo4j/testpassword123",
-                    "NEO4J_VERSION=5.0"
-                ]
+        inspect_data = [
+            {
+                "Config": {
+                    "Env": [
+                        "PATH=/usr/local/bin",
+                        "NEO4J_AUTH=neo4j/testpassword123",
+                        "NEO4J_VERSION=5.0",
+                    ]
+                }
             }
-        }]
+        ]
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(inspect_data)
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(inspect_data))
 
             detector.extract_credentials(container)
 
@@ -264,23 +268,22 @@ class TestNeo4jContainerDetector:
             name="amplihack-neo4j",
             image="neo4j:5.0",
             status="Up 2 hours",
-            ports={}
+            ports={},
         )
 
-        inspect_data = [{
-            "Config": {
-                "Env": [
-                    "NEO4J_USER=admin",
-                    "NEO4J_PASSWORD=securepass",
-                ]
+        inspect_data = [
+            {
+                "Config": {
+                    "Env": [
+                        "NEO4J_USER=admin",
+                        "NEO4J_PASSWORD=securepass",
+                    ]
+                }
             }
-        }]
+        ]
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(inspect_data)
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(inspect_data))
 
             detector.extract_credentials(container)
 
@@ -296,7 +299,7 @@ class TestNeo4jContainerDetector:
             name="amplihack-neo4j",
             image="neo4j:5.0",
             status="Exited (0)",
-            ports={}
+            ports={},
         )
 
         detector.extract_credentials(container)
@@ -311,10 +314,7 @@ class TestNeo4jContainerDetector:
         ports_str = "0.0.0.0:7474->7474/tcp, 0.0.0.0:7687->7687/tcp"
         result = detector._parse_ports(ports_str)
 
-        assert result == {
-            "7474/tcp": "7474",
-            "7687/tcp": "7687"
-        }
+        assert result == {"7474/tcp": "7474", "7687/tcp": "7687"}
 
     def test_parse_ports_empty(self):
         """Test parsing empty port string."""
@@ -406,10 +406,7 @@ class TestCredentialSync:
         """Test getting credentials from .env file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             env_file = Path(tmpdir) / ".env"
-            env_file.write_text(
-                "NEO4J_USERNAME=neo4j\n"
-                "NEO4J_PASSWORD=testpassword123\n"
-            )
+            env_file.write_text("NEO4J_USERNAME=neo4j\nNEO4J_PASSWORD=testpassword123\n")
             os.chmod(env_file, stat.S_IRUSR | stat.S_IWUSR)
 
             sync = CredentialSync(env_file)
@@ -422,10 +419,7 @@ class TestCredentialSync:
         """Test getting credentials with quotes."""
         with tempfile.TemporaryDirectory() as tmpdir:
             env_file = Path(tmpdir) / ".env"
-            env_file.write_text(
-                'NEO4J_USERNAME="neo4j"\n'
-                "NEO4J_PASSWORD='testpassword123'\n"
-            )
+            env_file.write_text("NEO4J_USERNAME=\"neo4j\"\nNEO4J_PASSWORD='testpassword123'\n")
             os.chmod(env_file, stat.S_IRUSR | stat.S_IWUSR)
 
             sync = CredentialSync(env_file)
@@ -442,10 +436,7 @@ class TestCredentialSync:
             sync = CredentialSync(env_file)
             assert sync.has_credentials() is False
 
-            env_file.write_text(
-                "NEO4J_USERNAME=neo4j\n"
-                "NEO4J_PASSWORD=testpassword123\n"
-            )
+            env_file.write_text("NEO4J_USERNAME=neo4j\nNEO4J_PASSWORD=testpassword123\n")
 
             assert sync.has_credentials() is True
 
@@ -472,11 +463,7 @@ class TestCredentialSync:
         """Test that writing credentials preserves other environment variables."""
         with tempfile.TemporaryDirectory() as tmpdir:
             env_file = Path(tmpdir) / ".env"
-            env_file.write_text(
-                "OTHER_VAR=value\n"
-                "NEO4J_USERNAME=olduser\n"
-                "ANOTHER_VAR=value2\n"
-            )
+            env_file.write_text("OTHER_VAR=value\nNEO4J_USERNAME=olduser\nANOTHER_VAR=value2\n")
 
             sync = CredentialSync(env_file)
             success = sync._write_credentials("newuser", "newpassword123")
@@ -502,7 +489,7 @@ class TestCredentialSync:
                 status="running",
                 ports={},
                 username="neo4j",
-                password="containerpass123"
+                password="containerpass123",
             )
 
             success = sync.sync_credentials(container, SyncChoice.USE_CONTAINER)
@@ -523,14 +510,14 @@ class TestCredentialSync:
                 name="amplihack-neo4j",
                 image="neo4j:5.0",
                 status="running",
-                ports={}
+                ports={},
             )
 
             success = sync.sync_credentials(
                 container,
                 SyncChoice.MANUAL,
                 manual_username="customuser",
-                manual_password="custompass123"
+                manual_password="custompass123",
             )
             assert success is True
 
@@ -549,7 +536,7 @@ class TestCredentialSync:
                 name="amplihack-neo4j",
                 image="neo4j:5.0",
                 status="running",
-                ports={}
+                ports={},
             )
 
             success = sync.sync_credentials(container, SyncChoice.SKIP)
@@ -567,7 +554,7 @@ class TestCredentialSync:
                 name="amplihack-neo4j",
                 image="neo4j:5.0",
                 status="running",
-                ports={}
+                ports={},
             )
 
             assert sync.needs_sync(container) is False
@@ -585,7 +572,7 @@ class TestCredentialSync:
                 status="running",
                 ports={},
                 username="neo4j",
-                password="testpassword123"
+                password="testpassword123",
             )
 
             assert sync.needs_sync(container) is True
@@ -594,10 +581,7 @@ class TestCredentialSync:
         """Test needs_sync when credentials differ."""
         with tempfile.TemporaryDirectory() as tmpdir:
             env_file = Path(tmpdir) / ".env"
-            env_file.write_text(
-                "NEO4J_USERNAME=neo4j\n"
-                "NEO4J_PASSWORD=oldpassword\n"
-            )
+            env_file.write_text("NEO4J_USERNAME=neo4j\nNEO4J_PASSWORD=oldpassword\n")
 
             sync = CredentialSync(env_file)
 
@@ -608,7 +592,7 @@ class TestCredentialSync:
                 status="running",
                 ports={},
                 username="neo4j",
-                password="newpassword"
+                password="newpassword",
             )
 
             assert sync.needs_sync(container) is True
@@ -617,10 +601,7 @@ class TestCredentialSync:
         """Test needs_sync when credentials match."""
         with tempfile.TemporaryDirectory() as tmpdir:
             env_file = Path(tmpdir) / ".env"
-            env_file.write_text(
-                "NEO4J_USERNAME=neo4j\n"
-                "NEO4J_PASSWORD=testpassword123\n"
-            )
+            env_file.write_text("NEO4J_USERNAME=neo4j\nNEO4J_PASSWORD=testpassword123\n")
 
             sync = CredentialSync(env_file)
 
@@ -631,7 +612,7 @@ class TestCredentialSync:
                 status="running",
                 ports={},
                 username="neo4j",
-                password="testpassword123"
+                password="testpassword123",
             )
 
             assert sync.needs_sync(container) is False
@@ -661,10 +642,7 @@ class TestNeo4jManager:
         """Test check_and_sync when credentials are already synchronized."""
         with tempfile.TemporaryDirectory() as tmpdir:
             env_file = Path(tmpdir) / ".env"
-            env_file.write_text(
-                "NEO4J_USERNAME=neo4j\n"
-                "NEO4J_PASSWORD=testpassword123\n"
-            )
+            env_file.write_text("NEO4J_USERNAME=neo4j\nNEO4J_PASSWORD=testpassword123\n")
 
             manager = Neo4jManager(env_file=env_file, interactive=False)
 
@@ -675,11 +653,13 @@ class TestNeo4jManager:
                 status="running",
                 ports={},
                 username="neo4j",
-                password="testpassword123"
+                password="testpassword123",
             )
 
             with patch.object(manager.detector, "is_docker_available", return_value=True):
-                with patch.object(manager.detector, "get_running_containers", return_value=[container]):
+                with patch.object(
+                    manager.detector, "get_running_containers", return_value=[container]
+                ):
                     result = manager.check_and_sync()
                     assert result is True
 
@@ -696,11 +676,13 @@ class TestNeo4jManager:
                 status="running",
                 ports={},
                 username="neo4j",
-                password="testpassword123"
+                password="testpassword123",
             )
 
             with patch.object(manager.detector, "is_docker_available", return_value=True):
-                with patch.object(manager.detector, "get_running_containers", return_value=[container]):
+                with patch.object(
+                    manager.detector, "get_running_containers", return_value=[container]
+                ):
                     result = manager.check_and_sync()
                     assert result is True
 
@@ -720,7 +702,10 @@ class TestIntegrationWithLauncher:
         launcher = ClaudeLauncher()
 
         # Mock Docker unavailable
-        with patch("amplihack.neo4j.detector.Neo4jContainerDetector.is_docker_available", return_value=False):
+        with patch(
+            "amplihack.neo4j.detector.Neo4jContainerDetector.is_docker_available",
+            return_value=False,
+        ):
             # Should not raise exception
             launcher._check_neo4j_credentials()
 
