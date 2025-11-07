@@ -80,6 +80,82 @@ def load_feedback_template(project_root: Path) -> str:
     return template_path.read_text()
 
 
+def get_repository_context(project_root: Path) -> str:
+    """Detect repository context to distinguish amplihack vs project issues.
+
+    Args:
+        project_root: Project root directory
+
+    Returns:
+        Formatted repository context guidance for reflection prompt
+    """
+    import subprocess
+
+    # Amplihack canonical repository
+    AMPLIHACK_REPO = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+
+    try:
+        # Get current repository URL
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode == 0:
+            current_repo = result.stdout.strip()
+
+            # Normalize URLs for comparison (handle .git suffix and https/ssh)
+            def normalize_url(url: str) -> str:
+                url = url.rstrip("/").replace(".git", "")
+                if url.startswith("git@github.com:"):
+                    url = url.replace("git@github.com:", "https://github.com/")
+                return url.lower()
+
+            current_normalized = normalize_url(current_repo)
+            amplihack_normalized = normalize_url(AMPLIHACK_REPO)
+
+            is_amplihack_repo = current_normalized == amplihack_normalized
+
+            if is_amplihack_repo:
+                return f"""
+## Repository Context
+
+**Current Repository**: {current_repo}
+**Context**: Working on Amplihack itself
+
+**IMPORTANT**: Since we're working on the Amplihack framework itself, ALL issues identified in this session are Amplihack framework issues and should be filed against the Amplihack repository.
+"""
+            else:
+                return f"""
+## Repository Context
+
+**Current Repository**: {current_repo}
+**Amplihack Repository**: {AMPLIHACK_REPO}
+**Context**: Working on a user project (not Amplihack itself)
+"""
+
+        else:
+            # Git command failed - provide generic guidance
+            return f"""
+## Repository Context
+
+**Amplihack Repository**: {AMPLIHACK_REPO}
+**Context**: Repository detection unavailable
+"""
+
+    except Exception:
+        # Subprocess failed - provide generic guidance
+        return f"""
+## Repository Context
+
+**Amplihack Repository**: {AMPLIHACK_REPO}
+**Context**: Repository detection unavailable
+"""
+
+
 async def analyze_session_with_claude(
     conversation: List[Dict], template: str, project_root: Path
 ) -> Optional[str]:
@@ -125,9 +201,42 @@ The following preferences are REQUIRED and CANNOT be ignored:
         print(f"Warning: Could not load USER_PREFERENCES: {e}", file=sys.stderr)
         # Continue without preferences
 
+    # Get repository context for issue categorization
+    repository_context = get_repository_context(project_root)
+
     # Build reflection prompt
     prompt = f"""You are analyzing a completed Claude Code session to provide feedback and identify learning opportunities.
 {user_preferences_context}
+{repository_context}
+
+## Critical: Distinguish Problem Sources
+
+When analyzing this session, you MUST clearly distinguish between TWO categories of issues:
+
+### 1. Amplihack Framework Issues
+Problems with the coding tools, agents, workflow, or process itself:
+- Agent behavior, effectiveness, or orchestration
+- Workflow step execution or adherence
+- Tool functionality (hooks, commands, utilities, reflection system)
+- Framework architecture or design decisions
+- UltraThink coordination and delegation
+- Command execution (/amplihack:* commands)
+- Session management and logging
+
+**These issues should be filed against**: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
+
+### 2. Project Code Issues
+Problems with the actual application code being developed:
+- Application logic bugs or errors
+- Feature implementation quality
+- Test failures in project-specific tests
+- Project-specific design decisions
+- User-facing functionality
+- Business logic correctness
+
+**These issues should be filed against**: The current project repository (see Repository Context above)
+
+**IMPORTANT**: In your feedback, clearly label each issue as either "[AMPLIHACK]" or "[PROJECT]" so it's obvious which repository should handle it.
 
 ## Session Conversation
 
@@ -147,7 +256,8 @@ Please analyze this session and fill out the following feedback template:
 2. **Identify patterns** - What worked well? What could improve?
 3. **Track workflow adherence** - Did Claude follow the DEFAULT_WORKFLOW.md steps?
 4. **Note subagent usage** - Which specialized agents were used (architect, builder, reviewer, etc.)?
-5. **Suggest improvements** - What would make future similar sessions better?
+5. **Categorize improvements** - Clearly mark each issue as [AMPLIHACK] or [PROJECT]
+6. **Suggest improvements** - What would make future similar sessions better?
 
 Please provide the filled-out template now.
 """
