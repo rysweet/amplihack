@@ -91,69 +91,18 @@ def load_prompt_template() -> str:
     """Load reflection prompt template.
 
     Returns:
-        Raw template content with {VARIABLE} placeholders, or fallback if file missing
+        Raw template content with {VARIABLE} placeholders
+
+    Raises:
+        FileNotFoundError: If template file is missing (configuration error)
     """
-    if REFLECTION_PROMPT_TEMPLATE.exists():
-        return REFLECTION_PROMPT_TEMPLATE.read_text()
+    if not REFLECTION_PROMPT_TEMPLATE.exists():
+        raise FileNotFoundError(
+            f"Reflection prompt template not found at {REFLECTION_PROMPT_TEMPLATE}. "
+            "This is a configuration error - the template file must exist."
+        )
 
-    # Fallback inline template if file is missing
-    return """You are analyzing a completed Claude Code session to provide feedback and identify learning opportunities.
-
-{user_preferences_context}
-{repository_context}
-
-## Critical: Distinguish Problem Sources
-
-When analyzing this session, you MUST clearly distinguish between TWO categories of issues:
-
-### 1. Amplihack Framework Issues
-Problems with the coding tools, agents, workflow, or process itself:
-- Agent behavior, effectiveness, or orchestration
-- Workflow step execution or adherence
-- Tool functionality (hooks, commands, utilities, reflection system)
-- Framework architecture or design decisions
-- UltraThink coordination and delegation
-- Command execution (/amplihack:* commands)
-- Session management and logging
-
-**These issues should be filed against**: {amplihack_repo_uri}
-
-### 2. Project Code Issues
-Problems with the actual application code being developed:
-- Application logic bugs or errors
-- Feature implementation quality
-- Test failures in project-specific tests
-- Project-specific design decisions
-- User-facing functionality
-- Business logic correctness
-
-**These issues should be filed against**: The current project repository (see Repository Context above)
-
-**IMPORTANT**: In your feedback, clearly label each issue as either "[AMPLIHACK]" or "[PROJECT]" so it's obvious which repository should handle it.
-
-## Session Conversation
-
-The session had {message_count} messages. Here are key excerpts:
-
-{conversation_summary}
-
-## Your Task
-
-Please analyze this session and fill out the following feedback template:
-
-{template}
-
-## Guidelines
-
-1. **Be specific and actionable** - Reference actual events from the session
-2. **Identify patterns** - What worked well? What could improve?
-3. **Track workflow adherence** - Did Claude follow the DEFAULT_WORKFLOW.md steps?
-4. **Note subagent usage** - Which specialized agents were used (architect, builder, reviewer, etc.)?
-5. **Categorize improvements** - Clearly mark each issue as [AMPLIHACK] or [PROJECT]
-6. **Suggest improvements** - What would make future similar sessions better?
-
-Please provide the filled-out template now.
-"""
+    return REFLECTION_PROMPT_TEMPLATE.read_text()
 
 
 def format_reflection_prompt(template: str, variables: Dict[str, str]) -> str:
