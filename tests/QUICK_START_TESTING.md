@@ -23,9 +23,11 @@ tests/
 ## Quick Test Commands
 
 ### Run One Test (Verify Setup)
+
 ```bash
 pytest tests/unit/test_auto_mode_ui.py::TestAutoModeUIInitialization::test_ui_mode_creates_ui_instance -v
 ```
+
 **Expected**: FAIL with AttributeError (this is correct!)
 
 ### Run by Phase
@@ -48,6 +50,7 @@ pytest tests/integration/test_auto_mode_ui_integration.py::TestFullUIWorkflow -v
 ```
 
 ### Run All Tests
+
 ```bash
 pytest tests/unit/test_auto_mode_ui.py \
        tests/unit/test_ui_threading.py \
@@ -56,6 +59,7 @@ pytest tests/unit/test_auto_mode_ui.py \
 ```
 
 ### With Coverage Report
+
 ```bash
 pytest tests/unit/test_auto_mode_ui.py \
        tests/unit/test_ui_threading.py \
@@ -69,6 +73,7 @@ pytest tests/unit/test_auto_mode_ui.py \
 ## What's Tested
 
 ### 5 UI Areas
+
 1. **Title Panel**: Generated from prompt via Claude SDK (max 50 chars)
 2. **Session Details**: Turn counter, elapsed time, cost tracking
 3. **Todo List**: Status indicators, current task highlighting
@@ -76,17 +81,20 @@ pytest tests/unit/test_auto_mode_ui.py \
 5. **Prompt Input**: Multiline support, instruction injection
 
 ### 3 Keyboard Commands
+
 - **'x'**: Exit UI, continue auto mode in background
 - **'p'**: Pause/resume execution toggle
 - **'k'**: Kill auto mode completely
 
 ### Thread-Based Execution
+
 - **Background Thread**: Auto mode execution
 - **Main Thread**: UI rendering and input
 - **Thread-Safe**: Locks, Events, Queue for communication
 - **Graceful Shutdown**: No deadlocks, clean resource cleanup
 
 ### Claude SDK Integration
+
 - **Title Generation**: async query() call with fallback
 - **Cost Tracking**: Token counts (input/output), estimated cost
 - **Message Streaming**: AssistantMessage, ToolUseMessage, ResultMessage
@@ -95,21 +103,27 @@ pytest tests/unit/test_auto_mode_ui.py \
 ## Implementation Order
 
 ### Week 1: UI Foundation (10 tests)
+
 Add `ui_mode` parameter, create UIManager class, implement Rich layout
 
 ### Week 2: Threading (15 tests)
+
 Background thread, thread-safe state, log queue, pause/stop events
 
 ### Week 3: SDK Integration (20 tests)
+
 Async title generation, cost tracking, message streaming, error handling
 
 ### Week 4: User Interactions (15 tests)
+
 Keyboard commands, prompt input, instruction injection, todo updates
 
 ### Week 5: E2E Workflows (20 tests)
+
 Complete flows: startup, injection, pause/resume, exit
 
 ### Week 6: Polish (35 tests)
+
 Edge cases, error recovery, performance, help overlay
 
 ## Test Structure (Testing Pyramid)
@@ -134,21 +148,25 @@ Edge cases, error recovery, performance, help overlay
 ## Key Design Decisions
 
 ### Threading Model
+
 - **Main Thread**: UI rendering (Rich library)
 - **Background Thread**: Auto mode execution
 - **Communication**: Queue for logs, Events for signals, Locks for state
 
 ### State Management
+
 - **AutoMode owns state**: Turn counter, todos, cost
 - **UI queries state**: Thread-safe read methods
 - **Updates via queue**: Logs pushed asynchronously
 
 ### Instruction Injection
+
 - **File-based**: UI writes to `append/TIMESTAMP.md`
 - **Polling**: AutoMode checks before each turn
 - **Thread-safe**: File operations atomic
 
 ### Error Handling
+
 - **Isolated threads**: UI crash doesn't kill AutoMode
 - **Graceful degradation**: Fall back to terminal
 - **Retry logic**: Exponential backoff on SDK errors
@@ -156,6 +174,7 @@ Edge cases, error recovery, performance, help overlay
 ## Common First Steps
 
 ### 1. Add ui_mode Parameter
+
 ```python
 class AutoMode:
     def __init__(self, sdk, prompt, max_turns=10, working_dir=None, ui_mode=False):
@@ -172,6 +191,7 @@ class AutoMode:
 **Passes**: `test_ui_mode_creates_ui_instance`
 
 ### 2. Create UIManager Class
+
 ```python
 from rich.layout import Layout
 from rich.live import Live
@@ -201,6 +221,7 @@ class UIManager:
 **Passes**: `test_ui_has_required_components`
 
 ### 3. Add Thread-Safe State
+
 ```python
 import threading
 from queue import Queue
@@ -235,6 +256,7 @@ class AutoMode:
 ## Troubleshooting
 
 ### Tests won't run
+
 ```bash
 # Install pytest if needed
 pip install pytest pytest-asyncio
@@ -244,10 +266,12 @@ uv pip install pytest pytest-asyncio
 ```
 
 ### Tests hang
+
 - Check for missing `timeout` on `Thread.join()` and `Queue.get()`
 - Should have `join(timeout=5)` and `get(timeout=1)`
 
 ### AttributeError on mocked SDK
+
 ```python
 # Correct: Patch at import location
 with patch('amplihack.launcher.auto_mode.query', ...):
@@ -257,6 +281,7 @@ with patch('claude_agent_sdk.query', ...):
 ```
 
 ### Race conditions in tests
+
 ```python
 # Add small sleep to let threads synchronize
 auto_mode.start_background()
@@ -267,16 +292,19 @@ assert auto_mode.execution_thread.is_alive()
 ## Documentation
 
 ### Detailed Docs
+
 - **tests/unit/README_AUTO_MODE_UI_TESTS.md**: Complete test documentation
 - **tests/AUTO_MODE_UI_TEST_SUITE_SUMMARY.md**: Executive summary
 
 ### Test Files
+
 - **test_auto_mode_ui.py**: UI component specs (380 lines)
 - **test_ui_threading.py**: Threading specs (300 lines)
 - **test_ui_sdk_integration.py**: SDK integration specs (280 lines)
 - **test_auto_mode_ui_integration.py**: E2E workflow specs (320 lines)
 
 ### External References
+
 - Rich Library: https://rich.readthedocs.io/
 - Python Threading: https://docs.python.org/3/library/threading.html
 - Testing Pyramid: https://martinfowler.com/bliki/TestPyramid.html
@@ -284,20 +312,24 @@ assert auto_mode.execution_thread.is_alive()
 ## Expected Test Results
 
 ### Before Implementation (Current State)
+
 ```
 FAILED test_auto_mode_ui.py::test_ui_mode_creates_ui_instance - AttributeError
 FAILED test_ui_threading.py::test_auto_mode_creates_background_thread - AttributeError
 FAILED test_ui_sdk_integration.py::test_title_generation_calls_claude_sdk - AttributeError
 ```
+
 **This is correct!** Tests are specifications.
 
 ### After Phase 1 (UI Foundation)
+
 ```
 PASSED test_auto_mode_ui.py::TestAutoModeUIInitialization (10 tests)
 FAILED test_ui_threading.py::TestAutoModeBackgroundThread - Not implemented yet
 ```
 
 ### After All Phases (Complete)
+
 ```
 PASSED tests/unit/test_auto_mode_ui.py (40 tests)
 PASSED tests/unit/test_ui_threading.py (25 tests)

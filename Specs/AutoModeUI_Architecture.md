@@ -3,6 +3,7 @@
 ## Module: auto_mode_state.py
 
 ### Purpose
+
 Thread-safe shared state container for communication between auto mode execution thread and UI thread.
 
 ### Contract
@@ -152,16 +153,19 @@ class AutoModeState:
 ```
 
 ### Dependencies
+
 - Python threading (stdlib)
 - dataclasses (stdlib)
 - collections.deque (stdlib)
 
 ### Implementation Notes
+
 - Use `deque(maxlen=N)` for automatic log rotation
 - Lock granularity: one lock for entire state (simplicity over performance)
 - Snapshots create copies to prevent UI from holding locks during rendering
 
 ### Test Requirements
+
 - Concurrent reads/writes from multiple threads
 - Log rotation at max size
 - State consistency under load
@@ -171,6 +175,7 @@ class AutoModeState:
 ## Module: auto_mode_coordinator.py
 
 ### Purpose
+
 Coordinate auto mode execution thread with UI thread. Handle threading lifecycle and communication.
 
 ### Contract
@@ -287,16 +292,19 @@ class AutoModeCoordinator:
 ```
 
 ### Dependencies
+
 - threading (stdlib)
 - logging (stdlib)
 - auto_mode_state module
 
 ### Implementation Notes
+
 - Daemon=False ensures thread completes even if UI exits
 - Exception handling captures errors for UI display
 - State updates happen via callbacks injected into SDK
 
 ### Test Requirements
+
 - Thread starts and completes successfully
 - Exceptions are captured and stored
 - Kill/pause signals are respected
@@ -306,6 +314,7 @@ class AutoModeCoordinator:
 ## Module: auto_mode_ui.py
 
 ### Purpose
+
 Rich TUI implementation with 5 areas, keyboard input, live updates.
 
 ### Contract
@@ -592,17 +601,20 @@ class AutoModeUI:
 ```
 
 ### Dependencies
+
 - rich (layout, panels, live display)
 - prompt_toolkit (keyboard input)
 - time, sys (stdlib)
 
 ### Implementation Notes
+
 - `Live` context manager handles terminal rendering
 - Keyboard bindings use prompt_toolkit for non-blocking input
 - Log scrolling uses offset into deque
 - Refresh rate balances responsiveness vs CPU usage
 
 ### Test Requirements
+
 - Layout renders correctly
 - Keyboard commands trigger state changes
 - UI handles state updates gracefully
@@ -613,6 +625,7 @@ class AutoModeUI:
 ## Module: auto_mode.py (Modifications)
 
 ### Purpose
+
 Integrate UI coordinator with existing auto mode implementation.
 
 ### Changes Required
@@ -750,10 +763,12 @@ if args.auto_mode:
 ```
 
 ### Dependencies
+
 - New state/coordinator/ui modules
 - Existing auto mode implementation
 
 ### Implementation Notes
+
 - Minimal changes to existing auto mode logic
 - Callbacks wrap existing handlers (composition pattern)
 - CLI flag provides opt-in behavior
@@ -765,6 +780,7 @@ if args.auto_mode:
 ### SDK Integration
 
 #### 1. Title Generation
+
 ```python
 def generate_session_title(first_message_data: dict) -> str:
     """
@@ -781,6 +797,7 @@ def generate_session_title(first_message_data: dict) -> str:
 ```
 
 #### 2. Cost Tracking
+
 ```python
 # Extract from SDK response
 usage = response.get("usage", {})
@@ -795,6 +812,7 @@ state.update_session_info(total_cost=state.session_info.total_cost + cost)
 ```
 
 #### 3. Todo Tracking
+
 ```python
 # SDK callback for todo updates
 def on_todo_update(todos: List[dict]):
@@ -805,6 +823,7 @@ sdk_client.on("todo_update", on_todo_update)
 ```
 
 #### 4. Streaming Output
+
 ```python
 # SDK callback for streaming chunks
 def on_stream_chunk(chunk: str):
@@ -887,6 +906,7 @@ sdk_client.on("stream_chunk", on_stream_chunk)
 ### Communication Patterns
 
 #### Execution → State → UI (One-way data flow)
+
 ```
 Execution Thread          AutoModeState              UI Thread
      │                         │                         │
@@ -903,6 +923,7 @@ Execution Thread          AutoModeState              UI Thread
 ```
 
 #### UI → State → Execution (Command flow)
+
 ```
 UI Thread                 AutoModeState          Execution Thread
      │                         │                         │
@@ -1186,21 +1207,25 @@ User         UI         State       Execution      Main
 ## Performance Considerations
 
 ### Refresh Rate
+
 - **Default**: 100ms (10 FPS)
 - **Trade-off**: Lower = more responsive, higher CPU usage
 - **Configurable**: Allow user override via CLI flag
 
 ### Log Buffer Size
+
 - **Default**: 1000 lines
 - **Memory**: ~1KB per line = ~1MB max
 - **Rotation**: Automatic via deque(maxlen=1000)
 
 ### Lock Contention
+
 - **Mitigation**: Single coarse lock (no nested locks)
 - **Snapshot Pattern**: UI never holds lock during render
 - **Write Frequency**: Logs most frequent (~10-100/sec), todos infrequent
 
 ### Terminal Rendering
+
 - **Rich Live**: Efficient diff-based rendering
 - **Layout Caching**: Reuse layout structure, update content
 
@@ -1256,29 +1281,34 @@ User         UI         State       Execution      Main
 ## Implementation Plan
 
 ### Phase 1: Foundation (Builder Agent Tasks)
+
 1. Create `auto_mode_state.py` with AutoModeState class
 2. Create `auto_mode_coordinator.py` with AutoModeCoordinator class
 3. Add unit tests for state and coordinator
 
 ### Phase 2: UI Implementation (Builder Agent Tasks)
+
 4. Create `auto_mode_ui.py` with AutoModeUI class
 5. Implement layout rendering
 6. Add keyboard input handling
 7. Add unit tests for UI components
 
 ### Phase 3: Integration (Builder Agent Tasks)
+
 8. Modify `auto_mode.py` to add `run_auto_mode_with_ui()`
 9. Wrap execution function with state callbacks
 10. Add CLI flag `--ui`
 11. Add integration tests
 
 ### Phase 4: SDK Integration (Builder Agent Tasks)
+
 12. Implement title generation callback
 13. Implement cost tracking callback
 14. Implement todo tracking callback
 15. Implement streaming output callback
 
 ### Phase 5: Polish (Builder Agent Tasks)
+
 16. Error handling and graceful degradation
 17. Performance tuning (refresh rate, buffer sizes)
 18. Documentation and examples
@@ -1289,10 +1319,12 @@ User         UI         State       Execution      Main
 ## Dependencies Summary
 
 ### New Dependencies
+
 - `rich>=13.0.0` - TUI rendering
 - `prompt_toolkit>=3.0.0` - Keyboard input
 
 ### Existing Dependencies
+
 - Claude Agent SDK (already in project)
 - Standard library: threading, logging, time, collections
 

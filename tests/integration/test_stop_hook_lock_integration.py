@@ -5,6 +5,7 @@ Tests lock file state changes and hook responses.
 """
 
 import json
+
 import pytest
 
 

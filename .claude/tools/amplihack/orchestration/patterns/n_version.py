@@ -7,11 +7,10 @@ Based on: .claude/workflow/N_VERSION_WORKFLOW.md
 """
 
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from ..execution import run_parallel
 from ..session import OrchestratorSession
-
 
 # Default diversity profiles for N implementations
 DEFAULT_PROFILES = [

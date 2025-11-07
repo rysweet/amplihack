@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
 from ..utils.claude_cli import get_claude_cli_path
 from ..utils.claude_trace import get_claude_command
@@ -84,7 +85,12 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Handle repository checkout if needed
+        # 2. Interactive Neo4j startup (blocks until ready or user decides)
+        if not self._interactive_neo4j_startup():
+            # User chose to exit rather than continue without Neo4j
+            return False
+
+        # 3. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
@@ -652,6 +658,81 @@ class ClaudeLauncher:
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
 
+    def _interactive_neo4j_startup(self) -> bool:
+        """Interactive Neo4j startup with user feedback.
+
+        BLOCKS until Neo4j ready or user decides to continue without it.
+
+        Returns:
+            True to continue, False to exit
+        """
+        import logging
+
+        method_logger = logging.getLogger(__name__)
+
+        try:
+            from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
+
+            return interactive_neo4j_startup()
+        except ImportError:
+            # Neo4j modules not available - continue without
+            method_logger.debug("Neo4j modules not found")
+            return True
+        except Exception as e:
+            method_logger.error("Neo4j startup failed: %s", e)
+            print(f"\n⚠️  Neo4j startup error: {e}")
+            print("Continuing with basic memory system...\n")
+            return True
+
+    def _auto_setup_and_start_neo4j_OLD(self):
+        """Auto-setup prerequisites and start Neo4j in background.
+
+        Self-healing approach:
+        - Creates .env with password if missing
+        - Starts Docker if not running
+        - Starts Neo4j container
+        All in background thread, non-blocking.
+        """
+        import threading
+
+        def start_neo4j():
+            """Background thread function with auto-setup."""
+            import logging
+
+            thread_logger = logging.getLogger(__name__)
+
+            try:
+                # Auto-setup prerequisites
+                from ..memory.neo4j.auto_setup import ensure_prerequisites
+
+                if not ensure_prerequisites():
+                    thread_logger.warning("Neo4j prerequisites not met, falling back to SQLite")
+                    return
+
+                # Start Neo4j
+                from ..memory.neo4j.lifecycle import ensure_neo4j_running
+                from ..memory.neo4j.diagnostics import verify_neo4j_working
+
+                thread_logger.info("Starting Neo4j memory system...")
+                if ensure_neo4j_running(blocking=True):
+                    # Verify and show stats
+                    verify_neo4j_working()
+
+            except Exception as e:
+                # Never crash session start due to Neo4j issues
+                thread_logger.warning("Neo4j initialization error: %s", e)
+                thread_logger.info("Continuing with existing memory system")
+
+        # Start in background thread
+        thread = threading.Thread(
+            target=start_neo4j,
+            name="neo4j-startup",
+            daemon=True,  # Don't block process exit
+        )
+        thread.start()
+
+        # Don't wait - return immediately
+
     def _paths_are_same_with_cache(self, path1: Path, path2: Path) -> bool:
         """Compare paths with caching for resolved paths.
 
@@ -686,3 +767,21 @@ class ClaudeLauncher:
         Call this when UVX environment may have changed.
         """
         self._cached_uvx_decision = None
+
+    def _check_neo4j_credentials(self) -> None:
+        """Check and sync Neo4j credentials from containers.
+
+        This method is called during prepare_launch and gracefully handles
+        all errors to ensure launcher never crashes due to Neo4j detection.
+        """
+        try:
+            # Create Neo4j manager (interactive mode)
+            neo4j_manager = Neo4jManager()
+
+            # Check and sync credentials if needed
+            neo4j_manager.check_and_sync()
+
+        except Exception:
+            # Graceful degradation - never crash launcher
+            # No error message needed as Neo4j detection is optional
+            pass
