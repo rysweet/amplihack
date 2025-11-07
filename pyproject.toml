@@ -85,6 +85,7 @@ exclude = [
 
 [tool.pytest.ini_options]
 # Pytest configuration
+asyncio_mode = "auto"
 testpaths = ["tests", "src"]
 python_files = ["test_*.py", "*_test.py"]
 python_functions = ["test_*"]
