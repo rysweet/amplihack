@@ -32,7 +32,7 @@ AI-powered session analysis for continuous improvement. Identifies patterns in u
 
 ## Environment Control
 
-- **REFLECTION_ENABLED** (default: true)
+- **REFLECTION_ENABLED** (default: false)
   - Set to `false` to disable automatic reflection
   - Use `/reflect force` to override
 
@@ -105,7 +105,7 @@ When reflection detects high-priority patterns, it automatically:
 
 Reflection runs automatically at session end if:
 
-- REFLECTION_ENABLED=true (default)
+- REFLECTION_ENABLED=false (default)
 - Session has meaningful content (>10 messages)
 - Patterns meet automation threshold
 
@@ -277,7 +277,7 @@ Location: `.claude/tools/amplihack/.reflection_config`
 
 ```json
 {
-  "enabled": false,
+  "enabled": true,
   "depth": "quick",
   "auto_file_issues": false,
   "min_patterns_for_notification": 1,
@@ -290,5 +290,5 @@ Location: `.claude/tools/amplihack/.reflection_config`
 - Reflection identifies, /improve implements
 - High visibility - no silent failures
 - Links to issues and PRs provided
-- Opt-in by default (enabled: false)
+- Opt-in by user choice (disabled by default)
 - Non-blocking - never slows down session end
