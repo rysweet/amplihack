@@ -105,9 +105,11 @@ When reflection detects high-priority patterns, it automatically:
 
 Reflection runs automatically at session end if:
 
-- REFLECTION_ENABLED=false (default)
+- Reflection is explicitly enabled (disabled by default - opt-in)
 - Session has meaningful content (>10 messages)
 - Patterns meet automation threshold
+
+**Note**: Reflection is now disabled by default. To enable automatic reflection, use `/amplihack:reflect enable` or edit the config file.
 
 ## Customization
 
@@ -277,7 +279,7 @@ Location: `.claude/tools/amplihack/.reflection_config`
 
 ```json
 {
-  "enabled": true,
+  "enabled": false,
   "depth": "quick",
   "auto_file_issues": false,
   "min_patterns_for_notification": 1,
