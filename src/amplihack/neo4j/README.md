@@ -49,10 +49,6 @@ manager.check_and_sync()
 # Non-interactive mode (auto-sync)
 manager = Neo4jManager(interactive=False)
 manager.check_and_sync()
-
-# Get status
-status = manager.get_status()
-print(f"Running containers: {status['running_containers']}")
 ```
 
 ## Architecture
@@ -165,25 +161,6 @@ manager = Neo4jManager(
 
 # Check and sync credentials
 success = manager.check_and_sync()
-
-# Get current status
-status = manager.get_status()
-# Returns:
-# {
-#   "docker_available": bool,
-#   "containers_detected": int,
-#   "running_containers": int,
-#   "credentials_in_env": bool,
-#   "containers": [
-#     {
-#       "name": str,
-#       "status": str,
-#       "has_credentials": bool,
-#       "bolt_port": str,
-#       "http_port": str
-#     }
-#   ]
-# }
 ```
 
 ### Neo4jContainerDetector
@@ -322,20 +299,17 @@ if success:
     print("Credentials updated!")
 ```
 
-### Example 3: Status Check
+### Example 3: Simple Detection
 
 ```python
-from amplihack.neo4j import Neo4jManager
+from amplihack.neo4j import Neo4jContainerDetector
 
-manager = Neo4jManager(interactive=False)
-status = manager.get_status()
+detector = Neo4jContainerDetector()
 
-print(f"Docker: {status['docker_available']}")
-print(f"Containers: {status['containers_detected']}")
-print(f"Running: {status['running_containers']}")
-
-for c in status['containers']:
-    print(f"  - {c['name']}: {c['status']}")
+if detector.has_running_neo4j():
+    print("Neo4j container is running")
+else:
+    print("No running Neo4j containers")
 ```
 
 ## Troubleshooting
@@ -424,4 +398,4 @@ See main project CONTRIBUTING.md.
 
 ---
 
-For issues or questions, see [NEO4J_IMPLEMENTATION_SUMMARY.md](../../../../NEO4J_IMPLEMENTATION_SUMMARY.md)
+For issues or questions, consult the main project documentation.
