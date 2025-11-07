@@ -21,6 +21,13 @@ try:
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
+# Repository constants
+AMPLIHACK_REPO_URI = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+
+# Template paths (relative to this file)
+TEMPLATE_DIR = Path(__file__).parent / "templates"
+REFLECTION_PROMPT_TEMPLATE = TEMPLATE_DIR / "reflection_prompt.txt"
+
 
 def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
     """Load conversation messages from session directory.
@@ -80,6 +87,91 @@ def load_feedback_template(project_root: Path) -> str:
     return template_path.read_text()
 
 
+def load_prompt_template() -> str:
+    """Load reflection prompt template.
+
+    Returns:
+        Raw template content with {VARIABLE} placeholders, or fallback if file missing
+    """
+    if REFLECTION_PROMPT_TEMPLATE.exists():
+        return REFLECTION_PROMPT_TEMPLATE.read_text()
+
+    # Fallback inline template if file is missing
+    return """You are analyzing a completed Claude Code session to provide feedback and identify learning opportunities.
+
+{user_preferences_context}
+{repository_context}
+
+## Critical: Distinguish Problem Sources
+
+When analyzing this session, you MUST clearly distinguish between TWO categories of issues:
+
+### 1. Amplihack Framework Issues
+Problems with the coding tools, agents, workflow, or process itself:
+- Agent behavior, effectiveness, or orchestration
+- Workflow step execution or adherence
+- Tool functionality (hooks, commands, utilities, reflection system)
+- Framework architecture or design decisions
+- UltraThink coordination and delegation
+- Command execution (/amplihack:* commands)
+- Session management and logging
+
+**These issues should be filed against**: {amplihack_repo_uri}
+
+### 2. Project Code Issues
+Problems with the actual application code being developed:
+- Application logic bugs or errors
+- Feature implementation quality
+- Test failures in project-specific tests
+- Project-specific design decisions
+- User-facing functionality
+- Business logic correctness
+
+**These issues should be filed against**: The current project repository (see Repository Context above)
+
+**IMPORTANT**: In your feedback, clearly label each issue as either "[AMPLIHACK]" or "[PROJECT]" so it's obvious which repository should handle it.
+
+## Session Conversation
+
+The session had {message_count} messages. Here are key excerpts:
+
+{conversation_summary}
+
+## Your Task
+
+Please analyze this session and fill out the following feedback template:
+
+{template}
+
+## Guidelines
+
+1. **Be specific and actionable** - Reference actual events from the session
+2. **Identify patterns** - What worked well? What could improve?
+3. **Track workflow adherence** - Did Claude follow the DEFAULT_WORKFLOW.md steps?
+4. **Note subagent usage** - Which specialized agents were used (architect, builder, reviewer, etc.)?
+5. **Categorize improvements** - Clearly mark each issue as [AMPLIHACK] or [PROJECT]
+6. **Suggest improvements** - What would make future similar sessions better?
+
+Please provide the filled-out template now.
+"""
+
+
+def format_reflection_prompt(template: str, variables: Dict[str, str]) -> str:
+    """Format reflection prompt with variable substitution.
+
+    Args:
+        template: Raw template with {VARIABLE} placeholders
+        variables: Dictionary of variable name -> value mappings
+
+    Returns:
+        Formatted prompt with all variables substituted
+
+    Raises:
+        KeyError: If required variable is missing
+    """
+    return template.format(**variables)
+
+
 def get_repository_context(project_root: Path) -> str:
     """Detect repository context to distinguish amplihack vs project issues.
 
@@ -90,9 +182,6 @@ def get_repository_context(project_root: Path) -> str:
         Formatted repository context guidance for reflection prompt
     """
     import subprocess
-
-    # Amplihack canonical repository
-    AMPLIHACK_REPO = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
 
     try:
         # Get current repository URL
@@ -115,7 +204,7 @@ def get_repository_context(project_root: Path) -> str:
                 return url.lower()
 
             current_normalized = normalize_url(current_repo)
-            amplihack_normalized = normalize_url(AMPLIHACK_REPO)
+            amplihack_normalized = normalize_url(AMPLIHACK_REPO_URI)
 
             is_amplihack_repo = current_normalized == amplihack_normalized
 
@@ -133,7 +222,7 @@ def get_repository_context(project_root: Path) -> str:
 ## Repository Context
 
 **Current Repository**: {current_repo}
-**Amplihack Repository**: {AMPLIHACK_REPO}
+**Amplihack Repository**: {AMPLIHACK_REPO_URI}
 **Context**: Working on a user project (not Amplihack itself)
 """
 
@@ -142,7 +231,7 @@ def get_repository_context(project_root: Path) -> str:
             return f"""
 ## Repository Context
 
-**Amplihack Repository**: {AMPLIHACK_REPO}
+**Amplihack Repository**: {AMPLIHACK_REPO_URI}
 **Context**: Repository detection unavailable
 """
 
@@ -151,7 +240,7 @@ def get_repository_context(project_root: Path) -> str:
         return f"""
 ## Repository Context
 
-**Amplihack Repository**: {AMPLIHACK_REPO}
+**Amplihack Repository**: {AMPLIHACK_REPO_URI}
 **Context**: Repository detection unavailable
 """
 
@@ -204,63 +293,19 @@ The following preferences are REQUIRED and CANNOT be ignored:
     # Get repository context for issue categorization
     repository_context = get_repository_context(project_root)
 
-    # Build reflection prompt
-    prompt = f"""You are analyzing a completed Claude Code session to provide feedback and identify learning opportunities.
-{user_preferences_context}
-{repository_context}
-
-## Critical: Distinguish Problem Sources
-
-When analyzing this session, you MUST clearly distinguish between TWO categories of issues:
-
-### 1. Amplihack Framework Issues
-Problems with the coding tools, agents, workflow, or process itself:
-- Agent behavior, effectiveness, or orchestration
-- Workflow step execution or adherence
-- Tool functionality (hooks, commands, utilities, reflection system)
-- Framework architecture or design decisions
-- UltraThink coordination and delegation
-- Command execution (/amplihack:* commands)
-- Session management and logging
-
-**These issues should be filed against**: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
-
-### 2. Project Code Issues
-Problems with the actual application code being developed:
-- Application logic bugs or errors
-- Feature implementation quality
-- Test failures in project-specific tests
-- Project-specific design decisions
-- User-facing functionality
-- Business logic correctness
-
-**These issues should be filed against**: The current project repository (see Repository Context above)
-
-**IMPORTANT**: In your feedback, clearly label each issue as either "[AMPLIHACK]" or "[PROJECT]" so it's obvious which repository should handle it.
-
-## Session Conversation
-
-The session had {len(conversation)} messages. Here are key excerpts:
-
-{_format_conversation_summary(conversation)}
-
-## Your Task
-
-Please analyze this session and fill out the following feedback template:
-
-{template}
-
-## Guidelines
-
-1. **Be specific and actionable** - Reference actual events from the session
-2. **Identify patterns** - What worked well? What could improve?
-3. **Track workflow adherence** - Did Claude follow the DEFAULT_WORKFLOW.md steps?
-4. **Note subagent usage** - Which specialized agents were used (architect, builder, reviewer, etc.)?
-5. **Categorize improvements** - Clearly mark each issue as [AMPLIHACK] or [PROJECT]
-6. **Suggest improvements** - What would make future similar sessions better?
-
-Please provide the filled-out template now.
-"""
+    # Load prompt template and format with variables
+    prompt_template = load_prompt_template()
+    prompt = format_reflection_prompt(
+        prompt_template,
+        {
+            "user_preferences_context": user_preferences_context,
+            "repository_context": repository_context,
+            "amplihack_repo_uri": AMPLIHACK_REPO_URI,
+            "message_count": str(len(conversation)),
+            "conversation_summary": _format_conversation_summary(conversation),
+            "template": template,
+        },
+    )
 
     try:
         # Configure SDK
