@@ -17,7 +17,15 @@ from typing import Any, Dict, Optional
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
-from hook_processor import HookProcessor
+
+# Import HookProcessor - wrap in try/except for robustness
+try:
+    from hook_processor import HookProcessor  # type: ignore[import]
+except ImportError as e:
+    # If import fails, provide helpful error message
+    print(f"Failed to import hook_processor: {e}", file=sys.stderr)
+    print("Make sure hook_processor.py exists in the same directory", file=sys.stderr)
+    sys.exit(1)
 
 
 class StopHook(HookProcessor):
@@ -68,12 +76,18 @@ class StopHook(HookProcessor):
         # FIX #2: Check for reflection semaphore (prevents infinite loop)
         session_id = self._get_current_session_id()
         semaphore_file = (
-            self.project_root / ".claude" / "runtime" / "reflection" / f".reflection_presented_{session_id}"
+            self.project_root
+            / ".claude"
+            / "runtime"
+            / "reflection"
+            / f".reflection_presented_{session_id}"
         )
 
         if semaphore_file.exists():
             # Reflection already presented - remove semaphore and allow stop
-            self.log(f"Reflection already presented for session {session_id} - removing semaphore and allowing stop")
+            self.log(
+                f"Reflection already presented for session {session_id} - removing semaphore and allowing stop"
+            )
             try:
                 semaphore_file.unlink()
             except OSError:
@@ -153,9 +167,7 @@ class StopHook(HookProcessor):
             return False
 
         # Load reflection config
-        config_path = (
-            self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
-        )
+        config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
         if not config_path.exists():
             self.log("Reflection config not found - skipping reflection", "DEBUG")
             return False
@@ -257,10 +269,12 @@ class StopHook(HookProcessor):
                                         text_parts.append(block.get("text", ""))
                                 content = "\n".join(text_parts)
 
-                            conversation.append({
-                                "role": msg.get("role", entry.get("type", "user")),
-                                "content": content
-                            })
+                            conversation.append(
+                                {
+                                    "role": msg.get("role", entry.get("type", "user")),
+                                    "content": content,
+                                }
+                            )
                 self.log(f"Loaded {len(conversation)} conversation turns from transcript")
             except Exception as e:
                 self.log(f"Failed to load transcript: {e}", "WARNING")
@@ -335,7 +349,8 @@ class StopHook(HookProcessor):
                 first_sentence = summary_section.split(".")[0][:100]
                 # Convert to slug
                 import re
-                task_slug = re.sub(r'[^a-z0-9]+', '-', first_sentence.lower()).strip('-')
+
+                task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
                 # Limit length
                 task_slug = task_slug[:50]
         except Exception:

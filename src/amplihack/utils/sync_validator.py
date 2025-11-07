@@ -24,7 +24,7 @@ def normalize_hook_path(path: str) -> str:
         Normalized path string
     """
     # Remove $CLAUDE_PROJECT_DIR prefix if present
-    normalized = re.sub(r'^\$CLAUDE_PROJECT_DIR/', '', path)
+    normalized = re.sub(r"^\$CLAUDE_PROJECT_DIR/", "", path)
     return normalized
 
 
@@ -45,16 +45,14 @@ def normalize_hooks_dict(hooks: Dict[str, Any]) -> Dict[str, Any]:
         for config in hook_configs:
             normalized_config = config.copy()
 
-            if 'hooks' in normalized_config:
+            if "hooks" in normalized_config:
                 normalized_hooks = []
-                for hook_def in normalized_config['hooks']:
+                for hook_def in normalized_config["hooks"]:
                     normalized_hook = hook_def.copy()
-                    if 'command' in normalized_hook:
-                        normalized_hook['command'] = normalize_hook_path(
-                            normalized_hook['command']
-                        )
+                    if "command" in normalized_hook:
+                        normalized_hook["command"] = normalize_hook_path(normalized_hook["command"])
                     normalized_hooks.append(normalized_hook)
-                normalized_config['hooks'] = normalized_hooks
+                normalized_config["hooks"] = normalized_hooks
 
             normalized_configs.append(normalized_config)
 
@@ -109,16 +107,16 @@ def validate_hooks_sync(source_path: Path, template_path: Path) -> Tuple[bool, L
     """
     try:
         # Load source settings
-        with open(source_path, 'r', encoding='utf-8') as f:
+        with open(source_path, encoding="utf-8") as f:
             source_data = json.load(f)
 
-        source_hooks = source_data.get('hooks', {})
+        source_hooks = source_data.get("hooks", {})
 
         # Load template settings
-        with open(template_path, 'r', encoding='utf-8') as f:
+        with open(template_path, encoding="utf-8") as f:
             template_data = json.load(f)
 
-        template_hooks = template_data.get('hooks', {})
+        template_hooks = template_data.get("hooks", {})
 
         # Compare
         errors = compare_hooks(source_hooks, template_hooks)
@@ -143,27 +141,27 @@ def main() -> int:
     script_dir = Path(__file__).parent
 
     # Source: ../../.claude/settings.json (from src/amplihack/utils/)
-    source_path = script_dir.parent.parent.parent / '.claude' / 'settings.json'
+    source_path = script_dir.parent.parent.parent / ".claude" / "settings.json"
 
     # Template: ./uvx_settings_template.json (same directory)
-    template_path = script_dir / 'uvx_settings_template.json'
+    template_path = script_dir / "uvx_settings_template.json"
 
     is_valid, errors = validate_hooks_sync(source_path, template_path)
 
     if is_valid:
         print("✅ Hooks are synchronized")
         return 0
-    else:
-        print("❌ Hooks are OUT OF SYNC")
-        print()
-        for error in errors:
-            print(f"  • {error}")
-        print()
-        print("To fix, run:")
-        print("  python scripts/sync_hooks.py")
-        return 1
+    print("❌ Hooks are OUT OF SYNC")
+    print()
+    for error in errors:
+        print(f"  • {error}")
+    print()
+    print("To fix, run:")
+    print("  python scripts/sync_hooks.py")
+    return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
+
     sys.exit(main())

@@ -27,6 +27,7 @@ When starting a session, import these files for context:
 ```
 
 **For large features or multi-file changes**, also import:
+
 ```
 @docs/document_driven_development/README.md
 ```
@@ -514,11 +515,14 @@ stages at specific steps.
 
 ### Document-Driven Development (DDD)
 
-**Systematic methodology for large features where documentation comes first and acts as the specification.**
+**Systematic methodology for large features where documentation comes first and
+acts as the specification.**
 
-**Core Principle**: Documentation IS the specification. Code must match what documentation describes exactly.
+**Core Principle**: Documentation IS the specification. Code must match what
+documentation describes exactly.
 
 **When to Use DDD:**
+
 - New features requiring multiple files (10+ files)
 - System redesigns or major refactoring
 - API changes affecting documentation
@@ -526,6 +530,7 @@ stages at specific steps.
 - Complex integrations requiring clear contracts
 
 **Commands:**
+
 ```bash
 /amplihack:ddd:0-help          # Get help and understand DDD
 /amplihack:ddd:prime           # Prime context with DDD overview
@@ -539,13 +544,57 @@ stages at specific steps.
 ```
 
 **Benefits:**
-- **Prevents context poisoning** - Single source of truth eliminates conflicting docs
+
+- **Prevents context poisoning** - Single source of truth eliminates conflicting
+  docs
 - **Reviewable design** - Catch design flaws before expensive implementation
 - **No drift** - Docs and code never diverge (docs come first by design)
 - **AI-optimized** - Clear specifications prevent wrong decisions
-- **Philosophy-aligned** - Natural fit with ruthless simplicity and modular design
+- **Philosophy-aligned** - Natural fit with ruthless simplicity and modular
+  design
 
-**Documentation**: See `docs/document_driven_development/` for complete guides, core concepts, and reference materials.
+**Documentation**: See `docs/document_driven_development/` for complete guides,
+core concepts, and reference materials.
+
+### Investigation Workflow
+
+Deep knowledge excavation for understanding existing codebases, systems, and
+architectures.
+
+**When to Use:**
+
+- Analyzing codebase structure or system architecture
+- Understanding how components integrate
+- Diagnosing complex bugs with historical context
+- Researching implementation patterns
+- Exploring feature designs before modifications
+
+**What It Does:**
+
+Systematic 6-stage investigation workflow that preserves findings in persistent
+documentation:
+
+- Clarifies investigation scope and objectives
+- Discovers and maps code structure
+- Deep dives with knowledge-archaeologist agent
+- Verifies understanding with practical examples
+- Synthesizes findings into clear reports
+- Optionally generates permanent documentation
+
+**Key Feature - Auto-Documentation:**
+
+After investigations, the agent offers to create persistent docs in
+`.claude/docs/` (ARCHITECTURE*\* or INVESTIGATION*\*) so knowledge persists
+across sessions instead of being lost in chat history.
+
+**Details:**
+
+- **Complete Workflow**: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+- **Agent Implementation**:
+  `.claude/agents/amplihack/specialized/knowledge-archaeologist.md`
+- **Templates**:
+  `.claude/templates/{investigation,architecture}-doc-template.md`
+- **Storage**: `.claude/docs/` (all generated documentation)
 
 ## Scenario Tools
 

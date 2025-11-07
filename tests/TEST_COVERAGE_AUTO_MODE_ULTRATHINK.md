@@ -7,6 +7,7 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 ## Feature Under Test
 
 **Function**: `ensure_ultrathink_command(prompt: str) -> str`
+
 - **Location**: `src/amplihack/cli.py`
 - **Purpose**: Automatically prepend `/amplihack:ultrathink` to prompts that don't already start with a slash command
 - **Type**: Pure function with no side effects
@@ -15,6 +16,7 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 ## Test Files
 
 ### 1. Unit Tests (60% Coverage)
+
 **File**: `tests/unit/test_cli_ensure_ultrathink.py`
 **Tests**: 40 comprehensive unit tests
 **Focus**: Pure function behavior, edge cases, boundary conditions
@@ -22,11 +24,13 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 #### Test Categories:
 
 **Happy Path Tests (3 tests)**
+
 - Normal prompt transformation
 - Detailed prompts
 - Single-word prompts
 
 **Slash Command Detection (8 tests)**
+
 - Already has slash command (unchanged)
 - Already has ultrathink (idempotent)
 - Different slash commands
@@ -34,6 +38,7 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 - Multiple slashes
 
 **Whitespace Handling (5 tests)**
+
 - Leading whitespace
 - Trailing whitespace
 - Both leading and trailing
@@ -41,6 +46,7 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 - Slash command with whitespace
 
 **Empty/None Inputs (5 tests)**
+
 - Empty string
 - Whitespace-only
 - Tabs-only
@@ -48,11 +54,13 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 - Mixed whitespace
 
 **Multiline Prompts (3 tests)**
+
 - Basic multiline
 - Multiline with whitespace
 - Multiline with slash command
 
 **Special Characters (6 tests)**
+
 - Special characters (@, #, etc.)
 - Unicode (日本語, émojis)
 - Quotes and apostrophes
@@ -61,29 +69,35 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 - Malformed slash commands
 
 **Boundary Tests (3 tests)**
+
 - Very long prompts (1000+ chars)
 - Single character
 - Two characters
 
 **Case Sensitivity (2 tests)**
+
 - Uppercase slash commands
 - Mixed case commands
 
 **Type Safety (3 tests)**
+
 - None input (raises TypeError)
 - Non-string input (raises TypeError)
 - List input (raises TypeError)
 
 **Idempotency (2 tests)**
+
 - Double transformation
 - Idempotency with whitespace
 
 **Command Prefix Tests (3 tests)**
+
 - Short slash commands
 - Commands with colons
 - Exact ultrathink match
 
 ### 2. Integration Tests (30% Coverage)
+
 **File**: `tests/integration/test_cli_auto_mode_ultrathink.py`
 **Tests**: 30 integration tests
 **Focus**: Integration with `handle_auto_mode()`, workflow verification, SDK compatibility
@@ -91,6 +105,7 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 #### Test Categories:
 
 **handle_auto_mode() Integration (11 tests)**
+
 - Normal prompt prepending
 - Slash command unchanged
 - Whitespace stripped
@@ -104,6 +119,7 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 - Non-auto mode returns None
 
 **End-to-End Workflow (8 tests)**
+
 - Full workflow transformation
 - No duplication of ultrathink
 - Whitespace-only error
@@ -113,21 +129,25 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 - -p flag at end of args
 
 **Error Handling (3 tests)**
+
 - AutoMode import error
 - AutoMode runtime error
 - Missing prompt value
 
 **Parametrized Tests (3 tests)**
+
 - All SDKs (claude, copilot, codex)
 - Various max_turns values
 - UI mode variations
 
 **Real Integration (3 tests)**
+
 - Actual function without mocks
 - Pure function verification
 - Function signature verification
 
 ### 3. E2E Tests (10% Coverage)
+
 **File**: `tests/e2e/test_cli_auto_mode_ultrathink_e2e.py`
 **Tests**: 12 E2E tests (mostly manual with documentation)
 **Focus**: Complete user workflows, manual testing scenarios
@@ -135,6 +155,7 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 #### Test Categories:
 
 **CLI Invocation (5 tests)**
+
 - Normal prompt through CLI
 - Slash command unchanged
 - Empty prompt error
@@ -142,27 +163,33 @@ This document describes the comprehensive test coverage for the auto mode ultrat
 - Multiline prompts
 
 **SDK Compatibility (1 test)**
+
 - All SDKs work (parametrized)
 
 **Configuration (2 tests)**
+
 - Max turns parameter
 - UI mode
 
 **Error Cases (2 tests)**
+
 - Missing prompt flag
 - Invalid SDK
 
 **Automated Smoke Tests (2 tests)**
+
 - CLI help shows auto mode
 - CLI version check
 
 **Documentation Tests (2 tests)**
+
 - Manual test scenarios (10 scenarios)
 - E2E test checklist
 
 ## Test Statistics
 
 ### Coverage Breakdown
+
 ```
 Unit Tests:       40 tests (60%)
 Integration Tests: 30 tests (30%)
@@ -171,6 +198,7 @@ Total:            82 tests
 ```
 
 ### Edge Cases Covered
+
 - Empty strings: ✅
 - Whitespace-only: ✅
 - Leading/trailing whitespace: ✅
@@ -184,6 +212,7 @@ Total:            82 tests
 - Type safety: ✅
 
 ### Boundary Conditions
+
 - Empty input: ✅
 - Single character: ✅
 - Very long input (2000+ chars): ✅
@@ -193,6 +222,7 @@ Total:            82 tests
 ## Running the Tests
 
 ### Run All Tests
+
 ```bash
 pytest tests/unit/test_cli_ensure_ultrathink.py -v
 pytest tests/integration/test_cli_auto_mode_ultrathink.py -v
@@ -200,6 +230,7 @@ pytest tests/e2e/test_cli_auto_mode_ultrathink_e2e.py -v
 ```
 
 ### Run by Test Pyramid Level
+
 ```bash
 # Unit tests only (60%)
 pytest tests/unit/test_cli_ensure_ultrathink.py -v
@@ -212,6 +243,7 @@ pytest tests/e2e/test_cli_auto_mode_ultrathink_e2e.py -v -m e2e
 ```
 
 ### Run Specific Test Categories
+
 ```bash
 # Unit: Happy path
 pytest tests/unit/test_cli_ensure_ultrathink.py::test_unit_ultrathink_001_normal_prompt -v
@@ -230,6 +262,7 @@ pytest tests/integration/test_cli_auto_mode_ultrathink.py -k "error" -v
 ```
 
 ### Run with Coverage Report
+
 ```bash
 pytest tests/unit/test_cli_ensure_ultrathink.py \
        tests/integration/test_cli_auto_mode_ultrathink.py \
@@ -241,7 +274,9 @@ pytest tests/unit/test_cli_ensure_ultrathink.py \
 ## Expected Test Results (TDD)
 
 ### Before Implementation
+
 **All tests should FAIL** with:
+
 ```
 ImportError: cannot import name 'ensure_ultrathink_command' from 'amplihack.cli'
 ```
@@ -249,7 +284,9 @@ ImportError: cannot import name 'ensure_ultrathink_command' from 'amplihack.cli'
 This confirms we're following TDD principles - tests written first, then implementation.
 
 ### After Implementation
+
 **All tests should PASS** when `ensure_ultrathink_command()` is correctly implemented with:
+
 1. Whitespace stripping
 2. Slash command detection
 3. Ultrathink prepending
@@ -259,6 +296,7 @@ This confirms we're following TDD principles - tests written first, then impleme
 ## Test Quality Metrics
 
 ### Characteristics of Good Tests
+
 ✅ **Fast**: Unit tests run in <100ms total
 ✅ **Isolated**: No test dependencies
 ✅ **Repeatable**: Consistent results every run
@@ -266,6 +304,7 @@ This confirms we're following TDD principles - tests written first, then impleme
 ✅ **Focused**: Single assertion per test (mostly)
 
 ### Code Coverage Goals
+
 - **Function coverage**: 100% (all code paths)
 - **Branch coverage**: 100% (all if/else branches)
 - **Edge case coverage**: 100% (all boundary conditions)
@@ -274,67 +313,87 @@ This confirms we're following TDD principles - tests written first, then impleme
 ## Manual E2E Test Scenarios
 
 ### Scenario 1: Basic Auto Mode
+
 ```bash
 amplihack claude --auto -- -p "implement user authentication"
 ```
+
 **Expected**: Prompt transformed to `/amplihack:ultrathink implement user authentication`
 
 ### Scenario 2: Slash Command Passthrough
+
 ```bash
 amplihack claude --auto -- -p "/analyze src"
 ```
+
 **Expected**: Prompt unchanged, passes through as `/analyze src`
 
 ### Scenario 3: Whitespace Handling
+
 ```bash
 amplihack claude --auto -- -p "  implement feature  "
 ```
+
 **Expected**: Whitespace stripped, becomes `/amplihack:ultrathink implement feature`
 
 ### Scenario 4: Empty Prompt Error
+
 ```bash
 amplihack claude --auto -- -p ""
 ```
+
 **Expected**: Error message, exit code 1, no Claude API calls
 
 ### Scenario 5: Multiline Prompt
+
 ```bash
 amplihack claude --auto -- -p "implement authentication
 with JWT tokens
 and refresh support"
 ```
+
 **Expected**: Full multiline prompt prefixed with ultrathink
 
 ### Scenario 6: Special Characters
+
 ```bash
 amplihack claude --auto -- -p 'implement "feature X" with user'"'"'s data'
 ```
+
 **Expected**: Quotes preserved, special characters intact
 
 ### Scenario 7: Idempotency
+
 ```bash
 amplihack claude --auto -- -p "/amplihack:ultrathink test"
 ```
+
 **Expected**: No double-prepending, single ultrathink command
 
 ### Scenario 8: Different SDKs
+
 ```bash
 amplihack claude --auto -- -p "test"
 amplihack copilot --auto -- -p "test"
 amplihack codex --auto -- -p "test"
 ```
+
 **Expected**: All SDKs work consistently
 
 ### Scenario 9: Max Turns
+
 ```bash
 amplihack claude --auto --max-turns 20 -- -p "implement feature"
 ```
+
 **Expected**: max_turns=20 passed to AutoMode with ultrathink prompt
 
 ### Scenario 10: UI Mode
+
 ```bash
 amplihack claude --auto --ui -- -p "implement feature"
 ```
+
 **Expected**: Rich UI displays with ultrathink prompt
 
 ## Implementation Checklist
@@ -356,6 +415,7 @@ When implementing `ensure_ultrathink_command()`, ensure:
 ## Test Maintenance
 
 ### When to Update Tests
+
 - New edge cases discovered
 - API changes to `ensure_ultrathink_command()`
 - New SDK added
@@ -363,11 +423,13 @@ When implementing `ensure_ultrathink_command()`, ensure:
 - AutoMode interface changes
 
 ### Test Naming Convention
+
 - Unit: `test_unit_ultrathink_NNN_description`
 - Integration: `test_integration_auto_NNN_description`
 - E2E: `test_e2e_ultrathink_NNN_description`
 
 ### Test Organization
+
 - Happy path tests first
 - Edge cases grouped by category
 - Error cases clearly labeled

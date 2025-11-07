@@ -9,18 +9,20 @@ Worktrees are automatically created here by the worktree-manager agent during wo
 ## Structure
 
 Each worktree is a separate working directory:
+
 - ./worktrees/feat-issue-123-description/
 - ./worktrees/fix-issue-456-bug-name/
 
 ## Cleanup
 
 Remove completed worktrees with:
+
 ```bash
 git worktree remove ./worktrees/{branch-name}
 ```
 
 Or prune references to deleted worktrees:
+
 ```bash
 git worktree prune
 ```
-

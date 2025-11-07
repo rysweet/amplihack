@@ -21,7 +21,22 @@ paths-ignore:
 
   # Test files with mock credentials
   - "tests/**/*.py"
+  - "tests/**/*.sh"
   - "scripts/testing/**/*.py"
+  - "scripts/test*.py"
+  - "scripts/test*.sh"
 
-  # Documentation
+  # Documentation (includes agent definitions, specs, and docs)
   - "**/*.md"
+  - ".claude/**/*.md"
+  - "Specs/**/*.md"
+  - "docs/**/*.md"
+
+  # Password generation code (not actual secrets - these generate passwords dynamically)
+  # All Neo4j infrastructure code - these contain password GENERATION, not secrets
+  - "src/amplihack/memory/**/*"
+  - "docker/**/*neo4j*"
+  - "scripts/*neo4j*"
+  - "scripts/*memory*"
+  - "examples/*neo4j*"
+  - "examples/*memory*"

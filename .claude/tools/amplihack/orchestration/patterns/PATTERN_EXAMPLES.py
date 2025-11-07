@@ -8,9 +8,9 @@ This file demonstrates how to use the three pattern orchestrators:
 These examples can be run directly or used as templates.
 """
 
-from .n_version import run_n_version
+from .cascade import create_custom_cascade, run_cascade
 from .debate import run_debate
-from .cascade import run_cascade, create_custom_cascade
+from .n_version import run_n_version
 
 
 def example_n_version():
