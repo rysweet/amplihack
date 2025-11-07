@@ -6,14 +6,15 @@ Marked with @pytest.mark.gadugi for selective execution.
 
 import sys
 from pathlib import Path
+
 import pytest
 
 # Add orchestration to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / ".claude/tools/amplihack"))
 
 from orchestration.patterns.expert_panel import (
-    run_expert_panel,
     VoteChoice,
+    run_expert_panel,
 )
 
 

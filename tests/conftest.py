@@ -572,8 +572,8 @@ def captured_subprocess(temp_project_root):
     Returns:
         callable: Function to run hook subprocess
     """
-    import sys
     import os
+    import sys
 
     # Path to the actual stop.py hook
     hook_script = Path(__file__).parent.parent / ".claude/tools/amplihack/hooks/stop.py"

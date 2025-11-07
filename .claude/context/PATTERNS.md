@@ -2,6 +2,101 @@
 
 This document captures proven patterns, solutions to common problems, and lessons learned from development. It serves as a quick reference for recurring challenges.
 
+## Pattern: Documentation Discovery Before Code Analysis
+
+### Challenge
+
+During investigations, agents often dive directly into code exploration without checking if existing documentation (README, ARCHITECTURE, design docs) already explains the systems being investigated. This leads to:
+
+- Reinventing the wheel (re-discovering what's already documented)
+- Missing important context that documentation provides
+- Unable to identify gaps between documentation and implementation
+- Slower investigations when good docs exist
+
+### Solution
+
+Always perform a documentation discovery phase before code analysis:
+
+```markdown
+## Documentation Discovery Process
+
+1. **Search for Documentation Files** (using Glob):
+   - \*\*/README.md - Project and module overviews
+   - \*\*/ARCHITECTURE.md - System design documentation
+   - **/docs/**/\*.md - Detailed documentation
+   - \*_/_.md (in investigation scope) - Any other markdown docs
+
+2. **Filter by Relevance** (using Grep):
+   - Extract keywords from investigation topic
+   - Search documentation for related terms
+   - Prioritize: README > ARCHITECTURE > specific docs
+   - Limit initial reading to top 5 most relevant files
+
+3. **Read Relevant Documentation** (using Read):
+   - Extract: Purpose, architecture, key concepts
+   - Identify: What features are documented
+   - Note: Design decisions and constraints
+   - Map: Component relationships and dependencies
+
+4. **Establish Documentation Baseline**:
+   - What does documentation claim exists?
+   - What architectural patterns are described?
+   - What is well-documented vs. poorly documented?
+
+5. **Use Documentation to Guide Analysis**:
+   - Verify: Does code implement what docs describe?
+   - Find Gaps: What code exists but isn't documented?
+   - Identify Drift: Where do docs and code diverge?
+   - Report Discrepancies: Flag doc/code inconsistencies
+```
+
+### Example Usage in Agent
+
+```markdown
+Before analyzing [TOPIC], I'll first discover existing documentation:
+
+[Run Glob for **/README.md, **/ARCHITECTURE.md, **/docs/**/*.md]
+[Run Grep for keywords related to TOPIC]
+[Read top 5 most relevant files]
+
+Documentation Discovery Results:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ Found: 15 documentation files
+✓ Relevant: 3 files analyzed
+✓ Key Claims:
+
+- Feature X is implemented using pattern Y
+- Module Z handles authentication
+- Architecture follows microservices pattern
+  ⚠ Documentation Gaps:
+- API endpoints not documented
+- Error handling strategy unclear
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Now proceeding to code analysis to verify these claims...
+```
+
+### Key Points
+
+- **Always discover docs first** - Mandatory step before code analysis
+- **30-second limit** - Quick discovery doesn't slow investigations
+- **Graceful degradation** - Handle missing/outdated docs without failing
+- **Gap identification** - Report doc/code discrepancies as valuable findings
+- **Reusable pattern** - Copy to any agent that performs investigations
+
+### Benefits
+
+- More comprehensive investigations leveraging existing knowledge
+- Ability to identify gaps between documentation and implementation
+- Faster understanding when good documentation exists
+- Better context for code exploration
+- Reduces wasted effort re-discovering documented information
+
+### Integrated In
+
+- `.claude/agents/amplihack/specialized/analyzer.md` - All three modes (TRIAGE, DEEP, SYNTHESIS)
+- Can be added to other investigation or analysis agents
+
 ## Pattern: Claude Code SDK Integration
 
 ### Challenge
