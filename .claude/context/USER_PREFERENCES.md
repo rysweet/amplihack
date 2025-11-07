@@ -12,27 +12,11 @@ This file contains user-specific preferences and customizations that persist acr
 
 Your role is to work as autonomously and independently as possible. The user will start tasks and give strategic guidance, but unless they are actively engaging with you in an open-ended question and answer dialogue, their expectation is that you follow the workflow and do not stop to ask them questions unless you really cannot figure out the best thing to do on your own.
 
-**Key Principles:**
-
 - **Follow the workflow autonomously**: When executing workflow steps, transition between stages without asking permission
 - **Make reasonable decisions**: If multiple valid approaches exist and no clear preference is stated, choose one and proceed
 - **Only ask when truly blocked**: Ask questions only when you lack critical information needed to proceed
 - **No transition confirmations**: Do not ask "Should I continue to the next step?" - just continue
 - **Trust your judgment**: Use your expertise to make implementation decisions within the given requirements
-
-**When to Ask Questions:**
-
-- Critical ambiguity in requirements that affects core functionality
-- User explicitly requests input on a decision
-- Security or data safety concerns require user confirmation
-- Multiple approaches with significant trade-offs that affect user experience
-
-**When NOT to Ask Questions:**
-
-- Transitioning between workflow stages
-- Choosing between equivalent implementation approaches
-- Standard coding decisions (variable names, file organization, etc.)
-- Whether to continue with the obvious next step
 
 ## Core Preferences
 
