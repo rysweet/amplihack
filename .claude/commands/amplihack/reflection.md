@@ -9,7 +9,7 @@ Control the session reflection system that analyzes conversations and provides f
 ```
 
 **Actions:**
-- `enable` - Turn on session reflection (default)
+- `enable` - Turn on session reflection
 - `disable` - Turn off session reflection for this session
 - `status` - Check if reflection is currently enabled
 - `clear-semaphore` - Clear the reflection semaphore (allows reflection to run again)
@@ -115,7 +115,7 @@ echo "Reflection semaphore cleared - reflection will run on next stop"
 
 ```json
 {
-  "enabled": true,
+  "enabled": false,
   "timeout_seconds": 60,
   "triggers": ["session_end"],
   "min_turns": 5
@@ -131,4 +131,4 @@ echo "Reflection semaphore cleared - reflection will run on next stop"
 
 ---
 
-**Note:** Reflection is enabled by default and provides valuable insights for improving your workflow. Only disable it for trivial tasks or rapid iteration sessions.
+**Note:** Reflection is disabled by default to respect user choice. Enable it to gain valuable insights for improving your workflow, especially for complex tasks and learning sessions.

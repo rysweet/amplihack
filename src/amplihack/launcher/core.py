@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
 from ..utils.claude_cli import get_claude_cli_path
 from ..utils.claude_trace import get_claude_command
@@ -666,10 +667,12 @@ class ClaudeLauncher:
             True to continue, False to exit
         """
         import logging
+
         method_logger = logging.getLogger(__name__)
 
         try:
             from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
+
             return interactive_neo4j_startup()
         except ImportError:
             # Neo4j modules not available - continue without
@@ -695,6 +698,7 @@ class ClaudeLauncher:
         def start_neo4j():
             """Background thread function with auto-setup."""
             import logging
+
             thread_logger = logging.getLogger(__name__)
 
             try:
@@ -721,7 +725,9 @@ class ClaudeLauncher:
 
         # Start in background thread
         thread = threading.Thread(
-            target=start_neo4j, name="neo4j-startup", daemon=True  # Don't block process exit
+            target=start_neo4j,
+            name="neo4j-startup",
+            daemon=True,  # Don't block process exit
         )
         thread.start()
 
@@ -761,3 +767,21 @@ class ClaudeLauncher:
         Call this when UVX environment may have changed.
         """
         self._cached_uvx_decision = None
+
+    def _check_neo4j_credentials(self) -> None:
+        """Check and sync Neo4j credentials from containers.
+
+        This method is called during prepare_launch and gracefully handles
+        all errors to ensure launcher never crashes due to Neo4j detection.
+        """
+        try:
+            # Create Neo4j manager (interactive mode)
+            neo4j_manager = Neo4jManager()
+
+            # Check and sync credentials if needed
+            neo4j_manager.check_and_sync()
+
+        except Exception:
+            # Graceful degradation - never crash launcher
+            # No error message needed as Neo4j detection is optional
+            pass

@@ -41,7 +41,9 @@ def get_neo4j_stats(conn) -> Dict[str, Any]:
         label_counts = {row["label"]: row["count"] for row in result}
 
         # Get database info
-        result = conn.execute_query("CALL dbms.components() YIELD name, versions RETURN name, versions[0] AS version")
+        result = conn.execute_query(
+            "CALL dbms.components() YIELD name, versions RETURN name, versions[0] AS version"
+        )
         db_info = result[0] if result else {}
 
         return {
@@ -73,20 +75,20 @@ def print_neo4j_status(conn):
         print(f"❌ Neo4j connection failed: {stats['error']}")
         return False
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("📊 Neo4j Memory System - Status")
-    print("="*70)
+    print("=" * 70)
     print(f"\n✅ Connected to {stats['database']} {stats['version']}")
-    print(f"\n📈 Graph Statistics:")
+    print("\n📈 Graph Statistics:")
     print(f"   Nodes: {stats['node_count']:,}")
     print(f"   Relationships: {stats['relationship_count']:,}")
 
     if stats.get("label_counts"):
-        print(f"\n📋 Node Types:")
+        print("\n📋 Node Types:")
         for label, count in list(stats["label_counts"].items())[:10]:
             print(f"   {label}: {count:,}")
 
-    print("\n" + "="*70 + "\n")
+    print("\n" + "=" * 70 + "\n")
     return True
 
 

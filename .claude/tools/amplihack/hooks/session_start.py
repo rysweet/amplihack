@@ -6,7 +6,6 @@ Uses unified HookProcessor for common functionality.
 
 # Import the base processor
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
@@ -113,7 +112,12 @@ class SessionStartHook(HookProcessor):
         # Why opt-in: Neo4j requires Docker, external dependencies (Blarify), and adds complexity
         # Most users don't need advanced graph memory features
         import os
-        neo4j_enabled = os.environ.get("AMPLIHACK_USE_GRAPH_MEM", "").lower() in ("1", "true", "yes")
+
+        neo4j_enabled = os.environ.get("AMPLIHACK_USE_GRAPH_MEM", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
 
         if neo4j_enabled:
             self.log("Neo4j opt-in flag detected, starting memory system...")
@@ -139,7 +143,6 @@ class SessionStartHook(HookProcessor):
 
         # Build context if needed
         context_parts = []
-        preference_enforcement = []
 
         # Add project context
         context_parts.append("## Project Context")
@@ -167,7 +170,9 @@ class SessionStartHook(HookProcessor):
 
                 # Inject FULL preferences content with MANDATORY enforcement
                 context_parts.append("\n## 🎯 USER PREFERENCES (MANDATORY - MUST FOLLOW)")
-                context_parts.append("\nThe following preferences are REQUIRED and CANNOT be ignored:\n")
+                context_parts.append(
+                    "\nThe following preferences are REQUIRED and CANNOT be ignored:\n"
+                )
                 context_parts.append(full_prefs_content)
 
                 self.log("Injected full USER_PREFERENCES.md content into session")
@@ -228,8 +233,6 @@ class SessionStartHook(HookProcessor):
                     "Type `/help` for available commands",
                 ]
             )
-
-            startup_message = "\n".join(startup_msg_parts)
 
             # CRITICAL: Inject original request context at top priority
             if original_request_context:

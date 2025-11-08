@@ -336,6 +336,7 @@ if __name__ == "__main__":
 ```
 
 **Key Features**:
+
 - Non-invasive: Agents unaware of memory system
 - Opt-in: Controlled via `.claude/runtime/memory/.config`
 - Fast: Query limits prevent prompt bloat
@@ -615,6 +616,7 @@ if __name__ == "__main__":
 ```
 
 **Key Features**:
+
 - Pattern-based extraction: No LLM calls needed
 - Type-aware: Different patterns for different agent types
 - Quality-aware: Confidence scoring for memories
@@ -667,6 +669,7 @@ def _consolidate_session_memories(self):
 **Solution**: Extend the agent invocation mechanism
 
 **Current Flow** (from codebase analysis):
+
 ```
 User types: @architect design auth system
     ↓
@@ -680,6 +683,7 @@ Response returned
 ```
 
 **New Flow with Memory Hooks**:
+
 ```
 User types: @architect design auth system
     ↓
@@ -757,24 +761,24 @@ When an agent is invoked with memory enabled, their prompt includes:
 ### Past Architect Agent Learnings
 
 **1. system_design** (quality: 0.85)
-   Always separate authentication from authorization logic
-   *Outcome: Reduced coupling, easier testing*
+Always separate authentication from authorization logic
+_Outcome: Reduced coupling, easier testing_
 
 **2. api_design** (quality: 0.78)
-   Use token-based auth for stateless APIs
-   *Outcome: Better scalability*
+Use token-based auth for stateless APIs
+_Outcome: Better scalability_
 
 **3. error_handling** (quality: 0.72)
-   Implement circuit breaker pattern for external auth services
-   *Outcome: Improved resilience*
+Implement circuit breaker pattern for external auth services
+_Outcome: Improved resilience_
 
 ### Learnings from Other Agents
 
 **1. From builder**: error_handling
-   Auth token validation must happen before business logic
+Auth token validation must happen before business logic
 
 **2. From reviewer**: security
-   Never log authentication tokens, even in debug mode
+Never log authentication tokens, even in debug mode
 
 ---
 
@@ -809,6 +813,7 @@ def _query_memories(self, agent_type: str, task: str, task_category: Optional[st
 ```
 
 **Estimated Context Size**:
+
 - 5 memories × 100 chars avg = 500 chars
 - 3 cross-agent learnings × 80 chars = 240 chars
 - Formatting overhead = 200 chars
@@ -823,6 +828,7 @@ This is acceptable overhead (< 1% of typical prompts).
 ### 4.1 What Constitutes a "Memory"?
 
 **Include**:
+
 - ✅ Explicit decisions with reasoning
 - ✅ Patterns that worked well
 - ✅ Anti-patterns or warnings
@@ -831,6 +837,7 @@ This is acceptable overhead (< 1% of typical prompts).
 - ✅ Performance insights
 
 **Exclude**:
+
 - ❌ Routine status updates
 - ❌ File listings
 - ❌ Test output
@@ -872,30 +879,35 @@ def _assess_learning_quality(self, learning: Dict) -> float:
 Different agents produce different learnings:
 
 **Architect**:
+
 - Design decisions and rationale
 - Architecture patterns
 - Trade-off analysis
 - Module specifications
 
 **Builder**:
+
 - Implementation patterns
 - Code structure decisions
 - Library choices
 - Refactoring strategies
 
 **Reviewer**:
+
 - Common mistakes found
 - Philosophy violations
 - Code quality issues
 - Best practice violations
 
 **Tester**:
+
 - Test strategies that worked
 - Edge cases discovered
 - Test data patterns
 - Coverage approaches
 
 **Fix-Agent**:
+
 - Error patterns and solutions
 - Root cause analysis
 - Prevention strategies
@@ -908,11 +920,15 @@ Different agents produce different learnings:
 ### 5.1 What Agents DON'T Need to Change
 
 **Agent Markdown Files**: Zero modifications required
+
 ```markdown
 # architect.md stays exactly the same
+
 ---
+
 name: architect
 description: Primary architecture and design agent
+
 ---
 
 # Architect Agent
@@ -921,12 +937,14 @@ You are the system architect...
 ```
 
 **Agent Invocation**: Same syntax
+
 ```
 User: @architect design auth system
 → Works exactly as before, but now with memory context
 ```
 
 **Agent Output**: No format changes required
+
 ```
 Agents output whatever they want
 → Post-hook extracts learnings automatically
@@ -937,13 +955,14 @@ Agents output whatever they want
 **Default**: Memory system disabled
 
 **Enable**: Create/edit `.claude/runtime/memory/.config`
+
 ```json
 {
   "enabled": true,
   "auto_consolidate": true,
   "min_quality_threshold": 0.6,
   "max_context_memories": 10,
-  "agent_whitelist": ["architect", "builder", "reviewer"]  // optional
+  "agent_whitelist": ["architect", "builder", "reviewer"] // optional
 }
 ```
 
@@ -952,15 +971,18 @@ Agents output whatever they want
 ### 5.3 Fallback Behavior
 
 **If Neo4j unavailable**:
+
 - Pre-agent hook: Skip memory loading, log warning
 - Post-agent hook: Skip memory storage, log warning
 - Agents continue working normally
 
 **If memory query fails**:
+
 - Pre-agent hook: Return empty context
 - Agent receives no memory context (business as usual)
 
 **If memory storage fails**:
+
 - Post-agent hook: Log error, continue
 - Agent output returned normally
 
@@ -973,6 +995,7 @@ Agents output whatever they want
 ### 6.1 Architect Agent Benefits
 
 **Before Memory**:
+
 ```
 User: Design authentication system
 Architect: Analyzes from scratch every time
@@ -981,6 +1004,7 @@ Architect: Analyzes from scratch every time
 ```
 
 **With Memory**:
+
 ```
 User: Design authentication system
 Architect: Sees we've designed 3 auth systems before
@@ -990,6 +1014,7 @@ Architect: Sees we've designed 3 auth systems before
 ```
 
 **Measurable Impact**:
+
 - 30% faster design phase (no reinvention)
 - 50% fewer repeated mistakes
 - Consistent patterns across projects
@@ -997,6 +1022,7 @@ Architect: Sees we've designed 3 auth systems before
 ### 6.2 Builder Agent Benefits
 
 **Before Memory**:
+
 ```
 User: Implement user registration
 Builder: Implements from spec
@@ -1005,6 +1031,7 @@ Builder: Implements from spec
 ```
 
 **With Memory**:
+
 ```
 User: Implement user registration
 Builder: Sees similar implementation patterns
@@ -1014,6 +1041,7 @@ Builder: Sees similar implementation patterns
 ```
 
 **Measurable Impact**:
+
 - 40% faster implementation (templates)
 - 70% reduction in repeated bugs
 - More consistent codebase
@@ -1021,6 +1049,7 @@ Builder: Sees similar implementation patterns
 ### 6.3 Reviewer Agent Benefits
 
 **Before Memory**:
+
 ```
 Reviewer: Checks code against philosophy
 → Finds issues based on current knowledge only
@@ -1028,6 +1057,7 @@ Reviewer: Checks code against philosophy
 ```
 
 **With Memory**:
+
 ```
 Reviewer: Checks code + memory of past issues
 → "This pattern caused problems in PR #123"
@@ -1036,6 +1066,7 @@ Reviewer: Checks code + memory of past issues
 ```
 
 **Measurable Impact**:
+
 - 25% more issues caught
 - Consistent enforcement of learnings
 - Institutional knowledge preserved
@@ -1043,6 +1074,7 @@ Reviewer: Checks code + memory of past issues
 ### 6.4 Fix-Agent Benefits
 
 **Before Memory**:
+
 ```
 User: Tests failing
 Fix-Agent: Diagnoses from scratch
@@ -1051,6 +1083,7 @@ Fix-Agent: Diagnoses from scratch
 ```
 
 **With Memory**:
+
 ```
 User: Tests failing
 Fix-Agent: Queries error history
@@ -1060,6 +1093,7 @@ Fix-Agent: Queries error history
 ```
 
 **Measurable Impact**:
+
 - 60% faster fixes (known errors)
 - 80% reduction in fix iteration cycles
 - Better root cause identification
@@ -1071,6 +1105,7 @@ Fix-Agent: Queries error history
 ### Phase 1: Hook Infrastructure (2-3 hours)
 
 **Tasks**:
+
 1. Create `pre_agent.py` hook
 2. Create `post_agent.py` hook
 3. Extend `stop.py` with consolidation
@@ -1078,11 +1113,13 @@ Fix-Agent: Queries error history
 5. Create `.claude/runtime/memory/.config` default
 
 **Deliverables**:
+
 - Hooks operational but disabled by default
 - Config file creation on first session
 - Memory system opt-in ready
 
 **Testing**:
+
 ```bash
 # Test hook execution
 python .claude/tools/amplihack/hooks/pre_agent.py < test_input.json
@@ -1094,11 +1131,13 @@ ls -la .claude/tools/amplihack/hooks/
 ### Phase 2: Agent Type Detection (1-2 hours)
 
 **Tasks**:
+
 1. Implement agent filename → type mapping
 2. Add task category detection logic
 3. Test with all agent types
 
 **Testing**:
+
 ```python
 # Test agent detection
 assert PreAgentHook.AGENT_TYPE_MAP["architect.md"] == "architect"
@@ -1110,12 +1149,14 @@ assert _detect_task_category("design auth system") == "system_design"
 ### Phase 3: Memory Query Integration (2-3 hours)
 
 **Tasks**:
+
 1. Implement `_query_memories()` in pre-agent hook
 2. Add relevance filtering
 3. Implement context formatting
 4. Add quality thresholds
 
 **Testing**:
+
 ```python
 # Test memory query
 memories = pre_agent._query_memories(
@@ -1130,12 +1171,14 @@ assert all(m["quality_score"] >= 0.6 for m in memories)  # Quality filter
 ### Phase 4: Memory Extraction Integration (3-4 hours)
 
 **Tasks**:
+
 1. Implement pattern-based extraction in post-agent hook
 2. Add agent-specific extraction logic
 3. Implement quality assessment
 4. Add metadata capture
 
 **Testing**:
+
 ```python
 # Test learning extraction
 output = "## Decision: Use JWT\n**What**: Token-based auth\n**Why**: Stateless"
@@ -1147,12 +1190,14 @@ assert learnings[0]["type"] == "decision"
 ### Phase 5: End-to-End Testing (2-3 hours)
 
 **Tasks**:
+
 1. Test full agent invocation flow with memory
 2. Verify memory appears in agent context
 3. Verify learnings stored in Neo4j
 4. Test fallback behavior (Neo4j down)
 
 **Test Scenario**:
+
 ```bash
 # Enable memory
 echo '{"enabled": true}' > .claude/runtime/memory/.config
@@ -1173,12 +1218,14 @@ grep "Memory Context" .claude/runtime/logs/*/session.log
 ### Phase 6: Documentation & Handoff (1-2 hours)
 
 **Tasks**:
+
 1. Document enabling memory system
 2. Create troubleshooting guide
 3. Add metrics/monitoring guide
 4. Document memory CLI commands
 
 **Deliverables**:
+
 - `docs/MEMORY_AGENT_INTEGRATION.md`
 - `docs/MEMORY_TROUBLESHOOTING.md`
 - CLI: `amplihack memory status`
@@ -1191,6 +1238,7 @@ grep "Memory Context" .claude/runtime/logs/*/session.log
 ### 8.1 Metrics Tracked
 
 **Hook-Level Metrics** (via HookProcessor):
+
 ```
 memories_loaded: Count per agent invocation
 memories_stored: Count per agent completion
@@ -1201,6 +1249,7 @@ memory_storage_failures: Failed stores
 ```
 
 **Session-Level Metrics**:
+
 ```
 session_memories_total: Total memories this session
 session_memories_high_quality: High-quality count
@@ -1209,6 +1258,7 @@ session_agents_with_memory: Agents that used memory
 ```
 
 **System-Level Metrics** (Neo4j):
+
 ```
 total_memories: Total in database
 memories_by_agent_type: Breakdown by agent
@@ -1220,6 +1270,7 @@ memory_reuse_rate: How often memories are recalled
 ### 8.2 Observability Tools
 
 **CLI Commands**:
+
 ```bash
 # System status
 amplihack memory status
@@ -1239,6 +1290,7 @@ amplihack memory session-report
 ```
 
 **Log Analysis**:
+
 ```bash
 # Check memory integration
 grep "Memory Context" .claude/runtime/logs/*/session.log
@@ -1259,6 +1311,7 @@ grep -i "memory.*error" .claude/runtime/logs/*/session.log
 **User**: @architect design user authentication system
 
 **Pre-Agent Hook**:
+
 ```
 Query Neo4j for architect + system_design memories
 → No matching memories found (first time)
@@ -1266,6 +1319,7 @@ Query Neo4j for architect + system_design memories
 ```
 
 **Agent Prompt**:
+
 ```markdown
 # Architect Agent
 
@@ -1277,26 +1331,31 @@ You are the system architect who embodies ruthless simplicity...
 ```
 
 **Agent Output**:
+
 ```markdown
 ## Authentication System Design
 
 ### Decision 1: Token-Based Authentication
+
 **What**: Use JWT tokens for stateless authentication
 **Why**: Enables horizontal scaling, reduces server state
 **Trade-offs**: Requires secure token storage on client
 
 ### Decision 2: Separate Auth Service
+
 **What**: Dedicated microservice for authentication
 **Why**: Single responsibility, easier to secure
 **Trade-offs**: Additional network hop
 
 ### Recommendation:
+
 - Use bcrypt for password hashing
 - Implement refresh token rotation
 - Add rate limiting on auth endpoints
 ```
 
 **Post-Agent Hook**:
+
 ```
 Extract learnings from output:
 1. Decision: Token-based auth (JWT) → quality: 0.85
@@ -1314,6 +1373,7 @@ Store 3 memories in Neo4j:
 **User**: @architect design authorization system for resource access
 
 **Pre-Agent Hook**:
+
 ```
 Query Neo4j for architect + system_design memories
 → Found 3 relevant memories from previous auth work
@@ -1321,22 +1381,23 @@ Query Neo4j for architect + system_design memories
 ```
 
 **Agent Prompt**:
+
 ```markdown
 ## 🧠 Memory Context (Relevant Past Learnings)
 
 ### Past Architect Agent Learnings
 
 **1. system_design** (quality: 0.85)
-   Use JWT tokens for stateless authentication
-   *Outcome: Enabled horizontal scaling*
+Use JWT tokens for stateless authentication
+_Outcome: Enabled horizontal scaling_
 
 **2. system_design** (quality: 0.82)
-   Separate auth service for single responsibility
-   *Outcome: Easier to secure and maintain*
+Separate auth service for single responsibility
+_Outcome: Easier to secure and maintain_
 
 **3. security** (quality: 0.78)
-   Implement refresh token rotation for security
-   *Outcome: Reduced token theft risk*
+Implement refresh token rotation for security
+_Outcome: Reduced token theft risk_
 
 ---
 
@@ -1350,29 +1411,35 @@ You are the system architect who embodies ruthless simplicity...
 ```
 
 **Agent Output**:
+
 ```markdown
 ## Authorization System Design
 
 ### Building on Previous Auth Design
+
 Based on our previous authentication system design, I'll integrate authorization seamlessly.
 
 ### Decision 1: Embed Permissions in JWT Claims
+
 **What**: Include user roles/permissions in JWT payload
 **Why**: Leverages existing token-based auth, stateless authorization
 **Why Not Separate**: Reduces latency, avoids extra service calls
 
 ### Decision 2: Resource-Based Access Control (RBAC)
+
 **What**: Permission model tied to resources and actions
 **Why**: Flexible, scalable, aligns with microservices
 **Trade-offs**: More complex than role-only approach
 
 ### Integration Points:
+
 - Auth service generates JWTs with permission claims
 - Each microservice validates permissions locally
 - Refresh token rotation (from previous design) includes updated permissions
 ```
 
 **Post-Agent Hook**:
+
 ```
 Extract learnings:
 1. Decision: Embed permissions in JWT → quality: 0.83
@@ -1398,6 +1465,7 @@ Update memory_001 usage_count (was recalled) → increases quality score
 **Problem**: Agent outputs may contain sensitive information
 
 **Mitigation**:
+
 ```python
 # In post_agent.py
 def _sanitize_content(self, content: str) -> str:
@@ -1412,12 +1480,14 @@ def _sanitize_content(self, content: str) -> str:
 ```
 
 **Additional Layer**: XPIA defense integration
+
 - Memory content passes through XPIA scanner before storage
 - High-risk content flagged or rejected
 
 ### 10.2 Memory Access Control
 
 **Scope Isolation**:
+
 ```
 Global memories: Available to all projects
 Project memories: Scoped to project_id
@@ -1425,6 +1495,7 @@ Session memories: Scoped to session_id (short-lived)
 ```
 
 **Agent Permissions**:
+
 ```python
 # Only certain agents can create global memories
 GLOBAL_MEMORY_AGENTS = ["architect", "security", "reviewer"]
@@ -1437,6 +1508,7 @@ if agent_type not in GLOBAL_MEMORY_AGENTS:
 ### 10.3 Memory Expiration
 
 **Automatic Cleanup**:
+
 ```python
 # In consolidation phase
 def _expire_old_memories(self):
@@ -1454,16 +1526,19 @@ def _expire_old_memories(self):
 ### 11.1 Technical Success
 
 ✅ **Hooks Operational**:
+
 - Pre-agent hook loads memories in <100ms (p95)
 - Post-agent hook stores learnings in <200ms (p95)
 - Stop hook consolidates session in <500ms
 
 ✅ **Memory Quality**:
+
 - Average memory quality >0.70
 - <5% of memories flagged as low-quality
 - 80%+ of memories have metadata
 
 ✅ **Non-Invasive**:
+
 - Zero agent markdown file changes
 - No breaking changes to existing workflows
 - Fallback to no-memory mode on failures
@@ -1471,16 +1546,19 @@ def _expire_old_memories(self):
 ### 11.2 User Experience Success
 
 ✅ **Faster Iterations**:
+
 - 30% reduction in time for similar tasks
 - 50% fewer repeated mistakes
 - Measurable improvement in agent consistency
 
 ✅ **Opt-In Adoption**:
+
 - Easy enable: edit one config file
 - Clear documentation
 - No performance degradation when disabled
 
 ✅ **Transparency**:
+
 - Users can see what memories agents use
 - CLI tools for memory inspection
 - Clear logging of memory operations
@@ -1488,6 +1566,7 @@ def _expire_old_memories(self):
 ### 11.3 Agent Effectiveness Success
 
 After 1 month of usage:
+
 - 80%+ of agent invocations use relevant memories
 - 60%+ of agents contribute new learnings
 - Memory reuse rate >50% (memories recalled multiple times)
@@ -1497,22 +1576,27 @@ After 1 month of usage:
 ## 12. Risks & Mitigations
 
 ### Risk 1: Memory Context Bloat
+
 **Impact**: Agent prompts become too large
 **Mitigation**: Hard limits (10 memories max), quality filtering (>0.6), relevance scoring
 
 ### Risk 2: Low-Quality Memories
+
 **Impact**: Agents get bad advice from past mistakes
 **Mitigation**: Quality assessment, confidence scoring, periodic cleanup, user feedback
 
 ### Risk 3: Neo4j Unavailability
+
 **Impact**: Memory system breaks agent execution
 **Mitigation**: Non-blocking initialization, fallback to no-memory mode, graceful degradation
 
 ### Risk 4: Privacy Leaks
+
 **Impact**: Sensitive data stored in memories
 **Mitigation**: Content sanitization, XPIA integration, scope isolation, expiration policies
 
 ### Risk 5: Performance Overhead
+
 **Impact**: Memory queries slow down agents
 **Mitigation**: Async queries, connection pooling, caching, query limits
 
@@ -1521,7 +1605,9 @@ After 1 month of usage:
 ## 13. Future Enhancements
 
 ### 13.1 Cross-Project Learning
+
 Enable agents to learn from other projects (with user consent):
+
 ```python
 # Query memories across all projects
 cross_project_memories = mgr.recall(
@@ -1532,7 +1618,9 @@ cross_project_memories = mgr.recall(
 ```
 
 ### 13.2 Memory Quality Feedback Loop
+
 Allow agents to rate memory usefulness:
+
 ```python
 # Agent reports: "This memory was helpful/not helpful"
 mgr.rate_memory(memory_id, usefulness=0.9)
@@ -1540,7 +1628,9 @@ mgr.rate_memory(memory_id, usefulness=0.9)
 ```
 
 ### 13.3 Memory Visualization
+
 Build UI for exploring memory graph:
+
 ```
 http://localhost:7474
 → Neo4j browser with custom queries
@@ -1549,7 +1639,9 @@ http://localhost:7474
 ```
 
 ### 13.4 Semantic Memory Search
+
 Upgrade from keyword-based to embedding-based search:
+
 ```python
 # Use vector similarity for better relevance
 memories = mgr.recall_semantic(
@@ -1563,6 +1655,7 @@ memories = mgr.recall_semantic(
 ## 14. Conclusion
 
 This design achieves **zero-modification agent integration** by:
+
 1. Extending existing hook infrastructure (session_start, stop, pre/post agent)
 2. Using pattern-based learning extraction (no LLM overhead)
 3. Providing opt-in, non-invasive memory context injection
@@ -1571,6 +1664,7 @@ This design achieves **zero-modification agent integration** by:
 **Agents gain memory capabilities automatically** without awareness, just like humans learn from experience without explicit instruction.
 
 **Next Steps**:
+
 1. Review and approve this design
 2. Implement Phase 1 (hook infrastructure)
 3. Test with single agent type (architect)

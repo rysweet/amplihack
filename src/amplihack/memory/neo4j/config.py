@@ -211,8 +211,8 @@ def _load_env_file():
 
     if env_file.exists():
         for line in env_file.read_text().splitlines():
-            if line and not line.startswith('#') and '=' in line:
-                key, value = line.split('=', 1)
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
                 os.environ[key] = value
         logger.debug("Loaded .env from %s", env_file)
 
@@ -256,9 +256,7 @@ def get_or_create_password() -> str:
                 # Verify permissions
                 mode = password_file.stat().st_mode & 0o777
                 if mode != 0o600:
-                    print(
-                        f"[WARN] Password file has insecure permissions: {mode:o}"
-                    )
+                    print(f"[WARN] Password file has insecure permissions: {mode:o}")
                     print("[INFO] Fixing permissions...")
                     password_file.chmod(0o600)
                 return password

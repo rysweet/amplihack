@@ -96,6 +96,7 @@ memory_ids = extract_and_store_learnings(
 ### Automatic Integration (Built-in)
 
 Memory system is **already integrated** into the launcher via:
+
 - `launcher/core.py` line 88: `_start_neo4j_background()`
 - Neo4j starts automatically in background thread
 - Non-blocking, graceful fallback if unavailable
@@ -121,6 +122,7 @@ extract_and_store_learnings(agent_type, output, task)
 ## Supported Agent Types
 
 ✅ All amplihack agents supported:
+
 - `architect` - System design
 - `builder` - Implementation
 - `reviewer` - Code review
@@ -141,31 +143,38 @@ extract_and_store_learnings(agent_type, output, task)
 ### Supported Patterns
 
 ✅ **Decision Patterns**
+
 - Structured: `## Decision: X\n**What**: Y\n**Why**: Z`
 - Inline: `Decided to X because Y`
 
 ✅ **Recommendation Patterns**
+
 - Bulleted lists under "## Recommendation:"
 - Inline: `Should always X`, `Best practice: Y`
 
 ✅ **Anti-Pattern Patterns**
+
 - Warnings: `⚠️ Warning: X`
 - Avoidance: `Avoid X because Y`, `Never do X`
 
 ✅ **Error-Solution Patterns**
+
 - Structured: `Error: X\nSolution: Y`
 - Also: `Issue/Fix`, `Problem/Resolution`
 
 ✅ **Implementation Patterns**
+
 - `Pattern: X`, `Approach: Y`, `Strategy: Z`
 
 ✅ **Diagnostic Patterns**
+
 - `Root cause: X`
 - `Test strategy: Y`
 
 ### Quality Assessment
 
 Learnings are scored based on:
+
 - Has reasoning (+0.2)
 - Has outcome (+0.15)
 - Has examples (+0.1)
@@ -303,6 +312,7 @@ Future config file (`.claude/runtime/memory/.config`):
 ## Success Criteria
 
 ✅ **Phase Complete When:**
+
 - [x] Agent integration module implemented
 - [x] Learning extraction patterns complete
 - [x] Test suite passing
@@ -325,6 +335,7 @@ Future config file (`.claude/runtime/memory/.config`):
 ## Contact
 
 For questions or issues:
+
 - GitHub Issues: MicrosoftHackathon2025-AgenticCoding
 - Review design doc: `Specs/Memory/AGENT_INTEGRATION_DESIGN.md`
 - Check logs: `.claude/runtime/logs/*.log`

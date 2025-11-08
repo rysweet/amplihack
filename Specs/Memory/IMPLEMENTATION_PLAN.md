@@ -20,6 +20,7 @@ This document provides the step-by-step implementation plan for the Neo4j-center
 ### 1.1 Docker Environment Setup
 
 **Files to Create:**
+
 ```
 docker/
 ├── docker-compose.neo4j.yml
@@ -33,16 +34,17 @@ docker/
 ```
 
 **docker-compose.neo4j.yml:**
+
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   neo4j:
     image: neo4j:5.15-community
     container_name: amplihack-neo4j
     ports:
-      - "7474:7474"  # HTTP (Browser UI)
-      - "7687:7687"  # Bolt (Driver protocol)
+      - "7474:7474" # HTTP (Browser UI)
+      - "7687:7687" # Bolt (Driver protocol)
     environment:
       - NEO4J_AUTH=neo4j/amplihack_dev_password
       - NEO4J_PLUGINS=["apoc"]
@@ -69,6 +71,7 @@ volumes:
 ```
 
 **Tasks:**
+
 1. Create docker directory structure
 2. Write docker-compose.neo4j.yml
 3. Create init scripts (schema, constraints, indexes)
@@ -77,6 +80,7 @@ volumes:
 6. Document startup/shutdown procedures
 
 **Success Criteria:**
+
 - Neo4j browser accessible at localhost:7474
 - Can execute `RETURN 1` query successfully
 - All init scripts executed without errors
@@ -85,6 +89,7 @@ volumes:
 ### 1.2 Python Neo4j Driver Setup
 
 **Files to Create:**
+
 ```
 src/amplihack/memory/neo4j/
 ├── __init__.py
@@ -94,6 +99,7 @@ src/amplihack/memory/neo4j/
 ```
 
 **connector.py:**
+
 ```python
 from neo4j import GraphDatabase
 from typing import Any, Dict, List, Optional
@@ -169,6 +175,7 @@ class Neo4jConnector:
 ```
 
 **Tasks:**
+
 1. Add neo4j driver to requirements: `pip install neo4j>=5.15.0`
 2. Implement connector.py with connection pooling
 3. Create config.py for environment variable management
@@ -176,6 +183,7 @@ class Neo4jConnector:
 5. Write unit tests for connector (using testcontainers)
 
 **Success Criteria:**
+
 - Connector can establish connection
 - Connection pooling works correctly
 - Transactions execute successfully
@@ -186,6 +194,7 @@ class Neo4jConnector:
 ### 2.1 Core Schema Definition
 
 **Files to Create:**
+
 ```
 docker/neo4j/init/
 ├── 01_schema.cypher
@@ -195,6 +204,7 @@ docker/neo4j/init/
 ```
 
 **01_schema.cypher:**
+
 ```cypher
 // Core node types (labels only - Neo4j is schema-free)
 
@@ -208,6 +218,7 @@ CREATE (:AgentType {id: 'optimizer', name: 'Optimizer', description: 'Performanc
 ```
 
 **02_constraints.cypher:**
+
 ```cypher
 // Unique constraints
 CREATE CONSTRAINT agent_type_id IF NOT EXISTS
@@ -228,6 +239,7 @@ FOR (cf:CodeFile) REQUIRE cf.path IS UNIQUE;
 ```
 
 **03_indexes.cypher:**
+
 ```cypher
 // Performance indexes
 CREATE INDEX memory_type IF NOT EXISTS
@@ -259,6 +271,7 @@ RETURN entityType, labelsOrTypes, properties;
 ```
 
 **Tasks:**
+
 1. Write schema initialization scripts
 2. Test schema creation in fresh Neo4j instance
 3. Verify constraints are enforced (try duplicate inserts)
@@ -266,6 +279,7 @@ RETURN entityType, labelsOrTypes, properties;
 5. Document schema design decisions
 
 **Success Criteria:**
+
 - All constraints created successfully
 - All indexes created successfully
 - Duplicate agent type IDs rejected
@@ -329,6 +343,7 @@ class SchemaManager:
 ### 3.1 Memory CRUD Module
 
 **Files to Create:**
+
 ```
 src/amplihack/memory/
 ├── __init__.py
@@ -338,6 +353,7 @@ src/amplihack/memory/
 ```
 
 **base.py:**
+
 ```python
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
@@ -376,6 +392,7 @@ class MemoryBase(ABC):
 ```
 
 **operations.py:**
+
 ```python
 from typing import List, Optional, Dict, Any
 from .neo4j.connector import Neo4jConnector
@@ -472,6 +489,7 @@ class MemoryOperations:
 ```
 
 **Tasks:**
+
 1. Implement base memory interface
 2. Create CRUD operations
 3. Add isolation logic (project-scoped vs global)
@@ -479,6 +497,7 @@ class MemoryOperations:
 5. Write unit tests for all operations
 
 **Success Criteria:**
+
 - Can create memory with agent type relationship
 - Can retrieve memories with proper isolation
 - Can delete memories cleanly
@@ -903,6 +922,7 @@ def test_retrieval_performance_with_indexes(connector):
 ### 6.4 Documentation
 
 **Files to Create:**
+
 ```
 docs/memory/
 ├── README.md                     # Overview
@@ -914,6 +934,7 @@ docs/memory/
 ```
 
 **Tasks:**
+
 1. Document Neo4j setup process
 2. Create schema reference with examples
 3. Write query cookbook with common patterns
@@ -925,6 +946,7 @@ docs/memory/
 Before considering implementation complete:
 
 ### Infrastructure
+
 - [ ] Neo4j starts successfully with Docker Compose
 - [ ] Health checks pass consistently
 - [ ] Init scripts execute without errors
@@ -932,6 +954,7 @@ Before considering implementation complete:
 - [ ] Can survive container restarts
 
 ### Schema
+
 - [ ] All constraints created
 - [ ] All indexes created
 - [ ] Agent types seeded
@@ -939,6 +962,7 @@ Before considering implementation complete:
 - [ ] Duplicate inserts rejected correctly
 
 ### Core Operations
+
 - [ ] Can create memories with agent type relationship
 - [ ] Can create memories with project relationship
 - [ ] Can retrieve memories with proper isolation
@@ -946,6 +970,7 @@ Before considering implementation complete:
 - [ ] Can delete memories cleanly
 
 ### Agent Type Sharing
+
 - [ ] Global memories accessible to all projects
 - [ ] Project-specific memories isolated correctly
 - [ ] Multi-level retrieval returns correct priority
@@ -953,6 +978,7 @@ Before considering implementation complete:
 - [ ] Cross-project pattern detection works
 
 ### Code Graph Integration
+
 - [ ] Can import blarify code graph
 - [ ] Can link memories to code nodes
 - [ ] Can query memories by code file
@@ -960,6 +986,7 @@ Before considering implementation complete:
 - [ ] Complex functions with memories query works
 
 ### Testing
+
 - [ ] All unit tests pass (>90% coverage)
 - [ ] All integration tests pass
 - [ ] Performance tests meet targets (<100ms for typical queries)
@@ -967,6 +994,7 @@ Before considering implementation complete:
 - [ ] CI pipeline includes Neo4j tests
 
 ### Documentation
+
 - [ ] Setup guide complete and tested
 - [ ] Schema documented with examples
 - [ ] Query cookbook has 10+ examples

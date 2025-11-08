@@ -21,8 +21,8 @@ except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 # Import session management components
-from .fork_manager import ForkManager
-from .session_capture import MessageCapture
+from amplihack.launcher.session_capture import MessageCapture
+from amplihack.launcher.fork_manager import ForkManager
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -466,7 +466,9 @@ Document your decisions and reasoning in comments/logs."""
                 self.state.update_todos(todos)
                 self.log("✅ TodoWrite updated UI state", level="INFO")
             else:
-                self.log(f"⚠️  TodoWrite UI update skipped (ui_enabled={self.ui_enabled})", level="INFO")
+                self.log(
+                    f"⚠️  TodoWrite UI update skipped (ui_enabled={self.ui_enabled})", level="INFO"
+                )
 
             self.log(f"Updated todo list ({len(todos)} items)", level="DEBUG")
 
@@ -512,7 +514,9 @@ Document your decisions and reasoning in comments/logs."""
                 # Handle different message types
                 if hasattr(message, "__class__"):
                     msg_type = message.__class__.__name__
-                    print(f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True)  # Direct print to bypass log()
+                    print(
+                        f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True
+                    )  # Direct print to bypass log()
                     self.log(f"📨 Received message type: {msg_type}", level="INFO")
 
                     if msg_type == "AssistantMessage":
@@ -561,20 +565,32 @@ Document your decisions and reasoning in comments/logs."""
                                     # block.input is an object with attributes, not a dict
                                     if hasattr(block, "input"):
                                         tool_input = block.input
-                                        self.log(f"✓ Block has input attribute, type: {type(tool_input)}", level="INFO")
+                                        self.log(
+                                            f"✓ Block has input attribute, type: {type(tool_input)}",
+                                            level="INFO",
+                                        )
 
                                         # Check if input has todos attribute
                                         if hasattr(tool_input, "todos"):
                                             todos = tool_input.todos
-                                            self.log(f"✓ Input has todos attribute with {len(todos)} items", level="INFO")
+                                            self.log(
+                                                f"✓ Input has todos attribute with {len(todos)} items",
+                                                level="INFO",
+                                            )
                                             self._handle_todo_write(todos)
                                         # Fallback: try dict-style access for backwards compatibility
                                         elif isinstance(tool_input, dict) and "todos" in tool_input:
                                             todos = tool_input["todos"]
-                                            self.log(f"✓ Input is dict with todos key ({len(todos)} items)", level="INFO")
+                                            self.log(
+                                                f"✓ Input is dict with todos key ({len(todos)} items)",
+                                                level="INFO",
+                                            )
                                             self._handle_todo_write(todos)
                                         else:
-                                            self.log(f"⚠️  Input has no todos attribute or key. Attributes: {dir(tool_input)}", level="WARNING")
+                                            self.log(
+                                                f"⚠️  Input has no todos attribute or key. Attributes: {dir(tool_input)}",
+                                                level="WARNING",
+                                            )
                                     else:
                                         self.log("⚠️  Block has no input attribute", level="WARNING")
 

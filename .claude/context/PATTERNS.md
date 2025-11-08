@@ -64,13 +64,14 @@ Documentation Discovery Results:
 ✓ Found: 15 documentation files
 ✓ Relevant: 3 files analyzed
 ✓ Key Claims:
+
 - Feature X is implemented using pattern Y
 - Module Z handles authentication
 - Architecture follows microservices pattern
-⚠ Documentation Gaps:
+  ⚠ Documentation Gaps:
 - API endpoints not documented
 - Error handling strategy unclear
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Now proceeding to code analysis to verify these claims...
 ```

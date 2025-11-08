@@ -11,6 +11,7 @@
 This report excavates deep knowledge about implementing knowledge graph-based memory systems for coding assistants. Research covers Neo4j Community Edition capabilities, code graph generation tools (blarify), memory architectures (MIRIX, Zep), and practical implementation patterns.
 
 **Key Discovery**: Modern AI agent memory systems require **multi-modal graph architectures** combining:
+
 - Temporal episodic memory (what happened, when)
 - Semantic entity relationships (what exists, how things relate)
 - Procedural workflows (how to do things)
@@ -23,24 +24,28 @@ This report excavates deep knowledge about implementing knowledge graph-based me
 ### Core Capabilities
 
 **Graph Database Engine**:
+
 - Native graph storage with ACID transactions
 - Cypher query language for graph traversal
 - Labeled property graph model
 - Full support for nodes, relationships, and properties
 
 **Performance Characteristics**:
+
 - Handles 10k-1M+ nodes efficiently
 - Relationship traversal: O(1) complexity
 - Query performance depends on index usage
 - Benchmarks: Simple queries ~1-100ms
 
 **Python Integration**:
+
 - Official `neo4j` driver (6.0+) - **RECOMMENDED**
 - Supports Bolt protocol (binary, efficient)
 - Async and sync APIs
 - Thread-safe driver instances
 
 **Licensing**:
+
 - Free, open source (GPL/AGPL)
 - No capacity restrictions
 - No feature restrictions in Cypher language
@@ -49,6 +54,7 @@ This report excavates deep knowledge about implementing knowledge graph-based me
 ### Critical Constraints
 
 **What Community Edition LACKS**:
+
 1. **No Clustering**: Single-node only (no high availability)
 2. **No Hot Backups**: Must use dump/load (requires downtime)
 3. **No Online Scaling**: Cannot scale horizontally
@@ -56,6 +62,7 @@ This report excavates deep knowledge about implementing knowledge graph-based me
 5. **No Causal Clustering**: No read replicas
 
 **For Developer Tools, Community Edition is SUFFICIENT** because:
+
 - Local, per-project deployment (single-node)
 - Developer tools don't need HA
 - Cold backups acceptable (version control patterns)
@@ -64,6 +71,7 @@ This report excavates deep knowledge about implementing knowledge graph-based me
 ### Performance Benchmarks
 
 **Python Driver Performance** (from community testing):
+
 ```
 Operation                    | Time          | Notes
 -----------------------------|---------------|----------------------------------
@@ -75,6 +83,7 @@ Graph creation (neomodel)    | 10k+30k rels  | ~4:20 minutes
 ```
 
 **Optimization Patterns**:
+
 ```python
 # 1. Use UNWIND for batch operations (dramatically faster)
 query = """
@@ -101,6 +110,7 @@ result = driver.execute_query(query, id=node_id)
 **Recommended Approaches for 2025**:
 
 1. **Docker Container** (Best for CI/CD):
+
 ```bash
 docker run -d \
   --name neo4j-dev \
@@ -111,12 +121,14 @@ docker run -d \
 ```
 
 2. **Neo4j Desktop** (Best for local development):
+
 - GUI management console
 - Built-in browser for Cypher queries
 - Easy database switching
 - Plugin management
 
 3. **System Package** (Best for production):
+
 ```bash
 # Linux
 wget -O - https://debian.neo4j.com/neotechnology.gpg.key | sudo apt-key add -
@@ -126,6 +138,7 @@ sudo apt-get install neo4j
 ```
 
 **Per-Project Pattern**:
+
 ```python
 # .amplihack/memory/config.json
 {
@@ -147,6 +160,7 @@ docker run -d \
 ### Data Persistence & Backup Strategies
 
 **Built-in Backup (Community Edition)**:
+
 ```bash
 # Cold backup (requires shutdown)
 neo4j-admin database dump neo4j --to-path=/backups
@@ -156,6 +170,7 @@ neo4j-admin database load neo4j --from-path=/backups/neo4j.dump
 ```
 
 **Application-Level Backup**:
+
 ```python
 import json
 from neo4j import GraphDatabase
@@ -181,12 +196,14 @@ with open('.amplihack/memory/graph_backup.json', 'w') as f:
 ```
 
 **Incremental Backup Strategy**:
+
 - Export only changed nodes/relationships
 - Use timestamps or version numbers
 - Commit to project's `.amplihack/memory/` directory
 - Git tracks evolution of knowledge
 
 **Versioning Pattern**:
+
 ```cypher
 // Add version tracking to nodes
 CREATE (n:Entity {
@@ -217,12 +234,14 @@ SET n.version = n.version + 1,
 ### Architecture
 
 **How It Works**:
+
 1. **Language Server Protocol (LSP)**: Standard approach for code analysis
 2. **SCIP (Source Code Intelligence Protocol)**: Optional enhancement (330x faster)
 3. **Graph Generation**: Builds relationships between functions, classes, variables
 4. **Export**: Neo4j/FalkorDB compatible
 
 **Technology Stack**:
+
 - Python (98.6%)
 - Tree-sitter parsers (via language servers)
 - Neo4j Python driver
@@ -240,6 +259,7 @@ SET n.version = n.version + 1,
 ### Output Format & Graph Schema
 
 **Node Types** (inferred from documentation):
+
 - `Function`: Represents function definitions
 - `Class`: Object-oriented classes
 - `Variable`: Variable declarations
@@ -247,6 +267,7 @@ SET n.version = n.version + 1,
 - `Parameter`: Function parameters
 
 **Relationship Types** (inferred):
+
 - `CALLS`: Function A calls function B
 - `REFERENCES`: Code references a variable/type
 - `CONTAINS`: Module contains function/class
@@ -254,6 +275,7 @@ SET n.version = n.version + 1,
 - `IMPORTS`: Module imports
 
 **Example Schema**:
+
 ```cypher
 // Function nodes
 (f:Function {
@@ -273,6 +295,7 @@ SET n.version = n.version + 1,
 ### Installation & Usage
 
 **Basic Setup**:
+
 ```bash
 # Install blarify
 pip install blarify
@@ -282,6 +305,7 @@ npm install -g @sourcegraph/scip-python
 ```
 
 **Usage Pattern**:
+
 ```python
 from blarify import CodeGraph
 
@@ -312,18 +336,21 @@ results = graph.query("""
 ### SCIP Integration
 
 **SCIP Benefits**:
+
 - 330x faster reference resolution than LSP
 - Precomputes index (vs. on-demand LSP queries)
 - Identical accuracy to LSP
 - Supports incremental updates
 
 **How SCIP Works**:
+
 1. Pre-index entire codebase (one-time cost)
 2. Store precise references in index
 3. Query index (not live language server)
 4. Update index on file changes
 
 **Installation**:
+
 ```bash
 # Install SCIP indexer for Python
 npm install -g @sourcegraph/scip-python
@@ -337,6 +364,7 @@ scip-python index --project-name my-project
 ### Extending Blarify
 
 **Custom Node Types**:
+
 ```python
 from blarify import CodeGraph, NodeExtractor
 
@@ -358,6 +386,7 @@ graph.add_extractor(CustomExtractor())
 ```
 
 **Integration with Other Systems**:
+
 ```python
 # Export to custom graph store
 def export_to_custom_store(graph_data):
@@ -373,12 +402,14 @@ graph.export(format="dict", callback=export_to_custom_store)
 ### Lessons Learned
 
 **From Blarify's Development**:
+
 1. **SCIP > LSP for performance** (330x faster, worth the setup)
 2. **Incremental updates critical** (don't rebuild entire graph on file change)
 3. **Multi-language support hard** (each language needs parser configuration)
 4. **Graph updates need careful handling** (avoid stale references)
 
 **Recommended Patterns**:
+
 - Use SCIP for medium-large codebases (>1000 files)
 - Implement graceful degradation (SCIP → LSP → AST-only)
 - Cache graph queries (code doesn't change that often)
@@ -389,6 +420,7 @@ graph.export(format="dict", callback=export_to_custom_store)
 ## 3. Admiral-KG: Knowledge Graph Implementation Analysis
 
 **NOTE**: The repository `github.com/rysweet/admiral-kg` does not exist or is not publicly accessible. This may be:
+
 - A private repository
 - A misremembered URL
 - An internal Microsoft project
@@ -399,6 +431,7 @@ graph.export(format="dict", callback=export_to_custom_store)
 ### Common Knowledge Graph Patterns (From Similar Projects)
 
 **1. Entity-Relationship Model**:
+
 ```cypher
 // Entities
 (e:Entity {
@@ -420,6 +453,7 @@ graph.export(format="dict", callback=export_to_custom_store)
 ```
 
 **2. Temporal Tracking**:
+
 ```cypher
 // Bi-temporal model (like Zep)
 (e:Entity {
@@ -431,6 +465,7 @@ graph.export(format="dict", callback=export_to_custom_store)
 ```
 
 **3. Hierarchical Knowledge**:
+
 ```cypher
 // Community/cluster pattern
 (c:Community {
@@ -443,6 +478,7 @@ graph.export(format="dict", callback=export_to_custom_store)
 ```
 
 **4. Source Attribution**:
+
 ```cypher
 // Track knowledge provenance
 (e:Entity)-[:EXTRACTED_FROM]->(s:Source {
@@ -455,6 +491,7 @@ graph.export(format="dict", callback=export_to_custom_store)
 ### Implementation Architecture Patterns
 
 **Pattern 1: Layered Graph** (Zep-inspired):
+
 ```
 ┌─────────────────────────────────────┐
 │ Community Layer (High-level)        │
@@ -473,6 +510,7 @@ graph.export(format="dict", callback=export_to_custom_store)
 ```
 
 **Pattern 2: Multi-Modal Memory** (MIRIX-inspired):
+
 ```python
 class KnowledgeGraph:
     def __init__(self):
@@ -495,6 +533,7 @@ class KnowledgeGraph:
 ```
 
 **Pattern 3: Hybrid Storage**:
+
 ```python
 # Vector embeddings + Graph structure
 class HybridKnowledgeStore:
@@ -524,6 +563,7 @@ class HybridKnowledgeStore:
 ### Integration Strategies
 
 **1. Incremental Knowledge Extraction**:
+
 ```python
 def process_event(event, kg):
     # Extract entities
@@ -546,6 +586,7 @@ def process_event(event, kg):
 ```
 
 **2. Query Patterns**:
+
 ```python
 # Multi-modal retrieval
 def retrieve_context(query, kg):
@@ -572,6 +613,7 @@ def retrieve_context(query, kg):
 ```
 
 **3. Consistency Maintenance**:
+
 ```python
 def handle_contradiction(kg, new_fact, old_fact):
     # Temporal invalidation (Zep pattern)
@@ -596,6 +638,7 @@ def handle_contradiction(kg, new_fact, old_fact):
 **Definition**: Time-stamped, context-rich records of specific events.
 
 **Structure**:
+
 ```cypher
 (e:Episode {
   id: "episode_001",
@@ -616,6 +659,7 @@ def handle_contradiction(kg, new_fact, old_fact):
 ```
 
 **Implementation Pattern**:
+
 ```python
 class EpisodicMemory:
     def add_episode(self, event):
@@ -654,6 +698,7 @@ class EpisodicMemory:
 ```
 
 **Use Cases for Coding Assistants**:
+
 - Debugging history: "What did we try last time we saw this error?"
 - Conversation recall: "What did the user say about authentication earlier?"
 - Learning from mistakes: "Have we fixed this pattern before?"
@@ -663,6 +708,7 @@ class EpisodicMemory:
 **Definition**: Generalized, time-independent knowledge about entities and relationships.
 
 **Structure**:
+
 ```cypher
 // Entities (concepts, functions, patterns)
 (e:Entity {
@@ -690,6 +736,7 @@ class EpisodicMemory:
 ```
 
 **Implementation Pattern**:
+
 ```python
 class SemanticMemory:
     def add_entity(self, entity):
@@ -729,6 +776,7 @@ class SemanticMemory:
 ```
 
 **Use Cases for Coding Assistants**:
+
 - Code understanding: "What does this function do?"
 - Relationship discovery: "What depends on this class?"
 - Pattern recognition: "What other code follows this pattern?"
@@ -738,6 +786,7 @@ class SemanticMemory:
 **Definition**: Step-by-step knowledge of how to perform tasks.
 
 **Structure**:
+
 ```cypher
 (p:Procedure {
   id: "proc_fix_import_error",
@@ -762,6 +811,7 @@ class SemanticMemory:
 ```
 
 **Implementation Pattern**:
+
 ```python
 class ProceduralMemory:
     def add_procedure(self, procedure):
@@ -802,6 +852,7 @@ class ProceduralMemory:
 ```
 
 **Use Cases for Coding Assistants**:
+
 - Error resolution: "How do we fix this error?"
 - Task automation: "Steps to add a new API endpoint"
 - Best practices: "How to properly structure a Python package"
@@ -811,6 +862,7 @@ class ProceduralMemory:
 **Definition**: Short-term, active context for current task.
 
 **Structure** (typically in-memory, not persisted):
+
 ```python
 class WorkingMemory:
     def __init__(self):
@@ -844,6 +896,7 @@ class WorkingMemory:
 ```
 
 **Use Cases for Coding Assistants**:
+
 - Conversation continuity: "As I mentioned earlier..."
 - Context-aware suggestions: Relevant to current file/function
 - Multi-turn task tracking: "Continue implementing the feature we discussed"
@@ -853,6 +906,7 @@ class WorkingMemory:
 **Definition**: Future-oriented memory for planned actions and intentions.
 
 **Structure**:
+
 ```cypher
 (i:Intention {
   id: "intent_001",
@@ -876,6 +930,7 @@ class WorkingMemory:
 ```
 
 **Implementation Pattern**:
+
 ```python
 class ProspectiveMemory:
     def add_intention(self, goal, trigger=None, due_date=None):
@@ -909,6 +964,7 @@ class ProspectiveMemory:
 ```
 
 **Use Cases for Coding Assistants**:
+
 - TODO tracking: "Remind me to add error handling after this works"
 - Conditional tasks: "When tests pass, create a PR"
 - Long-term goals: "We should refactor this module next sprint"
@@ -952,6 +1008,7 @@ class ProspectiveMemory:
 ```
 
 **Implementation**:
+
 ```python
 class UnifiedMemoryGraph:
     def __init__(self, neo4j_driver):
@@ -1130,6 +1187,7 @@ class KnowledgeVault:
 ### Advanced Retrieval Strategies
 
 **1. Hybrid Search** (Semantic + Structural):
+
 ```python
 def hybrid_search(query, kg):
     # Semantic search (vector similarity)
@@ -1151,6 +1209,7 @@ def hybrid_search(query, kg):
 ```
 
 **2. Temporal Reasoning**:
+
 ```python
 def temporal_query(query, kg, time_context):
     # Extract temporal aspects
@@ -1172,6 +1231,7 @@ def temporal_query(query, kg, time_context):
 ```
 
 **3. Multi-Hop Reasoning**:
+
 ```python
 def multi_hop_reasoning(query, kg, max_hops=3):
     # Start with seed entities
@@ -1201,6 +1261,7 @@ def multi_hop_reasoning(query, kg, max_hops=3):
 ```
 
 **4. Contradiction Detection**:
+
 ```python
 def detect_contradictions(new_fact, kg):
     # Find facts about same entities
@@ -1226,12 +1287,14 @@ def detect_contradictions(new_fact, kg):
 ### Performance Characteristics
 
 **Zep Benchmarks**:
+
 - Deep Memory Retrieval: 94.8% accuracy (gpt-4-turbo)
 - LongMemEval: 18.5% improvement, 90% latency reduction (2.58s vs 28.9s)
 - Context compression: 1.6k tokens (from 115k)
 - Strong in temporal reasoning (+38.4%), multi-session (+30.7%)
 
 **MIRIX Benchmarks**:
+
 - 35% improvement over RAG baselines
 - 99.9% storage reduction vs RAG
 - 410% improvement over long-context baselines
@@ -1245,6 +1308,7 @@ def detect_contradictions(new_fact, kg):
 ### Architecture Proposal: Code-Aware Memory Graph
 
 **Core Design**:
+
 ```
 ┌───────────────────────────────────────────────────────────┐
 │                    CODING ASSISTANT                       │
@@ -1301,6 +1365,7 @@ def detect_contradictions(new_fact, kg):
 ```
 
 **Implementation**:
+
 ```python
 class EpisodicMemory:
     def record_conversation(self, messages, outcome=None):
@@ -1382,6 +1447,7 @@ class EpisodicMemory:
 ```
 
 **Implementation**:
+
 ```python
 class SemanticMemory:
     def index_codebase(self, codebase_path):
@@ -1454,6 +1520,7 @@ class SemanticMemory:
 ```
 
 **Implementation**:
+
 ```python
 class ProceduralMemory:
     def learn_procedure(self, problem, solution_steps, outcome):
@@ -1555,21 +1622,25 @@ class CodeMemoryIntegration:
 ### Deployment Strategy
 
 **Phase 1: Local Development** (Weeks 1-2):
+
 - Docker container for Neo4j Community Edition
 - Single project, single database
 - Focus on core memory types (episodic, semantic)
 
 **Phase 2: Code Graph Integration** (Weeks 3-4):
+
 - Integrate blarify for code parsing
 - Build code entity relationships
 - Test incremental updates
 
 **Phase 3: Procedural Learning** (Weeks 5-6):
+
 - Implement procedural memory
 - Learn from debugging sessions
 - Build pattern library
 
 **Phase 4: Multi-Project** (Weeks 7-8):
+
 - Per-project databases
 - Shared pattern library
 - Cross-project learning
@@ -1739,6 +1810,7 @@ memory.close()
 ### Performance Optimization Patterns
 
 **1. Batch Operations**:
+
 ```python
 def batch_create_nodes(nodes):
     query = """
@@ -1750,6 +1822,7 @@ def batch_create_nodes(nodes):
 ```
 
 **2. Index Strategy**:
+
 ```python
 def create_indexes(driver):
     indexes = [
@@ -1762,6 +1835,7 @@ def create_indexes(driver):
 ```
 
 **3. Query Optimization**:
+
 ```cypher
 // Use index hints
 MATCH (e:Entity)
@@ -1784,6 +1858,7 @@ LIMIT 10
 ### Data Lifecycle Management
 
 **1. Archiving Old Episodes**:
+
 ```python
 def archive_old_episodes(cutoff_date):
     # Move old episodes to archive database
@@ -1798,6 +1873,7 @@ def archive_old_episodes(cutoff_date):
 ```
 
 **2. Periodic Cleanup**:
+
 ```python
 def cleanup_stale_nodes():
     # Remove entities with no relationships and old timestamp
@@ -1811,6 +1887,7 @@ def cleanup_stale_nodes():
 ```
 
 **3. Community Refresh**:
+
 ```python
 def refresh_communities():
     # Recompute communities periodically
@@ -1866,12 +1943,14 @@ def refresh_communities():
 ### Practical Recommendations
 
 **Start Simple, Then Extend**:
+
 1. Week 1: Episodic memory (conversations, errors)
 2. Week 2: Semantic memory (entities, relationships)
 3. Week 3: Code graph integration (blarify/tree-sitter)
 4. Week 4: Procedural memory (learn from resolutions)
 
 **Tech Stack**:
+
 - **Database**: Neo4j Community Edition (Docker)
 - **Code parsing**: Blarify (with SCIP) or tree-sitter
 - **Python driver**: Official `neo4j` driver (6.0+)
@@ -1879,12 +1958,14 @@ def refresh_communities():
 - **Graph queries**: Cypher + Python logic
 
 **Performance Targets**:
+
 - Query latency: < 100ms (p95)
 - Context retrieval: < 2s (p95)
 - Code graph update: < 1s per file
 - Memory footprint: < 500MB per project
 
 **Deployment Pattern**:
+
 ```bash
 # Per-project Neo4j container
 docker-compose.yml:
@@ -1899,6 +1980,7 @@ docker-compose.yml:
 ```
 
 **Backup Strategy**:
+
 ```bash
 # Daily backup to git
 .amplihack/memory/backups/
@@ -1922,11 +2004,13 @@ python -m amplihack.memory.restore --date 2025-11-02
 ### Research Gaps & Future Work
 
 **Admiral-KG Investigation**:
+
 - Unable to locate `github.com/rysweet/admiral-kg`
 - May be private, internal, or misremembered URL
 - Recommend direct confirmation of correct repository
 
 **Additional Research Areas**:
+
 - Neo4j vs. other graph DBs (FalkorDB, Memgraph) for this use case
 - Optimal community detection algorithms for code graphs
 - Entity deduplication strategies (fuzzy matching, embeddings)
@@ -1940,6 +2024,7 @@ python -m amplihack.memory.restore --date 2025-11-02
 See code example above for complete, production-ready implementation.
 
 **Key Files**:
+
 - `/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/.amplihack/memory/`
   - `memory_system.py` - Main memory system
   - `episodic.py` - Episodic memory component
@@ -1954,45 +2039,41 @@ See code example above for complete, production-ready implementation.
 ## 8. Actionable Next Steps
 
 **Immediate** (Week 1):
+
 1. Set up Neo4j Community Edition (Docker)
 2. Implement basic episodic memory (conversations)
 3. Create schema for episodes and entities
 
-**Short-term** (Weeks 2-4):
-4. Integrate blarify for code graph generation
-5. Implement semantic memory (entity relationships)
-6. Build retrieval system (hybrid search)
+**Short-term** (Weeks 2-4): 4. Integrate blarify for code graph generation 5. Implement semantic memory (entity relationships) 6. Build retrieval system (hybrid search)
 
-**Medium-term** (Weeks 5-8):
-7. Add procedural memory (learn from resolutions)
-8. Implement per-project deployment
-9. Build backup/restore system
+**Medium-term** (Weeks 5-8): 7. Add procedural memory (learn from resolutions) 8. Implement per-project deployment 9. Build backup/restore system
 
-**Long-term** (Months 2-3):
-10. Cross-project knowledge sharing
-11. Advanced retrieval (multi-hop reasoning)
-12. Performance optimization (caching, indexes)
+**Long-term** (Months 2-3): 10. Cross-project knowledge sharing 11. Advanced retrieval (multi-hop reasoning) 12. Performance optimization (caching, indexes)
 
 ---
 
 ## Appendix: Additional Resources
 
 **Neo4j Documentation**:
+
 - Python Driver: https://neo4j.com/docs/api/python-driver/current/
 - Cypher Manual: https://neo4j.com/docs/cypher-manual/current/
 - Operations Manual: https://neo4j.com/docs/operations-manual/current/
 
 **Code Graph Tools**:
+
 - Blarify: https://github.com/blarApp/blarify
 - Tree-sitter: https://tree-sitter.github.io/tree-sitter/
 - SCIP: https://github.com/sourcegraph/scip
 
 **Memory Systems Research**:
+
 - Zep Paper: https://arxiv.org/html/2501.13956v1
 - MIRIX Paper: https://arxiv.org/html/2507.07957v1
 - IBM AI Memory: https://www.ibm.com/think/topics/ai-agent-memory
 
 **Neo4j Performance**:
+
 - Driver Best Practices: https://neo4j.com/developer-blog/neo4j-driver-best-practices/
 - Performance Recommendations: https://neo4j.com/docs/python-manual/current/performance/
 

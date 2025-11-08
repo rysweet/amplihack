@@ -7,6 +7,7 @@ Specialized agent for managing git worktrees consistently and safely. Ensures wo
 ## When to Use This Agent
 
 Use the worktree manager agent when:
+
 - Creating new worktrees for feature development
 - Setting up isolated development environments
 - Managing multiple parallel work streams
@@ -94,6 +95,7 @@ project-root/
 ## Agent Guidelines
 
 ### DO:
+
 - ✅ Always create worktrees in `./worktrees/{branch-name}`
 - ✅ Use descriptive branch names: `feat/issue-{num}-{description}`
 - ✅ Set up remote tracking: `git push -u origin {branch}`
@@ -102,6 +104,7 @@ project-root/
 - ✅ Check for existing worktrees before creating new ones
 
 ### DON'T:
+
 - ❌ Create worktrees outside the project directory
 - ❌ Use `../worktrees/` or any parent directory paths
 - ❌ Leave abandoned worktrees cluttering the directory
@@ -121,6 +124,7 @@ When the workflow reaches Step 3 (Setup Worktree and Branch):
 5. **Navigate** to the worktree directory
 
 Example invocation:
+
 ```
 Task(
   subagent_type="worktree-manager",
@@ -137,6 +141,7 @@ Task(
 **Symptom**: Worktrees appear at `../worktrees/` instead of `./worktrees/`
 
 **Solution**:
+
 1. Check current directory: `pwd`
 2. Remove incorrectly placed worktree: `git worktree remove {path}`
 3. Create new worktree in correct location: `git worktree add ./worktrees/{branch}`
@@ -146,6 +151,7 @@ Task(
 **Symptom**: `fatal: validation failed, cannot remove working tree`
 
 **Solution**:
+
 1. Check if worktree has uncommitted changes
 2. Navigate to worktree and commit or stash changes
 3. Try removing again
@@ -156,6 +162,7 @@ Task(
 **Symptom**: CWD changes unexpectedly, can't find files
 
 **Solution**:
+
 1. Always use absolute paths or `./` relative paths
 2. After creating worktree, explicitly `cd ./worktrees/{branch}`
 3. Check git status to confirm you're in right place
@@ -177,16 +184,19 @@ Task(
 ## Philosophy Alignment
 
 **Ruthless Simplicity**:
+
 - One clear location for all worktrees: `./worktrees/`
 - Consistent naming: `{type}/issue-{num}-{description}`
 - Clean up when done
 
 **Zero-BS Implementation**:
+
 - No complex worktree management scripts
 - Direct git commands
 - Clear error messages when things fail
 
 **Modular Design**:
+
 - Worktree manager is a self-contained agent
 - Clear interface with workflows
 - Can be replaced or extended independently
@@ -200,12 +210,14 @@ Task(
 ## Decision Log Integration
 
 When creating worktrees, log the decision:
+
 ```markdown
 ## Worktree Creation
 
 **Decision**: Created worktree at ./worktrees/feat-user-auth
 **Why**: Isolate development of user authentication feature
 **Alternatives**:
+
 - Work directly in main worktree (rejected: too risky)
 - Use separate clone (rejected: wastes space)
 ```

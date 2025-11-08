@@ -10,7 +10,7 @@ Handles:
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .connector import Neo4jConnector
 from .exceptions import Neo4jConnectionError
@@ -72,10 +72,7 @@ class QualityMetrics:
 
         # Weighted combination
         score = (
-            0.3 * access_score +
-            0.3 * importance_score +
-            0.2 * tag_score +
-            0.2 * relationship_score
+            0.3 * access_score + 0.3 * importance_score + 0.2 * tag_score + 0.2 * relationship_score
         )
 
         return round(score, 3)
@@ -108,9 +105,7 @@ class MemoryConsolidator:
         self.promotion_threshold = promotion_threshold
         self.decay_threshold_days = decay_threshold_days
 
-    def calculate_quality_scores(
-        self, project_id: Optional[str] = None
-    ) -> List[QualityMetrics]:
+    def calculate_quality_scores(self, project_id: Optional[str] = None) -> List[QualityMetrics]:
         """Calculate quality scores for memories.
 
         Args:
@@ -293,7 +288,9 @@ class MemoryConsolidator:
         Returns:
             List of memory IDs affected by decay
         """
-        cutoff_timestamp = int((datetime.now() - timedelta(days=self.decay_threshold_days)).timestamp() * 1000)
+        cutoff_timestamp = int(
+            (datetime.now() - timedelta(days=self.decay_threshold_days)).timestamp() * 1000
+        )
 
         # Find decay candidates
         query = """
@@ -342,7 +339,9 @@ class MemoryConsolidator:
             logger.error("Failed to apply decay: %s", e)
             raise Neo4jConnectionError(f"Query failed: {e}")
 
-    def detect_duplicates(self, project_id: str, similarity_threshold: float = 0.9) -> List[Tuple[str, str]]:
+    def detect_duplicates(
+        self, project_id: str, similarity_threshold: float = 0.9
+    ) -> List[Tuple[str, str]]:
         """Detect potential duplicate memories.
 
         Uses tag overlap and creation time proximity to identify duplicates.
@@ -426,9 +425,7 @@ class MemoryConsolidator:
         """
 
         try:
-            results = self.conn.execute_write(
-                query, {"keep_id": keep_id, "merge_id": merge_id}
-            )
+            results = self.conn.execute_write(query, {"keep_id": keep_id, "merge_id": merge_id})
 
             success = results[0]["success"] if results else False
             if success:
@@ -444,6 +441,7 @@ class MemoryConsolidator:
 
 
 # Convenience functions
+
 
 def run_consolidation(
     connector: Neo4jConnector,

@@ -10,6 +10,7 @@
 ## Executive Summary
 
 **User's Request Analysis:**
+
 > "I want you to go implement it. we need to spin up a neo4j container on session start and use it as the db. we should manage ensuring all appropriate dependencies are installed. you can make a goal seeking agent whose job it is to manage that."
 
 **Clarified Scope:**
@@ -68,6 +69,7 @@ This implementation focuses on **Phase 1-2 infrastructure foundation** (Neo4j co
 8. Migration from existing memory system (Future)
 
 **NOT in this implementation:**
+
 - Replace existing `src/amplihack/memory/` system
 - Full memory API compatibility
 - External knowledge integration
@@ -109,18 +111,17 @@ Description: Container starts automatically on amplihack session start
 
 Trigger: When amplihack session starts (first claude command)
 Timing: Lazy initialization (async, non-blocking)
-Behavior:
-  1. Check if container already running
+Behavior: 1. Check if container already running
   2. If not running, start container in background
   3. Return immediately (don't block session start)
   4. Log startup status to stdout
 
 Acceptance Criteria:
-- ✓ Container starts on first amplihack session
-- ✓ Session start not blocked (< 500ms delay max)
-- ✓ Running container detected (no duplicate starts)
-- ✓ User sees "Neo4j memory system starting..." message
-- ✓ Startup happens before first memory operation
+  - ✓ Container starts on first amplihack session
+  - ✓ Session start not blocked (< 500ms delay max)
+  - ✓ Running container detected (no duplicate starts)
+  - ✓ User sees "Neo4j memory system starting..." message
+  - ✓ Startup happens before first memory operation
 
 Test: Start amplihack twice, verify container only started once
 ```
@@ -132,19 +133,19 @@ Priority: MUST HAVE
 Description: Container persists across sessions (not ephemeral)
 
 Behavior:
-- Container runs continuously after first start
-- Data persists in Docker volume (neo4j_data)
-- Container survives machine reboot (restart policy)
-- Manual stop available: docker-compose down
+  - Container runs continuously after first start
+  - Data persists in Docker volume (neo4j_data)
+  - Container survives machine reboot (restart policy)
+  - Manual stop available: docker-compose down
 
 NOT ephemeral: Container keeps running between sessions
 Rationale: Startup time (10-15s) too slow for per-session
 
 Acceptance Criteria:
-- ✓ Data persists after amplihack exit
-- ✓ Container still running after amplihack exit
-- ✓ Second session uses existing container
-- ✓ Volume mounted at /data in container
+  - ✓ Data persists after amplihack exit
+  - ✓ Container still running after amplihack exit
+  - ✓ Second session uses existing container
+  - ✓ Volume mounted at /data in container
 
 Test: Create memory, exit amplihack, restart, verify memory exists
 ```
@@ -180,20 +181,20 @@ Priority: MUST HAVE
 Description: Data persists in Docker volume
 
 Volume Configuration:
-- Volume name: amplihack_neo4j_data
-- Mount point: /data in container
-- Type: Docker named volume (not host mount)
+  - Volume name: amplihack_neo4j_data
+  - Mount point: /data in container
+  - Type: Docker named volume (not host mount)
 
 Behavior:
-- Volume created automatically on first start
-- Survives container deletion (must explicitly delete volume)
-- Located in Docker's volume directory
+  - Volume created automatically on first start
+  - Survives container deletion (must explicitly delete volume)
+  - Located in Docker's volume directory
 
 Acceptance Criteria:
-- ✓ Volume created on first start
-- ✓ Data survives container restart
-- ✓ Data survives container removal (not volume removal)
-- ✓ `docker volume ls` shows amplihack_neo4j_data
+  - ✓ Volume created on first start
+  - ✓ Data survives container restart
+  - ✓ Data survives container removal (not volume removal)
+  - ✓ `docker volume ls` shows amplihack_neo4j_data
 
 Test: Create memory, docker-compose down, up, verify memory exists
 ```
@@ -393,7 +394,7 @@ Test: Simulate each failure mode, verify guidance
 
 **REQUIREMENT SI-001: Session Start Hook**
 
-```yaml
+````yaml
 Priority: MUST HAVE
 Description: Hook into amplihack session start for Neo4j initialization
 
@@ -413,9 +414,10 @@ def prepare_launch(self) -> bool:
     ensure_neo4j_running(blocking=False)
 
     # Continue existing logic...
-```
+````
 
 Acceptance Criteria:
+
 - ✓ Hook added to prepare_launch()
 - ✓ Non-blocking (async/background)
 - ✓ Doesn't fail session start if Neo4j fails
@@ -424,7 +426,8 @@ Acceptance Criteria:
 
 Test: Start amplihack, verify session starts quickly
 Test: Break Neo4j, verify session still starts
-```
+
+````
 
 **REQUIREMENT SI-002: Lazy Initialization**
 
@@ -454,7 +457,7 @@ Acceptance Criteria:
 
 Test: Start amplihack, verify prompt appears in < 500ms
 Test: Time first memory operation (should wait if needed)
-```
+````
 
 **REQUIREMENT SI-003: Graceful Degradation**
 
@@ -521,7 +524,7 @@ Test: Simulate each failure, verify error message
 
 **REQUIREMENT SS-001: Schema Files**
 
-```yaml
+````yaml
 Priority: MUST HAVE
 Description: Create Cypher scripts for schema initialization
 
@@ -540,9 +543,10 @@ FOR (p:Project) REQUIRE p.id IS UNIQUE;
 
 CREATE CONSTRAINT memory_id IF NOT EXISTS
 FOR (m:Memory) REQUIRE m.id IS UNIQUE;
-```
+````
 
 Acceptance Criteria:
+
 - ✓ All three files created
 - ✓ Constraints created correctly
 - ✓ Indexes created correctly
@@ -551,7 +555,8 @@ Acceptance Criteria:
 
 Test: Start Neo4j, verify constraints exist
 Test: Try duplicate agent type ID, verify rejection
-```
+
+````
 
 **REQUIREMENT SS-002: Schema Verification**
 
@@ -576,7 +581,7 @@ Acceptance Criteria:
 
 Test: Run verify_schema() after init, verify True
 Test: Drop constraint, run verify_schema(), verify False
-```
+````
 
 ---
 
@@ -611,7 +616,7 @@ Test: pytest tests/memory/test_neo4j_smoke.py::test_connection
 
 **REQUIREMENT ST-002: Memory Node Creation**
 
-```yaml
+````yaml
 Priority: MUST HAVE
 Description: Verify can create and retrieve one memory node
 
@@ -632,9 +637,10 @@ CREATE (at)-[:HAS_MEMORY]->(m)
 // Retrieve
 MATCH (at:AgentType {id: 'test'})-[:HAS_MEMORY]->(m:Memory)
 RETURN m.content
-```
+````
 
 Acceptance Criteria:
+
 - ✓ Can create agent type
 - ✓ Can create memory
 - ✓ Can create relationship
@@ -642,6 +648,7 @@ Acceptance Criteria:
 - ✓ Content matches input
 
 Test: pytest tests/memory/test_neo4j_smoke.py::test_memory_creation
+
 ```
 
 ---
@@ -651,32 +658,34 @@ Test: pytest tests/memory/test_neo4j_smoke.py::test_memory_creation
 ### 7.1 File Structure
 
 ```
+
 Project Structure (New Files):
 
 docker/
-├── docker-compose.neo4j.yml          [MC-001]
+├── docker-compose.neo4j.yml [MC-001]
 └── neo4j/
-    └── init/
-        ├── 01_constraints.cypher     [SS-001]
-        ├── 02_indexes.cypher         [SS-001]
-        └── 03_agent_types.cypher     [SS-001]
+└── init/
+├── 01_constraints.cypher [SS-001]
+├── 02_indexes.cypher [SS-001]
+└── 03_agent_types.cypher [SS-001]
 
 src/amplihack/memory/neo4j/
-├── __init__.py
-├── connector.py                      [ST-001]
-├── lifecycle.py                      [SI-001, SI-002]
-├── schema.py                         [SS-002]
-└── config.py                         [MC-004]
+├── **init**.py
+├── connector.py [ST-001]
+├── lifecycle.py [SI-001, SI-002]
+├── schema.py [SS-002]
+└── config.py [MC-004]
 
 .claude/agents/amplihack/infrastructure/
-└── neo4j-setup-agent.md              [DM-001]
+└── neo4j-setup-agent.md [DM-001]
 
 tests/memory/
-└── test_neo4j_smoke.py               [ST-001, ST-002]
+└── test_neo4j_smoke.py [ST-001, ST-002]
 
 docs/memory/
-└── neo4j_setup.md                    [DM-005]
-```
+└── neo4j_setup.md [DM-005]
+
+````
 
 ### 7.2 Python API Specification
 
@@ -703,7 +712,7 @@ class Neo4jConnector:
 
     def verify_connectivity(self) -> bool:
         """Test connection (returns True if working)"""
-```
+````
 
 **Lifecycle Management API:**
 
@@ -777,6 +786,7 @@ DOCKER_COMPOSE_CMD=docker compose     # Auto-detected if not set
 ```
 
 **Configuration Precedence:**
+
 1. Environment variables (highest priority)
 2. .env file in project root
 3. Default values in code (lowest priority)
@@ -831,18 +841,21 @@ DOCKER_COMPOSE_CMD=docker compose     # Auto-detected if not set
 ### 9.1 High Risk Items
 
 **RISK-001: Docker Not Available**
+
 - **Probability**: Medium (20% of users)
 - **Impact**: High (can't use Neo4j memory)
 - **Mitigation**: Goal-seeking agent guides install
 - **Fallback**: Existing memory system works
 
 **RISK-002: Port Conflicts**
+
 - **Probability**: Low (5%)
 - **Impact**: Medium (Neo4j won't start)
 - **Mitigation**: Configurable ports
 - **Detection**: Port check before start
 
 **RISK-003: Session Start Delay**
+
 - **Probability**: Medium (if not async)
 - **Impact**: High (poor UX)
 - **Mitigation**: Lazy/async initialization
@@ -851,12 +864,14 @@ DOCKER_COMPOSE_CMD=docker compose     # Auto-detected if not set
 ### 9.2 Medium Risk Items
 
 **RISK-004: Permission Issues**
+
 - **Probability**: Medium (15%)
 - **Impact**: Medium (can't start Docker)
 - **Mitigation**: Clear guidance to fix permissions
 - **Detection**: Docker command fails with permission error
 
 **RISK-005: Container Startup Failures**
+
 - **Probability**: Low (10%)
 - **Impact**: Medium (Neo4j unavailable)
 - **Mitigation**: Detailed error logs, fallback to existing system
@@ -865,6 +880,7 @@ DOCKER_COMPOSE_CMD=docker compose     # Auto-detected if not set
 ### 9.3 Low Risk Items
 
 **RISK-006: Data Corruption**
+
 - **Probability**: Very Low (< 1%)
 - **Impact**: High (data loss)
 - **Mitigation**: Docker volume persistence, backup strategy
@@ -967,11 +983,13 @@ DOCKER_COMPOSE_CMD=docker compose     # Auto-detected if not set
 ### 12.1 System Dependencies
 
 **MUST BE PRESENT:**
+
 - Docker Engine (20.10+)
 - Docker Compose (V2 preferred, V1 acceptable)
 - Python 3.11+
 
 **WILL BE INSTALLED:**
+
 - neo4j Python driver (>=5.15.0)
 
 ### 12.2 Python Package Dependencies
@@ -1030,6 +1048,7 @@ neo4j:5.15-community  # ~500MB
 ### 13.3 Inline Documentation
 
 **MUST HAVE:**
+
 - Docstrings for all public functions
 - Inline comments for complex logic
 - Type hints for all function signatures
@@ -1042,6 +1061,7 @@ neo4j:5.15-community  # ~500MB
 ### Phase 1: Docker Infrastructure (4-5 hours)
 
 **Tasks:**
+
 1. Create docker-compose.neo4j.yml [MC-001]
 2. Create schema initialization scripts [SS-001]
 3. Test Docker Compose starts Neo4j
@@ -1053,6 +1073,7 @@ neo4j:5.15-community  # ~500MB
 ### Phase 2: Python Integration (3-4 hours)
 
 **Tasks:**
+
 1. Create Neo4jConnector class [ST-001]
 2. Create lifecycle management module [SI-002]
 3. Create schema verification [SS-002]
@@ -1064,6 +1085,7 @@ neo4j:5.15-community  # ~500MB
 ### Phase 3: Goal-Seeking Agent (2-3 hours)
 
 **Tasks:**
+
 1. Create neo4j-setup-agent.md [DM-001]
 2. Implement prerequisite checks [DM-002, DM-003, DM-004]
 3. Write fix guidance for each failure [DM-005]
@@ -1075,6 +1097,7 @@ neo4j:5.15-community  # ~500MB
 ### Phase 4: Session Integration (2-3 hours)
 
 **Tasks:**
+
 1. Add hook to prepare_launch() [SI-001]
 2. Implement lazy initialization [SI-002]
 3. Add graceful degradation [SI-003]
@@ -1086,6 +1109,7 @@ neo4j:5.15-community  # ~500MB
 ### Phase 5: Testing & Documentation (2-3 hours)
 
 **Tasks:**
+
 1. Write unit tests (connector, lifecycle, schema)
 2. Write integration tests (full workflow)
 3. Write user documentation
@@ -1137,6 +1161,7 @@ neo4j:5.15-community  # ~500MB
 **Category**: Medium
 
 **Justification**:
+
 - Multiple files/modules (8-10 files)
 - Docker dependency management (external)
 - Session integration (modify existing code)
@@ -1144,6 +1169,7 @@ neo4j:5.15-community  # ~500MB
 - Goal-seeking agent (new pattern)
 
 **NOT Complex Because**:
+
 - No algorithm complexity
 - No distributed systems
 - No real-time requirements
@@ -1152,16 +1178,16 @@ neo4j:5.15-community  # ~500MB
 
 ### 16.2 Effort Breakdown
 
-| Task | Complexity | Effort | Risk |
-|------|------------|--------|------|
-| Docker Compose Setup | Simple | 2h | Low |
-| Python Connector | Simple | 2h | Low |
-| Lifecycle Management | Medium | 3h | Medium |
-| Goal-Seeking Agent | Medium | 3h | Medium |
-| Session Integration | Medium | 2h | Medium |
-| Error Handling | Medium | 2h | Low |
-| Testing | Medium | 3h | Low |
-| Documentation | Simple | 2h | Low |
+| Task                 | Complexity | Effort | Risk   |
+| -------------------- | ---------- | ------ | ------ |
+| Docker Compose Setup | Simple     | 2h     | Low    |
+| Python Connector     | Simple     | 2h     | Low    |
+| Lifecycle Management | Medium     | 3h     | Medium |
+| Goal-Seeking Agent   | Medium     | 3h     | Medium |
+| Session Integration  | Medium     | 2h     | Medium |
+| Error Handling       | Medium     | 2h     | Low    |
+| Testing              | Medium     | 3h     | Low    |
+| Documentation        | Simple     | 2h     | Low    |
 
 **Total**: 12-16 hours (Medium Complexity)
 
@@ -1170,11 +1196,13 @@ neo4j:5.15-community  # ~500MB
 **Overall Risk**: Medium
 
 **High Risk Areas**:
+
 - Docker availability (mitigated by fallback)
 - Session start performance (mitigated by async)
 - Port conflicts (mitigated by configurable ports)
 
 **Low Risk Areas**:
+
 - Python integration (well-understood patterns)
 - Schema creation (straightforward Cypher)
 - Testing (standard approaches)
@@ -1255,6 +1283,7 @@ This implementation does NOT include:
 ### What Comes After
 
 **Next Implementation** (separate task):
+
 - Phase 3: Core Memory Operations (6-8 hours)
 - Full CRUD API
 - Memory isolation
@@ -1262,6 +1291,7 @@ This implementation does NOT include:
 - Project registration
 
 **Then**:
+
 - Phase 4: Code Graph Integration (4-5 hours)
 - Phase 5: Agent Type Memory Sharing (4-5 hours)
 - Phase 6: Testing & Documentation (8-10 hours)
@@ -1271,57 +1301,75 @@ This implementation does NOT include:
 ## 19. Questions Answered
 
 ### Q1: What exactly should be implemented?
+
 **A**: Foundation only (Neo4j container + dependencies + goal-seeking agent + session integration + smoke test). NOT full memory API.
 
 ### Q2: When should container start?
+
 **A**: On amplihack session start (first command), lazily/async (doesn't block).
 
 ### Q3: Should container persist?
+
 **A**: Yes, runs continuously (not ephemeral). Survives session end.
 
 ### Q4: Port configuration?
+
 **A**: Default 7687/7474, configurable via environment variables.
 
 ### Q5: Data persistence?
+
 **A**: Docker named volume (amplihack_neo4j_data).
 
 ### Q6: Container name?
+
 **A**: amplihack-neo4j (single shared container).
 
 ### Q7: What dependencies need managing?
+
 **A**: Docker Engine, Docker Compose, neo4j Python driver.
 
 ### Q8: Should we check Docker daemon?
+
 **A**: Yes, goal-seeking agent checks Docker installed and running.
 
 ### Q9: Python package installation?
+
 **A**: Auto-install neo4j>=5.15.0 with pip, guide manual install if fails.
 
 ### Q10: What is "goal-seeking agent"?
+
 **A**: Advisory agent (check → report → guide), NOT autonomous (no auto-fix for system-level changes).
 
 ### Q11: Auto-fix or guide?
+
 **A**: Guide for system-level (Docker). Auto-fix for Python packages. User controls system changes.
 
 ### Q12: Agent scope?
+
 **A**: Docker check, Docker Compose check, Python packages, Neo4j connection, all prerequisites.
 
 ### Q13: Session start hook?
+
 **A**: In ClaudeLauncher.prepare_launch(), after check_prerequisites().
 
 ### Q14: Async or blocking?
+
 **A**: Async/background (blocking=False). Don't block session start.
 
 ### Q15: Failure handling?
+
 **A**: Graceful degradation. Log warning, use existing memory system, provide fix guidance.
 
 ### Q16: Replace existing memory?
+
 **A**: No, run alongside. Fallback to existing if Neo4j unavailable.
 
 ### Q17: Success criteria?
+
 **A**: Container starts, can connect, can create/retrieve one memory node, session starts < 500ms.
 
 ### Q18: Out of scope?
+
 **A**: Full memory API, agent type sharing, blarify integration, migration, production hardening (all future phases).
 
 ---

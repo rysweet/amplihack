@@ -174,7 +174,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
         # Print success message
         print(f"✓ Instruction appended to session: {result.session_id}")
         print(f"  File: {result.filename}")
-        print(f"  The auto mode session will process this on its next turn.")
+        print("  The auto mode session will process this on its next turn.")
         return 0
 
     except ValueError as e:
@@ -370,6 +370,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
     copilot_parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
+    )
+    copilot_parser.add_argument(
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
@@ -392,6 +397,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         type=int,
         default=10,
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
+    codex_parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
     )
     codex_parser.add_argument(
         "--ui",
@@ -616,6 +626,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.command == "copilot":
         from .launcher.copilot import launch_copilot
 
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
         if exit_code is not None:
@@ -631,6 +645,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     elif args.command == "codex":
         from .launcher.codex import launch_codex
+
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
