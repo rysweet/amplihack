@@ -100,11 +100,17 @@ def test_unit_prompt_006_permission_error_reading_custom_prompt(stop_hook, monke
     # Create prompt file
     stop_hook.continuation_prompt_file.touch()
 
-    # Mock read_text to raise PermissionError
-    def mock_read_text(*args, **kwargs):
-        raise PermissionError("Access denied")
+    # Mock Path.read_text at the class level to raise PermissionError
+    from pathlib import Path
 
-    monkeypatch.setattr(stop_hook.continuation_prompt_file, "read_text", mock_read_text)
+    original_read_text = Path.read_text
+
+    def mock_read_text(self, *args, **kwargs):
+        if self == stop_hook.continuation_prompt_file:
+            raise PermissionError("Access denied")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", mock_read_text)
 
     from stop import DEFAULT_CONTINUATION_PROMPT
 
@@ -124,11 +130,17 @@ def test_unit_prompt_007_oserror_reading_custom_prompt(stop_hook, monkeypatch):
     # Create prompt file
     stop_hook.continuation_prompt_file.touch()
 
-    # Mock read_text to raise OSError
-    def mock_read_text(*args, **kwargs):
-        raise OSError("I/O error")
+    # Mock Path.read_text at the class level to raise OSError
+    from pathlib import Path
 
-    monkeypatch.setattr(stop_hook.continuation_prompt_file, "read_text", mock_read_text)
+    original_read_text = Path.read_text
+
+    def mock_read_text(self, *args, **kwargs):
+        if self == stop_hook.continuation_prompt_file:
+            raise OSError("I/O error")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", mock_read_text)
 
     from stop import DEFAULT_CONTINUATION_PROMPT
 
@@ -148,11 +160,17 @@ def test_unit_prompt_008_unicode_decode_error_reading_custom_prompt(stop_hook, m
     # Create prompt file
     stop_hook.continuation_prompt_file.touch()
 
-    # Mock read_text to raise UnicodeDecodeError
-    def mock_read_text(*args, **kwargs):
-        raise UnicodeDecodeError("utf-8", b"\xff\xff", 0, 1, "invalid start byte")
+    # Mock Path.read_text at the class level to raise UnicodeDecodeError
+    from pathlib import Path
 
-    monkeypatch.setattr(stop_hook.continuation_prompt_file, "read_text", mock_read_text)
+    original_read_text = Path.read_text
+
+    def mock_read_text(self, *args, **kwargs):
+        if self == stop_hook.continuation_prompt_file:
+            raise UnicodeDecodeError("utf-8", b"\xff\xff", 0, 1, "invalid start byte")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", mock_read_text)
 
     from stop import DEFAULT_CONTINUATION_PROMPT
 

@@ -13,16 +13,16 @@ def test_e2e_workflow_001_standard_stop_without_lock(captured_subprocess, temp_p
     input_data = {"session_id": "user_session"}
 
     # Step 1: No lock file exists
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     assert not lock_file.exists()
 
     # Step 2: Claude Code calls stop hook
     result = captured_subprocess(input_data, lock_active=False)
 
-    # Step 3: Hook returns {}
+    # Step 3: Hook returns {"decision": "approve"}
     assert result.returncode == 0
     output = json.loads(result.stdout)
-    assert output == {}
+    assert output == {"decision": "approve"}
 
     # Step 4: Claude Code stops normally
     # Expected: Clean stop, no messages to user
@@ -39,11 +39,11 @@ def test_e2e_workflow_002_continuous_work_mode_active(captured_subprocess, temp_
     input_data = {"session_id": "continuous_session"}
 
     # Step 1: Lock file created (continuous work enabled)
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
     # Step 2: Custom prompt set to "Complete all TODOs"
-    prompt_file = temp_project_root / ".claude/tools/amplihack/.continuation_prompt"
+    prompt_file = temp_project_root / ".claude/runtime/locks/.continuation_prompt"
     prompt_file.write_text("Complete all TODOs", encoding="utf-8")
 
     # Step 3: Claude Code calls stop hook
@@ -67,7 +67,7 @@ def test_e2e_workflow_003_continuous_work_mode_disabled(captured_subprocess, tem
     input_data = {"session_id": "toggle_session"}
 
     # Step 1: Lock file exists
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
     # Step 2: Hook blocks stop (continuous work happening)
@@ -82,10 +82,10 @@ def test_e2e_workflow_003_continuous_work_mode_disabled(captured_subprocess, tem
     # Step 4: Claude Code calls stop hook
     result2 = captured_subprocess(input_data, lock_active=False)
 
-    # Step 5: Hook returns {}
+    # Step 5: Hook returns {"decision": "approve"}
     assert result2.returncode == 0
     output2 = json.loads(result2.stdout)
-    assert output2 == {}
+    assert output2 == {"decision": "approve"}
 
     # Step 6: Claude Code stops
     # Expected: Clean stop after mode disabled
