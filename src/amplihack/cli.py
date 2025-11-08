@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
@@ -198,6 +198,59 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
     except Exception as e:
         print(f"Error: Failed to append instruction: {e}")
         return 1
+
+
+def handle_sdk_command(
+    sdk: str,
+    args: argparse.Namespace,
+    claude_args: Optional[List[str]],
+    launch_func: Callable,
+    use_interactive_flag: bool = False,
+) -> int:
+    """Handle common SDK command logic for launch/claude/copilot/codex.
+
+    Args:
+        sdk: SDK name ("claude", "copilot", "codex")
+        args: Parsed command line arguments
+        claude_args: Additional arguments to forward to the SDK
+        launch_func: Function to call for launching the SDK
+        use_interactive_flag: If True, call launch_func(claude_args, interactive=bool)
+                             If False, call launch_func(args, claude_args)
+
+    Returns:
+        Exit code
+    """
+    # Handle append mode FIRST (before any other initialization)
+    if getattr(args, "append", None):
+        return handle_append_instruction(args)
+
+    # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
+    if is_uvx_deployment():
+        # Get the original directory (before we changed to temp)
+        original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+        # Add --add-dir to claude_args if not already present
+        if claude_args and "--add-dir" not in claude_args:
+            claude_args = ["--add-dir", original_cwd] + claude_args
+        elif not claude_args:
+            claude_args = ["--add-dir", original_cwd]
+
+    # Handle auto mode
+    exit_code = handle_auto_mode(sdk, args, claude_args)
+    if exit_code is not None:
+        return exit_code
+
+    # Handle --no-reflection flag (disable always wins priority)
+    if getattr(args, "no_reflection", False):
+        os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
+    # Launch the SDK with appropriate signature
+    if use_interactive_flag:
+        # For copilot/codex: launch_func(claude_args, interactive=bool)
+        has_prompt = claude_args and "-p" in claude_args
+        return launch_func(claude_args, interactive=not has_prompt)
+    else:
+        # For launch/claude: launch_func(args, claude_args)
+        return launch_func(args, claude_args)
 
 
 def parse_args_with_passthrough(
@@ -602,86 +655,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "launch":
-        # Handle append mode FIRST (before any other initialization)
-        if getattr(args, "append", None):
-            return handle_append_instruction(args)
-
-        # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
-        if is_uvx_deployment():
-            # Get the original directory (before we changed to temp)
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            # Add --add-dir to claude_args if not already present
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd]
-
-        # Handle auto mode
-        exit_code = handle_auto_mode("claude", args, claude_args)
-        if exit_code is not None:
-            return exit_code
-
-        return launch_command(args, claude_args)
+        return handle_sdk_command("claude", args, claude_args, launch_command)
 
     elif args.command == "claude":
-        # Handle append mode FIRST (before any other initialization)
-        if getattr(args, "append", None):
-            return handle_append_instruction(args)
-
-        # Claude is an alias for launch
-        if is_uvx_deployment():
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd]
-
-        # Handle auto mode
-        exit_code = handle_auto_mode("claude", args, claude_args)
-        if exit_code is not None:
-            return exit_code
-
-        return launch_command(args, claude_args)
+        return handle_sdk_command("claude", args, claude_args, launch_command)
 
     elif args.command == "copilot":
         from .launcher.copilot import launch_copilot
 
-        # Handle append mode FIRST (before any other initialization)
-        if getattr(args, "append", None):
-            return handle_append_instruction(args)
-
-        # Handle auto mode
-        exit_code = handle_auto_mode("copilot", args, claude_args)
-        if exit_code is not None:
-            return exit_code
-
-        # Handle --no-reflection flag (disable always wins priority)
-        if getattr(args, "no_reflection", False):
-            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
-
-        # Normal copilot launch
-        has_prompt = claude_args and "-p" in claude_args
-        return launch_copilot(claude_args, interactive=not has_prompt)
+        return handle_sdk_command("copilot", args, claude_args, launch_copilot, use_interactive_flag=True)
 
     elif args.command == "codex":
         from .launcher.codex import launch_codex
 
-        # Handle append mode FIRST (before any other initialization)
-        if getattr(args, "append", None):
-            return handle_append_instruction(args)
-
-        # Handle auto mode
-        exit_code = handle_auto_mode("codex", args, claude_args)
-        if exit_code is not None:
-            return exit_code
-
-        # Handle --no-reflection flag (disable always wins priority)
-        if getattr(args, "no_reflection", False):
-            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
-
-        # Normal codex launch
-        has_prompt = claude_args and "-p" in claude_args
-        return launch_codex(claude_args, interactive=not has_prompt)
+        return handle_sdk_command("codex", args, claude_args, launch_codex, use_interactive_flag=True)
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
