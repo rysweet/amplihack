@@ -8,7 +8,6 @@ import logging
 import os
 import platform
 import subprocess
-import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -76,10 +75,9 @@ class OSDetector:
 
         if system == "linux":
             return OSDetector._detect_linux()
-        elif system == "darwin":
+        if system == "darwin":
             return OSDetector._detect_macos()
-        else:
-            return {"type": "unknown", "version": "", "name": system}
+        return {"type": "unknown", "version": "", "name": system}
 
     @staticmethod
     def _detect_linux() -> Dict[str, str]:
@@ -109,9 +107,7 @@ class OSDetector:
     def _detect_macos() -> Dict[str, str]:
         """Detect macOS version."""
         try:
-            result = subprocess.run(
-                ["sw_vers", "-productVersion"], capture_output=True, text=True
-            )
+            result = subprocess.run(["sw_vers", "-productVersion"], capture_output=True, text=True)
             version = result.stdout.strip()
             return {"type": "macos", "version": version, "name": "macOS"}
         except Exception as e:
@@ -126,17 +122,14 @@ class InstallStrategy(ABC):
     @abstractmethod
     def install_docker(self) -> Dependency:
         """Return dependency definition for Docker installation."""
-        pass
 
     @abstractmethod
     def install_docker_compose(self) -> Dependency:
         """Return dependency definition for Docker Compose installation."""
-        pass
 
     @abstractmethod
     def install_system_package(self, package: str) -> Dependency:
         """Return dependency definition for system package installation."""
-        pass
 
     def install_python_package(self, package: str) -> Dependency:
         """Return dependency definition for Python package installation.
@@ -311,8 +304,7 @@ class DependencyInstaller:
         strategy = strategies.get(os_type)
         if strategy is None:
             raise RuntimeError(
-                f"Unsupported OS: {os_type}. "
-                f"Supported: {', '.join(strategies.keys())}"
+                f"Unsupported OS: {os_type}. Supported: {', '.join(strategies.keys())}"
             )
 
         return strategy
@@ -334,14 +326,10 @@ class DependencyInstaller:
             missing.append(self.strategy.install_docker())
 
         # Check Docker daemon running
-        if self._check_command("docker --version") and not self._check_command(
-            "docker ps"
-        ):
+        if self._check_command("docker --version") and not self._check_command("docker ps"):
             # Docker installed but daemon not running
             # Check if it's a permission issue
-            result = subprocess.run(
-                ["docker", "ps"], capture_output=True, text=True, timeout=5
-            )
+            result = subprocess.run(["docker", "ps"], capture_output=True, text=True, timeout=5)
             if "permission denied" in result.stderr.lower():
                 missing.append(self.strategy.add_user_to_docker_group())
 
@@ -360,9 +348,7 @@ class DependencyInstaller:
     def _check_command(self, cmd: str) -> bool:
         """Check if command executes successfully."""
         try:
-            result = subprocess.run(
-                cmd.split(), capture_output=True, timeout=5, text=True
-            )
+            result = subprocess.run(cmd.split(), capture_output=True, timeout=5, text=True)
             return result.returncode == 0
         except Exception as e:
             self.logger.debug("Command execution failed (%s): %s", cmd, e)
@@ -542,7 +528,7 @@ class DependencyInstaller:
             }
         """
         self._log("=" * 60)
-        self._log(f"Starting dependency installation check")
+        self._log("Starting dependency installation check")
         self._log(f"OS: {self.os_info['name']} {self.os_info['version']}")
 
         # Phase 1: Detection

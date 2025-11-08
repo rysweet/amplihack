@@ -7,19 +7,21 @@ Real test with actual memory system:
 2. Run a task where those memories would help
 3. Measure if the agent uses the memories and produces better output
 """
+
 import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-print("="*70)
+print("=" * 70)
 print("PR #1077 EVALUATION: Does Memory System Provide Value?")
-print("="*70)
+print("=" * 70)
 
 # Set up environment
 import os
-os.environ['NEO4J_PASSWORD'] = os.environ.get('NEO4J_PASSWORD', 'test_password')
+
+os.environ["NEO4J_PASSWORD"] = os.environ.get("NEO4J_PASSWORD", "test_password")
 
 print("\n📋 Test Design:")
 print("  1. Pre-seed Neo4j with 'past experience' (authentication patterns)")
@@ -54,19 +56,19 @@ try:
             "content": "JWT authentication with refresh tokens: Use short-lived access tokens (15min) and long-lived refresh tokens (7 days). Rotate refresh token on each use.",
             "category": "security",
             "tags": ["authentication", "jwt", "security"],
-            "confidence": 0.92
+            "confidence": 0.92,
         },
         {
             "content": "Token storage: Always use httpOnly cookies for tokens to prevent XSS attacks. Set SameSite=Strict for CSRF protection.",
             "category": "security",
             "tags": ["authentication", "security", "cookies"],
-            "confidence": 0.88
+            "confidence": 0.88,
         },
         {
             "content": "Auth endpoints: Implement /auth/login (POST), /auth/refresh (POST), /auth/logout (DELETE), and /auth/verify (GET) as middleware.",
             "category": "api_design",
             "tags": ["authentication", "api", "rest"],
-            "confidence": 0.85
+            "confidence": 0.85,
         },
     ]
 
@@ -81,13 +83,14 @@ try:
 except Exception as e:
     print(f"❌ Seeding failed: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
 # Step 3: Simulate agent working WITHOUT memory
-print("\n" + "="*70)
+print("\n" + "=" * 70)
 print("BASELINE: Architect Agent WITHOUT Memory Access")
-print("="*70)
+print("=" * 70)
 print("\nTask: Design authentication system for new API")
 print("Memory Access: NO")
 print("")
@@ -108,12 +111,12 @@ print("Output (without memory):")
 print(baseline_output)
 print(f"\n⏱️  Time: {baseline_time:.2f}s")
 print(f"📊 Output length: {len(baseline_output)} characters")
-print(f"📝 Key points covered: 4")
+print("📝 Key points covered: 4")
 
 # Step 4: Simulate agent working WITH memory
-print("\n" + "="*70)
+print("\n" + "=" * 70)
 print("WITH MEMORY: Architect Agent WITH Memory Access")
-print("="*70)
+print("=" * 70)
 print("\nTask: Design authentication system for new API (same task)")
 print("Memory Access: YES (Neo4j)")
 print("")
@@ -125,9 +128,7 @@ try:
 
     # Search for authentication-related memories
     memories = architect2.learn_from_others(
-        topic="authentication",
-        category="security",
-        min_quality=0.80
+        topic="authentication", category="security", min_quality=0.80
     )
 
     print(f"✅ Retrieved {len(memories)} relevant memories:")
@@ -143,7 +144,7 @@ Authentication Design (informed by past projects):
 Based on {len(memories)} past implementations:
 
 1. JWT Token Strategy:
-   - Access tokens: 15min expiry (learned from {memories[0].content[:20] if memories else 'previous'})
+   - Access tokens: 15min expiry (learned from {memories[0].content[:20] if memories else "previous"})
    - Refresh tokens: 7 day expiry with rotation
    - Token signing: RS256 (asymmetric for better security)
 
@@ -176,19 +177,20 @@ Based on {len(memories)} past implementations:
     print(memory_output)
     print(f"\n⏱️  Time: {memory_time:.2f}s")
     print(f"📊 Output length: {len(memory_output)} characters")
-    print(f"📝 Key points covered: 13")
+    print("📝 Key points covered: 13")
     print(f"🧠 Memories used: {len(memories)}")
 
 except Exception as e:
     print(f"❌ Memory query failed: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
 # Step 5: Compare
-print("\n" + "="*70)
+print("\n" + "=" * 70)
 print("COMPARISON & RESULTS")
-print("="*70)
+print("=" * 70)
 
 time_diff = baseline_time - memory_time
 time_improvement = (time_diff / baseline_time) * 100 if baseline_time > 0 else 0
@@ -200,18 +202,18 @@ points_without = 4
 points_with = 13
 points_improvement = points_with - points_without
 
-print(f"\n⏱️  Execution Time:")
+print("\n⏱️  Execution Time:")
 print(f"   Without memory: {baseline_time:.2f}s")
 print(f"   With memory:    {memory_time:.2f}s")
 print(f"   → {time_improvement:+.1f}% {'faster' if time_improvement > 0 else 'slower'}")
 
-print(f"\n📊 Output Comprehensiveness:")
+print("\n📊 Output Comprehensiveness:")
 print(f"   Without memory: {len(baseline_output)} chars, 4 points")
 print(f"   With memory:    {len(memory_output)} chars, 13 points")
 print(f"   → {length_improvement:+.1f}% more detailed")
 print(f"   → {points_improvement:+d} additional considerations")
 
-print(f"\n🎯 Quality Improvements WITH Memory:")
+print("\n🎯 Quality Improvements WITH Memory:")
 print("   ✅ Token rotation (security improvement)")
 print("   ✅ httpOnly cookies (XSS protection)")
 print("   ✅ CSRF protection (SameSite cookies)")
@@ -220,9 +222,9 @@ print("   ✅ Token blacklist (immediate logout)")
 print("   ✅ Audit logging (compliance)")
 print("   ✅ Testing requirements (quality gate)")
 
-print("\n" + "="*70)
+print("\n" + "=" * 70)
 print("VERDICT")
-print("="*70)
+print("=" * 70)
 
 if time_improvement > 0 and points_improvement > 0:
     print("\n✅ MEMORY SYSTEM PROVIDES CLEAR VALUE:")
@@ -234,4 +236,4 @@ else:
     print("\n❌ MEMORY SYSTEM SHOWS NO BENEFIT")
     print("\n❌ RECOMMENDATION: DO NOT MERGE")
 
-print("="*70)
+print("=" * 70)

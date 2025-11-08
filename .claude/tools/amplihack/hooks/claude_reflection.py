@@ -53,7 +53,7 @@ def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
                 # Handle different data structures
                 if isinstance(data, list):
                     return data
-                elif isinstance(data, dict) and "messages" in data:
+                if isinstance(data, dict) and "messages" in data:
                     return data["messages"]
             except (OSError, json.JSONDecodeError):
                 continue
@@ -166,8 +166,7 @@ def get_repository_context(project_root: Path) -> str:
 
 **IMPORTANT**: Since we're working on the Amplihack framework itself, ALL issues identified in this session are Amplihack framework issues and should be filed against the Amplihack repository.
 """
-            else:
-                return f"""
+            return f"""
 ## Repository Context
 
 **Current Repository**: {current_repo}
@@ -175,9 +174,8 @@ def get_repository_context(project_root: Path) -> str:
 **Context**: Working on a user project (not Amplihack itself)
 """
 
-        else:
-            # Git command failed - provide generic guidance
-            return f"""
+        # Git command failed - provide generic guidance
+        return f"""
 ## Repository Context
 
 **Amplihack Repository**: {AMPLIHACK_REPO_URI}
@@ -218,6 +216,7 @@ async def analyze_session_with_claude(
         try:
             sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
             from amplihack.utils.paths import FrameworkPathResolver
+
             preferences_file = FrameworkPathResolver.resolve_preferences_file()
         except ImportError:
             # Fallback to default location
@@ -301,7 +300,7 @@ def _format_conversation_summary(conversation: List[Dict], max_length: int = 500
         if len(content) > 500:
             content = content[:497] + "..."
 
-        msg_summary = f"\n**Message {i+1} ({role}):** {content}\n"
+        msg_summary = f"\n**Message {i + 1} ({role}):** {content}\n"
 
         # Check if adding this would exceed limit
         if current_length + len(msg_summary) > max_length:
@@ -339,9 +338,7 @@ def run_claude_reflection(
 
     # Run async analysis
     try:
-        result = asyncio.run(
-            analyze_session_with_claude(conversation, template, project_root)
-        )
+        result = asyncio.run(analyze_session_with_claude(conversation, template, project_root))
         return result
     except Exception as e:
         print(f"Claude reflection failed: {e}", file=sys.stderr)

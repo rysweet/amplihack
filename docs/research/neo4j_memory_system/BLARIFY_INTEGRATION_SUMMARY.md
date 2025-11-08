@@ -13,12 +13,14 @@
 **Decision**: Code graph and memory graph coexist in ONE Neo4j database.
 
 **Rationale**:
+
 - Code-memory queries are frequent (need bridge relationships)
 - Cross-database joins are expensive in Neo4j
 - Project isolation via `project_id` property is sufficient
 - Simplified operations (one backup, one connection)
 
 **Alternative Rejected**: Separate databases for code and memory
+
 - Would require expensive cross-database joins
 - Only needed if individual graphs exceed 10 GB
 
@@ -29,24 +31,29 @@
 ### Node Types (15 total)
 
 **Code Nodes** (from blarify):
+
 - `CodeModule`, `CodeClass`, `CodeFunction`, `CodeVariable`, `CodePattern`
 
 **Memory Nodes** (agent experiences):
+
 - `Episode`, `MemoryEntity`, `Procedure`, `AgentType`, `Community`
 
 ### Critical Relationships
 
 **Code Structure**:
+
 - `(CodeModule)-[:CONTAINS]->(CodeClass)`
 - `(CodeFunction)-[:CALLS]->(CodeFunction)`
 - `(CodeFunction)-[:EXHIBITS]->(CodePattern)`
 
 **Memory Hierarchy**:
+
 - `(Episode)-[:MENTIONS]->(MemoryEntity)`
 - `(Episode)-[:PERFORMED_BY]->(AgentType)`
 - `(Procedure)-[:LEARNED_BY]->(AgentType)`
 
 **Bridge (Code ↔ Memory)** - THE KEY INNOVATION:
+
 - `(Episode)-[:WORKED_ON]->(CodeFunction|CodeClass|CodeModule)`
 - `(Episode)-[:DECIDED_ABOUT]->(CodeFunction|CodeClass|CodeModule)`
 - `(MemoryEntity)-[:REFERS_TO]->(CodeFunction|CodeClass)`
@@ -243,20 +250,20 @@ CREATE CONSTRAINT agent_type FOR (a:AgentType) REQUIRE a.type IS UNIQUE;
 
 ### Performance Targets
 
-| Query Type | Target | Index |
-|------------|--------|-------|
-| Agent type memory lookup | < 50ms | agent_type + timestamp |
-| Code-memory bridge query | < 100ms | composite indexes |
-| Cross-project pattern search | < 200ms | signature_hash |
-| Incremental update | < 1s/file | batch UNWIND |
+| Query Type                   | Target    | Index                  |
+| ---------------------------- | --------- | ---------------------- |
+| Agent type memory lookup     | < 50ms    | agent_type + timestamp |
+| Code-memory bridge query     | < 100ms   | composite indexes      |
+| Cross-project pattern search | < 200ms   | signature_hash         |
+| Incremental update           | < 1s/file | batch UNWIND           |
 
 ### Database Sizing
 
-| Scale | Code Nodes | Memory Nodes | Storage |
-|-------|------------|--------------|---------|
-| Small project (10k LOC) | 1k | 5k | 50-100 MB |
-| Large project (100k LOC) | 10k | 50k | 500 MB - 1 GB |
-| Multi-project (10 projects) | 100k | 500k | 5-10 GB |
+| Scale                       | Code Nodes | Memory Nodes | Storage       |
+| --------------------------- | ---------- | ------------ | ------------- |
+| Small project (10k LOC)     | 1k         | 5k           | 50-100 MB     |
+| Large project (100k LOC)    | 10k        | 50k          | 500 MB - 1 GB |
+| Multi-project (10 projects) | 100k       | 500k         | 5-10 GB       |
 
 ---
 
@@ -323,18 +330,21 @@ RETURN proc.name, proc.steps, proc.success_rate
 ## 10. Success Criteria
 
 ### Functional Requirements ✅
+
 - Agents of same type can retrieve shared experiences
 - Cross-project pattern learning works
 - Incremental updates preserve memory links
 - Temporal queries return historical knowledge
 
 ### Performance Requirements ✅
+
 - Agent memory lookup: < 50ms
 - Code-memory queries: < 100ms
 - Cross-project search: < 200ms
 - Incremental updates: < 1s per file
 
 ### Scale Requirements ✅
+
 - Single project: 10k code + 50k memory nodes
 - 10 projects: 100k code + 500k memory nodes
 - Database size: < 10 GB typical workload
@@ -388,6 +398,7 @@ This design enables a quantum leap in agent capabilities:
 - **After**: Agents share experiences, learn from code, apply knowledge across projects
 
 The unified graph enables questions like:
+
 - "What have other architect agents learned about authentication modules?"
 - "Where else have we seen this error pattern across all projects?"
 - "What procedures do builder agents recommend for this code structure?"

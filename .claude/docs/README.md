@@ -21,10 +21,12 @@ Documentation files follow this naming pattern:
 **Format**: `[TYPE]_[TOPIC].md`
 
 **Types**:
+
 - `ARCHITECTURE_*` - System architecture investigations
 - `INVESTIGATION_*` - General investigations
 
 **Examples**:
+
 - `ARCHITECTURE_NEO4J_MEMORY_SYSTEM.md`
 - `INVESTIGATION_HOOK_EXECUTION_ORDER.md`
 - `ARCHITECTURE_USER_PREFERENCES_INTEGRATION.md`
@@ -62,6 +64,7 @@ All generated documentation includes:
 6. **Examples** - Practical examples demonstrating findings
 
 Architecture documentation also includes:
+
 - **Design Decisions** - Architectural choices and rationale
 - **Future Considerations** - Potential improvements
 
@@ -95,6 +98,7 @@ grep -r "search term" .claude/docs/
 ### Reading Documentation
 
 Simply open the markdown files in your editor or viewer. They contain:
+
 - Clear findings and explanations
 - Mermaid diagrams (render with markdown preview)
 - File tables with links
@@ -115,6 +119,7 @@ user preferences integrate with the hooks system.
 ### When to Generate Documentation
 
 **Always consider** documenting:
+
 - Architecture investigations
 - Complex system integrations
 - Non-obvious design patterns
@@ -122,6 +127,7 @@ user preferences integrate with the hooks system.
 - Significant discoveries
 
 **Optional** for:
+
 - Simple single-file analysis
 - Quick bug checks
 - Trivial investigations
@@ -129,6 +135,7 @@ user preferences integrate with the hooks system.
 ### Documentation Quality
 
 Good documentation should:
+
 - Have clear, concise findings summary
 - Include diagrams when helpful
 - List all key files analyzed

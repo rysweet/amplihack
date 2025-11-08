@@ -12,6 +12,7 @@
 **Question**: How should knowledge builder agent integrate with Neo4j memory system?
 
 **Answer**: Unified temporal knowledge graph with three subgraphs:
+
 - **Episodic** (what happened) - from memory system
 - **Semantic** (what is known) - from knowledge builder
 - **Code** (what exists) - from blarify
@@ -84,6 +85,7 @@
 **NOT FOUND** - No public repository exists with this name.
 
 **Recommended Alternative**: **Graphiti/Zep**
+
 - Production-ready temporal knowledge graph
 - 94.8% accuracy, <300ms P95 latency
 - Open-source, actively maintained
@@ -91,13 +93,13 @@
 
 ### 2. Leading Systems (2024-2025)
 
-| System | Best For | Status | Integration |
-|--------|----------|--------|-------------|
-| **Graphiti/Zep** | Temporal architecture | Production | 2-3 weeks |
-| **Neo4j LLM Builder** | Document ingestion | Production | 1-2 weeks |
-| **LangChain Neo4j** | Framework integration | Mature | 1 week |
-| **Graph4Code** | Code-specific KG | Stable | 2-3 weeks |
-| **Diffbot** | Base knowledge layer | Commercial | 2 weeks |
+| System                | Best For              | Status     | Integration |
+| --------------------- | --------------------- | ---------- | ----------- |
+| **Graphiti/Zep**      | Temporal architecture | Production | 2-3 weeks   |
+| **Neo4j LLM Builder** | Document ingestion    | Production | 1-2 weeks   |
+| **LangChain Neo4j**   | Framework integration | Mature     | 1 week      |
+| **Graph4Code**        | Code-specific KG      | Stable     | 2-3 weeks   |
+| **Diffbot**           | Base knowledge layer  | Commercial | 2 weeks     |
 
 ### 3. Architecture Pattern: Unified > Separate
 
@@ -109,6 +111,7 @@
 ✅ **Simpler maintenance**: One system, one schema, one query language
 
 ❌ **Separate systems** would require:
+
 - Dual APIs (memory API + knowledge API)
 - Data duplication (concepts in both)
 - Complex synchronization
@@ -141,6 +144,7 @@ Examples:                  Examples:
 **Status**: Fully specified in `/Specs/Memory/`
 **Duration**: 27-35 hours
 **Deliverables**:
+
 - Neo4j Docker setup
 - Memory schema (AgentType, Project, Memory)
 - CRUD operations
@@ -157,6 +161,7 @@ Examples:                  Examples:
 **Tasks**:
 
 1. **Extend Neo4j Schema** (4-6 hours)
+
    ```cypher
    // Add semantic nodes
    CREATE CONSTRAINT concept_unique FOR (c:Concept) REQUIRE c.name IS UNIQUE;
@@ -164,6 +169,7 @@ Examples:                  Examples:
    ```
 
 2. **Implement Knowledge Extraction** (8-12 hours)
+
    ```python
    class KnowledgeExtractor:
        def extract_triplets(self, question, answer) -> List[Triplet]:
@@ -171,6 +177,7 @@ Examples:                  Examples:
    ```
 
 3. **Refactor Knowledge Builder** (12-16 hours)
+
    ```python
    class KnowledgeBuilderNeo4j:
        def build(self):
@@ -178,6 +185,7 @@ Examples:                  Examples:
    ```
 
 4. **Create Unified Query Interface** (12-16 hours)
+
    ```python
    class UnifiedQueryInterface:
        def query_memory(...)  # Episodic
@@ -186,6 +194,7 @@ Examples:                  Examples:
    ```
 
 5. **Add Bridge Relationships** (6-8 hours)
+
    ```python
    def link_memory_to_knowledge(memory_id, concepts)
    def link_episode_to_pattern(episode_id, pattern)
@@ -198,6 +207,7 @@ Examples:                  Examples:
 **Prerequisites**: Phase 1 complete (can parallel with Phase 2)
 **Duration**: 4-5 hours (per existing spec)
 **Deliverables**:
+
 - Import SCIP code graph
 - Link memory/knowledge to code
 
@@ -376,6 +386,7 @@ class KnowledgeBuilderNeo4j(KnowledgeBuilder):
 ```
 
 **Key Changes**:
+
 - ✅ Add knowledge extraction (triplets from Q&A)
 - ✅ Add Neo4j storage (semantic nodes)
 - ✅ Keep markdown generation (human review)
@@ -472,6 +483,7 @@ class KnowledgeBuilderNeo4j(KnowledgeBuilder):
 ```
 
 **Problems**:
+
 - ❌ Can't query "show times we used this pattern"
 - ❌ Can't link code changes to knowledge learned
 - ❌ Duplication (concepts in both systems)
@@ -498,6 +510,7 @@ class KnowledgeBuilderNeo4j(KnowledgeBuilder):
 ```
 
 **Benefits**:
+
 - ✅ "Show experiences using this pattern"
 - ✅ "Find docs for functions we modified"
 - ✅ "What did we learn from this error?"
@@ -511,12 +524,14 @@ class KnowledgeBuilderNeo4j(KnowledgeBuilder):
 ### Should we integrate knowledge builder with Neo4j?
 
 **YES** if:
+
 - ✅ You want agents to learn from experience
 - ✅ You need cross-layer queries (memory + knowledge + code)
 - ✅ You're implementing Neo4j memory system (Phase 1)
 - ✅ You have 2-3 weeks after Phase 1 for integration
 
 **NOT YET** if:
+
 - ⏸ Phase 1 (Neo4j memory) not started
 - ⏸ Knowledge builder not being actively used
 - ⏸ Limited development resources
@@ -524,18 +539,21 @@ class KnowledgeBuilderNeo4j(KnowledgeBuilder):
 ### Which alternative to admiral-kg should we use?
 
 **Graphiti/Zep** for:
+
 - ✅ Temporal architecture (bi-temporal model)
 - ✅ Proven performance (94.8% accuracy)
 - ✅ Production-ready and actively maintained
 - ✅ Perfect fit with Neo4j
 
 **Neo4j LLM Builder** for:
+
 - ✅ Document ingestion (PDFs, web, video)
 - ✅ Official Neo4j support
 - ✅ Multiple LLM options
 - ✅ Quick start (has UI)
 
 **LangChain** for:
+
 - ✅ Framework flexibility
 - ✅ Multiple LLM providers
 - ✅ Rich ecosystem
@@ -580,17 +598,20 @@ class KnowledgeBuilderNeo4j(KnowledgeBuilder):
 ## Resources
 
 ### Documentation
+
 - **Full Research**: `/docs/research/KNOWLEDGE_GRAPH_SYSTEMS_RESEARCH_2025.md` (68KB, comprehensive)
 - **Memory Spec**: `/Specs/Memory/README.md` (existing, ready to implement)
 - **Neo4j Research**: `/docs/research/neo4j_memory_system/` (earlier research)
 
 ### External Resources
+
 - **Graphiti**: https://github.com/getzep/graphiti
 - **Neo4j LLM Builder**: https://github.com/neo4j-labs/llm-graph-builder
 - **LangChain Neo4j**: https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/
 - **Zep Paper**: arXiv:2501.13956v1 (Jan 2025)
 
 ### Internal Code
+
 - **Knowledge Builder**: `/src/amplihack/knowledge_builder/`
 - **Memory System**: `/src/amplihack/memory/`
 - **Memory Tools**: `/.claude/tools/amplihack/memory/`
@@ -600,6 +621,7 @@ class KnowledgeBuilderNeo4j(KnowledgeBuilder):
 ## Questions?
 
 This is a summary. For detailed information, see:
+
 - `/docs/research/KNOWLEDGE_GRAPH_SYSTEMS_RESEARCH_2025.md` - Full 68KB research report
 
 **Research Status**: ✅ COMPLETE

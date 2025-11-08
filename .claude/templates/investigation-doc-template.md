@@ -14,8 +14,8 @@
 
 ## Key Files
 
-| File Path | Purpose | Key Components |
-|-----------|---------|----------------|
+| File Path   | Purpose               | Key Components                |
+| ----------- | --------------------- | ----------------------------- |
 | [file_path] | [description of role] | [important functions/classes] |
 
 ## System Integration
@@ -37,6 +37,7 @@
 ```
 
 **Result:**
+
 ```
 [Expected output or behavior]
 ```
@@ -48,6 +49,7 @@
 ```
 
 **Result:**
+
 ```
 [Expected output]
 ```

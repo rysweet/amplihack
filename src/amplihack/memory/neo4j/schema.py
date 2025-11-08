@@ -5,8 +5,7 @@ All operations are idempotent (safe to run multiple times).
 """
 
 import logging
-from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 from .connector import Neo4jConnector
 from .config import get_config

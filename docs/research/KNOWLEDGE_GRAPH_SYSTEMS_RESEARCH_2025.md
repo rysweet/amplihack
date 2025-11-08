@@ -22,6 +22,7 @@ This research excavates the current state of automated knowledge graph construct
 ### Strategic Recommendation
 
 **INTEGRATE KNOWLEDGE BUILDER WITH NEO4J MEMORY SYSTEM** using temporal knowledge graph pattern:
+
 - Single Neo4j instance for both memory and knowledge
 - Knowledge builder populates semantic layer from docs, code, conversations
 - Memory system populates episodic layer from agent experiences
@@ -52,6 +53,7 @@ This research excavates the current state of automated knowledge graph construct
 **Status**: Production-ready, actively maintained
 
 **Key Features**:
+
 - **Temporal awareness**: Bi-temporal model tracks when events occurred AND when ingested
 - **Real-time updates**: Incremental architecture with immediate entity resolution
 - **Performance**: P95 latency of 300ms, 94.8% accuracy in benchmarks
@@ -59,6 +61,7 @@ This research excavates the current state of automated knowledge graph construct
 - **Neo4j native**: Uses Neo4j as backing store
 
 **Architecture**:
+
 ```
 Graphiti Architecture:
 ┌─────────────────────────────────────────┐
@@ -76,12 +79,14 @@ Graphiti Architecture:
 ```
 
 **Temporal Model**:
+
 - Every edge has explicit validity intervals `[start, end]`
 - Tracks event time (when it happened) vs ingestion time (when we learned about it)
 - Conflict resolution via semantic search + temporal metadata
 - Historical accuracy preserved without recomputation
 
 **Research Citation**:
+
 - Paper: "Zep: A Temporal Knowledge Graph Architecture for Agent Memory" (arXiv:2501.13956v1, Jan 2025)
 - Outperforms MemGPT (94.8% vs 93.4% on DMR benchmark)
 
@@ -96,6 +101,7 @@ Graphiti Architecture:
 **Status**: Production, Neo4j Labs supported
 
 **Key Features**:
+
 - **Multi-source ingestion**: PDFs, docs, images, web pages, YouTube transcripts
 - **LLM flexibility**: OpenAI, Gemini, Llama3, Diffbot, Claude, Qwen
 - **Dual graph output**:
@@ -104,6 +110,7 @@ Graphiti Architecture:
 - **Multiple RAG approaches**: GraphRAG, Vector, Text2Cypher
 
 **Architecture**:
+
 ```
 Neo4j LLM Graph Builder Flow:
 ┌──────────────────────────────────────────┐
@@ -126,6 +133,7 @@ Neo4j LLM Graph Builder Flow:
 ```
 
 **First Release of 2025** (January):
+
 - Improved entity linking
 - Better relationship extraction
 - Enhanced multi-modal support
@@ -140,12 +148,14 @@ Neo4j LLM Graph Builder Flow:
 **Status**: Mature, widely adopted
 
 **Key Components**:
+
 1. **Neo4jGraph**: Database connection wrapper
 2. **GraphCypherQAChain**: Natural language → Cypher translation
 3. **LLMGraphTransformer**: Unstructured text → knowledge graph
 4. **Neo4jVector**: Vector search integration
 
 **Example Usage**:
+
 ```python
 from langchain.graphs import Neo4jGraph
 from langchain.chains import GraphCypherQAChain
@@ -178,18 +188,21 @@ response = chain.run("What are the main entities?")
 **Status**: Research project, stable
 
 **Specialized For**:
+
 - Code understanding and search
 - Function usage patterns
 - Documentation linking
 - Forum discussions (StackOverflow)
 
 **Scale Demonstrated**:
+
 - 1.3M Python files from GitHub
 - 2,300 Python modules analyzed
 - 47M forum posts integrated
 - Result: 2 billion+ triples
 
 **Graph Schema**:
+
 ```cypher
 (:Class)-[:HAS_METHOD]->(:Method)
 (:Method)-[:CALLS]->(:Function)
@@ -210,12 +223,14 @@ response = chain.run("What are the main entities?")
 **Status**: Production, major enterprise clients (Cisco, DuckDuckGo, Snapchat)
 
 **Key Features**:
+
 - **Automatic construction**: ML/CV/NLP, no human labor required
 - **Public web crawl**: All languages, continuously updated
 - **API access**: Diffbot Query Language (DQL)
 - **Enhancement mode**: Upload your data, enrich with KG data
 
 **Use Case for Amplihack**:
+
 - Could provide base knowledge layer (facts about technologies, APIs, languages)
 - Complements code-specific knowledge from blarify
 - Pricing: Enterprise only (contact sales@diffbot.com)
@@ -226,13 +241,13 @@ response = chain.run("What are the main entities?")
 
 ### 1.3 Comparison Matrix
 
-| System | Type | Neo4j Native | Temporal | Code Focus | Status | Integration |
-|--------|------|--------------|----------|------------|--------|-------------|
-| **Graphiti/Zep** | Open-source | Yes | Yes | No | Production | 2-3 weeks |
-| **Neo4j LLM Builder** | Official tool | Yes | No | No | Production | 1-2 weeks |
-| **LangChain** | Framework | Yes | No | No | Mature | 1 week |
-| **Graph4Code** | Research | RDF (adaptable) | No | Yes | Stable | 2-3 weeks |
-| **Diffbot** | Commercial | API only | No | No | Production | 2 weeks |
+| System                | Type          | Neo4j Native    | Temporal | Code Focus | Status     | Integration |
+| --------------------- | ------------- | --------------- | -------- | ---------- | ---------- | ----------- |
+| **Graphiti/Zep**      | Open-source   | Yes             | Yes      | No         | Production | 2-3 weeks   |
+| **Neo4j LLM Builder** | Official tool | Yes             | No       | No         | Production | 1-2 weeks   |
+| **LangChain**         | Framework     | Yes             | No       | No         | Mature     | 1 week      |
+| **Graph4Code**        | Research      | RDF (adaptable) | No       | Yes        | Stable     | 2-3 weeks   |
+| **Diffbot**           | Commercial    | API only        | No       | No         | Production | 2 weeks     |
 
 **Recommendation**: **Graphiti** for temporal architecture + **Neo4j LLM Builder** for document ingestion
 
@@ -358,6 +373,7 @@ def hybrid_extraction(text: str) -> List[Triplet]:
 ```
 
 **Confidence Sources**:
+
 - Agreement between methods (NER + LLM = high confidence)
 - Entity in knowledge base (known entity = high confidence)
 - Relationship matches schema (valid type = high confidence)
@@ -432,6 +448,7 @@ def validate_temporal_consistency(new_fact, existing_facts):
 #### **4. Source Tracking** (Universal pattern)
 
 Every knowledge triplet must track:
+
 - **Origin**: Where did this come from? (doc, code, conversation)
 - **Timestamp**: When was this extracted?
 - **Confidence**: How certain are we?
@@ -557,6 +574,7 @@ Bridges:
 **Why Unified?**
 
 1. **Cross-layer queries**: "Find times when we successfully applied this pattern"
+
    ```cypher
    MATCH (e:Episode)-[:APPLIES]->(p:Pattern {name: "Factory Pattern"})
    WHERE e.outcome = "success"
@@ -565,6 +583,7 @@ Bridges:
    ```
 
 2. **Knowledge grounding**: Facts backed by experience
+
    ```cypher
    MATCH (k:Knowledge {subject: "JWT", predicate: "BEST_PRACTICE"})
    MATCH (k)<-[:LEARNED_FROM]-(e:Episode)
@@ -680,16 +699,19 @@ Phase 4: Advanced Queries (FUTURE)
 Extensive web search found **NO public repository** matching "admiral-kg":
 
 **Searched**:
+
 - GitHub repositories (admiral + knowledge graph)
 - Academic papers (admiral + kg)
 - Company projects (admiral + ai)
 
 **Found**:
+
 - istio-ecosystem/admiral (service mesh, not KG)
 - pharmaverse/admiral (pharmaceutical data, not KG)
 - Various Admiral UI projects (unrelated)
 
 **Conclusion**:
+
 - admiral-kg does not exist publicly, OR
 - It's a private repository, OR
 - It's been renamed or deprecated, OR
@@ -702,6 +724,7 @@ Based on the name "admiral-kg" (suggesting command/control + knowledge graphs), 
 #### **1. Graphiti/Zep** (CLOSEST MATCH)
 
 If admiral-kg was meant to be an agent memory system with knowledge graphs:
+
 - ✓ Temporal knowledge graph
 - ✓ Agent memory architecture
 - ✓ Real-time updates
@@ -713,6 +736,7 @@ If admiral-kg was meant to be an agent memory system with knowledge graphs:
 #### **2. Neo4j LLM Knowledge Graph Builder**
 
 If admiral-kg was meant to build knowledge graphs from documents:
+
 - ✓ Automated knowledge extraction
 - ✓ Multi-source ingestion
 - ✓ Neo4j integration
@@ -722,6 +746,7 @@ If admiral-kg was meant to build knowledge graphs from documents:
 #### **3. Microsoft Semantic Kernel + Kernel Memory**
 
 If admiral-kg was Microsoft-related (given Microsoft Hackathon context):
+
 - Repository: https://github.com/microsoft/kernel-memory
 - ✓ RAG architecture
 - ✓ Index and query any data
@@ -730,6 +755,7 @@ If admiral-kg was Microsoft-related (given Microsoft Hackathon context):
 - ✓ Semantic Kernel integration
 
 **Semantic Kernel Features**:
+
 - Embeddings for semantic memory
 - SK-Parse for graph-based representations
 - SK-Embed for knowledge graph embeddings
@@ -1045,12 +1071,14 @@ class AgentWithUnifiedMemory:
 Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** or **run in parallel**:
 
 **Option A: Migrate to Neo4j** (RECOMMENDED)
+
 - Follows your Specs/Memory/ architecture (already specifies Neo4j)
 - Effort: 27-35 hours (per your spec)
 - Benefit: Unified graph, powerful queries
 - Trade-off: Migration effort
 
 **Option B: Parallel Systems** (TRANSITIONAL)
+
 - Keep SQLite for simple memory operations
 - Use Neo4j for knowledge + complex queries
 - Gradually migrate memory operations to Neo4j
@@ -1058,6 +1086,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
 - Trade-off: Dual maintenance, no cross-queries
 
 **Recommended Path**:
+
 1. Deploy Neo4j memory system (Phase 1 of Specs/Memory/)
 2. Add knowledge builder Neo4j integration (Phase 2)
 3. Deprecate SQLite memory once Neo4j proven (Phase 3)
@@ -1071,6 +1100,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
 **Status**: Architecture complete in /home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/Specs/Memory/
 **Duration**: 27-35 hours (per your existing spec)
 **Deliverables**:
+
 - Neo4j Docker setup
 - Memory schema (AgentType, Project, Memory nodes)
 - CRUD operations for memory
@@ -1087,6 +1117,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
 **Tasks**:
 
 1. **Extend Neo4j Schema** (4-6 hours)
+
    ```cypher
    // Add knowledge node types
    CREATE CONSTRAINT concept_unique IF NOT EXISTS
@@ -1100,6 +1131,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
    ```
 
 2. **Implement Knowledge Extraction** (8-12 hours)
+
    ```python
    # New module: src/amplihack/knowledge_builder/extractor.py
    class KnowledgeExtractor:
@@ -1112,6 +1144,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
    ```
 
 3. **Refactor Knowledge Builder** (12-16 hours)
+
    ```python
    # Modify: src/amplihack/knowledge_builder/orchestrator.py
    class KnowledgeBuilderNeo4j(KnowledgeBuilder):
@@ -1130,6 +1163,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
    ```
 
 4. **Create Unified Query Interface** (12-16 hours)
+
    ```python
    # New module: src/amplihack/memory/unified_query.py
    class UnifiedQueryInterface:
@@ -1141,6 +1175,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
    ```
 
 5. **Add Bridge Relationships** (6-8 hours)
+
    ```python
    # Extend: src/amplihack/memory/operations.py
    def link_memory_to_knowledge(memory_id, concept_names):
@@ -1166,6 +1201,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
 **Prerequisites**: Phase 1 complete
 
 **Tasks** (from your existing spec):
+
 - Import SCIP code graph to Neo4j
 - Create Code subgraph nodes (CodeFile, Function, Class)
 - Link memory to code nodes
@@ -1178,6 +1214,7 @@ Your existing SQLite memory system (src/amplihack/memory/) can be **migrated** o
 **Duration**: Ongoing
 
 **Potential Features**:
+
 1. **Graphiti Temporal Architecture**
    - Bi-temporal validity tracking
    - Conflict resolution with LLM
@@ -1771,16 +1808,19 @@ kb.close()
 ### Strategic Recommendations
 
 **SHORT TERM (Month 1)**:
+
 - ✅ Implement Phase 1 of Specs/Memory/ (Neo4j memory system)
 - ✅ This is already fully specified and ready to implement
 
 **MEDIUM TERM (Months 2-3)**:
+
 - ✅ Extend Neo4j schema for knowledge (semantic nodes)
 - ✅ Refactor knowledge builder to populate Neo4j
 - ✅ Implement unified query interface
 - ✅ Create bridge relationships between subgraphs
 
 **LONG TERM (Month 4+)**:
+
 - ✅ Add Graphiti temporal architecture for conflict resolution
 - ✅ Implement learning from experience (episodic → semantic)
 - ✅ Consider Diffbot integration for base knowledge layer
@@ -1788,27 +1828,30 @@ kb.close()
 
 ### Technology Stack Recommendation
 
-| Component | Technology | Rationale |
-|-----------|-----------|-----------|
-| **Database** | Neo4j Community | Native graph, proven scale, your existing spec |
-| **Temporal Architecture** | Graphiti pattern | Bi-temporal model, conflict resolution |
-| **Knowledge Extraction** | Claude 3.5 Sonnet | Already integrated, excellent triplet extraction |
-| **Code Graph** | blarify + SCIP | 330x faster than LSP, 6 languages |
-| **Deployment** | Docker | Existing choice, simplifies Neo4j setup |
+| Component                 | Technology        | Rationale                                        |
+| ------------------------- | ----------------- | ------------------------------------------------ |
+| **Database**              | Neo4j Community   | Native graph, proven scale, your existing spec   |
+| **Temporal Architecture** | Graphiti pattern  | Bi-temporal model, conflict resolution           |
+| **Knowledge Extraction**  | Claude 3.5 Sonnet | Already integrated, excellent triplet extraction |
+| **Code Graph**            | blarify + SCIP    | 330x faster than LSP, 6 languages                |
+| **Deployment**            | Docker            | Existing choice, simplifies Neo4j setup          |
 
 ### Success Metrics
 
 **Phase 1 (Neo4j Memory)**:
+
 - Memory operations <50ms
 - Agent type isolation working
 - Multi-level retrieval correct
 
 **Phase 2 (Knowledge Builder Neo4j)**:
+
 - Knowledge extraction >80% accuracy
 - Triplet storage <100ms per triplet
 - Cross-layer queries <200ms
 
 **Overall**:
+
 - Agent decision quality +25-40%
 - Error resolution +50-70%
 - Time saved 2-4 hours/developer/week
@@ -1826,22 +1869,26 @@ kb.close()
 ## References
 
 ### Research Papers
+
 - Zep: A Temporal Knowledge Graph Architecture for Agent Memory (arXiv:2501.13956v1, Jan 2025)
 - A Toolkit for Generating Code Knowledge Graphs (ACM K-CAP 2021)
 - Leveraging Knowledge Graph-Based Human-Like Memory Systems (arXiv:2408.05861v1)
 
 ### Open Source Projects
+
 - Graphiti/Zep: https://github.com/getzep/graphiti
 - Neo4j LLM Graph Builder: https://github.com/neo4j-labs/llm-graph-builder
 - LangChain Neo4j: https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/
 - Graph4Code: https://github.com/wala/graph4code
 
 ### Documentation
+
 - Neo4j: https://neo4j.com/docs/
 - Graphiti: https://help.getzep.com/graphiti/
 - Microsoft Semantic Kernel: https://github.com/microsoft/semantic-kernel
 
 ### Internal Resources
+
 - /home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/Specs/Memory/ (Neo4j architecture)
 - /home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/docs/research/neo4j_memory_system/ (Earlier research)
 - /home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/src/amplihack/knowledge_builder/ (Existing KB)

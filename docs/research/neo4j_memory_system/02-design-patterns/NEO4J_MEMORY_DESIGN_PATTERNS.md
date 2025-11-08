@@ -36,11 +36,13 @@ This document catalogs proven design patterns for implementing Neo4j-based memor
 **Problem**: How to organize memory at different levels of abstraction for efficient retrieval.
 
 **Solution**: Structure memory in three hierarchical layers:
+
 - **Episodic Layer**: Raw events (conversations, commits, errors) - non-lossy storage
 - **Semantic Layer**: Extracted entities and relationships - generalized knowledge
 - **Community Layer**: High-level clusters and summaries - meta-organization
 
 **Implementation**:
+
 ```cypher
 // Episodic Layer (bottom)
 (ep:Episode {
@@ -69,6 +71,7 @@ This document catalogs proven design patterns for implementing Neo4j-based memor
 ```
 
 **Trade-offs**:
+
 - ✅ Enables multi-resolution retrieval (detailed → general)
 - ✅ Reduces query complexity (search at appropriate level)
 - ✅ Natural consolidation path (episode → entity → community)
@@ -77,12 +80,14 @@ This document catalogs proven design patterns for implementing Neo4j-based memor
 - ❌ Requires periodic community recomputation
 
 **When to Use**:
+
 - Large memory stores (>10k episodes)
 - Need for both detailed and high-level queries
 - Systems requiring knowledge consolidation
 - Multi-agent collaboration scenarios
 
 **Example from Research**:
+
 - **Zep**: Uses this exact pattern for episodic → semantic → community hierarchy
 - **MIRIX**: Separates episodic from semantic memory (two-tier variation)
 
@@ -93,10 +98,12 @@ This document catalogs proven design patterns for implementing Neo4j-based memor
 **Problem**: Knowledge changes over time; old facts become invalid without being deleted.
 
 **Solution**: Implement bi-temporal tracking to preserve knowledge evolution:
+
 - **Transaction time** (t_created, t_expired): When we learned/forgot the fact
 - **Valid time** (t_valid, t_invalid): When the fact was/is actually true
 
 **Implementation**:
+
 ```cypher
 (f:Fact {
   content: "User prefers dark mode",
@@ -115,6 +122,7 @@ RETURN f
 ```
 
 **Trade-offs**:
+
 - ✅ Preserves knowledge history (can answer "what did we know then?")
 - ✅ Handles contradictions gracefully (no data loss)
 - ✅ Supports time-travel queries
@@ -124,12 +132,14 @@ RETURN f
 - ❌ Requires discipline (always set temporal bounds)
 
 **When to Use**:
+
 - Debugging assistance (need history of beliefs)
 - Collaborative environments (conflicting knowledge)
 - Learning systems (track knowledge evolution)
 - Compliance requirements (audit trail)
 
 **Example from Research**:
+
 - **Zep**: Uses bi-temporal model for entity validity tracking
 - **MIRIX**: Tracks update timestamps for memory freshness
 
@@ -181,6 +191,7 @@ def hybrid_search(query, kg, top_k=10):
 ```
 
 **Trade-offs**:
+
 - ✅ Best retrieval accuracy (94.8% in Zep benchmarks)
 - ✅ Captures multiple relevance signals
 - ✅ Robust to query variations
@@ -189,12 +200,14 @@ def hybrid_search(query, kg, top_k=10):
 - ❌ Tuning required (RRF parameter k, weights)
 
 **When to Use**:
+
 - Production systems requiring high accuracy
 - Queries with diverse intents (semantic + structural)
 - Large knowledge bases (disambiguation needed)
 - User-facing retrieval (quality matters)
 
 **Example from Research**:
+
 - **Zep**: Uses hybrid approach for 94.8% accuracy
 - **MIRIX**: Combines vector embeddings with graph relationships
 
@@ -242,6 +255,7 @@ class IncrementalGraphUpdater:
 ```
 
 **Trade-offs**:
+
 - ✅ Fast updates (< 1s per file vs minutes for full rebuild)
 - ✅ Enables real-time memory (interactive coding)
 - ✅ Lower resource usage
@@ -250,12 +264,14 @@ class IncrementalGraphUpdater:
 - ❌ Requires old state (caching or queries)
 
 **When to Use**:
+
 - Real-time coding assistants
 - File watchers (auto-update on save)
 - Large codebases (full rebuild too slow)
 - Interactive systems
 
 **Example from Research**:
+
 - **blarify**: Supports incremental updates via SCIP indexing
 - **MIRIX**: Updates only affected memory components
 
@@ -307,15 +323,16 @@ class MultiModalMemory:
 
 **Memory Component Details**:
 
-| Component | Purpose | Storage Duration | Query Pattern | Example |
-|-----------|---------|------------------|---------------|---------|
-| Core | Persistent identity | Indefinite | Direct lookup | Agent personality, user name |
-| Episodic | Event log | 30-90 days | Temporal + semantic | "What error occurred yesterday?" |
-| Semantic | Entity knowledge | Until invalidated | Graph traversal | "What does this function do?" |
-| Procedural | Workflows | Until obsolete | Trigger matching | "How to fix ImportError?" |
-| Resource | Documents | Until deleted | Full-text search | "Find auth documentation" |
+| Component  | Purpose             | Storage Duration  | Query Pattern       | Example                          |
+| ---------- | ------------------- | ----------------- | ------------------- | -------------------------------- |
+| Core       | Persistent identity | Indefinite        | Direct lookup       | Agent personality, user name     |
+| Episodic   | Event log           | 30-90 days        | Temporal + semantic | "What error occurred yesterday?" |
+| Semantic   | Entity knowledge    | Until invalidated | Graph traversal     | "What does this function do?"    |
+| Procedural | Workflows           | Until obsolete    | Trigger matching    | "How to fix ImportError?"        |
+| Resource   | Documents           | Until deleted     | Full-text search    | "Find auth documentation"        |
 
 **Trade-offs**:
+
 - ✅ Optimized storage per memory type
 - ✅ Specialized retrieval strategies
 - ✅ Clear separation of concerns
@@ -325,12 +342,14 @@ class MultiModalMemory:
 - ❌ Cross-component queries more complex
 
 **When to Use**:
+
 - Complex agent systems (multiple knowledge types)
 - Performance-critical applications (optimize per type)
 - Long-running agents (diverse information)
 - Production systems (proven architecture)
 
 **Example from Research**:
+
 - **MIRIX**: Six-component architecture (core, episodic, semantic, procedural, resource, vault)
 - **Zep**: Separates episodic, semantic, and community layers
 - **Amplihack**: Three-tier system (session, working, knowledge)
@@ -380,6 +399,7 @@ class MultiModalMemory:
 ```
 
 **Implementation**:
+
 ```python
 class UnifiedMemoryGraph:
     def __init__(self, neo4j_driver):
@@ -434,6 +454,7 @@ class UnifiedMemoryGraph:
 ```
 
 **Trade-offs**:
+
 - ✅ Single source of truth (no synchronization issues)
 - ✅ Cross-layer queries easy (graph traversal)
 - ✅ Natural knowledge consolidation (bottom-up)
@@ -443,12 +464,14 @@ class UnifiedMemoryGraph:
 - ❌ All data in one database (scaling limits)
 
 **When to Use**:
+
 - Single-agent systems
 - Medium-scale projects (10k-1M nodes)
 - Need for cross-layer reasoning
 - Simplicity over distribution
 
 **Example from Research**:
+
 - **Zep**: Production implementation with this architecture
 - Achieves 94.8% retrieval accuracy
 - 90% latency reduction (2.58s vs 28.9s)
@@ -495,6 +518,7 @@ class FederatedMemory:
 ```
 
 **Trade-offs**:
+
 - ✅ Optimized performance per store type
 - ✅ Independent scaling (scale what needs it)
 - ✅ Fault isolation (one store failure doesn't kill all)
@@ -505,12 +529,14 @@ class FederatedMemory:
 - ❌ Operational overhead (manage multiple systems)
 
 **When to Use**:
+
 - Large-scale systems (>1M nodes)
 - Diverse workloads (batch + interactive)
 - Need for specialized optimizations
 - Multi-agent architectures
 
 **Example from Research**:
+
 - **MIRIX**: Six separate components, meta-manager federation
 - 35% improvement over RAG
 - 93.3% storage reduction vs long-context
@@ -542,6 +568,7 @@ class FederatedMemory:
 ```
 
 **Schema Design**:
+
 ```cypher
 // Code entities
 (f:Function {
@@ -572,6 +599,7 @@ class FederatedMemory:
 ```
 
 **Implementation**:
+
 ```python
 class CodeMemoryIntegration:
     def __init__(self, codebase_path):
@@ -618,6 +646,7 @@ class CodeMemoryIntegration:
 ```
 
 **Trade-offs**:
+
 - ✅ Deep code understanding (AST + call graph)
 - ✅ Contextual memory (link errors to code)
 - ✅ Pattern learning (common error locations)
@@ -627,12 +656,14 @@ class CodeMemoryIntegration:
 - ❌ Higher storage requirements
 
 **When to Use**:
+
 - AI coding assistants
 - Debugging tools
 - Code navigation systems
 - Refactoring assistants
 
 **Example from Research**:
+
 - **blarify**: Code graph generation (LSP + SCIP)
 - Supports Python, JavaScript, TypeScript, Ruby, Go, C#
 
@@ -666,6 +697,7 @@ MATCH (e:Entity {name: "login"}) RETURN e
 ```
 
 **Label Hierarchy**:
+
 ```
 Entity (base)
 ├── CodeEntity
@@ -683,6 +715,7 @@ Entity (base)
 ```
 
 **Trade-offs**:
+
 - ✅ Flexible schema (add labels without migration)
 - ✅ Polymorphic queries (query base or specific type)
 - ✅ Type-specific properties
@@ -690,6 +723,7 @@ Entity (base)
 - ❌ Can become messy without discipline
 
 **When to Use**:
+
 - Evolving schema (frequent changes)
 - Multiple entity types
 - Need for polymorphic queries
@@ -726,12 +760,14 @@ RETURN f1, r, f2
 ```
 
 **Common Relationship Properties**:
+
 - **Temporal**: t_valid, t_invalid, timestamp
 - **Provenance**: source, confidence, evidence
 - **Context**: line, file, scope
 - **Metrics**: frequency, strength, importance
 
 **Trade-offs**:
+
 - ✅ Rich context (answer "how" and "why")
 - ✅ Enables filtering (find frequent calls)
 - ✅ Supports temporal queries
@@ -771,14 +807,15 @@ def create_indexes(driver):
 
 **Index Types**:
 
-| Index Type | Use Case | Example |
-|------------|----------|---------|
-| B-Tree (default) | Exact match, range | `WHERE e.name = 'login'` |
-| Composite | Multiple properties | `WHERE e.name = 'login' AND e.type = 'Function'` |
-| Full-text | Text search | `WHERE e.description CONTAINS 'authentication'` |
-| Vector (Enterprise) | Semantic search | `WHERE vector.similarity(e.embedding, query_vec) > 0.8` |
+| Index Type          | Use Case            | Example                                                 |
+| ------------------- | ------------------- | ------------------------------------------------------- |
+| B-Tree (default)    | Exact match, range  | `WHERE e.name = 'login'`                                |
+| Composite           | Multiple properties | `WHERE e.name = 'login' AND e.type = 'Function'`        |
+| Full-text           | Text search         | `WHERE e.description CONTAINS 'authentication'`         |
+| Vector (Enterprise) | Semantic search     | `WHERE vector.similarity(e.embedding, query_vec) > 0.8` |
 
 **Trade-offs**:
+
 - ✅ 10-100x query speedup
 - ✅ Enables real-time queries
 - ❌ Increased storage (index overhead)
@@ -786,6 +823,7 @@ def create_indexes(driver):
 - ❌ Requires query analysis (know access patterns)
 
 **Best Practices**:
+
 1. Index properties used in WHERE clauses
 2. Composite indexes for common combinations
 3. Full-text indexes for search
@@ -840,6 +878,7 @@ def multi_stage_retrieval(query, kg, top_k=10):
 ```
 
 **Stage Purposes**:
+
 1. **Semantic Search**: Find conceptually similar entities
 2. **Graph Expansion**: Add structurally related entities
 3. **Temporal Filtering**: Boost recent/relevant knowledge
@@ -847,6 +886,7 @@ def multi_stage_retrieval(query, kg, top_k=10):
 5. **Reranking**: Combine multiple relevance signals
 
 **Trade-offs**:
+
 - ✅ High accuracy (captures multiple relevance types)
 - ✅ Robust to query variations
 - ✅ Explainable (can show why retrieved)
@@ -892,17 +932,20 @@ def handle_new_fact(new_fact, kg):
 ```
 
 **Contradiction Types**:
+
 - **Direct**: "User prefers dark mode" vs "User prefers light mode"
 - **Temporal**: "Function deleted" vs "Function still exists"
 - **Logical**: "A calls B" vs "A never calls B"
 
 **Resolution Strategies**:
+
 1. **Temporal invalidation**: Mark old fact as invalid (preserve history)
 2. **Confidence-based**: Keep higher-confidence fact
 3. **Source-based**: Trust authoritative source
 4. **User query**: Ask user to resolve
 
 **Trade-offs**:
+
 - ✅ Handles changing information gracefully
 - ✅ Preserves knowledge history
 - ✅ Supports debugging ("why did we think that?")
@@ -959,11 +1002,13 @@ def multi_hop_reasoning(query, kg, max_hops=3):
 ```
 
 **Decay Strategies**:
+
 - **Distance decay**: 0.7^hop (each hop reduces score)
 - **Relationship-based**: Strong relationships decay less
 - **Type-based**: Some relationships more relevant
 
 **Trade-offs**:
+
 - ✅ Finds indirect connections
 - ✅ Answers complex queries
 - ❌ Can retrieve too much (explosion)
@@ -980,6 +1025,7 @@ def multi_hop_reasoning(query, kg, max_hops=3):
 **Two Approaches**:
 
 **A. Context Injection** (Eager):
+
 ```python
 class ContextInjectionAgent:
     def __init__(self, memory):
@@ -997,6 +1043,7 @@ class ContextInjectionAgent:
 ```
 
 **B. Query-Based Retrieval** (Lazy):
+
 ```python
 class QueryBasedAgent:
     def __init__(self, memory):
@@ -1015,15 +1062,16 @@ class QueryBasedAgent:
 
 **Decision Matrix**:
 
-| Factor | Context Injection | Query-Based Retrieval |
-|--------|-------------------|----------------------|
-| Context size | Small (< 10k tokens) | Large (> 10k tokens) |
-| Query latency | Lower (pre-loaded) | Higher (retrieval cost) |
-| Context relevance | May include noise | Highly targeted |
-| Memory usage | Higher (always loaded) | Lower (on-demand) |
-| Use case | Chat bots, small projects | RAG, large knowledge bases |
+| Factor            | Context Injection         | Query-Based Retrieval      |
+| ----------------- | ------------------------- | -------------------------- |
+| Context size      | Small (< 10k tokens)      | Large (> 10k tokens)       |
+| Query latency     | Lower (pre-loaded)        | Higher (retrieval cost)    |
+| Context relevance | May include noise         | Highly targeted            |
+| Memory usage      | Higher (always loaded)    | Lower (on-demand)          |
+| Use case          | Chat bots, small projects | RAG, large knowledge bases |
 
 **Hybrid Approach** (Best of Both):
+
 ```python
 class HybridAgent:
     def __init__(self, memory):
@@ -1044,11 +1092,13 @@ class HybridAgent:
 ```
 
 **Trade-offs**:
+
 - **Context Injection**: ✅ Low latency, ❌ May include noise
 - **Query-Based**: ✅ High relevance, ❌ Retrieval overhead
 - **Hybrid**: ✅ Best of both, ❌ More complex
 
 **When to Use**:
+
 - **Context Injection**: Small contexts, chat-based interactions
 - **Query-Based**: Large knowledge bases, RAG systems
 - **Hybrid**: Production systems requiring both speed and relevance
@@ -1060,6 +1110,7 @@ class HybridAgent:
 **Problem**: Should memory operations block agent execution or run in background?
 
 **Synchronous Pattern** (Blocking):
+
 ```python
 class SyncMemoryAgent:
     def process_event(self, event):
@@ -1073,6 +1124,7 @@ class SyncMemoryAgent:
 ```
 
 **Asynchronous Pattern** (Non-blocking):
+
 ```python
 class AsyncMemoryAgent:
     async def process_event(self, event):
@@ -1085,6 +1137,7 @@ class AsyncMemoryAgent:
 ```
 
 **Best Practice - Write Async, Read Sync**:
+
 ```python
 class HybridMemoryAgent:
     async def process_event(self, event):
@@ -1099,15 +1152,16 @@ class HybridMemoryAgent:
 
 **Decision Matrix**:
 
-| Operation | Sync/Async | Reason |
-|-----------|------------|--------|
-| Store episode | Async | Don't block user interaction |
-| Extract entities | Async | Background processing acceptable |
-| Update graph | Async | Can be eventual consistency |
-| Retrieve context | Sync | Need result to continue |
-| Query for decision | Sync | Decision depends on result |
+| Operation          | Sync/Async | Reason                           |
+| ------------------ | ---------- | -------------------------------- |
+| Store episode      | Async      | Don't block user interaction     |
+| Extract entities   | Async      | Background processing acceptable |
+| Update graph       | Async      | Can be eventual consistency      |
+| Retrieve context   | Sync       | Need result to continue          |
+| Query for decision | Sync       | Decision depends on result       |
 
 **Trade-offs**:
+
 - **Sync**: ✅ Simple, ✅ Consistent, ❌ Slower
 - **Async**: ✅ Fast, ❌ Complex, ❌ Eventual consistency
 
@@ -1165,17 +1219,18 @@ class MemoryAwareAgent:
 
 **Integration Points**:
 
-| Stage | Operations | Purpose |
-|-------|-----------|---------|
-| Initialization | Load context | Session continuity |
-| Pre-processing | Retrieve context | Informed decisions |
-| Processing | Use memories | Context-aware actions |
-| Post-processing | Store results | Learn from interaction |
-| Error handling | Find procedures | Error resolution |
-| Success handling | Record patterns | Pattern learning |
-| Teardown | Persist state | Future sessions |
+| Stage            | Operations       | Purpose                |
+| ---------------- | ---------------- | ---------------------- |
+| Initialization   | Load context     | Session continuity     |
+| Pre-processing   | Retrieve context | Informed decisions     |
+| Processing       | Use memories     | Context-aware actions  |
+| Post-processing  | Store results    | Learn from interaction |
+| Error handling   | Find procedures  | Error resolution       |
+| Success handling | Record patterns  | Pattern learning       |
+| Teardown         | Persist state    | Future sessions        |
 
 **Trade-offs**:
+
 - ✅ Comprehensive memory integration
 - ✅ Learning at all stages
 - ❌ Performance overhead at each stage
@@ -1263,6 +1318,7 @@ class ErrorPatternLearner:
 ```
 
 **Schema**:
+
 ```cypher
 // Error episodes
 (ep:Episode:Error {
@@ -1292,6 +1348,7 @@ class ErrorPatternLearner:
 ```
 
 **Trade-offs**:
+
 - ✅ Improves over time (learns from experience)
 - ✅ Provides proven solutions (high success rate)
 - ✅ Tracks effectiveness (success_rate metric)
@@ -1330,16 +1387,19 @@ def batch_create_nodes_fast(nodes):
 ```
 
 **Performance Comparison**:
+
 - **Individual creates**: 10k nodes in ~100 seconds (py2neo)
 - **UNWIND batch**: 10k nodes in ~0.17 seconds (LOAD CSV)
 - **Speedup**: 588x faster
 
 **Best Practices**:
+
 1. Batch size: 1000-10000 nodes per query
 2. Use transactions for consistency
 3. Create indexes before bulk load
 
 **Trade-offs**:
+
 - ✅ Massive speedup (100-500x)
 - ✅ Single transaction (atomic)
 - ❌ All-or-nothing (one failure fails all)
@@ -1354,6 +1414,7 @@ def batch_create_nodes_fast(nodes):
 **Solutions**:
 
 **A. Use Index Hints**:
+
 ```cypher
 // Without hint (table scan)
 MATCH (e:Entity)
@@ -1368,6 +1429,7 @@ RETURN e
 ```
 
 **B. Limit Traversal Depth**:
+
 ```cypher
 // Unbounded (exponential explosion)
 MATCH (f:Function)-[:CALLS*]->(called)
@@ -1380,6 +1442,7 @@ LIMIT 100
 ```
 
 **C. Use LIMIT Early**:
+
 ```cypher
 // LIMIT at end (processes all, returns 10)
 MATCH (e:Episode)
@@ -1396,6 +1459,7 @@ RETURN e
 ```
 
 **D. Use Parameters (Never Concatenate)**:
+
 ```python
 # BAD: Concatenation (SQL injection, no caching)
 query = f"MATCH (e:Entity {{name: '{name}'}}) RETURN e"
@@ -1407,6 +1471,7 @@ driver.execute_query(query, name=name)
 ```
 
 **Performance Targets**:
+
 - Simple lookups: 1-10ms
 - Graph traversals (depth 2): 10-50ms
 - Complex queries: 50-200ms
@@ -1460,18 +1525,20 @@ class CachedMemoryRetrieval:
 
 **Cache Levels**:
 
-| Level | Storage | Size | Latency | TTL | Use Case |
-|-------|---------|------|---------|-----|----------|
-| L1 | Python dict | 100 entries | <1ms | Session | Hot queries |
-| L2 | Redis | 10k entries | 1-5ms | 1 hour | Warm queries |
-| L3 | Neo4j | Unlimited | 10-100ms | Permanent | Cold queries |
+| Level | Storage     | Size        | Latency  | TTL       | Use Case     |
+| ----- | ----------- | ----------- | -------- | --------- | ------------ |
+| L1    | Python dict | 100 entries | <1ms     | Session   | Hot queries  |
+| L2    | Redis       | 10k entries | 1-5ms    | 1 hour    | Warm queries |
+| L3    | Neo4j       | Unlimited   | 10-100ms | Permanent | Cold queries |
 
 **Invalidation Strategies**:
+
 1. **TTL-based**: Expire after time
 2. **Event-based**: Invalidate on updates
 3. **Manual**: User-triggered cache clear
 
 **Trade-offs**:
+
 - ✅ 10-100x speedup for repeated queries
 - ✅ Reduces database load
 - ❌ Stale data risk (invalidation challenges)
@@ -1522,12 +1589,14 @@ class CommunityManager:
 ```
 
 **Recompute Strategies**:
+
 1. **Time-based**: Every hour/day
 2. **Change-based**: After N updates
 3. **Query-triggered**: On-demand
 4. **Incremental**: Update only affected communities
 
 **Trade-offs**:
+
 - ✅ Avoids expensive real-time computation
 - ✅ Acceptable staleness (communities don't change often)
 - ❌ Eventual consistency (may see stale communities)
@@ -1595,6 +1664,7 @@ class SessionContinuityAgent:
 ```
 
 **What to Preserve**:
+
 - Conversation summary (not full transcript)
 - Key decisions made
 - Active tasks/goals
@@ -1602,6 +1672,7 @@ class SessionContinuityAgent:
 - User preferences learned
 
 **Trade-offs**:
+
 - ✅ Seamless user experience (continuity)
 - ✅ No context loss between sessions
 - ❌ Storage overhead (session state)
@@ -1675,6 +1746,7 @@ class WorkflowStateManager:
 ```
 
 **Schema**:
+
 ```cypher
 (w:WorkflowState {
   workflow_name: "API_Development",
@@ -1694,6 +1766,7 @@ class WorkflowStateManager:
 ```
 
 **Trade-offs**:
+
 - ✅ Workflow resumption after failures
 - ✅ Progress tracking
 - ✅ Rollback capabilities
@@ -1758,6 +1831,7 @@ class CollaborativeMemory:
 ```
 
 **Schema**:
+
 ```cypher
 // Agent insights
 (insight:Insight {
@@ -1784,6 +1858,7 @@ class CollaborativeMemory:
 ```
 
 **Trade-offs**:
+
 - ✅ Enables agent collaboration
 - ✅ Preserves collaboration history
 - ✅ Avoids duplicate work
@@ -1799,12 +1874,14 @@ class CollaborativeMemory:
 **Problem**: Building Cypher queries with string concatenation.
 
 **Why It's Bad**:
+
 - ⚠️ SQL injection vulnerability
 - ⚠️ No query plan caching
 - ⚠️ Type conversion errors
 - ⚠️ Hard to maintain
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS
 name = "login'; DROP DATABASE; --"
@@ -1813,6 +1890,7 @@ driver.execute_query(query)
 ```
 
 **Good Example**:
+
 ```python
 # DO THIS
 name = "login"
@@ -1827,11 +1905,13 @@ driver.execute_query(query, name=name)
 **Problem**: Regenerating entire graph on file modification.
 
 **Why It's Bad**:
+
 - ⚠️ Minutes to rebuild (unusable for interactive systems)
 - ⚠️ Wastes resources (99% of graph unchanged)
 - ⚠️ Loses incremental changes
 
 **Bad Example**:
+
 ```python
 def on_file_change(file_path):
     # DON'T: Rebuild entire codebase graph
@@ -1839,6 +1919,7 @@ def on_file_change(file_path):
 ```
 
 **Good Example**:
+
 ```python
 def on_file_change(file_path):
     # DO: Update only affected entities
@@ -1852,12 +1933,14 @@ def on_file_change(file_path):
 **Problem**: Storing full file contents or large documents as node properties.
 
 **Why It's Bad**:
+
 - ⚠️ Graph databases optimized for relationships, not large blobs
 - ⚠️ Query performance degrades
 - ⚠️ Increased memory usage
 - ⚠️ Difficult to update
 
 **Bad Example**:
+
 ```cypher
 // DON'T: Store entire file content
 CREATE (f:File {
@@ -1867,6 +1950,7 @@ CREATE (f:File {
 ```
 
 **Good Example**:
+
 ```cypher
 // DO: Store reference to external storage
 CREATE (f:File {
@@ -1885,12 +1969,14 @@ CREATE (f:File {
 **Problem**: Deleting nodes when information becomes outdated.
 
 **Why It's Bad**:
+
 - ⚠️ Loses knowledge history
 - ⚠️ Can't answer "what did we know then?"
 - ⚠️ Debugging impossible (no audit trail)
 - ⚠️ Can't learn from mistakes
 
 **Bad Example**:
+
 ```cypher
 // DON'T: Delete old facts
 MATCH (f:Fact {content: "User prefers dark mode"})
@@ -1901,6 +1987,7 @@ CREATE (f:Fact {content: "User prefers light mode"})
 ```
 
 **Good Example**:
+
 ```cypher
 // DO: Temporal invalidation
 MATCH (f:Fact {content: "User prefers dark mode"})
@@ -1921,11 +2008,13 @@ CREATE (f:Fact {
 **Problem**: Using py2neo or embedded Neo4j in Python.
 
 **Why It's Bad**:
+
 - ⚠️ py2neo: No longer maintained, slow
 - ⚠️ Embedded Neo4j: Deprecated, security issues
 - ⚠️ Missing features (async, performance)
 
 **Bad Example**:
+
 ```python
 # DON'T: Use py2neo
 from py2neo import Graph
@@ -1937,6 +2026,7 @@ db = EmbeddedGraph("/path/to/db")
 ```
 
 **Good Example**:
+
 ```python
 # DO: Use official neo4j driver
 from neo4j import GraphDatabase
@@ -1953,11 +2043,13 @@ driver = GraphDatabase.driver(
 **Problem**: Queries without depth limits or LIMIT clauses.
 
 **Why It's Bad**:
+
 - ⚠️ Exponential explosion (can return millions of nodes)
 - ⚠️ Hangs system (out of memory)
 - ⚠️ Unpredictable performance
 
 **Bad Example**:
+
 ```cypher
 // DON'T: Unbounded traversal
 MATCH (f:Function)-[:CALLS*]->(called)
@@ -1965,6 +2057,7 @@ RETURN called  // Can return entire codebase!
 ```
 
 **Good Example**:
+
 ```cypher
 // DO: Bounded traversal with limit
 MATCH (f:Function)-[:CALLS*1..3]->(called)
@@ -1979,6 +2072,7 @@ LIMIT 100
 ### When to Use Neo4j vs. Other Solutions
 
 **Use Neo4j When**:
+
 - ✅ Relationship queries are primary (graph traversal)
 - ✅ Need ACID transactions
 - ✅ Complex, multi-hop reasoning required
@@ -1986,6 +2080,7 @@ LIMIT 100
 - ✅ Community Edition sufficient (< 10M nodes)
 
 **Consider Alternatives When**:
+
 - ❌ Pure vector search (use Pinecone, Weaviate)
 - ❌ Time-series data (use InfluxDB, TimescaleDB)
 - ❌ Full-text search (use Elasticsearch)
@@ -1996,24 +2091,24 @@ LIMIT 100
 
 ### Architecture Selection Matrix
 
-| Project Size | Memory Types | Agents | Recommended Architecture |
-|-------------|--------------|--------|-------------------------|
-| Small (< 10k nodes) | Episodic + Semantic | Single | SQLite-based (simpler) |
-| Medium (10k-1M nodes) | Episodic + Semantic + Code | Single | Unified Graph (Zep) |
-| Large (> 1M nodes) | All 5 types | Multiple | Federated (MIRIX) |
-| Multi-project | Episodic + Semantic | Multiple | Per-project Neo4j containers |
+| Project Size          | Memory Types               | Agents   | Recommended Architecture     |
+| --------------------- | -------------------------- | -------- | ---------------------------- |
+| Small (< 10k nodes)   | Episodic + Semantic        | Single   | SQLite-based (simpler)       |
+| Medium (10k-1M nodes) | Episodic + Semantic + Code | Single   | Unified Graph (Zep)          |
+| Large (> 1M nodes)    | All 5 types                | Multiple | Federated (MIRIX)            |
+| Multi-project         | Episodic + Semantic        | Multiple | Per-project Neo4j containers |
 
 ---
 
 ### Performance vs. Complexity Trade-off
 
-| Approach | Latency | Complexity | Scalability | Recommendation |
-|----------|---------|-----------|-------------|----------------|
-| In-memory only | 1ms | Low | Poor | Prototypes |
-| SQLite | 10ms | Low | Medium | Small projects |
-| Neo4j Community | 50ms | Medium | Good | Most projects |
-| Neo4j Enterprise | 50ms | High | Excellent | Large orgs |
-| Federated | 100ms | Very High | Excellent | Complex systems |
+| Approach         | Latency | Complexity | Scalability | Recommendation  |
+| ---------------- | ------- | ---------- | ----------- | --------------- |
+| In-memory only   | 1ms     | Low        | Poor        | Prototypes      |
+| SQLite           | 10ms    | Low        | Medium      | Small projects  |
+| Neo4j Community  | 50ms    | Medium     | Good        | Most projects   |
+| Neo4j Enterprise | 50ms    | High       | Excellent   | Large orgs      |
+| Federated        | 100ms   | Very High  | Excellent   | Complex systems |
 
 ---
 
@@ -2043,6 +2138,7 @@ Advanced Patterns (Last)
 ### Pattern Combinations
 
 **Combination 1: Production Coding Assistant**
+
 - Three-Tier Hierarchical Graph (1.1)
 - Temporal Validity Tracking (1.2)
 - Hybrid Search (1.3)
@@ -2051,12 +2147,14 @@ Advanced Patterns (Last)
 - Error Pattern Learning (5.4)
 
 **Combination 2: Multi-Agent System**
+
 - Multi-Modal Memory (1.5)
 - Federated Architecture (2.2)
 - Agent Collaboration Memory (7.3)
 - Workflow State Management (7.2)
 
 **Combination 3: High-Performance RAG**
+
 - Unified Graph (2.1)
 - Hybrid Search (1.3)
 - Batch Operations (6.1)
@@ -2077,24 +2175,28 @@ Advanced Patterns (Last)
 ### Implementation Roadmap
 
 **Phase 1: Foundation (Weeks 1-2)**
+
 - Set up Neo4j Community Edition (Docker)
 - Implement three-tier hierarchy
 - Add temporal validity tracking
 - Create basic schema
 
 **Phase 2: Integration (Weeks 3-4)**
+
 - Integrate blarify/SCIP for code graphs
 - Implement hybrid search
 - Add incremental updates
 - Build retrieval system
 
 **Phase 3: Advanced (Weeks 5-8)**
+
 - Add procedural memory (error learning)
 - Implement agent collaboration
 - Optimize performance (batching, caching)
 - Add workflow state management
 
 **Phase 4: Production (Months 2-3)**
+
 - Multi-project deployment
 - Monitoring and metrics
 - Backup/restore system
@@ -2105,15 +2207,18 @@ Advanced Patterns (Last)
 ### Resources
 
 **Research Papers**:
+
 - Zep: https://arxiv.org/html/2501.13956v1
 - MIRIX: https://arxiv.org/html/2507.07957v1
 
 **Tools**:
+
 - Neo4j Driver: https://neo4j.com/docs/api/python-driver/current/
 - blarify: https://github.com/blarApp/blarify
 - SCIP: https://github.com/sourcegraph/scip
 
 **Amplihack Integration**:
+
 - Memory System: `/src/amplihack/memory/`
 - Integration Guide: `/.claude/tools/amplihack/memory/INTEGRATION_GUIDE.md`
 

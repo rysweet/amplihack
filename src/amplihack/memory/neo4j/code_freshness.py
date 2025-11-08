@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
-def get_codebase_last_modified(project_root: Path, patterns: list[str] = None) -> datetime:
+def get_codebase_last_modified(project_root: Path, patterns: list[str] | None = None) -> datetime:
     """Get most recent modification time of code files.
 
     Args:
@@ -22,13 +22,13 @@ def get_codebase_last_modified(project_root: Path, patterns: list[str] = None) -
         Most recent modification time
     """
     if patterns is None:
-        patterns = ['**/*.py', '**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx']
+        patterns = ["**/*.py", "**/*.js", "**/*.ts", "**/*.jsx", "**/*.tsx"]
 
     latest = datetime.fromtimestamp(0)  # Epoch
 
     for pattern in patterns:
         for file_path in project_root.glob(pattern):
-            if '.git' in file_path.parts or 'node_modules' in file_path.parts:
+            if ".git" in file_path.parts or "node_modules" in file_path.parts:
                 continue
             try:
                 mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
@@ -51,7 +51,7 @@ def get_code_index_last_updated(conn) -> Optional[datetime]:
     """
     try:
         query = """
-        MATCH (m:CodeIndexMetadata)
+        OPTIONAL MATCH (m:CodeIndexMetadata)
         RETURN m.last_updated AS last_updated
         ORDER BY m.last_updated DESC
         LIMIT 1
@@ -71,9 +71,7 @@ def get_code_index_last_updated(conn) -> Optional[datetime]:
 
 
 def is_code_index_stale(
-    project_root: Path,
-    conn,
-    max_age_minutes: int = 60
+    project_root: Path, conn, max_age_minutes: int = 60
 ) -> Tuple[bool, Optional[str]]:
     """Check if code understanding index is stale.
 
@@ -133,7 +131,7 @@ def update_index_metadata(conn, project_root: Path):
         """
 
         # Count code files
-        file_count = sum(1 for _ in project_root.glob("**/*.py") if '.git' not in str(_))
+        file_count = sum(1 for _ in project_root.glob("**/*.py") if ".git" not in str(_))
 
         params = {
             "project_root": str(project_root),
@@ -153,7 +151,8 @@ if __name__ == "__main__":
     print("Testing code freshness detection...")
 
     import sys
-    sys.path.insert(0, 'src')
+
+    sys.path.insert(0, "src")
 
     from amplihack.memory.neo4j import Neo4jConnector
 

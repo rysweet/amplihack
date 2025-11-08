@@ -5,7 +5,7 @@ Provides typed dataclasses for the five memory types with Neo4j mapping.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from uuid import uuid4
 
 

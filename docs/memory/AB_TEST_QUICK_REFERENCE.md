@@ -29,12 +29,12 @@ python scripts/memory_test_harness.py --full --output-dir my_results
 
 ## Test Phases
 
-| Phase | Command | Duration | Decision |
-|-------|---------|----------|----------|
-| **1. Baseline** | `--phase baseline` | ~8 hours | None |
-| **2. SQLite** | `--phase sqlite` | ~8 hours | Proceed if >20% improvement |
-| **3. Neo4j** | `--phase neo4j` | ~8 hours | Only if Phase 2 succeeds |
-| **4. Report** | Automatic | ~1 hour | Final recommendation |
+| Phase           | Command            | Duration | Decision                    |
+| --------------- | ------------------ | -------- | --------------------------- |
+| **1. Baseline** | `--phase baseline` | ~8 hours | None                        |
+| **2. SQLite**   | `--phase sqlite`   | ~8 hours | Proceed if >20% improvement |
+| **3. Neo4j**    | `--phase neo4j`    | ~8 hours | Only if Phase 2 succeeds    |
+| **4. Report**   | Automatic          | ~1 hour  | Final recommendation        |
 
 ---
 
@@ -64,18 +64,18 @@ python scripts/memory_test_harness.py --full --output-dir my_results
 
 ### Memory vs No Memory (Phase 2)
 
-| Metric | Expected | Action if Below |
-|--------|----------|-----------------|
-| Time reduction | **-20% to -35%** | Investigate scenarios |
-| Error reduction | **-50% to -70%** | Check memory quality |
-| Quality improvement | **+25% to +40%** | Review metrics |
+| Metric              | Expected         | Action if Below       |
+| ------------------- | ---------------- | --------------------- |
+| Time reduction      | **-20% to -35%** | Investigate scenarios |
+| Error reduction     | **-50% to -70%** | Check memory quality  |
+| Quality improvement | **+25% to +40%** | Review metrics        |
 
 ### Neo4j vs SQLite (Phase 3)
 
-| Metric | Expected | Action if Below |
-|--------|----------|-----------------|
-| Time reduction | **-5% to -15%** | Stick with SQLite |
-| Query speed | **-10% to -30%** | Scale not reached yet |
+| Metric         | Expected         | Action if Below       |
+| -------------- | ---------------- | --------------------- |
+| Time reduction | **-5% to -15%**  | Stick with SQLite     |
+| Query speed    | **-10% to -30%** | Scale not reached yet |
 
 ---
 
@@ -152,13 +152,13 @@ python -c "import scipy.stats; import statsmodels; print('OK')"
 
 ## Decision Matrix
 
-| p-value | Effect Size | Action |
-|---------|-------------|--------|
-| < 0.05 | > 0.8 | **STRONG PROCEED** ✅✅ |
-| < 0.05 | 0.5-0.8 | **PROCEED** ✅ |
-| < 0.05 | 0.2-0.5 | **CONSIDER** ~ |
-| < 0.05 | < 0.2 | **STOP** ❌ |
-| > 0.05 | Any | **STOP** ❌ |
+| p-value | Effect Size | Action                  |
+| ------- | ----------- | ----------------------- |
+| < 0.05  | > 0.8       | **STRONG PROCEED** ✅✅ |
+| < 0.05  | 0.5-0.8     | **PROCEED** ✅          |
+| < 0.05  | 0.2-0.5     | **CONSIDER** ~          |
+| < 0.05  | < 0.2       | **STOP** ❌             |
+| > 0.05  | Any         | **STOP** ❌             |
 
 ---
 
@@ -202,11 +202,13 @@ Decision: Deploy SQLite, skip Neo4j
 ## Timeline
 
 ### Week 1-2: Implementation
+
 - Implement scenario execution
 - Integrate with agents
 - Validate test harness
 
 ### Week 3: Phase 1
+
 ```bash
 python scripts/memory_test_harness.py --phase baseline
 # Wait ~8 hours
@@ -214,6 +216,7 @@ python scripts/memory_test_harness.py --phase baseline
 ```
 
 ### Week 4: Phase 2 + Decision
+
 ```bash
 python scripts/memory_test_harness.py --phase sqlite
 # Wait ~8 hours
@@ -222,6 +225,7 @@ python scripts/memory_test_harness.py --phase sqlite
 ```
 
 ### Week 5: Phase 3 (conditional)
+
 ```bash
 # Only if Phase 2 successful
 python scripts/memory_test_harness.py --phase neo4j
@@ -230,6 +234,7 @@ python scripts/memory_test_harness.py --phase neo4j
 ```
 
 ### Week 6: Final Decision
+
 - Review all results
 - Generate final report
 - Make deployment decision

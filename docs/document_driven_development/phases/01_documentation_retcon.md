@@ -15,12 +15,14 @@ Update every piece of documentation to reflect the target state using [retcon wr
 ## Why Retcon First?
 
 **Why documentation before code**:
+
 - Design flaws cheaper to fix in docs than code
 - Clear specification before implementation complexity
 - Human reviews design before expensive coding
 - Prevents implementing wrong thing
 
 **Why retcon style**:
+
 - Eliminates ambiguity (single timeline: NOW)
 - Prevents [context poisoning](../core_concepts/context_poisoning.md)
 - Clear for both AI and humans
@@ -107,6 +109,7 @@ done
 ```
 
 **For each file**:
+
 1. **Read ENTIRE file** - Full content, no skimming
 2. **Review in context** - Understand file's purpose and scope
 3. **Decide action**:
@@ -155,6 +158,7 @@ For each file being updated, follow [retcon writing rules](../core_concepts/retc
 ### Finding Duplication
 
 While processing files, ask:
+
 - Does this content exist in another file?
 - Is this concept already documented elsewhere?
 - Am I duplicating another doc's scope?
@@ -162,11 +166,13 @@ While processing files, ask:
 ### Resolving Duplication
 
 **If found**:
+
 1. Identify which doc is canonical
 2. **Delete** the duplicate entirely (don't update it)
 3. Update cross-references to canonical source
 
 **Example**:
+
 ```bash
 # Found: COMMAND_GUIDE.md duplicates USER_ONBOARDING.md
 
@@ -208,22 +214,29 @@ grep -rn "\bworkflow\b" docs/   # Check each hit for context
 **Global replacements cause context poisoning when used as completion marker.**
 
 **Problems**:
+
 1. **Inconsistent formatting** - Misses variations
 2. **Context-inappropriate** - Replaces wrong instances
 3. **False confidence** - Files marked done without review
 
 **Example of what goes wrong**:
+
 ```markdown
-# File 1: "Use `profile apply`"  → Caught by replace
+# File 1: "Use `profile apply`" → Caught by replace
+
 # File 2: "run profile-apply command" → Missed (hyphenated)
+
 # File 3: "applying profiles" → Missed (verb form)
 
 # Developer marks files "done" after global replace
+
 # Files 2 and 3 still have old terminology
+
 # Context poisoning introduced
 ```
 
 **Correct approach**:
+
 - Use as helper for first pass
 - Still review EVERY file individually
 - Verify replacement worked in context
@@ -264,15 +277,18 @@ File 3 (docs/TUTORIAL.md): calls it "capability set"
 # CONFLICT DETECTED - User guidance needed
 
 ## Issue
+
 Inconsistent terminology found across documentation
 
 ## Instances
+
 1. docs/USER_GUIDE.md:42: "workflow"
 2. docs/API.md:15: "profile"
 3. docs/TUTORIAL.md:8: "capability set"
 4. README.md:25: uses both "workflow" and "profile"
 
 ## Analysis
+
 - "profile" appears 47 times across 12 files
 - "workflow" appears 23 times across 8 files
 - "capability set" appears 3 times across 2 files
@@ -280,18 +296,22 @@ Inconsistent terminology found across documentation
 ## Suggested Resolutions
 
 Option A: Standardize on "profile"
+
 - Pro: Most common, matches code
 - Con: May confuse users familiar with "workflow"
 
 Option B: Standardize on "capability set"
+
 - Pro: More descriptive
 - Con: More verbose
 
 Option C: Define relationship, keep both
+
 - Pro: Accommodates existing usage
 - Con: Maintains ambiguity, risks context poisoning
 
 ## Recommendation
+
 Option A - standardize on "profile" as canonical term
 
 Please advise which resolution to apply.
@@ -302,6 +322,7 @@ Please advise which resolution to apply.
 6. **Resume processing**
 
 **Conflicts include**:
+
 - Terminology (different words for same concept)
 - Technical approaches (incompatible methods)
 - Scope (unclear boundaries)
@@ -343,15 +364,18 @@ README.md (Entry Point)
 
 ### Example: Well-Organized README
 
-```markdown
+````markdown
 ## Quick Start
 
 ### Step 1: Install (30 seconds)
+
 ```bash
 curl -sSL https://install.sh | sh
 ```
+````
 
 ### Step 2: Run (60 seconds)
+
 ```bash
 myapp init
 myapp run
@@ -374,7 +398,8 @@ myapp run
 **For users**: [User Guide](docs/USER_GUIDE.md)
 **For developers**: [Developer Guide](docs/DEVELOPER_GUIDE.md)
 **For architects**: [Architecture](docs/ARCHITECTURE.md)
-```
+
+````
 
 ### Audience-Specific Organization
 
@@ -429,7 +454,7 @@ grep -rn "previously\|used to\|old way" docs/  # Should be zero
 
 # Check for future tense
 grep -rn "will be\|coming soon" docs/  # Should be zero
-```
+````
 
 ---
 
@@ -440,6 +465,7 @@ grep -rn "will be\|coming soon" docs/  # Should be zero
 **Symptom**: Some files not in checklist, got skipped
 
 **Fix**:
+
 ```bash
 # Regenerate checklist with better filters
 find . -type f -name "*.md" \
@@ -460,6 +486,7 @@ diff /tmp/docs_to_process.txt /tmp/complete_docs_list.txt
 **Symptom**: Found duplication after processing many files
 
 **Fix**:
+
 1. Identify canonical source
 2. Delete duplicate file
 3. Update all cross-references
@@ -471,6 +498,7 @@ diff /tmp/docs_to_process.txt /tmp/complete_docs_list.txt
 **Symptom**: Some files still have old terms
 
 **Fix**:
+
 1. Find all remaining instances: `grep -rn "old-term" docs/`
 2. Review each in context (might be intentional)
 3. Fix individually
@@ -483,16 +511,19 @@ diff /tmp/docs_to_process.txt /tmp/complete_docs_list.txt
 This phase relies heavily on core concepts:
 
 **[File Crawling](../core_concepts/file_crawling.md)**:
+
 - Step 1: Generate index
 - Step 2: Sequential processing
 - Prevents forgetting files
 
 **[Context Poisoning](../core_concepts/context_poisoning.md)**:
+
 - Step 4: Enforce maximum DRY
 - Step 6: Detect and resolve conflicts
 - Prevents inconsistent information
 
 **[Retcon Writing](../core_concepts/retcon_writing.md)**:
+
 - Step 3: Apply writing rules
 - Step 7: Progressive organization
 - Eliminates timeline ambiguity
@@ -502,6 +533,7 @@ This phase relies heavily on core concepts:
 ## Output of Phase 1
 
 When complete:
+
 - ✅ All documentation describes target state
 - ✅ Retcon writing style used throughout
 - ✅ Maximum DRY enforced (no duplication)
@@ -540,6 +572,7 @@ When complete:
 **When Phase 1 complete**: [Phase 2: Approval Gate](02_approval_gate.md)
 
 **Before proceeding**:
+
 - All files processed
 - No remaining `[ ]` in checklist
 - Verification pass complete

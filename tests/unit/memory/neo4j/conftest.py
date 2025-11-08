@@ -7,12 +7,12 @@ requiring real Docker or Neo4j instances.
 
 import pytest
 from unittest.mock import Mock, MagicMock, patch
-from pathlib import Path
 
 
 # =============================================================================
 # Mock Docker Client Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def mock_docker_client():
@@ -22,12 +22,7 @@ def mock_docker_client():
     # Mock container operations
     mock_container = MagicMock()
     mock_container.status = "running"
-    mock_container.attrs = {
-        "State": {
-            "Status": "running",
-            "Health": {"Status": "healthy"}
-        }
-    }
+    mock_container.attrs = {"State": {"Status": "running", "Health": {"Status": "healthy"}}}
 
     mock_client.containers.get.return_value = mock_container
     mock_client.containers.run.return_value = mock_container
@@ -39,19 +34,16 @@ def mock_docker_client():
 @pytest.fixture
 def mock_docker_subprocess():
     """Mock subprocess calls for Docker commands."""
-    with patch('subprocess.run') as mock_run:
+    with patch("subprocess.run") as mock_run:
         # Default successful response
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout="Success",
-            stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="Success", stderr="")
         yield mock_run
 
 
 # =============================================================================
 # Mock Neo4j Connector Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def mock_neo4j_connector():
@@ -77,9 +69,7 @@ def mock_neo4j_driver():
 
     # Mock session
     mock_session = MagicMock()
-    mock_session.run.return_value = MagicMock(
-        data=lambda: [{"result": "success"}]
-    )
+    mock_session.run.return_value = MagicMock(data=lambda: [{"result": "success"}])
 
     mock_driver.session.return_value.__enter__.return_value = mock_session
     mock_driver.verify_connectivity.return_value = None
@@ -90,6 +80,7 @@ def mock_neo4j_driver():
 # =============================================================================
 # Configuration Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def neo4j_config():
@@ -134,6 +125,7 @@ volumes:
 # Test Data Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def sample_agent_types():
     """Sample agent type data for testing."""
@@ -152,13 +144,13 @@ def sample_memory_nodes():
             "id": "mem-001",
             "content": "Test memory content 1",
             "type": "pattern",
-            "created_at": "2025-01-01T00:00:00Z"
+            "created_at": "2025-01-01T00:00:00Z",
         },
         {
             "id": "mem-002",
             "content": "Test memory content 2",
             "type": "task",
-            "created_at": "2025-01-02T00:00:00Z"
+            "created_at": "2025-01-02T00:00:00Z",
         },
     ]
 
@@ -190,22 +182,19 @@ def sample_cypher_queries():
 # Mock Dependency Check Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def mock_docker_available():
     """Mock Docker as available and running."""
-    with patch('subprocess.run') as mock_run:
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout="Docker version 24.0.0",
-            stderr=""
-        )
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = Mock(returncode=0, stdout="Docker version 24.0.0", stderr="")
         yield mock_run
 
 
 @pytest.fixture
 def mock_docker_not_available():
     """Mock Docker as not available."""
-    with patch('subprocess.run') as mock_run:
+    with patch("subprocess.run") as mock_run:
         mock_run.side_effect = FileNotFoundError("docker: command not found")
         yield mock_run
 
@@ -213,7 +202,7 @@ def mock_docker_not_available():
 @pytest.fixture
 def mock_python_packages_installed():
     """Mock Python packages as installed."""
-    with patch('importlib.metadata.version') as mock_version:
+    with patch("importlib.metadata.version") as mock_version:
         mock_version.return_value = "5.15.0"
         yield mock_version
 
@@ -221,7 +210,7 @@ def mock_python_packages_installed():
 @pytest.fixture
 def mock_python_packages_missing():
     """Mock Python packages as missing."""
-    with patch('importlib.metadata.version') as mock_version:
+    with patch("importlib.metadata.version") as mock_version:
         mock_version.side_effect = ModuleNotFoundError("No module named 'neo4j'")
         yield mock_version
 
@@ -229,7 +218,7 @@ def mock_python_packages_missing():
 @pytest.fixture
 def mock_ports_available():
     """Mock ports as available."""
-    with patch('socket.socket') as mock_socket:
+    with patch("socket.socket") as mock_socket:
         mock_sock = MagicMock()
         mock_socket.return_value.__enter__.return_value = mock_sock
         mock_sock.bind.return_value = None
@@ -239,7 +228,7 @@ def mock_ports_available():
 @pytest.fixture
 def mock_ports_in_use():
     """Mock ports as already in use."""
-    with patch('socket.socket') as mock_socket:
+    with patch("socket.socket") as mock_socket:
         mock_sock = MagicMock()
         mock_socket.return_value.__enter__.return_value = mock_sock
         mock_sock.bind.side_effect = OSError("Address already in use")
@@ -250,9 +239,11 @@ def mock_ports_in_use():
 # Mock Result Objects
 # =============================================================================
 
+
 @pytest.fixture
 def mock_check_result():
     """Factory for creating CheckResult mocks."""
+
     def _create(success=True, message="Check passed", remediation=""):
         result = Mock()
         result.success = success
@@ -281,6 +272,7 @@ def mock_container_status():
 # =============================================================================
 # Cleanup Fixtures
 # =============================================================================
+
 
 @pytest.fixture(autouse=True)
 def cleanup_test_environment():
@@ -314,6 +306,7 @@ def isolated_test_env(tmp_path, monkeypatch):
 # =============================================================================
 # Performance Testing Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def performance_timer():
@@ -351,9 +344,11 @@ def performance_timer():
 # Assertion Helpers
 # =============================================================================
 
+
 @pytest.fixture
 def assert_cypher_valid():
     """Helper to validate Cypher query syntax."""
+
     def _validate(cypher: str):
         # Basic validation
         assert isinstance(cypher, str)
@@ -372,6 +367,7 @@ def assert_cypher_valid():
 @pytest.fixture
 def assert_docker_command_safe():
     """Helper to validate Docker command safety."""
+
     def _validate(command: list):
         assert isinstance(command, list)
         assert len(command) > 0

@@ -79,32 +79,35 @@ sequenceDiagram
 
 ## Key Files
 
-| File Path | Purpose | Key Components |
-|-----------|---------|----------------|
-| `.claude/workflow/INVESTIGATION_WORKFLOW.md` | Defines investigation workflow with documentation step | Step 6: Documentation generation |
-| `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Agent with documentation generation capability | Documentation Generation section |
-| `.claude/templates/investigation-doc-template.md` | Template for general investigations | Findings, Files, Integration, Examples |
-| `.claude/templates/architecture-doc-template.md` | Template for architecture investigations | Architecture diagrams, Design decisions |
-| `.claude/templates/README.md` | Template usage documentation | Usage guide, examples, conventions |
-| `.claude/docs/` | Directory for generated documentation | Storage location for all generated docs |
+| File Path                                                         | Purpose                                                | Key Components                          |
+| ----------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------- |
+| `.claude/workflow/INVESTIGATION_WORKFLOW.md`                      | Defines investigation workflow with documentation step | Step 6: Documentation generation        |
+| `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Agent with documentation generation capability         | Documentation Generation section        |
+| `.claude/templates/investigation-doc-template.md`                 | Template for general investigations                    | Findings, Files, Integration, Examples  |
+| `.claude/templates/architecture-doc-template.md`                  | Template for architecture investigations               | Architecture diagrams, Design decisions |
+| `.claude/templates/README.md`                                     | Template usage documentation                           | Usage guide, examples, conventions      |
+| `.claude/docs/`                                                   | Directory for generated documentation                  | Storage location for all generated docs |
 
 ## System Integration
 
 ### Integration Points
 
 **INVESTIGATION_WORKFLOW.md Integration:**
+
 - Step 6 added as optional documentation capture step
 - Invokes knowledge-archaeologist agent
 - Handles user prompt and response
 - Continues workflow regardless of documentation decision
 
 **knowledge-archaeologist Agent Extension:**
+
 - New "Documentation Generation" section added
 - Preserves existing investigation capabilities
 - Adds optional output format (persistent docs)
 - Integrates with existing "Output Formats" pattern
 
 **Template System:**
+
 - Simple markdown files with `[VARIABLE]` placeholders
 - No external dependencies or template engines
 - Easy to modify and extend
@@ -128,15 +131,18 @@ sequenceDiagram
 ### Communication Patterns
 
 **Workflow → Agent:**
+
 - Workflow invokes agent at Step 6 after investigation complete
 - Agent receives investigation findings in conversation context
 
 **Agent → User:**
+
 - Agent prompts user with clear documentation preview
 - User responds with explicit Yes/No decision
 - Agent acknowledges response and acts accordingly
 
 **Agent → Filesystem:**
+
 - Agent reads template files from `.claude/templates/`
 - Agent writes generated docs to `.claude/docs/`
 - Creates directories if they don't exist
@@ -144,24 +150,28 @@ sequenceDiagram
 ## Verification Steps
 
 1. **Verify template structure**
+
    ```bash
    ls -la .claude/templates/
    # Should show: investigation-doc-template.md, architecture-doc-template.md, README.md
    ```
 
 2. **Verify docs directory exists**
+
    ```bash
    ls -la .claude/docs/
    # Should exist and contain example files
    ```
 
 3. **Verify workflow integration**
+
    ```bash
    grep -n "Step 6.*Documentation" .claude/workflow/INVESTIGATION_WORKFLOW.md
    # Should find Step 6 with documentation generation
    ```
 
 4. **Verify agent extension**
+
    ```bash
    grep -n "Documentation Generation" .claude/agents/amplihack/specialized/knowledge-archaeologist.md
    # Should find new documentation section
@@ -181,6 +191,7 @@ sequenceDiagram
 **Command**: Follow INVESTIGATION_WORKFLOW.md
 
 **Agent Prompt**:
+
 ```
 I've completed the investigation of the user preferences and hooks integration system.
 
@@ -198,6 +209,7 @@ This would create `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` with:
 ```
 
 **Result** (if user accepts):
+
 - File created: `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md`
 - Contains populated template with investigation findings
 - User notified of creation and location
@@ -209,6 +221,7 @@ This would create `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` with:
 **Command**: Follow INVESTIGATION_WORKFLOW.md
 
 **Agent Prompt**:
+
 ```
 I've completed the investigation of the hook execution timing bug.
 
@@ -225,6 +238,7 @@ This would create `.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md` with:
 ```
 
 **Result** (if user accepts):
+
 - File created: `.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md`
 - Contains bug analysis and resolution details
 - Preserves knowledge for future reference
@@ -312,6 +326,7 @@ This would create `.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md` with:
 ### Scalability
 
 If documentation volume grows significantly:
+
 - Consider subdirectory organization by category
 - Add tagging or metadata system
 - Create documentation index/catalog

@@ -184,9 +184,7 @@ class AgentMemoryManager:
 
         # Filter by tags if provided
         if tags:
-            memories = [
-                m for m in memories if any(tag in m.get("tags", []) for tag in tags)
-            ]
+            memories = [m for m in memories if any(tag in m.get("tags", []) for tag in tags)]
 
         logger.info(
             "Agent %s recalled %d memories (category: %s, min_quality: %.2f)",
@@ -495,7 +493,6 @@ class AgentMemoryManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         # Could add cleanup here if needed
-        pass
 
     def __repr__(self) -> str:
         """String representation."""

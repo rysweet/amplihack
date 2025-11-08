@@ -443,6 +443,7 @@ if stats["file_count"] > 0:
 ---
 
 **Architecture designed for**:
+
 - Scale: 10K+ files, 100K+ functions
 - Performance: Sub-second queries
 - Extensibility: Easy to add new node/relationship types
