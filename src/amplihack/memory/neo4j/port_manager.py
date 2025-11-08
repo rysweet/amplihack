@@ -228,12 +228,13 @@ def resolve_port_conflicts(
     http_port: int,
     password: str,
     project_root: Optional[Path] = None,
+    container_name: str = "amplihack-neo4j",
 ) -> Tuple[int, int, list[str]]:
     """Resolve port conflicts and select safe ports.
 
     Strategy:
     1. Check if ports are in use
-    2. If in use, check if it's OUR Neo4j container
+    2. If in use, check if it's OUR Neo4j container (specific name)
     3. If our container: reuse ports
     4. If NOT our container: find different ports and update .env
 
@@ -242,26 +243,27 @@ def resolve_port_conflicts(
         http_port: Desired HTTP port
         password: Neo4j password
         project_root: Project root for .env updates
+        container_name: Specific container name to check for
 
     Returns:
         (final_bolt_port, final_http_port, messages)
     """
     messages = []
 
-    # Check if our container is running and get its actual ports
-    container_ports = get_container_ports()
+    # Check if our container is running and get its actual ports (pass specific container_name)
+    container_ports = get_container_ports(container_name)
     if container_ports:
         actual_bolt, actual_http = container_ports
 
         # If container ports match what we expect, we're good
         if actual_bolt == bolt_port and actual_http == http_port:
-            messages.append(f"✅ Our Neo4j container found on ports {bolt_port}/{http_port}")
+            messages.append(f"✅ Container '{container_name}' found on ports {bolt_port}/{http_port}")
             return bolt_port, http_port, messages
 
         # Container is running but on different ports than .env
         # This happens when .env is out of sync with actual container
         messages.append(
-            f"⚠️  Container running on ports {actual_bolt}/{actual_http}, "
+            f"⚠️  Container '{container_name}' running on ports {actual_bolt}/{actual_http}, "
             f"but .env specifies {bolt_port}/{http_port}"
         )
         messages.append("    Updating .env to match actual container ports...")
