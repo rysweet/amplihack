@@ -45,12 +45,10 @@ def wait_for_neo4j_with_feedback(max_wait: int = 60) -> bool:
         True if ready, False if timeout
     """
     from .connector import Neo4jConnector
-    from .config import get_config
 
     print("\n⏳ Waiting for Neo4j to be ready...")
     print("   (This usually takes 20-30 seconds on first startup)")
 
-    config = get_config()
     start_time = time.time()
     last_dot = 0
 
@@ -63,7 +61,7 @@ def wait_for_neo4j_with_feedback(max_wait: int = 60) -> bool:
             last_dot = elapsed
 
         # Check container logs first (faster than connection attempt)
-        if check_container_logs_for_ready(config.container_name):
+        if check_container_logs_for_ready("amplihack-neo4j"):
             print(" ✅ Container reports ready!")
 
             # Now verify we can actually connect
@@ -153,26 +151,22 @@ def ask_user_continue_without_neo4j() -> bool:
 
 def _troubleshoot_and_retry() -> bool:
     """Provide troubleshooting and offer retry."""
-    from .config import get_config
-
-    config = get_config()
-
     print("\n" + "=" * 70)
     print("🔧 Troubleshooting Neo4j")
     print("=" * 70)
 
     print("\n1. Check Docker logs:")
-    print(f"   docker logs {config.container_name}")
+    print("   docker logs amplihack-neo4j")
 
     print("\n2. Check container status:")
-    print(f"   docker ps -a | grep {config.container_name}")
+    print("   docker ps -a | grep amplihack-neo4j")
 
     print("\n3. Check ports not in use:")
-    print(f"   lsof -i :{config.bolt_port} (bolt)")
-    print(f"   lsof -i :{config.http_port} (http)")
+    print("   lsof -i :7787 (bolt)")
+    print("   lsof -i :7774 (http)")
 
     print("\n4. Try restarting container:")
-    print(f"   docker restart {config.container_name}")
+    print("   docker restart amplihack-neo4j")
 
     while True:
         response = input("\nRetry connection? (y/n): ").strip().lower()
