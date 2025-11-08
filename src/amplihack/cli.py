@@ -40,6 +40,10 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     if getattr(args, "no_reflection", False):
         os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
+    # Handle --auto flag (for Neo4j container selection non-interactive mode)
+    if getattr(args, "auto", False):
+        os.environ["AMPLIHACK_AUTO_MODE"] = "1"
+
     if use_docker:
         print(
             "Docker mode enabled"
@@ -322,11 +326,6 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--use-memory-db",
         metavar="NAME",
         help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
-    )
-    launch_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Non-interactive mode (no prompts). Uses default container name or --use-memory-db value.",
     )
     launch_parser.add_argument(
         "--no-reflection",
