@@ -40,29 +40,43 @@ class Neo4jConnectionTracker:
         """
         self.container_name = container_name
         self.timeout = timeout
-        self.http_url = "http://localhost:7474/db/data/transaction/commit"
 
-        # Get credentials from parameters or environment variables
-        neo4j_username = username or os.getenv("NEO4J_USERNAME")
-        neo4j_password = password or os.getenv("NEO4J_PASSWORD")
+        # Get credentials and port from config system
+        if username and password:
+            # Explicit credentials provided (for testing)
+            neo4j_username = username
+            neo4j_password = password
+            # Use Neo4j 5.x transaction endpoint for testing
+            self.http_url = "http://localhost:7474/db/neo4j/tx/commit"
+        else:
+            # Use config system to get real credentials and port
+            try:
+                from amplihack.memory.neo4j.config import get_config
+                config = get_config()
+                neo4j_username = config.user
+                neo4j_password = config.password
+                # Use configured HTTP port with Neo4j 5.x endpoint
+                self.http_url = f"http://localhost:{config.http_port}/db/neo4j/tx/commit"
+                logger.debug("Using credentials and port from Neo4j config system (port %d)", config.http_port)
+            except Exception as e:
+                logger.warning(f"Could not load Neo4j config: {e}, falling back to env vars")
+                # Fallback to environment variables
+                neo4j_username = username or os.getenv("NEO4J_USERNAME", "neo4j")
+                neo4j_password = password or os.getenv("NEO4J_PASSWORD")
 
-        # For development/testing, allow "amplihack" password only if explicitly provided
-        if not neo4j_username:
-            neo4j_username = "neo4j"  # Standard Neo4j default username
-
-        if not neo4j_password:
-            # Check for development mode
-            if os.getenv("NEO4J_ALLOW_DEFAULT_PASSWORD") == "true":
-                neo4j_password = "amplihack"  # Development only
-                logger.warning(
-                    "Using default password 'amplihack' (NEO4J_ALLOW_DEFAULT_PASSWORD=true). "
-                    "DO NOT use in production!"
-                )
-            else:
-                raise ValueError(
-                    "Neo4j password required. Set NEO4J_PASSWORD environment variable. "
-                    "For development/testing only, set NEO4J_ALLOW_DEFAULT_PASSWORD=true"
-                )
+                if not neo4j_password:
+                    # Last resort: development mode
+                    if os.getenv("NEO4J_ALLOW_DEFAULT_PASSWORD") == "true":
+                        neo4j_password = "amplihack"
+                        logger.warning(
+                            "Using default password 'amplihack' (NEO4J_ALLOW_DEFAULT_PASSWORD=true). "
+                            "DO NOT use in production!"
+                        )
+                    else:
+                        raise ValueError(
+                            "Neo4j password required. Set NEO4J_PASSWORD environment variable. "
+                            "For development/testing only, set NEO4J_ALLOW_DEFAULT_PASSWORD=true"
+                        )
 
         self.auth = (neo4j_username, neo4j_password)
 

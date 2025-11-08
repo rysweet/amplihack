@@ -42,7 +42,7 @@ class TestNeo4jConnectionTracker:
 
             assert count == 2
             mock_post.assert_called_once_with(
-                "http://localhost:7474/db/data/transaction/commit",
+                "http://localhost:7474/db/neo4j/tx/commit",
                 json={
                     "statements": [
                         {
@@ -190,7 +190,7 @@ class TestNeo4jConnectionTracker:
 
         assert tracker.container_name == "neo4j-amplihack"
         assert tracker.timeout == 4.0
-        assert tracker.http_url == "http://localhost:7474/db/data/transaction/commit"
+        assert tracker.http_url == "http://localhost:7474/db/neo4j/tx/commit"
         assert tracker.auth == ("neo4j", "amplihack")
 
     def test_initialization_with_custom_values(self):
