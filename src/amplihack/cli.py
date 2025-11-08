@@ -480,6 +480,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Copy .claude contents to target directory
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
+        # Register cleanup handler for temp directory
+        if copy_strategy.used_temp and copy_strategy.target_dir:
+            import atexit
+            import shutil
+
+            def cleanup_temp_dir():
+                """Clean up temporary directory created for safety."""
+                try:
+                    # Remove the temp directory (parent of .claude)
+                    temp_parent = copy_strategy.target_dir.parent
+                    if temp_parent.exists() and temp_parent.name.startswith("amplihack-"):
+                        shutil.rmtree(temp_parent, ignore_errors=True)
+                except Exception:
+                    # Silently ignore cleanup errors - not critical
+                    pass
+
+            atexit.register(cleanup_temp_dir)
+
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
         # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
         if copied:
