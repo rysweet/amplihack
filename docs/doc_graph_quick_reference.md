@@ -142,9 +142,9 @@ print(f"Code refs: {stats['code_ref_count']}")
 The system detects:
 
 ```markdown
-@src/file.py              → src/file.py
-file.py:42                → file.py, line 42
-`config.py`               → config.py
+@src/file.py → src/file.py
+file.py:42 → file.py, line 42
+`config.py` → config.py
 ```
 
 ---
@@ -186,6 +186,7 @@ python scripts/test_doc_parsing_standalone.py
 ```
 
 **Test Results** (5 real files):
+
 - 187 sections extracted
 - 362 concepts identified
 - 5 code references found
@@ -196,14 +197,17 @@ python scripts/test_doc_parsing_standalone.py
 ## Files
 
 **Implementation**:
+
 - `src/amplihack/memory/neo4j/doc_graph.py`
 
 **CLI Tools**:
+
 - `scripts/import_docs_to_neo4j.py`
 - `scripts/test_doc_graph.py`
 - `scripts/test_doc_parsing_standalone.py`
 
 **Documentation**:
+
 - `docs/documentation_knowledge_graph.md` (full guide)
 - `docs/doc_graph_quick_reference.md` (this file)
 
@@ -276,17 +280,20 @@ doc_integration.link_docs_to_memories()
 ## Troubleshooting
 
 **Neo4j connection fails**:
+
 ```bash
 export NEO4J_PASSWORD='your_password'
 docker-compose -f docker/docker-compose.neo4j.yml up -d
 ```
 
 **No concepts extracted**:
+
 - Check markdown has headings
 - Check for bold text (**important**)
 - Check for code blocks with language
 
 **No code links created**:
+
 - Ensure code graph imported first (blarify)
 - Check code references in docs (@file.py)
 - Verify CodeFile nodes exist in Neo4j

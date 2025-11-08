@@ -43,11 +43,11 @@ Based on research findings, we hypothesize:
 
 We will test **three configurations**:
 
-| Configuration | Description | Purpose |
-|---------------|-------------|---------|
-| **Control** | No memory system (current baseline) | Establish if memory provides value |
-| **SQLite** | SQLite-based memory (Phase 1 implementation) | Measure basic memory effectiveness |
-| **Neo4j** | Neo4j-based memory (Phase 3 implementation) | Measure graph capabilities value |
+| Configuration | Description                                  | Purpose                            |
+| ------------- | -------------------------------------------- | ---------------------------------- |
+| **Control**   | No memory system (current baseline)          | Establish if memory provides value |
+| **SQLite**    | SQLite-based memory (Phase 1 implementation) | Measure basic memory effectiveness |
+| **Neo4j**     | Neo4j-based memory (Phase 3 implementation)  | Measure graph capabilities value   |
 
 ### 1.2 Test Structure
 
@@ -526,6 +526,7 @@ sample_size = tt_ind_solve_power(
 **Decision**: **5 iterations per scenario = 50 total runs per configuration**
 
 This provides:
+
 - 75% power to detect 20% improvement
 - 95% confidence intervals
 - Reasonable time investment (~8-10 hours per configuration)
@@ -604,14 +605,15 @@ def analyze_all_metrics(baseline_data, treatment_data, metrics):
 
 Following Cohen's guidelines:
 
-| Effect Size (|d|) | Interpretation | Example |
-|-------------------|----------------|---------|
-| < 0.2 | Negligible | Not practically significant |
-| 0.2 - 0.5 | Small | Noticeable but minor improvement |
-| 0.5 - 0.8 | Medium | Substantial improvement |
-| > 0.8 | Large | Major improvement |
+| Effect Size ( | d          | )                                | Interpretation | Example |
+| ------------- | ---------- | -------------------------------- | -------------- | ------- |
+| < 0.2         | Negligible | Not practically significant      |
+| 0.2 - 0.5     | Small      | Noticeable but minor improvement |
+| 0.5 - 0.8     | Medium     | Substantial improvement          |
+| > 0.8         | Large      | Major improvement                |
 
 **Decision Criteria**:
+
 - **Proceed with SQLite**: Medium effect (d > 0.5) AND p < 0.05
 - **Proceed with Neo4j**: Medium effect (d > 0.5) AND p < 0.05 AND practical benefit > complexity cost
 
@@ -733,6 +735,7 @@ docs/memory/BASELINE_RESULTS.md
 ```
 
 Include:
+
 - Raw data (JSON format)
 - Statistical summaries
 - Scenario-specific performance
@@ -992,11 +995,11 @@ metrics:
 
 ### Performance Summary
 
-| Metric | Control | SQLite | Neo4j | SQLite Δ | Neo4j Δ |
-|--------|---------|--------|-------|----------|---------|
-| Avg Execution Time | 180s | 120s | 115s | **-33%** | **-36%** |
-| Avg Error Count | 3.2 | 1.5 | 1.2 | **-53%** | **-63%** |
-| Avg Quality Score | 7.5 | 8.3 | 8.5 | **+11%** | **+13%** |
+| Metric             | Control | SQLite | Neo4j | SQLite Δ | Neo4j Δ  |
+| ------------------ | ------- | ------ | ----- | -------- | -------- |
+| Avg Execution Time | 180s    | 120s   | 115s  | **-33%** | **-36%** |
+| Avg Error Count    | 3.2     | 1.5    | 1.2   | **-53%** | **-63%** |
+| Avg Quality Score  | 7.5     | 8.3    | 8.5   | **+11%** | **+13%** |
 
 ## Detailed Analysis
 
@@ -1007,6 +1010,7 @@ metrics:
 **Neo4j**: 115.3s (±17.2s)
 
 **Statistical Test (Control vs SQLite)**:
+
 - t-statistic: -12.34
 - p-value: < 0.001 ✓ **Highly Significant**
 - Effect size (Cohen's d): 0.82 (Large)
@@ -1019,6 +1023,7 @@ metrics:
 ## Scenario-Specific Results
 
 ### Scenario 1: Repeat Authentication
+
 - Control: 210s ± 30s
 - SQLite: 95s ± 12s (**-55%**)
 - Neo4j: 90s ± 11s (**-57%**)
@@ -1029,10 +1034,12 @@ metrics:
 ## Cost-Benefit Analysis
 
 ### Development Cost
+
 - SQLite implementation: 3 weeks (1 FTE)
 - Neo4j migration: +2 weeks (1 FTE)
 
 ### Expected Benefits
+
 - Time saved per developer: 2-4 hours/week
 - Error reduction: 50-70%
 - Break-even: 4-6 weeks
@@ -1040,11 +1047,13 @@ metrics:
 ### Recommendation
 
 **PROCEED with SQLite implementation**
+
 - Provides substantial benefit (33% time reduction)
 - Statistically significant (p < 0.001)
 - Justifies development investment
 
 **DEFER Neo4j migration**
+
 - Incremental benefit over SQLite is small (3%)
 - Current scale doesn't justify complexity
 - Revisit when >100k memory entries
@@ -1067,30 +1076,33 @@ Generate plots for report:
 
 ### 8.1 Go/No-Go Decision Matrix
 
-| Criteria | Threshold | Weight |
-|----------|-----------|--------|
-| Statistical Significance | p < 0.05 | Required |
-| Effect Size | Cohen's d > 0.5 | Required |
-| Practical Improvement | > 20% time reduction | High |
-| Error Reduction | > 30% fewer errors | High |
-| Quality Improvement | > 10% quality increase | Medium |
-| Cost-Benefit Ratio | ROI > 0 within 6 months | High |
+| Criteria                 | Threshold               | Weight   |
+| ------------------------ | ----------------------- | -------- |
+| Statistical Significance | p < 0.05                | Required |
+| Effect Size              | Cohen's d > 0.5         | Required |
+| Practical Improvement    | > 20% time reduction    | High     |
+| Error Reduction          | > 30% fewer errors      | High     |
+| Quality Improvement      | > 10% quality increase  | Medium   |
+| Cost-Benefit Ratio       | ROI > 0 within 6 months | High     |
 
 ### 8.2 Decision Rules
 
 **Proceed with SQLite if**:
+
 - Statistical significance (p < 0.05) ✓
 - Medium-to-large effect size (d > 0.5) ✓
 - Practical benefit > 20% ✓
 - No significant negative side effects ✓
 
 **Proceed with Neo4j if**:
+
 - Statistical significance vs SQLite (p < 0.05) ✓
 - Meaningful improvement > 15% over SQLite ✓
 - Complexity justified by benefit ✓
 - Current scale warrants graph database (>100k nodes) ✓
 
 **Stop/Adjust if**:
+
 - No statistical significance (p > 0.05)
 - Negligible effect size (d < 0.2)
 - Negative impact on other metrics
@@ -1135,31 +1147,37 @@ Generate plots for report:
 ## 10. Implementation Timeline
 
 ### Week 1: Test Harness Development
+
 - Day 1-2: Design test harness architecture
 - Day 3-5: Implement core harness functionality
 - Weekend: Review and refinement
 
 ### Week 2: Scenario Implementation
+
 - Day 1-2: Implement 5 scenarios
 - Day 3-4: Implement remaining 5 scenarios
 - Day 5: Validate scenarios, dry runs
 
 ### Week 3: Baseline Testing
+
 - Day 1-3: Run baseline tests (Control configuration)
 - Day 4: Analyze baseline results
 - Day 5: Document baseline, prepare for Phase 2
 
 ### Week 4: SQLite Testing
+
 - Day 1-3: Run SQLite memory tests
 - Day 4: Statistical analysis, comparison to baseline
 - Day 5: Phase 2 decision gate meeting
 
 ### Week 5: Neo4j Testing (if Phase 2 successful)
+
 - Day 1-3: Run Neo4j memory tests
 - Day 4: Statistical analysis, comparison to SQLite
 - Day 5: Generate final report
 
 ### Week 6: Analysis and Reporting
+
 - Day 1-2: Comprehensive analysis
 - Day 3-4: Create visualizations, write report
 - Day 5: Present findings, make final decision
@@ -1218,6 +1236,7 @@ This A/B test design provides a **rigorous, fair, and scientifically sound** met
 5. **Phased approach**: Decision gates prevent over-investment
 
 **Next Steps**:
+
 1. Review and approve design
 2. Implement test harness (Week 1-2)
 3. Run baseline tests (Week 3)

@@ -7,16 +7,15 @@ Handles fetching, caching, and linking external documentation sources
 import hashlib
 import json
 import logging
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional
 
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -52,6 +51,7 @@ class ExternalDoc:
         fetched_at: When document was fetched
         ttl_hours: Cache TTL in hours (0 = no expiry)
     """
+
     url: str
     title: str
     content: str
@@ -76,6 +76,7 @@ class APIReference:
         source: Knowledge source
         version: Version identifier
     """
+
     name: str
     signature: str
     doc_url: str
@@ -273,7 +274,8 @@ class ExternalKnowledgeManager:
         """
         # Simple regex-based extraction
         import re
-        match = re.search(r'<title>(.*?)</title>', html_content, re.IGNORECASE)
+
+        match = re.search(r"<title>(.*?)</title>", html_content, re.IGNORECASE)
         if match:
             return match.group(1).strip()
         return None
@@ -315,7 +317,7 @@ class ExternalKnowledgeManager:
             with open(cache_path, "w") as f:
                 json.dump(cache_data, f, indent=2)
             logger.debug("Cached doc: %s", cache_path)
-        except IOError as e:
+        except OSError as e:
             logger.warning("Failed to cache doc: %s", e)
 
     def _get_cached_doc(self, url: str) -> Optional[ExternalDoc]:
@@ -333,7 +335,7 @@ class ExternalKnowledgeManager:
             return None
 
         try:
-            with open(cache_path, "r") as f:
+            with open(cache_path) as f:
                 cache_data = json.load(f)
 
             fetched_at = datetime.fromisoformat(cache_data["fetched_at"])
@@ -360,7 +362,7 @@ class ExternalKnowledgeManager:
 
             return doc
 
-        except (IOError, json.JSONDecodeError, KeyError) as e:
+        except (OSError, json.JSONDecodeError, KeyError) as e:
             logger.warning("Failed to read cached doc: %s", e)
             return None
 
@@ -694,10 +696,7 @@ class ExternalKnowledgeManager:
 
         try:
             results = self.conn.execute_query(query, params)
-            return [
-                {**r["doc"], "relationship_type": r["relationship_type"]}
-                for r in results
-            ]
+            return [{**r["doc"], "relationship_type": r["relationship_type"]} for r in results]
         except Exception as e:
             logger.error("Failed to get code documentation: %s", e)
             return []
@@ -724,10 +723,7 @@ class ExternalKnowledgeManager:
 
         try:
             results = self.conn.execute_query(query, params)
-            return [
-                {**r["doc"], "relationship_type": r["relationship_type"]}
-                for r in results
-            ]
+            return [{**r["doc"], "relationship_type": r["relationship_type"]} for r in results]
         except Exception as e:
             logger.error("Failed to get function documentation: %s", e)
             return []
@@ -775,12 +771,16 @@ class ExternalKnowledgeManager:
 
         try:
             result = self.conn.execute_query(query)
-            return result[0] if result else {
-                "total_docs": 0,
-                "sources": 0,
-                "avg_trust_score": 0.0,
-                "total_links": 0,
-            }
+            return (
+                result[0]
+                if result
+                else {
+                    "total_docs": 0,
+                    "sources": 0,
+                    "avg_trust_score": 0.0,
+                    "total_links": 0,
+                }
+            )
         except Exception as e:
             logger.error("Failed to get knowledge stats: %s", e)
             return {

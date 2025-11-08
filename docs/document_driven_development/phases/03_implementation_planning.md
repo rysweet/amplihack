@@ -40,6 +40,7 @@ Document exactly what needs to change:
 # Implementation Plan - [Feature Name]
 
 ## Current State
+
 - ✅ What exists and works
 - ❌ What's missing
 - ⚠️ What needs modification
@@ -47,6 +48,7 @@ Document exactly what needs to change:
 ## Changes Required
 
 ### Core Classes
+
 **File**: path/to/file.py
 **Purpose**: What it does
 **Methods**: List of methods
@@ -57,26 +59,31 @@ Document exactly what needs to change:
 [... detailed breakdown ...]
 
 ## Dependencies Between Changes
+
 1. X depends on Y (build Y first)
 2. Z requires X and Y (build last)
 
 ## Proper Sequencing
+
 Phase 1: Core classes (foundation)
 Phase 2: Commands (builds on core)
 Phase 3: Tests (validates)
 
 ## Complexity Check
+
 - New abstractions: 2
 - Justification: Why needed
 - Alternative: What else considered
 - Why chosen: Reasoning
 
 ## Estimated Effort
+
 - Component A: 2-3 hours
 - Component B: 1-2 hours
-Total: 8-11 hours, +850 lines
+  Total: 8-11 hours, +850 lines
 
 ## Philosophy Compliance
+
 - ✅ Ruthless simplicity
 - ✅ Bricks and studs
 - ✅ Right-sized modules
@@ -85,6 +92,7 @@ Total: 8-11 hours, +850 lines
 ### Step 3: Right-Sizing Check
 
 Each chunk should:
+
 - ✅ Fit in AI context window (~4000-8000 lines)
 - ✅ Have clear boundaries
 - ✅ Be independently testable
@@ -97,6 +105,7 @@ Each chunk should:
 ## Output of Phase 3
 
 When complete:
+
 - ✅ Detailed implementation plan documented
 - ✅ Work properly right-sized
 - ✅ Dependencies identified

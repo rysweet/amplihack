@@ -11,6 +11,7 @@ from typing import Any, Optional
 # Try to import SDK, gracefully handle if unavailable
 try:
     from claude_agent_sdk import ClaudeAgentOptions
+
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False

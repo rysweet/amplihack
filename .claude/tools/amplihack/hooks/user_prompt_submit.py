@@ -235,7 +235,9 @@ class UserPromptSubmitHook(HookProcessor):
                     self.log(notice)
 
                 # Save metrics
-                self.save_metric("agent_memory_injected", memory_metadata.get("memories_injected", 0))
+                self.save_metric(
+                    "agent_memory_injected", memory_metadata.get("memories_injected", 0)
+                )
                 self.save_metric("agents_detected", len(agent_types))
 
         except Exception as e:

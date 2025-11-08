@@ -8,7 +8,6 @@ Handles Docker container operations with idempotent design:
 """
 
 import logging
-import os
 import subprocess
 import time
 from enum import Enum
@@ -97,9 +96,7 @@ class Neo4jContainerManager:
                 "--timeout",
                 str(timeout),
             ]
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout + 10
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 10)
 
             if result.returncode == 0:
                 logger.info("Container stopped successfully")
@@ -146,8 +143,7 @@ class Neo4jContainerManager:
                 # Container running - check if healthy
                 if self.is_healthy():
                     return ContainerStatus.RUNNING
-                else:
-                    return ContainerStatus.UNHEALTHY
+                return ContainerStatus.UNHEALTHY
 
             return ContainerStatus.STOPPED
 
@@ -247,18 +243,31 @@ class Neo4jContainerManager:
         try:
             # Use direct docker run (no compose file needed)
             cmd = [
-                "docker", "run", "-d",
-                "--name", self.config.container_name,
-                "--restart", "unless-stopped",
-                "-p", f"127.0.0.1:{self.config.http_port}:7474",
-                "-p", f"127.0.0.1:{self.config.bolt_port}:7687",
-                "-e", f"NEO4J_AUTH=neo4j/{self.config.password}",
-                "-e", 'NEO4J_PLUGINS=["apoc"]',
-                "-e", "NEO4J_dbms_security_procedures_unrestricted=apoc.*",
-                "-e", "NEO4J_dbms_security_procedures_allowlist=apoc.*",
-                "-e", f"NEO4J_dbms_memory_heap_max__size={self.config.heap_size}",
-                "-e", f"NEO4J_dbms_memory_pagecache_size={self.config.page_cache_size}",
-                "-v", f"{self.config.container_name}-data:/data",
+                "docker",
+                "run",
+                "-d",
+                "--name",
+                self.config.container_name,
+                "--restart",
+                "unless-stopped",
+                "-p",
+                f"127.0.0.1:{self.config.http_port}:7474",
+                "-p",
+                f"127.0.0.1:{self.config.bolt_port}:7687",
+                "-e",
+                f"NEO4J_AUTH=neo4j/{self.config.password}",
+                "-e",
+                'NEO4J_PLUGINS=["apoc"]',
+                "-e",
+                "NEO4J_dbms_security_procedures_unrestricted=apoc.*",
+                "-e",
+                "NEO4J_dbms_security_procedures_allowlist=apoc.*",
+                "-e",
+                f"NEO4J_dbms_memory_heap_max__size={self.config.heap_size}",
+                "-e",
+                f"NEO4J_dbms_memory_pagecache_size={self.config.page_cache_size}",
+                "-v",
+                f"{self.config.container_name}-data:/data",
                 self.config.image,
             ]
 
@@ -326,24 +335,19 @@ def check_neo4j_prerequisites() -> dict:
             'issues': List[str],  # Human-readable fix instructions
         }
     """
-    import os
 
     issues = []
 
     # Check Docker installed
     docker_installed = False
     try:
-        result = subprocess.run(
-            ["docker", "--version"], capture_output=True, timeout=5
-        )
+        result = subprocess.run(["docker", "--version"], capture_output=True, timeout=5)
         docker_installed = result.returncode == 0
     except Exception as e:
         logger.debug("Docker version check failed: %s", e)
 
     if not docker_installed:
-        issues.append(
-            "Docker not installed. Install from: https://docs.docker.com/get-docker/"
-        )
+        issues.append("Docker not installed. Install from: https://docs.docker.com/get-docker/")
 
     # Check Docker daemon running
     docker_running = False
@@ -360,8 +364,7 @@ def check_neo4j_prerequisites() -> dict:
                 )
             elif not docker_running:
                 issues.append(
-                    "Docker daemon not running. Start with:\n"
-                    "  sudo systemctl start docker"
+                    "Docker daemon not running. Start with:\n  sudo systemctl start docker"
                 )
         except Exception as e:
             logger.debug("Docker daemon check failed: %s", e)
@@ -388,9 +391,7 @@ def check_neo4j_prerequisites() -> dict:
         except Exception as e:
             logger.debug("Compose file check failed: %s", e)
 
-    all_passed = (
-        docker_installed and docker_running and compose_available and compose_file_exists
-    )
+    all_passed = docker_installed and docker_running and compose_available and compose_file_exists
 
     return {
         "docker_installed": docker_installed,

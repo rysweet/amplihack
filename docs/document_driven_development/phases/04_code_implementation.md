@@ -34,3 +34,4 @@ cat > /tmp/code_to_implement.txt << 'EOF'
 [ ] amplifier-core/amplifier_core/config/module_manager.py
 [ ] amplifier-app-cli/amplifier_app_cli/commands/init.py
 [ ] amplifier-app-cli/amplifier_app_cli/commands/provider.py
+```

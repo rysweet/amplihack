@@ -25,7 +25,6 @@ Usage:
 """
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -35,7 +34,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from amplihack.memory.neo4j.connector import Neo4jConnector
 from amplihack.memory.neo4j.code_graph import BlarifyIntegration, run_blarify
-from amplihack.memory.neo4j.schema import SchemaManager
 
 logging.basicConfig(
     level=logging.INFO,

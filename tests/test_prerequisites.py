@@ -10,7 +10,10 @@ import subprocess
 import sys
 from unittest.mock import Mock, patch
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    raise ImportError("pytest is required to run tests. Install with: pip install pytest")
 
 # Module under test (will fail until implemented)
 from amplihack.utils.prerequisites import (

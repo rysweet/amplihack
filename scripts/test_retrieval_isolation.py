@@ -11,8 +11,7 @@ Tests:
 """
 
 import sys
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # Add src to path
@@ -24,25 +23,19 @@ from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
 from amplihack.memory.neo4j.schema import SchemaManager
 from amplihack.memory.neo4j.retrieval import (
     RetrievalContext,
-    IsolationLevel,
     TemporalRetrieval,
     SimilarityRetrieval,
     GraphTraversal,
     HybridRetrieval,
-    retrieve_recent_memories,
-    retrieve_similar_memories,
 )
 from amplihack.memory.neo4j.consolidation import (
     MemoryConsolidator,
-    QualityMetrics,
-    run_consolidation,
 )
 from amplihack.memory.neo4j.monitoring import (
     MetricsCollector,
     MonitoredConnector,
     HealthMonitor,
     OperationType,
-    OperationStatus,
 )
 
 
@@ -67,13 +60,13 @@ class TestResults:
     def summary(self):
         """Print summary."""
         total = self.passed + self.failed
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Test Results: {self.passed}/{total} passed")
         if self.errors:
-            print(f"\nFailed Tests:")
+            print("\nFailed Tests:")
             for name, error in self.errors:
                 print(f"  - {name}: {error}")
-        print(f"{'='*70}\n")
+        print(f"{'=' * 70}\n")
 
 
 def setup_test_data(conn: Neo4jConnector) -> bool:
@@ -584,9 +577,9 @@ def test_health_monitoring(conn: Neo4jConnector, results: TestResults):
 
 def main():
     """Run all tests."""
-    print("="*70)
+    print("=" * 70)
     print("Neo4j Memory System - Phase 5-6 Comprehensive Tests")
-    print("="*70)
+    print("=" * 70)
 
     results = TestResults()
 
@@ -636,6 +629,7 @@ def main():
     except Exception as e:
         print(f"\n✗ Test suite failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

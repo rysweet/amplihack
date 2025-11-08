@@ -17,12 +17,14 @@
 ### Overall Assessment: **NEEDS MAJOR WORK**
 
 **User Requirement Compliance**: ⚠️ PARTIAL (2/4 met)
+
 - ✅ Neo4j container spins up on session start
 - ✅ Neo4j graph database used
 - ❌ Dependency management incomplete (agent is advisory only, Docker Compose issue not resolved)
 - ❌ Agent integration missing (agents don't use the memory system)
 
 **Philosophy Compliance**: 6/10
+
 - ✅ Ruthless simplicity: Implementation is direct and clean
 - ⚠️ Zero-BS: Some legitimate exception placeholders (acceptable), but ENTIRE SYSTEM IS UNUSED
 - ⚠️ Modular design: Good module boundaries but no integration layer
@@ -40,12 +42,14 @@
 
 **Problem**:
 The memory system is a complete implementation with no consumers. Searched entire codebase:
+
 - ❌ No agent files import AgentMemoryManager
 - ❌ No agent files call remember() or recall()
 - ❌ No hooks in launcher to pass memory manager to agents
 - ❌ No integration with Claude Code SDK agent invocations
 
 **Evidence**:
+
 ```bash
 $ grep -r "AgentMemoryManager\|remember\|recall" .claude/agents/
 # NO RESULTS
@@ -55,6 +59,7 @@ $ find . -name "*.py" -exec grep -l "remember\|recall" {} \; | grep -v test | gr
 ```
 
 **What's Missing**:
+
 1. **Agent Hook**: How do architect/builder/reviewer agents get a memory manager instance?
 2. **Memory Capture**: Where do agents store design decisions, patterns, errors?
 3. **Memory Retrieval**: When do agents query for relevant memories?
@@ -101,7 +106,8 @@ class AgentMemoryIntegration:
 ```
 
 **Agent File Updates Needed**:
-```markdown
+
+````markdown
 # .claude/agents/amplihack/core/architect.md
 
 ## Memory Integration
@@ -124,7 +130,9 @@ for pattern in patterns:
     # Consider proven patterns from past work
     ...
 ```
-```
+````
+
+````
 
 **Why This is Critical**:
 Without integration, this is 57k lines of unused infrastructure. The value proposition was "agents learn from past decisions" - but no agent can access the system.
@@ -165,19 +173,22 @@ if missing_docker_compose:
     response = ask_user("Docker Compose is missing. Install it now? (y/n)")
     if response.lower() == 'y':
         install_docker_compose()  # Platform-specific installation
-```
+````
 
 Option 2: Clear documentation of manual steps:
-```markdown
+
+````markdown
 # src/amplihack/memory/neo4j/README.md
 
 ## Prerequisites
 
 **Required**:
+
 - Docker daemon running
 - Docker Compose plugin
 
 **Installation**:
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get update
@@ -189,6 +200,7 @@ brew install docker-compose
 # Verify
 docker compose version
 ```
+````
 
 **What's Missing**:
 Current docs don't mention Docker Compose requirement prominently enough.
@@ -205,12 +217,14 @@ Current docs don't mention Docker Compose requirement prominently enough.
 All tests are infrastructure tests (container, CRUD, queries). Zero tests verify agents can use the system.
 
 **Test Gap Analysis**:
+
 - ✅ Unit tests: Container lifecycle, memory CRUD, schema init
 - ✅ Integration tests: Neo4j operations, agent_memory.py methods
 - ✅ E2E tests: Multi-agent scenarios (but programmatic, not real agents)
 - ❌ Agent integration tests: Do architect/builder/reviewer agents work with memory?
 
 **Missing Tests**:
+
 ```python
 # tests/integration/test_agent_memory_integration.py
 def test_architect_agent_stores_design_decision():
@@ -252,11 +266,13 @@ Add agent integration tests that actually invoke agents and verify memory usage.
 Claims "<500ms session start impact" but no benchmarks provided. Background thread could still cause contention.
 
 **Questions**:
+
 1. What if container is stopped (not removed)? Startup time?
 2. What's the P99 session start time with Neo4j enabled vs disabled?
 3. Does health check block anything?
 
 **Code Evidence**:
+
 ```python
 def _start_neo4j_background(self):
     """Start Neo4j in background thread (non-blocking)."""
@@ -269,6 +285,7 @@ Background thread doesn't mean no impact - thread creation, Docker calls, all co
 
 **Recommendation**:
 Add benchmarking:
+
 ```python
 # tests/performance/test_session_start_timing.py
 def test_session_start_time_with_neo4j():
@@ -301,24 +318,29 @@ Many failure modes print warnings but continue silently. Users won't know memory
 **Examples**:
 
 1. **Background Neo4j startup**:
+
 ```python
 # src/amplihack/launcher/core.py:586
 except Exception as e:
     print(f"[WARN] Neo4j initialization error: {e}")
     print("[INFO] Continuing with existing memory system")
 ```
+
 What existing memory system? There isn't one. This is misleading.
 
 2. **Agent memory fallback**:
+
 ```python
 # src/amplihack/agents/memory_integration.py (proposed)
 except Exception:
     return None
 ```
+
 Swallowing all exceptions is dangerous. What if it's a programming error?
 
 **Recommendation**:
 Add structured error reporting:
+
 ```python
 from enum import Enum
 
@@ -343,6 +365,7 @@ class MemorySystemHealth:
 ```
 
 Then expose to users:
+
 ```bash
 $ amplihack --memory-status
 Memory System Status: UNAVAILABLE
@@ -360,11 +383,13 @@ Fix: Start Docker with: sudo systemctl start docker
 
 **Problem**:
 PR claims "no migration needed" because it runs alongside SQLite. But:
+
 1. Where is the SQLite-based memory system? (Can't find it in codebase)
 2. How do existing memories migrate to Neo4j?
 3. What's the timeline for deprecating old system?
 
 **Evidence**:
+
 ```
 $ grep -r "SQLite\|sqlite" src/amplihack/memory/
 # No results
@@ -372,6 +397,7 @@ $ grep -r "SQLite\|sqlite" src/amplihack/memory/
 
 **Recommendation**:
 Either:
+
 1. Clarify there IS no existing memory system (this is the first one), OR
 2. Provide migration script from whatever the old system was
 
@@ -389,6 +415,7 @@ Either:
 Code tries `docker-compose` (v1) then falls back to `docker compose` (v2), then tries direct docker. This is good resilience but logs are confusing.
 
 **Example**:
+
 ```python
 # lifecycle.py:180
 # Try docker-compose first
@@ -402,6 +429,7 @@ User sees multiple failed attempts in logs even though it eventually works.
 
 **Recommendation**:
 Detect once, cache decision:
+
 ```python
 class DockerComposeDetector:
     _detected: Optional[str] = None
@@ -435,6 +463,7 @@ class DockerComposeDetector:
 Circuit breaker has half-open recovery logic but no tests verify it works.
 
 **Code**:
+
 ```python
 if self.state == CircuitState.HALF_OPEN:
     try:
@@ -445,6 +474,7 @@ if self.state == CircuitState.HALF_OPEN:
 ```
 
 **Missing Test**:
+
 ```python
 def test_circuit_breaker_half_open_recovery():
     cb = CircuitBreaker(failure_threshold=2, success_threshold=2)
@@ -480,6 +510,7 @@ def test_circuit_breaker_half_open_recovery():
 System collects metrics (OperationMetric, SystemHealth) but no way to view them except programmatically.
 
 **What's There**:
+
 ```python
 from amplihack.memory.neo4j.monitoring import get_global_metrics
 metrics = get_global_metrics()
@@ -488,6 +519,7 @@ metrics = get_global_metrics()
 
 **Recommendation**:
 Add simple CLI dashboard:
+
 ```bash
 $ amplihack memory stats
 Neo4j Memory System Statistics
@@ -523,6 +555,7 @@ Top Agent Types:
 
 **Problem**:
 Lots of INFO logging that clutters output:
+
 ```python
 logger.info("Agent %s stored memory %s", ...)
 logger.info("Agent %s recalled %d memories", ...)
@@ -531,6 +564,7 @@ logger.info("Agent %s recalled %d memories", ...)
 For production use, these should be DEBUG level.
 
 **Recommendation**:
+
 ```python
 logger.debug("Agent %s stored memory %s", ...)  # Not INFO
 logger.info("Memory system initialized")  # High-level events only
@@ -548,12 +582,14 @@ logger.info("Memory system initialized")  # High-level events only
 Methods return `Dict[str, Any]` for structured data. Could use TypedDict for better typing.
 
 **Example**:
+
 ```python
 def recall(...) -> List[Dict[str, Any]]:
     # What keys are in this dict? What types?
 ```
 
 **Better**:
+
 ```python
 from typing import TypedDict
 
@@ -593,11 +629,13 @@ This is programmatic usage, not actual agent integration. Docs should clarify.
 ### Ruthless Simplicity: 8/10
 
 **Strengths**:
+
 - Direct implementations, no over-abstraction
 - Clear module boundaries
 - Straightforward Cypher queries
 
 **Weaknesses**:
+
 - Could simplify Docker Compose detection
 - Circuit breaker adds complexity (justified for resilience)
 
@@ -614,11 +652,13 @@ Implement Phase 1-2 (infrastructure) AND minimal Phase 3 agent integration in sa
 ### Modular Design: 9/10
 
 **Strengths**:
+
 - Excellent brick design: `connector.py`, `lifecycle.py`, `agent_memory.py` are self-contained
 - Clear public APIs in `__init__.py`
 - Good separation of concerns
 
 **Weakness**:
+
 - Missing the integration brick that connects agents to memory
 
 ### User Requirements: 5/10
@@ -626,18 +666,23 @@ Implement Phase 1-2 (infrastructure) AND minimal Phase 3 agent integration in sa
 **Analysis**:
 
 User Requirement 1: "Neo4j container spins up on session start"
+
 - ✅ Met: Container starts in background
 
 User Requirement 2: "Dependencies managed with goal-seeking agent"
+
 - ⚠️ Partial: Agent checks but doesn't install
 
 User Requirement 3: "Neo4j graph database used"
+
 - ✅ Met: Uses Neo4j, not SQLite
 
 User Requirement 4: "All code works"
+
 - ❌ Failed: Code works but is unused
 
 Implicit Requirement: "Agents use the memory system"
+
 - ❌ Failed: No integration
 
 ---
@@ -647,11 +692,13 @@ Implicit Requirement: "Agents use the memory system"
 ### Test Coverage: 7/10
 
 **Strengths**:
+
 - Comprehensive unit tests (60+ tests claimed)
 - Integration tests with real Neo4j
 - E2E scenarios covering all phases
 
 **Weaknesses**:
+
 - No agent integration tests
 - No performance benchmarks
 - Circuit breaker recovery untested
@@ -660,11 +707,13 @@ Implicit Requirement: "Agents use the memory system"
 ### Test Quality: 8/10
 
 **Strengths**:
+
 - Tests use real Neo4j (not mocked)
 - Good test isolation
 - Clear test names and documentation
 
 **Weaknesses**:
+
 - Tests are all programmatic, not realistic usage
 - No tests from agent perspective
 
@@ -673,6 +722,7 @@ Implicit Requirement: "Agents use the memory system"
 ## Security Assessment: 9/10
 
 **Strengths**:
+
 - ✅ Random password generation (190-bit entropy)
 - ✅ Secure storage (0o600 permissions)
 - ✅ Localhost-only binding (127.0.0.1)
@@ -689,6 +739,7 @@ Password file location `~/.amplihack/.neo4j_password` should be documented promi
 **Cannot Assess**: No benchmarks provided
 
 **Needed**:
+
 1. Session start time (cold start, warm start)
 2. Query latency (P50, P95, P99)
 3. Memory overhead (container + driver)
@@ -769,17 +820,17 @@ This is well-built infrastructure with no users. The philosophy says "trust in e
 
 ## Review Score by Category
 
-| Category | Score | Status |
-|----------|-------|--------|
-| User Requirements | 5/10 | ⚠️ Partial |
-| Philosophy Compliance | 6/10 | ⚠️ Needs Work |
-| Code Quality | 9/10 | ✅ Excellent |
-| Architecture | 9/10 | ✅ Excellent |
-| Security | 9/10 | ✅ Excellent |
-| Testing | 7/10 | ⚠️ Good but incomplete |
-| Documentation | 8/10 | ✅ Very Good |
-| Performance | ?/10 | ❓ Unknown |
-| Integration | 0/10 | ❌ Critical Gap |
+| Category              | Score | Status                 |
+| --------------------- | ----- | ---------------------- |
+| User Requirements     | 5/10  | ⚠️ Partial             |
+| Philosophy Compliance | 6/10  | ⚠️ Needs Work          |
+| Code Quality          | 9/10  | ✅ Excellent           |
+| Architecture          | 9/10  | ✅ Excellent           |
+| Security              | 9/10  | ✅ Excellent           |
+| Testing               | 7/10  | ⚠️ Good but incomplete |
+| Documentation         | 8/10  | ✅ Very Good           |
+| Performance           | ?/10  | ❓ Unknown             |
+| Integration           | 0/10  | ❌ Critical Gap        |
 
 **Overall**: 6.5/10 - Good infrastructure, missing integration
 
@@ -798,18 +849,21 @@ This is well-built infrastructure with no users. The philosophy says "trust in e
 ## Appendix: Files Reviewed
 
 **Core Implementation** (12 files):
+
 - `src/amplihack/memory/neo4j/*.py` - All modules examined
 - `src/amplihack/launcher/core.py` - Session integration reviewed
 - `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md` - Agent examined
 
 **Tests** (3 files):
+
 - `scripts/test_complete_e2e.py` - E2E test analyzed
 - `scripts/test_agent_sharing.py` - Agent sharing test examined
 - `tests/integration/memory/neo4j/test_neo4j_foundation_e2e.py` - Integration test reviewed
 
 **Documentation** (5 files):
-- Specs/Memory/*.md - Specifications reviewed
-- docs/memory/*.md - Implementation docs examined
+
+- Specs/Memory/\*.md - Specifications reviewed
+- docs/memory/\*.md - Implementation docs examined
 - PR description - Requirements verified
 
 **Total Review Time**: 2 hours

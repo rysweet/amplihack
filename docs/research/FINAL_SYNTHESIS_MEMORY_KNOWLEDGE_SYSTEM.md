@@ -15,6 +15,7 @@ This document synthesizes three major research streams into a unified, actionabl
 3. **Code Structure** (what exists) - blarify code graph integration
 
 **Key Decision**: Build Neo4j from Day 1, not SQLite-first, because:
+
 - Graph database is MANDATORY for code graph integration (user requirement)
 - 20% faster implementation, 67% simpler queries, 60% less maintenance
 - Break-even in Month 1 despite additional setup complexity
@@ -115,6 +116,7 @@ This document synthesizes three major research streams into a unified, actionabl
 ### 1.2 Component Responsibilities
 
 **Episodic Subgraph (Memory System)**
+
 - **Purpose**: Record agent experiences, decisions, and outcomes
 - **Managed By**: Memory system (phase 1 implementation)
 - **Update Pattern**: Real-time during agent execution
@@ -122,6 +124,7 @@ This document synthesizes three major research streams into a unified, actionabl
 - **Key Feature**: Agent type memory sharing (architects share with architects)
 
 **Semantic Subgraph (Knowledge Builder)**
+
 - **Purpose**: Store facts, documentation, patterns, best practices
 - **Managed By**: Knowledge builder agent + web search
 - **Update Pattern**: Batch updates when building knowledge graphs
@@ -129,6 +132,7 @@ This document synthesizes three major research streams into a unified, actionabl
 - **Key Feature**: Confidence-weighted retrieval, source tracking
 
 **Code Subgraph (blarify)**
+
 - **Purpose**: AST-based code structure and relationships
 - **Managed By**: blarify + SCIP indexing
 - **Update Pattern**: Incremental on code changes
@@ -136,6 +140,7 @@ This document synthesizes three major research streams into a unified, actionabl
 - **Key Feature**: 330x faster than LSP, multi-language support
 
 **Bridge Relationships**
+
 - **Purpose**: Connect experiences to knowledge to code
 - **Managed By**: All three systems cooperatively
 - **Key Benefit**: Enable cross-layer queries that span subgraphs
@@ -148,6 +153,7 @@ This document synthesizes three major research streams into a unified, actionabl
 ### 2.1 From Neo4j Memory System Research
 
 **What We Adopt**:
+
 - ✅ **Neo4j from Day 1**: Graph database is technically superior and user-required
 - ✅ **Three-Level Hierarchy**: Global, Project, Instance memory scopes
 - ✅ **Agent Type Singletons**: AgentType nodes enable agent type memory sharing
@@ -157,6 +163,7 @@ This document synthesizes three major research streams into a unified, actionabl
 - ✅ **No ORM**: Direct Cypher queries align with zero-BS philosophy
 
 **What We Improve**:
+
 - 🔄 **Unify with Knowledge**: Don't separate memory and knowledge systems
 - 🔄 **Add Temporal Model**: Use Graphiti bi-temporal pattern for validity tracking
 - 🔄 **Cross-Subgraph Bridges**: Explicit relationships connecting all three subgraphs
@@ -164,21 +171,22 @@ This document synthesizes three major research streams into a unified, actionabl
 
 **Why Neo4j Wins Over SQLite**:
 
-| Dimension | Winner | Margin | One-Time vs Continuous |
-|-----------|--------|--------|------------------------|
-| Setup Complexity | SQLite | 50-60 min | ONE-TIME COST |
-| Implementation | Neo4j | 8-13 hours (20%) | CONTINUOUS BENEFIT |
-| Query Complexity | Neo4j | 67% simpler | CONTINUOUS BENEFIT |
-| Maintenance | Neo4j | 60-75% less | CONTINUOUS BENEFIT |
-| Code Graph Integration | Neo4j | 12-15 hours saved | ONE-TIME + CONTINUOUS |
-| Break-Even | Neo4j | Month 1 | ECONOMICS WIN |
-| 12-Month ROI | Neo4j | 47% savings | LONG-TERM WIN |
+| Dimension              | Winner | Margin            | One-Time vs Continuous |
+| ---------------------- | ------ | ----------------- | ---------------------- |
+| Setup Complexity       | SQLite | 50-60 min         | ONE-TIME COST          |
+| Implementation         | Neo4j  | 8-13 hours (20%)  | CONTINUOUS BENEFIT     |
+| Query Complexity       | Neo4j  | 67% simpler       | CONTINUOUS BENEFIT     |
+| Maintenance            | Neo4j  | 60-75% less       | CONTINUOUS BENEFIT     |
+| Code Graph Integration | Neo4j  | 12-15 hours saved | ONE-TIME + CONTINUOUS  |
+| Break-Even             | Neo4j  | Month 1           | ECONOMICS WIN          |
+| 12-Month ROI           | Neo4j  | 47% savings       | LONG-TERM WIN          |
 
 **Verdict**: Setup complexity is one-time pain, query simplicity is forever. Neo4j wins decisively.
 
 ### 2.2 From Knowledge Graph Systems Research
 
 **What We Adopt**:
+
 - ✅ **Graphiti/Zep Pattern**: Temporal knowledge graph with 94.8% accuracy
 - ✅ **Unified Architecture**: One graph for memory + knowledge, not separate systems
 - ✅ **Neo4j LLM Builder**: For document ingestion (PDFs, web, video)
@@ -188,12 +196,14 @@ This document synthesizes three major research streams into a unified, actionabl
 - ✅ **Quality Control**: Multi-agent validation + confidence scoring + temporal validation
 
 **What We Improve**:
+
 - 🔄 **Claude Integration**: Use Claude 3.5 Sonnet (already integrated) instead of generic LLM
 - 🔄 **Amplihack Workflow**: Integrate with existing agent system, not standalone
 - 🔄 **Code-First**: Integrate code graph (blarify) as first-class subgraph
 - 🔄 **Incremental Updates**: Real-time updates like Graphiti, not batch-only
 
 **Admiral-KG Recommendation**:
+
 - ❌ No public "admiral-kg" repository found
 - ✅ Use **Graphiti/Zep** as functional equivalent (temporal architecture, proven performance)
 - ✅ Use **Neo4j LLM Builder** for document ingestion
@@ -202,6 +212,7 @@ This document synthesizes three major research streams into a unified, actionabl
 ### 2.3 From Microsoft Amplifier Analysis
 
 **What This Synthesis Provides That Amplifier Lacks**:
+
 - ✅ **Native Graph**: Real relationships vs JSON key-value storage
 - ✅ **Scalability**: Neo4j handles millions of nodes vs ~10k memory limit
 - ✅ **Cross-Layer Queries**: Traverse memory + knowledge + code vs isolated lookups
@@ -209,6 +220,7 @@ This document synthesizes three major research streams into a unified, actionabl
 - ✅ **Agent Type Sharing**: First-class vs manual memory routing
 
 **What We Keep from Amplifier's Simplicity**:
+
 - ✅ **Hook-Based Extraction**: Extract at agent lifecycle boundaries
 - ✅ **Metadata-Rich**: Source, confidence, timestamps for every memory
 - ✅ **Tag-Based Organization**: Labels and properties for retrieval
@@ -1086,6 +1098,7 @@ class KnowledgeExtractor:
 **Prerequisites**: None (foundation phase)
 
 **Deliverables**:
+
 - ✅ Neo4j Docker environment
 - ✅ Episodic subgraph schema
 - ✅ Agent type memory sharing
@@ -1119,6 +1132,7 @@ Week 4 (4-5 hours): Testing & Documentation
 ```
 
 **Success Criteria**:
+
 - Memory operations complete in <50ms
 - Agent type isolation verified
 - Multi-level retrieval working
@@ -1132,6 +1146,7 @@ Week 4 (4-5 hours): Testing & Documentation
 **Prerequisites**: Phase 1 complete
 
 **Deliverables**:
+
 - ✅ Semantic subgraph schema extension
 - ✅ Knowledge extraction (triplets from Q&A)
 - ✅ Neo4j storage for knowledge
@@ -1169,6 +1184,7 @@ Weeks 9-12 (16-20 hours): Testing & Documentation
 ```
 
 **Success Criteria**:
+
 - Knowledge extraction >80% accuracy
 - Triplet storage <100ms per triplet
 - Cross-layer queries <200ms
@@ -1182,6 +1198,7 @@ Weeks 9-12 (16-20 hours): Testing & Documentation
 **Prerequisites**: Phase 1 complete
 
 **Deliverables**:
+
 - ✅ SCIP code graph import
 - ✅ Code subgraph schema
 - ✅ Bridge relationships (code ↔ memory, code ↔ knowledge)
@@ -1202,6 +1219,7 @@ Day 2 (2 hours): Bridge Relationships
 ```
 
 **Success Criteria**:
+
 - Code graph imports successfully
 - Incremental updates work
 - Bridge queries span code + memory
@@ -1216,30 +1234,35 @@ Day 2 (2 hours): Bridge Relationships
 **Features**:
 
 **4A. Graphiti Temporal Architecture (16-24 hours)**:
+
 - Bi-temporal validity tracking (event time vs ingestion time)
 - Historical preservation without recomputation
 - LLM-based conflict resolution
 - Temporal query support
 
 **4B. Learning from Experience (12-16 hours)**:
+
 - Auto-extract patterns from successful episodes
 - Promote episodic → semantic after repetition
 - Confidence scoring based on evidence count
 - Pattern effectiveness tracking
 
 **4C. External Knowledge Integration (8-12 hours)**:
+
 - Diffbot API for base knowledge layer (optional)
 - MS Learn API integration
 - StackOverflow knowledge extraction
 - Version tracking and deprecation
 
 **4D. Advanced Graph Analytics (4-8 hours)**:
+
 - Community detection for concept clustering
 - Pattern hierarchy identification
 - Cross-domain connection discovery
 - Graph visualization
 
 **Success Criteria**:
+
 - Temporal queries work correctly
 - Learning loop promotes knowledge automatically
 - External knowledge integrated seamlessly
@@ -1301,20 +1324,24 @@ TOTAL EFFORT: 129-178 hours
 ### 6.6 Resource Requirements
 
 **Phase 1 (Month 1)**:
+
 - 1 Backend Developer (Python + Neo4j experience)
 - Part-time DevOps support (Docker setup)
 - Total: ~30 hours
 
 **Phase 2 (Months 2-3)**:
+
 - 1 Backend Developer (Python + Neo4j)
 - Part-time AI Engineer (LLM integration)
 - Total: ~60-70 hours
 
 **Phase 3 (Week parallel to Phase 2)**:
+
 - Same Backend Developer
 - Total: ~5 hours
 
 **Phase 4 (Months 4-5)**:
+
 - 1 Backend Developer
 - Part-time Data Scientist (graph analytics)
 - Total: ~40-60 hours
@@ -1431,6 +1458,7 @@ class AmplifierImporter:
 **Keep What Works**:
 
 1. **Hook-Based Extraction**: Use same lifecycle hooks as Amplifier
+
    ```python
    # Before agent execution
    @before_agent_execution
@@ -1445,6 +1473,7 @@ class AmplifierImporter:
    ```
 
 2. **Advisory Only**: Memory is always suggestive, never prescriptive
+
    ```python
    # Agent decision flow
    context_from_memory = memory.get_context(agent_id, task)
@@ -1453,6 +1482,7 @@ class AmplifierImporter:
    ```
 
 3. **Graceful Degradation**: Works without memory
+
    ```python
    try:
        context = memory.get_context(agent_id, task)
@@ -1461,6 +1491,7 @@ class AmplifierImporter:
    ```
 
 4. **Tag-Based Organization**: Use Neo4j labels like Amplifier's tags
+
    ```cypher
    // Tag-based retrieval
    MATCH (m:Memory:ImportantDecision)  // Multiple labels like tags
@@ -1495,6 +1526,7 @@ class AmplifierImporter:
 **Decision 1: Neo4j from Day 1 (Not SQLite-First)**
 
 **Rationale**:
+
 - User requirement: Graph database MANDATORY for code graph
 - Technical superiority: 20% faster implementation, 67% simpler queries
 - Economics: Break-even Month 1, 47% savings at 12 months
@@ -1507,6 +1539,7 @@ class AmplifierImporter:
 **Decision 2: Unified Graph (Not Separate Systems)**
 
 **Rationale**:
+
 - Cross-layer queries essential for agent learning
 - Simpler maintenance: One system vs dual APIs
 - Knowledge grounding: Facts backed by experience
@@ -1519,6 +1552,7 @@ class AmplifierImporter:
 **Decision 3: Three Subgraphs (Episodic, Semantic, Code)**
 
 **Rationale**:
+
 - Clear separation of concerns (what happened, what's known, what exists)
 - Natural data models for each domain
 - Bridge relationships connect without mixing
@@ -1531,6 +1565,7 @@ class AmplifierImporter:
 **Decision 4: Agent Type Memory Sharing**
 
 **Rationale**:
+
 - User requirement: Agents of same type share memory
 - Natural graph modeling: AgentType singleton nodes
 - Efficient queries: "What do other architects know?"
@@ -1543,6 +1578,7 @@ class AmplifierImporter:
 **Decision 5: Graphiti Pattern for Temporal Architecture**
 
 **Rationale**:
+
 - Proven performance: 94.8% accuracy, <300ms latency
 - Bi-temporal model: Event time + ingestion time
 - Conflict resolution without data loss
@@ -1555,6 +1591,7 @@ class AmplifierImporter:
 **Decision 6: Knowledge Builder Populates Semantic Subgraph**
 
 **Rationale**:
+
 - Leverages existing Socratic Q&A system
 - Extends with triplet extraction and Neo4j storage
 - Backward compatible: Still generates markdown
@@ -1567,6 +1604,7 @@ class AmplifierImporter:
 **Decision 7: blarify for Code Graph (Not Custom AST Parser)**
 
 **Rationale**:
+
 - 330x faster than LSP
 - SCIP protocol: Multi-language, incremental updates
 - Existing tool, battle-tested
@@ -1579,6 +1617,7 @@ class AmplifierImporter:
 **Decision 8: No ORM (Direct Cypher)**
 
 **Rationale**:
+
 - Aligns with zero-BS philosophy
 - Cypher is readable: 3x less code than SQL JOINs
 - No abstraction layer hiding graph nature
@@ -1595,6 +1634,7 @@ class AmplifierImporter:
 **Revised Recommendation**: Neo4j from Day 1
 
 **Why the Change**:
+
 - User provided EXPLICIT REQUIREMENT: Graph database mandatory
 - Economics analysis showed Month 1 break-even (not Month 3-4)
 - Technical superiority more compelling than initially assessed
@@ -1607,6 +1647,7 @@ class AmplifierImporter:
 **Revised Plan**: Unified temporal knowledge graph
 
 **Why the Change**:
+
 - Research revealed unified > separate (cross-layer queries)
 - Graphiti/Zep pattern demonstrates unified architecture success
 - Simpler maintenance: One system vs two
@@ -1619,6 +1660,7 @@ class AmplifierImporter:
 **Revised Scope**: Memory + knowledge + code graph unified
 
 **Why the Change**:
+
 - Knowledge builder agent exists and needs integration
 - blarify code graph already planned (Specs/Memory/)
 - Bridge relationships unlock powerful use cases
@@ -1631,18 +1673,21 @@ class AmplifierImporter:
 ### 9.1 Memory System Metrics
 
 **Performance Metrics**:
+
 - Memory operations: <50ms (target), <100ms (acceptable)
 - Query latency: P50 <20ms, P95 <100ms, P99 <200ms
 - Cache hit rate: >80% after warm-up period
 - Write throughput: >100 memories/second
 
 **Quality Metrics**:
+
 - Memory relevance: >85% (agent feedback)
 - Deduplication effectiveness: >95% (no duplicate concepts)
 - Conflict resolution accuracy: >90% (validated against ground truth)
 - Memory pollution rate: <5% (low-quality memories)
 
 **Scalability Metrics**:
+
 - Nodes supported: 1M+ without degradation
 - Projects supported: 100+ concurrent
 - Agent types supported: 50+ defined types
@@ -1651,18 +1696,21 @@ class AmplifierImporter:
 ### 9.2 Knowledge Graph Metrics
 
 **Extraction Metrics**:
+
 - Triplet extraction accuracy: >80% (validated by human review)
 - Entity recognition precision: >85%
 - Relationship extraction recall: >75%
 - Confidence calibration: Within 10% of ground truth
 
 **Quality Metrics**:
+
 - Knowledge fact accuracy: >90% (spot-checked)
 - Source tracking completeness: 100% (every fact has source)
 - Temporal validity accuracy: >95% (bi-temporal model correct)
 - Cross-validation rate: >80% (facts supported by multiple sources)
 
 **Integration Metrics**:
+
 - Knowledge builder runtime: <5 minutes for 20-question graph
 - Neo4j storage time: <100ms per triplet
 - Markdown generation: <30 seconds (optional human review)
@@ -1671,18 +1719,21 @@ class AmplifierImporter:
 ### 9.3 Integration Quality Metrics
 
 **Bridge Relationship Metrics**:
+
 - Bridge creation success: >99%
 - Cross-layer query accuracy: >95%
 - Query performance: <200ms for cross-layer queries
 - Data consistency: 100% (no orphaned nodes)
 
 **Agent Performance Impact**:
+
 - Decision quality improvement: +25-40% (measured by outcome tracking)
 - Error resolution improvement: +50-70% (repeat errors reduced)
 - Time saved per agent action: 2-4 minutes (context retrieval vs manual lookup)
 - Agent learning rate: Measurable improvement over 4-6 weeks
 
 **System Health Metrics**:
+
 - Memory overhead: <100MB per project
 - Database size growth: <1GB per 100k memories
 - Backup time: <5 minutes for full backup
@@ -1691,18 +1742,21 @@ class AmplifierImporter:
 ### 9.4 Economic Metrics
 
 **Development ROI**:
+
 - Break-even time: Month 1 (Neo4j setup costs recovered)
 - 6-month ROI: 25% savings (maintenance + query development)
 - 12-month ROI: 47% savings (compounding benefits)
 - 24-month ROI: 51% savings (long-term economic win)
 
 **Operational Cost**:
+
 - Neo4j infrastructure: ~$50/month (Docker hosting)
 - Storage costs: ~$10/month per 1M nodes
 - Maintenance effort: 3-4 hours/month (vs 8-10 hours SQLite)
 - Backup storage: ~$5/month
 
 **Value Delivery**:
+
 - Time saved per developer: 2-4 hours/week
 - Error reduction: 50-70% fewer repeat errors
 - Knowledge reuse: 30-50% reduction in research time
@@ -1715,21 +1769,25 @@ class AmplifierImporter:
 ### 10.1 Immediate Actions (This Week)
 
 **1. Review and Approve This Synthesis**
+
 - [ ] Stakeholder review meeting
 - [ ] Architecture decisions validation
 - [ ] Timeline and resource allocation approval
 
 **2. Phase 1 Preparation**
+
 - [ ] Create project branch: `feat/unified-memory-knowledge-system`
 - [ ] Assign development team (1 FTE, part-time DevOps)
 - [ ] Set up project tracking (Jira/GitHub Projects)
 
 **3. Technical Preparation**
+
 - [ ] Provision Neo4j Docker environment (development)
 - [ ] Set up CI/CD for Neo4j migrations
 - [ ] Create test data sets for validation
 
 **4. Documentation**
+
 - [ ] Share this synthesis with team
 - [ ] Schedule architecture walkthrough
 - [ ] Create implementation checklist from roadmap
@@ -1737,16 +1795,19 @@ class AmplifierImporter:
 ### 10.2 Phase 1 Kickoff (Week 1)
 
 **Day 1-2: Infrastructure**
+
 - [ ] Neo4j Docker setup complete
 - [ ] Connection pooling configured
 - [ ] Development database accessible
 
 **Day 3-4: Schema Design**
+
 - [ ] Episodic subgraph schema implemented
 - [ ] Constraints and indexes created
 - [ ] Schema documented
 
 **Day 5: Validation**
+
 - [ ] Manual testing of schema
 - [ ] Performance baseline measurement
 - [ ] Week 1 retrospective
@@ -1754,24 +1815,28 @@ class AmplifierImporter:
 ### 10.3 Phase Completion Gates
 
 **Phase 1 Gate (End of Month 1)**:
+
 - [ ] All success criteria met (memory ops <50ms, isolation working, etc.)
 - [ ] Performance measurements documented
 - [ ] Team retrospective completed
 - [ ] Decision: Proceed to Phase 2?
 
 **Phase 2 Gate (End of Month 3)**:
+
 - [ ] Semantic subgraph operational
 - [ ] Knowledge extraction >80% accuracy
 - [ ] Cross-layer queries working
 - [ ] Decision: Proceed to Phase 3?
 
 **Phase 3 Gate (End of Month 3, parallel)**:
+
 - [ ] Code graph imported successfully
 - [ ] Bridge relationships functional
 - [ ] All three subgraphs connected
 - [ ] MILESTONE: Complete unified architecture
 
 **Phase 4 Gate (End of Month 5)**:
+
 - [ ] Advanced features operational
 - [ ] Learning loop working
 - [ ] System production-ready
@@ -1780,12 +1845,14 @@ class AmplifierImporter:
 ### 10.4 Risk Mitigation
 
 **High-Risk Areas**:
+
 1. Neo4j learning curve (Mitigation: Training, pair programming)
 2. Query performance at scale (Mitigation: Early benchmarking, optimization sprints)
 3. Knowledge extraction accuracy (Mitigation: Human-in-the-loop validation, confidence thresholds)
 4. Integration complexity (Mitigation: Incremental approach, comprehensive testing)
 
 **Monitoring Plan**:
+
 - Weekly performance reviews
 - Bi-weekly architecture check-ins
 - Monthly stakeholder updates
@@ -1798,16 +1865,19 @@ class AmplifierImporter:
 ### 11.1 Internal Documentation
 
 **Memory System Research**:
+
 - `/Specs/Memory/` - Neo4j architecture specification
 - `/docs/research/neo4j_memory_system/` - Comprehensive research (16 docs, 460KB)
 - `/.claude/runtime/logs/20251102_neo4j_memory_revision/DECISIONS.md` - Decision log
 
 **Knowledge Graph Research**:
+
 - `/docs/research/KNOWLEDGE_GRAPH_SYSTEMS_RESEARCH_2025.md` - Systems research (68KB)
 - `/docs/research/KNOWLEDGE_GRAPH_INTEGRATION_SUMMARY.md` - Integration guide
 - `/docs/research/KNOWLEDGE_GRAPH_RESEARCH_INDEX.md` - Research index
 
 **Project Context**:
+
 - `/.claude/context/PHILOSOPHY.md` - Ruthless simplicity principles
 - `/.claude/context/PROJECT.md` - Project mission and objectives
 - `/.claude/context/PATTERNS.md` - Proven solution patterns
@@ -1816,32 +1886,38 @@ class AmplifierImporter:
 ### 11.2 External Resources
 
 **Neo4j**:
+
 - Neo4j Documentation: https://neo4j.com/docs/
 - Cypher Query Language: https://neo4j.com/docs/cypher-manual/current/
 - Neo4j Python Driver: https://neo4j.com/docs/python-manual/current/
 
 **Knowledge Graph Systems**:
+
 - Graphiti/Zep: https://github.com/getzep/graphiti
 - Neo4j LLM Graph Builder: https://github.com/neo4j-labs/llm-graph-builder
 - LangChain Neo4j: https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/
 
 **Code Analysis**:
+
 - blarify: https://github.com/blarApp/blarify
 - SCIP Protocol: https://github.com/sourcegraph/scip
 
 **Research Papers**:
+
 - Zep: Temporal Knowledge Graph Architecture (arXiv:2501.13956v1, Jan 2025)
 - Graph4Code: Toolkit for Code Knowledge Graphs (ACM K-CAP 2021)
 
 ### 11.3 Research Statistics
 
 **Total Research**:
+
 - Documents analyzed: 30+ (memory + knowledge + code graph)
 - Total size: 843KB + 460KB + 113KB = 1.4MB
 - Research duration: 3 days (multi-agent parallel execution)
 - Agents involved: architect, database, patterns, knowledge-archaeologist, explore
 
 **Deliverables**:
+
 - Comprehensive reports: 3
 - Technical specifications: 5
 - Decision logs: 2
@@ -1855,6 +1931,7 @@ class AmplifierImporter:
 This synthesis presents a complete, actionable architecture for amplihack's unified memory and knowledge graph system. The three-subgraph design (episodic, semantic, code) addresses user requirements while maintaining ruthless simplicity.
 
 **Key Insights**:
+
 1. **Neo4j from Day 1** is both technically superior and economically favorable
 2. **Unified architecture** beats separate systems for cross-layer queries and agent learning
 3. **Three subgraphs** provide clear separation while bridge relationships enable integration

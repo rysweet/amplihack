@@ -1,214 +1,212 @@
-"""Data models for Neo4j memory system.
+"""Data models for Neo4j code ingestion metadata tracking.
 
-Provides typed dataclasses for the five memory types with Neo4j mapping.
+This module defines the core data structures for tracking codebase identity
+and ingestion metadata in the Neo4j graph database.
 """
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
 
+class IngestionStatus(Enum):
+    """Status of an ingestion operation."""
+
+    NEW = "new"  # New codebase, first ingestion
+    UPDATE = "update"  # Same codebase, new ingestion
+    ERROR = "error"  # Ingestion failed
+
+
 @dataclass
-class MemoryBase:
-    """Base class for all memory types.
+class CodebaseIdentity:
+    """Identity of a codebase derived from Git metadata.
+
+    This class provides a stable identifier for a codebase based on its Git
+    repository information. The unique_key is used to determine if two ingestions
+    are from the same codebase.
 
     Attributes:
-        id: Unique identifier (UUID)
-        content: Memory content (text)
-        agent_type: Agent type identifier (e.g., 'architect', 'builder')
-        metadata: Additional metadata dictionary
-        created_at: Creation timestamp (milliseconds since epoch)
-        accessed_at: Last access timestamp (milliseconds since epoch)
-        access_count: Number of times accessed
+        remote_url: Git remote URL (normalized, stripped of auth)
+        branch: Current Git branch name
+        commit_sha: Current Git commit SHA
+        unique_key: Stable identifier derived from remote_url and branch
+        metadata: Additional metadata about the codebase
     """
 
-    content: str
-    agent_type: str
-    id: str = field(default_factory=lambda: str(uuid4()))
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: int = field(default_factory=lambda: int(datetime.now().timestamp() * 1000))
-    accessed_at: int = field(default_factory=lambda: int(datetime.now().timestamp() * 1000))
-    access_count: int = 0
+    remote_url: str
+    branch: str
+    commit_sha: str
+    unique_key: str
+    metadata: Dict[str, str] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def __post_init__(self) -> None:
+        """Validate required fields."""
+        if not self.remote_url:
+            raise ValueError("remote_url is required")
+        if not self.branch:
+            raise ValueError("branch is required")
+        if not self.commit_sha:
+            raise ValueError("commit_sha is required")
+        if not self.unique_key:
+            raise ValueError("unique_key is required")
+
+    def to_dict(self) -> Dict[str, str]:
         """Convert to dictionary for Neo4j storage.
 
         Returns:
-            Dictionary with all fields suitable for Neo4j node properties
+            Dictionary representation suitable for Neo4j node properties
         """
         return {
-            "id": self.id,
-            "content": self.content,
-            "agent_type": self.agent_type,
-            "metadata": self.metadata,
-            "created_at": self.created_at,
-            "accessed_at": self.accessed_at,
-            "access_count": self.access_count,
+            "remote_url": self.remote_url,
+            "branch": self.branch,
+            "commit_sha": self.commit_sha,
+            "unique_key": self.unique_key,
+            **self.metadata,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryBase":
-        """Create instance from Neo4j data.
+    def from_dict(cls, data: Dict[str, str]) -> "CodebaseIdentity":
+        """Create from dictionary.
 
         Args:
-            data: Dictionary from Neo4j query result
+            data: Dictionary with codebase identity data
 
         Returns:
-            MemoryBase instance
+            CodebaseIdentity instance
         """
+        metadata = {k: v for k, v in data.items() if k not in ("remote_url", "branch", "commit_sha", "unique_key")}
         return cls(
-            id=data.get("id"),
-            content=data.get("content"),
-            agent_type=data.get("agent_type"),
-            metadata=data.get("metadata", {}),
-            created_at=data.get("created_at"),
-            accessed_at=data.get("accessed_at"),
-            access_count=data.get("access_count", 0),
+            remote_url=data["remote_url"],
+            branch=data["branch"],
+            commit_sha=data["commit_sha"],
+            unique_key=data["unique_key"],
+            metadata=metadata,
         )
 
 
 @dataclass
-class EpisodicMemory(MemoryBase):
-    """Episodic memory: Records specific events/interactions.
+class IngestionMetadata:
+    """Metadata about a code ingestion operation.
 
-    Used for conversation history, user interactions, task completion records.
+    This class tracks when and how a codebase was ingested, forming an audit
+    trail of all ingestions for a codebase.
 
-    Example:
-        memory = EpisodicMemory(
-            content="User requested authentication feature implementation",
-            agent_type="architect",
-            metadata={"session_id": "abc123", "task": "auth-feature"}
-        )
+    Attributes:
+        ingestion_id: Unique identifier for this ingestion
+        timestamp: When the ingestion occurred
+        commit_sha: Git commit SHA at ingestion time
+        ingestion_counter: Sequential counter for this codebase
+        metadata: Additional metadata about the ingestion
     """
 
-    memory_type: str = field(default="episodic", init=False)
+    ingestion_id: str
+    timestamp: datetime
+    commit_sha: str
+    ingestion_counter: int
+    metadata: Dict[str, str] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary with memory_type."""
-        data = super().to_dict()
-        data["memory_type"] = self.memory_type
-        return data
+    def __post_init__(self) -> None:
+        """Validate required fields."""
+        if not self.ingestion_id:
+            raise ValueError("ingestion_id is required")
+        if not self.commit_sha:
+            raise ValueError("commit_sha is required")
+        if self.ingestion_counter < 1:
+            raise ValueError("ingestion_counter must be >= 1")
+
+    def to_dict(self) -> Dict[str, str]:
+        """Convert to dictionary for Neo4j storage.
+
+        Returns:
+            Dictionary representation suitable for Neo4j node properties
+        """
+        return {
+            "ingestion_id": self.ingestion_id,
+            "timestamp": self.timestamp.isoformat(),
+            "commit_sha": self.commit_sha,
+            "ingestion_counter": str(self.ingestion_counter),
+            **self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, str]) -> "IngestionMetadata":
+        """Create from dictionary.
+
+        Args:
+            data: Dictionary with ingestion metadata
+
+        Returns:
+            IngestionMetadata instance
+        """
+        metadata = {
+            k: v for k, v in data.items() if k not in ("ingestion_id", "timestamp", "commit_sha", "ingestion_counter")
+        }
+        return cls(
+            ingestion_id=data["ingestion_id"],
+            timestamp=datetime.fromisoformat(data["timestamp"]),
+            commit_sha=data["commit_sha"],
+            ingestion_counter=int(data["ingestion_counter"]),
+            metadata=metadata,
+        )
 
 
 @dataclass
-class ShortTermMemory(MemoryBase):
-    """Short-term memory: Temporary working memory for current session.
+class IngestionResult:
+    """Result of an ingestion tracking operation.
 
-    Used for variables in scope, active context, recent decisions.
+    This class provides feedback about what happened during ingestion tracking,
+    allowing callers to understand whether this was a new codebase or an update.
 
-    Example:
-        memory = ShortTermMemory(
-            content="Current module uses async/await pattern",
-            agent_type="builder",
-            metadata={"file": "auth.py", "pattern": "async"}
-        )
+    Attributes:
+        status: Status of the ingestion (NEW, UPDATE, ERROR)
+        codebase_identity: Identity of the codebase
+        ingestion_metadata: Metadata about this ingestion
+        previous_ingestion_id: ID of previous ingestion if this is an update
+        error_message: Error message if status is ERROR
     """
 
-    memory_type: str = field(default="short_term", init=False)
+    status: IngestionStatus
+    codebase_identity: CodebaseIdentity
+    ingestion_metadata: IngestionMetadata
+    previous_ingestion_id: Optional[str] = None
+    error_message: Optional[str] = None
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary with memory_type."""
-        data = super().to_dict()
-        data["memory_type"] = self.memory_type
-        return data
+    def is_new(self) -> bool:
+        """Check if this is a new codebase ingestion.
 
+        Returns:
+            True if this is the first ingestion of this codebase
+        """
+        return self.status == IngestionStatus.NEW
 
-@dataclass
-class ProceduralMemory(MemoryBase):
-    """Procedural memory: How to perform tasks.
+    def is_update(self) -> bool:
+        """Check if this is an update to an existing codebase.
 
-    Used for learned procedures, workflows, best practices.
+        Returns:
+            True if this codebase has been ingested before
+        """
+        return self.status == IngestionStatus.UPDATE
 
-    Example:
-        memory = ProceduralMemory(
-            content="To add new API endpoint: 1) Define route 2) Add handler 3) Write tests",
-            agent_type="builder",
-            metadata={"category": "api-development"}
-        )
-    """
+    def is_error(self) -> bool:
+        """Check if the ingestion failed.
 
-    memory_type: str = field(default="procedural", init=False)
+        Returns:
+            True if ingestion encountered an error
+        """
+        return self.status == IngestionStatus.ERROR
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary with memory_type."""
-        data = super().to_dict()
-        data["memory_type"] = self.memory_type
-        return data
+    def to_dict(self) -> Dict[str, object]:
+        """Convert to dictionary for logging/serialization.
 
-
-@dataclass
-class DeclarativeMemory(MemoryBase):
-    """Declarative memory: Facts and knowledge.
-
-    Used for project facts, requirements, constraints, domain knowledge.
-
-    Example:
-        memory = DeclarativeMemory(
-            content="System uses PostgreSQL 15 with UUID primary keys",
-            agent_type="architect",
-            metadata={"category": "database", "source": "architecture-doc"}
-        )
-    """
-
-    memory_type: str = field(default="declarative", init=False)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary with memory_type."""
-        data = super().to_dict()
-        data["memory_type"] = self.memory_type
-        return data
-
-
-@dataclass
-class ProspectiveMemory(MemoryBase):
-    """Prospective memory: Intentions and future actions.
-
-    Used for TODOs, reminders, scheduled tasks, future intentions.
-
-    Example:
-        memory = ProspectiveMemory(
-            content="Add rate limiting to API after authentication is complete",
-            agent_type="architect",
-            metadata={"status": "pending", "depends_on": "auth-feature"}
-        )
-    """
-
-    memory_type: str = field(default="prospective", init=False)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary with memory_type."""
-        data = super().to_dict()
-        data["memory_type"] = self.memory_type
-        return data
-
-
-# Type mapping for deserialization
-MEMORY_TYPE_MAP = {
-    "episodic": EpisodicMemory,
-    "short_term": ShortTermMemory,
-    "procedural": ProceduralMemory,
-    "declarative": DeclarativeMemory,
-    "prospective": ProspectiveMemory,
-}
-
-
-def memory_from_dict(data: Dict[str, Any]) -> MemoryBase:
-    """Create appropriate memory instance from Neo4j data.
-
-    Args:
-        data: Dictionary from Neo4j query result
-
-    Returns:
-        Appropriate memory subclass instance
-
-    Raises:
-        ValueError: If memory_type is unknown
-    """
-    memory_type = data.get("memory_type")
-    memory_class = MEMORY_TYPE_MAP.get(memory_type)
-
-    if memory_class is None:
-        raise ValueError(f"Unknown memory_type: {memory_type}")
-
-    return memory_class.from_dict(data)
+        Returns:
+            Dictionary representation
+        """
+        return {
+            "status": self.status.value,
+            "codebase_identity": self.codebase_identity.to_dict(),
+            "ingestion_metadata": self.ingestion_metadata.to_dict(),
+            "previous_ingestion_id": self.previous_ingestion_id,
+            "error_message": self.error_message,
+        }

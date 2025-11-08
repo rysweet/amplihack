@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from scipy import stats
@@ -142,15 +142,15 @@ class MetricsCollector:
         """Record a time-based metric."""
         self.time_metrics[name] = value
 
-    def record_quality_metric(self, name: str, value: Union[int, float]):
+    def record_quality_metric(self, name: str, value: float):
         """Record a quality metric."""
         self.quality_metrics[name] = value
 
-    def record_memory_metric(self, name: str, value: Union[int, float]):
+    def record_memory_metric(self, name: str, value: float):
         """Record a memory usage metric."""
         self.memory_metrics[name] = value
 
-    def record_output_metric(self, name: str, value: Union[int, float]):
+    def record_output_metric(self, name: str, value: float):
         """Record an output metric."""
         self.output_metrics[name] = value
 
@@ -275,8 +275,12 @@ class StatisticalAnalyzer:
         p_values = []
 
         for metric in metrics:
-            baseline_values = [StatisticalAnalyzer._extract_metric(run, metric) for run in baseline_data]
-            treatment_values = [StatisticalAnalyzer._extract_metric(run, metric) for run in treatment_data]
+            baseline_values = [
+                StatisticalAnalyzer._extract_metric(run, metric) for run in baseline_data
+            ]
+            treatment_values = [
+                StatisticalAnalyzer._extract_metric(run, metric) for run in treatment_data
+            ]
 
             result = StatisticalAnalyzer.compare_configurations(baseline_values, treatment_values)
             results[metric] = result
@@ -300,11 +304,11 @@ class StatisticalAnalyzer:
             category, field = parts
             if category == "time":
                 return getattr(run.time, field)
-            elif category == "quality":
+            if category == "quality":
                 return getattr(run.quality, field)
-            elif category == "memory":
+            if category == "memory":
                 return getattr(run.memory, field)
-            elif category == "output":
+            if category == "output":
                 return getattr(run.output, field)
 
         raise ValueError(f"Invalid metric name: {metric_name}")

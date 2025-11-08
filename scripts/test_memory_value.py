@@ -8,18 +8,20 @@ Comparison:
 
 Task: Implement authentication twice (memory should make second time faster/better)
 """
+
 import sys
 import time
 from pathlib import Path
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
 
 def test_task_without_memory():
     """Simulate task execution WITHOUT memory access."""
-    print("="*70)
+    print("=" * 70)
     print("TEST 1: Task WITHOUT Memory (Baseline)")
-    print("="*70)
+    print("=" * 70)
 
     task = "Design JWT authentication with refresh tokens"
 
@@ -55,7 +57,7 @@ def test_task_without_memory():
 
     print(f"✅ Completed in {elapsed:.2f}s")
     print(f"📊 Output length: {len(output)} characters")
-    print(f"📝 Decisions made: 3 (token strategy, security, endpoints)")
+    print("📝 Decisions made: 3 (token strategy, security, endpoints)")
 
     return {
         "time": elapsed,
@@ -64,11 +66,12 @@ def test_task_without_memory():
         "quality_items": ["JWT", "refresh tokens", "httpOnly cookies", "CSRF"],
     }
 
+
 def test_task_with_memory():
     """Simulate task execution WITH memory access from Neo4j."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 2: Task WITH Memory (Neo4j)")
-    print("="*70)
+    print("=" * 70)
 
     task = "Design JWT authentication with refresh tokens (second project)"
 
@@ -139,7 +142,7 @@ def test_task_with_memory():
 
     print(f"✅ Completed in {elapsed:.2f}s")
     print(f"📊 Output length: {len(output)} characters")
-    print(f"📝 Decisions made: 5 (includes learnings from memory)")
+    print("📝 Decisions made: 5 (includes learnings from memory)")
     print(f"🧠 Memory items used: {len(memories)}")
 
     # Store this as a learning for future
@@ -148,7 +151,7 @@ def test_task_with_memory():
             content="JWT auth with refresh tokens, httpOnly cookies, CSRF protection, rate limiting",
             category="system_design",
             tags=["authentication", "jwt", "security"],
-            confidence=0.9
+            confidence=0.9,
         )
         print("✅ Stored learning for future use")
     except Exception as e:
@@ -160,46 +163,55 @@ def test_task_with_memory():
         "decisions": 5,
         "memories_used": len(memories),
         "quality_items": [
-            "JWT", "refresh tokens", "httpOnly cookies", "CSRF",
-            "rate limiting", "token blacklist", "sliding session", "testing requirements"
+            "JWT",
+            "refresh tokens",
+            "httpOnly cookies",
+            "CSRF",
+            "rate limiting",
+            "token blacklist",
+            "sliding session",
+            "testing requirements",
         ],
     }
 
+
 def compare_results(without, with_mem):
     """Compare results and show if memory helped."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("COMPARISON: Memory System Effectiveness")
-    print("="*70)
+    print("=" * 70)
 
     time_improvement = ((without["time"] - with_mem["time"]) / without["time"]) * 100
-    output_improvement = ((with_mem["output_length"] - without["output_length"]) / without["output_length"]) * 100
+    output_improvement = (
+        (with_mem["output_length"] - without["output_length"]) / without["output_length"]
+    ) * 100
     decision_improvement = with_mem["decisions"] - without["decisions"]
     quality_improvement = len(with_mem["quality_items"]) - len(without["quality_items"])
 
-    print(f"\n⏱️  Time:")
+    print("\n⏱️  Time:")
     print(f"   Without memory: {without['time']:.2f}s")
     print(f"   With memory:    {with_mem['time']:.2f}s")
     print(f"   → {time_improvement:+.1f}% ({'FASTER' if time_improvement > 0 else 'SLOWER'})")
 
-    print(f"\n📊 Output Quality:")
+    print("\n📊 Output Quality:")
     print(f"   Without memory: {without['output_length']} chars")
     print(f"   With memory:    {with_mem['output_length']} chars")
     print(f"   → {output_improvement:+.1f}% more detailed")
 
-    print(f"\n📝 Decisions:")
+    print("\n📝 Decisions:")
     print(f"   Without memory: {without['decisions']}")
     print(f"   With memory:    {with_mem['decisions']}")
     print(f"   → {decision_improvement:+d} additional decision(s)")
 
-    print(f"\n🎯 Quality Items:")
+    print("\n🎯 Quality Items:")
     print(f"   Without memory: {len(without['quality_items'])} items")
     print(f"   With memory:    {len(with_mem['quality_items'])} items")
     print(f"   → {quality_improvement:+d} additional considerations")
 
-    print(f"\n🧠 Memory Usage:")
+    print("\n🧠 Memory Usage:")
     print(f"   Memories retrieved: {with_mem.get('memories_used', 0)}")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     if time_improvement > 0 and quality_improvement > 0:
         print("✅ RESULT: Memory system shows POSITIVE value")
         print(f"   - {time_improvement:.1f}% faster execution")
@@ -208,7 +220,8 @@ def compare_results(without, with_mem):
         print("⚠️  RESULT: Memory improves quality but not speed")
     else:
         print("❌ RESULT: Memory shows NO measurable benefit")
-    print("="*70)
+    print("=" * 70)
+
 
 if __name__ == "__main__":
     print("\n🧪 Testing Memory System Effectiveness\n")

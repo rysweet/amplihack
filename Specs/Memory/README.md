@@ -7,19 +7,23 @@
 ## Quick Navigation
 
 ### 📋 Start Here
+
 - **[SUMMARY.md](SUMMARY.md)** - Executive summary for quick understanding
 - **[NEO4J_ARCHITECTURE.md](NEO4J_ARCHITECTURE.md)** - Complete technical specification
 
 ### 🔧 Implementation
+
 - **[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)** - Phase-by-phase guide (27-35 hours)
 - **[ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md)** - Visual diagrams and query examples
 
 ### 📊 Analysis
+
 - **[TRADEOFFS_ANALYSIS.md](TRADEOFFS_ANALYSIS.md)** - SQLite vs Neo4j comparison
 
 ## What This Is
 
 Complete architecture specification for the amplihack memory system, featuring:
+
 - **Neo4j graph database** (native code graph support)
 - **Agent-type memory sharing** (all architects share memory)
 - **Multi-level isolation** (global, project-specific, instance)
@@ -30,10 +34,12 @@ Complete architecture specification for the amplihack memory system, featuring:
 ### Why Neo4j Over SQLite?
 
 **User Requirements (MANDATORY):**
+
 1. Code graph from blarify REQUIRES graph database
 2. Agent types MUST share memory (not per-agent isolation)
 
 **Technical Analysis:**
+
 - Neo4j: 27-35 hours implementation, 1-2 hours/month maintenance
 - SQLite: 35-40 hours implementation, 4-6 hours/month maintenance
 - **ROI**: Neo4j breaks even in 1 month, saves 40% effort over 12 months
@@ -57,12 +63,14 @@ This architecture respects user requirements as highest priority.
 ### Graph Schema
 
 **Core Nodes:**
+
 - `:AgentType` - Architect, Builder, Reviewer agents
 - `:Project` - Project isolation boundary
 - `:Memory` - Conversation, pattern, task memories
 - `:CodeFile`, `:Function`, `:Class` - Code graph (blarify)
 
 **Core Relationships:**
+
 - `(:AgentType)-[:HAS_MEMORY]->(:Memory)` - Agent type memory sharing
 - `(:Project)-[:CONTAINS_MEMORY]->(:Memory)` - Project-specific scoping
 - `(:Memory)-[:REFERENCES]->(:CodeFile)` - Memory-code linking
@@ -95,20 +103,21 @@ LIMIT 50
 
 **Total: 27-35 hours (3-4 weeks)**
 
-| Phase | Duration | Deliverable |
-|-------|----------|------------|
-| 1. Infrastructure | 2-3 hours | Docker + Neo4j + connector |
-| 2. Schema | 3-4 hours | Nodes, relationships, constraints |
-| 3. Core Operations | 6-8 hours | CRUD, isolation, retrieval |
-| 4. Code Graph | 4-5 hours | Blarify integration |
-| 5. Agent Sharing | 4-5 hours | Multi-level queries |
-| 6. Testing & Docs | 8-10 hours | Tests (>90%), documentation |
+| Phase              | Duration   | Deliverable                       |
+| ------------------ | ---------- | --------------------------------- |
+| 1. Infrastructure  | 2-3 hours  | Docker + Neo4j + connector        |
+| 2. Schema          | 3-4 hours  | Nodes, relationships, constraints |
+| 3. Core Operations | 6-8 hours  | CRUD, isolation, retrieval        |
+| 4. Code Graph      | 4-5 hours  | Blarify integration               |
+| 5. Agent Sharing   | 4-5 hours  | Multi-level queries               |
+| 6. Testing & Docs  | 8-10 hours | Tests (>90%), documentation       |
 
 ## Key Features
 
 ### 1. Agent Type Memory Sharing
 
 All architect agents share architectural knowledge:
+
 - Global patterns available to ALL projects
 - Project-specific decisions scoped appropriately
 - No memory leakage between agent types
@@ -116,6 +125,7 @@ All architect agents share architectural knowledge:
 ### 2. Code Graph Integration
 
 Native blarify compatibility:
+
 - Zero conversion (direct Cypher import)
 - Memory-to-code linking
 - Cross-graph queries (find memories for function and dependencies)
@@ -123,6 +133,7 @@ Native blarify compatibility:
 ### 3. Multi-Level Isolation
 
 Prevents memory pollution:
+
 - Agent types isolated (architects can't see builder memories)
 - Projects isolated (ProjectA can't see ProjectB memories)
 - Global promotion for cross-project patterns
@@ -130,6 +141,7 @@ Prevents memory pollution:
 ### 4. Philosophy Aligned
 
 Ruthless simplicity:
+
 - 50 lines Cypher vs 150 lines SQL (3x simpler)
 - No fake graph layer or complex ORM
 - Native integration (zero adapters)
@@ -140,10 +152,12 @@ Ruthless simplicity:
 ### For Architects & Decision Makers
 
 **Read these (30 minutes):**
+
 1. [SUMMARY.md](SUMMARY.md) - High-level overview
 2. [TRADEOFFS_ANALYSIS.md](TRADEOFFS_ANALYSIS.md) - Why Neo4j over SQLite
 
 **Key sections:**
+
 - User requirements justification
 - Cost-benefit analysis
 - Break-even timeline (1 month)
@@ -152,11 +166,13 @@ Ruthless simplicity:
 ### For Implementers
 
 **Read these (2 hours):**
+
 1. [NEO4J_ARCHITECTURE.md](NEO4J_ARCHITECTURE.md) - Complete spec
 2. [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) - Phase-by-phase guide
 3. [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) - Visual reference
 
 **Reference during implementation:**
+
 - Graph schema definitions
 - Cypher query templates
 - Connection management patterns
@@ -165,11 +181,13 @@ Ruthless simplicity:
 ### For Reviewers
 
 **Read these (1 hour):**
+
 1. [SUMMARY.md](SUMMARY.md) - Quick context
 2. [NEO4J_ARCHITECTURE.md](NEO4J_ARCHITECTURE.md) - Schema section
 3. [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) - Visual validation
 
 **Focus on:**
+
 - User requirement compliance
 - Philosophy alignment
 - Security boundaries (isolation)
@@ -261,6 +279,7 @@ Implementation is complete when:
 ### Q: Why not SQLite?
 
 **A**: User requirements mandate graph database (code graph), and Neo4j provides:
+
 - 3x simpler queries (50 lines vs 150 lines)
 - Native blarify integration (zero adapter)
 - 60% less maintenance (1-2 hours/month vs 4-6 hours/month)
@@ -269,6 +288,7 @@ Implementation is complete when:
 ### Q: What about deployment complexity?
 
 **A**: One-time setup cost (15-20 minutes) acceptable for continuous benefits:
+
 - Docker Compose handles complexity
 - Pre-built configuration provided
 - Setup script automates process
@@ -277,6 +297,7 @@ Implementation is complete when:
 ### Q: Learning curve for Cypher?
 
 **A**: 6-9 hours upfront learning, but:
+
 - Cypher cheat sheet (1 page)
 - Query cookbook with examples
 - VS Code extension available
@@ -285,6 +306,7 @@ Implementation is complete when:
 ### Q: Is 4GB RAM too much?
 
 **A**: Not in 2025:
+
 - Most dev machines have 16-32GB
 - CI can provision Neo4j container
 - Resource usage stable and predictable
@@ -293,6 +315,7 @@ Implementation is complete when:
 ### Q: How does this align with ruthless simplicity?
 
 **A**: Neo4j IS simpler for THIS use case:
+
 - Deployment: ONE-TIME cost
 - Queries: CONTINUOUS benefit (3x simpler)
 - Maintenance: CONTINUOUS benefit (60% less effort)
@@ -303,6 +326,7 @@ Implementation is complete when:
 ### Common Issues
 
 **Neo4j won't start:**
+
 ```bash
 # Check Docker logs
 docker logs amplihack-neo4j
@@ -313,6 +337,7 @@ docker-compose up -d
 ```
 
 **Connection refused:**
+
 ```bash
 # Wait for Neo4j initialization (10-15 seconds)
 docker logs amplihack-neo4j | grep "Started"
@@ -322,6 +347,7 @@ netstat -an | grep 7687
 ```
 
 **Schema initialization fails:**
+
 ```python
 # Check constraints
 connector.execute_query("SHOW CONSTRAINTS")
@@ -340,30 +366,33 @@ connector.execute_write("DROP CONSTRAINT constraint_name")
 ## References
 
 ### External Documentation
+
 - Neo4j Official Docs: https://neo4j.com/docs/
 - Cypher Query Language: https://neo4j.com/docs/cypher-manual/
 - Neo4j Python Driver: https://neo4j.com/docs/python-manual/
 - Blarify Code Analysis: (internal tool documentation)
 
 ### Project Philosophy
+
 - `.claude/context/PHILOSOPHY.md` - Ruthless simplicity, zero-BS
 - `.claude/context/PATTERNS.md` - Proven development patterns
 - `.claude/context/USER_REQUIREMENT_PRIORITY.md` - Priority hierarchy
 
 ### Related Specifications
+
 - `Specs/Memory/` - This directory (complete memory system specs)
 - `Specs/` - Other system specifications
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | 2025-11-02 | Initial architecture specification |
-|     |            | - Neo4j-centered approach |
-|     |            | - Agent-type memory sharing |
-|     |            | - Multi-level isolation model |
-|     |            | - Blarify integration |
-|     |            | - Complete implementation plan |
+| Version | Date       | Changes                            |
+| ------- | ---------- | ---------------------------------- |
+| 1.0     | 2025-11-02 | Initial architecture specification |
+|         |            | - Neo4j-centered approach          |
+|         |            | - Agent-type memory sharing        |
+|         |            | - Multi-level isolation model      |
+|         |            | - Blarify integration              |
+|         |            | - Complete implementation plan     |
 
 ---
 

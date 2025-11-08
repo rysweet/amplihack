@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -90,28 +89,30 @@ def show_neo4j_stats_or_empty():
         with Neo4jConnector() as conn:
             stats = get_neo4j_stats(conn)
 
-            print("="*70)
+            print("=" * 70)
             print("📊 Neo4j Memory System - Connected")
-            print("="*70)
-            print(f"\n✅ Database: {stats.get('database', 'Neo4j')} {stats.get('version', 'unknown')}")
+            print("=" * 70)
+            print(
+                f"\n✅ Database: {stats.get('database', 'Neo4j')} {stats.get('version', 'unknown')}"
+            )
 
-            node_count = stats.get('node_count', 0)
-            rel_count = stats.get('relationship_count', 0)
+            node_count = stats.get("node_count", 0)
+            rel_count = stats.get("relationship_count", 0)
 
             if node_count == 0:
                 print("\n📊 Database Status: EMPTY (expected on first startup)")
                 print("   The database is ready and will accumulate memories as you work.")
             else:
-                print(f"\n📈 Graph Statistics:")
+                print("\n📈 Graph Statistics:")
                 print(f"   Nodes: {node_count:,}")
                 print(f"   Relationships: {rel_count:,}")
 
                 if stats.get("label_counts"):
-                    print(f"\n📋 Node Types:")
+                    print("\n📋 Node Types:")
                     for label, count in list(stats["label_counts"].items())[:5]:
                         print(f"   {label}: {count:,}")
 
-            print("\n" + "="*70 + "\n")
+            print("\n" + "=" * 70 + "\n")
             return True
 
     except Exception as e:
@@ -126,9 +127,9 @@ def ask_user_continue_without_neo4j() -> bool:
     Returns:
         True if user wants to continue, False to exit
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("⚠️  Neo4j Memory System Unavailable")
-    print("="*70)
+    print("=" * 70)
     print("\nYou can:")
     print("  1. Continue with basic memory system (SQLite)")
     print("  2. Try to troubleshoot and retry Neo4j")
@@ -140,20 +141,19 @@ def ask_user_continue_without_neo4j() -> bool:
         if response == "1":
             print("\n✅ Continuing with basic memory system...\n")
             return True
-        elif response == "2":
+        if response == "2":
             return _troubleshoot_and_retry()
-        elif response == "3":
+        if response == "3":
             print("\n👋 Exiting. Fix Neo4j and try again.\n")
             return False
-        else:
-            print("Please enter 1, 2, or 3")
+        print("Please enter 1, 2, or 3")
 
 
 def _troubleshoot_and_retry() -> bool:
     """Provide troubleshooting and offer retry."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🔧 Troubleshooting Neo4j")
-    print("="*70)
+    print("=" * 70)
 
     print("\n1. Check Docker logs:")
     print("   docker logs amplihack-neo4j")
@@ -176,14 +176,12 @@ def _troubleshoot_and_retry() -> bool:
             if wait_for_neo4j_with_feedback(max_wait=30):
                 show_neo4j_stats_or_empty()
                 return True
-            else:
-                print("\n❌ Still cannot connect")
-                return ask_user_continue_without_neo4j()
-        elif response == "n":
+            print("\n❌ Still cannot connect")
+            return ask_user_continue_without_neo4j()
+        if response == "n":
             print("\n👋 Exiting. Fix and try again later.\n")
             return False
-        else:
-            print("Please enter y or n")
+        print("Please enter y or n")
 
 
 def interactive_neo4j_startup() -> bool:
@@ -194,9 +192,9 @@ def interactive_neo4j_startup() -> bool:
     """
     from . import lifecycle, auto_setup
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🚀 Neo4j Memory System Startup")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
     # 1. Auto-setup prerequisites
     print("📋 Checking prerequisites...")
@@ -241,13 +239,13 @@ def _check_code_understanding_freshness():
 
             if last_updated is None:
                 # Never indexed - offer to ingest
-                print("="*70)
+                print("=" * 70)
                 print("📚 Code Understanding Engine - Initial Setup")
-                print("="*70)
+                print("=" * 70)
                 print("\n🆕 Your codebase has not been indexed yet!")
                 print("\n💡 The Code Understanding Engine analyzes your code to help agents")
                 print("   understand structure, relationships, and patterns.")
-                print(f"\n📊 Estimated: ~5 seconds for small projects, ~30s for large ones")
+                print("\n📊 Estimated: ~5 seconds for small projects, ~30s for large ones")
 
                 response = input("\n🤔 Index codebase now? (y/n/background): ").strip().lower()
 
@@ -257,13 +255,16 @@ def _check_code_understanding_freshness():
                     try:
                         result = blarify.run_blarify(str(project_root))
                         if result:
-                            print(f"✅ Indexed! Created {result.get('files', 0)} files, {result.get('classes', 0)} classes, {result.get('functions', 0)} functions")
+                            print(
+                                f"✅ Indexed! Created {result.get('files', 0)} files, {result.get('classes', 0)} classes, {result.get('functions', 0)} functions"
+                            )
                     except Exception as e:
                         print(f"⚠️  Indexing failed: {e}")
                         print("   You can index later with: amplihack memory update-code-index")
 
                 elif response == "background":
                     print("\n🔄 Starting background indexing...")
+
                     def _index_in_background():
                         try:
                             with Neo4jConnector() as bg_conn:
@@ -277,21 +278,23 @@ def _check_code_understanding_freshness():
                     print("✅ Indexing started in background (won't block startup)")
 
                 else:
-                    print("\n⏭️  Skipped. You can index later with: amplihack memory update-code-index")
+                    print(
+                        "\n⏭️  Skipped. You can index later with: amplihack memory update-code-index"
+                    )
 
-                print("="*70 + "\n")
+                print("=" * 70 + "\n")
 
             else:
                 # Previously indexed - check freshness
                 is_stale, reason = is_code_index_stale(project_root, conn, max_age_minutes=120)
 
                 if is_stale:
-                    print("="*70)
+                    print("=" * 70)
                     print("📚 Code Understanding Engine")
-                    print("="*70)
+                    print("=" * 70)
                     print(f"\n{reason}")
                     print("\n💡 To update: amplihack memory update-code-index")
-                    print("="*70 + "\n")
+                    print("=" * 70 + "\n")
 
     except Exception as e:
         logger.debug("Code freshness check failed: %s", e)

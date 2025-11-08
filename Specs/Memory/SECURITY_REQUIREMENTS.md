@@ -19,23 +19,25 @@ This document defines security requirements for the Neo4j memory system foundati
 
 ### 1.1 Assets to Protect
 
-| Asset | Sensitivity | Threat Level | Protection Priority |
-|-------|-------------|--------------|---------------------|
-| Neo4j credentials | HIGH | Command injection, credential theft | CRITICAL |
-| Agent memories (code snippets, patterns) | MEDIUM-HIGH | Information disclosure, data exfiltration | HIGH |
-| Code graph data | MEDIUM | Reverse engineering, IP theft | MEDIUM |
-| Session metadata | LOW-MEDIUM | Privacy violation | MEDIUM |
-| Docker volumes | MEDIUM | Data persistence, unauthorized access | MEDIUM |
+| Asset                                    | Sensitivity | Threat Level                              | Protection Priority |
+| ---------------------------------------- | ----------- | ----------------------------------------- | ------------------- |
+| Neo4j credentials                        | HIGH        | Command injection, credential theft       | CRITICAL            |
+| Agent memories (code snippets, patterns) | MEDIUM-HIGH | Information disclosure, data exfiltration | HIGH                |
+| Code graph data                          | MEDIUM      | Reverse engineering, IP theft             | MEDIUM              |
+| Session metadata                         | LOW-MEDIUM  | Privacy violation                         | MEDIUM              |
+| Docker volumes                           | MEDIUM      | Data persistence, unauthorized access     | MEDIUM              |
 
 ### 1.2 Threat Actors
 
 **In Scope:**
+
 - Malicious code in project dependencies (supply chain)
 - Accidental credential exposure (developers committing secrets)
 - Network-adjacent attackers (same network as dev machine)
 - Process enumeration attacks (other processes on dev machine)
 
 **Out of Scope:**
+
 - Nation-state adversaries with physical access
 - Remote attackers (Neo4j not exposed to internet)
 - Social engineering attacks on developers
@@ -44,20 +46,15 @@ This document defines security requirements for the Neo4j memory system foundati
 ### 1.3 Attack Vectors
 
 **High Priority (MUST Address):**
+
 1. **Credential Exposure**: Default/weak passwords in version control
 2. **Command Injection**: Malicious input to Docker commands
 3. **Port Exposure**: Neo4j exposed to network beyond localhost
 4. **Volume Permissions**: Unauthorized access to Docker volume data
 
-**Medium Priority (SHOULD Address):**
-5. **Data at Rest**: Unencrypted sensitive memories in volume
-6. **Dependency Trust**: Malicious Docker images or Python packages
-7. **Environment Variable Leakage**: Credentials in process listings
-8. **Session Hijacking**: Reusing credentials across projects
+**Medium Priority (SHOULD Address):** 5. **Data at Rest**: Unencrypted sensitive memories in volume 6. **Dependency Trust**: Malicious Docker images or Python packages 7. **Environment Variable Leakage**: Credentials in process listings 8. **Session Hijacking**: Reusing credentials across projects
 
-**Low Priority (COULD Address):**
-9. **Side-channel Attacks**: Timing attacks on queries
-10. **Data Correlation**: Linking memories across projects
+**Low Priority (COULD Address):** 9. **Side-channel Attacks**: Timing attacks on queries 10. **Data Correlation**: Linking memories across projects
 
 ---
 
@@ -67,7 +64,7 @@ This document defines security requirements for the Neo4j memory system foundati
 
 **REQUIREMENT SEC-001: No Default Passwords**
 
-```yaml
+````yaml
 Priority: CRITICAL
 Threat: Credential compromise via known defaults
 
@@ -105,15 +102,17 @@ def get_or_create_password() -> str:
     password_file.write_text(password)
     password_file.chmod(0o600)  # Owner read/write only
     return password
-```
+````
 
 Acceptance Criteria:
+
 - No password in docker-compose.yml or .env.example
 - Password file has 0o600 permissions
 - 32+ character random password generated
 - Password reused across sessions
 - Clear docs on password override
-```
+
+````
 
 **REQUIREMENT SEC-002: Secure Password Storage**
 
@@ -141,7 +140,7 @@ Acceptance Criteria:
 - Password not in git-tracked files
 - Password not visible in docker ps output
 - Clear warning if password file world-readable
-```
+````
 
 **REQUIREMENT SEC-003: Password Rotation Support**
 
@@ -173,7 +172,7 @@ Acceptance Criteria:
 
 **REQUIREMENT SEC-004: No Credentials in Docker Compose**
 
-```yaml
+````yaml
 Priority: CRITICAL
 Threat: Secrets in version control
 
@@ -183,17 +182,19 @@ services:
   neo4j:
     environment:
       - NEO4J_AUTH=neo4j/amplihack  # WRONG: Hardcoded password
-```
+````
 
 Good Example:
+
 ```yaml
 services:
   neo4j:
     environment:
-      - NEO4J_AUTH=${NEO4J_AUTH}  # Reference environment variable
+      - NEO4J_AUTH=${NEO4J_AUTH} # Reference environment variable
 ```
 
 Python Injection:
+
 ```python
 def start_neo4j_container():
     """Start Neo4j with secure credential injection"""
@@ -211,11 +212,13 @@ def start_neo4j_container():
 ```
 
 Acceptance Criteria:
+
 - No credentials in docker-compose.neo4j.yml
 - No credentials in .env.example files
 - Credentials injected at runtime only
 - Git pre-commit hook prevents credential commits
-```
+
+````
 
 ---
 
@@ -237,26 +240,30 @@ services:
       - "127.0.0.1:7474:7474"  # HTTP - localhost only
       - "127.0.0.1:7687:7687"  # Bolt - localhost only
     # NOT: "0.0.0.0:7687:7687"  # NEVER expose to network
-```
+````
 
 Rationale:
+
 - Neo4j only accessed from local machine
 - No legitimate use case for network access
 - Defense against network scanning
 - Reduces attack surface significantly
 
 Verification:
+
 ```bash
 # Should show 127.0.0.1, not 0.0.0.0
 docker port amplihack-neo4j
 ```
 
 Acceptance Criteria:
+
 - Both ports bound to 127.0.0.1
 - Cannot connect from other machines on network
 - Docker inspect shows correct binding
 - Documentation warns against network exposure
-```
+
+````
 
 **REQUIREMENT SEC-006: Port Configuration Security**
 
@@ -297,14 +304,16 @@ def verify_ports_available():
             print(f"[ERROR] Port {port} already in use ({ports[port]})")
         print("[FIX] Set NEO4J_BOLT_PORT and NEO4J_HTTP_PORT to alternative ports")
         raise RuntimeError("Required ports unavailable")
-```
+````
 
 Acceptance Criteria:
+
 - Port conflict detected before Docker start
 - Clear error message identifies which port
 - Guidance on how to change ports
 - Alternative ports work correctly
-```
+
+````
 
 ### 3.2 Container Network Isolation
 
@@ -326,18 +335,21 @@ networks:
   amplihack_memory:
     driver: bridge
     internal: false  # Allow internet for APOC plugins
-```
+````
 
 Rationale:
+
 - Isolate Neo4j from other Docker containers
 - Prevent cross-container attacks
 - Control network traffic explicitly
 
 Acceptance Criteria:
+
 - Neo4j in dedicated Docker network
 - Cannot communicate with unrelated containers
 - Internet access only if needed for plugins
-```
+
+````
 
 ---
 
@@ -360,9 +372,10 @@ volumes:
       type: none
       o: bind
       device: ${HOME}/.amplihack/neo4j-data
-```
+````
 
 Filesystem Permissions:
+
 ```python
 def ensure_volume_permissions():
     """Ensure Neo4j data directory has correct permissions"""
@@ -378,11 +391,13 @@ def ensure_volume_permissions():
 ```
 
 Acceptance Criteria:
+
 - Data directory has 0o700 permissions
 - No world-readable files in volume
 - Volume in user home directory (not /tmp)
 - Verification runs on each startup
-```
+
+````
 
 **REQUIREMENT SEC-009: Sensitive Data Classification**
 
@@ -420,14 +435,16 @@ class SensitiveMemory:
             r'password["\']?\s*[:=]\s*["\'].+["\']',
         ]
         return any(re.search(pattern, content, re.IGNORECASE) for pattern in patterns)
-```
+````
 
 Acceptance Criteria:
+
 - Memory creation warns if secrets detected
 - Guidance provided on alternatives
 - High-sensitivity memories logged separately
 - Documentation on handling secrets in code
-```
+
+````
 
 **REQUIREMENT SEC-010: Encryption at Rest (Future)**
 
@@ -451,13 +468,13 @@ Acceptance Criteria (When Implemented):
 - Key not stored in volume
 - Performance impact < 10%
 - Transparent to application layer
-```
+````
 
 ### 4.2 Data in Transit
 
 **REQUIREMENT SEC-011: Bolt Protocol Security**
 
-```yaml
+````yaml
 Priority: MEDIUM
 Threat: Local eavesdropping (unlikely but possible)
 
@@ -479,13 +496,15 @@ def get_neo4j_uri() -> str:
     if os.getenv("NEO4J_REQUIRE_TLS") == "true":
         return "bolt+s://localhost:7687"
     return "bolt://localhost:7687"
-```
+````
 
 Acceptance Criteria (Current):
+
 - Documentation notes unencrypted local transport
 - No TLS required for localhost
 - Option to enable TLS documented for future
-```
+
+````
 
 ### 4.3 Data Retention and Deletion
 
@@ -528,14 +547,16 @@ def delete_project_data_secure(project_id: str):
     ]
     for query in queries:
         connector.execute_write(query, {"project_id": project_id})
-```
+````
 
 Acceptance Criteria:
+
 - Delete memory removes all relationships
 - Bulk deletion by project works
 - No orphaned nodes after deletion
 - Deletion logged for audit
-```
+
+````
 
 ---
 
@@ -562,9 +583,10 @@ services:
     image: neo4j:5.15-community  # Specific version, official image
     # NOT: neo4j:latest  # WRONG: Unpredictable
     # NOT: someuser/neo4j  # WRONG: Untrusted source
-```
+````
 
 Image Verification (Future):
+
 ```python
 def verify_neo4j_image():
     """Verify Neo4j Docker image authenticity"""
@@ -584,11 +606,13 @@ def verify_neo4j_image():
 ```
 
 Acceptance Criteria:
+
 - Only official neo4j images used
 - Version pinned in docker-compose.yml
 - Documentation notes image source
 - Warning if using custom images
-```
+
+````
 
 **REQUIREMENT SEC-014: Python Package Integrity**
 
@@ -603,11 +627,14 @@ Requirements:
 - Regular security updates
 
 requirements.txt:
-```
+````
+
 # Neo4j driver - official package
+
 neo4j==5.15.0 \
-    --hash=sha256:abc123...  # Verify package integrity
-```
+ --hash=sha256:abc123... # Verify package integrity
+
+````
 
 Dependency Scanning:
 ```bash
@@ -616,14 +643,16 @@ pip-audit
 
 # Check for known vulnerabilities
 safety check
-```
+````
 
 Acceptance Criteria:
+
 - neo4j package version pinned
 - Hash verification enabled (optional)
 - Security scanning in CI/CD
 - Documentation on updating dependencies
-```
+
+````
 
 ### 5.2 Supply Chain Security
 
@@ -666,14 +695,16 @@ def validate_docker_command(args: List[str]):
     for arg in args:
         if any(char in arg for char in [";", "&", "|", "`", "$"]):
             raise ValueError(f"Potentially dangerous argument: {arg}")
-```
+````
 
 Acceptance Criteria:
+
 - No auto-execution of system commands
 - All suggestions require user action
 - Command validation for Docker/docker-compose
 - Clear security warnings in documentation
-```
+
+````
 
 ---
 
@@ -700,9 +731,10 @@ services:
     environment:
       # NEVER: NEO4J_AUTH=none  # WRONG: Disables authentication
       - NEO4J_AUTH=${NEO4J_AUTH}  # CORRECT: Requires auth
-```
+````
 
 Connection Validation:
+
 ```python
 def connect_with_auth(uri: str, user: str, password: str):
     """Connect to Neo4j with authentication"""
@@ -718,11 +750,13 @@ def connect_with_auth(uri: str, user: str, password: str):
 ```
 
 Acceptance Criteria:
+
 - NEO4J_AUTH always set (never "none")
 - Unauthenticated connections rejected
 - Authentication tested in smoke tests
 - Documentation emphasizes authentication requirement
-```
+
+````
 
 ### 6.2 Authorization
 
@@ -746,9 +780,10 @@ WHERE (m)<-[:CONTAINS_MEMORY]-(:Project {id: $project_id})
    OR NOT exists((m)<-[:CONTAINS_MEMORY]-())
 RETURN m
 // Cannot access other agent types' memories
-```
+````
 
 Query Pattern (INSECURE - Don't Do):
+
 ```cypher
 // WRONG: Returns all memories regardless of agent type
 MATCH (m:Memory)
@@ -758,11 +793,13 @@ RETURN m
 ```
 
 Acceptance Criteria:
+
 - All memory queries include agent type filter
 - Cross-type access logged
 - Authorization tests in test suite
 - Documentation explains isolation model
-```
+
+````
 
 **REQUIREMENT SEC-018: Project Isolation**
 
@@ -794,14 +831,16 @@ def get_memories_isolated(agent_type_id: str, project_id: str):
         "agent_type_id": agent_type_id,
         "project_id": project_id,
     })
-```
+````
 
 Acceptance Criteria:
+
 - Project-specific memories not visible to other projects
 - Global memories explicitly marked (no project relationship)
 - Isolation tested with multiple projects
 - No data leakage in integration tests
-```
+
+````
 
 ### 6.3 Audit Logging
 
@@ -850,20 +889,23 @@ log_security_event("memory_deleted", {
 log_security_event("password_rotation", {
     "success": True,
 })
-```
+````
 
 Log Storage:
+
 - Location: ~/.amplihack/logs/security.log
 - Rotation: Daily, keep 30 days
 - Permissions: 0o600 (owner only)
 - Format: JSON for parsing
 
 Acceptance Criteria:
+
 - All security events logged
 - Log file has correct permissions
 - Log rotation configured
 - Logs parseable for analysis
-```
+
+````
 
 ---
 
@@ -890,9 +932,10 @@ raise RuntimeError(
     f"Failed to connect to neo4j://neo4j:supersecret@localhost:7687"
     f"Check config at /home/user/.amplihack/.neo4j_password"
 )
-```
+````
 
 Good Example (SECURE):
+
 ```python
 # CORRECT: Safe error message
 raise RuntimeError(
@@ -903,6 +946,7 @@ raise RuntimeError(
 ```
 
 Error Sanitization:
+
 ```python
 def sanitize_error(error: Exception) -> str:
     """Remove sensitive data from error messages"""
@@ -921,11 +965,13 @@ def sanitize_error(error: Exception) -> str:
 ```
 
 Acceptance Criteria:
+
 - No credentials in error messages
 - No absolute paths in error messages
 - Error messages actionable
 - Error sanitization tested
-```
+
+````
 
 ### 7.2 Fail-Secure Defaults
 
@@ -966,14 +1012,16 @@ def connect_to_neo4j() -> Optional[GraphDatabase.driver]:
     except Exception:
         # FAIL SECURE: Don't try unauthenticated connection
         return None  # Connection fails, don't bypass auth
-```
+````
 
 Acceptance Criteria:
+
 - Authorization failures deny access
 - Connection failures don't bypass auth
 - Default configuration is most secure
 - Fail-secure behavior tested
-```
+
+````
 
 ---
 
@@ -1019,9 +1067,10 @@ class Neo4jSession:
         if self._password:
             self._password = None
         return False
-```
+````
 
 Process Security:
+
 ```bash
 # INSECURE: Password visible in ps
 docker run -e NEO4J_AUTH=neo4j/password ...  # WRONG
@@ -1031,11 +1080,13 @@ docker run -e NEO4J_AUTH=$(cat ~/.amplihack/.neo4j_password) ...  # BETTER
 ```
 
 Acceptance Criteria:
+
 - Password not in command line arguments
 - Password not in environment of long-running processes
 - Session cleanup releases resources
 - Password cleared from memory on exit
-```
+
+````
 
 ---
 
@@ -1127,14 +1178,16 @@ def test_agent_type_isolation():
     result = connector.execute_query(query, {"memory_id": memory_id})
 
     assert len(result) == 0, "Builder should not access architect memory"
-```
+````
 
 Acceptance Criteria:
+
 - All security tests pass
 - Tests cover threat model scenarios
 - Tests run in CI/CD
 - Test coverage > 90% for security-critical code
-```
+
+````
 
 ### 9.2 Penetration Testing
 
@@ -1177,7 +1230,7 @@ Acceptance Criteria:
 - Checks performed before release
 - Findings tracked and resolved
 - Checks repeated quarterly
-```
+````
 
 ---
 
@@ -1187,7 +1240,7 @@ Acceptance Criteria:
 
 **REQUIREMENT SEC-025: Production-Ready Defaults**
 
-```yaml
+````yaml
 Priority: HIGH
 Threat: Insecure configuration by inexperienced users
 
@@ -1222,9 +1275,10 @@ networks:
 volumes:
   amplihack_neo4j_data:
     driver: local
-```
+````
 
 Secure Defaults Checklist:
+
 - ✓ No default passwords
 - ✓ Localhost-only binding
 - ✓ Isolated Docker network
@@ -1236,11 +1290,13 @@ Secure Defaults Checklist:
 - ✓ Specific image version
 
 Acceptance Criteria:
+
 - Default config passes security audit
 - No insecure defaults
 - Documentation explains security choices
 - Override options documented
-```
+
+````
 
 ---
 
@@ -1291,7 +1347,7 @@ Acceptance Criteria:
 - Docs reviewed by security expert
 - Examples tested and working
 - Docs linked from main README
-```
+````
 
 ---
 
@@ -1301,7 +1357,7 @@ Acceptance Criteria:
 
 **REQUIREMENT SEC-027: Incident Response Plan**
 
-```yaml
+````yaml
 Priority: MEDIUM
 Threat: Uncoordinated response to security incidents
 
@@ -1367,14 +1423,16 @@ def audit_security_incident(incident_type: str):
 
     # Parse logs for suspicious activity
     # (Implementation depends on log format)
-```
+````
 
 Acceptance Criteria:
+
 - Incident procedures documented
 - Emergency commands tested
 - Response time < 1 hour for critical incidents
 - Post-incident review process defined
-```
+
+````
 
 ---
 
@@ -1484,7 +1542,7 @@ docker exec amplihack-neo4j cypher-shell "RETURN 1"  # Should require auth
 
 # Run security tests
 pytest tests/memory/security/ -v
-```
+````
 
 ---
 
@@ -1493,6 +1551,7 @@ pytest tests/memory/security/ -v
 ### 15.1 Roadmap
 
 **v2.0 (6 months):**
+
 - [ ] Keyring integration for password storage
 - [ ] TLS support for Bolt connections
 - [ ] Image signature verification
@@ -1500,6 +1559,7 @@ pytest tests/memory/security/ -v
 - [ ] Comprehensive audit trail
 
 **v3.0 (12 months):**
+
 - [ ] Encryption at rest (volume-level)
 - [ ] Role-based access control (RBAC)
 - [ ] Multi-user support
@@ -1507,6 +1567,7 @@ pytest tests/memory/security/ -v
 - [ ] Automated vulnerability scanning
 
 **Research Items:**
+
 - [ ] Hardware security module (HSM) integration
 - [ ] Zero-knowledge proofs for sensitive memories
 - [ ] Homomorphic encryption for queries
