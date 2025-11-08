@@ -20,6 +20,9 @@ import pytest
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+# Set environment variable to allow default password for testing
+os.environ["NEO4J_ALLOW_DEFAULT_PASSWORD"] = "true"
+
 
 @pytest.mark.gadugi
 def test_neo4j_cleanup_interactive_prompt_yes():

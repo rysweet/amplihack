@@ -44,6 +44,36 @@ class Neo4jShutdownCoordinator:
         self.auto_mode = auto_mode
         self._preference = self._load_preference()
 
+    def _validate_preferences_path(self, path: Path) -> Path:
+        """Validate preferences path to prevent traversal attacks.
+
+        Args:
+            path: Path to validate
+
+        Returns:
+            Path: Validated absolute path
+
+        Raises:
+            ValueError: If path validation fails
+        """
+        try:
+            # Resolve to absolute path
+            resolved = path.resolve()
+
+            # Ensure path ends with expected file
+            if resolved.name != "USER_PREFERENCES.md":
+                raise ValueError(f"Invalid preferences file: {resolved.name}")
+
+            # Ensure path contains .claude/context
+            path_str = str(resolved)
+            if ".claude/context" not in path_str:
+                raise ValueError(f"Preferences path must contain .claude/context: {resolved}")
+
+            return resolved
+        except Exception as e:
+            logger.warning(f"Path validation failed: {e}")
+            raise
+
     def _load_preference(self) -> str:
         """Load neo4j_auto_shutdown preference from USER_PREFERENCES.md.
 
@@ -68,6 +98,8 @@ class Neo4jShutdownCoordinator:
 
         try:
             logger.debug("Reading preferences from: %s", prefs_file)
+            # Validate path before reading
+            prefs_file = self._validate_preferences_path(prefs_file)
             content = prefs_file.read_text()
 
             # Parse preference - try "**Current setting:**" format first, then simple format
@@ -128,6 +160,8 @@ class Neo4jShutdownCoordinator:
             return
 
         try:
+            # Validate path before reading/writing
+            prefs_file = self._validate_preferences_path(prefs_file)
             logger.debug("Saving neo4j_auto_shutdown preference to: %s", prefs_file)
             content = prefs_file.read_text()
 

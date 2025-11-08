@@ -166,8 +166,13 @@ class StopHook(HookProcessor):
 
             self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
 
-            # Initialize components
-            tracker = Neo4jConnectionTracker()
+            # Initialize components with credentials from environment
+            # Note: Connection tracker will raise ValueError if password not set and
+            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.
+            tracker = Neo4jConnectionTracker(
+                username=os.getenv("NEO4J_USERNAME"),
+                password=os.getenv("NEO4J_PASSWORD")
+            )
             manager = Neo4jContainerManager()
             coordinator = Neo4jShutdownCoordinator(
                 connection_tracker=tracker,

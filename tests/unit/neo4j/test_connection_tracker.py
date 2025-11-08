@@ -18,7 +18,7 @@ class TestNeo4jConnectionTracker:
         """Create connection tracker instance."""
         # Explicitly set credentials for consistent test behavior
         return Neo4jConnectionTracker(
-            container_name="neo4j-test", timeout=2.0, username="neo4j", password="amplihack"
+            container_name="neo4j-test", timeout=4.0, username="neo4j", password="amplihack"
         )
 
     def test_get_active_connection_count_success(self, tracker):
@@ -51,7 +51,7 @@ class TestNeo4jConnectionTracker:
                     ]
                 },
                 auth=("neo4j", "amplihack"),
-                timeout=2.0,
+                timeout=4.0,
             )
 
     def test_get_active_connection_count_timeout(self, tracker):
@@ -189,7 +189,7 @@ class TestNeo4jConnectionTracker:
         tracker = Neo4jConnectionTracker(username="neo4j", password="amplihack")
 
         assert tracker.container_name == "neo4j-amplihack"
-        assert tracker.timeout == 2.0
+        assert tracker.timeout == 4.0
         assert tracker.http_url == "http://localhost:7474/db/data/transaction/commit"
         assert tracker.auth == ("neo4j", "amplihack")
 
@@ -199,3 +199,80 @@ class TestNeo4jConnectionTracker:
 
         assert tracker.container_name == "custom-neo4j"
         assert tracker.timeout == 5.0
+
+    def test_retry_on_timeout(self, tracker):
+        """Test retry logic on timeout."""
+        # Mock first attempt to timeout, second to succeed
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [{"data": [{"row": [2]}]}],
+            "errors": [],
+        }
+
+        with patch("requests.post") as mock_post:
+            mock_post.side_effect = [requests.exceptions.Timeout, mock_response]
+            with patch("time.sleep"):  # Mock sleep to speed up test
+                count = tracker.get_active_connection_count()
+
+            assert count == 2
+            # Should have called post twice (1 failure + 1 retry)
+            assert mock_post.call_count == 2
+
+    def test_max_retries_exhausted(self, tracker):
+        """Test max retries reached."""
+        with patch("requests.post", side_effect=requests.exceptions.Timeout):
+            with patch("time.sleep"):  # Mock sleep to speed up test
+                count = tracker.get_active_connection_count(max_retries=2)
+
+            # Should fail after 3 total attempts (initial + 2 retries)
+            assert count is None
+
+    def test_exponential_backoff(self, tracker):
+        """Test exponential backoff timing."""
+        with patch("requests.post", side_effect=requests.exceptions.Timeout):
+            with patch("time.sleep") as mock_sleep:
+                tracker.get_active_connection_count(max_retries=2)
+
+            # Should have called sleep twice with exponential backoff
+            assert mock_sleep.call_count == 2
+            # First backoff: 0.5 * (1.5 ** 0) = 0.5
+            mock_sleep.assert_any_call(0.5)
+            # Second backoff: 0.5 * (1.5 ** 1) = 0.75
+            mock_sleep.assert_any_call(0.75)
+
+    def test_connection_error_no_retry(self, tracker):
+        """Test ConnectionError does not trigger retry."""
+        with patch("requests.post", side_effect=requests.exceptions.ConnectionError) as mock_post:
+            with patch("time.sleep") as mock_sleep:
+                count = tracker.get_active_connection_count(max_retries=2)
+
+            # Should only call once (no retries for ConnectionError)
+            assert mock_post.call_count == 1
+            # Should not sleep
+            assert mock_sleep.call_count == 0
+            assert count is None
+
+    def test_sanitize_for_log(self, tracker):
+        """Test log sanitization."""
+        # Test basic sanitization
+        result = tracker._sanitize_for_log("normal string")
+        assert result == "normal string"
+
+        # Test newline removal
+        result = tracker._sanitize_for_log("line1\nline2\rline3")
+        assert result == "line1\\nline2\\rline3"
+
+        # Test truncation
+        long_string = "a" * 150
+        result = tracker._sanitize_for_log(long_string, max_length=100)
+        assert len(result) == 114  # 100 + len("...[truncated]")
+        assert result.endswith("...[truncated]")
+
+    def test_generic_exception_logging(self, tracker):
+        """Test generic exception logging with sanitization."""
+        with patch("requests.post", side_effect=ValueError("Sensitive data\nwith newlines")):
+            count = tracker.get_active_connection_count()
+
+            # Should return None for generic exceptions
+            assert count is None

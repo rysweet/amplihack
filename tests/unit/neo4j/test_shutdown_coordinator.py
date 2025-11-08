@@ -283,6 +283,12 @@ class TestNeo4jShutdownCoordinator:
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -298,6 +304,12 @@ class TestNeo4jShutdownCoordinator:
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -313,6 +325,9 @@ class TestNeo4jShutdownCoordinator:
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -328,6 +343,9 @@ class TestNeo4jShutdownCoordinator:
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -353,6 +371,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
@@ -376,6 +397,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
@@ -401,6 +425,12 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -422,6 +452,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -442,6 +475,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -470,6 +506,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
         with patch("builtins.input", return_value="always"), \
              patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
@@ -494,6 +533,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
         with patch("builtins.input", return_value="a"), \
              patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
@@ -518,6 +560,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
         with patch("builtins.input", return_value="never"), \
              patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
@@ -542,6 +587,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
         with patch("builtins.input", return_value="v"), \
              patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
@@ -557,6 +605,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -578,6 +629,9 @@ Controls neo4j_auto_shutdown preference.
         mock_path = MagicMock()
         mock_path.exists.return_value = True
         mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
         with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             coordinator = Neo4jShutdownCoordinator(
@@ -593,3 +647,79 @@ Controls neo4j_auto_shutdown preference.
             # Should check connections and shutdown without prompting
             mock_tracker.is_last_connection.assert_called_once()
             mock_manager.stop.assert_called_once()
+
+    def test_path_validation_rejects_traversal(self, coordinator):
+        """Test path validation rejects path traversal attempts."""
+        # Test case: file not named USER_PREFERENCES.md
+        invalid_path = Path("/etc/passwd")
+        with pytest.raises(ValueError, match="Invalid preferences file"):
+            coordinator._validate_preferences_path(invalid_path)
+
+        # Test case: path doesn't contain .claude/context
+        invalid_path = Path("/tmp/USER_PREFERENCES.md")
+        with pytest.raises(ValueError, match="must contain .claude/context"):
+            coordinator._validate_preferences_path(invalid_path)
+
+    def test_path_validation_accepts_valid_paths(self, coordinator):
+        """Test path validation accepts valid preference paths."""
+        # Test project-local path
+        valid_path = Path.cwd() / ".claude" / "context" / "USER_PREFERENCES.md"
+        resolved = coordinator._validate_preferences_path(valid_path)
+        assert resolved.name == "USER_PREFERENCES.md"
+        assert ".claude/context" in str(resolved)
+
+        # Test home directory path
+        valid_path = Path.home() / ".claude" / "context" / "USER_PREFERENCES.md"
+        resolved = coordinator._validate_preferences_path(valid_path)
+        assert resolved.name == "USER_PREFERENCES.md"
+        assert ".claude/context" in str(resolved)
+
+    def test_load_preference_with_path_validation(self, mock_tracker, mock_manager):
+        """Test that _load_preference validates paths."""
+        prefs_content = "neo4j_auto_shutdown: always"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
+
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            # Should succeed with valid path
+            assert coordinator._preference == 'always'
+
+    def test_save_preference_with_path_validation(self, coordinator):
+        """Test that _save_preference validates paths."""
+        prefs_content = """
+### Neo4j Auto-Shutdown
+
+Controls neo4j_auto_shutdown preference.
+
+**Current setting:** ask
+
+**Options:**
+"""
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
+        mock_path.name = "USER_PREFERENCES.md"
+        mock_path.resolve.return_value = mock_path
+        mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
+
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            # Should validate path before saving
+            coordinator._save_preference('always')
+            mock_path.write_text.assert_called_once()

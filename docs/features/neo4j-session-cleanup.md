@@ -169,10 +169,45 @@ The feature provides comprehensive logging at multiple levels:
 The connection tracker supports configuration via environment variables:
 
 ```bash
-# Neo4j authentication credentials
+# Neo4j authentication credentials (PRODUCTION)
 export NEO4J_USERNAME="neo4j"      # Default: "neo4j"
-export NEO4J_PASSWORD="amplihack"  # Default: "amplihack"
+export NEO4J_PASSWORD="your-secure-password-here"  # REQUIRED in production
+
+# Development mode (TESTING ONLY - NOT FOR PRODUCTION)
+export NEO4J_ALLOW_DEFAULT_PASSWORD="true"  # Allows default "amplihack" password
 ```
+
+#### Security Best Practices
+
+**PRODUCTION ENVIRONMENTS:**
+
+1. **Always set NEO4J_PASSWORD**: Never use the default "amplihack" password in production
+2. **Use strong passwords**: Minimum 16 characters with mixed case, numbers, and symbols
+3. **Rotate credentials**: Change passwords regularly
+4. **Secure storage**: Use environment variable management tools (e.g., AWS Secrets Manager, HashiCorp Vault)
+
+**DEVELOPMENT MODE:**
+
+The connection tracker requires explicit opt-in to use the default password:
+
+```bash
+# This will FAIL without NEO4J_PASSWORD or development mode
+python -m amplihack
+
+# ERROR: Neo4j password required. Set NEO4J_PASSWORD environment variable.
+# For development/testing only, set NEO4J_ALLOW_DEFAULT_PASSWORD=true
+
+# Development mode (testing only)
+export NEO4J_ALLOW_DEFAULT_PASSWORD="true"
+python -m amplihack  # Uses "amplihack" password with warning
+```
+
+**Why This Matters:**
+
+- Prevents accidental use of default credentials in production
+- Forces explicit acknowledgment for development usage
+- Provides clear warning messages when default password is used
+- Aligns with security best practices for credential management
 
 ### Container Settings
 
@@ -187,15 +222,123 @@ Neo4jConnectionTracker(
 )
 ```
 
+### Retry Logic and Resilience
+
+The connection tracker implements intelligent retry logic for transient network issues:
+
+**Retry Behavior:**
+
+- **Timeout errors**: Retry with exponential backoff
+- **Connection errors**: No retry (container not running)
+- **Generic errors**: No retry (unexpected conditions)
+- **Max retries**: 2 (total 3 attempts including initial)
+
+**Exponential Backoff:**
+
+```
+Attempt 1: Immediate (0s delay)
+Attempt 2: 0.5s delay
+Attempt 3: 0.75s delay
+```
+
+Formula: `backoff = 0.5 * (1.5 ** attempt)`
+
+**Why This Design:**
+
+- **Timeout retries**: Network hiccups or Neo4j briefly overloaded
+- **No connection retry**: Container not running = permanent failure
+- **Exponential backoff**: Prevents overwhelming a recovering service
+- **Short delays**: Minimal impact on session exit time (< 2 seconds total)
+
+**Example Scenario:**
+
+```
+# Neo4j temporarily overloaded
+Attempt 1: Timeout after 4.0s → Retry in 0.5s
+Attempt 2: Timeout after 4.0s → Retry in 0.75s
+Attempt 3: Success → Returns connection count
+
+Total time: ~9.25s (3 × 4.0s + 0.5s + 0.75s)
+```
+
 ### Timeouts
 
 The feature uses carefully tuned timeouts for optimal UX:
 
 | Operation | Timeout | Purpose |
 |-----------|---------|---------|
-| HTTP request | 2.0s | Quick connection count query |
+| HTTP request | 4.0s | Connection count query (per attempt) |
 | User prompt | 10.0s | Enough time to read and respond |
 | Shutdown execution | 30.0s | Container stop operation (via docker) |
+
+**Note**: HTTP timeout is per attempt. With 3 attempts and backoff, total worst-case connection check time is ~9.25 seconds.
+
+### Path Validation Security
+
+The shutdown coordinator implements strict path validation to prevent path traversal attacks:
+
+**Validation Rules:**
+
+1. **File name check**: Must be named `USER_PREFERENCES.md` exactly
+2. **Directory check**: Path must contain `.claude/context`
+3. **Absolute path**: Resolved to canonical absolute path
+4. **No symlink exploitation**: Uses `Path.resolve()` to follow symlinks safely
+
+**Protected Against:**
+
+```bash
+# These attacks are automatically rejected:
+../../../etc/passwd                          # Traversal to system files
+/tmp/USER_PREFERENCES.md                     # Invalid directory
+.claude/context/../../../etc/USER_PREFERENCES.md  # Complex traversal
+```
+
+**Allowed Paths:**
+
+```bash
+# Project-local (preferred)
+/path/to/project/.claude/context/USER_PREFERENCES.md
+
+# Home directory (fallback)
+~/.claude/context/USER_PREFERENCES.md
+```
+
+**Why This Matters:**
+
+- Prevents reading/writing arbitrary files on the system
+- Protects against malicious preference file injection
+- Ensures preferences are always stored in expected locations
+- Maintains security even if path construction has vulnerabilities
+
+### Exception Sanitization
+
+The connection tracker sanitizes all exception messages before logging to prevent information disclosure:
+
+**Sanitization Process:**
+
+1. **Newline removal**: Replaces `\n` and `\r` with escaped versions
+2. **Truncation**: Limits message length to 100 characters
+3. **Dual logging**: Detailed at DEBUG level, generic at WARNING level
+
+**Example:**
+
+```python
+# Original exception
+raise ValueError("Database error: password='secret123'\nConnection failed")
+
+# DEBUG log (detailed)
+"Detailed error: ValueError: Database error: password='secret123'\\nConnection failed"
+
+# WARNING log (generic)
+"Failed to query Neo4j connection count. Check if container is running."
+```
+
+**Why This Matters:**
+
+- Prevents password/credential leakage in logs
+- Stops log injection attacks (newlines breaking log parsers)
+- Reduces log bloat from verbose error messages
+- Provides diagnostics at DEBUG level without risking production exposure
 
 ## Troubleshooting
 
