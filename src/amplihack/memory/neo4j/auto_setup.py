@@ -212,10 +212,11 @@ def auto_setup_prerequisites() -> Tuple[bool, list[str]]:
         password = os.getenv("NEO4J_PASSWORD", "")
         bolt_port = int(os.getenv("NEO4J_BOLT_PORT", str(DEFAULT_BOLT_PORT)))
         http_port = int(os.getenv("NEO4J_HTTP_PORT", str(DEFAULT_HTTP_PORT)))
+        container_name = os.getenv("NEO4J_CONTAINER_NAME", "amplihack-neo4j")
 
-        # Check for conflicts and resolve
+        # Check for conflicts and resolve (pass container name for accurate detection)
         final_bolt, final_http, port_messages = resolve_port_conflicts(
-            bolt_port, http_port, password, Path.cwd()
+            bolt_port, http_port, password, Path.cwd(), container_name
         )
 
         messages.extend(port_messages)

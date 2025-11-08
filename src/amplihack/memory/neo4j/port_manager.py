@@ -123,12 +123,13 @@ def resolve_port_conflicts(
     http_port: int,
     password: str,
     project_root: Optional[Path] = None,
+    container_name: str = "amplihack-neo4j",
 ) -> Tuple[int, int, list[str]]:
     """Resolve port conflicts and select safe ports.
 
     Strategy:
     1. Check if ports are in use
-    2. If in use, check if it's OUR Neo4j container
+    2. If in use, check if it's OUR Neo4j container (specific name)
     3. If our container: reuse ports
     4. If NOT our container: find different ports and update .env
 
@@ -137,15 +138,16 @@ def resolve_port_conflicts(
         http_port: Desired HTTP port
         password: Neo4j password
         project_root: Project root for .env updates
+        container_name: Specific container name to check for
 
     Returns:
         (final_bolt_port, final_http_port, messages)
     """
     messages = []
 
-    # Check if our container is running
-    if is_our_neo4j_container():
-        messages.append(f"✅ Our Neo4j container found on ports {bolt_port}/{http_port}")
+    # Check if our SPECIFIC container is running with these ports
+    if is_our_neo4j_container(container_name):
+        messages.append(f"✅ Container '{container_name}' found on ports {bolt_port}/{http_port}")
         return bolt_port, http_port, messages
 
     # Check bolt port
