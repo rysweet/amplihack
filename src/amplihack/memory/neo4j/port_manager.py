@@ -78,6 +78,41 @@ def is_our_neo4j_container(container_name: str = "amplihack-neo4j") -> bool:
         return False
 
 
+def _parse_port_from_docker_line(line: str, container_port: str, port_type: str) -> Optional[int]:
+    """Parse host port number from docker port output line.
+
+    Args:
+        line: Output line from 'docker port' command
+        container_port: Container port to match (e.g., "7687/tcp")
+        port_type: Port type for logging (e.g., "bolt", "HTTP")
+
+    Returns:
+        Host port number if successfully parsed, None otherwise
+
+    Example:
+        >>> _parse_port_from_docker_line("7687/tcp -> 0.0.0.0:7787", "7687/tcp", "bolt")
+        7787
+    """
+    if container_port not in line or "->" not in line:
+        return None
+
+    parts = line.split("->")
+    if len(parts) != 2:
+        return None
+
+    host_part = parts[1].strip()
+    # Format is "0.0.0.0:PORT" or "[::]:PORT"
+    if ":" not in host_part:
+        return None
+
+    port_str = host_part.split(":")[-1]
+    try:
+        return int(port_str)
+    except ValueError:
+        logger.debug("Could not parse %s port from: %s", port_type, line)
+        return None
+
+
 def get_container_ports(container_name: str = "amplihack-neo4j") -> Optional[Tuple[int, int]]:
     """Get the actual mapped ports from a running Docker container.
 
@@ -124,30 +159,13 @@ def get_container_ports(container_name: str = "amplihack-neo4j") -> Optional[Tup
             if not line:
                 continue
 
-            # Parse lines like "7687/tcp -> 0.0.0.0:7787" or "7474/tcp -> 0.0.0.0:7774"
-            if "7687/tcp" in line and "->" in line:
-                # Extract the host port from the mapping
-                parts = line.split("->")
-                if len(parts) == 2:
-                    host_part = parts[1].strip()
-                    # Format is "0.0.0.0:PORT" or "[::]:PORT"
-                    if ":" in host_part:
-                        port_str = host_part.split(":")[-1]
-                        try:
-                            bolt_port = int(port_str)
-                        except ValueError:
-                            logger.debug("Could not parse bolt port from: %s", line)
+            # Parse bolt port (7687)
+            if bolt_port is None:
+                bolt_port = _parse_port_from_docker_line(line, "7687/tcp", "bolt")
 
-            elif "7474/tcp" in line and "->" in line:
-                parts = line.split("->")
-                if len(parts) == 2:
-                    host_part = parts[1].strip()
-                    if ":" in host_part:
-                        port_str = host_part.split(":")[-1]
-                        try:
-                            http_port = int(port_str)
-                        except ValueError:
-                            logger.debug("Could not parse HTTP port from: %s", line)
+            # Parse HTTP port (7474)
+            if http_port is None:
+                http_port = _parse_port_from_docker_line(line, "7474/tcp", "HTTP")
 
         # Return tuple only if both ports found
         if bolt_port and http_port:
@@ -322,7 +340,7 @@ def resolve_port_conflicts(
     return bolt_port, http_port, messages
 
 
-def _update_env_ports(project_root: Path, bolt_port: int, http_port: int):
+def _update_env_ports(project_root: Path, bolt_port: int, http_port: int) -> None:
     """Update .env file with selected ports."""
     env_file = project_root / ".env"
 
