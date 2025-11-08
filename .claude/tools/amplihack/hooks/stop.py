@@ -66,7 +66,8 @@ class StopHook(HookProcessor):
                 "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
             }
 
-        # Neo4j cleanup integration (before reflection)
+        # Neo4j cleanup integration (runs before reflection to ensure database state is managed
+        # before any potentially long-running reflection analysis that might timeout the user)
         self._handle_neo4j_cleanup()
 
         # Check if reflection should run

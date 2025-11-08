@@ -114,7 +114,7 @@ class Neo4jConnectionTracker:
             return None
 
         except Exception as e:
-            logger.warning("Error querying Neo4j connection count: %s", e)
+            logger.warning("Error querying Neo4j connection count (%s): %s", type(e).__name__, e)
             return None
 
     def is_last_connection(self) -> bool:
