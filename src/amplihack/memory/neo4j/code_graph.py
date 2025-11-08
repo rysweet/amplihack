@@ -74,9 +74,9 @@ class BlarifyIntegration:
             Dictionary with counts: {'files': N, 'classes': N, 'functions': N, ...}
 
         Raises:
-            RuntimeError: If blarify is not installed or execution fails
             FileNotFoundError: If codebase path doesn't exist
-            ValueError: If blarify output is invalid
+            RuntimeError: If blarify is not installed or execution fails
+            ValueError: If blarify output is invalid (raised by import_blarify_output)
         """
         # Input validation
         codebase_path = Path(codebase_path)
@@ -96,6 +96,7 @@ class BlarifyIntegration:
             # Run blarify (delegates installation checking)
             if not run_blarify(codebase_path, output_path, languages):
                 raise RuntimeError(
+                    f"Failed to analyze codebase at {codebase_path}. "
                     "blarify not found or execution failed. "
                     "Install with: pip install blarify\n"
                     "See: https://github.com/blarApp/blarify"
