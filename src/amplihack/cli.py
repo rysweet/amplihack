@@ -492,54 +492,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             settings_path = os.path.join(temp_claude_dir, "settings.json")
             import json
 
+            from . import create_hook_config
+
             # Create minimal settings.json with just amplihack hooks
             settings = {
-                "hooks": {
-                    "SessionStart": [
-                        {
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-                                    "timeout": 10000,
-                                }
-                            ]
-                        }
-                    ],
-                    "Stop": [
-                        {
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
-                                    "timeout": 30000,
-                                }
-                            ]
-                        }
-                    ],
-                    "PostToolUse": [
-                        {
-                            "matcher": "*",
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
-                                }
-                            ],
-                        }
-                    ],
-                    "PreCompact": [
-                        {
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
-                                    "timeout": 30000,
-                                }
-                            ]
-                        }
-                    ],
-                }
+                "hooks": create_hook_config("$CLAUDE_PROJECT_DIR/.claude")
             }
 
             # Write settings.json

@@ -29,23 +29,23 @@ RUNTIME_DIRS = [
     "runtime/analysis",
 ]
 
-# Settings.json template with proper hook configuration
-SETTINGS_TEMPLATE = {
-    "permissions": {
-        "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
-        "deny": [],
-        "defaultMode": "bypassPermissions",
-        "additionalDirectories": [".claude", "Specs"],
-    },
-    "enableAllProjectMcpServers": False,
-    "enabledMcpjsonServers": [],
-    "hooks": {
+def create_hook_config(base_path_var: str) -> dict:
+    """Generate hook configuration with dynamic path variable.
+
+    Args:
+        base_path_var: Base path variable to use for hook paths
+                      (e.g., "$HOME/.claude" or "$CLAUDE_PROJECT_DIR/.claude")
+
+    Returns:
+        Dictionary containing hook configuration for settings.json
+    """
+    return {
         "SessionStart": [
             {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/session_start.py",
+                        "command": f"{base_path_var}/tools/amplihack/hooks/session_start.py",
                         "timeout": 10000,
                     }
                 ]
@@ -56,7 +56,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/stop.py",
+                        "command": f"{base_path_var}/tools/amplihack/hooks/stop.py",
                         "timeout": 30000,
                     }
                 ]
@@ -68,7 +68,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/post_tool_use.py",
+                        "command": f"{base_path_var}/tools/amplihack/hooks/post_tool_use.py",
                     }
                 ],
             }
@@ -78,13 +78,26 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/pre_compact.py",
+                        "command": f"{base_path_var}/tools/amplihack/hooks/pre_compact.py",
                         "timeout": 30000,
                     }
                 ]
             }
         ],
+    }
+
+
+# Settings.json template with proper hook configuration
+SETTINGS_TEMPLATE = {
+    "permissions": {
+        "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
+        "deny": [],
+        "defaultMode": "bypassPermissions",
+        "additionalDirectories": [".claude", "Specs"],
     },
+    "enableAllProjectMcpServers": False,
+    "enabledMcpjsonServers": [],
+    "hooks": create_hook_config("$HOME/.claude"),
 }
 
 # Hook configurations for amplihack and xpia systems
