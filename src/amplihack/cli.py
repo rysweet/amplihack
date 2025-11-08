@@ -443,15 +443,30 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Save original directory (which is now also the working directory)
         original_cwd = os.getcwd()
 
-        # Store it for later use (though now it's the same as current directory)
+        # Safety: Check for git conflicts before copying
+        from .safety import GitConflictDetector, SafeCopyStrategy
+        from . import ESSENTIAL_DIRS
+
+        detector = GitConflictDetector(original_cwd)
+        conflict_result = detector.detect_conflicts(ESSENTIAL_DIRS)
+
+        strategy_manager = SafeCopyStrategy()
+        copy_strategy = strategy_manager.determine_target(
+            original_target=os.path.join(original_cwd, ".claude"),
+            has_conflicts=conflict_result.has_conflicts,
+            conflicting_files=conflict_result.conflicting_files
+        )
+
+        temp_claude_dir = str(copy_strategy.target_dir)
+
+        # Store original_cwd for auto mode (always set, regardless of conflicts)
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
-        # Use .claude directory in current working directory instead of temp
-        temp_claude_dir = os.path.join(original_cwd, ".claude")
-
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")
-            print(f"Working directory remains: {original_cwd}")
+            print(f"UVX mode: Staging Claude environment in: {temp_claude_dir}")
+            print(f"Original working directory: {original_cwd}")
+            if copy_strategy.used_temp:
+                print("Using temp directory due to conflicts")
 
         # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
@@ -462,8 +477,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
-        # Copy .claude contents to temp .claude directory
-        # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
+        # Copy .claude contents to target directory
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
