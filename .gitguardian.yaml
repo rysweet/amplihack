@@ -45,7 +45,8 @@ secret:
     # Password generation code (not actual secrets - these generate passwords dynamically)
     # All Neo4j infrastructure code - these contain password GENERATION, not secrets
     - "src/amplihack/memory/**/*"
-    - "src/amplihack/neo4j/**/*"  # Neo4j connection tracking with dev credentials
+    - "src/amplihack/neo4j/*"  # Neo4j connection tracking files (direct children)
+    - "src/amplihack/neo4j/**/*"  # Neo4j connection tracking subdirectories
     - "docker/**/*neo4j*"
     - "scripts/*neo4j*"
     - "scripts/*memory*"
