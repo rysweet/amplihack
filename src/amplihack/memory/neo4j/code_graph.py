@@ -9,7 +9,7 @@ import logging
 import subprocess
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
 from .config import get_config
@@ -109,6 +109,56 @@ class BlarifyIntegration:
             except Exception as e:
                 logger.debug("Code index already exists or error: %s", e)
 
+    def run_blarify(
+        self,
+        codebase_path: str,
+        languages: Optional[List[str]] = None,
+    ) -> Dict[str, int]:
+        """Run blarify and import results in one operation.
+
+        Convenience method that:
+        1. Runs blarify CLI to generate JSON
+        2. Imports results into Neo4j
+        3. Returns import counts
+
+        Args:
+            codebase_path: Path to codebase to analyze
+            languages: Optional list of languages to analyze
+
+        Returns:
+            Dictionary with counts: {"files": N, "classes": N, "functions": N, ...}
+
+        Raises:
+            RuntimeError: If blarify execution fails
+        """
+        from tempfile import NamedTemporaryFile
+        import os
+
+        # Create temp file for blarify output
+        with NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+
+        try:
+            # Run blarify using standalone function
+            logger.info("Running blarify on %s", codebase_path)
+            success = run_blarify(Path(codebase_path), tmp_path, languages)
+
+            if not success:
+                raise RuntimeError("Blarify execution failed")
+
+            # Import results into Neo4j
+            logger.info("Importing blarify results into Neo4j")
+            counts = self.import_blarify_output(tmp_path, project_id=None)
+
+            logger.info("Blarify import complete: %s", counts)
+            return counts
+
+        finally:
+            # Cleanup temp file
+            if tmp_path.exists():
+                os.unlink(tmp_path)
+                logger.debug("Cleaned up temporary file: %s", tmp_path)
+
     def import_blarify_output(
         self,
         blarify_json_path: Path,
@@ -132,7 +182,7 @@ class BlarifyIntegration:
 
         logger.info("Importing blarify output from %s", blarify_json_path)
 
-        with open(blarify_json_path, "r") as f:
+        with open(blarify_json_path) as f:
             blarify_data = json.load(f)
 
         counts = {
@@ -656,8 +706,10 @@ def run_blarify(
         "blarify",
         "analyze",
         str(codebase_path),
-        "--output", str(output_path),
-        "--format", "json",
+        "--output",
+        str(output_path),
+        "--format",
+        "json",
     ]
 
     if languages:
