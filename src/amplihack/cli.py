@@ -27,6 +27,12 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
         print("Neo4j graph memory enabled")
 
+        # Set container name if provided
+        if getattr(args, "use_memory_db", None):
+            # Store in environment for session hooks to access
+            os.environ["NEO4J_CONTAINER_NAME_CLI"] = args.use_memory_db
+            print(f"Using Neo4j container: {args.use_memory_db}")
+
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
 
@@ -313,6 +319,16 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
     )
     launch_parser.add_argument(
+        "--use-memory-db",
+        metavar="NAME",
+        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
+    )
+    launch_parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Non-interactive mode (no prompts). Uses default container name or --use-memory-db value.",
+    )
+    launch_parser.add_argument(
         "--no-reflection",
         action="store_true",
         help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
@@ -349,6 +365,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--use-graph-mem",
         action="store_true",
         help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
+    claude_parser.add_argument(
+        "--use-memory-db",
+        metavar="NAME",
+        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
     )
     claude_parser.add_argument(
         "--no-reflection",
