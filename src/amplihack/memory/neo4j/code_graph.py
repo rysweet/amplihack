@@ -704,7 +704,7 @@ def run_blarify(
     # Build blarify command
     cmd = [
         "blarify",
-        "analyze",
+        "create",
         str(codebase_path),
         "--output",
         str(output_path),
