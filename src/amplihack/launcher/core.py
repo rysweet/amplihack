@@ -85,37 +85,40 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Interactive Neo4j startup (blocks until ready or user decides)
+        # 2. Check and sync Neo4j credentials from existing containers (if any)
+        self._check_neo4j_credentials()
+
+        # 3. Interactive Neo4j startup (blocks until ready or user decides)
         if not self._interactive_neo4j_startup():
             # User chose to exit rather than continue without Neo4j
             return False
 
-        # 3. Handle repository checkout if needed
+        # 4. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
 
-        # 3. Find and validate target directory
+        # 5. Find and validate target directory
         target_dir = self._find_target_directory()
         if not target_dir:
             print("Failed to determine target directory")
             return False
 
-        # 4. Ensure required runtime directories exist
+        # 6. Ensure required runtime directories exist
         if not self._ensure_runtime_directories(target_dir):
             print("Warning: Could not create runtime directories")
             # Don't fail - just warn
 
-        # 5. Fix hook paths in settings.json to use absolute paths
+        # 7. Fix hook paths in settings.json to use absolute paths
         if not self._fix_hook_paths_in_settings(target_dir):
             print("Warning: Could not fix hook paths in settings.json")
             # Don't fail - hooks might still work
 
-        # 6. Handle directory change if needed (unless UVX with --add-dir)
+        # 8. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 7. Start proxy if needed
+        # 9. Start proxy if needed
         return self._start_proxy_if_needed()
 
     def _handle_repo_checkout(self) -> bool:
