@@ -4,6 +4,14 @@
 version: 2
 
 secret:
+  # Show secrets in output (useful for debugging)
+  show_secrets: false
+
+  # Ignore specific secret matches (development credentials)
+  ignored_matches:
+    - name: neo4j-dev-password
+      match: amplihack  # Standard development password for Neo4j
+
   # Exclude files and paths by globbing patterns
   ignored_paths:
     # Example configuration files
