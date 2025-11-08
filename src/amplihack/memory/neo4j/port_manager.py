@@ -78,6 +78,93 @@ def is_our_neo4j_container(container_name: str = "amplihack-neo4j") -> bool:
         return False
 
 
+def get_container_ports(container_name: str = "amplihack-neo4j") -> Optional[Tuple[int, int]]:
+    """Get the actual mapped ports from a running Docker container.
+
+    Uses `docker port <container>` to retrieve the host-side port mappings
+    for the Neo4j bolt (7687) and HTTP (7474) ports.
+
+    Args:
+        container_name: Name of the Docker container to query
+
+    Returns:
+        (bolt_port, http_port) tuple if container is running and ports are mapped,
+        None if container not found, not running, or ports cannot be determined
+
+    Example:
+        >>> ports = get_container_ports("amplihack-neo4j")
+        >>> if ports:
+        ...     bolt_port, http_port = ports
+        ...     print(f"Container using ports {bolt_port}/{http_port}")
+    """
+    try:
+        # Run docker port command to get port mappings
+        result = subprocess.run(
+            ["docker", "port", container_name],
+            capture_output=True,
+            timeout=5,
+            text=True,
+            check=False,  # Don't raise on non-zero exit (container might not exist)
+        )
+
+        # If command failed (e.g., container not found), return None
+        if result.returncode != 0:
+            logger.debug("docker port command failed for %s: %s", container_name, result.stderr)
+            return None
+
+        # Parse output to find port mappings
+        # Expected format:
+        # 7474/tcp -> 0.0.0.0:7774
+        # 7687/tcp -> 0.0.0.0:7787
+        bolt_port = None
+        http_port = None
+
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+
+            # Parse lines like "7687/tcp -> 0.0.0.0:7787" or "7474/tcp -> 0.0.0.0:7774"
+            if "7687/tcp" in line and "->" in line:
+                # Extract the host port from the mapping
+                parts = line.split("->")
+                if len(parts) == 2:
+                    host_part = parts[1].strip()
+                    # Format is "0.0.0.0:PORT" or "[::]:PORT"
+                    if ":" in host_part:
+                        port_str = host_part.split(":")[-1]
+                        try:
+                            bolt_port = int(port_str)
+                        except ValueError:
+                            logger.debug("Could not parse bolt port from: %s", line)
+
+            elif "7474/tcp" in line and "->" in line:
+                parts = line.split("->")
+                if len(parts) == 2:
+                    host_part = parts[1].strip()
+                    if ":" in host_part:
+                        port_str = host_part.split(":")[-1]
+                        try:
+                            http_port = int(port_str)
+                        except ValueError:
+                            logger.debug("Could not parse HTTP port from: %s", line)
+
+        # Return tuple only if both ports found
+        if bolt_port and http_port:
+            logger.debug("Found container ports: bolt=%d, http=%d", bolt_port, http_port)
+            return (bolt_port, http_port)
+
+        logger.debug("Could not find both ports in docker output for %s", container_name)
+        return None
+
+    except subprocess.TimeoutExpired:
+        logger.debug("docker port command timed out for %s", container_name)
+        return None
+    except Exception as e:
+        logger.debug("Error getting container ports for %s: %s", container_name, e)
+        return None
+
+
 def detect_neo4j_on_port(port: int, password: str) -> Tuple[bool, bool]:
     """Detect if there's a Neo4j instance on port and if we can connect.
 
@@ -143,10 +230,33 @@ def resolve_port_conflicts(
     """
     messages = []
 
-    # Check if our container is running
-    if is_our_neo4j_container():
-        messages.append(f"✅ Our Neo4j container found on ports {bolt_port}/{http_port}")
-        return bolt_port, http_port, messages
+    # Check if our container is running and get its actual ports
+    container_ports = get_container_ports()
+    if container_ports:
+        actual_bolt, actual_http = container_ports
+
+        # If container ports match what we expect, we're good
+        if actual_bolt == bolt_port and actual_http == http_port:
+            messages.append(f"✅ Our Neo4j container found on ports {bolt_port}/{http_port}")
+            return bolt_port, http_port, messages
+
+        # Container is running but on different ports than .env
+        # This happens when .env is out of sync with actual container
+        messages.append(
+            f"⚠️  Container running on ports {actual_bolt}/{actual_http}, "
+            f"but .env specifies {bolt_port}/{http_port}"
+        )
+        messages.append("    Updating .env to match actual container ports...")
+
+        # Update .env to match reality
+        if project_root:
+            try:
+                _update_env_ports(project_root, actual_bolt, actual_http)
+                messages.append(f"✅ Updated .env with actual container ports {actual_bolt}/{actual_http}")
+            except Exception as e:
+                messages.append(f"⚠️  Could not update .env: {e}")
+
+        return actual_bolt, actual_http, messages
 
     # Check bolt port
     bolt_in_use = is_port_in_use(bolt_port)
