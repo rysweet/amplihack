@@ -6,7 +6,12 @@ No mocks - pure unit tests of logic.
 
 import sys
 from pathlib import Path
-import pytest
+
+try:
+    import pytest
+except ImportError:
+    raise ImportError("pytest is required to run tests. Install with: pip install pytest")
+
 from datetime import datetime
 
 # Add orchestration to path
