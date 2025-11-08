@@ -40,8 +40,16 @@ Create the lock flag file at `.claude/runtime/locks/.lock_active`:
 
 ```python
 import os
+import re
+import sys
 from pathlib import Path
 import tempfile
+
+# Parse command arguments to extract optional message
+# Usage: /amplihack:lock [message]
+# Example: /amplihack:lock "Focus on security fixes first"
+args = sys.argv[1:] if len(sys.argv) > 1 else []
+custom_message = " ".join(args).strip() if args else None
 
 lock_flag = Path(".claude/runtime/locks/.lock_active")
 continuation_prompt = Path(".claude/runtime/locks/.continuation_prompt")
@@ -54,52 +62,82 @@ try:
     print("✓ Lock enabled - Claude will continue working until unlocked")
     print("  Use /amplihack:unlock to disable continuous work mode")
 
-    # Optional: Create custom continuation prompt
-    custom_prompt = """
-    # Add your custom continuation instructions here
-    # This message will be shown to Claude when it tries to stop
-    # Leave empty to use the default prompt
-    """.strip()
+    # Process custom message if provided
+    if custom_message:
+        # Remove surrounding quotes if present
+        custom_message = re.sub(r'^["\']|["\']$', '', custom_message)
 
-    # Prompt for custom message (you can modify this section)
-    if input("\nCreate custom continuation prompt? (y/N): ").lower() == 'y':
-        print("\nEnter your custom prompt (end with Ctrl+D on Unix or Ctrl+Z on Windows):")
-        print("Leave empty to use default prompt")
-        try:
-            lines = []
-            while True:
-                line = input()
-                lines.append(line)
-        except EOFError:
-            pass
+        # Validate length
+        msg_len = len(custom_message)
 
-        custom_prompt = "\n".join(lines).strip()
-
-        if custom_prompt:
-            # Validate length
-            if len(custom_prompt) > 1000:
-                print(f"ERROR: Prompt too long ({len(custom_prompt)} chars). Maximum is 1000 characters.")
-                print("Lock enabled but using default prompt.")
-            else:
-                # Atomic write using temp file
-                try:
-                    temp_fd, temp_path = tempfile.mkstemp(dir=continuation_prompt.parent, text=True)
-                    with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
-                        f.write(custom_prompt)
-                    os.replace(temp_path, continuation_prompt)
-                    print(f"✓ Custom continuation prompt saved ({len(custom_prompt)} chars)")
-                    if len(custom_prompt) > 500:
-                        print("  Warning: Prompt is quite long. Consider shortening for clarity.")
-                except Exception as e:
-                    print(f"ERROR: Failed to save custom prompt: {e}")
-                    print("Lock enabled but using default prompt.")
-                    if os.path.exists(temp_path):
-                        os.unlink(temp_path)
+        if msg_len > 1000:
+            print(f"\n✗ ERROR: Message too long ({msg_len} chars). Maximum is 1000 characters.")
+            print("Lock enabled but using default continuation prompt.")
         else:
-            print("No custom prompt provided - using default prompt")
+            # Write message atomically using temp file
+            try:
+                temp_fd, temp_path = tempfile.mkstemp(
+                    dir=continuation_prompt.parent,
+                    text=True,
+                    suffix='.tmp'
+                )
+                with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+                    f.write(custom_message)
+                os.replace(temp_path, continuation_prompt)
+
+                print(f"\n✓ Custom continuation message saved ({msg_len} chars)")
+                if msg_len > 500:
+                    print("  ⚠ Warning: Message is quite long. Consider shortening for clarity.")
+
+                print(f"\n  Message preview:")
+                print(f"  \"{custom_message[:100]}{'...' if msg_len > 100 else ''}\"")
+
+            except Exception as e:
+                print(f"\n✗ ERROR: Failed to save custom message: {e}")
+                print("Lock enabled but using default continuation prompt.")
+                # Cleanup temp file if it exists
+                try:
+                    if 'temp_path' in locals() and os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                except:
+                    pass
+    else:
+        print("\nNo custom message provided - using default continuation prompt")
+        print("Usage: /amplihack:lock \"Your custom message here\"")
 
 except FileExistsError:
-    print("WARNING: Lock was already active")
+    print("⚠ WARNING: Lock was already active")
+
+    # If message provided, update the continuation prompt even if lock exists
+    if custom_message:
+        custom_message = re.sub(r'^["\']|["\']$', '', custom_message)
+        msg_len = len(custom_message)
+
+        if msg_len > 1000:
+            print(f"✗ ERROR: Message too long ({msg_len} chars). Maximum is 1000 characters.")
+        else:
+            try:
+                temp_fd, temp_path = tempfile.mkstemp(
+                    dir=continuation_prompt.parent,
+                    text=True,
+                    suffix='.tmp'
+                )
+                with os.fdopen(temp_fd, 'w', encoding='utf-8') as f:
+                    f.write(custom_message)
+                os.replace(temp_path, continuation_prompt)
+
+                print(f"✓ Continuation message updated ({msg_len} chars)")
+                if msg_len > 500:
+                    print("  ⚠ Warning: Message is quite long. Consider shortening for clarity.")
+
+            except Exception as e:
+                print(f"✗ ERROR: Failed to update message: {e}")
+                try:
+                    if 'temp_path' in locals() and os.path.exists(temp_path):
+                        os.unlink(temp_path)
+                except:
+                    pass
+
 except Exception as e:
-    print(f"ERROR: Failed to enable lock: {e}")
+    print(f"✗ ERROR: Failed to enable lock: {e}")
 ```
