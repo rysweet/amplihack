@@ -7,6 +7,7 @@
 ## Goal
 
 Verify that code matches documentation specification through two critical layers:
+
 1. **Test documented behaviors** - Does code do what docs promise?
 2. **Test as actual user** - Does it work the way users will use it?
 
@@ -19,12 +20,14 @@ Verify that code matches documentation specification through two critical layers
 ### Code-Based Tests (Traditional)
 
 **What they verify**:
+
 - Implementation details
 - Unit logic correctness
 - Integration points
 - Edge cases
 
 **What they miss**:
+
 - Confusing UX
 - Broken end-to-end workflows
 - Unclear output messages
@@ -33,6 +36,7 @@ Verify that code matches documentation specification through two critical layers
 ### User Testing (Critical Addition)
 
 **What it verifies**:
+
 - Actual user experience
 - End-to-end workflows
 - Output clarity
@@ -40,6 +44,7 @@ Verify that code matches documentation specification through two critical layers
 - Behavior matches documentation
 
 **What it catches**:
+
 - Commands that technically work but are confusing
 - Output that's correct but unclear
 - Workflows broken end-to-end
@@ -81,6 +86,7 @@ For each documented behavior, verify it works:
 5. **Test edge cases** - Error handling, invalid inputs
 
 **Example**:
+
 ```bash
 # From docs/USER_ONBOARDING.md:45
 amplifier provider use anthropic --model claude-opus-4 --local
@@ -144,6 +150,7 @@ done
 **User testing verifies**: Actual experience
 
 **What user testing catches**:
+
 - Commands that work but are confusing
 - Output that's correct but unclear
 - Workflows broken end-to-end
@@ -153,17 +160,20 @@ done
 ### Testing Approach
 
 **Identify user scenarios from documentation**:
+
 - What are the main use cases?
 - What does Quick Start promise?
 - What workflows are documented?
 
 **Actually run the tool as user would**:
+
 - Not just unit tests
 - Not mocked environment
 - Real CLI commands
 - Real user workflows
 
 **Observe everything**:
+
 - Command output (clear? correct?)
 - Logs generated (any errors/warnings?)
 - State changes (files created/modified correctly?)
@@ -171,6 +181,7 @@ done
 - System behavior (performance? responsiveness?)
 
 **Verify expectations**:
+
 - Does behavior match documentation?
 - Would a user be confused?
 - Are error messages helpful?
@@ -182,6 +193,7 @@ done
 # User Testing Session - Provider Management Feature
 
 ## Test Environment
+
 - OS: Ubuntu 22.04
 - Python: 3.11.5
 - Fresh install: Yes
@@ -191,11 +203,13 @@ done
 **Documentation reference**: README.md Quick Start
 
 **Steps (as user would do)**:
+
 1. Install: `uvx --from git+https://...@next amplifier`
 2. Run: `amplifier`
 3. Follow init wizard prompts
 
 **Observations**:
+
 - ✅ Init wizard appeared automatically
 - ✅ Provider selection clear (1-4 options)
 - ✅ API key prompt clear with link
@@ -206,13 +220,14 @@ done
 
 **Output examined**:
 ```
+
 Welcome to Amplifier!
 
 First time? Let's get you set up.
 
 Provider? [1] Anthropic [2] OpenAI [3] Azure OpenAI [4] Ollama: 1
 API key: ••••••••
-  Get one: https://console.anthropic.com/settings/keys
+Get one: https://console.anthropic.com/settings/keys
 ✓ Saved to ~/.amplifier/keys.env
 
 Model? [1] claude-sonnet-4-5 [2] claude-opus-4 [3] custom: 1
@@ -222,6 +237,7 @@ Profile? [1] dev [2] base [3] full: 1
 ✓ Activated profile: dev
 
 Ready! Starting chat...
+
 ```
 
 **Artifacts checked**:
@@ -253,19 +269,21 @@ Ready! Starting chat...
 
 **Output examined**:
 ```
+
 $ amplifier provider current
 Current provider: anthropic (claude-sonnet-4-5)
 Scope: local
 
 $ amplifier provider use openai --model gpt-4o --local
-⚠️  OpenAI API key not found
-   Run: amplifier init
-   Or set: OPENAI_API_KEY in ~/.amplifier/keys.env
+⚠️ OpenAI API key not found
+Run: amplifier init
+Or set: OPENAI_API_KEY in ~/.amplifier/keys.env
 ✓ Provider configured: openai (gpt-4o)
 
 $ amplifier run "test"
 Error: OpenAI API key not found
-  Set OPENAI_API_KEY environment variable
+Set OPENAI_API_KEY environment variable
+
 ```
 
 **Behavior assessment**:
@@ -297,6 +315,7 @@ Chat functionality:
 ### What to Test
 
 **Changed areas** (thorough):
+
 - All new commands
 - All modified workflows
 - All updated behaviors
@@ -304,12 +323,14 @@ Chat functionality:
 - Scope variations
 
 **Integration points** (smoke test):
+
 - Related features still work
 - No regressions introduced
 - Cross-cutting scenarios function
 - Existing workflows intact
 
 **Edge cases**:
+
 - Invalid inputs
 - Missing configuration
 - Error scenarios
@@ -327,6 +348,7 @@ Save detailed findings to `ai_working/user_testing_report.md`:
 # User Testing Report - [Feature Name]
 
 ## Test Environment
+
 - OS: [operating system]
 - Python: [version]
 - Fresh install: [yes/no]
@@ -334,21 +356,26 @@ Save detailed findings to `ai_working/user_testing_report.md`:
 ## Scenarios Tested
 
 ### Scenario 1: [Name]
+
 **Documentation reference**: [file:section]
 
 **Steps (as user would do)**:
+
 1. [Step 1]
 2. [Step 2]
 3. [Step 3]
 
 **Observations**:
+
 - ✅ [What worked]
 - ⚠️ [Warnings/concerns]
 - ❌ [What failed]
 
 **Output examined**:
 ```
+
 [Actual command output]
+
 ```
 
 **Artifacts checked**:
@@ -396,6 +423,7 @@ Save detailed findings to `ai_working/user_testing_report.md`:
 # User Testing Complete
 
 ## Summary
+
 - Tested 3 main scenarios + smoke tests
 - Found 1 critical issue (provider switch validation)
 - 0 minor issues
@@ -404,6 +432,7 @@ Save detailed findings to `ai_working/user_testing_report.md`:
 ## Issues Requiring Action
 
 ### Critical: Provider switch without API key crashes
+
 When user switches provider but doesn't have API key configured,
 chat attempts to use provider anyway and crashes.
 
@@ -411,6 +440,7 @@ chat attempts to use provider anyway and crashes.
 configured, or gracefully degrade with clear error.
 
 ## Detailed Report
+
 See: ai_working/user_testing_report.md
 
 ## Recommended Smoke Tests for You (~12 minutes)
@@ -442,6 +472,7 @@ deep technical knowledge. Run as you would naturally use the tool.
 ```
 
 **Key points**:
+
 - High-level summary for quick understanding
 - Critical issues highlighted
 - Link to detailed report for depth
@@ -455,6 +486,7 @@ deep technical knowledge. Run as you would naturally use the tool.
 ### When Tests Reveal Problems
 
 **Option A: Code is wrong**
+
 ```markdown
 # Test failed: provider use command
 
@@ -470,6 +502,7 @@ with sensible default)
 **Action**: Fix code to match documentation
 
 **Option B: Docs are wrong**
+
 ```markdown
 # Test failed: provider list command
 
@@ -485,6 +518,7 @@ This requires returning to Phase 1 to fix documentation.
 **Action**: PAUSE, propose doc fix to user, get approval, return to Phase 1
 
 **Option C: Design was wrong**
+
 ```markdown
 # Test failed: profile use command
 
@@ -502,6 +536,7 @@ Resolution: Design discussion needed with human
 ### Critical Rule
 
 **Documentation remains source of truth**:
+
 - If docs are wrong, fix docs first
 - Get approval on doc changes
 - Then update code to match
@@ -536,6 +571,7 @@ make check
 ```
 
 **What code tests verify**:
+
 - Unit tests: Logic correctness
 - Integration tests: Component interaction
 - Type checking: Type safety
@@ -543,6 +579,7 @@ make check
 - Formatting: Style consistency
 
 **Philosophy compliance** (from [IMPLEMENTATION_PHILOSOPHY.md](../../.claude/context/PHILOSOPHY.md)):
+
 - Test real bugs, not code inspection
 - Test runtime invariants
 - Test edge cases
@@ -572,6 +609,7 @@ Before considering Phase 5 complete:
 ## Output of Phase 5
 
 When complete:
+
 - ✅ All documented behaviors verified working
 - ✅ Tested as user would use it
 - ✅ Comprehensive user testing report created
@@ -591,6 +629,7 @@ This example shows what thorough user testing looks like:
 ### Scenario: Provider Configuration Feature
 
 **Test environment setup**:
+
 ```bash
 # Fresh environment
 rm -rf ~/.amplifier .amplifier
@@ -600,6 +639,7 @@ ls ~/.amplifier  # Should not exist
 ```
 
 **Test execution**:
+
 ```bash
 # Run as user would
 $ amplifier
@@ -618,6 +658,7 @@ $ amplifier provider use anthropic  # Missing required flag
 ```
 
 **Observations documented**:
+
 - What output appeared
 - What files were created/modified
 - What warnings/errors shown
@@ -626,11 +667,13 @@ $ amplifier provider use anthropic  # Missing required flag
 - What worked well
 
 **Issues found**:
+
 - Critical: Provider switch without key crashes
 - Minor: Warning message could be clearer
 - Improvement: Consider `amplifier provider test` command
 
 **Assessment**:
+
 - 90% matches documentation
 - 1 critical bug found and documented
 - User experience mostly smooth
@@ -689,6 +732,7 @@ $ amplifier provider use anthropic  # Missing required flag
 **When Phase 5 complete**: [Phase 6: Cleanup & Push](06_cleanup_and_push.md)
 
 **Before proceeding**:
+
 - All tests passing (code and user)
 - User testing report created
 - Critical issues resolved

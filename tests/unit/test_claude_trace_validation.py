@@ -112,17 +112,13 @@ class TestClaudeTraceValidation:
 
     def test_subprocess_timeout(self):
         """Test that timeout exceptions result in False."""
-        with patch(
-            "subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 2)
-        ):
+        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 2)):
             result = _test_claude_trace_execution("/usr/bin/claude-trace")
             assert result is False
 
     def test_subprocess_error(self):
         """Test that subprocess errors result in False."""
-        with patch(
-            "subprocess.run", side_effect=subprocess.SubprocessError("error")
-        ):
+        with patch("subprocess.run", side_effect=subprocess.SubprocessError("error")):
             result = _test_claude_trace_execution("/usr/bin/claude-trace")
             assert result is False
 
@@ -161,16 +157,13 @@ class TestClaudeTraceValidation:
 
         with patch("subprocess.run", return_value=mock_result), patch(
             "pathlib.Path.exists", return_value=True
-        ), patch("pathlib.Path.is_file", return_value=True), patch(
-            "os.access", return_value=True
-        ):
+        ), patch("pathlib.Path.is_file", return_value=True), patch("os.access", return_value=True):
             result = _is_valid_claude_trace_binary("/usr/bin/claude-trace")
             assert result is True
 
 
 def run_tests():
     """Run all tests."""
-    import inspect
 
     test_class = TestClaudeTraceValidation()
     test_methods = [
@@ -201,9 +194,8 @@ def run_tests():
     if failed == 0:
         print("✅ All tests passed!")
         return 0
-    else:
-        print("❌ Some tests failed")
-        return 1
+    print("❌ Some tests failed")
+    return 1
 
 
 if __name__ == "__main__":

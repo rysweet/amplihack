@@ -49,14 +49,14 @@ Review all touched files against @.claude/context/PHILOSOPHY.md:
 
 **Must Remove:**
 
-- Temporary planning documents (__plan.md, __notes.md, implementation_guide.md)
-- Test artifacts (test_*.py files created just for validation, not proper tests)
+- Temporary planning documents (**plan.md, **notes.md, implementation_guide.md)
+- Test artifacts (test\_\*.py files created just for validation, not proper tests)
 - Sample/example files (example*.py, sample*.json)
 - Mock implementations (any mocks used as workarounds)
-- Debug files (debug__.log, *.debug)
+- Debug files (debug\_\_.log, \*.debug)
 - Scratch files (scratch.py, temp*.py, tmp*)
 - IDE artifacts (.idea/, .vscode/ if accidentally added)
-- Backup files (*.bak, *.backup, *_old.py)
+- Backup files (_.bak, _.backup, \*\_old.py)
 
 **Must Review for Removal:**
 

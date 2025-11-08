@@ -9,22 +9,22 @@ displaying auto mode execution state with 5 main panels:
 - Prompt input area
 """
 
-import sys
-import time
-import threading
 import select
+import sys
+import threading
+import time
 from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Deque, Dict, List, Optional
 
 try:
+    from rich import box
     from rich.console import Console
     from rich.layout import Layout
     from rich.live import Live
     from rich.panel import Panel
     from rich.table import Table
     from rich.text import Text
-    from rich import box
 
     RICH_AVAILABLE = True
 except ImportError:
@@ -36,7 +36,6 @@ except ImportError:
         Live = Any
 
 from .auto_mode_state import AutoModeState
-from ..version import __version__
 
 
 class AutoModeUI:
@@ -128,15 +127,9 @@ class AutoModeUI:
         """Build title panel.
 
         Returns:
-            Rich Panel with session title and version
+            Rich Panel with session title
         """
-        # Build title with version
-        title_text = Text()
-        title_text.append(f"Amplihack v{__version__}", style="dim cyan")
-        title_text.append(" - ", style="dim")
-        title_text.append(self.title, style="bold cyan")
-        title_text.justify = "center"
-
+        title_text = Text(self.title, style="bold cyan", justify="center")
         return Panel(title_text, box=box.ROUNDED, border_style="cyan")
 
     def _build_session_panel(self) -> Panel:
@@ -441,8 +434,8 @@ class AutoModeUI:
         """
         # Configure terminal for non-blocking, non-canonical mode
         # This allows reading single characters without Enter
-        import tty
         import termios
+        import tty
 
         # Save original terminal settings
         old_settings = None

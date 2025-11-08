@@ -80,18 +80,21 @@
 ### For Both Humans and AI
 
 **Communication**:
+
 - Be explicit and clear
 - Ask when uncertain
 - Confirm understanding
 - Document decisions
 
 **Quality**:
+
 - Follow [philosophy principles](../../.claude/context/PHILOSOPHY.md)
 - Verify against [checklists](checklists.md)
 - Test thoroughly
 - Iterate until right
 
 **Efficiency**:
+
 - Use systematic approaches ([file crawling](../core_concepts/file_crawling.md))
 - Catch issues early (approval gates)
 - Don't skip steps
@@ -102,12 +105,14 @@
 ## Red Flags to Watch For
 
 **For Humans**:
+
 - ❌ AI says "done" but you suspect files missed
 - ❌ AI doesn't pause when you see conflicts
 - ❌ AI marks files complete after global replace only
 - ❌ AI proceeding without shared understanding
 
 **For AI**:
+
 - ❌ Human seems confused by your explanation
 - ❌ You found conflicts but continued anyway
 - ❌ You marked files done without reading them
