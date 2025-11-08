@@ -180,64 +180,38 @@ def _test_claude_trace_execution(path: str) -> bool:
                     # the claude-trace binary itself is valid
                     return True
 
-        # Run with --version flag to test basic functionality
+        # Run with --help flag to test basic functionality
         # Use a short timeout to avoid hanging
         result = subprocess.run(
-            [path, "--version"],
+            [path, "--help"],
             check=False,
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=2,
         )
 
         # Consider success if:
-        # 1. Process exits cleanly (returncode 0 or 1 for --version)
-        # 2. No JavaScript syntax errors in stderr
-        # 3. Output suggests it's actually claude-trace (not just any binary)
-        if result.returncode in (0, 1):
-            stderr_lower = (result.stderr or "").lower()
+        # 1. Process exits cleanly (returncode 0)
+        # 2. Output is non-empty
+        # 3. Output contains "claude" (case-insensitive)
+        # 4. Output contains either "trace" or "usage" (case-insensitive)
+        if result.returncode == 0:
             stdout_lower = (result.stdout or "").lower()
-            combined_output = (stderr_lower + " " + stdout_lower).strip()
 
-            # Check for common Node.js syntax error indicators
-            syntax_errors = [
-                "syntaxerror",
-                "missing ) after argument list",
-                "unexpected token",
-                "cannot find module",
-            ]
-
-            # Special case: If claude-trace itself runs but the underlying claude has issues,
-            # we should still accept claude-trace as valid if it shows claude-trace output
-            if (
-                "claude trace" in combined_output
-                or "starting claude with traffic logging" in combined_output
-            ):
-                # Even if there are errors downstream, claude-trace itself is valid
-                return True
-
-            # If there are syntax errors, definitely not valid
-            if any(error in stderr_lower for error in syntax_errors):
+            # Must have non-empty output
+            if not stdout_lower.strip():
                 return False
 
-            # For claude-trace, we expect either:
-            # 1. Version output mentioning "claude" or "trace"
-            # 2. Or help text when --version fails but stderr is clean
-            # 3. Exclude obvious non-claude binaries (python, node, etc.)
-
-            # Exclude common binaries that aren't claude-trace
-            excluded_patterns = ["python", "node.js", "npm version", "usage: python"]
-
-            if any(pattern in combined_output for pattern in excluded_patterns):
+            # Must mention "claude"
+            if "claude" not in stdout_lower:
                 return False
 
-            # If output mentions claude or trace, likely good
-            if "claude" in combined_output or "trace" in combined_output:
-                return True
+            # Must mention either "trace" or "usage"
+            if "trace" not in stdout_lower and "usage" not in stdout_lower:
+                return False
 
-            # If no specific claude/trace mention but clean execution, accept
-            # (handles cases where claude-trace --version might not output anything useful)
-            return len(combined_output) < 1000  # Avoid huge help texts from wrong binaries
+            # All checks passed
+            return True
 
         return False
 

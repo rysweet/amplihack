@@ -7,8 +7,24 @@ Implements Microsoft Amplifier-style session documentation and knowledge extract
 import sys
 from pathlib import Path
 
-# Clean import setup - must be done before other imports
-project_root = Path(__file__).resolve().parents[2]
+# Clean import setup - use robust path detection (must be done before other imports)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+try:
+    from amplihack.utils.paths import FrameworkPathResolver
+
+    project_root = FrameworkPathResolver.find_framework_root()
+    if project_root is None:
+        raise RuntimeError(
+            "Could not find project root. Ensure .claude directory exists or set AMPLIHACK_ROOT environment variable."
+        )
+except ImportError:
+    # Fallback for local development - try relative path
+    project_root = Path(__file__).resolve().parents[2]
+    if not (project_root / ".claude").exists():
+        raise RuntimeError(
+            "Could not find project root with .claude directory. Please ensure you are running from the correct location."
+        )
+
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
 
 import json

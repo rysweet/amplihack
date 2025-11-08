@@ -24,8 +24,50 @@ try:
     project_root = get_project_root()
     sys.path.insert(0, str(project_root / "src"))
 except ImportError:
-    # Fallback for standalone execution
-    project_root = Path(__file__).resolve().parents[4]
+    # Fallback: use robust path resolution from amplihack.utils.paths
+    import os
+
+    def get_project_root() -> Path:
+        """Find project root using multi-strategy approach.
+
+        Works from: project dir, pip install, UVX cache.
+        """
+        # Strategy 1: Check inside amplihack package (UVX/pip installs)
+        try:
+            import amplihack
+
+            package_root = Path(amplihack.__file__).parent
+            if (package_root / ".claude").exists():
+                return package_root
+        except (ImportError, AttributeError):
+            pass
+
+        # Strategy 2: Walk up from current working directory
+        current = Path.cwd()
+        while current != current.parent:
+            if (current / ".claude").exists():
+                return current
+            current = current.parent
+
+        # Strategy 3: Check environment variable
+        if "AMPLIHACK_ROOT" in os.environ:
+            env_path = Path(os.environ["AMPLIHACK_ROOT"])
+            if env_path.exists() and (env_path / ".claude").exists():
+                return env_path
+
+        # Last resort: walk up from __file__ looking for .claude marker
+        current = Path(__file__).resolve().parent
+        while current != current.parent:
+            if (current / ".claude").exists():
+                return current
+            current = current.parent
+
+        raise FileNotFoundError(
+            "Could not find project root (looking for .claude directory). "
+            "Set AMPLIHACK_ROOT environment variable if running from unusual location."
+        )
+
+    project_root = get_project_root()
     sys.path.insert(0, str(project_root / "src"))
 
 from amplihack.memory import MemoryManager, MemoryType

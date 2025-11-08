@@ -14,15 +14,15 @@ from typing import Optional, Tuple
 
 # Try to import Claude SDK, fall back gracefully
 try:
-    from claude_agent_sdk import query, ClaudeAgentOptions  # type: ignore
+    from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 # Import session management components
-from .session_capture import MessageCapture
-from .fork_manager import ForkManager
+from amplihack.launcher.session_capture import MessageCapture
+from amplihack.launcher.fork_manager import ForkManager
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -168,7 +168,7 @@ class AutoMode:
         """Log message with optional level."""
         # Only print INFO, WARNING, ERROR to console - skip DEBUG
         if level in ("INFO", "WARNING", "ERROR"):
-            print(f"[AUTO {self.sdk.upper()}] {msg}")
+            print(f"[AUTO {self.sdk.upper()}] {msg}\n", flush=True)
 
             # Update UI state if enabled (all levels)
             if self.ui_enabled and hasattr(self, "state"):
@@ -240,7 +240,7 @@ class AutoMode:
         elif self.sdk == "codex":
             cmd = ["codex", "--dangerously-bypass-approvals-and-sandbox", "exec", prompt]
         else:
-            cmd = ["claude", "--dangerously-skip-permissions --verbose", "-p", prompt]
+            cmd = ["claude", "--dangerously-skip-permissions", "--verbose", "-p", prompt]
 
         self.log(f"Running: {cmd[0]} ...")
 
@@ -326,9 +326,13 @@ class AutoMode:
         stdout_output = "".join(stdout_lines)
         stderr_output = "".join(stderr_lines)
 
-        # Log stderr if present
+        # Log stdout if present (FULL output per user requirement)
+        if stdout_output:
+            self.log(f"stdout ({len(stdout_output)} chars): {stdout_output}")
+
+        # Log stderr if present (FULL output per user requirement)
         if stderr_output:
-            self.log(f"stderr: {stderr_output[:200]}...")
+            self.log(f"stderr ({len(stderr_output)} chars): {stderr_output}")
 
         return process.returncode, stdout_output
 
@@ -394,6 +398,84 @@ Decision Authority:
 
 Document your decisions and reasoning in comments/logs."""
 
+    def _format_todos_for_terminal(self, todos: list) -> str:
+        """Format todo list for terminal display with ANSI colors.
+
+        Args:
+            todos: List of todo items with status and content
+
+        Returns:
+            Formatted string ready for terminal display
+        """
+        if not todos:
+            return ""
+
+        # ANSI color codes
+        BOLD = "\033[1m"
+        GREEN = "\033[32m"
+        YELLOW = "\033[33m"
+        BLUE = "\033[34m"
+        RESET = "\033[0m"
+
+        lines = [f"\n{BOLD}📋 Todo List:{RESET}"]
+
+        for i, todo in enumerate(todos, 1):
+            status = todo.get("status", "pending")
+            content = todo.get("content", "")
+            active_form = todo.get("activeForm", content)
+
+            # Choose status indicator and color
+            if status == "completed":
+                indicator = f"{GREEN}✓{RESET}"
+                text = content
+            elif status == "in_progress":
+                indicator = f"{YELLOW}⟳{RESET}"
+                text = active_form
+            else:  # pending
+                indicator = f"{BLUE}○{RESET}"
+                text = content
+
+            lines.append(f"  {indicator} {text}")
+
+        return "\n".join(lines) + "\n"
+
+    def _handle_todo_write(self, todos: list) -> None:
+        """Process TodoWrite tool use and update UI state.
+
+        Args:
+            todos: List of todo items from TodoWrite tool
+        """
+        try:
+            # LOG ENTRY POINT - Confirm method is called
+            self.log(f"🎯 TodoWrite CALLED with {len(todos)} items", level="INFO")
+
+            # Format for terminal display
+            formatted = self._format_todos_for_terminal(todos)
+            if formatted:
+                print(formatted, flush=True)
+                self.log("✅ TodoWrite formatted output printed to terminal", level="INFO")
+            else:
+                self.log("⚠️  TodoWrite formatting returned empty string", level="WARNING")
+
+            # Update message capture state (thread-safe)
+            self.message_capture.update_todos(todos)
+            self.log("✅ TodoWrite updated message_capture state", level="INFO")
+
+            # Update UI state if enabled (thread-safe)
+            if self.ui_enabled and hasattr(self, "state"):
+                self.state.update_todos(todos)
+                self.log("✅ TodoWrite updated UI state", level="INFO")
+            else:
+                self.log(
+                    f"⚠️  TodoWrite UI update skipped (ui_enabled={self.ui_enabled})", level="INFO"
+                )
+
+            self.log(f"Updated todo list ({len(todos)} items)", level="DEBUG")
+
+        except Exception as e:
+            # Never break conversation flow for todo formatting errors
+            self.log(f"Error formatting todos: {e}", level="WARNING")
+
     async def _run_turn_with_sdk(self, prompt: str) -> Tuple[int, str]:
         """Execute one turn using Claude Python SDK with streaming.
 
@@ -408,6 +490,7 @@ Document your decisions and reasoning in comments/logs."""
             return self._run_sdk_subprocess(prompt)
 
         try:
+            print("\n[DEBUG] 🚀 START _run_turn_with_sdk", flush=True)
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
             turn_output_size = 0
@@ -420,21 +503,32 @@ Document your decisions and reasoning in comments/logs."""
             options = ClaudeAgentOptions(
                 cwd=str(self.working_dir),
                 permission_mode="bypassPermissions",  # Auto mode needs non-interactive permissions
+                allowed_tools=["TodoWrite"],  # Enable TodoWrite for progress tracking
                 # Note: verbose flag can be added via extra_args if needed
             )
 
             # Stream response - messages are typed objects, not dicts
+            print("\n[DEBUG] 🔄 Starting async for message loop", flush=True)
             async for message in query(prompt=prompt, options=options):
+                print("\n[DEBUG] 💬 Got a message from query()", flush=True)
                 # Handle different message types
                 if hasattr(message, "__class__"):
                     msg_type = message.__class__.__name__
+                    print(
+                        f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True
+                    )  # Direct print to bypass log()
+                    self.log(f"📨 Received message type: {msg_type}", level="INFO")
 
                     if msg_type == "AssistantMessage":
                         # Capture assistant message for transcript
                         self.message_capture.capture_assistant_message(message)
 
-                        # Extract text from content blocks
+                        # Process content blocks
                         for block in getattr(message, "content", []):
+                            block_type = getattr(block, "type", "unknown")
+                            self.log(f"  📦 Block type: {block_type}", level="INFO")
+
+                            # Handle text blocks
                             if hasattr(block, "text"):
                                 text = block.text
 
@@ -460,6 +554,46 @@ Document your decisions and reasoning in comments/logs."""
                                 print(text, end="", flush=True)
                                 output_lines.append(text)
 
+                            # Handle tool_use blocks (TodoWrite)
+                            elif hasattr(block, "type") and block.type == "tool_use":
+                                tool_name = getattr(block, "name", None)
+                                self.log(f"🔍 Detected tool_use block: {tool_name}", level="INFO")
+
+                                if tool_name == "TodoWrite":
+                                    self.log("🎯 TodoWrite tool detected!", level="INFO")
+                                    # Extract todos from input object (not dict!)
+                                    # block.input is an object with attributes, not a dict
+                                    if hasattr(block, "input"):
+                                        tool_input = block.input
+                                        self.log(
+                                            f"✓ Block has input attribute, type: {type(tool_input)}",
+                                            level="INFO",
+                                        )
+
+                                        # Check if input has todos attribute
+                                        if hasattr(tool_input, "todos"):
+                                            todos = tool_input.todos
+                                            self.log(
+                                                f"✓ Input has todos attribute with {len(todos)} items",
+                                                level="INFO",
+                                            )
+                                            self._handle_todo_write(todos)
+                                        # Fallback: try dict-style access for backwards compatibility
+                                        elif isinstance(tool_input, dict) and "todos" in tool_input:
+                                            todos = tool_input["todos"]
+                                            self.log(
+                                                f"✓ Input is dict with todos key ({len(todos)} items)",
+                                                level="INFO",
+                                            )
+                                            self._handle_todo_write(todos)
+                                        else:
+                                            self.log(
+                                                f"⚠️  Input has no todos attribute or key. Attributes: {dir(tool_input)}",
+                                                level="WARNING",
+                                            )
+                                    else:
+                                        self.log("⚠️  Block has no input attribute", level="WARNING")
+
                     elif msg_type == "ResultMessage":
                         # Check if there was an error
                         if getattr(message, "is_error", False):
@@ -471,6 +605,11 @@ Document your decisions and reasoning in comments/logs."""
 
             # Success
             full_output = "".join(output_lines)
+
+            # Log output if present (FULL output per user requirement)
+            if full_output:
+                self.log(f"stdout ({len(full_output)} chars): {full_output}")
+
             return (0, full_output)
 
         except GeneratorExit:
@@ -627,7 +766,8 @@ Document your decisions and reasoning in comments/logs."""
         def ui_runner():
             """Thread target to run the UI."""
             try:
-                self.ui.run()
+                if self.ui is not None:
+                    self.ui.run()
             except Exception as e:
                 self.log(f"UI thread error: {e}", level="ERROR")
 
@@ -852,6 +992,7 @@ Current Turn: {turn}/{self.max_turns}"""
         options = ClaudeAgentOptions(
             cwd=str(self.working_dir),
             permission_mode="bypassPermissions",
+            allowed_tools=["TodoWrite"],  # Enable TodoWrite for progress tracking
         )
 
         try:
@@ -1141,6 +1282,25 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("No messages captured for export", level="DEBUG")
                 return
 
+            # Validate export path BEFORE exporting
+            expected_session_dir = self.log_dir
+            actual_session_dir = builder.session_dir
+
+            # Check if builder's session_dir matches our expected location
+            if expected_session_dir.resolve() != actual_session_dir.resolve():
+                error_msg = (
+                    f"Transcript export path mismatch detected!\n"
+                    f"  Expected: {expected_session_dir}\n"
+                    f"  Actual:   {actual_session_dir}\n"
+                    f"  This usually means project root detection failed.\n"
+                    f"  Refusing to export to wrong location to prevent silent data loss."
+                )
+                self.log(error_msg, level="ERROR")
+                raise ValueError(error_msg)
+
+            # Log where transcripts will be exported (helps debugging)
+            self.log(f"Exporting transcripts to: {actual_session_dir}", level="DEBUG")
+
             # Calculate total duration across all forks
             total_duration = self.total_session_time + (time.time() - self.start_time)
 
@@ -1159,10 +1319,42 @@ Current Turn: {turn}/{self.max_turns}"""
             builder.build_session_transcript(messages, metadata)
             builder.export_for_codex(messages, metadata)
 
+            # Verify files were actually written to expected location
+            expected_files = [
+                actual_session_dir / "CONVERSATION_TRANSCRIPT.md",
+                actual_session_dir / "conversation_transcript.json",
+                actual_session_dir / "codex_export.json",
+            ]
+            missing_files = [f for f in expected_files if not f.exists()]
+
+            if missing_files:
+                error_msg = (
+                    f"Transcript export verification failed!\n"
+                    f"Expected files were not created at {actual_session_dir}:\n"
+                    + "\n".join(f"  Missing: {f.name}" for f in missing_files)
+                )
+                self.log(error_msg, level="ERROR")
+                raise FileNotFoundError(error_msg)
+
             self.log(
                 f"✓ Session transcript exported ({len(messages)} messages, {self._format_elapsed(total_duration)})"
             )
 
+        except (ValueError, FileNotFoundError) as e:
+            # Path mismatch or file verification failures - these are critical errors
+            # Re-raise to fail loudly and alert user to the problem
+            self.log(f"Critical transcript export error: {e}", level="ERROR")
+            raise
+        except (ImportError, AttributeError) as e:
+            # Builder loading issues - log but don't crash the session
+            self.log(f"Transcript builder unavailable: {e}", level="WARNING")
+        except OSError as e:
+            # File system errors - these could be transient, log but continue
+            self.log(f"File system error during transcript export: {e}", level="WARNING")
         except Exception as e:
-            self.log(f"Warning: Failed to export transcript: {e}", level="WARNING")
-            # Don't crash on export failure - just log and continue
+            # Unexpected errors - log with full details but don't crash session
+            self.log(
+                f"Unexpected error during transcript export: {type(e).__name__}: {e}", level="ERROR"
+            )
+            # In case of unexpected errors, still try to continue the session
+            # but make it clear this is an unusual situation

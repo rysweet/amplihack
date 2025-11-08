@@ -600,8 +600,8 @@ class TestExitUIAutoModeContinues:
                 auto_mode.queue_log(f"Log message {i}")
 
             # Capture stdout
-            from io import StringIO
             import sys
+            from io import StringIO
 
             captured = StringIO()
             sys.stdout = captured

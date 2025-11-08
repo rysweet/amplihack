@@ -150,7 +150,7 @@ class TestUITitleGeneration:
 
         # Mock SDK call
         with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
-            with patch("amplihack.launcher.auto_mode.query"):
+            with patch("amplihack.launcher.auto_mode.query") as mock_query:
                 # This will fail until title generation is implemented
                 with pytest.raises(AttributeError):
                     title = ui.generate_title()

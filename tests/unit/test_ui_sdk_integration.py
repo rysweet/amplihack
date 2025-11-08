@@ -124,7 +124,9 @@ class TestTitleGenerationViaSDK:
 
             with patch("amplihack.launcher.auto_mode.query", side_effect=mock_slow_query):
                 with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
-                    await asyncio.wait_for(ui.generate_title_async(), timeout=5)
+                    start = time.time()
+                    title = await asyncio.wait_for(ui.generate_title_async(), timeout=5)
+                    elapsed = time.time() - start
                     # Should timeout around 5s
 
     def test_title_generation_when_sdk_unavailable(self, auto_mode_with_ui):

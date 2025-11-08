@@ -8,7 +8,6 @@ import threading
 import time
 from typing import Any, Optional
 
-
 # Try to import SDK, gracefully handle if unavailable
 try:
     from claude_agent_sdk import ClaudeAgentOptions

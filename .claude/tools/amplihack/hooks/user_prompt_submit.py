@@ -192,35 +192,87 @@ class UserPromptSubmitHook(HookProcessor):
         Returns:
             Additional context to inject
         """
-        # Find preferences file
+        # Extract user prompt
+        user_prompt = input_data.get("userMessage", {}).get("text", "")
+
+        # Build context parts
+        context_parts = []
+
+        # 1. Check for agent references and inject memory if found
+        memory_context = ""
+        try:
+            from agent_memory_hook import (
+                detect_agent_references,
+                detect_slash_command_agent,
+                inject_memory_for_agents,
+                format_memory_injection_notice,
+            )
+
+            # Detect agent references
+            agent_types = detect_agent_references(user_prompt)
+
+            # Also check for slash command agents
+            slash_agent = detect_slash_command_agent(user_prompt)
+            if slash_agent:
+                agent_types.append(slash_agent)
+
+            if agent_types:
+                self.log(f"Detected agents: {agent_types}")
+
+                # Inject memory context for these agents
+                session_id = self.get_session_id()
+                enhanced_prompt, memory_metadata = inject_memory_for_agents(
+                    user_prompt, agent_types, session_id
+                )
+
+                # Extract memory context (everything before the original prompt)
+                if enhanced_prompt != user_prompt:
+                    memory_context = enhanced_prompt.replace(user_prompt, "").strip()
+
+                # Log memory injection
+                notice = format_memory_injection_notice(memory_metadata)
+                if notice:
+                    self.log(notice)
+
+                # Save metrics
+                self.save_metric(
+                    "agent_memory_injected", memory_metadata.get("memories_injected", 0)
+                )
+                self.save_metric("agents_detected", len(agent_types))
+
+        except Exception as e:
+            self.log(f"Memory injection failed (non-fatal): {e}", "WARNING")
+
+        # Add memory context if we have it
+        if memory_context:
+            context_parts.append(memory_context)
+
+        # 2. Find and inject preferences
         pref_file = self.find_user_preferences()
-        if not pref_file:
-            # No preferences file - return empty context
-            self.log("No USER_PREFERENCES.md found - skipping injection")
-            return {
-                "additionalContext": "",
-            }
+        if pref_file:
+            # Get preferences (with caching for performance)
+            preferences = self.get_cached_preferences(pref_file)
 
-        # Get preferences (with caching for performance)
-        preferences = self.get_cached_preferences(pref_file)
+            if preferences:
+                # Build preference context
+                pref_context = self.build_preference_context(preferences)
+                context_parts.append(pref_context)
 
-        if not preferences:
-            self.log("No active preferences found")
-            return {
-                "additionalContext": "",
-            }
+                # Log activity (for debugging)
+                self.log(f"Injected {len(preferences)} preferences on user prompt")
+                self.save_metric("preferences_injected", len(preferences))
+        else:
+            self.log("No USER_PREFERENCES.md found - skipping preference injection")
 
-        # Build context
-        context = self.build_preference_context(preferences)
+        # Combine all context parts
+        full_context = "\n\n".join(context_parts)
 
-        # Log activity (for debugging)
-        self.log(f"Injected {len(preferences)} preferences on user prompt")
-        self.save_metric("preferences_injected", len(preferences))
-        self.save_metric("context_length", len(context))
+        # Save total context length metric
+        self.save_metric("context_length", len(full_context))
 
         # Return output in correct format
         return {
-            "additionalContext": context,
+            "additionalContext": full_context,
         }
 
 

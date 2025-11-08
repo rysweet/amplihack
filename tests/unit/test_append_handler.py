@@ -22,9 +22,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 # append_instructions function to be implemented
 try:
     from amplihack.launcher.append_handler import (
-        append_instructions,
-        AppendResult,
         AppendError,
+        AppendResult,
+        append_instructions,
     )
 except ImportError:
     # Define placeholders so tests can be written
@@ -79,7 +79,7 @@ class TestAppendInstructionsBasic:
 
         # Change to workspace directory
         with patch("pathlib.Path.cwd", return_value=workspace):
-            append_instructions(instruction)
+            result = append_instructions(instruction)
 
         # Check file was created
         md_files = list(append_dir.glob("*.md"))
@@ -105,7 +105,7 @@ class TestAppendInstructionsBasic:
         before_time = datetime.now()
 
         with patch("pathlib.Path.cwd", return_value=workspace):
-            append_instructions(instruction)
+            result = append_instructions(instruction)
 
         after_time = datetime.now()
 
@@ -133,6 +133,7 @@ class TestAppendInstructionsBasic:
         - Result should include filename and session_id
         """
         workspace = active_session_workspace["workspace"]
+        session_id = active_session_workspace["session_id"]
 
         instruction = "Test instruction"
 
@@ -181,7 +182,7 @@ class TestAppendInstructionsSessionDiscovery:
         instruction = "Auto-discovered session test"
 
         with patch("pathlib.Path.cwd", return_value=workspace):
-            append_instructions(instruction)
+            result = append_instructions(instruction)
 
         # Verify instruction was written to the session
         append_dir = workspace / ".claude" / "runtime" / "logs" / session_id / "append"
@@ -202,7 +203,7 @@ class TestAppendInstructionsSessionDiscovery:
         instruction = "Explicit session test"
 
         with patch("pathlib.Path.cwd", return_value=workspace):
-            append_instructions(instruction, session_id=session_id)
+            result = append_instructions(instruction, session_id=session_id)
 
         # Verify written to correct session
         append_dir = workspace / ".claude" / "runtime" / "logs" / session_id / "append"
@@ -228,7 +229,7 @@ class TestAppendInstructionsSessionDiscovery:
         instruction = "From subdirectory"
 
         with patch("pathlib.Path.cwd", return_value=subdir):
-            append_instructions(instruction)
+            result = append_instructions(instruction)
 
         # Should still write to workspace session
         append_dir = workspace / ".claude" / "runtime" / "logs" / session_id / "append"

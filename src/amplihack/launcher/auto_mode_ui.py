@@ -9,22 +9,22 @@ displaying auto mode execution state with 5 main panels:
 - Prompt input area
 """
 
-import sys
-import time
-import threading
 import select
+import sys
+import threading
+import time
 from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Deque, Dict, List, Optional
 
 try:
+    from rich import box
     from rich.console import Console
     from rich.layout import Layout
     from rich.live import Live
     from rich.panel import Panel
     from rich.table import Table
     from rich.text import Text
-    from rich import box
 
     RICH_AVAILABLE = True
 except ImportError:
@@ -434,8 +434,8 @@ class AutoModeUI:
         """
         # Configure terminal for non-blocking, non-canonical mode
         # This allows reading single characters without Enter
-        import tty
         import termios
+        import tty
 
         # Save original terminal settings
         old_settings = None

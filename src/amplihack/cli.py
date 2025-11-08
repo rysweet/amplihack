@@ -22,8 +22,17 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
+    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
+    if getattr(args, "use_graph_mem", False):
+        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
+        print("Neo4j graph memory enabled")
+
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
+
+    # Handle --no-reflection flag (disable always wins priority)
+    if getattr(args, "no_reflection", False):
+        os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
     if use_docker:
         print(
@@ -92,6 +101,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         append_system_prompt=system_prompt_path,
         checkout_repo=getattr(args, "checkout_repo", None),
         claude_args=claude_args,
+        verbose=False,  # Interactive mode does not use --verbose
     )
 
     # Check if claude_args contains a prompt (-p) - if so, use non-interactive mode
@@ -116,6 +126,11 @@ def handle_auto_mode(
     """
     if not getattr(args, "auto", False):
         return None
+
+    # Disable reflection in auto mode (Issue #1146)
+    # Reflection is interactive and blocks autonomous execution
+    # Note: --no-reflection flag (Issue #1147) is also handled in non-auto mode paths
+    os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
     from .launcher.auto_mode import AutoMode
 
@@ -149,7 +164,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
     if not getattr(args, "append", None):
         return 0
 
-    from .launcher.append_handler import append_instructions, AppendError
+    from .launcher.append_handler import AppendError, append_instructions
 
     instruction = args.append
 
@@ -292,6 +307,16 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    launch_parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
+    launch_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
@@ -320,6 +345,16 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    claude_parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
+    claude_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
@@ -344,6 +379,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    copilot_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
 
     # Codex command
     codex_parser = subparsers.add_parser("codex", help="Launch OpenAI Codex CLI")
@@ -367,6 +407,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    codex_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
     )
 
     # UVX helper command
@@ -505,7 +550,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 docker_args = ["launch", "--"] + claude_args
                 return docker_manager.run_command(docker_args)
 
-            launcher = ClaudeLauncher(claude_args=claude_args)
+            launcher = ClaudeLauncher(claude_args=claude_args, verbose=False)
             return launcher.launch_interactive()
         create_parser().print_help()
         return 1
@@ -590,6 +635,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if exit_code is not None:
             return exit_code
 
+        # Handle --no-reflection flag (disable always wins priority)
+        if getattr(args, "no_reflection", False):
+            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
         # Normal copilot launch
         has_prompt = claude_args and "-p" in claude_args
         return launch_copilot(claude_args, interactive=not has_prompt)
@@ -605,6 +654,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         exit_code = handle_auto_mode("codex", args, claude_args)
         if exit_code is not None:
             return exit_code
+
+        # Handle --no-reflection flag (disable always wins priority)
+        if getattr(args, "no_reflection", False):
+            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
         # Normal codex launch
         has_prompt = claude_args and "-p" in claude_args

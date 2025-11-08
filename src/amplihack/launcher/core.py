@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
 from ..utils.claude_cli import get_claude_cli_path
 from ..utils.claude_trace import get_claude_command
@@ -48,6 +49,7 @@ class ClaudeLauncher:
         force_staging: bool = False,
         checkout_repo: Optional[str] = None,
         claude_args: Optional[List[str]] = None,
+        verbose: bool = False,
     ):
         """Initialize Claude launcher.
 
@@ -57,6 +59,7 @@ class ClaudeLauncher:
             force_staging: If True, force staging approach instead of --add-dir.
             checkout_repo: Optional GitHub repository URI to clone and use as working directory.
             claude_args: Additional arguments to forward to Claude.
+            verbose: If True, add --verbose flag to Claude command.
         """
         self.proxy_manager = proxy_manager
         self.append_system_prompt = append_system_prompt
@@ -64,6 +67,7 @@ class ClaudeLauncher:
         self.uvx_manager = UVXManager(force_staging=force_staging)
         self.checkout_repo = checkout_repo
         self.claude_args = claude_args or []
+        self.verbose = verbose
         self.claude_process: Optional[subprocess.Popen] = None
 
         # Cached computation results for performance optimization
@@ -81,7 +85,12 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Handle repository checkout if needed
+        # 2. Interactive Neo4j startup (blocks until ready or user decides)
+        if not self._interactive_neo4j_startup():
+            # User chose to exit rather than continue without Neo4j
+            return False
+
+        # 3. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
@@ -92,11 +101,21 @@ class ClaudeLauncher:
             print("Failed to determine target directory")
             return False
 
-        # 4. Handle directory change if needed (unless UVX with --add-dir)
+        # 4. Ensure required runtime directories exist
+        if not self._ensure_runtime_directories(target_dir):
+            print("Warning: Could not create runtime directories")
+            # Don't fail - just warn
+
+        # 5. Fix hook paths in settings.json to use absolute paths
+        if not self._fix_hook_paths_in_settings(target_dir):
+            print("Warning: Could not fix hook paths in settings.json")
+            # Don't fail - hooks might still work
+
+        # 6. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 5. Start proxy if needed
+        # 7. Start proxy if needed
         return self._start_proxy_if_needed()
 
     def _handle_repo_checkout(self) -> bool:
@@ -311,7 +330,11 @@ class ClaudeLauncher:
             if claude_path:
                 cmd.extend(["--claude-path", claude_path])
 
-            claude_args = ["--dangerously-skip-permissions", "--verbose"]
+            claude_args = ["--dangerously-skip-permissions"]
+
+            # Add --verbose flag only if requested (auto mode)
+            if self.verbose:
+                claude_args.append("--verbose")
 
             # Add system prompt if provided
             if self.append_system_prompt and self.append_system_prompt.exists():
@@ -340,7 +363,11 @@ class ClaudeLauncher:
 
             return cmd
         # Standard claude command
-        cmd = [claude_binary, "--dangerously-skip-permissions", "--verbose"]
+        cmd = [claude_binary, "--dangerously-skip-permissions"]
+
+        # Add --verbose flag only if requested (auto mode)
+        if self.verbose:
+            cmd.append("--verbose")
 
         # Add system prompt if provided
         if self.append_system_prompt and self.append_system_prompt.exists():
@@ -364,6 +391,104 @@ class ClaudeLauncher:
             cmd.extend(self.claude_args)
 
         return cmd
+
+    def _ensure_runtime_directories(self, target_dir: Path) -> bool:
+        """Ensure required runtime directories exist.
+
+        Creates:
+        - .claude/runtime/locks (for lock-based continuous work)
+        - .claude/runtime/reflection (for reflection system)
+        - .claude/runtime/logs (for session logs)
+        - .claude/runtime/metrics (for hook metrics)
+
+        Args:
+            target_dir: Project root directory
+
+        Returns:
+            True if successful, False on error
+        """
+        try:
+            runtime_dir = target_dir / ".claude" / "runtime"
+
+            # Create all required directories
+            required_dirs = [
+                runtime_dir / "locks",
+                runtime_dir / "reflection",
+                runtime_dir / "logs",
+                runtime_dir / "metrics",
+            ]
+
+            for dir_path in required_dirs:
+                dir_path.mkdir(parents=True, exist_ok=True)
+
+            print(f"✓ Runtime directories ensured in {runtime_dir}")
+            return True
+
+        except (OSError, PermissionError) as e:
+            print(f"Warning: Could not create runtime directories: {e}")
+            return False
+
+    def _fix_hook_paths_in_settings(self, target_dir: Path) -> bool:
+        """Fix hook paths in settings.json to use absolute paths.
+
+        Replaces $CLAUDE_PROJECT_DIR with actual absolute project path.
+        This ensures hooks work reliably even when Claude Code doesn't
+        properly evaluate environment variables.
+
+        Args:
+            target_dir: Project root directory
+
+        Returns:
+            True if successful or no changes needed, False on error
+        """
+        import json
+
+        settings_file = target_dir / ".claude" / "settings.json"
+
+        if not settings_file.exists():
+            # No settings file, nothing to fix
+            return True
+
+        try:
+            # Read current settings
+            with open(settings_file) as f:
+                settings = json.load(f)
+
+            # Check if hooks exist and contain $CLAUDE_PROJECT_DIR
+            if "hooks" not in settings:
+                return True
+
+            hooks_modified = False
+            project_dir_str = str(target_dir.resolve())
+
+            # Recursively replace $CLAUDE_PROJECT_DIR in hook commands
+            def replace_in_hooks(obj):
+                nonlocal hooks_modified
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        if key == "command" and isinstance(value, str):
+                            if "$CLAUDE_PROJECT_DIR" in value:
+                                obj[key] = value.replace("$CLAUDE_PROJECT_DIR", project_dir_str)
+                                hooks_modified = True
+                        else:
+                            replace_in_hooks(value)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        replace_in_hooks(item)
+
+            replace_in_hooks(settings["hooks"])
+
+            if hooks_modified:
+                # Write back with absolute paths
+                with open(settings_file, "w") as f:
+                    json.dump(settings, f, indent=2)
+                print(f"✓ Fixed hook paths in {settings_file.relative_to(target_dir)}")
+
+            return True
+
+        except (OSError, json.JSONDecodeError, PermissionError) as e:
+            print(f"Warning: Could not fix hook paths: {e}")
+            return False
 
     def launch(self) -> int:
         """Launch Claude Code with configuration.
@@ -533,6 +658,81 @@ class ClaudeLauncher:
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
 
+    def _interactive_neo4j_startup(self) -> bool:
+        """Interactive Neo4j startup with user feedback.
+
+        BLOCKS until Neo4j ready or user decides to continue without it.
+
+        Returns:
+            True to continue, False to exit
+        """
+        import logging
+
+        method_logger = logging.getLogger(__name__)
+
+        try:
+            from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
+
+            return interactive_neo4j_startup()
+        except ImportError:
+            # Neo4j modules not available - continue without
+            method_logger.debug("Neo4j modules not found")
+            return True
+        except Exception as e:
+            method_logger.error("Neo4j startup failed: %s", e)
+            print(f"\n⚠️  Neo4j startup error: {e}")
+            print("Continuing with basic memory system...\n")
+            return True
+
+    def _auto_setup_and_start_neo4j_OLD(self):
+        """Auto-setup prerequisites and start Neo4j in background.
+
+        Self-healing approach:
+        - Creates .env with password if missing
+        - Starts Docker if not running
+        - Starts Neo4j container
+        All in background thread, non-blocking.
+        """
+        import threading
+
+        def start_neo4j():
+            """Background thread function with auto-setup."""
+            import logging
+
+            thread_logger = logging.getLogger(__name__)
+
+            try:
+                # Auto-setup prerequisites
+                from ..memory.neo4j.auto_setup import ensure_prerequisites
+
+                if not ensure_prerequisites():
+                    thread_logger.warning("Neo4j prerequisites not met, falling back to SQLite")
+                    return
+
+                # Start Neo4j
+                from ..memory.neo4j.lifecycle import ensure_neo4j_running
+                from ..memory.neo4j.diagnostics import verify_neo4j_working
+
+                thread_logger.info("Starting Neo4j memory system...")
+                if ensure_neo4j_running(blocking=True):
+                    # Verify and show stats
+                    verify_neo4j_working()
+
+            except Exception as e:
+                # Never crash session start due to Neo4j issues
+                thread_logger.warning("Neo4j initialization error: %s", e)
+                thread_logger.info("Continuing with existing memory system")
+
+        # Start in background thread
+        thread = threading.Thread(
+            target=start_neo4j,
+            name="neo4j-startup",
+            daemon=True,  # Don't block process exit
+        )
+        thread.start()
+
+        # Don't wait - return immediately
+
     def _paths_are_same_with_cache(self, path1: Path, path2: Path) -> bool:
         """Compare paths with caching for resolved paths.
 
@@ -567,3 +767,21 @@ class ClaudeLauncher:
         Call this when UVX environment may have changed.
         """
         self._cached_uvx_decision = None
+
+    def _check_neo4j_credentials(self) -> None:
+        """Check and sync Neo4j credentials from containers.
+
+        This method is called during prepare_launch and gracefully handles
+        all errors to ensure launcher never crashes due to Neo4j detection.
+        """
+        try:
+            # Create Neo4j manager (interactive mode)
+            neo4j_manager = Neo4jManager()
+
+            # Check and sync credentials if needed
+            neo4j_manager.check_and_sync()
+
+        except Exception:
+            # Graceful degradation - never crash launcher
+            # No error message needed as Neo4j detection is optional
+            pass

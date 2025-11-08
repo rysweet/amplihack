@@ -556,6 +556,46 @@ documentation describes exactly.
 **Documentation**: See `docs/document_driven_development/` for complete guides,
 core concepts, and reference materials.
 
+### Investigation Workflow
+
+Deep knowledge excavation for understanding existing codebases, systems, and
+architectures.
+
+**When to Use:**
+
+- Analyzing codebase structure or system architecture
+- Understanding how components integrate
+- Diagnosing complex bugs with historical context
+- Researching implementation patterns
+- Exploring feature designs before modifications
+
+**What It Does:**
+
+Systematic 6-stage investigation workflow that preserves findings in persistent
+documentation:
+
+- Clarifies investigation scope and objectives
+- Discovers and maps code structure
+- Deep dives with knowledge-archaeologist agent
+- Verifies understanding with practical examples
+- Synthesizes findings into clear reports
+- Optionally generates permanent documentation
+
+**Key Feature - Auto-Documentation:**
+
+After investigations, the agent offers to create persistent docs in
+`.claude/docs/` (ARCHITECTURE*\* or INVESTIGATION*\*) so knowledge persists
+across sessions instead of being lost in chat history.
+
+**Details:**
+
+- **Complete Workflow**: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+- **Agent Implementation**:
+  `.claude/agents/amplihack/specialized/knowledge-archaeologist.md`
+- **Templates**:
+  `.claude/templates/{investigation,architecture}-doc-template.md`
+- **Storage**: `.claude/docs/` (all generated documentation)
+
 ## Scenario Tools
 
 Amplihack includes production-ready scenario tools that follow the **Progressive
