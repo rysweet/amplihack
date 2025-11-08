@@ -2967,9 +2967,8 @@ async def handle_azure_streaming_with_tools(
         yield f"event: message_start\ndata: {json.dumps(message_start_event)}\n\n"
 
         # Make streaming request to Azure Responses API
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
+        # Create SSL context using certifi certificates for proper certificate validation
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
 
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         timeout = aiohttp.ClientTimeout(total=300)
