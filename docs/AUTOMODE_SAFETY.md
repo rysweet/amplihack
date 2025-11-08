@@ -5,6 +5,7 @@
 ## ⚠️ The Problem
 
 When you launch `amplihack claude --auto` from within an active Claude Code session:
+
 - Automode tries to stage files in the same `.claude/` directory
 - Conflicts with existing structure
 - Can overwrite uncommitted changes
@@ -16,6 +17,7 @@ When you launch `amplihack claude --auto` from within an active Claude Code sess
 ### Option 1: Use Git Worktrees (RECOMMENDED)
 
 **For parallel automode sessions:**
+
 ```bash
 # Commit current work first
 git add -A && git commit -m "checkpoint: before automode"
@@ -33,6 +35,7 @@ amplihack claude --auto --max-turns 10 -- -p "task 2 description"
 ```
 
 **Benefits:**
+
 - Complete isolation
 - No file conflicts
 - Each session gets clean environment
@@ -41,6 +44,7 @@ amplihack claude --auto --max-turns 10 -- -p "task 2 description"
 ### Option 2: Commit First
 
 **For single automode session:**
+
 ```bash
 # Save your current work
 git add -A && git commit -m "WIP: before automode"
@@ -53,6 +57,7 @@ git reset HEAD~1
 ```
 
 **Benefits:**
+
 - Simple approach
 - Protects uncommitted work
 - Easy recovery
@@ -60,6 +65,7 @@ git reset HEAD~1
 ### Option 3: Separate Clone
 
 **For experimental automode:**
+
 ```bash
 # One-time setup
 git clone <repo-url> ~/automode-workspace
@@ -70,23 +76,28 @@ amplihack claude --auto --max-turns 10 -- -p "task"
 ```
 
 **Benefits:**
+
 - Zero risk to development environment
 - Safe for experimentation
 
 ## ❌ What NOT To Do
 
 **DON'T: Launch from active session with uncommitted work**
+
 ```bash
 # In active Claude Code session with changes
 amplihack claude --auto ... # ⚠️ DANGEROUS!
 ```
+
 **Result:** Lost changes, conflicts, crashes
 
 **DON'T: Launch multiple automode in same directory**
+
 ```bash
 amplihack claude --auto ... &
 amplihack claude --auto ... & # ⚠️ CONFLICT!
 ```
+
 **Result:** File staging conflicts, crashes
 
 ## 🛡️ Pre-Flight Checklist
@@ -102,6 +113,7 @@ Before launching automode from current directory:
 ## 🔧 Recovery If Things Go Wrong
 
 **If automode crashes and you lost changes:**
+
 ```bash
 # Check git reflog
 git reflog
@@ -115,6 +127,7 @@ ls ~/.claude/projects/*/
 ```
 
 **If automode created conflicts:**
+
 ```bash
 # Restore to last good state
 git reset --hard HEAD
@@ -126,6 +139,7 @@ git restore .claude/tools/amplihack/hooks/stop.py
 ## 📝 Recommended Workflow
 
 **Spawning Multiple Automode Sessions:**
+
 ```bash
 # 1. Commit current state
 git add -A && git commit -m "checkpoint: reflection improvements"
@@ -153,12 +167,14 @@ git worktree remove ./worktrees/automode-{1..5}
 ## Future Improvements
 
 See issue #1090 for planned improvements:
+
 - Add safety warnings to /amplihack:auto command
 - Pre-flight validation (uncommitted changes warning)
 - --working-dir flag for explicit directory control
 - Automatic worktree creation option
 
 ## Related
+
 - Issue #1090: Automode safety improvements
 - PR #1083: Had to reconstruct lost changes
 - `.claude/commands/amplihack/auto.md`: Automode documentation

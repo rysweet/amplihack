@@ -100,7 +100,7 @@ A: Scenarios tested, observations (output, logs, behavior, state), issues found 
 
 **Q: How do I handle third-party library documentation?**
 
-A: Don't duplicate it. Link to official docs. Document only *your* usage patterns, integration points, and project-specific conventions.
+A: Don't duplicate it. Link to official docs. Document only _your_ usage patterns, integration points, and project-specific conventions.
 
 ---
 

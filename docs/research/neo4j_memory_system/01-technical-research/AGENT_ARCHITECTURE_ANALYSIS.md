@@ -13,24 +13,26 @@ The Claude Code agent architecture is a sophisticated multi-layered system desig
 **Location**: `.claude/agents/` directory hierarchy
 
 **Agent Types**:
+
 - **Core Agents** (`.claude/agents/amplihack/core/`): architect, builder, reviewer, tester, optimizer
 - **Specialized Agents** (`.claude/agents/amplihack/specialized/`): analyzer, fix-agent, security, database, integration, cleanup, etc.
 - **Workflow Agents** (`.claude/agents/amplihack/workflows/`): Multi-step complex workflows
 - **Knowledge Agents** (`.claude/agents/`): ambiguity-guardian, knowledge-archaeologist, concept-extractor, insight-synthesizer, post-task-cleanup
 
 **Agent Definition Format**:
+
 ```yaml
 ---
 name: agent-name
 description: One-line agent description
 model: inherit
 ---
-
 # Agent Prompt (Markdown)
 [Detailed role description and operating instructions]
 ```
 
 **Key Characteristics**:
+
 - Stateless execution model
 - Self-contained role definitions (no external dependencies)
 - Mode-based operation (e.g., analyzer has TRIAGE/DEEP/SYNTHESIS modes)
@@ -42,6 +44,7 @@ model: inherit
 **Primary Patterns**:
 
 1. **Direct Invocation** (Claude Code native)
+
    ```
    User: "/analyze <path>"
    → Claude Code loads analyzer.md agent definition
@@ -49,6 +52,7 @@ model: inherit
    ```
 
 2. **Workflow-Based Orchestration** (UltraThink)
+
    ```
    User: "/ultrathink <task>"
    → Reads workflow from DEFAULT_WORKFLOW.md
@@ -72,11 +76,12 @@ model: inherit
 4. **Response** → Processed and returned to user
 
 **Context Preservation Mechanisms**:
+
 - **Original Request Preservation** (context_preservation.py)
   - Extracts requirements at session start
   - Stores in `.claude/runtime/logs/<session_id>/ORIGINAL_REQUEST.md`
   - Pre-compact hook exports conversations
-  
+
 - **Session Logging** (`.claude/runtime/logs/<session_id>/`)
   - DECISIONS.md: Decision tracking and rationale
   - Session metadata and progress tracking
@@ -152,16 +157,19 @@ DECISION LOG: .claude/runtime/logs/<session_id>/DECISIONS.md
 Agents use **automatic mode selection** based on context:
 
 **Analyzer Agent Modes**:
+
 - TRIAGE: Rapid filtering (>10 documents)
 - DEEP: Single document analysis
 - SYNTHESIS: Multi-source integration
 
 **Fix Agent Modes**:
+
 - QUICK: Rapid fixes (import, formatting)
 - DIAGNOSTIC: Root cause analysis
 - COMPREHENSIVE: Full workflow fixes
 
 **Cleanup Agent Modes**:
+
 - Philosophy compliance verification
 - User requirement preservation
 - Artifact removal (with explicit requirement protection)
@@ -175,32 +183,40 @@ Agents use **automatic mode selection** based on context:
 **Primary Mechanisms**:
 
 1. **Prompt Injection**
+
    ```markdown
    ## Original User Request (from ORIGINAL_REQUEST_PRESERVATION.md)
+
    [Extracted requirements injected at top]
-   
+
    ## User Preferences (from USER_PREFERENCES.md)
+
    [Communication style, verbosity, etc.]
-   
+
    ## Task Context
+
    [Specific task for this invocation]
    ```
 
 2. **Reference Imports** (via @notation)
+
    ```markdown
-   @.claude/context/PHILOSOPHY.md     → Agent reads key principles
-   @.claude/context/PATTERNS.md       → Agent references common patterns
-   @.claude/context/DISCOVERIES.md    → Agent learns from past issues
+   @.claude/context/PHILOSOPHY.md → Agent reads key principles
+   @.claude/context/PATTERNS.md → Agent references common patterns
+   @.claude/context/DISCOVERIES.md → Agent learns from past issues
    @.claude/context/USER_REQUIREMENTS.md → Agent preserves explicit requirements
    ```
 
 3. **Explicit Parameter Passing**
+
    ```markdown
    Architect, design this system with these explicit requirements:
+
    - [Requirement 1]
    - [Requirement 2]
-   
+
    Constraints:
+
    - [Constraint 1]
    ```
 
@@ -209,6 +225,7 @@ Agents use **automatic mode selection** based on context:
 **Agents Don't Have Direct Communication** - But workflow orchestration handles it:
 
 1. **Sequential**: Output of agent N becomes input to agent N+1
+
    ```
    architect generates design spec
    → builder reads spec as input
@@ -216,6 +233,7 @@ Agents use **automatic mode selection** based on context:
    ```
 
 2. **Parallel**: Independent agents run simultaneously
+
    ```
    architect + api-designer + database agents all run
    → Results synthesized by orchestrator
@@ -232,13 +250,16 @@ Agents use **automatic mode selection** based on context:
 **Location**: `.claude/runtime/logs/<session_id>/`
 
 **Components**:
+
 - **DECISIONS.md**: What was decided, why, alternatives considered
 - **ORIGINAL_REQUEST.md**: Preserved user requirements
 - Various analysis and report files
 
 **Decision Log Format**:
+
 ```markdown
 ## Decision N: [Decision Name]
+
 **What**: [What was decided]
 **Why**: [Reasoning]
 **Result**: [Outcome]
@@ -254,6 +275,7 @@ Agents use **automatic mode selection** based on context:
 **Hook Point**: Before agent invocation
 
 **What Memory Could Provide**:
+
 - **Similar Past Tasks**: "We solved a similar problem before"
 - **Pattern Matches**: "This pattern matches X previous work"
 - **User Preferences**: "User prefers X communication style"
@@ -261,6 +283,7 @@ Agents use **automatic mode selection** based on context:
 - **Error History**: "Watch out for X bug we hit before"
 
 **Implementation Pattern**:
+
 ```
 1. AGENT INVOCATION DETECTED
    ├─ Memory System: Query for relevant context
@@ -285,6 +308,7 @@ Agents use **automatic mode selection** based on context:
 **Hook Point**: After agent completion, during decision logging
 
 **What Memory Could Store**:
+
 - **Agent Decision**: What did this agent decide?
 - **Reasoning**: Why this choice?
 - **Outcomes**: What was the result?
@@ -293,6 +317,7 @@ Agents use **automatic mode selection** based on context:
 - **Performance**: How long did it take? Resource usage?
 
 **Implementation Pattern**:
+
 ```
 1. AGENT COMPLETES
    └─ Result available
@@ -321,6 +346,7 @@ Agents use **automatic mode selection** based on context:
 **Hook Point**: Workflow orchestration (UltraThink)
 
 **What Memory Could Provide**:
+
 - **Workflow History**: How many times has workflow step X been executed?
 - **Success Metrics**: What's the success rate for each workflow pattern?
 - **Optimal Sequencing**: Which parallel agent combinations work best?
@@ -328,6 +354,7 @@ Agents use **automatic mode selection** based on context:
 - **Failure Patterns**: When does the workflow fail?
 
 **Implementation Pattern**:
+
 ```
 WORKFLOW EXECUTION (UltraThink)
 ├─ Step N triggered
@@ -351,6 +378,7 @@ Benefits:
 **Hook Point**: User interactions and preferences
 
 **What Memory Could Learn**:
+
 - **Communication Style**: Does user prefer verbose or concise?
 - **Tool Preferences**: Which tools/agents does user favor?
 - **Time Sensitivity**: Does user prefer speed or thoroughness?
@@ -358,6 +386,7 @@ Benefits:
 - **Learning Patterns**: What domains does user work in most?
 
 **Implementation Pattern**:
+
 ```
 USER INTERACTIONS
 ├─ User provides feedback on agent response
@@ -383,6 +412,7 @@ NEW Memory System Could:
 **Hook Point**: Error handling and bug fixes
 
 **What Memory Could Provide**:
+
 - **Error Recognition**: "We've seen this error before"
 - **Solution Templates**: "Here's how we fixed it last time"
 - **Root Cause Analysis**: "The real cause was X not Y"
@@ -390,6 +420,7 @@ NEW Memory System Could:
 - **Related Issues**: "Watch out for Y which happens after X"
 
 **Implementation Pattern**:
+
 ```
 ERROR OCCURS
 ├─ Fix Agent invoked
@@ -415,6 +446,7 @@ Integration with existing fix-agent:
 ### 5.1 Core Integration Points (Minimal Changes)
 
 **Layer 1: Pre-Execution (Input Enhancement)**
+
 ```
 Location: Agent invocation point
 File: Wherever agents are called from
@@ -423,6 +455,7 @@ Impact: Low - purely additive, doesn't break existing flow
 ```
 
 **Layer 2: Post-Execution (Decision Recording)**
+
 ```
 Location: DECISIONS.md creation
 File: After agent completes, during decision logging
@@ -431,6 +464,7 @@ Impact: Low - happens after existing logging, purely additive
 ```
 
 **Layer 3: Workflow Orchestration**
+
 ```
 Location: UltraThink execution
 File: Workflow loop in ultrathink.md implementation
@@ -442,7 +476,7 @@ Impact: Medium - affects workflow decisions but backwards compatible
 
 **Critical**: Agents require NO modifications to receive memory:
 
-- Agent definitions (*.md files) remain untouched
+- Agent definitions (\*.md files) remain untouched
 - Agent invocation stays the same
 - Existing context passing unchanged
 - Decision logging format unchanged
@@ -484,6 +518,7 @@ Lifecycle: Automatic cleanup, archival, summarization
 ### 5.4 Integration Hooks
 
 **Hook 1: Agent Invocation (Pre-Execution)**
+
 ```python
 # In agent invocation logic (wherever agents get called)
 memory_context = memory_retrieval.query_pre_execution(
@@ -506,6 +541,7 @@ augmented_prompt = f"""
 ```
 
 **Hook 2: Decision Recording (Post-Execution)**
+
 ```python
 # In decision logging (after DECISIONS.md written)
 memory_system.record_decision(
@@ -521,6 +557,7 @@ memory_system.record_decision(
 ```
 
 **Hook 3: Workflow Step Tracking**
+
 ```python
 # In workflow orchestration (UltraThink loop)
 step_stats = memory_system.get_workflow_stats(
@@ -535,6 +572,7 @@ if step_stats.success_rate < 0.7:
 ```
 
 **Hook 4: Error Pattern Recognition**
+
 ```python
 # When error occurs
 error_record = memory_system.query_error_pattern(
@@ -556,14 +594,18 @@ fix_context = f"Similar errors fixed before: {error_record.solutions}"
 **Current**: Analyzes problem, creates specification
 
 **With Memory**:
+
 - Query: "What similar systems have we designed before?"
 - Response: "We designed similar auth systems 3 times. Here are the patterns."
 - Enhancement: Faster design, learns from past mistakes
 
 **Integration**:
+
 ```markdown
 ## Pre-Execution Memory
+
 Similar past designs: 3 previous authentication systems
+
 - Solution A: Token-based auth (User preferred, 95% satisfaction)
 - Solution B: Session-based auth (Complexity concerns, 60% satisfaction)
 - Solution C: OAuth integration (Not applicable to this context)
@@ -576,14 +618,18 @@ Common gotchas: [List from error history]
 **Current**: Implements from specification
 
 **With Memory**:
+
 - Query: "What implementation patterns have worked for this type of code?"
 - Response: "We've implemented similar features 5 times. Here are templates."
 - Enhancement: Faster implementation, consistent patterns
 
 **Integration**:
+
 ```markdown
 ## Pre-Execution Memory
+
 Template Matches: 5 previous implementations
+
 - Pattern A: Used 3 times, avg 2hrs (SUCCESSFUL)
 - Pattern B: Used 1 time, bugs found, fixed in 4hrs
 - Pattern C: Used 1 time, excellent result (RECOMMENDED)
@@ -596,14 +642,18 @@ Error Prevention: Avoid these common pitfalls from previous implementations
 **Current**: Reviews code for philosophy compliance
 
 **With Memory**:
+
 - Query: "What types of issues do we always find in code review?"
 - Response: "Top issues: incomplete error handling (80%), unclear variable names (60%)"
 - Enhancement: Targeted review, focuses on high-impact issues
 
 **Integration**:
+
 ```markdown
 ## Pre-Execution Memory
+
 Common Review Issues (This codebase):
+
 1. Incomplete error handling (80% of PRs)
 2. Unclear variable naming (60% of PRs)
 3. Missing type hints (40% of PRs)
@@ -616,19 +666,24 @@ Focus areas for this review based on code patterns
 **Current**: QUICK/DIAGNOSTIC/COMPREHENSIVE modes
 
 **With Memory**:
+
 - Query: "Have we fixed this exact error before?"
 - Response: "Yes, 7 times. Solution template, execution time ~5 min"
 - Enhancement: Instant fixes, root cause analysis, prevention
 
 **Integration**:
+
 ```markdown
 ## Pre-Execution Memory (DIAGNOSTIC Mode)
+
 Error Pattern Detected: [Similar errors 7 times previously]
 Root Causes Found:
+
 1. [Most common cause - 5 times]
 2. [Secondary cause - 2 times]
 
 Solutions Tried:
+
 - Solution A: Worked 5 times, immediate fix
 - Solution B: Worked 2 times, required deeper change
 
@@ -640,14 +695,18 @@ Recommended: Try Solution A first, fallback to Solution B
 **Current**: Reviews changes, removes artifacts
 
 **With Memory**:
+
 - Query: "What types of temporary artifacts do we usually leave behind?"
 - Response: "Common artifacts: test files, debug scripts, temporary configs"
 - Enhancement: More thorough cleanup, learns what to look for
 
 **Integration**:
+
 ```markdown
 ## Pre-Execution Memory
+
 Common Temporary Artifacts (This project):
+
 1. Debug scripts (45% of cleanup operations)
 2. Temporary config files (30%)
 3. Test data files (25%)
@@ -660,6 +719,7 @@ Files to check for removal: [List from pattern history]
 ## Section 7: Implementation Roadmap
 
 ### Phase 1: Foundation (Minimal, Non-Breaking)
+
 - Create memory storage structure (.claude/memory/)
 - Implement basic query interface
 - Add pre-execution memory injection (read-only)
@@ -667,6 +727,7 @@ Files to check for removal: [List from pattern history]
 - Ensure no breaking changes to existing workflows
 
 ### Phase 2: Decision Recording
+
 - Implement post-execution memory storage
 - Extract decision metadata from DECISIONS.md
 - Index decisions for retrieval
@@ -674,24 +735,28 @@ Files to check for removal: [List from pattern history]
 - Query similar past decisions
 
 ### Phase 3: Workflow Enhancement
+
 - Track workflow execution patterns
 - Store step-level statistics
 - Enable adaptive workflow ordering (if beneficial)
 - Provide workflow-level memory to agents
 
 ### Phase 4: Error Learning
+
 - Extract error patterns from logs
 - Store solution templates
 - Enable error prediction and prevention
 - Enhance fix-agent with memory patterns
 
 ### Phase 5: User Preference Learning
+
 - Analyze user feedback patterns
 - Learn effective preferences
 - Suggest preference improvements
 - Auto-adapt based on outcome quality
 
 ### Phase 6: Cross-Session Continuity
+
 - Enable memory persistence across sessions
 - Implement archival and cleanup
 - Enable long-term pattern recognition
@@ -704,6 +769,7 @@ Files to check for removal: [List from pattern history]
 ### Agent Invocation Enhancement (Pseudo-code)
 
 **Before**:
+
 ```python
 def invoke_agent(agent_name, task_prompt):
     agent_def = load_agent_definition(agent_name)
@@ -713,24 +779,26 @@ def invoke_agent(agent_name, task_prompt):
 ```
 
 **After** (Minimal Change):
+
 ```python
 def invoke_agent(agent_name, task_prompt):
     agent_def = load_agent_definition(agent_name)
-    
+
     # NEW: Memory enhancement (3 lines)
     memory_context = memory_system.query_pre_execution(agent_name)
     augmented_prompt = f"{memory_context}\n\n{task_prompt}"
-    
+
     response = send_to_claude(agent_def, augmented_prompt)
-    
+
     # NEW: Memory recording (2 lines)
     memory_system.record_decision(agent_name, response)
-    
+
     record_decision(agent_name, response)
     return response
 ```
 
 **Impact**:
+
 - 5 lines of new code
 - No changes to existing code
 - No changes to agent definitions
@@ -742,6 +810,7 @@ def invoke_agent(agent_name, task_prompt):
 ## Section 9: Critical Success Factors
 
 ### 9.1 What Memory MUST Do
+
 1. **Never corrupt existing workflows** - Memory is advisory only
 2. **Preserve user requirements** - Memory doesn't override explicit requests
 3. **Be transparent** - Agents know memory is being used
@@ -749,6 +818,7 @@ def invoke_agent(agent_name, task_prompt):
 5. **Fail gracefully** - System works even if memory system fails
 
 ### 9.2 Memory System Constraints
+
 1. **Storage**: Keep lightweight (JSON files, not databases)
 2. **Access**: Fast retrieval (seconds, not minutes)
 3. **Privacy**: Respect user privacy (no PII leaking)
@@ -756,6 +826,7 @@ def invoke_agent(agent_name, task_prompt):
 5. **Lifecycle**: Auto-cleanup old/irrelevant data
 
 ### 9.3 Integration Constraints
+
 1. **Non-Breaking**: No changes to existing agent definitions
 2. **Non-Invasive**: Agents don't need modification
 3. **Backwards Compatible**: System works without memory
@@ -767,6 +838,7 @@ def invoke_agent(agent_name, task_prompt):
 ## Section 10: Summary: Integration Points by Category
 
 ### Input Enhancement (Pre-Execution)
+
 - Location: Agent invocation point
 - Mechanism: Memory context injection into prompt
 - Agents affected: All agents get enhanced context
@@ -775,6 +847,7 @@ def invoke_agent(agent_name, task_prompt):
 - Reversible: Yes
 
 ### Decision Recording (Post-Execution)
+
 - Location: Decision logging (DECISIONS.md)
 - Mechanism: Extract and index decision metadata
 - Agents affected: All agents' decisions are recorded
@@ -783,6 +856,7 @@ def invoke_agent(agent_name, task_prompt):
 - Reversible: Yes
 
 ### Workflow Orchestration
+
 - Location: UltraThink execution loop
 - Mechanism: Query workflow stats, adaptive execution
 - Agents affected: Orchestration, not agents themselves
@@ -791,6 +865,7 @@ def invoke_agent(agent_name, task_prompt):
 - Reversible: Yes
 
 ### Error Pattern Recognition
+
 - Location: Error handling and fix-agent invocation
 - Mechanism: Error pattern querying, solution templates
 - Agents affected: fix-agent primarily
@@ -799,6 +874,7 @@ def invoke_agent(agent_name, task_prompt):
 - Reversible: Yes
 
 ### User Preference Learning
+
 - Location: User feedback and preference application
 - Mechanism: Automatic preference detection and learning
 - Agents affected: All agents (via preferences)
@@ -813,6 +889,7 @@ def invoke_agent(agent_name, task_prompt):
 The Claude Code agent architecture provides excellent natural integration points for a memory system. The key insight is that **memory integration doesn't require modifying agents** - instead, it enhances the context they receive and the decisions they make.
 
 **Minimal Integration Path**:
+
 1. Memory system provides context to agents (pre-execution)
 2. Memory system records agent decisions (post-execution)
 3. No changes needed to agent definitions
@@ -820,4 +897,3 @@ The Claude Code agent architecture provides excellent natural integration points
 5. Fully backward compatible
 
 **Maximum Value with Minimum Changes**: That's the amplihack way.
-

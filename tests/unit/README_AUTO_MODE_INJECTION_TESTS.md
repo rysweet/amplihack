@@ -5,6 +5,7 @@ Comprehensive TDD test suite for the auto mode instruction injection feature.
 ## Overview
 
 This test suite follows Test-Driven Development (TDD) principles to guide implementation of:
+
 1. Auto mode directory creation (append/ and appended/)
 2. Prompt persistence (prompt.md)
 3. Instruction checking and processing
@@ -16,11 +17,13 @@ This test suite follows Test-Driven Development (TDD) principles to guide implem
 ### Unit Tests
 
 #### 1. test_auto_mode_injection.py
+
 Tests AutoMode class modifications for instruction injection support.
 
 **Status**: Most tests PASS (features already implemented in lines 48-60, 206-243 of auto_mode.py)
 
 Test Classes:
+
 - `TestAutoModeDirectoryCreation` - Directory creation on init (PASSING)
 - `TestAutoModePromptWriting` - prompt.md creation and formatting (PASSING)
 - `TestCheckForNewInstructions` - Instruction discovery and processing (PASSING)
@@ -29,16 +32,19 @@ Test Classes:
 - `TestAutoModeAttributes` - Attribute verification (PASSING)
 
 Coverage:
+
 - 58 test cases
 - Focus on boundary conditions, error handling, file operations
 - Tests for empty directories, multiple files, ordering, error recovery
 
 #### 2. test_session_finder.py
+
 Tests SessionFinder class for discovering active auto mode sessions.
 
 **Status**: All tests FAIL (SessionFinder not yet implemented)
 
 Test Classes:
+
 - `TestSessionFinderBasicDiscovery` - Finding sessions in current/parent directories
 - `TestSessionFinderMultipleSessions` - Handling multiple concurrent sessions
 - `TestSessionValidation` - Session validation and staleness detection
@@ -47,6 +53,7 @@ Test Classes:
 - `TestSessionFinderPerformance` - Performance with many sessions
 
 Coverage:
+
 - 24 test cases
 - Session discovery from any directory level
 - Multiple session handling (most recent wins)
@@ -55,6 +62,7 @@ Coverage:
 - Structure validation (append/ and prompt.md required)
 
 Implementation Guide:
+
 ```python
 # Location: src/amplihack/launcher/session_finder.py
 
@@ -97,11 +105,13 @@ class SessionFinder:
 ```
 
 #### 3. test_append_handler.py
+
 Tests append_instructions function for CLI --append flag.
 
 **Status**: All tests FAIL (append_instructions not yet implemented)
 
 Test Classes:
+
 - `TestAppendInstructionsBasic` - Basic file creation and writing
 - `TestAppendInstructionsSessionDiscovery` - Finding active sessions
 - `TestAppendInstructionsErrorHandling` - Error handling
@@ -111,6 +121,7 @@ Test Classes:
 - `TestCLIIntegration` - CLI flag integration (conceptual)
 
 Coverage:
+
 - 30 test cases
 - Timestamp-based filename generation (YYYYMMDD_HHMMSS.md)
 - Automatic session discovery
@@ -120,6 +131,7 @@ Coverage:
 - Collision handling for same-timestamp files
 
 Implementation Guide:
+
 ```python
 # Location: src/amplihack/launcher/append_handler.py
 
@@ -204,11 +216,13 @@ def append_instructions(
 ### Integration Tests
 
 #### 4. test_auto_mode_append_integration.py
+
 End-to-end integration tests combining all components.
 
 **Status**: Tests FAIL until all components implemented
 
 Test Classes:
+
 - `TestFullWorkflowStartAutoAppendProcess` - Complete workflow simulation
 - `TestMultipleAppendOperationsQueuing` - Multiple appends and queuing
 - `TestAppendFromSubdirectory` - Appending from subdirectories
@@ -217,6 +231,7 @@ Test Classes:
 - `TestEndToEndWithRealWorkflow` - Realistic developer workflow simulation
 
 Coverage:
+
 - 15 test cases
 - Full workflow: start auto mode → append → process
 - Multiple concurrent appends
@@ -226,6 +241,7 @@ Coverage:
 - Realistic developer workflow simulation
 
 Key Workflow Test:
+
 ```python
 def test_developer_workflow_simulation():
     """
@@ -240,6 +256,7 @@ def test_developer_workflow_simulation():
 ## Running the Tests
 
 ### Run All Tests
+
 ```bash
 # All auto mode injection tests
 pytest tests/unit/test_auto_mode_injection.py -v
@@ -252,6 +269,7 @@ pytest tests/unit/test_auto_mode_injection.py tests/unit/test_session_finder.py 
 ```
 
 ### Run by Test Class
+
 ```bash
 # Test directory creation (should PASS)
 pytest tests/unit/test_auto_mode_injection.py::TestAutoModeDirectoryCreation -v
@@ -264,6 +282,7 @@ pytest tests/unit/test_append_handler.py::TestAppendInstructionsBasic -v
 ```
 
 ### Run by Category
+
 ```bash
 # Only unit tests
 pytest tests/unit/test_auto_mode_injection.py tests/unit/test_session_finder.py tests/unit/test_append_handler.py -v -m unit
@@ -276,6 +295,7 @@ pytest -v -m "not slow"
 ```
 
 ### Run with Coverage
+
 ```bash
 pytest tests/unit/test_auto_mode_injection.py --cov=amplihack.launcher.auto_mode --cov-report=html
 pytest tests/unit/test_session_finder.py --cov=amplihack.launcher.session_finder --cov-report=html
@@ -285,6 +305,7 @@ pytest tests/unit/test_append_handler.py --cov=amplihack.launcher.append_handler
 ## Implementation Status
 
 ### ✅ Already Implemented (in auto_mode.py)
+
 - `AutoMode.append_dir` attribute (line 49)
 - `AutoMode.appended_dir` attribute (line 50)
 - Directory creation in `__init__` (lines 51-52)
@@ -293,6 +314,7 @@ pytest tests/unit/test_append_handler.py --cov=amplihack.launcher.append_handler
 - Instruction processing in run loop (line 441)
 
 ### ❌ Not Yet Implemented
+
 - `SessionFinder` class
 - `SessionInfo` dataclass
 - `append_instructions()` function
@@ -305,6 +327,7 @@ pytest tests/unit/test_append_handler.py --cov=amplihack.launcher.append_handler
 Target: >90% coverage for new code
 
 Current Coverage Breakdown:
+
 - AutoMode modifications: ~95% (mostly implemented)
 - SessionFinder: 0% (not implemented)
 - append_handler: 0% (not implemented)
@@ -313,6 +336,7 @@ Current Coverage Breakdown:
 ## Edge Cases Covered
 
 ### Boundary Conditions
+
 - Empty directories (no instruction files)
 - Single instruction file
 - Multiple instruction files
@@ -321,6 +345,7 @@ Current Coverage Breakdown:
 - Very long instructions
 
 ### Error Conditions
+
 - No active session exists
 - Multiple sessions (select most recent)
 - Permission errors (read/write)
@@ -330,6 +355,7 @@ Current Coverage Breakdown:
 - Concurrent operations
 
 ### Filesystem Edge Cases
+
 - Deep directory nesting
 - Timestamp collisions
 - Rapid successive operations
@@ -337,6 +363,7 @@ Current Coverage Breakdown:
 - Malformed session directories
 
 ### Character Encoding
+
 - Unicode characters
 - Special markdown characters
 - Code blocks
@@ -374,6 +401,7 @@ Current Coverage Breakdown:
 ## Next Steps for Implementation
 
 ### Phase 1: SessionFinder (1-2 hours)
+
 1. Create `src/amplihack/launcher/session_finder.py`
 2. Implement `SessionInfo` dataclass
 3. Implement `SessionFinder.find_active_session()`
@@ -381,6 +409,7 @@ Current Coverage Breakdown:
 5. Run: `pytest tests/unit/test_session_finder.py -v`
 
 ### Phase 2: append_handler (1-2 hours)
+
 1. Create `src/amplihack/launcher/append_handler.py`
 2. Implement `AppendResult` dataclass
 3. Implement `AppendError` exception
@@ -388,18 +417,21 @@ Current Coverage Breakdown:
 5. Run: `pytest tests/unit/test_append_handler.py -v`
 
 ### Phase 3: CLI Integration (1 hour)
+
 1. Add `--append` flag to CLI parser
 2. Wire up to `append_instructions()`
 3. Add help text
 4. Test manually: `amplihack --append "test instruction"`
 
 ### Phase 4: Integration Testing (1 hour)
+
 1. Run full integration test suite
 2. Fix any integration issues
 3. Verify end-to-end workflow
 4. Run: `pytest tests/integration/test_auto_mode_append_integration.py -v`
 
 ### Phase 5: Documentation (30 minutes)
+
 1. Update CLI help text
 2. Add usage examples to docs
 3. Update CLAUDE.md if needed
@@ -408,6 +440,7 @@ Current Coverage Breakdown:
 ## Success Criteria
 
 Feature is complete when:
+
 - ✅ All 127 tests pass
 - ✅ Coverage >90% on new code
 - ✅ CLI `--append` flag works end-to-end

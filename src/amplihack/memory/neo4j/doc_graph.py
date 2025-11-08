@@ -17,7 +17,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
 from .config import get_config
@@ -149,12 +149,12 @@ class DocGraphIntegration:
         if not file_path.exists():
             raise FileNotFoundError(f"Documentation file not found: {file_path}")
 
-        if file_path.suffix.lower() not in ['.md', '.markdown']:
+        if file_path.suffix.lower() not in [".md", ".markdown"]:
             raise ValueError(f"Not a markdown file: {file_path}")
 
         logger.info("Parsing markdown documentation: %s", file_path)
 
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         # Extract title (first heading)
@@ -176,19 +176,19 @@ class DocGraphIntegration:
         metadata = self._extract_metadata(file_path, content)
 
         return {
-            'path': str(file_path.absolute()),
-            'title': title,
-            'content': content,
-            'sections': sections,
-            'concepts': concepts,
-            'code_references': code_references,
-            'links': links,
-            'metadata': metadata,
+            "path": str(file_path.absolute()),
+            "title": title,
+            "content": content,
+            "sections": sections,
+            "concepts": concepts,
+            "code_references": code_references,
+            "links": links,
+            "metadata": metadata,
         }
 
     def _extract_title(self, content: str) -> str:
         """Extract title from markdown content (first # heading)."""
-        match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+        match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
         if match:
             return match.group(1).strip()
         return "Untitled"
@@ -200,19 +200,19 @@ class DocGraphIntegration:
             List of sections with heading, level, and content
         """
         sections = []
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         current_section = None
         current_content = []
 
         for line in lines:
             # Check for heading
-            heading_match = re.match(r'^(#{1,6})\s+(.+)$', line)
+            heading_match = re.match(r"^(#{1,6})\s+(.+)$", line)
 
             if heading_match:
                 # Save previous section
                 if current_section:
-                    current_section['content'] = '\n'.join(current_content).strip()
+                    current_section["content"] = "\n".join(current_content).strip()
                     sections.append(current_section)
 
                 # Start new section
@@ -220,9 +220,9 @@ class DocGraphIntegration:
                 heading = heading_match.group(2).strip()
 
                 current_section = {
-                    'heading': heading,
-                    'level': level,
-                    'content': '',
+                    "heading": heading,
+                    "level": level,
+                    "content": "",
                 }
                 current_content = []
             else:
@@ -232,12 +232,14 @@ class DocGraphIntegration:
 
         # Save last section
         if current_section:
-            current_section['content'] = '\n'.join(current_content).strip()
+            current_section["content"] = "\n".join(current_content).strip()
             sections.append(current_section)
 
         return sections
 
-    def _extract_concepts(self, content: str, sections: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    def _extract_concepts(
+        self, content: str, sections: List[Dict[str, Any]]
+    ) -> List[Dict[str, str]]:
         """Extract key concepts from documentation.
 
         Concepts are identified from:
@@ -254,37 +256,43 @@ class DocGraphIntegration:
 
         # Extract from section headings
         for section in sections:
-            heading = section['heading']
+            heading = section["heading"]
             # Skip generic headings
-            if heading.lower() not in ['overview', 'introduction', 'summary', 'conclusion']:
+            if heading.lower() not in ["overview", "introduction", "summary", "conclusion"]:
                 if heading not in seen:
-                    concepts.append({
-                        'name': heading,
-                        'category': 'section',
-                    })
+                    concepts.append(
+                        {
+                            "name": heading,
+                            "category": "section",
+                        }
+                    )
                     seen.add(heading)
 
         # Extract bold text (likely important concepts)
-        bold_pattern = re.compile(r'\*\*([^*]+)\*\*')
+        bold_pattern = re.compile(r"\*\*([^*]+)\*\*")
         for match in bold_pattern.finditer(content):
             concept = match.group(1).strip()
             # Filter out short or generic terms
             if len(concept) > 3 and concept not in seen:
-                concepts.append({
-                    'name': concept,
-                    'category': 'emphasized',
-                })
+                concepts.append(
+                    {
+                        "name": concept,
+                        "category": "emphasized",
+                    }
+                )
                 seen.add(concept)
 
         # Extract code block languages as concepts
-        code_block_pattern = re.compile(r'```(\w+)')
+        code_block_pattern = re.compile(r"```(\w+)")
         for match in code_block_pattern.finditer(content):
             language = match.group(1).strip()
             if language and language not in seen:
-                concepts.append({
-                    'name': language,
-                    'category': 'language',
-                })
+                concepts.append(
+                    {
+                        "name": language,
+                        "category": "language",
+                    }
+                )
                 seen.add(language)
 
         return concepts
@@ -304,32 +312,38 @@ class DocGraphIntegration:
         references = []
 
         # Pattern 1: @file.py or @path/to/file.py
-        at_pattern = re.compile(r'@([\w/._-]+\.py)')
+        at_pattern = re.compile(r"@([\w/._-]+\.py)")
         for match in at_pattern.finditer(content):
             file_path = match.group(1)
-            references.append({
-                'file': file_path,
-                'line': None,
-            })
+            references.append(
+                {
+                    "file": file_path,
+                    "line": None,
+                }
+            )
 
         # Pattern 2: file:line references (e.g., example.py:42)
-        file_line_pattern = re.compile(r'([\w/._-]+\.py):(\d+)')
+        file_line_pattern = re.compile(r"([\w/._-]+\.py):(\d+)")
         for match in file_line_pattern.finditer(content):
             file_path = match.group(1)
             line_num = int(match.group(2))
-            references.append({
-                'file': file_path,
-                'line': line_num,
-            })
+            references.append(
+                {
+                    "file": file_path,
+                    "line": line_num,
+                }
+            )
 
         # Pattern 3: Inline code with .py extension (`file.py`)
-        inline_code_pattern = re.compile(r'`([\w/._-]+\.py)`')
+        inline_code_pattern = re.compile(r"`([\w/._-]+\.py)`")
         for match in inline_code_pattern.finditer(content):
             file_path = match.group(1)
-            references.append({
-                'file': file_path,
-                'line': None,
-            })
+            references.append(
+                {
+                    "file": file_path,
+                    "line": None,
+                }
+            )
 
         return references
 
@@ -342,14 +356,16 @@ class DocGraphIntegration:
         links = []
 
         # Markdown link pattern: [text](url)
-        link_pattern = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
+        link_pattern = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
         for match in link_pattern.finditer(content):
             text = match.group(1).strip()
             url = match.group(2).strip()
-            links.append({
-                'text': text,
-                'url': url,
-            })
+            links.append(
+                {
+                    "text": text,
+                    "url": url,
+                }
+            )
 
         return links
 
@@ -362,11 +378,11 @@ class DocGraphIntegration:
         stat = file_path.stat()
 
         return {
-            'size_bytes': stat.st_size,
-            'line_count': content.count('\n') + 1,
-            'word_count': len(content.split()),
-            'last_modified': datetime.fromtimestamp(stat.st_mtime).isoformat(),
-            'file_type': file_path.suffix.lower(),
+            "size_bytes": stat.st_size,
+            "line_count": content.count("\n") + 1,
+            "word_count": len(content.split()),
+            "last_modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+            "file_type": file_path.suffix.lower(),
         }
 
     def import_documentation(
@@ -393,23 +409,23 @@ class DocGraphIntegration:
         doc_data = self.parse_markdown_doc(file_path)
 
         counts = {
-            'doc_files': 0,
-            'sections': 0,
-            'concepts': 0,
-            'code_refs': 0,
+            "doc_files": 0,
+            "sections": 0,
+            "concepts": 0,
+            "code_refs": 0,
         }
 
         # Import DocFile node
-        counts['doc_files'] = self._import_doc_file(doc_data, project_id)
+        counts["doc_files"] = self._import_doc_file(doc_data, project_id)
 
         # Import sections
-        counts['sections'] = self._import_sections(doc_data)
+        counts["sections"] = self._import_sections(doc_data)
 
         # Import concepts
-        counts['concepts'] = self._import_concepts(doc_data)
+        counts["concepts"] = self._import_concepts(doc_data)
 
         # Import code references
-        counts['code_refs'] = self._import_code_references(doc_data)
+        counts["code_refs"] = self._import_code_references(doc_data)
 
         logger.info("Documentation import complete: %s", counts)
         return counts
@@ -445,36 +461,38 @@ class DocGraphIntegration:
         """
 
         params = {
-            'path': doc_data['path'],
-            'title': doc_data['title'],
-            'content': doc_data['content'],
-            'line_count': doc_data['metadata']['line_count'],
-            'word_count': doc_data['metadata']['word_count'],
-            'last_modified': doc_data['metadata']['last_modified'],
-            'project_id': project_id,
-            'created_at': datetime.now().isoformat(),
-            'imported_at': datetime.now().isoformat(),
+            "path": doc_data["path"],
+            "title": doc_data["title"],
+            "content": doc_data["content"],
+            "line_count": doc_data["metadata"]["line_count"],
+            "word_count": doc_data["metadata"]["word_count"],
+            "last_modified": doc_data["metadata"]["last_modified"],
+            "project_id": project_id,
+            "created_at": datetime.now().isoformat(),
+            "imported_at": datetime.now().isoformat(),
         }
 
         result = self.conn.execute_write(query, params)
-        return result[0]['count'] if result else 0
+        return result[0]["count"] if result else 0
 
     def _import_sections(self, doc_data: Dict[str, Any]) -> int:
         """Import section nodes and link to DocFile."""
-        if not doc_data['sections']:
+        if not doc_data["sections"]:
             return 0
 
         # Generate unique section IDs
         sections_with_ids = []
-        for idx, section in enumerate(doc_data['sections']):
+        for idx, section in enumerate(doc_data["sections"]):
             section_id = f"{doc_data['path']}#section-{idx}"
-            sections_with_ids.append({
-                'id': section_id,
-                'heading': section['heading'],
-                'level': section['level'],
-                'content': section['content'],
-                'order': idx,
-            })
+            sections_with_ids.append(
+                {
+                    "id": section_id,
+                    "heading": section["heading"],
+                    "level": section["level"],
+                    "content": section["content"],
+                    "order": idx,
+                }
+            )
 
         query = """
         MATCH (df:DocFile {path: $doc_path})
@@ -499,28 +517,30 @@ class DocGraphIntegration:
         """
 
         params = {
-            'doc_path': doc_data['path'],
-            'sections': sections_with_ids,
-            'created_at': datetime.now().isoformat(),
+            "doc_path": doc_data["path"],
+            "sections": sections_with_ids,
+            "created_at": datetime.now().isoformat(),
         }
 
         result = self.conn.execute_write(query, params)
-        return result[0]['count'] if result else 0
+        return result[0]["count"] if result else 0
 
     def _import_concepts(self, doc_data: Dict[str, Any]) -> int:
         """Import concept nodes and link to DocFile."""
-        if not doc_data['concepts']:
+        if not doc_data["concepts"]:
             return 0
 
         # Generate unique concept IDs
         concepts_with_ids = []
-        for concept in doc_data['concepts']:
+        for concept in doc_data["concepts"]:
             concept_id = f"{concept['category']}:{concept['name']}"
-            concepts_with_ids.append({
-                'id': concept_id,
-                'name': concept['name'],
-                'category': concept['category'],
-            })
+            concepts_with_ids.append(
+                {
+                    "id": concept_id,
+                    "name": concept["name"],
+                    "category": concept["category"],
+                }
+            )
 
         query = """
         MATCH (df:DocFile {path: $doc_path})
@@ -541,17 +561,17 @@ class DocGraphIntegration:
         """
 
         params = {
-            'doc_path': doc_data['path'],
-            'concepts': concepts_with_ids,
-            'created_at': datetime.now().isoformat(),
+            "doc_path": doc_data["path"],
+            "concepts": concepts_with_ids,
+            "created_at": datetime.now().isoformat(),
         }
 
         result = self.conn.execute_write(query, params)
-        return result[0]['count'] if result else 0
+        return result[0]["count"] if result else 0
 
     def _import_code_references(self, doc_data: Dict[str, Any]) -> int:
         """Import code references and link DocFile to CodeFile."""
-        if not doc_data['code_references']:
+        if not doc_data["code_references"]:
             return 0
 
         query = """
@@ -573,13 +593,13 @@ class DocGraphIntegration:
         """
 
         params = {
-            'doc_path': doc_data['path'],
-            'refs': doc_data['code_references'],
-            'created_at': datetime.now().isoformat(),
+            "doc_path": doc_data["path"],
+            "refs": doc_data["code_references"],
+            "created_at": datetime.now().isoformat(),
         }
 
         result = self.conn.execute_write(query, params)
-        return result[0]['count'] if result else 0
+        return result[0]["count"] if result else 0
 
     def link_docs_to_code(self, project_id: Optional[str] = None) -> int:
         """Create relationships between documentation and code.
@@ -622,10 +642,10 @@ class DocGraphIntegration:
         RETURN count(r) as count
         """
 
-        params = {'created_at': datetime.now().isoformat()}
+        params = {"created_at": datetime.now().isoformat()}
 
         result = self.conn.execute_write(query, params)
-        return result[0]['count'] if result else 0
+        return result[0]["count"] if result else 0
 
     def _link_concepts_to_classes(self) -> int:
         """Link concepts to classes by name matching."""
@@ -641,10 +661,10 @@ class DocGraphIntegration:
         RETURN count(r) as count
         """
 
-        params = {'created_at': datetime.now().isoformat()}
+        params = {"created_at": datetime.now().isoformat()}
 
         result = self.conn.execute_write(query, params)
-        return result[0]['count'] if result else 0
+        return result[0]["count"] if result else 0
 
     def link_docs_to_memories(self, project_id: Optional[str] = None) -> int:
         """Create relationships between documentation and memories.
@@ -685,11 +705,11 @@ class DocGraphIntegration:
         RETURN count(r) as count
         """
 
-        params = {'created_at': datetime.now().isoformat()}
+        params = {"created_at": datetime.now().isoformat()}
 
         try:
             result = self.conn.execute_write(query, params)
-            return result[0]['count'] if result else 0
+            return result[0]["count"] if result else 0
         except Exception as e:
             logger.debug("Could not link memories to docs: %s", e)
             return 0
@@ -735,14 +755,14 @@ class DocGraphIntegration:
         """
 
         params = {
-            'query': query_text,
-            'limit': limit,
+            "query": query_text,
+            "limit": limit,
         }
 
         result = self.conn.execute_query(query, params)
 
         if result:
-            return [record['doc'] for record in result]
+            return [record["doc"] for record in result]
 
         return []
 
@@ -775,9 +795,9 @@ class DocGraphIntegration:
             return result[0]
 
         return {
-            'doc_count': 0,
-            'section_count': 0,
-            'concept_count': 0,
-            'code_ref_count': 0,
-            'total_words': 0,
+            "doc_count": 0,
+            "section_count": 0,
+            "concept_count": 0,
+            "code_ref_count": 0,
+            "total_words": 0,
         }

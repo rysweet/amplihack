@@ -9,7 +9,6 @@ Extracts patterns, decisions, and outcomes for future agent use.
 import json
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Add project src to path
@@ -25,11 +24,12 @@ if project_root is None:
 
 sys.path.insert(0, str(project_root / "src"))
 
+
 def main():
     """Capture session learnings and store in Neo4j."""
     try:
         # Import memory system
-        from amplihack.memory.neo4j import AgentMemoryManager, lifecycle
+        from amplihack.memory.neo4j import lifecycle
         from amplihack.memory.neo4j.agent_integration import extract_and_store_learnings
 
         # Check if Neo4j is available
@@ -56,7 +56,7 @@ def main():
             output=agent_output,
             task=task_description,
             success=success,
-            project_id=os.getenv("AMPLIHACK_PROJECT_ID", "amplihack")
+            project_id=os.getenv("AMPLIHACK_PROJECT_ID", "amplihack"),
         )
 
         if memory_ids:
@@ -65,6 +65,7 @@ def main():
     except Exception as e:
         # Don't fail session stop if memory capture fails
         print(f"[WARN] Memory capture failed: {e}", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()

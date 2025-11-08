@@ -648,6 +648,7 @@ CODE ALONE:                    WITH MEMORY:
 ## Conclusion
 
 The unified graph enables **code with memory**, where:
+
 - Every code element has agent experiences attached
 - Agents of the same type share learned procedures
 - Patterns are recognized across projects

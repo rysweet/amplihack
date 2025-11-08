@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
 from .exceptions import Neo4jConnectionError
@@ -129,9 +129,7 @@ class RetrievalStrategy(ABC):
         self.conn = connector
 
     @abstractmethod
-    def retrieve(
-        self, context: RetrievalContext, limit: int = 10
-    ) -> List[MemoryResult]:
+    def retrieve(self, context: RetrievalContext, limit: int = 10) -> List[MemoryResult]:
         """Retrieve memories using this strategy.
 
         Args:
@@ -144,7 +142,6 @@ class RetrievalStrategy(ABC):
         Raises:
             Neo4jConnectionError: If query fails
         """
-        pass
 
     def _build_isolation_clause(self, context: RetrievalContext) -> tuple[str, Dict[str, Any]]:
         """Build Cypher WHERE clause for isolation.
@@ -159,7 +156,11 @@ class RetrievalStrategy(ABC):
         params = {}
 
         # Project isolation
-        if context.isolation_level in [IsolationLevel.PROJECT, IsolationLevel.AGENT_TYPE, IsolationLevel.INSTANCE]:
+        if context.isolation_level in [
+            IsolationLevel.PROJECT,
+            IsolationLevel.AGENT_TYPE,
+            IsolationLevel.INSTANCE,
+        ]:
             if context.include_global:
                 conditions.append("(p.id = $project_id OR p.id = 'global')")
             else:
@@ -210,9 +211,7 @@ class TemporalRetrieval(RetrievalStrategy):
     - Frequently accessed memories
     """
 
-    def retrieve(
-        self, context: RetrievalContext, limit: int = 10
-    ) -> List[MemoryResult]:
+    def retrieve(self, context: RetrievalContext, limit: int = 10) -> List[MemoryResult]:
         """Retrieve recent memories.
 
         Args:
@@ -466,13 +465,12 @@ class HybridRetrieval(RetrievalStrategy):
                 logger.warning("Graph traversal failed: %s", e)
 
         # Sort by combined score and limit
-        sorted_results = sorted(
-            all_results.values(), key=lambda r: r.score, reverse=True
-        )
+        sorted_results = sorted(all_results.values(), key=lambda r: r.score, reverse=True)
         return sorted_results[:limit]
 
 
 # Convenience functions
+
 
 def retrieve_recent_memories(
     connector: Neo4jConnector,

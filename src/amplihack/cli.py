@@ -174,7 +174,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
         # Print success message
         print(f"✓ Instruction appended to session: {result.session_id}")
         print(f"  File: {result.filename}")
-        print(f"  The auto mode session will process this on its next turn.")
+        print("  The auto mode session will process this on its next turn.")
         return 0
 
     except ValueError as e:

@@ -4,8 +4,6 @@ Tests the goal-seeking autonomous installation system with mocked
 system operations (no actual sudo commands executed).
 """
 
-import subprocess
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
@@ -177,9 +175,9 @@ class TestDependencyInstaller:
             cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
             if "docker --version" in cmd_str:
                 return Mock(returncode=0)
-            elif "docker ps" in cmd_str:
+            if "docker ps" in cmd_str:
                 return Mock(returncode=0, stdout="", stderr="")
-            elif "docker compose version" in cmd_str:
+            if "docker compose version" in cmd_str:
                 return Mock(returncode=1)
             return Mock(returncode=0)
 
@@ -202,7 +200,7 @@ class TestDependencyInstaller:
             cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
             if "docker --version" in cmd_str:
                 return Mock(returncode=0)
-            elif "docker ps" in cmd_str:
+            if "docker ps" in cmd_str:
                 return Mock(returncode=1, stdout="", stderr="permission denied")
             return Mock(returncode=0)
 
@@ -263,9 +261,7 @@ class TestDependencyInstaller:
         """Should handle installation failure gracefully."""
         mock_detect.return_value = {"type": "ubuntu", "version": "22.04", "name": "Ubuntu"}
         # Mock failed command execution
-        mock_run.return_value = Mock(
-            returncode=1, stdout="", stderr="Package not found"
-        )
+        mock_run.return_value = Mock(returncode=1, stdout="", stderr="Package not found")
 
         installer = DependencyInstaller(auto_confirm=True)
         dep = Dependency(
@@ -421,9 +417,9 @@ class TestIntegration:
             if call_count[0] <= 3:
                 if "docker --version" in cmd_str:
                     return Mock(returncode=1)  # Docker missing
-                elif "docker ps" in cmd_str:
+                if "docker ps" in cmd_str:
                     return Mock(returncode=1, stdout="", stderr="")
-                elif "docker compose" in cmd_str:
+                if "docker compose" in cmd_str:
                     return Mock(returncode=0, stdout="", stderr="")
 
             # All installation commands and verifications succeed

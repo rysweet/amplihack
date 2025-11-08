@@ -339,7 +339,7 @@ class ExternalKnowledgeRetriever:
 
 ### Step 4: Integrate with Agent Context Builder
 
-```python
+````python
 # Modification to existing memory integration code
 
 def build_agent_context(agent_id: str, task: str, memory_manager: MemoryManager) -> str:
@@ -432,7 +432,7 @@ def extract_api_info(task: str) -> Optional[Dict]:
             }
 
     return None
-```
+````
 
 ---
 
@@ -1005,6 +1005,7 @@ tests/test_external_knowledge/
 ## Progressive Implementation Checklist
 
 ### Phase 1: File Cache (Week 1)
+
 - [ ] Implement `ExternalKnowledgeCache` class
 - [ ] Implement `PythonDocsFetcher` class
 - [ ] Write tests for cache operations
@@ -1012,6 +1013,7 @@ tests/test_external_knowledge/
 - [ ] Measure cache hit rate and performance
 
 ### Phase 2: Memory Integration (Week 2)
+
 - [ ] Implement `ExternalKnowledgeRetriever` class
 - [ ] Integrate with existing `MemoryManager`
 - [ ] Add external knowledge to agent context builder
@@ -1019,6 +1021,7 @@ tests/test_external_knowledge/
 - [ ] Measure impact on agent performance
 
 ### Phase 3: Neo4j Metadata (Week 3)
+
 - [ ] Implement Neo4j schema
 - [ ] Store metadata in Neo4j
 - [ ] Implement code-to-doc linking
@@ -1026,6 +1029,7 @@ tests/test_external_knowledge/
 - [ ] Benchmark Neo4j vs file-based performance
 
 ### Phase 4: Multiple Sources (Week 4)
+
 - [ ] Implement MS Learn fetcher
 - [ ] Implement StackOverflow fetcher
 - [ ] Add source credibility scoring
@@ -1033,6 +1037,7 @@ tests/test_external_knowledge/
 - [ ] Test multi-source retrieval
 
 ### Phase 5: Optimization (Week 5)
+
 - [ ] Add performance monitoring
 - [ ] Implement smart refresh strategy
 - [ ] Optimize cache hit rate

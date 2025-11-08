@@ -11,6 +11,7 @@
 This design integrates blarify's code graph (code structure and relationships) with the agent memory system (episodic, semantic, and procedural knowledge) in a unified Neo4j graph database. The key innovation is **agent type memory sharing**: agents of the same type (architect, builder, reviewer) share learned experiences about code patterns across projects.
 
 **Key Decisions**:
+
 1. **Single Database Approach**: Code graph and memory graph coexist in one Neo4j database
 2. **Multi-Project Memory Sharing**: Agent types share memory across projects via AgentType nodes
 3. **Hybrid Schema**: Code nodes (Function, Class, Module) separate from Memory nodes (Episode, Entity, Procedure)
@@ -683,29 +684,32 @@ CREATE CONSTRAINT agent_type IF NOT EXISTS FOR (a:AgentType) REQUIRE a.type IS U
 
 ### 6.2 Query Performance Targets
 
-| Query Type | Target Latency | Index Strategy |
-|------------|----------------|----------------|
-| Agent type memory lookup | < 50ms | agent_type + timestamp |
-| Code-memory bridge query | < 100ms | composite indexes |
-| Cross-project pattern search | < 200ms | signature_hash + projects |
-| Call chain traversal | < 150ms | CALLS relationship index |
-| Hybrid search | < 300ms | multiple indexes + RRF |
+| Query Type                   | Target Latency | Index Strategy            |
+| ---------------------------- | -------------- | ------------------------- |
+| Agent type memory lookup     | < 50ms         | agent_type + timestamp    |
+| Code-memory bridge query     | < 100ms        | composite indexes         |
+| Cross-project pattern search | < 200ms        | signature_hash + projects |
+| Call chain traversal         | < 150ms        | CALLS relationship index  |
+| Hybrid search                | < 300ms        | multiple indexes + RRF    |
 
 ### 6.3 Database Sizing Estimates
 
 **Small Project** (10k LOC, 3 months):
+
 - Code nodes: ~1,000 (modules, classes, functions)
 - Memory nodes: ~5,000 (episodes, entities, procedures)
 - Relationships: ~15,000
 - Storage: ~50-100 MB
 
 **Large Project** (100k LOC, 2 years):
+
 - Code nodes: ~10,000
 - Memory nodes: ~50,000
 - Relationships: ~150,000
 - Storage: ~500 MB - 1 GB
 
 **Multi-Project** (10 projects):
+
 - Code nodes: ~100,000
 - Memory nodes: ~500,000
 - Relationships: ~1,500,000
@@ -716,12 +720,14 @@ CREATE CONSTRAINT agent_type IF NOT EXISTS FOR (a:AgentType) REQUIRE a.type IS U
 **Decision: SINGLE DATABASE**
 
 **Rationale**:
+
 - Code-memory queries are frequent (bridge relationships)
 - Cross-database joins are expensive in Neo4j
 - Project isolation via project_id property is sufficient
 - Simplified operations (one backup, one connection pool)
 
 **Alternative (Multi-Database)**: Only if:
+
 - Individual project graphs exceed 10 GB
 - Need physical isolation for security
 - Independent scaling requirements
@@ -810,6 +816,7 @@ SET entity.t_invalid = datetime(),
 **Target**: < 1 second per file update
 
 **Approach**:
+
 1. Compute diff (old vs new functions)
 2. Batch updates with UNWIND
 3. Preserve memory links (no cascading deletes)
@@ -983,6 +990,7 @@ RETURN {
 ## 9. Implementation Phases
 
 ### Phase 1: Schema Setup (Week 1)
+
 - [ ] Create node labels and constraints
 - [ ] Create indexes for performance
 - [ ] Implement basic CRUD for code nodes
@@ -990,36 +998,42 @@ RETURN {
 - [ ] Test basic queries
 
 ### Phase 2: Code Graph Integration (Week 2)
+
 - [ ] Integrate blarify output parser
 - [ ] Implement code graph ingestion
 - [ ] Test code relationship traversal
 - [ ] Implement incremental updates
 
 ### Phase 3: Memory Graph Integration (Week 3)
+
 - [ ] Migrate existing SQLite memory to Neo4j
 - [ ] Implement episode creation
 - [ ] Implement entity extraction
 - [ ] Test memory queries
 
 ### Phase 4: Bridge Relationships (Week 4)
+
 - [ ] Implement WORKED_ON relationships
 - [ ] Implement DECIDED_ABOUT relationships
 - [ ] Implement REFERS_TO relationships
 - [ ] Test code-memory queries
 
 ### Phase 5: Agent Type Sharing (Week 5)
+
 - [ ] Create AgentType nodes
 - [ ] Link episodes to agent types
 - [ ] Link procedures to agent types
 - [ ] Test agent type queries
 
 ### Phase 6: Cross-Project Features (Week 6)
+
 - [ ] Implement pattern deduplication
 - [ ] Implement cross-project queries
 - [ ] Test multi-project scenarios
 - [ ] Performance optimization
 
 ### Phase 7: Production Readiness (Week 7-8)
+
 - [ ] Comprehensive testing
 - [ ] Performance benchmarking
 - [ ] Documentation
@@ -1030,18 +1044,21 @@ RETURN {
 ## 10. Success Metrics
 
 ### Performance Metrics
+
 - Agent type memory lookup: < 50ms (target)
 - Code-memory bridge query: < 100ms (target)
 - Cross-project pattern search: < 200ms (target)
 - Incremental update: < 1s per file (target)
 
 ### Functionality Metrics
+
 - Agent types can retrieve shared experiences
 - Cross-project pattern learning works
 - Incremental updates preserve memory links
 - Temporal queries return historical knowledge
 
 ### Scale Metrics
+
 - Single project: 10k code nodes + 50k memory nodes
 - 10 projects: 100k code nodes + 500k memory nodes
 - Database size: < 10 GB for typical workload
@@ -1051,12 +1068,14 @@ RETURN {
 ## 11. Open Questions and Future Work
 
 ### Open Questions
+
 1. How often to recompute communities? (Daily? Weekly?)
 2. When to garbage collect old episodes? (Never? After 1 year?)
 3. How to handle conflicting agent experiences? (Voting? Recency?)
 4. Should pattern similarity use embeddings? (AST-based vs semantic?)
 
 ### Future Enhancements
+
 1. Vector embeddings for semantic search
 2. Real-time community detection (streaming graph algorithms)
 3. Agent expertise scoring (based on success rate)
@@ -1203,6 +1222,7 @@ RETURN proc.name, proc.steps, proc.success_rate, proc.times_used
 ```
 
 Result:
+
 ```
 proc.name: "Handle SQLite Database Locked"
 proc.steps: ["Add try-except around operations", "Implement exponential backoff retry", "Set reasonable timeout"]

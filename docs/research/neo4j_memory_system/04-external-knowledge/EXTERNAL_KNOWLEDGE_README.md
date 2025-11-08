@@ -10,12 +10,12 @@ This package contains comprehensive design documents for integrating external kn
 
 ### Documents in This Package
 
-| Document | Purpose | Audience | Size |
-|----------|---------|----------|------|
-| **[NEO4J_DESIGN.md](EXTERNAL_KNOWLEDGE_NEO4J_DESIGN.md)** | Complete design specification | Architects, system designers | 39KB |
-| **[IMPLEMENTATION_GUIDE.md](EXTERNAL_KNOWLEDGE_IMPLEMENTATION_GUIDE.md)** | Concrete code examples and patterns | Developers, implementers | 33KB |
-| **[INTEGRATION_SUMMARY.md](EXTERNAL_KNOWLEDGE_INTEGRATION_SUMMARY.md)** | Strategic overview and cost-benefit analysis | Product managers, tech leads | 18KB |
-| **[QUICK_REFERENCE.md](EXTERNAL_KNOWLEDGE_QUICK_REFERENCE.md)** | One-page developer reference | All developers | 12KB |
+| Document                                                                  | Purpose                                      | Audience                     | Size |
+| ------------------------------------------------------------------------- | -------------------------------------------- | ---------------------------- | ---- |
+| **[NEO4J_DESIGN.md](EXTERNAL_KNOWLEDGE_NEO4J_DESIGN.md)**                 | Complete design specification                | Architects, system designers | 39KB |
+| **[IMPLEMENTATION_GUIDE.md](EXTERNAL_KNOWLEDGE_IMPLEMENTATION_GUIDE.md)** | Concrete code examples and patterns          | Developers, implementers     | 33KB |
+| **[INTEGRATION_SUMMARY.md](EXTERNAL_KNOWLEDGE_INTEGRATION_SUMMARY.md)**   | Strategic overview and cost-benefit analysis | Product managers, tech leads | 18KB |
+| **[QUICK_REFERENCE.md](EXTERNAL_KNOWLEDGE_QUICK_REFERENCE.md)**           | One-page developer reference                 | All developers               | 12KB |
 
 **Total Documentation**: 102KB across 4 comprehensive documents
 
@@ -28,6 +28,7 @@ This package contains comprehensive design documents for integrating external kn
 **Start here**: [INTEGRATION_SUMMARY.md](EXTERNAL_KNOWLEDGE_INTEGRATION_SUMMARY.md)
 
 Key takeaways:
+
 - Three-tier architecture (Project Memory → File Cache → Neo4j optional)
 - Phased implementation (4 phases, 5 weeks)
 - No breaking changes to existing system
@@ -38,6 +39,7 @@ Key takeaways:
 **Start here**: [QUICK_REFERENCE.md](EXTERNAL_KNOWLEDGE_QUICK_REFERENCE.md)
 
 Then:
+
 1. Read [IMPLEMENTATION_GUIDE.md](EXTERNAL_KNOWLEDGE_IMPLEMENTATION_GUIDE.md) for code examples
 2. Refer to [NEO4J_DESIGN.md](EXTERNAL_KNOWLEDGE_NEO4J_DESIGN.md) for detailed design decisions
 
@@ -46,6 +48,7 @@ Then:
 **Start here**: [NEO4J_DESIGN.md](EXTERNAL_KNOWLEDGE_NEO4J_DESIGN.md)
 
 Complete specification covering:
+
 - Graph schema (nodes, relationships)
 - External knowledge sources (official docs, tutorials, community)
 - Caching strategies
@@ -105,12 +108,14 @@ Complete specification covering:
 **Goal**: Prove value with simplest approach
 
 **Deliverables**:
+
 - `ExternalKnowledgeCache` class (file-based storage)
 - `PythonDocsFetcher` class (fetch Python official docs)
 - Basic tests
 - Performance baseline
 
 **Success Criteria**:
+
 - Can fetch and cache Python official docs
 - Query time <100ms
 - Cache hit rate >70% after warm-up
@@ -120,12 +125,14 @@ Complete specification covering:
 **Goal**: Connect to existing memory system
 
 **Deliverables**:
+
 - `ExternalKnowledgeRetriever` class
 - Integration with `MemoryManager`
 - Agent context builder enhancement
 - Integration tests
 
 **Success Criteria**:
+
 - Agents query external knowledge when needed
 - Project memory always checked first
 - No breaking changes to existing agents
@@ -135,12 +142,14 @@ Complete specification covering:
 **Goal**: Expand knowledge sources
 
 **Deliverables**:
+
 - MS Learn fetcher
 - MDN Web Docs fetcher
 - StackOverflow fetcher (with quality filtering)
 - Source credibility scoring
 
 **Success Criteria**:
+
 - Support 3+ external sources
 - Source ranking by credibility
 - Smart fallback chains
@@ -150,11 +159,13 @@ Complete specification covering:
 **Goal**: Optimize for scale and relationships
 
 **Condition**: Only implement if:
+
 - File cache queries consistently >100ms
 - Need complex relationship queries
 - Have >10,000 documents
 
 **Deliverables**:
+
 - Neo4j schema implementation
 - Automatic code-to-doc linking
 - Complex version queries
@@ -166,32 +177,32 @@ Complete specification covering:
 
 ### Tier 1: Official Documentation (Trust Score: 0.9-1.0)
 
-| Source | Coverage | Use Case |
-|--------|----------|----------|
-| **Python.org** | Python standard library | API reference |
-| **MS Learn** | Azure, .NET, TypeScript | Microsoft ecosystem |
-| **MDN** | JavaScript, Web APIs | Web development |
-| **Library official docs** | Specific libraries | Framework-specific |
+| Source                    | Coverage                | Use Case            |
+| ------------------------- | ----------------------- | ------------------- |
+| **Python.org**            | Python standard library | API reference       |
+| **MS Learn**              | Azure, .NET, TypeScript | Microsoft ecosystem |
+| **MDN**                   | JavaScript, Web APIs    | Web development     |
+| **Library official docs** | Specific libraries      | Framework-specific  |
 
 **Characteristics**: High credibility, version-specific, regularly updated
 
 ### Tier 2: Curated Tutorials (Trust Score: 0.7-0.9)
 
-| Source | Coverage | Use Case |
-|--------|----------|----------|
-| **Real Python** | Python tutorials | Learning resources |
-| **FreeCodeCamp** | Web development | Beginner-friendly |
-| **Official framework tutorials** | Framework-specific | Getting started |
+| Source                           | Coverage           | Use Case           |
+| -------------------------------- | ------------------ | ------------------ |
+| **Real Python**                  | Python tutorials   | Learning resources |
+| **FreeCodeCamp**                 | Web development    | Beginner-friendly  |
+| **Official framework tutorials** | Framework-specific | Getting started    |
 
 **Characteristics**: High quality, practical examples, may lag latest versions
 
 ### Tier 3: Community Knowledge (Trust Score: 0.4-0.8)
 
-| Source | Coverage | Use Case |
-|--------|----------|----------|
-| **StackOverflow** | Error solutions | Problem-solving |
-| **GitHub Issues** | Library-specific | Bug workarounds |
-| **Reddit r/programming** | Best practices | Community wisdom |
+| Source                   | Coverage         | Use Case         |
+| ------------------------ | ---------------- | ---------------- |
+| **StackOverflow**        | Error solutions  | Problem-solving  |
+| **GitHub Issues**        | Library-specific | Bug workarounds  |
+| **Reddit r/programming** | Best practices   | Community wisdom |
 
 **Characteristics**: Variable quality, practical solutions, requires filtering
 
@@ -246,21 +257,21 @@ Complete specification covering:
 
 ## 📈 Performance Targets
 
-| Metric | Target | Rationale |
-|--------|--------|-----------|
-| **Query time** | <100ms | Keep agents responsive |
-| **Cache hit rate** | >80% | Minimize external fetches |
-| **Cache size** | <100MB | For 10k documents (metadata only) |
-| **Project memory check** | 100% | Always check before external |
+| Metric                   | Target | Rationale                         |
+| ------------------------ | ------ | --------------------------------- |
+| **Query time**           | <100ms | Keep agents responsive            |
+| **Cache hit rate**       | >80%   | Minimize external fetches         |
+| **Cache size**           | <100MB | For 10k documents (metadata only) |
+| **Project memory check** | 100%   | Always check before external      |
 
 ### Measured Performance (Phase 1-2 Expected)
 
-| Operation | Target | Expected |
-|-----------|--------|----------|
-| Project memory lookup | <10ms | 2-5ms |
-| Cache lookup | <20ms | 5-15ms |
-| External fetch | <500ms | 100-300ms |
-| **End-to-end** | **<100ms** | **60-80ms** |
+| Operation             | Target     | Expected    |
+| --------------------- | ---------- | ----------- |
+| Project memory lookup | <10ms      | 2-5ms       |
+| Cache lookup          | <20ms      | 5-15ms      |
+| External fetch        | <500ms     | 100-300ms   |
+| **End-to-end**        | **<100ms** | **60-80ms** |
 
 ---
 
@@ -334,17 +345,20 @@ context = build_comprehensive_context(
 ## 🎯 Success Metrics
 
 ### Must Have (All Phases)
+
 - ✅ No breaking changes to existing system
 - ✅ Project memory always checked first
 - ✅ External knowledge is advisory only
 - ✅ Graceful degradation if external unavailable
 
 ### Should Have (Phase 1-2)
+
 - ✅ Cache hit rate >70%
 - ✅ Query performance <100ms
 - ✅ Multiple source support
 
 ### Nice to Have (Phase 4)
+
 - ⏳ Neo4j relationship queries
 - ⏳ Complex version tracking
 - ⏳ Recommendation engine
@@ -397,11 +411,13 @@ tests/test_external_knowledge/
 ## 📋 Next Steps
 
 ### For Project Leadership
+
 1. Review [INTEGRATION_SUMMARY.md](EXTERNAL_KNOWLEDGE_INTEGRATION_SUMMARY.md)
 2. Approve phased implementation approach
 3. Allocate resources for Phase 1-2 (2 weeks)
 
 ### For Development Team
+
 1. Read [QUICK_REFERENCE.md](EXTERNAL_KNOWLEDGE_QUICK_REFERENCE.md)
 2. Review [IMPLEMENTATION_GUIDE.md](EXTERNAL_KNOWLEDGE_IMPLEMENTATION_GUIDE.md)
 3. Start Phase 1: Implement `ExternalKnowledgeCache` class
@@ -409,6 +425,7 @@ tests/test_external_knowledge/
 5. Measure baseline performance
 
 ### For Architecture Review
+
 1. Deep dive into [NEO4J_DESIGN.md](EXTERNAL_KNOWLEDGE_NEO4J_DESIGN.md)
 2. Validate graph schema design
 3. Review integration patterns
@@ -421,12 +438,14 @@ tests/test_external_knowledge/
 ### Why start with files instead of Neo4j?
 
 **Answer**: Following the project's ruthless simplicity philosophy. Files are:
+
 - Simple to implement and debug
 - Zero runtime dependencies
 - Version control friendly
 - Fast enough for most use cases (<100ms)
 
 Neo4j adds value only when:
+
 - File queries consistently >100ms
 - Need complex relationship traversal
 - Have >10k documents with rich relationships
@@ -438,6 +457,7 @@ Neo4j adds value only when:
 ### What if external sources are unavailable?
 
 **Answer**: Graceful degradation. The system:
+
 1. Uses cached data (even if slightly stale)
 2. Falls back to project memory only
 3. Continues working normally
@@ -446,6 +466,7 @@ Neo4j adds value only when:
 ### How is version compatibility handled?
 
 **Answer**: Multiple strategies:
+
 - Cache is version-aware (Python 3.11 vs 3.12 cached separately)
 - Neo4j relationships track compatibility
 - Deprecation detection identifies outdated APIs
@@ -454,6 +475,7 @@ Neo4j adds value only when:
 ### What about cost/performance of external fetches?
 
 **Answer**: Minimized through:
+
 - Aggressive caching (7-30 day TTL)
 - Project memory checked first
 - Batch fetching where possible

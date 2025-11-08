@@ -45,6 +45,7 @@ The agent memory integration enables amplihack agents to learn from past experie
 ### 1. agent_integration.py
 
 Main integration module providing:
+
 - `inject_memory_context()`: Load and format memories for agent prompts
 - `extract_and_store_learnings()`: Parse and store agent learnings
 - `detect_agent_type()`: Map agent identifiers to types
@@ -53,6 +54,7 @@ Main integration module providing:
 ### 2. extraction_patterns.py
 
 Pattern matching for learning extraction:
+
 - **Decision patterns**: Structured decisions with reasoning
 - **Recommendation patterns**: Best practices and advice
 - **Anti-pattern patterns**: Things to avoid
@@ -128,22 +130,22 @@ When an agent runs, it sees:
 ```markdown
 ## 🧠 Memory Context (Relevant Past Learnings)
 
-*Based on previous architect work in category: system_design*
+_Based on previous architect work in category: system_design_
 
 ### Past Architect Learnings
 
 **1. system_design** (quality: 0.85)
-   Always separate authentication from authorization logic
-   *Outcome: Reduced coupling, easier testing*
+Always separate authentication from authorization logic
+_Outcome: Reduced coupling, easier testing_
 
 **2. api_design** (quality: 0.78)
-   Use token-based auth for stateless APIs
-   *Outcome: Better scalability*
+Use token-based auth for stateless APIs
+_Outcome: Better scalability_
 
 ### Learnings from Other Agents
 
 **1. From builder**: error_handling
-   Auth token validation must happen before business logic
+Auth token validation must happen before business logic
 
 ---
 
@@ -155,13 +157,16 @@ When an agent runs, it sees:
 ### Decision Pattern
 
 **Input:**
+
 ```markdown
 ## Decision: Token-Based Authentication
+
 **What**: Use JWT tokens for stateless authentication
 **Why**: Enables horizontal scaling
 ```
 
 **Extracted:**
+
 - Type: `decision`
 - Content: "Token-Based Authentication: Use JWT tokens for stateless authentication"
 - Reasoning: "Enables horizontal scaling"
@@ -170,13 +175,16 @@ When an agent runs, it sees:
 ### Recommendation Pattern
 
 **Input:**
+
 ```markdown
 ## Recommendation:
+
 - Always use bcrypt for password hashing
 - Implement refresh token rotation
 ```
 
 **Extracted:**
+
 - Type: `recommendation`
 - Content: "Always use bcrypt for password hashing"
 - Confidence: 0.75
@@ -184,11 +192,13 @@ When an agent runs, it sees:
 ### Anti-Pattern Pattern
 
 **Input:**
+
 ```markdown
 ⚠️ Warning: Never store JWT tokens in localStorage
 ```
 
 **Extracted:**
+
 - Type: `anti_pattern`
 - Content: "Never store JWT tokens in localStorage"
 - Confidence: 0.85
@@ -196,12 +206,14 @@ When an agent runs, it sees:
 ### Error-Solution Pattern
 
 **Input:**
+
 ```markdown
 Error: Database connection timeout
 Solution: Increased timeout to 30 seconds
 ```
 
 **Extracted:**
+
 - Type: `error_solution`
 - Content: "Error: Database connection timeout | Solution: Increased timeout to 30 seconds"
 - Confidence: 0.90
@@ -224,6 +236,7 @@ Configured via Neo4j config (`.claude/runtime/memory/.config`):
 ### Agent Type Mapping
 
 Supported agent types:
+
 - `architect` - System architecture and design
 - `builder` - Implementation and coding
 - `reviewer` - Code review and quality
@@ -242,6 +255,7 @@ Supported agent types:
 ### Task Categories
 
 Auto-detected categories:
+
 - `system_design` - Architecture, patterns
 - `security` - Auth, permissions, vulnerabilities
 - `database` - Schema, queries, migrations
@@ -261,6 +275,7 @@ python scripts/test_agent_memory_integration.py
 ```
 
 This runs 10 tests:
+
 1. Prerequisites check
 2. Container management
 3. Agent type detection
@@ -345,12 +360,14 @@ Total: 10 tests | Passed: 10 | Failed: 0
 ### Logs
 
 All operations logged to:
+
 - `.claude/runtime/logs/session_start.log` - Memory initialization
 - Agent-specific logs (if available)
 
 ### Metrics
 
 Stored in `.claude/runtime/metrics/`:
+
 - `memories_injected` - Count per agent invocation
 - `learnings_extracted` - Count per agent completion
 - `memory_query_time_ms` - Query latency
@@ -399,6 +416,7 @@ LIMIT 5
 **Problem**: Agent runs but no memory context appears
 
 **Solutions:**
+
 1. Check Neo4j is running: `docker ps | grep amplihack-neo4j`
 2. Check logs: `tail -f .claude/runtime/logs/session_start.log`
 3. Verify memories exist: Query Neo4j browser
@@ -409,6 +427,7 @@ LIMIT 5
 **Problem**: Agent completes but no learnings stored
 
 **Solutions:**
+
 1. Check agent output format: Learnings need specific patterns
 2. Review extraction patterns in `extraction_patterns.py`
 3. Check logs for extraction errors
@@ -419,6 +438,7 @@ LIMIT 5
 **Problem**: Extracted memories have low quality scores
 
 **Solutions:**
+
 1. Ensure agent outputs include reasoning and outcomes
 2. Use structured formats (Decision, Recommendation, etc.)
 3. Include concrete examples
@@ -429,6 +449,7 @@ LIMIT 5
 **Problem**: Too much memory context slows down agents
 
 **Solutions:**
+
 1. Reduce `max_context_memories` in config
 2. Increase `min_quality_threshold` to be more selective
 3. Use more specific task categories
@@ -468,6 +489,7 @@ def inject_memory_context(
 Load and format relevant memories for agent prompt.
 
 **Args:**
+
 - `agent_type`: Type of agent (e.g., "architect")
 - `task`: Task description
 - `task_category`: Optional category (auto-detected if None)
@@ -475,6 +497,7 @@ Load and format relevant memories for agent prompt.
 - `max_memories`: Maximum memories to include
 
 **Returns:**
+
 - Formatted memory context string (empty if no memories)
 
 ### extract_and_store_learnings()
@@ -493,6 +516,7 @@ def extract_and_store_learnings(
 Extract learnings from agent output and store in Neo4j.
 
 **Args:**
+
 - `agent_type`: Type of agent
 - `output`: Full agent output
 - `task`: Task that was performed
@@ -501,6 +525,7 @@ Extract learnings from agent output and store in Neo4j.
 - `duration_seconds`: Task duration
 
 **Returns:**
+
 - List of memory IDs that were stored
 
 ## Contributing

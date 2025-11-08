@@ -5,6 +5,7 @@ Complete implementation of external knowledge integration for the Neo4j memory s
 ## Overview
 
 The External Knowledge Integration system provides:
+
 - **Fetching & Caching**: Retrieve external documentation with HTTP caching and TTL
 - **Graph Storage**: Store documentation in Neo4j with relationships to code and memories
 - **Version Tracking**: Support multiple versions (Python 3.10 vs 3.12 docs)
@@ -245,18 +246,18 @@ Create a JSON file with documents to import:
 
 ```json
 [
-    {
-        "url": "https://docs.python.org/3/library/asyncio.html",
-        "source": "python-docs",
-        "version": "3.10",
-        "trust_score": 0.95
-    },
-    {
-        "url": "https://learn.microsoft.com/en-us/azure/",
-        "source": "ms-learn",
-        "version": "latest",
-        "trust_score": 0.9
-    }
+  {
+    "url": "https://docs.python.org/3/library/asyncio.html",
+    "source": "python-docs",
+    "version": "3.10",
+    "trust_score": 0.95
+  },
+  {
+    "url": "https://learn.microsoft.com/en-us/azure/",
+    "source": "ms-learn",
+    "version": "latest",
+    "trust_score": 0.9
+  }
 ]
 ```
 
@@ -282,13 +283,13 @@ python scripts/import_external_knowledge.py cleanup
 
 The system supports multiple knowledge sources with different trust levels:
 
-| Source | Trust Score | Description |
-|--------|-------------|-------------|
-| `PYTHON_DOCS` | 0.95 | Official Python documentation |
-| `MS_LEARN` | 0.90 | Microsoft Learn content |
-| `LIBRARY_DOCS` | 0.85 | Library documentation (requests, flask, etc.) |
-| `GITHUB` | 0.75 | GitHub examples and wikis |
-| `CUSTOM` | 0.70 | Custom/unknown sources |
+| Source         | Trust Score | Description                                   |
+| -------------- | ----------- | --------------------------------------------- |
+| `PYTHON_DOCS`  | 0.95        | Official Python documentation                 |
+| `MS_LEARN`     | 0.90        | Microsoft Learn content                       |
+| `LIBRARY_DOCS` | 0.85        | Library documentation (requests, flask, etc.) |
+| `GITHUB`       | 0.75        | GitHub examples and wikis                     |
+| `CUSTOM`       | 0.70        | Custom/unknown sources                        |
 
 ### Pre-configured Libraries
 
@@ -394,6 +395,7 @@ python scripts/test_external_knowledge_unit.py
 ```
 
 Tests:
+
 - ExternalDoc creation
 - APIReference creation
 - KnowledgeSource enum
@@ -414,6 +416,7 @@ python scripts/test_external_knowledge.py
 ```
 
 Tests:
+
 - Schema initialization
 - Document caching in Neo4j
 - Linking to code
@@ -558,6 +561,7 @@ CREATE INDEX external_doc_trust FOR (ed:ExternalDoc) ON (ed.trust_score)
 ## Future Enhancements
 
 Potential additions:
+
 - Semantic search using embeddings
 - Automatic relationship discovery
 - Documentation quality metrics
@@ -615,6 +619,7 @@ The External Knowledge Integration system provides comprehensive capabilities fo
 ✅ **Testing**: Comprehensive test suites
 
 All files implemented and tested:
+
 - `/src/amplihack/memory/neo4j/external_knowledge.py`
 - `/scripts/import_external_knowledge.py`
 - `/scripts/test_external_knowledge.py`

@@ -303,3 +303,57 @@ class TestEnvironmentVariableIntegration:
             assert config.get("AZURE_OPENAI_ENDPOINT") == "https://myresource.openai.azure.com"
             assert config.get("AZURE_OPENAI_API_KEY") == "env-key"
             assert config.get("AZURE_OPENAI_API_VERSION") == "2024-02-01"
+
+    def test_azure_detection_with_github_token_in_env(self, tmp_path):
+        """Should correctly detect Azure even when GITHUB_TOKEN is in environment.
+
+        Regression test for bug where GitHub detection took priority over Azure.
+        """
+        config_file = tmp_path / ".env"
+        config_file.write_text(
+            "AZURE_OPENAI_BASE_URL=https://myresource.openai.azure.com\n"
+            "AZURE_OPENAI_API_KEY=test-azure-key\n"
+        )
+
+        with patch.dict(
+            os.environ,
+            {"GITHUB_TOKEN": "test-github-token"},  # pragma: allowlist secret
+        ):
+            config = ProxyConfig(config_file)
+
+            # Azure should be detected despite GitHub token in environment
+            assert config.get_endpoint_type() == "azure"
+            assert config.is_azure_endpoint() is True
+
+    def test_azure_detection_with_github_copilot_enabled(self, tmp_path):
+        """Should correctly detect Azure even when GITHUB_COPILOT_ENABLED is set.
+
+        Regression test for bug where GitHub detection took priority over Azure.
+        """
+        config_file = tmp_path / ".env"
+        config_file.write_text(
+            "AZURE_OPENAI_ENDPOINT=https://myresource.openai.azure.com\n"
+            "AZURE_OPENAI_API_KEY=test-azure-key\n"
+        )
+
+        with patch.dict(
+            os.environ,
+            {"GITHUB_COPILOT_ENABLED": "true"},
+        ):
+            config = ProxyConfig(config_file)
+
+            # Azure should be detected despite GitHub Copilot enabled in environment
+            assert config.get_endpoint_type() == "azure"
+            assert config.is_azure_endpoint() is True
+
+    def test_github_detection_without_azure(self, tmp_path):
+        """Should correctly detect GitHub when no Azure config present."""
+        config_file = tmp_path / ".env"
+        config_file.write_text("GITHUB_TOKEN=test-github-token\nGITHUB_COPILOT_ENABLED=true\n")
+
+        config = ProxyConfig(config_file)
+
+        # GitHub should be detected when no Azure config exists
+        assert config.get_endpoint_type() == "github_copilot"
+        assert config.is_github_endpoint() is True
+        assert config.is_azure_endpoint() is False

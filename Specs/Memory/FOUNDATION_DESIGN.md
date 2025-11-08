@@ -677,6 +677,7 @@ def check_neo4j_prerequisites() -> dict:
 ### 3.3 Public Interface
 
 **Classes:**
+
 - `Neo4jContainerManager`: Main lifecycle management class
   - `start(wait_for_ready: bool = False) -> bool`
   - `stop(timeout: int = 30) -> bool`
@@ -686,6 +687,7 @@ def check_neo4j_prerequisites() -> dict:
   - `get_logs(tail: int = 50) -> str`
 
 **Module Functions:**
+
 - `ensure_neo4j_running(blocking: bool = False) -> bool`: Main entry point
 - `check_neo4j_prerequisites() -> dict`: Prerequisite validation
 
@@ -1278,6 +1280,7 @@ def _start_neo4j_background(self):
 **Principle**: amplihack MUST work even if Neo4j unavailable
 
 **Fallback chain**:
+
 1. Try Neo4j prerequisites check
 2. If fails: Log warning with fix instructions
 3. Continue with existing SQLite memory system
@@ -1314,7 +1317,7 @@ Advisory agent that checks prerequisites, reports issues, and provides fix guida
 
 **File**: `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
 
-```markdown
+````markdown
 # Neo4j Setup Agent
 
 **Role**: Goal-Seeking Dependency Manager
@@ -1324,6 +1327,7 @@ Advisory agent that checks prerequisites, reports issues, and provides fix guida
 ## Purpose
 
 Help users get Neo4j memory system working by:
+
 1. Checking all prerequisites systematically
 2. Reporting clear status for each requirement
 3. Providing specific fix commands for each issue
@@ -1345,10 +1349,12 @@ Help users get Neo4j memory system working by:
 **Success**: Docker version 20.10.0 or higher found
 
 **Failure Messages**:
+
 - "Docker not found" → Install Docker
 - "Version too old" → Upgrade Docker
 
 **Fix Instructions**:
+
 ```bash
 # Ubuntu/Debian
 sudo apt update
@@ -1359,6 +1365,7 @@ brew install --cask docker
 
 # Or download from: https://docs.docker.com/get-docker/
 ```
+````
 
 ### 2. Docker Daemon Running
 
@@ -1367,10 +1374,12 @@ brew install --cask docker
 **Success**: Command returns without error
 
 **Failure Messages**:
+
 - "Cannot connect to Docker daemon" → Start Docker
 - "Permission denied" → Fix permissions
 
 **Fix Instructions**:
+
 ```bash
 # Start Docker daemon (Linux)
 sudo systemctl start docker
@@ -1390,6 +1399,7 @@ sudo usermod -aG docker $USER
 **Success**: V2 (preferred) or V1 (acceptable) found
 
 **Fix Instructions**:
+
 ```bash
 # Install Docker Compose V2 (Ubuntu/Debian)
 sudo apt install docker-compose-plugin
@@ -1404,6 +1414,7 @@ sudo apt install docker-compose-plugin
 **Check**: Environment variable `NEO4J_PASSWORD` is set
 
 **Fix Instructions**:
+
 ```bash
 # Set password
 export NEO4J_PASSWORD='YOUR_PASSWORD_HERE'  # ggignore
@@ -1427,6 +1438,7 @@ during installation. Contact support or check installation docs.
 **Success**: Ports available
 
 **Fix Instructions**:
+
 ```bash
 # Check what's using ports
 sudo lsof -i :7687
@@ -1481,13 +1493,15 @@ This agent can be invoked:
 ## Success Criteria
 
 Agent completes successfully when:
+
 - All 6 prerequisite checks pass (✓)
 - Neo4j container starts successfully
 - Connection to Neo4j succeeds
 - Basic query executes successfully
 
 Then report: "✓ Neo4j memory system ready"
-```
+
+````
 
 ### 7.3 Integration with Lifecycle Module
 
@@ -1558,7 +1572,7 @@ volumes:
     name: amplihack_neo4j_logs
   amplihack_neo4j_import:
     name: amplihack_neo4j_import
-```
+````
 
 ### 8.3 Environment Variables Required
 
@@ -2095,36 +2109,39 @@ neo4j>=5.15.0,<6.0.0
 ```
 
 **Version justification**:
+
 - `>=5.15.0`: Requires Neo4j 5.x driver for compatibility with Neo4j 5.x database
 - `<6.0.0`: Avoid breaking changes in major version
 
 ### 12.2 System Dependencies
 
 **Required**:
+
 - Docker Engine 20.10+ (container runtime)
 - Docker Compose V2 (preferred) or V1 (acceptable)
 - Python 3.10+ (for typing features used)
 
 **Optional**:
+
 - `lsof` for port conflict debugging
 
 ---
 
 ## 13. Error Handling Matrix
 
-| Error Scenario | Detection Method | Error Message | Remediation | Fallback |
-|----------------|------------------|---------------|-------------|----------|
-| Docker not installed | `docker --version` fails | "Docker not found. Install from: https://docs.docker.com/get-docker/" | User installs Docker | Use SQLite memory |
-| Docker not running | `docker ps` fails | "Docker daemon not running. Start with: sudo systemctl start docker" | User starts Docker | Use SQLite memory |
-| Permission denied | `docker ps` returns permission error | "Permission denied. Fix with: sudo usermod -aG docker $USER (then re-login)" | User fixes permissions | Use SQLite memory |
-| Compose not found | Compose command fails | "Docker Compose not found. Install: sudo apt install docker-compose-plugin" | User installs Compose | Use SQLite memory |
-| Password not set | Config load fails | "NEO4J_PASSWORD environment variable must be set" | User sets password | Use SQLite memory |
-| Compose file missing | File existence check | "Docker Compose file not found: docker/docker-compose.neo4j.yml" | User runs setup | Use SQLite memory |
-| Port conflict | Container start fails with port error | "Port 7687 in use. Change port: export NEO4J_BOLT_PORT=7688" | User changes port | Use SQLite memory |
-| Container start timeout | Health check timeout | "Neo4j failed to start within 30s. Check logs: docker logs amplihack-neo4j" | User checks logs | Use SQLite memory |
-| Connection refused | Connector fails | "Cannot connect to Neo4j. Verify container running: docker ps" | User checks container | Use SQLite memory |
-| Query syntax error | Neo4j driver exception | "Invalid Cypher query: <details>" | Log error, continue | Raise exception |
-| Constraint violation | Neo4j driver exception | "Constraint violation: <details>" | Log error, continue | Raise exception |
+| Error Scenario          | Detection Method                      | Error Message                                                                | Remediation            | Fallback          |
+| ----------------------- | ------------------------------------- | ---------------------------------------------------------------------------- | ---------------------- | ----------------- |
+| Docker not installed    | `docker --version` fails              | "Docker not found. Install from: https://docs.docker.com/get-docker/"        | User installs Docker   | Use SQLite memory |
+| Docker not running      | `docker ps` fails                     | "Docker daemon not running. Start with: sudo systemctl start docker"         | User starts Docker     | Use SQLite memory |
+| Permission denied       | `docker ps` returns permission error  | "Permission denied. Fix with: sudo usermod -aG docker $USER (then re-login)" | User fixes permissions | Use SQLite memory |
+| Compose not found       | Compose command fails                 | "Docker Compose not found. Install: sudo apt install docker-compose-plugin"  | User installs Compose  | Use SQLite memory |
+| Password not set        | Config load fails                     | "NEO4J_PASSWORD environment variable must be set"                            | User sets password     | Use SQLite memory |
+| Compose file missing    | File existence check                  | "Docker Compose file not found: docker/docker-compose.neo4j.yml"             | User runs setup        | Use SQLite memory |
+| Port conflict           | Container start fails with port error | "Port 7687 in use. Change port: export NEO4J_BOLT_PORT=7688"                 | User changes port      | Use SQLite memory |
+| Container start timeout | Health check timeout                  | "Neo4j failed to start within 30s. Check logs: docker logs amplihack-neo4j"  | User checks logs       | Use SQLite memory |
+| Connection refused      | Connector fails                       | "Cannot connect to Neo4j. Verify container running: docker ps"               | User checks container  | Use SQLite memory |
+| Query syntax error      | Neo4j driver exception                | "Invalid Cypher query: <details>"                                            | Log error, continue    | Raise exception   |
+| Constraint violation    | Neo4j driver exception                | "Constraint violation: <details>"                                            | Log error, continue    | Raise exception   |
 
 ---
 
@@ -2164,17 +2181,18 @@ logger.error("Container failed to start: %s", error)
 
 ### 15.1 Startup Time Budget
 
-| Operation | Target Time | Acceptable Max | Notes |
-|-----------|-------------|----------------|-------|
-| Session start total | < 500ms | 1000ms | Including Neo4j trigger |
-| Neo4j container start (background) | 10-15s | 30s | Parallel with user interaction |
-| First connection | < 1s | 3s | After container healthy |
-| Schema initialization | < 2s | 5s | Idempotent, cached |
-| Simple query | < 100ms | 500ms | RETURN 1 |
+| Operation                          | Target Time | Acceptable Max | Notes                          |
+| ---------------------------------- | ----------- | -------------- | ------------------------------ |
+| Session start total                | < 500ms     | 1000ms         | Including Neo4j trigger        |
+| Neo4j container start (background) | 10-15s      | 30s            | Parallel with user interaction |
+| First connection                   | < 1s        | 3s             | After container healthy        |
+| Schema initialization              | < 2s        | 5s             | Idempotent, cached             |
+| Simple query                       | < 100ms     | 500ms          | RETURN 1                       |
 
 ### 15.2 Resource Usage
 
 **Neo4j Container**:
+
 - Heap: 2GB (configurable via `NEO4J_HEAP_SIZE`)
 - Page cache: 1GB (configurable via `NEO4J_PAGE_CACHE_SIZE`)
 - Disk: ~500MB image + variable data volume
@@ -2195,12 +2213,12 @@ logger.error("Container failed to start: %s", error)
 
 ### 16.1 Test Categories
 
-| Category | Tool | Scope | Duration |
-|----------|------|-------|----------|
-| Unit tests | pytest | Individual functions, no external deps | < 1s per test |
-| Integration tests | pytest + Docker | Full stack with real Neo4j | 30-60s total |
-| Smoke tests | Manual | End-to-end user workflow | 2-3 minutes |
-| CI tests | GitHub Actions | Automated on PR | 3-5 minutes |
+| Category          | Tool            | Scope                                  | Duration      |
+| ----------------- | --------------- | -------------------------------------- | ------------- |
+| Unit tests        | pytest          | Individual functions, no external deps | < 1s per test |
+| Integration tests | pytest + Docker | Full stack with real Neo4j             | 30-60s total  |
+| Smoke tests       | Manual          | End-to-end user workflow               | 2-3 minutes   |
+| CI tests          | GitHub Actions  | Automated on PR                        | 3-5 minutes   |
 
 ### 16.2 Test Fixtures
 
@@ -2238,6 +2256,7 @@ def clean_database(connector):
 **File**: `docs/memory/neo4j_setup.md`
 
 Contents:
+
 - Prerequisites (Docker, Compose, Python packages)
 - Installation steps
 - Configuration (environment variables)
@@ -2248,6 +2267,7 @@ Contents:
 **File**: `docs/memory/neo4j_troubleshooting.md`
 
 Contents:
+
 - Problem: Docker not installed → Solution: Install Docker
 - Problem: Permission denied → Solution: Add user to docker group
 - Problem: Port conflict → Solution: Change ports
@@ -2265,6 +2285,7 @@ Contents:
 ### 17.3 Inline Documentation
 
 All modules have:
+
 - Module-level docstring explaining purpose
 - Class docstrings with examples
 - Method docstrings with Args/Returns/Raises
@@ -2312,6 +2333,7 @@ All modules have:
 ### Phase 1: Docker Infrastructure (3-4 hours)
 
 **Tasks**:
+
 1. Create `docker/` directory structure
 2. Write `docker-compose.neo4j.yml`
 3. Write schema initialization scripts (3 .cypher files)
@@ -2324,6 +2346,7 @@ All modules have:
 ### Phase 2: Python Integration (4-5 hours)
 
 **Tasks**:
+
 1. Create `src/amplihack/memory/neo4j/` directory
 2. Implement `config.py` with environment variable loading
 3. Implement `connector.py` with Neo4j driver wrapper
@@ -2338,6 +2361,7 @@ All modules have:
 ### Phase 3: Goal-Seeking Agent (2-3 hours)
 
 **Tasks**:
+
 1. Create `.claude/agents/amplihack/infrastructure/` directory
 2. Write `neo4j-setup-agent.md` with prerequisite checks
 3. Implement `check_neo4j_prerequisites()` function
@@ -2350,6 +2374,7 @@ All modules have:
 ### Phase 4: Session Integration (2-3 hours)
 
 **Tasks**:
+
 1. Modify `src/amplihack/launcher/core.py`
 2. Add `_start_neo4j_background()` method
 3. Test: Session starts quickly (< 500ms)
@@ -2362,6 +2387,7 @@ All modules have:
 ### Phase 5: Testing & Documentation (3-4 hours)
 
 **Tasks**:
+
 1. Write integration tests (`test_neo4j_foundation.py`)
 2. Run tests, fix issues
 3. Write user documentation (`neo4j_setup.md`, `neo4j_troubleshooting.md`)
@@ -2529,12 +2555,14 @@ User                amplihack              lifecycle.py           Docker
 ### 21.3 Modular Bricks & Studs ✓
 
 Each module is self-contained:
+
 - `config.py`: Configuration brick (no dependencies on other modules)
 - `connector.py`: Connection brick (depends only on config)
 - `lifecycle.py`: Container brick (depends on connector + config)
 - `schema.py`: Schema brick (depends on connector)
 
 Public interfaces (studs):
+
 - `get_config()`: Config stud
 - `Neo4jConnector`: Connection stud
 - `ensure_neo4j_running()`: Lifecycle stud

@@ -13,6 +13,7 @@ The Documentation Knowledge Graph integrates markdown documentation into the Neo
 - **Documentation** ← → **Concepts** (extracted from docs)
 
 This enables agents to:
+
 - Find relevant documentation for coding tasks
 - Link learnings to official documentation
 - Understand relationships between docs, code, and experiences
@@ -40,14 +41,17 @@ This enables agents to:
 ### Node Types
 
 **DocFile**: Markdown documentation files
+
 - Properties: path, title, content, line_count, word_count, last_modified
 - Relationships: HAS_SECTION, DEFINES, REFERENCES
 
 **Section**: Markdown sections (H1-H6 headings)
+
 - Properties: heading, level, content, order
 - Relationships: Part of DocFile
 
 **Concept**: Key concepts extracted from documentation
+
 - Properties: name, category (section, emphasized, language)
 - Relationships: DEFINES (from DocFile), IMPLEMENTED_IN (to Code)
 
@@ -218,6 +222,7 @@ All H1-H6 headings become concepts (except generic ones like "Overview", "Introd
 ```markdown
 ## Authentication System
 ```
+
 → Concept: "Authentication System" (category: section)
 
 ### 2. Emphasized Text
@@ -227,6 +232,7 @@ Bold text is treated as important concepts:
 ```markdown
 **Circuit Breaker Pattern**
 ```
+
 → Concept: "Circuit Breaker Pattern" (category: emphasized)
 
 ### 3. Code Languages
@@ -239,6 +245,7 @@ def example():
     pass
 ```
 ````
+
 → Concept: "python" (category: language)
 
 ---
@@ -252,6 +259,7 @@ The system detects multiple code reference patterns:
 ```markdown
 See @src/amplihack/memory/neo4j/doc_graph.py for implementation.
 ```
+
 → Code reference: "src/amplihack/memory/neo4j/doc_graph.py"
 
 ### 2. File:Line References
@@ -259,6 +267,7 @@ See @src/amplihack/memory/neo4j/doc_graph.py for implementation.
 ```markdown
 The bug is in example.py:42
 ```
+
 → Code reference: "example.py", line 42
 
 ### 3. Inline Code
@@ -266,6 +275,7 @@ The bug is in example.py:42
 ```markdown
 Check the `config.py` file for settings.
 ```
+
 → Code reference: "config.py"
 
 ---
@@ -277,10 +287,12 @@ Check the `config.py` file for settings.
 Tested with actual markdown files from the project:
 
 **Files Tested**: 5 markdown files
+
 - 3 from `docs/`
 - 2 from `.claude/context/`
 
 **Results**:
+
 - Files processed: 5
 - Errors: 0
 - Total sections: 187
@@ -289,6 +301,7 @@ Tested with actual markdown files from the project:
 - Total links: 0
 
 **Example Parsed File** (`neo4j_memory_phase4_implementation.md`):
+
 - Title: "Phase 4: Agent Type Memory Sharing - Implementation Complete"
 - Sections: 58
 - Concepts: 98
@@ -321,6 +334,7 @@ doc_integration.link_docs_to_code()
 ```
 
 This creates bidirectional links:
+
 - DocFile → CodeFile (documentation references code)
 - Concept → Function/Class (concepts implemented in code)
 
@@ -349,30 +363,37 @@ Main class for documentation graph operations.
 #### Methods
 
 **initialize_doc_schema() → bool**
+
 - Initialize Neo4j schema for documentation
 - Idempotent (safe to call multiple times)
 
 **parse_markdown_doc(file_path: Path) → Dict**
+
 - Parse markdown file into structured data
 - Returns: title, sections, concepts, code_refs, links, metadata
 
 **import_documentation(file_path: Path, project_id: str = None) → Dict**
+
 - Import markdown file into Neo4j
 - Returns: counts of imported nodes
 
 **link_docs_to_code(project_id: str = None) → int**
+
 - Create relationships between documentation and code
 - Returns: number of links created
 
 **link_docs_to_memories(project_id: str = None) → int**
+
 - Create relationships between documentation and memories
 - Returns: number of links created
 
 **query_relevant_docs(query_text: str, limit: int = 5) → List[Dict]**
+
 - Search for relevant documentation
 - Returns: list of matching documents
 
 **get_doc_stats(project_id: str = None) → Dict**
+
 - Get documentation graph statistics
 - Returns: counts of nodes and relationships
 
@@ -446,6 +467,7 @@ link_count = doc_integration.link_docs_to_memories()
 ## Future Enhancements
 
 ### Phase 1 (Current) ✓
+
 - [x] Markdown parsing
 - [x] Neo4j schema
 - [x] Import functionality
@@ -453,6 +475,7 @@ link_count = doc_integration.link_docs_to_memories()
 - [x] Keyword search
 
 ### Phase 2 (Future)
+
 - [ ] Vector embeddings for semantic search
 - [ ] Automatic documentation updates on code changes
 - [ ] Multi-language support (beyond markdown)
@@ -460,6 +483,7 @@ link_count = doc_integration.link_docs_to_memories()
 - [ ] Cross-document concept linking
 
 ### Phase 3 (Advanced)
+
 - [ ] Documentation generation from code
 - [ ] Inconsistency detection (code vs docs)
 - [ ] Documentation coverage analysis
@@ -484,6 +508,7 @@ link_count = doc_integration.link_docs_to_memories()
 ### Scalability
 
 Tested with:
+
 - 1,000+ documentation files
 - 10,000+ concepts
 - 50,000+ relationships

@@ -36,11 +36,11 @@ flowchart TD
 
 ## Key Files
 
-| File Path | Purpose | Key Components |
-|-----------|---------|----------------|
-| `.claude/templates/investigation-doc-template.md` | Template structure | Variable placeholders, section headers |
-| `.claude/templates/architecture-doc-template.md` | Architecture template | Extended sections, design decisions |
-| `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Variable mapping logic | Template Variable Mapping table |
+| File Path                                                         | Purpose                | Key Components                         |
+| ----------------------------------------------------------------- | ---------------------- | -------------------------------------- |
+| `.claude/templates/investigation-doc-template.md`                 | Template structure     | Variable placeholders, section headers |
+| `.claude/templates/architecture-doc-template.md`                  | Architecture template  | Extended sections, design decisions    |
+| `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Variable mapping logic | Template Variable Mapping table        |
 
 ## System Integration
 
@@ -58,12 +58,14 @@ No intermediate processing or complex transformations occur - it's direct string
 ## Verification Steps
 
 1. **Verify template variables are defined**
+
    ```bash
    grep -o '\[.*\]' .claude/templates/investigation-doc-template.md | sort -u
    # Shows all variables in template
    ```
 
 2. **Verify mapping table exists in agent**
+
    ```bash
    grep -A 10 "Template Variable Mapping" .claude/agents/amplihack/specialized/knowledge-archaeologist.md
    # Shows variable mapping table
@@ -85,6 +87,7 @@ No intermediate processing or complex transformations occur - it's direct string
 ### Example 1: Basic Variable Replacement
 
 **Template Content**:
+
 ```markdown
 # INVESTIGATION: [TOPIC]
 
@@ -94,10 +97,12 @@ No intermediate processing or complex transformations occur - it's direct string
 ```
 
 **Variable Mapping**:
+
 - `[TOPIC]` → "TEMPLATE_VARIABLE_REPLACEMENT"
 - `[FINDINGS]` → "Investigated how template variable replacement works..."
 
 **Generated Output**:
+
 ```markdown
 # INVESTIGATION: TEMPLATE_VARIABLE_REPLACEMENT
 
@@ -109,34 +114,40 @@ Investigated how template variable replacement works...
 ### Example 2: File Table Replacement
 
 **Template Content**:
+
 ```markdown
-| File Path | Purpose | Key Components |
-|-----------|---------|----------------|
-| [file_path] | [description] | [details] |
+| File Path   | Purpose       | Key Components |
+| ----------- | ------------- | -------------- |
+| [file_path] | [description] | [details]      |
 ```
 
 **Variable Mapping** (multiple rows):
+
 - Row 1: `.claude/templates/investigation-doc-template.md` | Template structure | Variable placeholders
 - Row 2: `.claude/templates/architecture-doc-template.md` | Architecture template | Extended sections
 
 **Generated Output**:
+
 ```markdown
-| File Path | Purpose | Key Components |
-|-----------|---------|----------------|
-| `.claude/templates/investigation-doc-template.md` | Template structure | Variable placeholders |
-| `.claude/templates/architecture-doc-template.md` | Architecture template | Extended sections |
+| File Path                                         | Purpose               | Key Components        |
+| ------------------------------------------------- | --------------------- | --------------------- |
+| `.claude/templates/investigation-doc-template.md` | Template structure    | Variable placeholders |
+| `.claude/templates/architecture-doc-template.md`  | Architecture template | Extended sections     |
 ```
 
 ### Example 3: Optional Mermaid Diagram
 
 **Template Content**:
-```markdown
+
+````markdown
 ## Architecture Diagrams
 
 ```mermaid
 [Insert mermaid diagram here if applicable]
 ```
-```
+````
+
+````
 
 **Scenario 1** (diagram available):
 ```markdown
@@ -146,7 +157,8 @@ Investigated how template variable replacement works...
 graph TD
     A[Start] --> B[Process]
     B --> C[End]
-```
+````
+
 ```
 
 **Scenario 2** (no diagram):
@@ -168,3 +180,4 @@ None identified. The template variable replacement system is straightforward and
 - **Source**: Investigation Session
 - **Agent**: knowledge-archaeologist
 - **Investigation Type**: General Investigation
+```

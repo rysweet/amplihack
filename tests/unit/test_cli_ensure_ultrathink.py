@@ -507,11 +507,7 @@ def test_unit_ultrathink_039_slash_commands_with_colons():
     """UNIT-ULTRATHINK-039: Slash commands with namespace separators."""
     from amplihack.cli import ensure_ultrathink_command
 
-    commands = [
-        "/amplihack:analyze src",
-        "/namespace:command args",
-        "/a:b:c test"
-    ]
+    commands = ["/amplihack:analyze src", "/namespace:command args", "/a:b:c test"]
 
     for cmd in commands:
         result = ensure_ultrathink_command(cmd)

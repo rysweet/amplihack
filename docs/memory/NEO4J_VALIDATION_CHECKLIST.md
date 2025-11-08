@@ -75,6 +75,7 @@ fi
 ```
 
 **Expected**:
+
 - `✅ Password file exists`
 - `-rw------- 1 user user 32 <date> /home/user/.amplihack/.neo4j_password`
 - `✅ Password length correct (32 chars)`
@@ -152,6 +153,7 @@ echo "❌ neo4j dependency missing from pyproject.toml"
 ## Full Integration Test (Requires Docker)
 
 ### Prerequisites
+
 - Docker Engine installed and running
 - Docker Compose installed (V1 or V2)
 - Neo4j Python driver installed: `pip install neo4j>=5.15.0`
@@ -232,6 +234,7 @@ EOF
 ```
 
 **Expected**:
+
 - `✅ Schema initialized`
 - `✅ Schema verification passed`
 - Constraint/index counts displayed
@@ -305,6 +308,7 @@ grep -i "password" docker/docker-compose.neo4j.yml | grep -v "#"
 ## Validation Summary
 
 ✅ **Pass Criteria**:
+
 - All files exist
 - Python syntax valid
 - Imports successful
@@ -315,11 +319,13 @@ grep -i "password" docker/docker-compose.neo4j.yml | grep -v "#"
 - Dependencies added
 
 ⚠️ **Partial Pass** (Docker not available):
+
 - Files and code are correct
 - Will work when Docker is installed
 - Graceful degradation verified
 
 ❌ **Fail Criteria**:
+
 - Syntax errors in Python files
 - Missing required files
 - Insecure password storage
@@ -328,19 +334,25 @@ grep -i "password" docker/docker-compose.neo4j.yml | grep -v "#"
 ## Troubleshooting
 
 ### Issue: Import errors
+
 **Fix**: Ensure you're in the project root and using correct Python path
+
 ```bash
 export PYTHONPATH=/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding:$PYTHONPATH
 ```
 
 ### Issue: Docker not available
+
 **Fix**: This is expected - install Docker Compose:
+
 ```bash
 sudo apt install docker-compose-plugin
 ```
 
 ### Issue: Permission denied on password file
+
 **Fix**: Password file should auto-fix permissions, but can manually fix:
+
 ```bash
 chmod 600 ~/.amplihack/.neo4j_password
 ```

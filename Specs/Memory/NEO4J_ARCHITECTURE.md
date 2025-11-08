@@ -19,13 +19,13 @@ Based on **EXPLICIT USER REQUIREMENTS** (highest priority), this architecture pi
 
 ### Why Neo4j Over SQLite
 
-| Requirement | SQLite | Neo4j | Decision |
-|-------------|---------|-------|----------|
-| Code graph support | ❌ No graph queries | ✅ Native graph | **Neo4j** |
-| Agent type sharing | ⚠️ Complex JOIN queries | ✅ Natural traversal | **Neo4j** |
-| Cross-memory relationships | ❌ Multiple tables, FK hell | ✅ Native relationships | **Neo4j** |
-| Query expressiveness | ⚠️ Recursive CTEs | ✅ Cypher pattern matching | **Neo4j** |
-| Deployment complexity | ✅ Zero setup | ⚠️ Docker/service | Accept trade-off |
+| Requirement                | SQLite                      | Neo4j                      | Decision         |
+| -------------------------- | --------------------------- | -------------------------- | ---------------- |
+| Code graph support         | ❌ No graph queries         | ✅ Native graph            | **Neo4j**        |
+| Agent type sharing         | ⚠️ Complex JOIN queries     | ✅ Natural traversal       | **Neo4j**        |
+| Cross-memory relationships | ❌ Multiple tables, FK hell | ✅ Native relationships    | **Neo4j**        |
+| Query expressiveness       | ⚠️ Recursive CTEs           | ✅ Cypher pattern matching | **Neo4j**        |
+| Deployment complexity      | ✅ Zero setup               | ⚠️ Docker/service          | Accept trade-off |
 
 **VERDICT**: User requirements mandate Neo4j. Deployment complexity is acceptable cost.
 
@@ -219,6 +219,7 @@ CREATE (m:Memory)<-[:HAS_MEMORY]-(at1:AgentType {id: "architect"}),
 ### Blarify Output Structure
 
 Blarify generates Neo4j-compatible code graph with:
+
 - Code files, functions, classes as nodes
 - Call relationships, inheritance as edges
 - AST metadata, complexity metrics
@@ -300,15 +301,15 @@ Cons:
 **Docker Compose Configuration:**
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   neo4j:
     image: neo4j:5.15-community
     container_name: amplihack-neo4j
     ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
     environment:
       - NEO4J_AUTH=neo4j/amplihack_password_change_me
       - NEO4J_PLUGINS=["apoc"]
@@ -382,50 +383,56 @@ class Neo4jMemoryConnector:
 
 ### Complexity Comparison
 
-| Aspect | SQLite Approach | Neo4j Approach | Delta |
-|--------|-----------------|----------------|-------|
-| Setup | Zero | Docker + config | +2 hours |
-| Schema | SQL DDL | Cypher CREATE | +1 hour (learning) |
-| Queries | SQL | Cypher | +4 hours (learning curve) |
-| Code graph | N/A (not supported) | Native integration | -8 hours (no adapter needed) |
-| Agent type sharing | Complex JOINs | Natural traversal | -6 hours (simpler queries) |
-| Testing | In-memory DB | Neo4j testcontainers | +3 hours |
+| Aspect             | SQLite Approach     | Neo4j Approach       | Delta                        |
+| ------------------ | ------------------- | -------------------- | ---------------------------- |
+| Setup              | Zero                | Docker + config      | +2 hours                     |
+| Schema             | SQL DDL             | Cypher CREATE        | +1 hour (learning)           |
+| Queries            | SQL                 | Cypher               | +4 hours (learning curve)    |
+| Code graph         | N/A (not supported) | Native integration   | -8 hours (no adapter needed) |
+| Agent type sharing | Complex JOINs       | Natural traversal    | -6 hours (simpler queries)   |
+| Testing            | In-memory DB        | Neo4j testcontainers | +3 hours                     |
 
 **NET DIFFERENCE: +2 hours for setup, -14 hours for implementation = -12 hours (FASTER)**
 
 ### Revised Timeline
 
 **Phase 1: Infrastructure Setup (2-3 hours)**
+
 - Docker Compose configuration
 - Neo4j installation and testing
 - Connection management implementation
 - Basic health checks
 
 **Phase 2: Schema Implementation (3-4 hours)**
+
 - Node type definitions
 - Relationship types
 - Indexes and constraints
 - Migration scripts
 
 **Phase 3: Core Memory Operations (6-8 hours)**
+
 - CRUD operations for memory nodes
 - Agent type registration
 - Project registration
 - Memory retrieval with isolation
 
 **Phase 4: Code Graph Integration (4-5 hours)**
+
 - Blarify output parser
 - Code node creation
 - Memory-to-code linking
 - Cross-graph queries
 
 **Phase 5: Agent Type Memory Sharing (4-5 hours)**
+
 - Multi-level memory queries
 - Pollution prevention
 - Cross-project pattern detection
 - Memory promotion logic
 
 **Phase 6: Testing & Documentation (8-10 hours)**
+
 - Unit tests with testcontainers
 - Integration tests
 - Query performance testing
@@ -454,16 +461,16 @@ class Neo4jMemoryConnector:
 
 ### Cost-Benefit Summary
 
-| Metric | SQLite | Neo4j | Winner |
-|--------|--------|-------|--------|
-| Setup time | 0 hours | 2-3 hours | SQLite |
-| Implementation time | 35-40 hours | 27-35 hours | Neo4j |
-| Query complexity | High (recursive CTEs) | Low (natural traversal) | Neo4j |
-| Code graph support | None | Native | Neo4j |
-| Agent type sharing | Complex | Simple | Neo4j |
-| Deployment | Simple | Complex | SQLite |
-| Runtime resources | Low | Medium | SQLite |
-| Long-term maintenance | Medium | Low | Neo4j |
+| Metric                | SQLite                | Neo4j                   | Winner |
+| --------------------- | --------------------- | ----------------------- | ------ |
+| Setup time            | 0 hours               | 2-3 hours               | SQLite |
+| Implementation time   | 35-40 hours           | 27-35 hours             | Neo4j  |
+| Query complexity      | High (recursive CTEs) | Low (natural traversal) | Neo4j  |
+| Code graph support    | None                  | Native                  | Neo4j  |
+| Agent type sharing    | Complex               | Simple                  | Neo4j  |
+| Deployment            | Simple                | Complex                 | SQLite |
+| Runtime resources     | Low                   | Medium                  | SQLite |
+| Long-term maintenance | Medium                | Low                     | Neo4j  |
 
 **OVERALL WINNER: Neo4j** (user requirements + lower implementation cost + better long-term maintainability)
 
@@ -490,6 +497,7 @@ class Neo4jMemoryConnector:
 ### Modular Design
 
 Each memory type is independent module:
+
 ```
 memory/
 ├── conversation/     # ConversationMemory brick
@@ -505,6 +513,7 @@ Each module can be regenerated independently.
 ### 1. Start with Docker Compose
 
 Don't fight Neo4j installation. Use Docker:
+
 ```bash
 docker-compose up -d
 # Wait 10 seconds
@@ -595,18 +604,21 @@ def test_memory_creation():
 If SQLite system exists:
 
 **Phase 1: Export SQLite data**
+
 ```python
 # Export all SQLite records to JSON
 sqlite_data = export_all_memories()
 ```
 
 **Phase 2: Transform to Neo4j model**
+
 ```python
 # Map SQLite tables to Neo4j nodes/relationships
 neo4j_nodes = transform_to_graph_model(sqlite_data)
 ```
 
 **Phase 3: Bulk import**
+
 ```cypher
 // Use APOC or Neo4j import tool
 CALL apoc.load.json("file:///import/memories.json")
@@ -619,6 +631,7 @@ CREATE (m:Memory {
 ```
 
 **Phase 4: Validate**
+
 ```python
 # Compare counts, spot-check records
 assert neo4j_memory_count == sqlite_memory_count

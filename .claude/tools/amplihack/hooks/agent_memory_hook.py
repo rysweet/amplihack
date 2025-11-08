@@ -140,7 +140,9 @@ def inject_memory_for_agents(
                 )
 
                 if memory_context:
-                    memory_sections.append(f"\n## Memory for {normalized_type} Agent\n{memory_context}")
+                    memory_sections.append(
+                        f"\n## Memory for {normalized_type} Agent\n{memory_context}"
+                    )
                     metadata["memories_injected"] += 1
 
             except Exception as e:

@@ -51,13 +51,11 @@ This index is your working checklist - mark files complete as you process them.
 For each file in the index:
 
 1. **Load full context**:
-
    - Read the file
    - Read relevant parts of plan
    - Load related docs if needed
 
 2. **Update with retcon writing**:
-
    - Write as if feature ALREADY EXISTS
    - No "will be", "going to", "planned"
    - Present tense: "The system does X"
@@ -65,14 +63,12 @@ For each file in the index:
    - No migration notes in docs
 
 3. **Apply Maximum DRY**:
-
    - Each concept in ONE place only
    - No duplicate documentation
    - Use references/links instead of duplication
    - If found elsewhere, consolidate to best location
 
 4. **Check for context poisoning**:
-
    - Conflicts with other docs?
    - Inconsistent terminology?
    - Contradictory statements?
