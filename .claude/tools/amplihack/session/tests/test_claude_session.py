@@ -38,7 +38,7 @@ class TestSessionState:
         """Test default state values."""
         state = SessionState("test_session")
         assert state.session_id == "test_session"
-        assert state.is_active is True
+        assert state.is_active is False  # Sessions must be explicitly started
         assert state.command_count == 0
         assert state.error_count == 0
         assert state.last_error is None

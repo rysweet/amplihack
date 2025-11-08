@@ -73,6 +73,11 @@ class SessionManager:
 
         Returns:
             Session ID
+
+        Note:
+            The session is automatically started after creation for better UX.
+            This ensures the session is immediately ready for use without requiring
+            manual start() call.
         """
         config = config or SessionConfig()
         session = ClaudeSession(config)
@@ -81,7 +86,7 @@ class SessionManager:
             "name": name,
             "created_at": time.time(),
             "last_accessed": time.time(),
-            "status": "created",
+            "status": "active",  # Session is auto-started, so it's active
             "config": asdict(config),
             "metadata": metadata or {},
         }
@@ -89,6 +94,9 @@ class SessionManager:
         with self._lock:
             self._active_sessions[session.state.session_id] = session
             self._session_metadata[session.state.session_id] = session_metadata
+
+        # Auto-start session for better UX - session is immediately ready to use
+        session.start()
 
         self.logger.info(f"Created session '{name}' with ID: {session.state.session_id}")
         return session.state.session_id

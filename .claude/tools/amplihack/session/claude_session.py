@@ -28,7 +28,7 @@ class SessionState:
     session_id: str
     start_time: float = field(default_factory=time.time)
     last_activity: float = field(default_factory=time.time)
-    is_active: bool = True
+    is_active: bool = False  # Session must be explicitly started
     command_count: int = 0
     error_count: int = 0
     last_error: Optional[str] = None
@@ -105,7 +105,18 @@ class ClaudeSession:
         self.stop()
 
     def start(self) -> None:
-        """Start the session and begin monitoring."""
+        """Start the session and begin monitoring.
+
+        Note:
+            This method is idempotent - calling it multiple times is safe.
+            Only the first call will actually start the session.
+        """
+        # If already started, just update activity and return
+        if self.state.is_active:
+            self.state.last_activity = time.time()
+            self.logger.debug(f"Session {self.state.session_id} already started")
+            return
+
         self.state.is_active = True
         self.state.start_time = time.time()
         self.state.last_activity = time.time()

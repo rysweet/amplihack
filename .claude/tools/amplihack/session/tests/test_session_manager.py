@@ -43,8 +43,12 @@ class TestSessionManager:
         # Check metadata
         metadata = manager._session_metadata[session_id]
         assert metadata["name"] == "test_session"
-        assert metadata["status"] == "created"
+        assert metadata["status"] == "active"  # Sessions are auto-started
         assert "created_at" in metadata
+
+        # Verify session is actually started and ready to use
+        session = manager.get_session(session_id)
+        assert session.state.is_active is True
 
     def test_create_session_with_config(self, manager):
         """Test session creation with custom config."""
@@ -308,3 +312,59 @@ class TestSessionManager:
         with patch("builtins.open", side_effect=PermissionError("Access denied")):
             result = manager.save_session(session_id)
             assert result is False  # Should fail gracefully
+
+    def test_auto_start_on_creation(self, manager):
+        """Test that sessions are automatically started on creation.
+
+        This verifies the fix for the issue where create_session() would create
+        sessions but leave them inactive, causing "Session is not active" errors.
+        """
+        # Create a session
+        session_id = manager.create_session("auto_start_test")
+
+        # Get the session
+        session = manager.get_session(session_id)
+
+        # Verify session is automatically started and ready to use
+        assert session is not None
+        assert session.state.is_active is True, "Session should be active after creation"
+
+        # Verify session can execute commands without manual start() call
+        try:
+            result = session.execute_command("test_command")
+            assert result is not None
+            assert result["status"] == "completed"
+        except Exception as e:
+            pytest.fail(f"Session should be ready to use after creation, but got: {e}")
+
+        # Verify session statistics show it's running
+        stats = session.get_statistics()
+        assert stats["is_active"] is True
+        assert stats["command_count"] == 1
+
+    def test_start_idempotency(self, manager):
+        """Test that calling start() multiple times is safe (idempotent).
+
+        This verifies that the toolkit's session() context manager can safely
+        call start() on a session that was already auto-started by create_session().
+        """
+        # Create a session (auto-started)
+        session_id = manager.create_session("idempotent_test")
+        session = manager.get_session(session_id)
+
+        assert session.state.is_active is True
+
+        # Record the start time
+        original_start_time = session.state.start_time
+
+        # Call start() again - should be idempotent
+        session.start()
+
+        # Verify still active and start time unchanged
+        assert session.state.is_active is True
+        assert session.state.start_time == original_start_time, "Start time should not change on redundant start()"
+
+        # Verify no duplicate heartbeat threads were created
+        # (If not idempotent, we'd have multiple threads)
+        time.sleep(0.2)  # Let any duplicate threads start
+        assert session.state.is_active is True  # Should still be active
