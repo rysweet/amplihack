@@ -168,53 +168,6 @@ class TestQueryBuilder:
         assert params["ingestion_id"] == metadata.ingestion_id
         assert params["previous_ingestion_id"] == "test-id-1"
 
-    def test_validate_query_params_safe(self):
-        """Test validation of safe parameters."""
-        params = {
-            "unique_key": "abc123",
-            "remote_url": "https://github.com/test/repo.git",
-            "branch": "main",
-            "commit_sha": "a" * 40,
-        }
-
-        assert QueryBuilder.validate_query_params(params)
-
-    def test_validate_query_params_with_cypher_keywords(self):
-        """Test validation rejects Cypher keywords."""
-        dangerous_params = {
-            "unique_key": "MATCH (n) DELETE n",
-            "remote_url": "https://github.com/test/repo.git",
-        }
-
-        assert not QueryBuilder.validate_query_params(dangerous_params)
-
-    def test_validate_query_params_with_create(self):
-        """Test validation rejects CREATE keyword."""
-        params = {
-            "name": "CREATE (n:Node)",
-        }
-
-        assert not QueryBuilder.validate_query_params(params)
-
-    def test_validate_query_params_with_delete(self):
-        """Test validation rejects DELETE keyword."""
-        params = {
-            "value": "something DELETE something",
-        }
-
-        assert not QueryBuilder.validate_query_params(params)
-
-    def test_validate_query_params_non_string_values(self):
-        """Test validation handles non-string values."""
-        params = {
-            "number": 123,
-            "boolean": True,
-            "list": [1, 2, 3],
-        }
-
-        # Should pass because only strings are checked
-        assert QueryBuilder.validate_query_params(params)
-
     def test_parameterization_prevents_injection(self):
         """Test that queries use parameters instead of string concatenation."""
         identity = CodebaseIdentifier.create_manual_identity(

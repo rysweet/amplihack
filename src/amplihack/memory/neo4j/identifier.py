@@ -5,12 +5,19 @@ identity from Git repository information.
 """
 
 import hashlib
+import logging
 import re
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 from .models import CodebaseIdentity
+
+# SHA hash length constants
+SHA1_HEX_LENGTH = 40  # Git commit SHAs (SHA-1)
+SHA256_HEX_LENGTH = 64  # Unique keys (SHA-256)
+
+logger = logging.getLogger(__name__)
 
 
 class CodebaseIdentifier:
@@ -213,17 +220,18 @@ class CodebaseIdentifier:
             if not identity.unique_key:
                 return False
 
-            # Validate commit SHA format (40-char hex)
-            if not re.match(r"^[0-9a-f]{40}$", identity.commit_sha):
+            # Validate commit SHA format (40-char hex from SHA-1)
+            if not re.match(rf"^[0-9a-f]{{{SHA1_HEX_LENGTH}}}$", identity.commit_sha):
                 return False
 
             # Validate unique key format (64-char hex from SHA-256)
-            if not re.match(r"^[0-9a-f]{64}$", identity.unique_key):
+            if not re.match(rf"^[0-9a-f]{{{SHA256_HEX_LENGTH}}}$", identity.unique_key):
                 return False
 
             return True
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Identity validation failed: {e}")
             return False
 
     @staticmethod

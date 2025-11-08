@@ -304,27 +304,3 @@ class QueryBuilder:
             "previous_ingestion_id": previous_ingestion_id,
         }
         return query, params
-
-    @staticmethod
-    def validate_query_params(params: Dict[str, Any]) -> bool:
-        """Validate query parameters for security.
-
-        Ensures parameters don't contain Cypher injection attempts.
-
-        Args:
-            params: Dictionary of query parameters
-
-        Returns:
-            True if parameters are safe, False otherwise
-        """
-        dangerous_patterns = ["MATCH", "CREATE", "DELETE", "DETACH", "SET", "REMOVE", "MERGE"]
-
-        for value in params.values():
-            if isinstance(value, str):
-                # Check for Cypher keywords
-                upper_value = value.upper()
-                for pattern in dangerous_patterns:
-                    if pattern in upper_value:
-                        return False
-
-        return True

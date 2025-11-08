@@ -270,10 +270,7 @@ class IngestionTracker:
             with self.driver.session() as session:
                 query, params = self.query_builder.track_new_codebase(identity, metadata)
 
-                # Validate parameters
-                if not self.query_builder.validate_query_params(params):
-                    raise RuntimeError("Invalid query parameters detected")
-
+                # Use parameterized queries for security (no additional validation needed)
                 session.run(query, **params)
 
         except Exception as e:
@@ -303,10 +300,7 @@ class IngestionTracker:
                     previous_ingestion_id,
                 )
 
-                # Validate parameters
-                if not self.query_builder.validate_query_params(params):
-                    raise RuntimeError("Invalid query parameters detected")
-
+                # Use parameterized queries for security (no additional validation needed)
                 session.run(query, **params)
 
         except Exception as e:

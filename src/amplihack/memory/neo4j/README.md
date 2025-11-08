@@ -389,15 +389,6 @@ session.run(query, unique_key=user_input)
 query = f"MATCH (c:Codebase {{unique_key: '{user_input}'}}) RETURN c"
 ```
 
-#### Query Validation
-
-The `QueryBuilder.validate_query_params()` method checks for dangerous patterns:
-
-```python
-params = {"key": "MATCH (n) DELETE n"}
-QueryBuilder.validate_query_params(params)  # Returns False
-```
-
 #### URL Normalization
 
 Remote URLs are normalized to remove authentication:
