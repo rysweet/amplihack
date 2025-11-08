@@ -6,10 +6,12 @@ as the memory system, creating relationships between code and memories.
 
 import json
 import logging
+import os
 import subprocess
+import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
 from .config import get_config
@@ -54,6 +56,57 @@ class BlarifyIntegration:
         except Exception as e:
             logger.error("Code graph schema initialization failed: %s", e)
             return False
+
+    def run_blarify(
+        self,
+        codebase_path: str | Path,
+        project_id: Optional[str] = None,
+        languages: Optional[List[str]] = None,
+    ) -> Dict[str, int]:
+        """Run blarify on codebase and import results into Neo4j.
+
+        Args:
+            codebase_path: Path to codebase to analyze
+            project_id: Optional project ID to link code to (defaults to codebase name)
+            languages: Optional list of languages to analyze
+
+        Returns:
+            Dictionary with counts: {'files': N, 'classes': N, 'functions': N, ...}
+
+        Raises:
+            RuntimeError: If blarify is not installed or execution fails
+            FileNotFoundError: If codebase path doesn't exist
+            ValueError: If blarify output is invalid
+        """
+        # Input validation
+        codebase_path = Path(codebase_path)
+        if not codebase_path.exists():
+            raise FileNotFoundError(f"Codebase path not found: {codebase_path}")
+
+        # Default project_id to directory name
+        if project_id is None:
+            project_id = codebase_path.name
+
+        # Create temporary file for blarify output
+        fd, temp_path = tempfile.mkstemp(suffix=".json", text=True)
+        os.close(fd)  # Close file descriptor immediately
+        output_path = Path(temp_path)
+
+        try:
+            # Run blarify (delegates installation checking)
+            if not run_blarify(codebase_path, output_path, languages):
+                raise RuntimeError(
+                    "blarify not found or execution failed. "
+                    "Install with: pip install blarify\n"
+                    "See: https://github.com/blarApp/blarify"
+                )
+
+            # Import results into Neo4j
+            return self.import_blarify_output(output_path, project_id)
+
+        finally:
+            # Cleanup temporary file
+            output_path.unlink(missing_ok=True)
 
     def _create_code_constraints(self):
         """Create unique constraints for code nodes (idempotent)."""
@@ -132,7 +185,7 @@ class BlarifyIntegration:
 
         logger.info("Importing blarify output from %s", blarify_json_path)
 
-        with open(blarify_json_path, "r") as f:
+        with open(blarify_json_path) as f:
             blarify_data = json.load(f)
 
         counts = {
@@ -656,8 +709,10 @@ def run_blarify(
         "blarify",
         "analyze",
         str(codebase_path),
-        "--output", str(output_path),
-        "--format", "json",
+        "--output",
+        str(output_path),
+        "--format",
+        "json",
     ]
 
     if languages:
