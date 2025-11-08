@@ -17,10 +17,10 @@ def test_integ_lock_001_lock_file_created_and_hook_responds(captured_subprocess,
     result1 = captured_subprocess(input_data, lock_active=False)
     assert result1.returncode == 0
     output1 = json.loads(result1.stdout)
-    assert output1 == {}
+    assert output1 == {"decision": "approve"}
 
     # Step 2: Create lock file
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
     # Step 3: Execute hook - verify blocks
@@ -36,7 +36,7 @@ def test_integ_lock_002_lock_file_deleted_and_hook_responds(captured_subprocess,
     input_data = {"session_id": "test"}
 
     # Step 1: Create lock file
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
     # Step 2: Execute hook - verify blocks
@@ -52,7 +52,7 @@ def test_integ_lock_002_lock_file_deleted_and_hook_responds(captured_subprocess,
     result2 = captured_subprocess(input_data, lock_active=False)
     assert result2.returncode == 0
     output2 = json.loads(result2.stdout)
-    assert output2 == {}
+    assert output2 == {"decision": "approve"}
 
 
 def test_integ_lock_003_continuous_work_mode_scenario(
@@ -62,12 +62,12 @@ def test_integ_lock_003_continuous_work_mode_scenario(
     input_data = {"session_id": "test"}
 
     # Step 1: Create lock file with custom prompt
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
     # Note: custom_prompt fixture doesn't work with captured_subprocess
     # Create prompt manually
-    prompt_file = temp_project_root / ".claude/tools/amplihack/.continuation_prompt"
+    prompt_file = temp_project_root / ".claude/runtime/locks/.continuation_prompt"
     prompt_file.write_text("Keep working on all tasks", encoding="utf-8")
 
     # Step 2: Execute hook multiple times
@@ -96,7 +96,7 @@ def test_integ_lock_004_lock_file_permission_changes(captured_subprocess, temp_p
     input_data = {"session_id": "test"}
 
     # Step 1: Create lock file with restricted permissions
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
     os.chmod(lock_file, 0o000)  # No read permissions
 
