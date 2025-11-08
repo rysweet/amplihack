@@ -4,7 +4,8 @@ Tests shutdown decision logic, user prompting, and execution.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock, mock_open
 
 from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
 
@@ -29,20 +30,32 @@ class TestNeo4jShutdownCoordinator:
     @pytest.fixture
     def coordinator(self, mock_tracker, mock_manager):
         """Create coordinator instance with mocks."""
-        return Neo4jShutdownCoordinator(
-            connection_tracker=mock_tracker,
-            container_manager=mock_manager,
-            auto_mode=False,
-        )
+        # Mock Path to prevent loading real preferences
+        mock_path = MagicMock()
+        mock_path.exists.return_value = False
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            MockPath.home.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            return Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
 
     @pytest.fixture
     def auto_coordinator(self, mock_tracker, mock_manager):
         """Create coordinator instance in auto mode."""
-        return Neo4jShutdownCoordinator(
-            connection_tracker=mock_tracker,
-            container_manager=mock_manager,
-            auto_mode=True,
-        )
+        # Mock Path to prevent loading real preferences
+        mock_path = MagicMock()
+        mock_path.exists.return_value = False
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            MockPath.home.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            return Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=True,
+            )
 
     def test_should_prompt_shutdown_true(self, coordinator, mock_tracker):
         """Test prompt decision: interactive mode, last connection."""
@@ -248,3 +261,335 @@ class TestNeo4jShutdownCoordinator:
             # Verify prompt happened but shutdown didn't (timeout = no)
             mock_tracker.is_last_connection.assert_called_once()
             mock_manager.stop.assert_not_called()
+
+    # Preference Loading Tests
+    def test_load_preference_default(self, mock_tracker, mock_manager):
+        """Test preference loading when no preference file exists."""
+        mock_path = MagicMock()
+        mock_path.exists.return_value = False
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            MockPath.home.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            assert coordinator._preference == 'ask'
+
+    def test_load_preference_always(self, mock_tracker, mock_manager):
+        """Test loading 'always' preference."""
+        prefs_content = "neo4j_auto_shutdown: always"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            assert coordinator._preference == 'always'
+
+    def test_load_preference_never(self, mock_tracker, mock_manager):
+        """Test loading 'never' preference."""
+        prefs_content = "**Current setting:** never\nneo4j_auto_shutdown: never"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            assert coordinator._preference == 'never'
+
+    def test_load_preference_ask(self, mock_tracker, mock_manager):
+        """Test loading 'ask' preference."""
+        prefs_content = "neo4j_auto_shutdown: ask"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            assert coordinator._preference == 'ask'
+
+    def test_load_preference_invalid_value(self, mock_tracker, mock_manager):
+        """Test loading invalid preference defaults to 'ask'."""
+        prefs_content = "neo4j_auto_shutdown: invalid"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            assert coordinator._preference == 'ask'
+
+    # Preference Saving Tests
+    def test_save_preference_always(self, coordinator):
+        """Test saving 'always' preference."""
+        prefs_content = """
+### Neo4j Auto-Shutdown
+
+Controls neo4j_auto_shutdown preference.
+
+**Current setting:** ask
+
+**Options:**
+"""
+
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator._save_preference('always')
+            mock_path.write_text.assert_called_once()
+            written_content = mock_path.write_text.call_args[0][0]
+            assert 'always' in written_content
+
+    def test_save_preference_never(self, coordinator):
+        """Test saving 'never' preference."""
+        prefs_content = """
+### Neo4j Auto-Shutdown
+
+Controls neo4j_auto_shutdown preference.
+
+**Current setting:** ask
+
+**Options:**
+"""
+
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator._save_preference('never')
+            mock_path.write_text.assert_called_once()
+            written_content = mock_path.write_text.call_args[0][0]
+            assert 'never' in written_content
+
+    def test_save_preference_file_not_found(self, coordinator):
+        """Test saving preference when file doesn't exist."""
+        mock_path = MagicMock()
+        mock_path.exists.return_value = False
+
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            # Should not raise exception
+            coordinator._save_preference('always')
+
+    # Preference Behavior Tests
+    def test_should_prompt_shutdown_preference_never(self, mock_tracker, mock_manager):
+        """Test should_prompt_shutdown with 'never' preference."""
+        prefs_content = "neo4j_auto_shutdown: never"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            mock_tracker.is_last_connection.return_value = True
+
+            result = coordinator.should_prompt_shutdown()
+
+            assert result is False
+            # Should not even check connections with 'never'
+            mock_tracker.is_last_connection.assert_not_called()
+
+    def test_should_prompt_shutdown_preference_always(self, mock_tracker, mock_manager):
+        """Test should_prompt_shutdown with 'always' preference."""
+        prefs_content = "neo4j_auto_shutdown: always"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            mock_tracker.is_last_connection.return_value = True
+
+            result = coordinator.should_prompt_shutdown()
+
+            assert result is True
+            mock_tracker.is_last_connection.assert_called_once()
+
+    def test_prompt_user_shutdown_preference_always_auto_accept(self, mock_tracker, mock_manager):
+        """Test prompt_user_shutdown with 'always' preference auto-accepts."""
+        prefs_content = "neo4j_auto_shutdown: always"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+
+            # Should not prompt, should return True
+            result = coordinator.prompt_user_shutdown()
+
+            assert result is True
+
+    def test_prompt_user_shutdown_response_always(self, coordinator):
+        """Test user responding with 'always'."""
+        prefs_content = """
+### Neo4j Auto-Shutdown
+
+Controls neo4j_auto_shutdown preference.
+
+**Current setting:** ask
+
+**Options:**
+"""
+
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+
+        with patch("builtins.input", return_value="always"), \
+             patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            result = coordinator.prompt_user_shutdown()
+
+            assert result is True
+            mock_path.write_text.assert_called_once()
+
+    def test_prompt_user_shutdown_response_a(self, coordinator):
+        """Test user responding with 'a' (shortcut for always)."""
+        prefs_content = """
+### Neo4j Auto-Shutdown
+
+Controls neo4j_auto_shutdown preference.
+
+**Current setting:** ask
+
+**Options:**
+"""
+
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+
+        with patch("builtins.input", return_value="a"), \
+             patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            result = coordinator.prompt_user_shutdown()
+
+            assert result is True
+            mock_path.write_text.assert_called_once()
+
+    def test_prompt_user_shutdown_response_never(self, coordinator):
+        """Test user responding with 'never'."""
+        prefs_content = """
+### Neo4j Auto-Shutdown
+
+Controls neo4j_auto_shutdown preference.
+
+**Current setting:** ask
+
+**Options:**
+"""
+
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+
+        with patch("builtins.input", return_value="never"), \
+             patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            result = coordinator.prompt_user_shutdown()
+
+            assert result is False
+            mock_path.write_text.assert_called_once()
+
+    def test_prompt_user_shutdown_response_v(self, coordinator):
+        """Test user responding with 'v' (shortcut for never)."""
+        prefs_content = """
+### Neo4j Auto-Shutdown
+
+Controls neo4j_auto_shutdown preference.
+
+**Current setting:** ask
+
+**Options:**
+"""
+
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+
+        with patch("builtins.input", return_value="v"), \
+             patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            result = coordinator.prompt_user_shutdown()
+
+            assert result is False
+            mock_path.write_text.assert_called_once()
+
+    def test_handle_session_exit_preference_never_no_prompt(self, mock_tracker, mock_manager):
+        """Test complete flow: preference 'never' skips everything."""
+        prefs_content = "neo4j_auto_shutdown: never"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            mock_tracker.is_last_connection.return_value = True
+
+            coordinator.handle_session_exit()
+
+            # Should not check connections or shutdown
+            mock_tracker.is_last_connection.assert_not_called()
+            mock_manager.stop.assert_not_called()
+
+    def test_handle_session_exit_preference_always_auto_shutdown(self, mock_tracker, mock_manager):
+        """Test complete flow: preference 'always' auto-shuts down."""
+        prefs_content = "neo4j_auto_shutdown: always"
+        mock_path = MagicMock()
+        mock_path.exists.return_value = True
+        mock_path.read_text.return_value = prefs_content
+        with patch('amplihack.neo4j.shutdown_coordinator.Path') as MockPath:
+            MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=mock_tracker,
+                container_manager=mock_manager,
+                auto_mode=False,
+            )
+            mock_tracker.is_last_connection.return_value = True
+            mock_manager.stop.return_value = True
+
+            coordinator.handle_session_exit()
+
+            # Should check connections and shutdown without prompting
+            mock_tracker.is_last_connection.assert_called_once()
+            mock_manager.stop.assert_called_once()

@@ -51,6 +51,12 @@ class Neo4jConnectionTracker:
             int: Number of active connections (>= 0)
             None: If unable to determine (error, timeout, no container)
         """
+        logger.debug(
+            "Attempting to query Neo4j connection count at %s (timeout=%.1fs)",
+            self.http_url,
+            self.timeout
+        )
+
         try:
             # Query Neo4j for connection count
             query = {
@@ -61,6 +67,7 @@ class Neo4jConnectionTracker:
                 ]
             }
 
+            logger.debug("Sending connection count query to Neo4j")
             response = requests.post(
                 self.http_url,
                 json=query,
@@ -102,19 +109,37 @@ class Neo4jConnectionTracker:
                 return None
 
             count = row["row"][0]
-            logger.debug("Active Neo4j connections: %d", count)
+            logger.info("Neo4j connection count: %d active connection%s", count, "" if count == 1 else "s")
+            logger.debug("Successfully queried Neo4j connection count: %d", count)
             return count
 
         except requests.exceptions.Timeout:
-            logger.warning("Timeout querying Neo4j connection count")
+            logger.warning(
+                "Timeout querying Neo4j connection count after %.1fs. "
+                "Check if Neo4j container is running with: docker ps | grep %s",
+                self.timeout,
+                self.container_name
+            )
             return None
 
         except requests.exceptions.ConnectionError:
-            logger.warning("Cannot connect to Neo4j HTTP API (container may not be running)")
+            logger.warning(
+                "Cannot connect to Neo4j HTTP API at %s. "
+                "Verify container is running with: docker ps | grep %s",
+                self.http_url,
+                self.container_name
+            )
             return None
 
         except Exception as e:
-            logger.warning("Error querying Neo4j connection count (%s): %s", type(e).__name__, e)
+            logger.warning(
+                "Error querying Neo4j connection count (%s): %s. "
+                "Container: %s, URL: %s",
+                type(e).__name__,
+                e,
+                self.container_name,
+                self.http_url
+            )
             return None
 
     def is_last_connection(self) -> bool:
@@ -123,10 +148,14 @@ class Neo4jConnectionTracker:
         Returns:
             bool: True if exactly 1 connection exists, False otherwise
         """
+        logger.debug("Checking if this is the last Neo4j connection")
         count = self.get_active_connection_count()
 
         if count is None:
             # Cannot determine - default to False (safe default)
+            logger.debug("Cannot determine connection count - defaulting to False (safe)")
             return False
 
-        return count == 1
+        is_last = count == 1
+        logger.debug("Last connection check: %s (count=%d)", is_last, count)
+        return is_last
