@@ -194,8 +194,9 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
 
             copied.append(dir_path)
             print(f"  ✅ Copied {dir_path}")
-        except Exception as e:
+        except (IOError, OSError, shutil.Error) as e:
             print(f"  ❌ Failed to copy {dir_path}: {e}")
+            # Log but continue - this is a non-fatal operation during installation
 
     # Also copy settings.json if it exists and target doesn't have one
     settings_src = os.path.join(base, "settings.json")
@@ -205,8 +206,9 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
         try:
             shutil.copy2(settings_src, settings_dst)
             print("  ✅ Copied settings.json")
-        except Exception as e:
+        except (IOError, OSError, shutil.Error) as e:
             print(f"  ⚠️  Could not copy settings.json: {e}")
+            # Log but continue - settings will be created later if needed
 
     return copied
 
@@ -222,7 +224,8 @@ def read_manifest():
         with open(MANIFEST_JSON, encoding="utf-8") as f:
             mf = json.load(f)
             return mf.get("files", []), mf.get("dirs", [])
-    except Exception:
+    except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+        # Missing or invalid manifest is expected on first install
         return [], []
 
 
@@ -374,7 +377,7 @@ def ensure_settings_json():
             elif backup_path:
                 print(f"  💾 Backup created at {backup_path}")
 
-    except Exception as e:
+    except (ImportError, AttributeError, OSError) as e:
         # If SettingsManager fails for any reason, continue without it
         print(f"  ⚠️  Settings manager unavailable - continuing without backup: {e}")
         if is_uvx:
@@ -394,7 +397,7 @@ def ensure_settings_json():
             backup_path = os.path.join(CLAUDE_DIR, backup_name)
             shutil.copy2(settings_path, backup_path)
             print(f"  💾 Backed up to {backup_name}")
-        except Exception as e:
+        except (json.JSONDecodeError, IOError, OSError, shutil.Error) as e:
             print(f"  ⚠️  Could not read existing settings.json: {e}")
             print("  🔧 Creating new settings.json from template")
             settings = SETTINGS_TEMPLATE.copy()
@@ -433,15 +436,17 @@ def ensure_settings_json():
             if dir_name not in settings["permissions"]["additionalDirectories"]:
                 settings["permissions"]["additionalDirectories"].append(dir_name)
 
-    # Write updated settings
+    # Write updated settings - CRITICAL operation that must succeed
     try:
         with open(settings_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
         print(f"  ✅ Settings updated ({hooks_updated} hooks configured)")
         return True
-    except Exception as e:
-        print(f"  ❌ Failed to write settings.json: {e}")
-        return False
+    except (IOError, OSError, PermissionError) as e:
+        # CRITICAL: Settings write failure breaks installation
+        print(f"  ❌ CRITICAL: Failed to write settings.json: {e}")
+        print(f"  ❌ Installation cannot continue without valid settings")
+        raise  # Re-raise to ensure caller knows about failure
 
 
 def verify_hooks():
@@ -491,8 +496,9 @@ def create_runtime_dirs():
                 print(f"  ❌ Failed to create {dir_path}")
             else:
                 print(f"  ✅ Runtime directory {dir_path} ready")
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             print(f"  ❌ Error creating {dir_path}: {e}")
+            # Log but continue - runtime dirs are not critical for initial setup
 
 
 def _local_install(repo_root):
@@ -593,8 +599,9 @@ def uninstall():
                 os.remove(target)
                 removed_files += 1
                 removed_any = True
-            except Exception as e:
+            except (OSError, PermissionError) as e:
                 print(f"  ⚠️  Could not remove file {f}: {e}")
+                # Log but continue - best effort uninstall
 
     # Remove directories from manifest (if any)
     for d in sorted(dirs, key=lambda x: -x.count(os.sep)):
@@ -603,8 +610,9 @@ def uninstall():
             try:
                 shutil.rmtree(target, ignore_errors=True)
                 removed_any = True
-            except Exception as e:
+            except (OSError, PermissionError, shutil.Error) as e:
                 print(f"  ⚠️  Could not remove directory {d}: {e}")
+                # Log but continue - best effort uninstall
 
     # Always try to remove the main amplihack directories
     # This handles cases where the manifest might not track directories properly
@@ -622,13 +630,15 @@ def uninstall():
                 shutil.rmtree(dir_path)
                 removed_dirs += 1
                 removed_any = True
-            except Exception as e:
+            except (OSError, PermissionError, shutil.Error) as e:
                 print(f"  ⚠️  Could not remove {dir_path}: {e}")
+                # Log but continue - best effort uninstall
 
     # Remove manifest file
     try:
         os.remove(MANIFEST_JSON)
-    except Exception:
+    except (FileNotFoundError, OSError, PermissionError):
+        # Manifest already removed or doesn't exist - acceptable for uninstall
         pass
 
     # Report results
@@ -648,7 +658,8 @@ def filecmp(f1, f2):
             return False
         with open(f1, "rb") as file1, open(f2, "rb") as file2:
             return file1.read() == file2.read()
-    except Exception:
+    except (FileNotFoundError, IOError, OSError):
+        # Files don't exist or can't be read - treat as not equal
         return False
 
 
