@@ -64,16 +64,12 @@ class KnowledgeBuilder:
             # Step 2: Answer questions via web search
             print("STEP 2: Answering questions via web search...")
             print("-" * 70)
-            self.kg.questions = self.knowledge_acq.answer_all_questions(
+            self.kg.questions, sources = self.knowledge_acq.answer_all_questions(
                 self.kg.questions, self.topic
             )
 
-            # Collect all unique sources
-            all_sources = set()
-            for q in self.kg.questions:
-                # Sources would be attached during answer_question if we tracked them
-                pass  # Sources are collected in answer_question but not stored in Question
-            self.kg.sources = sorted(all_sources)
+            # Attach collected sources to knowledge graph
+            self.kg.sources = sources
             print()
 
             # Step 3: Generate artifacts (5 files)

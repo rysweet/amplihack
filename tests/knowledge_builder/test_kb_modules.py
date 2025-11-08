@@ -98,6 +98,28 @@ class TestKnowledgeAcquirer:
         assert answer.startswith("Unable to answer")
         assert len(sources) == 0
 
+    @patch("subprocess.run")
+    def test_answer_all_questions_returns_sources(self, mock_run):
+        """Test that answer_all_questions returns both questions and sources."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="ANSWER: Test answer.\nSOURCES:\n- https://source1.com\n- https://source2.com",
+        )
+
+        acq = KnowledgeAcquirer(claude_cmd="claude")
+        questions = [
+            Question(text="Q1?", depth=0, parent_index=None),
+            Question(text="Q2?", depth=0, parent_index=None),
+        ]
+
+        result_questions, sources = acq.answer_all_questions(questions, "Test Topic")
+
+        assert len(result_questions) == 2
+        assert all(q.answer for q in result_questions)
+        assert len(sources) == 2
+        assert "https://source1.com" in sources
+        assert "https://source2.com" in sources
+
 
 class TestArtifactGenerator:
     """Test artifact generation."""

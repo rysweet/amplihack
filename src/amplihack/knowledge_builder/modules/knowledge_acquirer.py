@@ -82,7 +82,7 @@ Requirements:
 
         return answer or "Unable to provide answer", sources
 
-    def answer_all_questions(self, questions: List[Question], topic: str) -> List[Question]:
+    def answer_all_questions(self, questions: List[Question], topic: str) -> tuple[List[Question], List[str]]:
         """Answer all questions via web search.
 
         Args:
@@ -90,7 +90,7 @@ Requirements:
             topic: Main topic
 
         Returns:
-            Updated questions with answers populated
+            Tuple of (updated questions with answers populated, list of unique source URLs)
         """
         print(f"Answering {len(questions)} questions...")
         all_sources = set()
@@ -107,4 +107,4 @@ Requirements:
                 print(f"    Progress: {i}/{len(questions)} questions answered")
 
         print(f"Answered all questions. Found {len(all_sources)} unique sources")
-        return questions
+        return questions, sorted(all_sources)
