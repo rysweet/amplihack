@@ -16,7 +16,10 @@ class TestNeo4jConnectionTracker:
     @pytest.fixture
     def tracker(self):
         """Create connection tracker instance."""
-        return Neo4jConnectionTracker(container_name="neo4j-test", timeout=2.0)
+        # Explicitly set credentials for consistent test behavior
+        return Neo4jConnectionTracker(
+            container_name="neo4j-test", timeout=2.0, username="neo4j", password="amplihack"
+        )
 
     def test_get_active_connection_count_success(self, tracker):
         """Test successful connection count retrieval."""
@@ -182,7 +185,8 @@ class TestNeo4jConnectionTracker:
 
     def test_initialization_with_defaults(self):
         """Test tracker initialization with default values."""
-        tracker = Neo4jConnectionTracker()
+        # Use explicit credentials to avoid environment variable interference
+        tracker = Neo4jConnectionTracker(username="neo4j", password="amplihack")
 
         assert tracker.container_name == "neo4j-amplihack"
         assert tracker.timeout == 2.0

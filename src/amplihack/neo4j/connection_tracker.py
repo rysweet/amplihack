@@ -5,6 +5,7 @@ Used to decide whether it's safe to shutdown the database.
 """
 
 import logging
+import os
 from typing import Optional
 
 import requests
@@ -19,17 +20,29 @@ class Neo4jConnectionTracker:
     the dbms.listConnections() procedure.
     """
 
-    def __init__(self, container_name: str = "neo4j-amplihack", timeout: float = 2.0):
+    def __init__(
+        self,
+        container_name: str = "neo4j-amplihack",
+        timeout: float = 2.0,
+        username: str = None,
+        password: str = None,
+    ):
         """Initialize connection tracker.
 
         Args:
             container_name: Name of Neo4j Docker container (for logging)
             timeout: HTTP request timeout in seconds
+            username: Neo4j username (default: from NEO4J_USERNAME env or "neo4j")
+            password: Neo4j password (default: from NEO4J_PASSWORD env or "amplihack")
         """
         self.container_name = container_name
         self.timeout = timeout
         self.http_url = "http://localhost:7474/db/data/transaction/commit"
-        self.auth = ("neo4j", "amplihack")
+
+        # Use provided credentials or fall back to environment variables or defaults
+        neo4j_username = username or os.getenv("NEO4J_USERNAME", "neo4j")
+        neo4j_password = password or os.getenv("NEO4J_PASSWORD", "amplihack")
+        self.auth = (neo4j_username, neo4j_password)
 
     def get_active_connection_count(self) -> Optional[int]:
         """Query Neo4j for active connection count.
