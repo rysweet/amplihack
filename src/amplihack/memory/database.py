@@ -1,6 +1,7 @@
 """SQLite database implementation for Agent Memory System."""
 
 import json
+import logging
 import os
 import sqlite3
 import threading
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from .models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryDatabase:
@@ -143,43 +146,49 @@ class MemoryDatabase:
             True if successful, False otherwise
         """
         with self._lock:
+            conn = None
             try:
-                with self._get_connection() as conn:
-                    # Update session tracking
-                    self._update_session(conn, memory.session_id, memory.agent_id)
+                conn = self._get_connection()
+                # Update session tracking
+                self._update_session(conn, memory.session_id, memory.agent_id)
 
-                    # Store memory entry
-                    conn.execute(
-                        """
-                        INSERT OR REPLACE INTO memory_entries (
-                            id, session_id, agent_id, memory_type, title, content,
-                            metadata, tags, importance, created_at, accessed_at,
-                            expires_at, parent_id
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                        (
-                            memory.id,
-                            memory.session_id,
-                            memory.agent_id,
-                            memory.memory_type.value,
-                            memory.title,
-                            memory.content,
-                            json.dumps(memory.metadata),
-                            json.dumps(memory.tags) if memory.tags else None,
-                            memory.importance,
-                            memory.created_at.isoformat(),
-                            memory.accessed_at.isoformat(),
-                            memory.expires_at.isoformat() if memory.expires_at else None,
-                            memory.parent_id,
-                        ),
-                    )
+                # Store memory entry
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO memory_entries (
+                        id, session_id, agent_id, memory_type, title, content,
+                        metadata, tags, importance, created_at, accessed_at,
+                        expires_at, parent_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        memory.id,
+                        memory.session_id,
+                        memory.agent_id,
+                        memory.memory_type.value,
+                        memory.title,
+                        memory.content,
+                        json.dumps(memory.metadata),
+                        json.dumps(memory.tags) if memory.tags else None,
+                        memory.importance,
+                        memory.created_at.isoformat(),
+                        memory.accessed_at.isoformat(),
+                        memory.expires_at.isoformat() if memory.expires_at else None,
+                        memory.parent_id,
+                    ),
+                )
 
-                    conn.commit()
-                    return True
+                conn.commit()
+                return True
 
             except sqlite3.Error as e:
-                print(f"Database error storing memory {memory.id}: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error storing memory {memory.id}: {e}")
                 return False
+            finally:
+                if conn:
+                    conn.close()
 
     def retrieve_memories(self, query: MemoryQuery) -> List[MemoryEntry]:
         """Retrieve memories matching the query.
@@ -191,52 +200,58 @@ class MemoryDatabase:
             List of matching memory entries
         """
         with self._lock:
+            conn = None
             try:
-                with self._get_connection() as conn:
-                    where_clause, params = query.to_sql_where()
+                conn = self._get_connection()
+                where_clause, params = query.to_sql_where()
 
-                    sql = f"""
-                        SELECT id, session_id, agent_id, memory_type, title, content,
-                               metadata, tags, importance, created_at, accessed_at,
-                               expires_at, parent_id
-                        FROM memory_entries
-                        WHERE {where_clause}
-                        ORDER BY accessed_at DESC, importance DESC NULLS LAST
-                    """
+                sql = f"""
+                    SELECT id, session_id, agent_id, memory_type, title, content,
+                           metadata, tags, importance, created_at, accessed_at,
+                           expires_at, parent_id
+                    FROM memory_entries
+                    WHERE {where_clause}
+                    ORDER BY accessed_at DESC, importance DESC NULLS LAST
+                """
 
-                    if query.limit:
-                        sql += f" LIMIT {query.limit}"
-                        if query.offset:
-                            sql += f" OFFSET {query.offset}"
+                if query.limit:
+                    sql += f" LIMIT {query.limit}"
+                    if query.offset:
+                        sql += f" OFFSET {query.offset}"
 
-                    cursor = conn.execute(sql, params)
-                    rows = cursor.fetchall()
+                cursor = conn.execute(sql, params)
+                rows = cursor.fetchall()
 
-                    memories = []
-                    for row in rows:
-                        memory = self._row_to_memory(row)
-                        if memory:
-                            memories.append(memory)
+                memories = []
+                for row in rows:
+                    memory = self._row_to_memory(row)
+                    if memory:
+                        memories.append(memory)
 
-                    # Update access times for retrieved memories
-                    if memories:
-                        memory_ids = [m.id for m in memories]
-                        placeholders = ",".join(["?"] * len(memory_ids))
-                        conn.execute(
-                            f"""
-                            UPDATE memory_entries
-                            SET accessed_at = ?
-                            WHERE id IN ({placeholders})
-                        """,
-                            [datetime.now().isoformat()] + memory_ids,
-                        )
-                        conn.commit()
+                # Update access times for retrieved memories
+                if memories:
+                    memory_ids = [m.id for m in memories]
+                    placeholders = ",".join(["?"] * len(memory_ids))
+                    conn.execute(
+                        f"""
+                        UPDATE memory_entries
+                        SET accessed_at = ?
+                        WHERE id IN ({placeholders})
+                    """,
+                        [datetime.now().isoformat()] + memory_ids,
+                    )
+                    conn.commit()
 
-                    return memories
+                return memories
 
             except sqlite3.Error as e:
-                print(f"Database error retrieving memories: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error retrieving memories: {e}")
                 return []
+            finally:
+                if conn:
+                    conn.close()
 
     def get_memory_by_id(self, memory_id: str) -> Optional[MemoryEntry]:
         """Get a specific memory by ID.
@@ -248,37 +263,43 @@ class MemoryDatabase:
             Memory entry if found, None otherwise
         """
         with self._lock:
+            conn = None
             try:
-                with self._get_connection() as conn:
-                    cursor = conn.execute(
-                        """
-                        SELECT id, session_id, agent_id, memory_type, title, content,
-                               metadata, tags, importance, created_at, accessed_at,
-                               expires_at, parent_id
-                        FROM memory_entries
-                        WHERE id = ?
-                    """,
-                        (memory_id,),
-                    )
+                conn = self._get_connection()
+                cursor = conn.execute(
+                    """
+                    SELECT id, session_id, agent_id, memory_type, title, content,
+                           metadata, tags, importance, created_at, accessed_at,
+                           expires_at, parent_id
+                    FROM memory_entries
+                    WHERE id = ?
+                """,
+                    (memory_id,),
+                )
 
-                    row = cursor.fetchone()
-                    if row:
-                        memory = self._row_to_memory(row)
-                        if memory:
-                            # Update access time
-                            conn.execute(
-                                """
-                                UPDATE memory_entries
-                                SET accessed_at = ?
-                                WHERE id = ?
-                            """,
-                                (datetime.now().isoformat(), memory_id),
-                            )
-                            conn.commit()
-                        return memory
+                row = cursor.fetchone()
+                if row:
+                    memory = self._row_to_memory(row)
+                    if memory:
+                        # Update access time
+                        conn.execute(
+                            """
+                            UPDATE memory_entries
+                            SET accessed_at = ?
+                            WHERE id = ?
+                        """,
+                            (datetime.now().isoformat(), memory_id),
+                        )
+                        conn.commit()
+                    return memory
 
             except sqlite3.Error as e:
-                print(f"Database error retrieving memory {memory_id}: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error retrieving memory {memory_id}: {e}")
+            finally:
+                if conn:
+                    conn.close()
 
         return None
 
@@ -292,15 +313,21 @@ class MemoryDatabase:
             True if deleted, False otherwise
         """
         with self._lock:
+            conn = None
             try:
-                with self._get_connection() as conn:
-                    cursor = conn.execute("DELETE FROM memory_entries WHERE id = ?", (memory_id,))
-                    conn.commit()
-                    return cursor.rowcount > 0
+                conn = self._get_connection()
+                cursor = conn.execute("DELETE FROM memory_entries WHERE id = ?", (memory_id,))
+                conn.commit()
+                return cursor.rowcount > 0
 
             except sqlite3.Error as e:
-                print(f"Database error deleting memory {memory_id}: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error deleting memory {memory_id}: {e}")
                 return False
+            finally:
+                if conn:
+                    conn.close()
 
     def cleanup_expired(self) -> int:
         """Remove expired memory entries.
@@ -309,21 +336,27 @@ class MemoryDatabase:
             Number of entries removed
         """
         with self._lock:
+            conn = None
             try:
-                with self._get_connection() as conn:
-                    cursor = conn.execute(
-                        """
-                        DELETE FROM memory_entries
-                        WHERE expires_at IS NOT NULL AND expires_at < ?
-                    """,
-                        (datetime.now().isoformat(),),
-                    )
-                    conn.commit()
-                    return cursor.rowcount
+                conn = self._get_connection()
+                cursor = conn.execute(
+                    """
+                    DELETE FROM memory_entries
+                    WHERE expires_at IS NOT NULL AND expires_at < ?
+                """,
+                    (datetime.now().isoformat(),),
+                )
+                conn.commit()
+                return cursor.rowcount
 
             except sqlite3.Error as e:
-                print(f"Database error during cleanup: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error during cleanup: {e}")
                 return 0
+            finally:
+                if conn:
+                    conn.close()
 
     def get_session_info(self, session_id: str) -> Optional[SessionInfo]:
         """Get information about a session.
@@ -335,52 +368,58 @@ class MemoryDatabase:
             Session information if found
         """
         with self._lock:
+            conn = None
             try:
-                with self._get_connection() as conn:
-                    # Get session basic info
-                    cursor = conn.execute(
-                        """
-                        SELECT session_id, created_at, last_accessed, metadata
-                        FROM sessions WHERE session_id = ?
-                    """,
-                        (session_id,),
-                    )
+                conn = self._get_connection()
+                # Get session basic info
+                cursor = conn.execute(
+                    """
+                    SELECT session_id, created_at, last_accessed, metadata
+                    FROM sessions WHERE session_id = ?
+                """,
+                    (session_id,),
+                )
 
-                    session_row = cursor.fetchone()
-                    if not session_row:
-                        return None
+                session_row = cursor.fetchone()
+                if not session_row:
+                    return None
 
-                    # Get agent IDs for this session
-                    cursor = conn.execute(
-                        """
-                        SELECT agent_id FROM session_agents
-                        WHERE session_id = ?
-                        ORDER BY last_used DESC
-                    """,
-                        (session_id,),
-                    )
-                    agent_ids = [row[0] for row in cursor.fetchall()]
+                # Get agent IDs for this session
+                cursor = conn.execute(
+                    """
+                    SELECT agent_id FROM session_agents
+                    WHERE session_id = ?
+                    ORDER BY last_used DESC
+                """,
+                    (session_id,),
+                )
+                agent_ids = [row[0] for row in cursor.fetchall()]
 
-                    # Get memory count
-                    cursor = conn.execute(
-                        """
-                        SELECT COUNT(*) FROM memory_entries WHERE session_id = ?
-                    """,
-                        (session_id,),
-                    )
-                    memory_count = cursor.fetchone()[0]
+                # Get memory count
+                cursor = conn.execute(
+                    """
+                    SELECT COUNT(*) FROM memory_entries WHERE session_id = ?
+                """,
+                    (session_id,),
+                )
+                memory_count = cursor.fetchone()[0]
 
-                    return SessionInfo(
-                        session_id=session_row[0],
-                        created_at=datetime.fromisoformat(session_row[1]),
-                        last_accessed=datetime.fromisoformat(session_row[2]),
-                        agent_ids=agent_ids,
-                        memory_count=memory_count,
-                        metadata=json.loads(session_row[3]),
-                    )
+                return SessionInfo(
+                    session_id=session_row[0],
+                    created_at=datetime.fromisoformat(session_row[1]),
+                    last_accessed=datetime.fromisoformat(session_row[2]),
+                    agent_ids=agent_ids,
+                    memory_count=memory_count,
+                    metadata=json.loads(session_row[3]),
+                )
 
             except sqlite3.Error as e:
-                print(f"Database error getting session info: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error getting session info: {e}")
+            finally:
+                if conn:
+                    conn.close()
 
         return None
 
@@ -394,58 +433,64 @@ class MemoryDatabase:
             List of session information
         """
         with self._lock:
+            conn = None
             try:
-                with self._get_connection() as conn:
-                    sql = """
-                        SELECT session_id, created_at, last_accessed, metadata
-                        FROM sessions
-                        ORDER BY last_accessed DESC
-                    """
-                    if limit:
-                        sql += f" LIMIT {limit}"
+                conn = self._get_connection()
+                sql = """
+                    SELECT session_id, created_at, last_accessed, metadata
+                    FROM sessions
+                    ORDER BY last_accessed DESC
+                """
+                if limit:
+                    sql += f" LIMIT {limit}"
 
-                    cursor = conn.execute(sql)
-                    sessions = []
+                cursor = conn.execute(sql)
+                sessions = []
 
-                    for row in cursor.fetchall():
-                        session_id = row[0]
+                for row in cursor.fetchall():
+                    session_id = row[0]
 
-                        # Get agent IDs for this session
-                        agent_cursor = conn.execute(
-                            """
-                            SELECT agent_id FROM session_agents
-                            WHERE session_id = ?
-                            ORDER BY last_used DESC
-                        """,
-                            (session_id,),
+                    # Get agent IDs for this session
+                    agent_cursor = conn.execute(
+                        """
+                        SELECT agent_id FROM session_agents
+                        WHERE session_id = ?
+                        ORDER BY last_used DESC
+                    """,
+                        (session_id,),
+                    )
+                    agent_ids = [agent_row[0] for agent_row in agent_cursor.fetchall()]
+
+                    # Get memory count
+                    count_cursor = conn.execute(
+                        """
+                        SELECT COUNT(*) FROM memory_entries WHERE session_id = ?
+                    """,
+                        (session_id,),
+                    )
+                    memory_count = count_cursor.fetchone()[0]
+
+                    sessions.append(
+                        SessionInfo(
+                            session_id=row[0],
+                            created_at=datetime.fromisoformat(row[1]),
+                            last_accessed=datetime.fromisoformat(row[2]),
+                            agent_ids=agent_ids,
+                            memory_count=memory_count,
+                            metadata=json.loads(row[3]),
                         )
-                        agent_ids = [agent_row[0] for agent_row in agent_cursor.fetchall()]
+                    )
 
-                        # Get memory count
-                        count_cursor = conn.execute(
-                            """
-                            SELECT COUNT(*) FROM memory_entries WHERE session_id = ?
-                        """,
-                            (session_id,),
-                        )
-                        memory_count = count_cursor.fetchone()[0]
-
-                        sessions.append(
-                            SessionInfo(
-                                session_id=row[0],
-                                created_at=datetime.fromisoformat(row[1]),
-                                last_accessed=datetime.fromisoformat(row[2]),
-                                agent_ids=agent_ids,
-                                memory_count=memory_count,
-                                metadata=json.loads(row[3]),
-                            )
-                        )
-
-                    return sessions
+                return sessions
 
             except sqlite3.Error as e:
-                print(f"Database error listing sessions: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error listing sessions: {e}")
                 return []
+            finally:
+                if conn:
+                    conn.close()
 
     def get_stats(self) -> Dict[str, Any]:
         """Get database statistics.
@@ -454,44 +499,50 @@ class MemoryDatabase:
             Dictionary with database statistics
         """
         with self._lock:
+            conn = None
             try:
-                with self._get_connection() as conn:
-                    stats = {}
+                conn = self._get_connection()
+                stats = {}
 
-                    # Total memory count
-                    cursor = conn.execute("SELECT COUNT(*) FROM memory_entries")
-                    stats["total_memories"] = cursor.fetchone()[0]
+                # Total memory count
+                cursor = conn.execute("SELECT COUNT(*) FROM memory_entries")
+                stats["total_memories"] = cursor.fetchone()[0]
 
-                    # Session count
-                    cursor = conn.execute("SELECT COUNT(*) FROM sessions")
-                    stats["total_sessions"] = cursor.fetchone()[0]
+                # Session count
+                cursor = conn.execute("SELECT COUNT(*) FROM sessions")
+                stats["total_sessions"] = cursor.fetchone()[0]
 
-                    # Memory types breakdown
-                    cursor = conn.execute("""
-                        SELECT memory_type, COUNT(*)
-                        FROM memory_entries
-                        GROUP BY memory_type
-                    """)
-                    stats["memory_types"] = dict(cursor.fetchall())
+                # Memory types breakdown
+                cursor = conn.execute("""
+                    SELECT memory_type, COUNT(*)
+                    FROM memory_entries
+                    GROUP BY memory_type
+                """)
+                stats["memory_types"] = dict(cursor.fetchall())
 
-                    # Agent activity
-                    cursor = conn.execute("""
-                        SELECT agent_id, COUNT(*)
-                        FROM memory_entries
-                        GROUP BY agent_id
-                        ORDER BY COUNT(*) DESC
-                        LIMIT 10
-                    """)
-                    stats["top_agents"] = dict(cursor.fetchall())
+                # Agent activity
+                cursor = conn.execute("""
+                    SELECT agent_id, COUNT(*)
+                    FROM memory_entries
+                    GROUP BY agent_id
+                    ORDER BY COUNT(*) DESC
+                    LIMIT 10
+                """)
+                stats["top_agents"] = dict(cursor.fetchall())
 
-                    # Database size
-                    stats["db_size_bytes"] = self.db_path.stat().st_size
+                # Database size
+                stats["db_size_bytes"] = self.db_path.stat().st_size
 
-                    return stats
+                return stats
 
             except sqlite3.Error as e:
-                print(f"Database error getting stats: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error getting stats: {e}")
                 return {}
+            finally:
+                if conn:
+                    conn.close()
 
     def _update_session(self, conn: sqlite3.Connection, session_id: str, agent_id: str) -> None:
         """Update session and agent tracking."""
