@@ -427,7 +427,7 @@ Bundle ID: {bundle.id}
 
     def extract_package(self, package_path: Path, target_path: Path) -> AgentBundle:
         """
-        Extract a packaged bundle.
+        Extract a packaged bundle with checksum verification.
 
         Args:
             package_path: Path to package file
@@ -437,7 +437,7 @@ Bundle ID: {bundle.id}
             Extracted AgentBundle
 
         Raises:
-            PackagingError: If extraction fails
+            PackagingError: If extraction fails or checksum verification fails
         """
         if not package_path.exists():
             raise PackagingError(f"Package not found: {package_path}")
@@ -465,6 +465,17 @@ Bundle ID: {bundle.id}
 
             with open(manifest_path) as f:
                 manifest = json.load(f)
+
+            # Verify checksum before proceeding
+            if "checksum" in manifest:
+                calculated_checksum = self._calculate_checksum(package_path)
+                expected_checksum = manifest.get("checksum")
+                if calculated_checksum != expected_checksum:
+                    raise PackagingError(
+                        f"Package checksum mismatch - possible corruption or tampering. "
+                        f"Expected: {expected_checksum}, Got: {calculated_checksum}",
+                        file_path=str(package_path),
+                    )
 
             # Load agents from extracted files
             from .models import GeneratedAgent
