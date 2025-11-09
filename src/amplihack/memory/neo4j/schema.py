@@ -42,6 +42,7 @@ class SchemaManager:
             - Unique constraints on ID fields
             - Performance indexes
             - Agent type seed data
+            - CodeIndexMetadata label and properties
         """
         logger.info("Initializing Neo4j schema")
 
@@ -49,6 +50,7 @@ class SchemaManager:
             self._create_constraints()
             self._create_indexes()
             self._seed_agent_types()
+            self._initialize_code_index_metadata()
 
             logger.info("Schema initialization complete")
             return True
@@ -148,6 +150,11 @@ class SchemaManager:
             CREATE CONSTRAINT memory_id IF NOT EXISTS
             FOR (m:Memory) REQUIRE m.id IS UNIQUE
             """,
+            # CodeIndexMetadata project_root uniqueness
+            """
+            CREATE CONSTRAINT code_index_metadata_project_root IF NOT EXISTS
+            FOR (m:CodeIndexMetadata) REQUIRE m.project_root IS UNIQUE
+            """,
         ]
 
         for constraint in constraints:
@@ -179,6 +186,11 @@ class SchemaManager:
             """
             CREATE INDEX project_path IF NOT EXISTS
             FOR (p:Project) ON (p.path)
+            """,
+            # CodeIndexMetadata last_updated index (for sorting/filtering)
+            """
+            CREATE INDEX code_index_metadata_last_updated IF NOT EXISTS
+            FOR (m:CodeIndexMetadata) ON (m.last_updated)
             """,
         ]
 
@@ -228,7 +240,7 @@ class SchemaManager:
 
     def _verify_constraints(self) -> bool:
         """Verify constraints exist."""
-        expected = ["agent_type_id", "project_id", "memory_id"]
+        expected = ["agent_type_id", "project_id", "memory_id", "code_index_metadata_project_root"]
 
         result = self.conn.execute_query("SHOW CONSTRAINTS")
         existing = [r.get("name") for r in result]
@@ -242,7 +254,7 @@ class SchemaManager:
 
     def _verify_indexes(self) -> bool:
         """Verify indexes exist."""
-        expected = ["memory_type", "memory_created_at", "agent_type_name", "project_path"]
+        expected = ["memory_type", "memory_created_at", "agent_type_name", "project_path", "code_index_metadata_last_updated"]
 
         result = self.conn.execute_query("SHOW INDEXES")
         existing = [r.get("name") for r in result]
@@ -268,3 +280,25 @@ class SchemaManager:
             return False
 
         return True
+
+    def _initialize_code_index_metadata(self):
+        """Initialize CodeIndexMetadata label and properties (idempotent).
+
+        Creates a placeholder node to ensure the label and properties exist
+        in the database schema. This prevents Neo4j warnings when queries
+        use OPTIONAL MATCH on CodeIndexMetadata before any actual metadata
+        has been created.
+        """
+        query = """
+        MERGE (m:CodeIndexMetadata {project_root: '__placeholder__'})
+        ON CREATE SET
+            m.last_updated = NULL,
+            m.file_count = 0,
+            m.is_placeholder = true
+        """
+
+        try:
+            self.conn.execute_write(query)
+            logger.debug("Initialized CodeIndexMetadata schema")
+        except Exception as e:
+            logger.debug("CodeIndexMetadata schema already initialized or error: %s", e)
