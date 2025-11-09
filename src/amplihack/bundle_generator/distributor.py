@@ -104,12 +104,31 @@ class GitHubDistributor:
                 distribution_time_seconds=distribution_time,
             )
 
-        except Exception as e:
+        except (DistributionError, RateLimitError, TimeoutError) as e:
+            logger.error(f"Distribution failed (expected): {e}", exc_info=True)
             return DistributionResult(
                 success=False,
                 platform="github",
                 repository=repository,
                 errors=[str(e)],
+                distribution_time_seconds=time.time() - start_time,
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Git operation failed: {e.stderr}", exc_info=True)
+            return DistributionResult(
+                success=False,
+                platform="github",
+                repository=repository,
+                errors=[f"Git command failed: {e.stderr or str(e)}"],
+                distribution_time_seconds=time.time() - start_time,
+            )
+        except Exception as e:
+            logger.error(f"Unexpected distribution error: {type(e).__name__}: {e}", exc_info=True)
+            return DistributionResult(
+                success=False,
+                platform="github",
+                repository=repository,
+                errors=[f"{type(e).__name__}: {str(e)}"],
                 distribution_time_seconds=time.time() - start_time,
             )
 
@@ -229,6 +248,7 @@ class GitHubDistributor:
         """Upload package contents to repository."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
+            repo_path = None
 
             try:
                 # Clone repository
@@ -240,82 +260,117 @@ class GitHubDistributor:
                 if result.returncode != 0:
                     # Try to initialize if clone failed
                     repo_path = temp_path / "repo"
-                    repo_path.mkdir()
-
-                    subprocess.run(["git", "init"], cwd=repo_path, check=True, timeout=10)
-
-                    subprocess.run(
-                        ["git", "remote", "add", "origin", repo_url],
-                        cwd=repo_path,
-                        check=True,
-                        timeout=10,
-                    )
+                    try:
+                        repo_path.mkdir()
+                        subprocess.run(["git", "init"], cwd=repo_path, check=True, timeout=10)
+                        subprocess.run(
+                            ["git", "remote", "add", "origin", repo_url],
+                            cwd=repo_path,
+                            check=True,
+                            timeout=10,
+                        )
+                    except subprocess.TimeoutExpired as te:
+                        raise TimeoutError(
+                            "Git initialization timed out", operation="repo_init", timeout_seconds=10
+                        ) from te
                 else:
                     repo_path = temp_path / "repo"
 
                 # Copy package contents
-                if package.package_path.is_dir():
-                    # Copy directory contents
-                    for item in package.package_path.iterdir():
-                        if item.is_dir():
-                            shutil.copytree(item, repo_path / item.name, dirs_exist_ok=True)
-                        else:
-                            shutil.copy2(item, repo_path)
-                # Extract archive to repo
-                elif package.format == "zip":
-                    import zipfile
-
-                    with zipfile.ZipFile(package.package_path, "r") as zipf:
-                        zipf.extractall(repo_path)
-                elif package.format in ["tar.gz", "uvx"]:
-                    import tarfile
-
-                    with tarfile.open(package.package_path, "r:*") as tar:
-                        tar.extractall(repo_path)
+                try:
+                    if package.package_path.is_dir():
+                        # Copy directory contents
+                        for item in package.package_path.iterdir():
+                            if item.is_dir():
+                                shutil.copytree(item, repo_path / item.name, dirs_exist_ok=True)
+                            else:
+                                shutil.copy2(item, repo_path)
+                    # Extract archive to repo
+                    elif package.format == "zip":
+                        import zipfile
+                        with zipfile.ZipFile(package.package_path, "r") as zipf:
+                            zipf.extractall(repo_path)
+                    elif package.format in ["tar.gz", "uvx"]:
+                        import tarfile
+                        with tarfile.open(package.package_path, "r:*") as tar:
+                            tar.extractall(repo_path)
+                except Exception as e:
+                    raise DistributionError(
+                        f"Failed to copy package contents: {e}",
+                        platform="github",
+                        repository=repo_url,
+                    ) from e
 
                 # Create or update README
-                readme_path = repo_path / "README.md"
-                if not readme_path.exists():
-                    readme_content = self._generate_repo_readme(package)
-                    readme_path.write_text(readme_content)
+                try:
+                    readme_path = repo_path / "README.md"
+                    if not readme_path.exists():
+                        readme_content = self._generate_repo_readme(package)
+                        readme_path.write_text(readme_content)
+                except OSError as e:
+                    raise DistributionError(
+                        f"Failed to write README: {e}", platform="github", repository=repo_url
+                    ) from e
 
-                # Git add, commit, and push
-                subprocess.run(["git", "add", "."], cwd=repo_path, check=True, timeout=30)
+                # Git add, commit, and push with explicit error handling
+                try:
+                    subprocess.run(["git", "add", "."], cwd=repo_path, check=True, timeout=30)
 
-                commit_message = f"Add {package.bundle.name} v{package.bundle.version}"
-                subprocess.run(
-                    ["git", "commit", "-m", commit_message], cwd=repo_path, check=True, timeout=30
-                )
+                    commit_message = f"Add {package.bundle.name} v{package.bundle.version}"
+                    subprocess.run(
+                        ["git", "commit", "-m", commit_message], cwd=repo_path, check=True, timeout=30
+                    )
 
-                # Get commit SHA
-                result = subprocess.run(
-                    ["git", "rev-parse", "HEAD"],
-                    check=False,
-                    cwd=repo_path,
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-                commit_sha = result.stdout.strip()
+                    # Get commit SHA
+                    result = subprocess.run(
+                        ["git", "rev-parse", "HEAD"],
+                        check=False,
+                        cwd=repo_path,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    commit_sha = result.stdout.strip()
 
-                # Push to remote
-                subprocess.run(
-                    ["git", "push", "origin", self.default_branch],
-                    cwd=repo_path,
-                    check=True,
-                    timeout=120,
-                )
+                    # Push to remote
+                    subprocess.run(
+                        ["git", "push", "origin", self.default_branch],
+                        cwd=repo_path,
+                        check=True,
+                        timeout=120,
+                    )
 
-                return commit_sha
+                    return commit_sha
+
+                except subprocess.TimeoutExpired as te:
+                    operation = "package_upload"
+                    if "push" in str(te):
+                        operation = "git_push"
+                    raise TimeoutError(
+                        "Git operation timed out", operation=operation, timeout_seconds=120
+                    ) from te
 
             except subprocess.CalledProcessError as e:
+                error_msg = f"Git operation failed: {e.stderr if hasattr(e, 'stderr') else str(e)}"
+                logger.error(error_msg, exc_info=True)
                 raise DistributionError(
-                    f"Git operation failed: {e}", platform="github", repository=repo_url
-                )
-            except subprocess.TimeoutExpired:
+                    error_msg, platform="github", repository=repo_url
+                ) from e
+            except subprocess.TimeoutExpired as te:
+                logger.error(f"Git command timed out: {te}", exc_info=True)
                 raise TimeoutError(
                     "Git operation timed out", operation="package_upload", timeout_seconds=120
-                )
+                ) from te
+            except (DistributionError, TimeoutError):
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error during package upload: {type(e).__name__}: {e}", exc_info=True)
+                raise DistributionError(
+                    f"Unexpected error during upload: {type(e).__name__}: {e}",
+                    platform="github",
+                    repository=repo_url,
+                ) from e
 
     def _create_release(
         self, repository: str, package: PackagedBundle, commit_sha: str, options: Dict[str, Any]

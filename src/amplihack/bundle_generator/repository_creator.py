@@ -244,21 +244,41 @@ class RepositoryCreator:
                 repository=full_repo_name,
             )
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
+            logger.error(f"GitHub operation timed out: {e}", exc_info=True)
             return RepositoryResult(
                 success=False,
                 error="GitHub operation timed out",
             )
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Git command failed: {e.stderr or str(e)}", exc_info=True)
+            return RepositoryResult(
+                success=False,
+                error=f"Git operation failed: {e.stderr or str(e)}",
+            )
         except json.JSONDecodeError as e:
+            logger.error(f"Invalid manifest.json: {e}", exc_info=True)
             return RepositoryResult(
                 success=False,
                 error=f"Invalid manifest.json: {e}",
             )
-        except Exception as e:
-            logger.exception("Repository creation failed")
+        except (FileNotFoundError, NotADirectoryError) as e:
+            logger.error(f"Invalid bundle path: {e}", exc_info=True)
             return RepositoryResult(
                 success=False,
-                error=str(e),
+                error=f"Invalid bundle path: {e}",
+            )
+        except RuntimeError as e:
+            logger.error(f"Runtime error during repository creation: {e}", exc_info=True)
+            return RepositoryResult(
+                success=False,
+                error=f"Operation failed: {e}",
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error during repository creation: {type(e).__name__}: {e}", exc_info=True)
+            return RepositoryResult(
+                success=False,
+                error=f"{type(e).__name__}: {str(e)}",
             )
 
     def _run_git_command(

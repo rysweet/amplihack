@@ -69,26 +69,48 @@ class UpdateManager:
                 recovery_suggestion="Ensure this is a valid bundle directory",
             )
 
-        with open(manifest_path) as f:
-            manifest = json.load(f)
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+        except FileNotFoundError as e:
+            raise BundleGeneratorError(
+                f"Manifest file not found: {manifest_path}",
+                recovery_suggestion="Ensure manifest.json exists in bundle directory",
+            ) from e
+        except json.JSONDecodeError as e:
+            raise BundleGeneratorError(
+                f"Invalid JSON in manifest: {e}",
+                recovery_suggestion="Ensure manifest.json is valid JSON format",
+            ) from e
+        except (IOError, OSError) as e:
+            raise BundleGeneratorError(
+                f"Cannot read manifest file: {e}",
+                recovery_suggestion="Check file permissions and disk space",
+            ) from e
 
         current_version = manifest.get("framework", {}).get("version", "unknown")
 
         # Get latest version from framework repo
         try:
             latest_version = self._get_framework_version()
+        except BundleGeneratorError:
+            # Re-raise our custom exception
+            raise
         except Exception as e:
             raise BundleGeneratorError(
-                f"Could not detect framework version: {e}",
+                f"Could not detect framework version: {type(e).__name__}: {e}",
                 recovery_suggestion="Ensure framework repository is accessible",
-            )
+            ) from e
 
         # Get changelog if versions differ
         changes = []
         if current_version != latest_version:
             try:
                 changes = self._get_changelog(current_version, latest_version)
-            except Exception:
+            except BundleGeneratorError:
+                changes = ["Changelog unavailable due to error"]
+            except Exception as e:
+                logger.warning(f"Failed to retrieve changelog: {type(e).__name__}: {e}")
                 changes = ["Changelog unavailable"]
 
         return UpdateInfo(

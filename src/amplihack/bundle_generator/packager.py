@@ -115,12 +115,43 @@ class UVXPackager:
                 uvx_metadata=uvx_metadata,
             )
 
-        except Exception as e:
+        except PackagingError:
+            # Re-raise our custom exception
+            raise
+        except (OSError, IOError, FileNotFoundError, PermissionError) as e:
+            # File system errors - cleanup
+            if "package_path" in locals() and package_path.exists():
+                try:
+                    if package_path.is_dir():
+                        shutil.rmtree(package_path)
+                    else:
+                        package_path.unlink()
+                    logger.debug(f"Cleaned up failed package directory: {package_path}")
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup package directory: {cleanup_error}")
+
             raise PackagingError(
-                f"Failed to package bundle: {e!s}",
+                f"File system error during packaging: {e!s}",
                 package_format=format,
                 file_path=str(package_path) if "package_path" in locals() else None,
-            )
+            ) from e
+        except Exception as e:
+            # Cleanup on unexpected error
+            if "package_path" in locals() and package_path.exists():
+                try:
+                    if package_path.is_dir():
+                        shutil.rmtree(package_path)
+                    else:
+                        package_path.unlink()
+                    logger.debug(f"Cleaned up failed package after error: {package_path}")
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup package directory after error: {cleanup_error}")
+
+            raise PackagingError(
+                f"Failed to package bundle: {type(e).__name__}: {e!s}",
+                package_format=format,
+                file_path=str(package_path) if "package_path" in locals() else None,
+            ) from e
 
     def _prepare_structure(self, bundle: AgentBundle, package_path: Path) -> None:
         """Prepare bundle directory structure."""

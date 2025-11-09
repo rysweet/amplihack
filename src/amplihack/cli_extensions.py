@@ -78,8 +78,15 @@ def generate(prompt: str, output: str, validate: bool, test: bool):
         if e.recovery_suggestion:
             click.echo(f"💡 Suggestion: {e.recovery_suggestion}", err=True)
         raise click.Abort()
+    except (ValueError, TypeError, OSError, IOError) as e:
+        click.echo(f"❌ Input validation error: {e}", err=True)
+        raise click.Abort()
     except Exception as e:
-        click.echo(f"❌ Unexpected error: {e}", err=True)
+        click.echo(f"❌ Unexpected error: {type(e).__name__}: {e}", err=True)
+        import traceback
+        import os
+        if os.getenv("DEBUG"):
+            click.echo(traceback.format_exc(), err=True)
         raise click.Abort()
 
 
@@ -106,8 +113,11 @@ def package(bundle_path: str, format: str, output: Optional[str]):
 
         click.echo(f"✅ Package created: {package_path}")
 
+    except (ValueError, KeyError, OSError) as e:
+        click.echo(f"❌ Packaging configuration error: {e}", err=True)
+        raise click.Abort()
     except Exception as e:
-        click.echo(f"❌ Error: {e}", err=True)
+        click.echo(f"❌ Packaging error: {type(e).__name__}: {e}", err=True)
         raise click.Abort()
 
 
@@ -143,8 +153,11 @@ def distribute(package_path: str, github: bool, pypi: bool, local: bool, release
             url = distributor.distribute(package_path, DistributionMethod.LOCAL)
             click.echo(f"✅ Saved to: {url}")
 
+    except (FileNotFoundError, PermissionError, OSError) as e:
+        click.echo(f"❌ Distribution path error: {e}", err=True)
+        raise click.Abort()
     except Exception as e:
-        click.echo(f"❌ Error: {e}", err=True)
+        click.echo(f"❌ Distribution error: {type(e).__name__}: {e}", err=True)
         raise click.Abort()
 
 
@@ -189,8 +202,11 @@ def pipeline(prompt: str, output: str, format: str, distribute: bool):
         if distribute:
             click.echo(f"🌐 URL: {url}")
 
+    except (ValueError, OSError, FileNotFoundError) as e:
+        click.echo(f"❌ Pipeline configuration error: {e}", err=True)
+        raise click.Abort()
     except Exception as e:
-        click.echo(f"❌ Pipeline failed: {e}", err=True)
+        click.echo(f"❌ Pipeline failed: {type(e).__name__}: {e}", err=True)
         raise click.Abort()
 
 
