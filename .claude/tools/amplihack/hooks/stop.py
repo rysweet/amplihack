@@ -27,6 +27,13 @@ except ImportError as e:
     print("Make sure hook_processor.py exists in the same directory", file=sys.stderr)
     sys.exit(1)
 
+# Default continuation prompt when no custom prompt is provided
+DEFAULT_CONTINUATION_PROMPT = (
+    "we must keep pursuing the user's objective and must not stop the turn - "
+    "look for any additional TODOs, next steps, or unfinished work and pursue it "
+    "diligently in as many parallel tasks as you can"
+)
+
 
 class StopHook(HookProcessor):
     """Hook processor for stop events with lock support."""
@@ -34,6 +41,9 @@ class StopHook(HookProcessor):
     def __init__(self):
         super().__init__("stop")
         self.lock_flag = self.project_root / ".claude" / "runtime" / "locks" / ".lock_active"
+        self.continuation_prompt_file = (
+            self.project_root / ".claude" / "runtime" / "locks" / ".continuation_prompt"
+        )
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Check lock flag and block stop if active.
@@ -60,10 +70,14 @@ class StopHook(HookProcessor):
             # Lock is active - block stop and continue working
             self.log("Lock is active - blocking stop to continue working")
             self.save_metric("lock_blocks", 1)
+
+            # Read custom continuation prompt or use default
+            continuation_prompt = self.read_continuation_prompt()
+
             self.log("=== STOP HOOK ENDED (decision: block - lock active) ===")
             return {
                 "decision": "block",
-                "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
+                "reason": continuation_prompt,
             }
 
         # Neo4j cleanup integration (runs before reflection to ensure database state is managed
@@ -187,6 +201,52 @@ class StopHook(HookProcessor):
 
         except Exception as e:
             self.log(f"Neo4j cleanup failed: {e}", "WARNING")
+
+    def read_continuation_prompt(self) -> str:
+        """Read custom continuation prompt from file or return default.
+
+        Returns:
+            str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
+        """
+        # Check if custom prompt file exists
+        if not self.continuation_prompt_file.exists():
+            self.log("No custom continuation prompt file - using default")
+            return DEFAULT_CONTINUATION_PROMPT
+
+        try:
+            # Read prompt content
+            content = self.continuation_prompt_file.read_text(encoding="utf-8").strip()
+
+            # Check if empty
+            if not content:
+                self.log("Custom continuation prompt file is empty - using default")
+                return DEFAULT_CONTINUATION_PROMPT
+
+            # Check length constraints
+            content_len = len(content)
+
+            # Hard limit: 1000 characters
+            if content_len > 1000:
+                self.log(
+                    f"Custom prompt too long ({content_len} chars) - using default",
+                    "WARNING",
+                )
+                return DEFAULT_CONTINUATION_PROMPT
+
+            # Warning for long prompts (500-1000 chars)
+            if content_len > 500:
+                self.log(
+                    f"Custom prompt is long ({content_len} chars) - consider shortening for clarity",
+                    "WARNING",
+                )
+
+            # Valid custom prompt
+            self.log(f"Using custom continuation prompt ({content_len} chars)")
+            return content
+
+        except (PermissionError, OSError, UnicodeDecodeError) as e:
+            self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
+            return DEFAULT_CONTINUATION_PROMPT
 
     def _should_run_reflection(self) -> bool:
         """Check if reflection should run based on config and environment.

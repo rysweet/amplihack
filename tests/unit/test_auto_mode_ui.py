@@ -730,7 +730,7 @@ class TestUIBoundaryConditions:
 
             # This will fail until edge case is handled
             with pytest.raises((AttributeError, ValueError)):
-                session_text = auto_mode.ui.get_session_details()
+                auto_mode.ui.get_session_details()
                 # Should not crash
 
     def test_ui_handles_negative_elapsed_time(self):

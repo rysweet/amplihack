@@ -101,7 +101,7 @@ class TestFullWorkflowStartAutoAppendProcess:
         with patch("pathlib.Path.cwd", return_value=workspace):
             # This will fail until append_instructions is implemented
             try:
-                result = append_instructions(new_instruction)
+                append_instructions(new_instruction)
 
                 # Verify instruction file created
                 md_files = list(auto_mode.append_dir.glob("*.md"))
@@ -319,7 +319,7 @@ class TestAppendFromSubdirectory:
 
         with patch("pathlib.Path.cwd", return_value=api_dir):
             try:
-                result = append_instructions(instruction)
+                append_instructions(instruction)
 
                 # Verify written to workspace session
                 md_files = list(auto_mode.append_dir.glob("*.md"))
@@ -383,7 +383,7 @@ class TestAppendFromSubdirectory:
 
         with patch("pathlib.Path.cwd", return_value=deep_dir):
             try:
-                result = append_instructions(instruction)
+                append_instructions(instruction)
 
                 # Should still find and write to workspace session
                 md_files = list(auto_mode.append_dir.glob("*.md"))
@@ -431,7 +431,7 @@ class TestSessionFinderIntegration:
 
         with patch("pathlib.Path.cwd", return_value=workspace):
             try:
-                result = append_instructions(instruction)
+                append_instructions(instruction)
 
                 # Should write to most recent session (first in list, largest timestamp)
                 most_recent_session_id, most_recent_dir = sessions[0]
@@ -464,7 +464,7 @@ class TestSessionFinderIntegration:
         with patch("pathlib.Path.cwd", return_value=workspace):
             try:
                 # Append with SDK filter
-                result = append_instructions(instruction, sdk_filter="copilot")
+                append_instructions(instruction, sdk_filter="copilot")
 
                 # Should write to copilot session
                 md_files = list((copilot_session / "append").glob("*.md"))
