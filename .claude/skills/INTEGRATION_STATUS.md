@@ -4,10 +4,10 @@
 
 | Skill | Status | Dependencies | Tests | PR | Notes |
 |-------|--------|--------------|-------|----|----|
-| pdf   | ✓ Integrated | ✓ Documented | ✓ Passing | #1 | Ready for use |
-| xlsx  | ✗ Not Started | - | - | - | Planned PR #2 |
-| docx  | ✗ Not Started | - | - | - | Planned PR #3 |
-| pptx  | ✗ Not Started | - | - | - | Planned PR #4 |
+| pdf   | ✓ Integrated | ✓ Documented | ✓ Passing | #1259 | Ready for use |
+| xlsx  | ✓ Integrated | ✓ Documented | ✓ Passing | #1260 (Issue #1247) | Ready for use |
+| docx  | ✗ Not Started | - | - | #1261 | In progress |
+| pptx  | ✗ Not Started | - | - | #1262 | In progress |
 
 ## Status Legend
 
@@ -20,62 +20,34 @@
 
 Following the architecture specification, skills are integrated from simplest to most complex:
 
-1. **PDF** (PR #1) - Simplest
+1. **PDF** (PR #1259) - Simplest - COMPLETE
    - No external scripts
    - Pure Python libraries
    - Fewest system dependencies
    - Good learning opportunity
 
-2. **XLSX** (PR #2) - Moderate
+2. **XLSX** (PR #1260) - Moderate - COMPLETE
    - One script (recalc.py)
    - Moderate dependencies
    - Tests common OOXML pattern
 
-3. **DOCX** (PR #3) - Moderate-Complex
+3. **DOCX** (PR #1261) - Moderate-Complex - IN PROGRESS
    - Requires common OOXML infrastructure
    - Sets up symlink pattern
    - More dependencies
 
-4. **PPTX** (PR #4) - Most Complex
+4. **PPTX** (PR #1262) - Most Complex - IN PROGRESS
    - Heaviest dependencies
    - Most OOXML scripts
    - Builds on docx patterns
 
 **Rationale**: Start simple, build confidence, increase complexity.
 
-## Current Status: PR #1 (PDF Skill)
+## Completed Integrations
 
-### Completed Items
+### PDF Skill (PR #1259)
 
-- [x] Created `.claude/skills/` directory structure
-- [x] Copied PDF SKILL.md from Anthropic repository
-- [x] Created PDF README.md with integration notes
-- [x] Created PDF DEPENDENCIES.md with complete dependency list
-- [x] Created tests/test_pdf_skill.py with verification tests
-- [x] Created examples/example_usage.md with usage examples
-- [x] Created common/verification/verify_skill.py
-- [x] Created root README.md
-- [x] Created INTEGRATION_STATUS.md (this file)
-- [x] All tests passing or skipping gracefully
-- [x] Documentation reviewed for clarity
-
-### Infrastructure Established (PR #1)
-
-The PDF skill integration establishes foundational infrastructure:
-
-- `.claude/skills/` directory structure
-- Common verification utilities
-- Testing patterns for dependency handling
-- Documentation templates
-- Integration status tracking
-
-This infrastructure will be reused by subsequent PRs (XLSX, DOCX, PPTX).
-
-## Per-Skill Status Details
-
-### PDF Skill (PR #1)
-
-**Status**: ✓ Integrated
+**Status**: ✓ Integrated (MERGED to main)
 
 **Files Created**:
 - ✓ `.claude/skills/pdf/SKILL.md` - Official skill from Anthropic
@@ -96,30 +68,46 @@ This infrastructure will be reused by subsequent PRs (XLSX, DOCX, PPTX).
 
 **Test Status**: All tests pass with dependencies installed, skip gracefully without
 
-**Known Issues**: None
+**Merged**: Commit 286f253
 
-**Next Steps**: Merge PR #1, begin PR #2 (XLSX skill)
+### XLSX Skill (PR #1260)
 
-### XLSX Skill (PR #2)
+**Status**: ✓ Integrated (Ready for merge)
 
-**Status**: ✗ Not Started
+**Completed Items**:
+- ✓ Skill directory structure created
+- ✓ SKILL.md copied from Anthropic repository
+- ✓ README.md with amplihack-specific integration notes
+- ✓ DEPENDENCIES.md with complete dependency list (pandas, openpyxl, LibreOffice)
+- ✓ scripts/recalc.py for formula recalculation (executable)
+- ✓ tests/test_xlsx_skill.py with 4 test levels and graceful skipping
+- ✓ examples/example_usage.md with 10 comprehensive examples
 
-**Planned Work**:
-- Copy SKILL.md from Anthropic
-- Create README.md, DEPENDENCIES.md
-- Extract recalc.py script
-- Create tests and examples
-- Document LibreOffice requirement
+**Key Features**:
+- Excel file creation and editing with openpyxl
+- Data analysis with pandas
+- Formula recalculation using LibreOffice
+- Zero-error verification
+- Financial modeling standards (color coding, formatting)
+- Multi-sheet workbook support
+- Comprehensive test suite (4 levels)
 
-**Dependencies** (Estimated):
-- Required: pandas, openpyxl
-- Optional: LibreOffice (for formula recalculation)
+**Dependencies**:
+- Python: pandas >= 1.5.0, openpyxl >= 3.0.0
+- System: LibreOffice >= 6.0
+- Optional: gtimeout (macOS) for timeout support
 
-**Blockers**: None (awaits PR #1 merge)
+**Test Coverage**:
+- Level 1: Skill Load Test (SKILL.md exists and valid)
+- Level 2: Dependency Test (verify installations)
+- Level 3: Basic Functionality Test (create/read/modify Excel files)
+- Level 4: Integration Test (realistic workflows, financial models)
 
-### DOCX Skill (PR #3)
+## In Progress
 
-**Status**: ✗ Not Started
+### DOCX Skill (PR #1261)
+
+**Status**: In Progress
 
 **Planned Work**:
 - Copy SKILL.md from Anthropic
@@ -134,13 +122,11 @@ This infrastructure will be reused by subsequent PRs (XLSX, DOCX, PPTX).
 - Optional: pandoc, LibreOffice, poppler-utils
 - Node: docx package
 
-**Blockers**: None (can proceed after PR #1, parallel with PR #2)
-
 **Special Notes**: Establishes OOXML common infrastructure
 
-### PPTX Skill (PR #4)
+### PPTX Skill (PR #1262)
 
-**Status**: ✗ Not Started
+**Status**: In Progress
 
 **Planned Work**:
 - Copy SKILL.md from Anthropic
@@ -154,25 +140,24 @@ This infrastructure will be reused by subsequent PRs (XLSX, DOCX, PPTX).
 - Optional: LibreOffice
 - Node: pptxgenjs, playwright, sharp
 
-**Blockers**: Should wait for PR #3 (OOXML infrastructure)
-
 **Special Notes**: Most complex skill, heaviest dependencies
 
 ## Current Blockers
 
 **None**
 
-All systems operational. PR #1 ready for review and merge.
+All systems operational. PDF merged, XLSX ready for merge.
 
 ## Lessons Learned
 
-### From PR #1 (PDF Skill)
+### From PDF & XLSX Integration
 
 1. **Verification utilities essential**: The verify_skill.py script provides immediate dependency feedback
 2. **Test skip logic works well**: pytest skipif allows tests to pass in CI without all dependencies
 3. **Documentation is key**: Comprehensive DEPENDENCIES.md reduces support burden
 4. **Examples drive adoption**: Practical examples in example_usage.md show real value
-5. **In-memory testing effective**: Using BytesIO for PDF tests avoids file system complexity
+5. **In-memory testing effective**: Using BytesIO for tests avoids file system complexity
+6. **Consistent patterns**: Following same structure for each skill accelerates integration
 
 ### Patterns Established
 
@@ -182,70 +167,30 @@ All systems operational. PR #1 ready for review and merge.
 4. **Graceful degradation**: Optional dependencies handled cleanly
 5. **Verification first**: Always verify before testing
 
-## Next Steps
-
-### Immediate (Post PR #1 Merge)
-
-1. Review and merge PR #1
-2. Test PDF skill in real usage
-3. Gather feedback from users
-4. Update documentation based on feedback
-
-### Short Term (PR #2 - XLSX)
-
-1. Begin XLSX skill integration
-2. Follow same pattern as PDF
-3. Add recalc.py script handling
-4. Document LibreOffice setup
-
-### Medium Term (PR #3 - DOCX)
-
-1. Set up common OOXML infrastructure
-2. Extract and test OOXML scripts
-3. Establish symlink pattern
-4. Create OOXML documentation
-
-### Long Term (PR #4 - PPTX)
-
-1. Complete PPTX integration
-2. Add remaining OOXML scripts
-3. Test with heavy dependencies
-4. Document Node.js requirements
-
-### Future Enhancements
-
-- [ ] Add more usage examples based on user feedback
-- [ ] Create video tutorials for complex workflows
-- [ ] Integrate with amplihack agents for automated workflows
-- [ ] Consider skill orchestration (multi-skill workflows)
-- [ ] Track upstream changes in Anthropic repository
-- [ ] Add performance benchmarks
-- [ ] Create Docker images with all dependencies pre-installed
-
 ## Success Metrics
 
 ### Quantitative
 
-- **Integration Completeness**: 1/4 skills integrated (25%)
+- **Integration Completeness**: 2/4 skills integrated (50%)
 - **Test Coverage**: 100% of implemented skills have tests
 - **Documentation Coverage**: 100% of required docs present
-- **PR Velocity**: On track (PR #1 complete)
+- **PR Velocity**: On track (2 skills in parallel, 2 more in progress)
 
 ### Qualitative
 
-- **User Experience**: Users can find and use PDF skill without asking for help
+- **User Experience**: Users can find and use PDF/XLSX skills without asking for help
 - **Philosophy Compliance**: Integration follows brick philosophy strictly
 - **Maintainability**: Clear structure, easy to understand
 - **Robustness**: Missing dependencies cause graceful degradation
 
 ## Timeline
 
-**PR #1 (PDF)**: 2025-11-08 (Complete)
-**PR #2 (XLSX)**: TBD (Estimated 1-2 days after PR #1 merge)
-**PR #3 (DOCX)**: TBD (Estimated 2-3 days, requires OOXML setup)
-**PR #4 (PPTX)**: TBD (Estimated 1-2 days, builds on DOCX)
+**PR #1259 (PDF)**: 2025-11-08 (MERGED)
+**PR #1260 (XLSX)**: 2025-11-09 (Ready for merge)
+**PR #1261 (DOCX)**: In progress
+**PR #1262 (PPTX)**: In progress
 
-**Total Estimated Timeline**: 2-4 weeks from PR #1 merge to full integration
+**Overall Progress**: 50% (2/4 skills integrated)
 
 ## Risk Assessment
 
@@ -254,33 +199,24 @@ All systems operational. PR #1 ready for review and merge.
 | Risk | Probability | Impact | Status | Mitigation |
 |------|-------------|--------|--------|------------|
 | Dependency installation fails | High | Medium | Mitigated | Clear documentation, graceful test skipping |
-| OOXML scripts need modification | Medium | Medium | Not yet assessed | Will test in PR #3 |
+| OOXML scripts need modification | Medium | Medium | Being assessed | Testing in PR #1261 |
 | Skills don't integrate with Claude Code | Low | High | Mitigated | Following Anthropic patterns exactly |
 | Symlinks break on Windows | Medium | Low | Accepted | Document Windows setup |
 | LibreOffice unavailable in CI | High | Low | Mitigated | Tests skip gracefully |
 
-### Process Risks
-
-| Risk | Probability | Impact | Status | Mitigation |
-|------|-------------|--------|--------|------------|
-| PRs blocked by review delays | Medium | Medium | Monitoring | Each PR independent |
-| Integration order causes rework | Low | Medium | Mitigated | Started simple |
-| Documentation drift | Medium | Low | Monitoring | Update INTEGRATION_STATUS with each PR |
-| Test coverage gaps | Low | Medium | Mitigated | Tests in PR #1 comprehensive |
-
 ## Definition of Done
 
-### For PR #1 (PDF Skill)
+### For Each Skill
 
-- [x] SKILL.md present and valid
-- [x] README.md with integration notes
-- [x] DEPENDENCIES.md complete
-- [x] tests/test_pdf_skill.py comprehensive
-- [x] examples/example_usage.md with 10+ examples
-- [x] Root infrastructure (README, INTEGRATION_STATUS, verification)
-- [x] All tests passing or skipping appropriately
-- [x] Documentation reviewed and clear
-- [x] Follows amplihack philosophy
+- [x] PDF: SKILL.md present and valid
+- [x] PDF: README.md with integration notes
+- [x] PDF: DEPENDENCIES.md complete
+- [x] PDF: tests/test_*_skill.py comprehensive
+- [x] PDF: examples/example_usage.md with 10+ examples
+- [x] PDF: All tests passing or skipping appropriately
+- [x] XLSX: All of the above (complete)
+- [ ] DOCX: All of the above (in progress)
+- [ ] PPTX: All of the above (in progress)
 
 ### For Overall Integration (All 4 Skills)
 
@@ -315,13 +251,14 @@ This document serves as the single source of truth for integration status. Updat
 
 - [Architecture Specification](../../../Specs/OFFICE_SKILLS_INTEGRATION_ARCHITECTURE.md)
 - [PDF Skill README](pdf/README.md)
+- [XLSX Skill README](xlsx/README.md)
 - [Root Skills README](README.md)
 - [Anthropic Skills Repository](https://github.com/anthropics/skills/tree/main/document-skills)
 
 ---
 
-**Last Updated**: 2025-11-08
-**Current Phase**: PR #1 (PDF Skill) - Complete
-**Next Phase**: PR #2 (XLSX Skill) - Not Started
-**Overall Progress**: 25% (1/4 skills integrated)
+**Last Updated**: 2025-11-09
+**Current Phase**: PR #1260 (XLSX Skill) - Ready for merge
+**Next Phase**: PR #1261 (DOCX Skill) & PR #1262 (PPTX Skill) - In progress
+**Overall Progress**: 50% (2/4 skills integrated, 2 in progress)
 **Maintained By**: amplihack project
