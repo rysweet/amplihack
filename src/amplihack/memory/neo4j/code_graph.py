@@ -369,7 +369,10 @@ class BlarifyIntegration(BaseGraphManager):
         if not relationships:
             return 0
 
-        count = 0
+        # Batch relationships by type for efficient UNWIND processing
+        calls_rels = []
+        inherits_rels = []
+        references_rels = []
 
         for rel in relationships:
             rel_type = rel.get("type")
@@ -377,65 +380,79 @@ class BlarifyIntegration(BaseGraphManager):
             target_id = rel.get("target_id")
 
             if rel_type == "CALLS":
-                count += self._create_call_relationship(source_id, target_id)
+                calls_rels.append({"source_id": source_id, "target_id": target_id})
             elif rel_type == "INHERITS":
-                count += self._create_inheritance_relationship(source_id, target_id)
+                inherits_rels.append({"source_id": source_id, "target_id": target_id})
             elif rel_type == "REFERENCES":
-                count += self._create_reference_relationship(source_id, target_id)
+                references_rels.append({"source_id": source_id, "target_id": target_id})
+
+        count = 0
+        count += self._create_call_relationships_batch(calls_rels)
+        count += self._create_inheritance_relationships_batch(inherits_rels)
+        count += self._create_reference_relationships_batch(references_rels)
 
         return count
 
-    def _create_call_relationship(self, source_id: str, target_id: str) -> int:
-        """Create CALLS relationship between functions."""
+    def _create_call_relationships_batch(self, relationships: List[Dict[str, str]]) -> int:
+        """Create CALLS relationships between functions in batch."""
+        if not relationships:
+            return 0
+
         query = """
-        MATCH (source:Function {id: $source_id})
-        MATCH (target:Function {id: $target_id})
+        UNWIND $relationships AS rel
+        MATCH (source:Function {id: rel.source_id})
+        MATCH (target:Function {id: rel.target_id})
         MERGE (source)-[r:CALLS]->(target)
         ON CREATE SET r.created_at = $created_at
         RETURN count(r) as count
         """
 
         params = {
-            "source_id": source_id,
-            "target_id": target_id,
+            "relationships": relationships,
             "created_at": datetime.now().isoformat(),
         }
 
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _create_inheritance_relationship(self, source_id: str, target_id: str) -> int:
-        """Create INHERITS relationship between classes."""
+    def _create_inheritance_relationships_batch(self, relationships: List[Dict[str, str]]) -> int:
+        """Create INHERITS relationships between classes in batch."""
+        if not relationships:
+            return 0
+
         query = """
-        MATCH (source:Class {id: $source_id})
-        MATCH (target:Class {id: $target_id})
+        UNWIND $relationships AS rel
+        MATCH (source:Class {id: rel.source_id})
+        MATCH (target:Class {id: rel.target_id})
         MERGE (source)-[r:INHERITS]->(target)
         ON CREATE SET r.created_at = $created_at
         RETURN count(r) as count
         """
 
         params = {
-            "source_id": source_id,
-            "target_id": target_id,
+            "relationships": relationships,
             "created_at": datetime.now().isoformat(),
         }
 
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _create_reference_relationship(self, source_id: str, target_id: str) -> int:
-        """Create REFERENCES relationship."""
+    def _create_reference_relationships_batch(self, relationships: List[Dict[str, str]]) -> int:
+        """Create REFERENCES relationships in batch."""
+        if not relationships:
+            return 0
+
         query = """
-        MATCH (source {id: $source_id})
-        MATCH (target {id: $target_id})
+        UNWIND $relationships AS rel
+        MATCH (source {id: rel.source_id})
+        MATCH (target {id: rel.target_id})
         MERGE (source)-[r:REFERENCES]->(target)
         ON CREATE SET r.created_at = $created_at
         RETURN count(r) as count
         """
 
         params = {
-            "source_id": source_id,
-            "target_id": target_id,
+            "relationships": relationships,
             "created_at": datetime.now().isoformat(),
         }
 
