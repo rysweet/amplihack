@@ -49,6 +49,13 @@ class StopHook(HookProcessor):
         """Check lock flag and block stop if active.
         Run synchronous reflection analysis if enabled.
 
+        CRITICAL DESIGN:
+        - Lock and reflection are INDEPENDENT features
+        - Lock is checked FIRST (line 70-82)
+        - Reflection is checked SECOND (line 84-88)
+        - Lock works regardless of reflection settings
+        - Reflection can be disabled without affecting lock
+
         Args:
             input_data: Input from Claude Code
 
@@ -59,6 +66,8 @@ class StopHook(HookProcessor):
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
+        # STEP 1: CHECK LOCK (ALWAYS FIRST, HIGHEST PRIORITY)
+        # This runs regardless of reflection settings
         try:
             lock_exists = self.lock_flag.exists()
         except (PermissionError, OSError) as e:
@@ -69,7 +78,10 @@ class StopHook(HookProcessor):
 
         if lock_exists:
             # Lock is active - block stop and continue working
+            # NOTE: This blocks REGARDLESS of reflection settings
+            # Lock and reflection are independent features
             self.log("Lock is active - blocking stop to continue working")
+            self.log("NOTE: Lock blocks even if reflection is disabled")
             self.save_metric("lock_blocks", 1)
 
             # Read custom continuation prompt or use default
@@ -81,9 +93,12 @@ class StopHook(HookProcessor):
                 "reason": continuation_prompt,
             }
 
-        # Check if reflection should run
+        # STEP 2: CHECK REFLECTION (ONLY IF NO LOCK)
+        # Reached here means lock is NOT active
+        # Now check if reflection should run
         if not self._should_run_reflection():
             self.log("Reflection not enabled or skipped - allowing stop")
+            self.log("NOTE: No lock active, so stop is allowed")
             self.log("=== STOP HOOK ENDED (decision: approve - no reflection) ===")
             return {"decision": "approve"}
 
@@ -218,12 +233,18 @@ class StopHook(HookProcessor):
     def _should_run_reflection(self) -> bool:
         """Check if reflection should run based on config and environment.
 
+        NOTE: This method is ONLY called after lock check passes.
+        Lock is checked first, and this is only reached if lock is NOT active.
+        This ensures lock and reflection are independent.
+
         Returns:
             True if reflection should run, False otherwise
         """
         # Check environment variable skip flag
+        # NOTE: This ONLY affects reflection, not lock mode
         if os.environ.get("AMPLIHACK_SKIP_REFLECTION"):
             self.log("AMPLIHACK_SKIP_REFLECTION is set - skipping reflection", "DEBUG")
+            self.log("NOTE: This does NOT affect lock mode (lock checked first)", "DEBUG")
             return False
 
         # Load reflection config
