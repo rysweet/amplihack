@@ -92,13 +92,13 @@ class ProcessManager:
 
     @staticmethod
     def check_command_exists(command: str) -> bool:
-        """Check if a command exists in PATH.
+        """Check if a command exists in system PATH.
 
         Args:
-            command: Command name to check.
+            command: Command name to check (e.g., 'git', 'python')
 
         Returns:
-            True if command exists, False otherwise.
+            True if command exists and is executable, False otherwise.
         """
         try:
             if ProcessManager.is_windows():

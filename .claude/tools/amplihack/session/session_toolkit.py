@@ -55,15 +55,15 @@ class SessionToolkit:
         config: Optional[SessionConfig] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Create a new session.
+        """Create a new session with configuration and metadata.
 
         Args:
             name: Human-readable session name
-            config: Session configuration
-            metadata: Additional metadata
+            config: Session configuration (optional)
+            metadata: Additional metadata dictionary (optional)
 
         Returns:
-            Session ID
+            Session ID string for tracking
         """
         session_id = self.session_manager.create_session(name, config, metadata)
         return session_id

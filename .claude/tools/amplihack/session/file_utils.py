@@ -145,16 +145,16 @@ def safe_read_file(
     verify_checksum: bool = False,
     expected_checksum: Optional[str] = None,
 ) -> Optional[str]:
-    """Safely read file with error handling and optional integrity check.
+    """Safely read file content with error handling and optional integrity check.
 
     Args:
         file_path: Path to file
-        encoding: File encoding
-        verify_checksum: Whether to verify file integrity
-        expected_checksum: Expected checksum for verification
+        encoding: File encoding (default utf-8)
+        verify_checksum: Whether to verify file integrity (default False)
+        expected_checksum: Expected checksum for verification (optional)
 
     Returns:
-        File content or None if failed
+        File content as string or None if file does not exist or fails to read
 
     Raises:
         FileCorruptionError: If checksum verification fails
@@ -195,19 +195,19 @@ def safe_write_file(
     backup: bool = False,
     verify_write: bool = True,
 ) -> bool:
-    """Safely write file with atomic operations and verification.
+    """Safely write file content with atomic operations and verification.
 
     Args:
         file_path: Path to file
         content: Content to write
-        encoding: File encoding
-        mode: Write mode ('w', 'a', etc.)
-        atomic: Use atomic write (via temp file)
-        backup: Create backup of existing file
-        verify_write: Verify written content
+        encoding: File encoding (default utf-8)
+        mode: Write mode - 'w' for write, 'a' for append (default 'w')
+        atomic: Use atomic write via temporary file (default True)
+        backup: Create backup of existing file (default False)
+        verify_write: Verify written content matches input (default True)
 
     Returns:
-        True if successful
+        True if successful, False otherwise
 
     Raises:
         FileOperationError: If write operation fails
@@ -268,12 +268,12 @@ def safe_write_file(
 def safe_read_json(
     file_path: Union[str, Path], default: Any = None, validate_schema: Optional[Callable] = None
 ) -> Any:
-    """Safely read JSON file with validation.
+    """Safely read and parse JSON file with optional schema validation.
 
     Args:
         file_path: Path to JSON file
-        default: Default value if file doesn't exist or is invalid
-        validate_schema: Optional function to validate JSON structure
+        default: Default value if file doesn't exist or is invalid (default None)
+        validate_schema: Optional function to validate JSON structure (optional)
 
     Returns:
         Parsed JSON data or default value
@@ -317,14 +317,14 @@ def safe_write_json(
 
     Args:
         file_path: Path to JSON file
-        data: Data to serialize
-        indent: JSON indentation
-        sort_keys: Sort JSON keys
-        atomic: Use atomic write
-        backup: Create backup
+        data: Data to serialize to JSON
+        indent: JSON indentation level (default 2)
+        sort_keys: Sort JSON keys alphabetically (default True)
+        atomic: Use atomic write via temporary file (default True)
+        backup: Create backup of existing file (default False)
 
     Returns:
-        True if successful
+        True if successful, False otherwise
     """
     try:
         json_content = json.dumps(
@@ -351,16 +351,16 @@ def safe_copy_file(
     verify_copy: bool = True,
     preserve_metadata: bool = True,
 ) -> bool:
-    """Safely copy file with verification.
+    """Safely copy file with integrity verification.
 
     Args:
         src_path: Source file path
         dst_path: Destination file path
-        verify_copy: Verify copy integrity
-        preserve_metadata: Preserve file metadata
+        verify_copy: Verify copy integrity via checksum (default True)
+        preserve_metadata: Preserve file metadata like timestamps (default True)
 
     Returns:
-        True if successful
+        True if successful, False otherwise
     """
     src_path = Path(src_path)
     dst_path = Path(dst_path)
@@ -398,15 +398,15 @@ def safe_copy_file(
 def safe_move_file(
     src_path: Union[str, Path], dst_path: Union[str, Path], verify_move: bool = True
 ) -> bool:
-    """Safely move file with verification.
+    """Safely move file with integrity verification.
 
     Args:
         src_path: Source file path
         dst_path: Destination file path
-        verify_move: Verify move integrity
+        verify_move: Verify move integrity via checksum (default True)
 
     Returns:
-        True if successful
+        True if successful, False otherwise
     """
     src_path = Path(src_path)
     dst_path = Path(dst_path)
@@ -442,12 +442,12 @@ def safe_move_file(
 def cleanup_temp_files(
     temp_dir: Union[str, Path], max_age_hours: float = 24.0, pattern: str = "*.tmp"
 ) -> int:
-    """Clean up temporary files older than specified age.
+    """Clean up temporary files older than specified age threshold.
 
     Args:
         temp_dir: Directory containing temporary files
-        max_age_hours: Maximum age in hours
-        pattern: File pattern to match
+        max_age_hours: Maximum age in hours (default 24)
+        pattern: File glob pattern to match (default "*.tmp")
 
     Returns:
         Number of files cleaned up

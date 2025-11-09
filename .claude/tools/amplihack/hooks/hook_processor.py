@@ -134,10 +134,10 @@ class HookProcessor(ABC):
             print(f"Logging error: {e}", file=sys.stderr)
 
     def read_input(self) -> Dict[str, Any]:
-        """Read and parse JSON input from stdin.
+        """Read and parse JSON input from stdin into dictionary.
 
         Returns:
-            Parsed JSON data as dictionary
+            Parsed JSON data as dictionary, empty dict if no input
 
         Raises:
             json.JSONDecodeError: If input is not valid JSON
@@ -147,8 +147,8 @@ class HookProcessor(ABC):
             return {}
         return json.loads(raw_input)
 
-    def write_output(self, output: Dict[str, Any]):
-        """Write JSON output to stdout.
+    def write_output(self, output: Dict[str, Any]) -> None:
+        """Write JSON output to stdout with newline.
 
         Args:
             output: Dictionary to write as JSON
@@ -157,13 +157,13 @@ class HookProcessor(ABC):
         sys.stdout.write("\n")
         sys.stdout.flush()
 
-    def save_metric(self, metric_name: str, value: Any, metadata: Optional[Dict] = None):
-        """Save a metric to the metrics directory.
+    def save_metric(self, metric_name: str, value: Any, metadata: Optional[Dict[str, Any]] = None) -> None:
+        """Save a metric to the metrics directory in JSONL format.
 
         Args:
             metric_name: Name of the metric
             value: Metric value
-            metadata: Optional additional metadata
+            metadata: Optional additional metadata dictionary
         """
         metrics_file = self.metrics_dir / f"{self.hook_name}_metrics.jsonl"
 

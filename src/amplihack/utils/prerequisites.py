@@ -249,6 +249,8 @@ class PrerequisiteChecker:
     def _is_wsl(self) -> bool:
         """Check if running under Windows Subsystem for Linux.
 
+        Reads /proc/version to detect WSL environment by looking for 'microsoft' string.
+
         Returns:
             True if running under WSL, False otherwise
         """

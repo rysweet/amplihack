@@ -123,7 +123,7 @@ class UVXPackager:
             )
 
     def _prepare_structure(self, bundle: AgentBundle, package_path: Path) -> None:
-        """Prepare bundle directory structure."""
+        """Prepare bundle directory structure with agents, tests, and docs."""
         # Create directories
         package_path.mkdir(parents=True, exist_ok=True)
         (package_path / "agents").mkdir(exist_ok=True)
@@ -161,7 +161,7 @@ class UVXPackager:
             json.dump(bundle.metadata, f, indent=2)
 
     def _create_uvx_metadata(self, bundle: AgentBundle, package_path: Path) -> None:
-        """Create UVX-specific metadata files."""
+        """Create UVX-specific metadata files and entry points."""
         uvx_metadata = {
             "name": bundle.name,
             "version": bundle.version,

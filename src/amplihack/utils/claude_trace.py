@@ -4,7 +4,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 
 def should_use_trace() -> bool:
@@ -58,7 +58,7 @@ def get_claude_command() -> str:
     return "claude"
 
 
-def _configure_user_local_npm() -> dict[str, str]:
+def _configure_user_local_npm() -> Dict[str, str]:
     """Configure npm to use user-local installation paths.
 
     Sets up environment variables to install npm packages in ~/.npm-global

@@ -100,7 +100,7 @@ class IntentExtractor:
             raise ExtractionError(f"Failed to extract intent: {e!s}", confidence_score=0.0)
 
     def _determine_action(self, parsed: ParsedPrompt) -> str:
-        """Determine the primary action requested."""
+        """Determine the primary action requested from parsed prompt tokens."""
         tokens = set(parsed.tokens)
 
         # Check for explicit action keywords
@@ -117,7 +117,7 @@ class IntentExtractor:
         return "create"
 
     def _determine_domain(self, parsed: ParsedPrompt) -> str:
-        """Determine the problem domain."""
+        """Determine the problem domain by analyzing keywords and entities."""
         tokens = set(parsed.tokens)
         domain_scores = {}
 
@@ -143,7 +143,7 @@ class IntentExtractor:
         return "data-processing"
 
     def _extract_agent_requirements(self, parsed: ParsedPrompt) -> List[AgentRequirement]:
-        """Extract individual agent requirements."""
+        """Extract individual agent requirements from parsed prompt."""
         requirements = []
 
         # First, try to extract from numbered lists or bullet points
