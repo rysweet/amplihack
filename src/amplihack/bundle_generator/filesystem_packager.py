@@ -45,8 +45,16 @@ class FilesystemPackager:
         Validate output directory path for security.
 
         Raises:
-            PackagingError: If path is unsafe
+            PackagingError: If path is unsafe (including symlink attacks)
         """
+        # Check if output_dir is a symlink BEFORE resolving
+        # This prevents symlink attacks: /tmp/evil -> /etc
+        if self.output_dir.is_symlink():
+            raise PackagingError(
+                f"Output directory cannot be a symlink: {self.output_dir}. "
+                "Symlinks are not allowed for security reasons."
+            )
+
         resolved = self.output_dir.resolve()
 
         # Prevent writing to system directories (but allow temp directories)
