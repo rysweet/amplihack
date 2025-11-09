@@ -545,12 +545,9 @@ class ProxyManager:
             if not isinstance(arg, str):
                 return None
 
-            # Special validation for -c flag (inline code execution)
-            if arg == "-c" and i + 1 < len(command):
-                next_arg = command[i + 1]
-                # Only allow simple import statements and print
-                if not self._is_safe_inline_code(next_arg):
-                    return None
+            # Reject -c flag for inline code execution (security risk)
+            if arg == "-c":
+                raise ValueError("Inline code execution (-c) not allowed for security")
 
             # Validate module names for -m flag
             if arg == "-m" and i + 1 < len(command):
@@ -561,26 +558,6 @@ class ProxyManager:
             safe_command.append(arg)
 
         return safe_command
-
-    def _is_safe_inline_code(self, code: str) -> bool:
-        """Validate that inline code is safe for execution.
-
-        Args:
-            code: Python code string to validate
-
-        Returns:
-            True if code is safe, False otherwise.
-        """
-        if not code or not isinstance(code, str):
-            return False
-
-        # Only allow very specific safe patterns
-        safe_patterns = [
-            r'^import [a-zA-Z0-9_.]+; print\([\'"]OK[\'"]\)$',
-            r"^import [a-zA-Z0-9_.]+$",
-        ]
-
-        return any(re.match(pattern, code.strip()) for pattern in safe_patterns)
 
     def _create_secure_env(self) -> Dict[str, str]:
         """Create a secure environment dictionary.
