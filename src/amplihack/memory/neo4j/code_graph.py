@@ -93,17 +93,17 @@ class BlarifyIntegration(BaseGraphManager):
         self,
         codebase_path: str,
         languages: Optional[List[str]] = None,
+        entity_id: Optional[str] = None,
     ) -> Dict[str, int]:
         """Run blarify and import results in one operation.
 
-        Convenience method that:
-        1. Runs blarify CLI to generate JSON
-        2. Imports results into Neo4j
-        3. Returns import counts
+        Note: Blarify 1.3.0+ writes directly to Neo4j, so this method
+        now runs blarify with Neo4j connection and returns stats from Neo4j.
 
         Args:
             codebase_path: Path to codebase to analyze
-            languages: Optional list of languages to analyze
+            languages: Optional list of languages to analyze (deprecated, not used by blarify 1.3.0+)
+            entity_id: Entity identifier (e.g., company/organization name)
 
         Returns:
             Dictionary with counts: {"files": N, "classes": N, "functions": N, ...}
@@ -111,33 +111,43 @@ class BlarifyIntegration(BaseGraphManager):
         Raises:
             RuntimeError: If blarify execution fails
         """
-        from tempfile import NamedTemporaryFile
-        import os
+        logger.info("Running blarify on %s", codebase_path)
 
-        # Create temp file for blarify output
-        with NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-            tmp_path = Path(tmp.name)
+        # Get Neo4j connection details from config
+        config = get_config()
+        neo4j_uri = config.get("neo4j_uri", "bolt://localhost:7687")
+        neo4j_username = config.get("neo4j_username", "neo4j")
+        neo4j_password = config.get("neo4j_password", "password")
 
-        try:
-            # Run blarify using standalone function
-            logger.info("Running blarify on %s", codebase_path)
-            success = run_blarify(Path(codebase_path), tmp_path, languages)
+        # Run blarify using standalone function (writes to Neo4j)
+        success = run_blarify(
+            Path(codebase_path),
+            Path("/tmp/blarify_output.json"),  # Not used anymore but kept for compatibility
+            languages=languages,
+            entity_id=entity_id,
+            neo4j_uri=neo4j_uri,
+            neo4j_username=neo4j_username,
+            neo4j_password=neo4j_password,
+        )
 
-            if not success:
-                raise RuntimeError("Blarify execution failed")
+        if not success:
+            raise RuntimeError("Blarify execution failed")
 
-            # Import results into Neo4j
-            logger.info("Importing blarify results into Neo4j")
-            counts = self.import_blarify_output(tmp_path, project_id=None)
+        # Get stats from Neo4j to return counts
+        logger.info("Getting code graph statistics from Neo4j")
+        counts = self.get_code_stats()
 
-            logger.info("Blarify import complete: %s", counts)
-            return counts
+        # Convert stats to counts format
+        result = {
+            "files": counts.get("file_count", 0),
+            "classes": counts.get("class_count", 0),
+            "functions": counts.get("function_count", 0),
+            "imports": 0,  # Not tracked in stats
+            "relationships": 0,  # Not tracked in stats
+        }
 
-        finally:
-            # Cleanup temp file
-            if tmp_path.exists():
-                os.unlink(tmp_path)
-                logger.debug("Cleaned up temporary file: %s", tmp_path)
+        logger.info("Blarify import complete: %s", result)
+        return result
 
     def import_blarify_output(
         self,
@@ -654,13 +664,24 @@ def run_blarify(
     codebase_path: Path,
     output_path: Path,
     languages: Optional[List[str]] = None,
+    entity_id: Optional[str] = None,
+    neo4j_uri: Optional[str] = None,
+    neo4j_username: Optional[str] = None,
+    neo4j_password: Optional[str] = None,
 ) -> bool:
     """Run blarify on a codebase to generate code graph.
 
+    Note: Blarify 1.3.0+ writes directly to Neo4j instead of JSON output.
+    This function is kept for backward compatibility but now requires Neo4j connection.
+
     Args:
         codebase_path: Path to codebase to analyze
-        output_path: Path to save blarify JSON output
-        languages: Optional list of languages to analyze
+        output_path: Path to save blarify JSON output (deprecated, not used)
+        languages: Optional list of languages to analyze (deprecated, not used)
+        entity_id: Entity identifier (e.g., company/organization name)
+        neo4j_uri: Neo4j connection URI (if None, blarify auto-spawns container)
+        neo4j_username: Neo4j username
+        neo4j_password: Neo4j password
 
     Returns:
         True if successful, False otherwise
@@ -681,23 +702,32 @@ def run_blarify(
         )
         return False
 
-    # Build blarify command
+    # Get entity_id from config or use default
+    if entity_id is None:
+        entity_id = get_config().get("project_name", "amplihack")
+        logger.info("Using entity_id: %s", entity_id)
+
+    # Build blarify command (new API: blarify create)
     cmd = [
         "blarify",
-        "analyze",
-        str(codebase_path),
-        "--output",
-        str(output_path),
-        "--format",
-        "json",
+        "create",
+        "--entity-id",
+        entity_id,
+        "--only-hierarchy",  # Skip LSP analysis for speed
     ]
 
-    if languages:
-        cmd.extend(["--languages", ",".join(languages)])
+    # Add Neo4j connection if provided, otherwise blarify auto-spawns container
+    if neo4j_uri:
+        cmd.extend(["--neo4j-uri", neo4j_uri])
+    if neo4j_username:
+        cmd.extend(["--neo4j-username", neo4j_username])
+    if neo4j_password:
+        cmd.extend(["--neo4j-password", neo4j_password])
 
     try:
         result = subprocess.run(
             cmd,
+            cwd=str(codebase_path),  # Run in codebase directory
             check=True,
             capture_output=True,
             text=True,
