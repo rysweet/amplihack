@@ -2,10 +2,11 @@
 
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional
+
+from amplihack.utils.subprocess_runner import SubprocessRunner
 
 from .detector import DockerDetector
 
@@ -18,6 +19,7 @@ class DockerManager:
     def __init__(self):
         """Initialize DockerManager."""
         self.detector = DockerDetector()
+        self._runner = SubprocessRunner(default_timeout=300, log_commands=True)
 
     def build_image(self) -> bool:
         """Build the Docker image if it doesn't exist."""
@@ -39,32 +41,27 @@ class DockerManager:
             print(f"Dockerfile not found at {dockerfile}", file=sys.stderr)
             return False
 
-        try:
-            result = subprocess.run(
-                [
-                    "docker",
-                    "build",
-                    "-t",
-                    self.IMAGE_NAME,
-                    "-f",
-                    str(dockerfile),
-                    str(project_root),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
+        result = self._runner.run_safe(
+            [
+                "docker",
+                "build",
+                "-t",
+                self.IMAGE_NAME,
+                "-f",
+                str(dockerfile),
+                str(project_root),
+            ],
+            timeout=600,  # Allow up to 10 minutes for Docker build
+            capture=True,
+            context=f"building docker image {self.IMAGE_NAME}",
+        )
 
-            if result.returncode != 0:
-                print(f"Docker build failed: {result.stderr}", file=sys.stderr)
-                return False
-
-            print(f"Successfully built Docker image: {self.IMAGE_NAME}")
-            return True
-
-        except subprocess.SubprocessError as e:
-            print(f"Error building Docker image: {e}", file=sys.stderr)
+        if not result.success:
+            print(f"Docker build failed: {result.stderr}", file=sys.stderr)
             return False
+
+        print(f"Successfully built Docker image: {self.IMAGE_NAME}")
+        return True
 
     def run_command(self, args: List[str], cwd: Optional[str] = None) -> int:
         """Run amplihack command in Docker container."""
@@ -115,11 +112,13 @@ class DockerManager:
         docker_cmd.extend(args)
 
         # Run the container
-        try:
-            return subprocess.run(docker_cmd, check=False).returncode
-        except subprocess.SubprocessError as e:
-            print(f"Error running Docker container: {e}", file=sys.stderr)
-            return 1
+        result = self._runner.run_safe(
+            docker_cmd,
+            timeout=None,  # No timeout for interactive container
+            capture=False,  # Let output stream directly
+            context="running amplihack in docker container",
+        )
+        return result.returncode
 
     def _sanitize_env_value(self, value: str) -> str:
         """Sanitize environment variable value by removing control characters."""

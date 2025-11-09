@@ -2,11 +2,16 @@
 
 import os
 import shutil
-import subprocess
+
+from amplihack.utils.subprocess_runner import SubprocessRunner
 
 
 class DockerDetector:
     """Detects Docker availability and configuration."""
+
+    def __init__(self):
+        """Initialize DockerDetector with subprocess runner."""
+        self._runner = SubprocessRunner(default_timeout=5, log_commands=False)
 
     def is_available(self) -> bool:
         """Check if Docker is installed."""
@@ -17,17 +22,13 @@ class DockerDetector:
         if not self.is_available():
             return False
 
-        try:
-            result = subprocess.run(
-                ["docker", "info"],
-                check=False,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=5,
-            )
-            return result.returncode == 0
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
-            return False
+        result = self._runner.run_safe(
+            ["docker", "info"],
+            timeout=5,
+            capture=False,
+            context="checking docker daemon status",
+        )
+        return result.success
 
     def should_use_docker(self) -> bool:
         """Determine if Docker should be used."""
@@ -67,14 +68,10 @@ class DockerDetector:
         if not self.is_running():
             return False
 
-        try:
-            result = subprocess.run(
-                ["docker", "images", "-q", image_name],
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            return bool(result.stdout.strip())
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
-            return False
+        result = self._runner.run_safe(
+            ["docker", "images", "-q", image_name],
+            timeout=5,
+            capture=True,
+            context=f"checking if docker image {image_name} exists",
+        )
+        return bool(result.stdout.strip()) if result.success else False

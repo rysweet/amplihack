@@ -7,9 +7,10 @@ It follows the Zero-BS philosophy - all functions work or don't exist.
 import json
 import logging
 import re
-import subprocess
 from dataclasses import dataclass
 from typing import List, Optional
+
+from amplihack.utils.subprocess_runner import SubprocessRunner
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,7 @@ class Neo4jContainerDetector:
     def __init__(self):
         """Initialize the detector."""
         self._docker_available: Optional[bool] = None
+        self._runner = SubprocessRunner(default_timeout=10, log_commands=False)
 
     def is_docker_available(self) -> bool:
         """Check if Docker is available and running.
@@ -111,15 +113,14 @@ class Neo4jContainerDetector:
         if self._docker_available is not None:
             return self._docker_available
 
-        try:
-            result = subprocess.run(
-                ["docker", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5
-            )
-            self._docker_available = result.returncode == 0
-            return self._docker_available
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-            self._docker_available = False
-            return False
+        result = self._runner.run_safe(
+            ["docker", "info"],
+            timeout=5,
+            capture=False,
+            context="checking docker availability",
+        )
+        self._docker_available = result.success
+        return self._docker_available
 
     def detect_containers(self) -> List[Neo4jContainer]:
         """Detect all amplihack Neo4j containers.
@@ -130,49 +131,45 @@ class Neo4jContainerDetector:
         if not self.is_docker_available():
             return []
 
-        try:
-            # Get all containers with Neo4j image
-            result = subprocess.run(
-                ["docker", "ps", "-a", "--format", "{{json .}}"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
+        # Get all containers with Neo4j image
+        result = self._runner.run_safe(
+            ["docker", "ps", "-a", "--format", "{{json .}}"],
+            timeout=10,
+            capture=True,
+            context="listing docker containers for neo4j detection",
+        )
 
-            if result.returncode != 0:
-                return []
-
-            containers = []
-            for line in result.stdout.strip().split("\n"):
-                if not line:
-                    continue
-
-                try:
-                    container_data = json.loads(line)
-
-                    # Check if it's a Neo4j container
-                    image = container_data.get("Image", "")
-                    if "neo4j" not in image.lower():
-                        continue
-
-                    # Check if it's amplihack-related
-                    name = container_data.get("Names", "")
-                    if not self._is_amplihack_container(name, image):
-                        continue
-
-                    # Parse container info
-                    container = self._parse_container(container_data)
-                    if container:
-                        containers.append(container)
-
-                except (json.JSONDecodeError, KeyError):
-                    # Skip malformed container data
-                    continue
-
-            return containers
-
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        if not result.success:
             return []
+
+        containers = []
+        for line in result.stdout.strip().split("\n"):
+            if not line:
+                continue
+
+            try:
+                container_data = json.loads(line)
+
+                # Check if it's a Neo4j container
+                image = container_data.get("Image", "")
+                if "neo4j" not in image.lower():
+                    continue
+
+                # Check if it's amplihack-related
+                name = container_data.get("Names", "")
+                if not self._is_amplihack_container(name, image):
+                    continue
+
+                # Parse container info
+                container = self._parse_container(container_data)
+                if container:
+                    containers.append(container)
+
+            except (json.JSONDecodeError, KeyError):
+                # Skip malformed container data
+                continue
+
+        return containers
 
     def _is_amplihack_container(self, name: str, image: str) -> bool:
         """Check if container is amplihack-related.
@@ -253,24 +250,24 @@ class Neo4jContainerDetector:
             # Can't extract credentials from stopped container
             return
 
-        try:
-            # Inspect container to get environment variables
-            result = subprocess.run(
-                ["docker", "inspect", container.container_id],
-                capture_output=True,
-                text=True,
-                timeout=10,
+        # Inspect container to get environment variables
+        result = self._runner.run_safe(
+            ["docker", "inspect", container.container_id],
+            timeout=10,
+            capture=True,
+            context=f"inspecting container {container.container_id[:12]} for credentials",
+        )
+
+        if not result.success:
+            logger.warning(
+                "Failed to inspect container %s: %s. "
+                "Neo4j credentials cannot be extracted. User should verify Neo4j configuration manually.",
+                container.container_id[:12],
+                result.error_type or "unknown error",
             )
+            return
 
-            if result.returncode != 0:
-                logger.warning(
-                    "Failed to inspect container %s: docker command returned %d. "
-                    "Neo4j credentials cannot be extracted. User should verify Neo4j configuration manually.",
-                    container.container_id[:12],
-                    result.returncode,
-                )
-                return
-
+        try:
             inspect_data = json.loads(result.stdout)
             if not inspect_data:
                 logger.warning(
@@ -301,19 +298,6 @@ class Neo4jContainerDetector:
                 elif key == "NEO4J_PASSWORD":
                     container.password = value
 
-        except subprocess.TimeoutExpired:
-            logger.warning(
-                "Timeout while inspecting container %s (10s timeout). "
-                "Neo4j credentials cannot be extracted in time.",
-                container.container_id[:12],
-            )
-        except subprocess.SubprocessError as e:
-            logger.warning(
-                "Subprocess error while inspecting container %s: %s. "
-                "Neo4j credentials cannot be extracted.",
-                container.container_id[:12],
-                str(e),
-            )
         except (json.JSONDecodeError, KeyError, IndexError) as e:
             logger.warning(
                 "Failed to parse container inspection data for %s: %s. "
