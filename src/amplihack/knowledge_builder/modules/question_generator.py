@@ -1,8 +1,8 @@
 """Question generator using Socratic method."""
 
-import subprocess
 from typing import List
 
+from amplihack.common import extract_numbered_items, run_claude_command
 from amplihack.knowledge_builder.kb_types import Question
 
 
@@ -35,30 +35,16 @@ Requirements:
 - Format: One question per line, numbered 1-10
 - No additional commentary"""
 
-        result = subprocess.run(
-            [self.claude_cmd, "--dangerously-skip-permissions", "-p", prompt],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        returncode, stdout, stderr = run_claude_command(prompt, self.claude_cmd)
 
-        if result.returncode != 0:
-            raise RuntimeError(f"Failed to generate questions: {result.stderr}")
+        if returncode != 0:
+            raise RuntimeError(f"Failed to generate questions: {stderr}")
 
-        # Parse output into questions
+        # Parse output into questions using common utility
+        question_texts = extract_numbered_items(stdout, max_items=10)
+
         questions = []
-        for line in result.stdout.strip().split("\n"):
-            line = line.strip()
-            if not line or not any(c.isdigit() for c in line[:5]):
-                continue
-
-            # Remove numbering (e.g., "1. " or "1) ")
-            text = line
-            for i in range(1, 11):
-                if text.startswith(f"{i}. ") or text.startswith(f"{i}) "):
-                    text = text.split(" ", 1)[1] if " " in text else text
-                    break
-
+        for text in question_texts:
             if text and text not in [q.text for q in questions]:
                 questions.append(Question(text=text, depth=0, parent_index=None))
 
@@ -92,31 +78,17 @@ Requirements:
 - Format: One question per line, numbered 1-3
 - No additional commentary"""
 
-        result = subprocess.run(
-            [self.claude_cmd, "--dangerously-skip-permissions", "-p", prompt],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        returncode, stdout, stderr = run_claude_command(prompt, self.claude_cmd)
 
-        if result.returncode != 0:
+        if returncode != 0:
             # Non-fatal - return empty list
             return []
 
-        # Parse output into questions
+        # Parse output into questions using common utility
+        question_texts = extract_numbered_items(stdout, max_items=3)
+
         questions = []
-        for line in result.stdout.strip().split("\n"):
-            line = line.strip()
-            if not line or not any(c.isdigit() for c in line[:5]):
-                continue
-
-            # Remove numbering
-            text = line
-            for i in range(1, 4):
-                if text.startswith(f"{i}. ") or text.startswith(f"{i}) "):
-                    text = text.split(" ", 1)[1] if " " in text else text
-                    break
-
+        for text in question_texts:
             if text:
                 questions.append(Question(text=text, depth=depth, parent_index=parent_index))
 
