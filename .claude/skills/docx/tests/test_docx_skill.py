@@ -9,16 +9,10 @@ These tests verify the DOCX skill integration:
 Tests skip gracefully if dependencies are missing.
 """
 
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
-
-# Add common verification utilities to path
-sys.path.insert(
-    0, str(Path(__file__).parent.parent.parent / "common" / "verification")
-)
 
 # Define skill dependencies
 PYTHON_PACKAGES_REQUIRED = ["defusedxml"]

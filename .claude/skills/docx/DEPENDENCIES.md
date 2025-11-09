@@ -12,6 +12,7 @@ These packages are required for basic DOCX skill functionality:
 
 **Python Packages:**
 - `defusedxml>=0.7.0` - Secure XML parsing for OOXML operations
+- `pytest>=7.0.0` - Testing framework for skill verification
 
 **System Packages:**
 - `pandoc` - Document conversion and text extraction
@@ -35,7 +36,7 @@ Install core packages for basic DOCX functionality:
 
 ```bash
 # Python packages
-pip install defusedxml
+pip install defusedxml pytest
 
 # System packages (Ubuntu/Debian)
 sudo apt-get install pandoc libreoffice
@@ -50,7 +51,7 @@ Install all packages for full functionality:
 
 ```bash
 # Python packages
-pip install defusedxml
+pip install defusedxml pytest
 
 # Node packages
 npm install -g docx
@@ -67,7 +68,7 @@ npm install -g docx
 # /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Python packages
-pip install defusedxml
+pip install defusedxml pytest
 
 # System packages
 brew install pandoc libreoffice poppler
@@ -80,7 +81,7 @@ npm install -g docx
 
 ```bash
 # Python packages
-pip install defusedxml
+pip install defusedxml pytest
 
 # System packages
 sudo apt-get update
@@ -97,7 +98,7 @@ npm install -g docx
 
 ```bash
 # Python packages
-pip install defusedxml
+pip install defusedxml pytest
 
 # System packages
 sudo dnf install -y pandoc libreoffice poppler-utils
@@ -113,7 +114,7 @@ npm install -g docx
 
 ```bash
 # Python packages
-pip install defusedxml
+pip install defusedxml pytest
 
 # System packages via Chocolatey (recommended)
 choco install pandoc libreoffice poppler
@@ -138,6 +139,9 @@ Verify installations with these commands:
 ```bash
 # Check defusedxml
 python -c "import defusedxml; print('defusedxml installed')"
+
+# Check pytest
+pytest --version
 ```
 
 ### System Packages
@@ -165,32 +169,39 @@ npm list -g docx
 
 ### Automated Verification
 
-Use the verification script to check all dependencies:
+Use the pytest test suite to check all dependencies:
 
 ```bash
-cd .claude/skills
-python common/verification/verify_skill.py docx
+cd .claude/skills/docx
+python tests/test_docx_skill.py
 ```
 
-Expected output:
-```
-Verifying docx skill dependencies...
-
-Python packages:
-  defusedxml: Installed
-
-System commands:
-  pandoc: Available
-  soffice: Available
-  pdftoppm: Available (or Not available)
-
-Node packages:
-  docx: Installed (or Not installed)
-
-✓ docx skill is ready (or ✗ docx skill is missing dependencies)
-```
+This will run comprehensive dependency checks and display a detailed report showing which packages are installed and which are missing. Tests will skip gracefully if optional dependencies are unavailable.
 
 ## Dependency Details
+
+### pytest
+
+**Purpose**: Testing framework for verifying skill functionality
+
+**Capabilities**:
+- Unit testing for DOCX skill components
+- Integration testing for workflows
+- Dependency verification tests
+- Automated test discovery and execution
+- Flexible test fixtures and parametrization
+
+**Use in DOCX skill**:
+- Verify skill dependencies are installed
+- Test OOXML manipulation functions
+- Validate tracked changes workflows
+- Ensure skill integration with Claude Code
+
+**Version Requirements**: pytest>=7.0.0
+
+**License**: MIT
+
+**Documentation**: https://docs.pytest.org/
 
 ### defusedxml
 
@@ -293,6 +304,13 @@ Node packages:
 pip install defusedxml
 ```
 
+### ImportError: No module named 'pytest'
+
+**Solution**: Install pytest
+```bash
+pip install pytest
+```
+
 ### Command not found: pandoc
 
 **Solution**: Install pandoc
@@ -387,8 +405,8 @@ For testing or minimal functionality:
 brew install pandoc  # macOS
 sudo apt-get install pandoc  # Ubuntu
 
-# Recommended minimum (text extraction + OOXML editing)
-pip install defusedxml
+# Recommended minimum (text extraction + OOXML editing + testing)
+pip install defusedxml pytest
 brew install pandoc libreoffice  # macOS
 sudo apt-get install pandoc libreoffice  # Ubuntu
 ```
@@ -410,7 +428,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages
-RUN pip install --no-cache-dir defusedxml
+RUN pip install --no-cache-dir defusedxml pytest
 
 # Install Node packages (optional)
 RUN npm install -g docx
@@ -424,7 +442,7 @@ For GitHub Actions or other CI environments:
 # .github/workflows/test.yml
 - name: Install DOCX skill dependencies
   run: |
-    pip install defusedxml
+    pip install defusedxml pytest
     sudo apt-get update
     sudo apt-get install -y pandoc libreoffice poppler-utils
     npm install -g docx
@@ -438,7 +456,7 @@ To upgrade to latest versions:
 
 ```bash
 # Upgrade Python packages
-pip install --upgrade defusedxml
+pip install --upgrade defusedxml pytest
 
 # Upgrade system packages
 brew upgrade pandoc libreoffice poppler  # macOS
@@ -452,6 +470,7 @@ npm update -g docx
 
 | Package | License | Commercial Use |
 |---------|---------|----------------|
+| pytest | MIT | Yes |
 | defusedxml | PSF | Yes |
 | pandoc | GPL | Yes (linking allowed) |
 | LibreOffice | MPL 2.0 | Yes |
@@ -492,7 +511,7 @@ For reproducible environments:
 
 ```bash
 # Python packages with versions
-pip install defusedxml==0.7.1
+pip install defusedxml==0.7.1 pytest==7.4.3
 
 # Node packages with versions
 npm install -g docx@8.5.0
@@ -504,10 +523,10 @@ For air-gapped environments:
 
 ```bash
 # Download packages
-pip download defusedxml -d ./packages
+pip download defusedxml pytest -d ./packages
 
 # Install offline
-pip install --no-index --find-links=./packages defusedxml
+pip install --no-index --find-links=./packages defusedxml pytest
 ```
 
 ---
