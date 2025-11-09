@@ -16,6 +16,7 @@ from typing import Any, Dict, Literal, Optional
 
 from .exceptions import PackagingError
 from .models import AgentBundle, PackagedBundle
+from .templates import generate_pyproject_toml, generate_setup_py
 
 logger = logging.getLogger(__name__)
 
@@ -196,8 +197,13 @@ class UVXPackager:
 
         # Create setup.py for compatibility
         setup_file = package_path / "setup.py"
-        setup_content = self._generate_setup_file(bundle)
+        setup_content = generate_setup_py(bundle)
         setup_file.write_text(setup_content)
+
+        # Create pyproject.toml for modern packaging
+        pyproject_file = package_path / "pyproject.toml"
+        pyproject_content = generate_pyproject_toml(bundle)
+        pyproject_file.write_text(pyproject_content)
 
     def _generate_init_file(self, bundle: AgentBundle) -> str:
         """Generate __init__.py for the package."""
@@ -244,38 +250,6 @@ __all__ = [
     "get_agent",
     {", ".join(f'"{agent.name}"' for agent in bundle.agents)}
 ]
-'''
-
-    def _generate_setup_file(self, bundle: AgentBundle) -> str:
-        """Generate setup.py for the package."""
-        return f'''"""
-Setup file for {bundle.name}
-"""
-
-from setuptools import setup, find_packages
-
-setup(
-    name="{bundle.name}",
-    version="{bundle.version}",
-    description="{bundle.description}",
-    author="Agent Bundle Generator",
-    packages=find_packages(),
-    python_requires=">=3.11",
-    install_requires=[
-        "amplihack>=1.0.0",
-    ],
-    package_data={{
-        "": ["*.json", "*.md", "*.yaml"],
-        "agents": ["*.md"],
-        "tests": ["*.py"],
-        "docs": ["*.md"],
-    }},
-    entry_points={{
-        "amplihack.bundles": [
-            "{bundle.name} = {bundle.name}:load",
-        ],
-    }},
-)
 '''
 
     def _generate_readme(self, bundle: AgentBundle) -> str:
