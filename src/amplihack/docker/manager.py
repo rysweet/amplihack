@@ -86,7 +86,7 @@ class DockerManager:
             "run",
             "--rm",
             "--interactive",
-            "--tty" if sys.stdin.isatty() else "--no-TTY",
+            *(["-tty"] if sys.stdin.isatty() else []),
             # Security options
             "--security-opt",
             "no-new-privileges",
