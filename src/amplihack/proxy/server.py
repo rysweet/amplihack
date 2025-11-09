@@ -90,7 +90,37 @@ for handler in logger.handlers:
     if isinstance(handler, logging.StreamHandler):
         handler.setFormatter(ColorizedFormatter("%(asctime)s - %(levelname)s - %(message)s"))
 
+# Maximum request body size: 1MB default (prevent DDoS/resource exhaustion)
+# Can be overridden via MAX_REQUEST_SIZE_MB environment variable
+DEFAULT_MAX_REQUEST_SIZE_MB = 1
+MAX_REQUEST_SIZE_MB = int(os.environ.get("MAX_REQUEST_SIZE_MB", DEFAULT_MAX_REQUEST_SIZE_MB))
+MAX_REQUEST_SIZE_BYTES = MAX_REQUEST_SIZE_MB * 1024 * 1024
+
+
+async def request_size_middleware(request: Request, call_next):
+    """Middleware to enforce maximum request body size."""
+    if request.method in ("POST", "PUT", "PATCH"):
+        content_length_header = request.headers.get("content-length", "0")
+        try:
+            content_length = int(content_length_header)
+            if content_length > MAX_REQUEST_SIZE_BYTES:
+                return Response(
+                    content=f"Request body too large. Maximum {MAX_REQUEST_SIZE_MB}MB allowed.",
+                    status_code=413,  # Payload Too Large
+                    media_type="text/plain",
+                )
+        except (ValueError, TypeError):
+            # If content-length is malformed, let it through - FastAPI will handle validation
+            pass
+
+    return await call_next(request)
+
+
 app = FastAPI()
+
+# Add middleware to enforce request size limits
+# This prevents malicious actors from sending oversized payloads that could cause resource exhaustion
+app.middleware("http")(request_size_middleware)
 
 # Load environment variables from .azure.env if it exists (with security validation)
 try:

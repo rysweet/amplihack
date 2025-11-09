@@ -21,6 +21,11 @@ class ProxyConfig:
     _API_KEY_REGEX = re.compile(r"[a-zA-Z0-9\-_]{20,}")
     _DEPLOYMENT_NAME_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{1,64}$")
 
+    # Minimum lengths for credentials - enforced across all environments
+    MIN_API_KEY_LENGTH = 20
+    MIN_GITHUB_TOKEN_LENGTH = 20
+    MIN_TEST_TOKEN_LENGTH = 15  # Test tokens still require minimum length
+
     def __init__(self, config_path: Optional[Path] = None):
         """Initialize proxy configuration.
 
@@ -250,10 +255,11 @@ class ProxyConfig:
         # Check required Azure fields
         api_key = self.config.get("AZURE_OPENAI_API_KEY", "").strip()
         if not api_key:
-            if "AZURE_OPENAI_API_KEY" in self.config and self.config["AZURE_OPENAI_API_KEY"] == "":
-                error_msg = "Azure API key cannot be empty"
-            else:
-                error_msg = "Missing required Azure configuration: AZURE_OPENAI_API_KEY"
+            error_msg = "Missing required Azure configuration: AZURE_OPENAI_API_KEY"
+            self.validation_errors.append(error_msg)
+            print(error_msg)
+        elif len(api_key) < self.MIN_API_KEY_LENGTH:
+            error_msg = f"Azure API key must be at least {self.MIN_API_KEY_LENGTH} characters"
             self.validation_errors.append(error_msg)
             print(error_msg)
         elif not self._validate_api_key_format(api_key):
@@ -415,10 +421,11 @@ class ProxyConfig:
         # Check required GitHub fields
         github_token = self.config.get("GITHUB_TOKEN", "").strip()
         if not github_token:
-            if "GITHUB_TOKEN" in self.config and self.config["GITHUB_TOKEN"] == "":
-                error_msg = "GitHub token cannot be empty"
-            else:
-                error_msg = "Missing required GitHub configuration: GITHUB_TOKEN"
+            error_msg = "Missing required GitHub configuration: GITHUB_TOKEN"
+            self.validation_errors.append(error_msg)
+            print(error_msg)
+        elif len(github_token) < self.MIN_GITHUB_TOKEN_LENGTH:
+            error_msg = f"GitHub token must be at least {self.MIN_GITHUB_TOKEN_LENGTH} characters"
             self.validation_errors.append(error_msg)
             print(error_msg)
         elif not self._validate_github_token_format(github_token):
@@ -492,14 +499,15 @@ class ProxyConfig:
         if not token:
             return False
 
-        # Allow test tokens for development/testing
+        # Allow test tokens for development/testing but still enforce minimum length
+        # Test tokens must be at least MIN_TEST_TOKEN_LENGTH to prevent accidental usage
         if token.startswith(("test-", "fake-", "dummy-")):
-            return len(token) >= 8
+            return len(token) >= self.MIN_TEST_TOKEN_LENGTH
 
         # GitHub tokens start with specific prefixes
         valid_prefixes = ("gho_", "ghp_", "ghs_", "ghu_", "ghr_")
         if token.startswith(valid_prefixes):
-            return len(token) >= 20
+            return len(token) >= self.MIN_GITHUB_TOKEN_LENGTH
 
         # Legacy tokens (no prefix) - stricter validation for 40-char hex tokens
         if len(token) == 40 and token.isalnum():
@@ -532,9 +540,10 @@ class ProxyConfig:
         if not api_key:
             return False
 
-        # Allow test keys for development/testing
+        # Allow test keys for development/testing but enforce minimum length
+        # Test keys must be at least MIN_TEST_TOKEN_LENGTH to prevent accidental usage
         if api_key.startswith(("test-", "sk-test-", "dummy-")):
-            return len(api_key) >= 8
+            return len(api_key) >= self.MIN_TEST_TOKEN_LENGTH
 
         # Basic format validation - at least 20 chars, alphanumeric with dashes/underscores
         return bool(self._API_KEY_REGEX.match(api_key))
