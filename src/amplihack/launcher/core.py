@@ -1,5 +1,7 @@
 """Core launcher functionality for Claude Code."""
 
+import atexit
+import logging
 import os
 import shlex
 import signal
@@ -16,6 +18,8 @@ from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
 from .repo_checkout import checkout_repository
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeLauncher:
@@ -74,6 +78,9 @@ class ClaudeLauncher:
         self._cached_resolved_paths = {}  # Cache for path resolution results
         self._cached_uvx_decision = None  # Cache for UVX --add-dir decision
         self._target_directory = None  # Target directory for --add-dir
+
+        # Setup signal handlers for graceful shutdown
+        self._setup_signal_handlers()
 
     def prepare_launch(self) -> bool:
         """Prepare environment for launching Claude.
@@ -787,4 +794,55 @@ class ClaudeLauncher:
         except Exception:
             # Graceful degradation - never crash launcher
             # No error message needed as Neo4j detection is optional
+            pass
+
+    def _setup_signal_handlers(self) -> None:
+        """Setup signal handlers for graceful shutdown.
+
+        Registers handlers for SIGINT (Ctrl-C) and SIGTERM that:
+        1. Trigger Neo4j cleanup via stop hook
+        2. Allow process to exit gracefully
+
+        Also registers atexit handler as fallback.
+        """
+
+        def signal_handler(signum: int, frame) -> None:
+            """Handle shutdown signals."""
+            signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
+            logger.info(f"Received {signal_name}, initiating graceful shutdown...")
+
+            # Trigger Neo4j cleanup via stop hook
+            try:
+                from amplihack.hooks.manager import execute_stop_hook
+
+                logger.info("Executing stop hook for cleanup...")
+                execute_stop_hook()
+            except Exception as e:
+                logger.warning(f"Stop hook execution failed: {e}")
+
+            # Exit gracefully
+            logger.info("Graceful shutdown complete")
+            sys.exit(0)
+
+        # Register signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        # Also register atexit handler as fallback
+        atexit.register(self._cleanup_on_exit)
+
+        logger.debug("Signal handlers registered for graceful shutdown")
+
+    def _cleanup_on_exit(self) -> None:
+        """Fallback cleanup handler for atexit.
+
+        This is a fail-safe that runs when the process exits normally
+        without receiving signals. Executes stop hook silently.
+        """
+        try:
+            from amplihack.hooks.manager import execute_stop_hook
+
+            execute_stop_hook()
+        except Exception:
+            # Fail silently in atexit - cleanup is best-effort
             pass

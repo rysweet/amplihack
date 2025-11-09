@@ -81,6 +81,24 @@ Sycophancy erodes trust. ALWAYS stick to facts and be direct. NEVER use excessiv
 
 Always prefer complete work with high quality over speed of implementation.
 
+### Neo4j Auto-Shutdown
+
+Controls whether Neo4j database shuts down automatically on session exit.
+
+**Current setting:** ask
+
+**Options:**
+- `always` - Always shut down Neo4j when last connection closes (no prompt)
+- `never` - Never shut down Neo4j (no prompt)
+- `ask` - Prompt user each time (default)
+
+**Usage:**
+```bash
+/amplihack:customize set neo4j_auto_shutdown always
+/amplihack:customize set neo4j_auto_shutdown never
+/amplihack:customize set neo4j_auto_shutdown ask
+```
+
 **Management Commands**:
 
 - /amplihack:customize list-workflows - Show all available workflows
@@ -121,7 +139,7 @@ Influences how tasks are approached and what gets emphasized:
 
 **Default Behavior**: All collaboration styles follow the "Autonomy Guidelines" above - work independently and only ask when truly blocked. The differences are in update frequency and decision-making approach:
 
-- **independent**: Maximum autonomy. Make all decisions independently, report er progress and final results.  Ask questions only for critical blockers. Follow workflow without status updates between stages.
+- **independent**: Maximum autonomy. Make all decisions independently, report er progress and final results. Ask questions only for critical blockers. Follow workflow without status updates between stages.
 - **interactive** (DEFAULT): Balanced autonomy. Follow workflow independently but provide regular progress updates. Ask questions only when truly blocked (per Autonomy Guidelines). Report completion of major stages.
 - **guided**: Collaborative approach. Provide detailed explanations of each decision. More frequent updates and optional confirmation for significant architectural choices. Still follows Autonomy Guidelines for workflow transitions.
 
