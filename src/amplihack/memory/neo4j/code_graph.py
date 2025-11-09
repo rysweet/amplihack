@@ -710,6 +710,8 @@ def run_blarify(
         str(output_path),
         "--format",
         "json",
+        "--entity-id",
+        codebase_path.name or "amplihack",  # Use directory name or default
     ]
 
     if languages:
