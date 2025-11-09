@@ -123,6 +123,36 @@ class DocGraphIntegration:
             except Exception as e:
                 logger.debug("Documentation index already exists or error: %s", e)
 
+        # Create full-text indexes for content search
+        self._create_doc_fulltext_indexes()
+
+    def _create_doc_fulltext_indexes(self):
+        """Create full-text indexes for documentation content search (idempotent)."""
+        fulltext_indexes = [
+            # Full-text index for DocFile content and title
+            """
+            CREATE FULLTEXT INDEX doc_file_content_search IF NOT EXISTS
+            FOR (df:DocFile) ON EACH [df.title, df.content]
+            """,
+            # Full-text index for Section content and headings
+            """
+            CREATE FULLTEXT INDEX section_content_search IF NOT EXISTS
+            FOR (s:Section) ON EACH [s.heading, s.content]
+            """,
+            # Full-text index for Concept names and categories
+            """
+            CREATE FULLTEXT INDEX concept_content_search IF NOT EXISTS
+            FOR (c:Concept) ON EACH [c.name, c.category]
+            """,
+        ]
+
+        for ft_index in fulltext_indexes:
+            try:
+                self.conn.execute_write(ft_index)
+                logger.debug("Created documentation fulltext index")
+            except Exception as e:
+                logger.debug("Documentation fulltext index already exists or error: %s", e)
+
     def parse_markdown_doc(self, file_path: Path) -> Dict[str, Any]:
         """Parse markdown documentation file into structured data.
 
@@ -713,6 +743,89 @@ class DocGraphIntegration:
         except Exception as e:
             logger.debug("Could not link memories to docs: %s", e)
             return 0
+
+    def search_doc_content(
+        self,
+        query: str,
+        entity_type: str = "all",
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Search documentation entities using full-text indexes.
+
+        Enables efficient pattern matching on documentation content.
+
+        Args:
+            query: Search query string
+            entity_type: 'file', 'section', 'concept', or 'all' (default)
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching documentation entities with scores
+        """
+        if entity_type not in ["file", "section", "concept", "all"]:
+            raise ValueError(f"Invalid entity_type: {entity_type}")
+
+        results = []
+
+        # Search documentation files
+        if entity_type in ["file", "all"]:
+            file_query = """
+            CALL db.index.fulltext.queryNodes('doc_file_content_search', $search_query)
+            YIELD node as df, score
+            RETURN 'doc_file' as type, df.path as id, df.title as title, df.content as content,
+                   df.word_count as word_count, df.line_count as line_count, score
+            ORDER BY score DESC
+            LIMIT $limit
+            """
+
+            params = {"search_query": query, "limit": limit}
+
+            try:
+                result = self.conn.execute_query(file_query, params)
+                results.extend([record for record in result] if result else [])
+            except Exception as e:
+                logger.debug("DocFile fulltext search failed: %s", e)
+
+        # Search sections
+        if entity_type in ["section", "all"]:
+            section_query = """
+            CALL db.index.fulltext.queryNodes('section_content_search', $search_query)
+            YIELD node as s, score
+            RETURN 'section' as type, s.id as id, s.heading as title, s.content as content,
+                   s.level as level, s.order as order, score
+            ORDER BY score DESC
+            LIMIT $limit
+            """
+
+            params = {"search_query": query, "limit": limit}
+
+            try:
+                result = self.conn.execute_query(section_query, params)
+                results.extend([record for record in result] if result else [])
+            except Exception as e:
+                logger.debug("Section fulltext search failed: %s", e)
+
+        # Search concepts
+        if entity_type in ["concept", "all"]:
+            concept_query = """
+            CALL db.index.fulltext.queryNodes('concept_content_search', $search_query)
+            YIELD node as c, score
+            RETURN 'concept' as type, c.id as id, c.name as title, c.category as category, score
+            ORDER BY score DESC
+            LIMIT $limit
+            """
+
+            params = {"search_query": query, "limit": limit}
+
+            try:
+                result = self.conn.execute_query(concept_query, params)
+                results.extend([record for record in result] if result else [])
+            except Exception as e:
+                logger.debug("Concept fulltext search failed: %s", e)
+
+        # Sort combined results by score
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results[:limit]
 
     def query_relevant_docs(
         self,

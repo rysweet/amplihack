@@ -109,6 +109,31 @@ class BlarifyIntegration:
             except Exception as e:
                 logger.debug("Code index already exists or error: %s", e)
 
+        # Create full-text indexes for content search
+        self._create_fulltext_indexes()
+
+    def _create_fulltext_indexes(self):
+        """Create full-text indexes for code entity content search (idempotent)."""
+        fulltext_indexes = [
+            # Full-text index for Class docstrings
+            """
+            CREATE FULLTEXT INDEX class_content_search IF NOT EXISTS
+            FOR (c:Class) ON EACH [c.name, c.docstring]
+            """,
+            # Full-text index for Function docstrings and names
+            """
+            CREATE FULLTEXT INDEX function_content_search IF NOT EXISTS
+            FOR (f:Function) ON EACH [f.name, f.docstring]
+            """,
+        ]
+
+        for ft_index in fulltext_indexes:
+            try:
+                self.conn.execute_write(ft_index)
+                logger.debug("Created fulltext index")
+            except Exception as e:
+                logger.debug("Fulltext index already exists or error: %s", e)
+
     def run_blarify(
         self,
         codebase_path: str,
@@ -616,6 +641,71 @@ class BlarifyIntegration:
             "functions": [],
             "classes": [],
         }
+
+    def search_code_content(
+        self,
+        query: str,
+        entity_type: str = "all",
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Search code entities using full-text indexes.
+
+        Enables efficient pattern matching on code docstrings and names.
+
+        Args:
+            query: Search query string
+            entity_type: 'function', 'class', or 'all' (default)
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching code entities with scores
+        """
+        if entity_type not in ["function", "class", "all"]:
+            raise ValueError(f"Invalid entity_type: {entity_type}")
+
+        results = []
+
+        # Search functions
+        if entity_type in ["function", "all"]:
+            func_query = """
+            CALL db.index.fulltext.queryNodes('function_content_search', $search_query)
+            YIELD node as f, score
+            RETURN 'function' as type, f.id as id, f.name as name, f.docstring as content,
+                   f.complexity as complexity, f.file_path as file_path, score
+            ORDER BY score DESC
+            LIMIT $limit
+            """
+
+            params = {"search_query": query, "limit": limit}
+
+            try:
+                result = self.conn.execute_query(func_query, params)
+                results.extend([record for record in result] if result else [])
+            except Exception as e:
+                logger.debug("Function fulltext search failed: %s", e)
+
+        # Search classes
+        if entity_type in ["class", "all"]:
+            class_query = """
+            CALL db.index.fulltext.queryNodes('class_content_search', $search_query)
+            YIELD node as c, score
+            RETURN 'class' as type, c.id as id, c.name as name, c.docstring as content,
+                   c.is_abstract as is_abstract, c.file_path as file_path, score
+            ORDER BY score DESC
+            LIMIT $limit
+            """
+
+            params = {"search_query": query, "limit": limit}
+
+            try:
+                result = self.conn.execute_query(class_query, params)
+                results.extend([record for record in result] if result else [])
+            except Exception as e:
+                logger.debug("Class fulltext search failed: %s", e)
+
+        # Sort combined results by score
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return results[:limit]
 
     def get_code_stats(self, project_id: Optional[str] = None) -> Dict[str, Any]:
         """Get code graph statistics.
