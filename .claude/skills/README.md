@@ -1,377 +1,185 @@
-# Module Spec Generator Skill
+# Claude Code Skills for Amplihack
 
-## Overview
+This directory contains production-ready Claude Code Skills that extend amplihack's capabilities across coding, creative work, and knowledge management.
 
-The module-spec-generator is a Claude Code skill that automatically generates comprehensive module specifications following amplihack's **brick philosophy**. It analyzes existing or planned module code to extract the essential blueprint that enables any module to be rebuilt without breaking system connections.
+## 📚 About Claude Code Skills
 
-## Quick Start
+Claude Code Skills are modular, reusable capabilities that extend Claude's functionality. They consist of folders containing a `SKILL.md` file with YAML frontmatter and Markdown instructions, along with optional supporting scripts and resources.
 
-### Generate Spec for New Module
+**Key Benefits:**
+- **Token Efficient**: Skills load on-demand, consuming minimal tokens until needed
+- **Philosophy Aligned**: All skills follow amplihack's ruthless simplicity and modular design
+- **Portable**: Work across Claude.ai, API, and Claude Code environments
+- **Self-Contained**: Each skill is independently usable and testable
 
+## 🎯 Implemented Skills (12 Total)
+
+### Phase 1: Quick Wins (4 skills)
+
+| Skill | Score | Description | Issue | PR |
+|-------|-------|-------------|-------|-----|
+| **decision-logger** | 49.5 | Structured decision recording (What\|Why\|Alternatives) | [#1221](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1221) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+| **email-drafter** | 47.0 | Professional email generation (formal/casual/technical) | [#1223](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1223) | [#1232](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1232) |
+| **module-spec-generator** | 50.0 | Generate brick module specifications | [#1219](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1219) | TBD |
+| **meeting-synthesizer** | 50.0 | Extract action items and decisions from meetings | [#1220](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1220) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+
+### Phase 2: Philosophy Enforcement (3 skills)
+
+| Skill | Score | Description | Issue | PR |
+|-------|-------|-------------|-------|-----|
+| **philosophy-guardian** | 45.5 | Reviews code against amplihack philosophy | [#1224](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1224) | [#1235](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1235) |
+| **test-gap-analyzer** | 44.5 | Identifies untested functions and coverage gaps | [#1225](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1225) | [#1233](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1233) |
+| **code-smell-detector** | 42.5 | Detects anti-patterns and over-engineering | [#1228](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1228) | [#1234](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1234) |
+
+### Phase 3: Creative (2 skills)
+
+| Skill | Score | Description | Issue | PR |
+|-------|-------|-------------|-------|-----|
+| **mermaid-diagram-generator** | 48.0 | Converts descriptions to Mermaid diagrams | [#1222](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1222) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
+| **storytelling-synthesizer** | 44.0 | Transforms technical work into compelling narratives | [#1226](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1226) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
+
+### Phase 4: Advanced (3 skills)
+
+| Skill | Score | Description | Issue | PR |
+|-------|-------|-------------|-------|-----|
+| **learning-path-builder** | 43.5 | Creates personalized technology learning paths | [#1227](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1227) | [#1237](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1237) |
+| **knowledge-extractor** | 40.5 | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
+| **pr-review-assistant** | 40.0 | Philosophy-aware PR reviews | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | TBD |
+
+## 📖 Research & Documentation
+
+### Research Reports
+
+- **[Complete Research Report](../runtime/logs/20251108_skills_research/RESEARCH.md)** (357 lines)
+  - Comprehensive analysis of Claude Code Skills ecosystem
+  - Comparison with MCP (Model Context Protocol)
+  - 23+ documented skills from Anthropic and community
+  - Key insights from Simon Willison and other experts
+
+- **[Evaluation Matrix & Ideas](../runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** (842 lines)
+  - 6-criteria evaluation framework aligned with amplihack philosophy
+  - 20 brainstormed skill ideas with priority scores
+  - Implementation phases and effort estimates
+  - Detailed scoring rubrics
+
+### Evaluation Criteria
+
+All skills were evaluated on:
+
+1. **Ruthless Simplicity** (1-5): Single clear purpose, minimal dependencies
+2. **Modular Design** (1-5): Self-contained, clear interfaces (bricks & studs)
+3. **Zero-BS Implementation** (1-5): Actually works, no stubs
+4. **Reusability** (1-5): Useful across multiple contexts
+5. **Maintenance Burden** (1-5, lower is better): Stable dependencies
+6. **User Value** (1-5): Solves frequent pain points, measurable time savings
+
+**Priority Score Formula:**
 ```
-Claude, generate a spec for a new authentication module with:
-- JWT token validation
-- Role-based access control
-- Error handling for invalid tokens
-```
-
-Claude will:
-1. Clarify the module's scope and boundaries
-2. Define the public contract (exported functions and classes)
-3. Identify dependencies
-4. Create test requirements
-5. Generate `Specs/authentication.md`
-
-### Generate Spec for Existing Module
-
-```
-Claude, generate a spec for the module at .claude/tools/amplihack/session/
-```
-
-Claude will:
-1. Analyze all Python files in the module
-2. Extract the public interface from `__init__.py`
-3. Document all exported functions and classes
-4. Map dependencies
-5. Create `Specs/session-management.md`
-
-### Verify Spec Matches Implementation
-
-```
-Claude, verify that Specs/caching.md accurately describes
-the actual implementation in .claude/tools/amplihack/caching/
-```
-
-Claude will:
-1. Read the specification
-2. Analyze the actual code
-3. Compare public contracts
-4. Report discrepancies
-5. Suggest corrections
-
-## What Makes a Good Module Spec
-
-A good spec enables the **Builder Agent** to implement the module correctly without asking questions. It defines:
-
-### 1. Single, Clear Responsibility
-```
-GOOD: "Handles JWT token validation and refresh"
-BAD: "Handles authentication, validation, user management, logging, and metrics"
-```
-
-### 2. Complete Public Contract (The "Studs")
-```python
-# Good: Clear, type-hinted, documented
-def validate_token(token: str, secret: str) -> TokenPayload:
-    """Validate JWT token and return decoded payload.
-
-    Args:
-        token: JWT token string
-        secret: Secret key for validation
-
-    Returns:
-        TokenPayload with decoded claims
-
-    Raises:
-        ValueError: If token is invalid or expired
-    """
-
-# Bad: Unclear what it returns or when it fails
-def check_token(tok):
-    """Check a token"""
-```
-
-### 3. Explicit Dependencies
-```markdown
-## Dependencies
-
-### External
-- `PyJWT` (2.8+): Token encoding/decoding
-
-### Internal
-- `.models.TokenPayload`: Data structure
-- `.exceptions`: Error definitions
-
-### None
-Pure Python standard library.
+Priority = (Simplicity * 2) + (Modular * 2) + (Zero-BS * 1.5) +
+           (Reusability * 1.5) + ((6 - Maintenance) * 1) + (User Value * 2.5)
+Max Score: 50 points
 ```
 
-### 4. Realistic Test Requirements
-```
-## Test Requirements
+## 🔍 Using Skills
 
-### Core Functionality
-- ✅ Valid token validation succeeds
-- ✅ Expired token raises ValueError
-- ✅ Invalid signature raises ValueError
-- ✅ Malformed token raises ValueError
+Skills are automatically discovered from:
+- User settings: `~/.config/claude/skills/`
+- Project settings: `.claude/skills/`
+- Plugin-provided skills
+- Built-in skills
 
-### Contract Verification
-- ✅ TokenPayload has all expected fields
-- ✅ Functions accept documented types
-- ✅ Error messages are clear
-
-### Coverage
-85%+ line coverage
-```
-
-### 5. Working Examples
-```python
-from authentication import validate_token, TokenPayload
-
-# Example: Validate a token
-try:
-    payload = validate_token(token, secret)
-    print(f"User: {payload.user_id}, Role: {payload.role}")
-except ValueError as e:
-    print(f"Invalid token: {e}")
-```
-
-## Brick Philosophy in Specs
-
-### What is a "Brick"?
-- Self-contained module with ONE clear responsibility
-- Can be rebuilt independently
-- All code, tests, examples in one directory
-
-### What are "Studs"?
-- Public connection points (exported functions, classes)
-- Clear, documented interface
-- Type-hinted with examples
-
-### Why Regeneratable?
-- When code changes, rebuild from the spec
-- Spec defines the contract, code is an implementation
-- If implementation diverges from spec, spec is authoritative
-
-## Module Spec Template Structure
-
-Every spec includes:
+### Invoking Skills
 
 ```
-# Module Name Specification
+Claude, use the decision-logger skill to record this architectural decision.
 
-## Purpose
-[One sentence core responsibility]
+Claude, analyze test coverage using test-gap-analyzer.
 
-## Public Interface (The "Studs")
-[Exported functions, classes, constants]
-
-## Dependencies
-[What it depends on - external and internal]
-
-## Module Structure
-[File organization and what goes where]
-
-## Test Requirements
-[What must be tested]
-
-## Example Usage
-[Working code examples]
-
-## Regeneration Notes
-[Why this module can be rebuilt from spec]
+Claude, generate a Mermaid diagram for this workflow using mermaid-diagram-generator.
 ```
 
-## Real-World Examples
+### Managing Skills
 
-### Example 1: Simple Utility Module
-
-```markdown
-# String Utils Specification
-
-## Purpose
-Provide common string manipulation utilities with consistent error handling.
-
-## Public Interface
-- `truncate(text: str, length: int) -> str`: Truncate to max length
-- `normalize(text: str) -> str`: Normalize whitespace
-- `slugify(text: str) -> str`: Convert to URL-safe slug
-
-## Dependencies
-- External: None
-- Internal: None
-
-## Test Requirements
-- ✅ truncate preserves UTF-8
-- ✅ normalize removes extra whitespace
-- ✅ slugify removes special characters
+```bash
+/agents                # List available agents and skills
+/reload-skills         # Reload after modifications
 ```
 
-This spec enables the Builder Agent to implement all three functions with complete clarity.
+## 🏗️ Skill Structure
 
-### Example 2: Integration Module
-
-```markdown
-# GitHub API Client Specification
-
-## Purpose
-Simplified wrapper for GitHub API operations with error handling.
-
-## Public Interface
-- `create_issue(title: str, body: str) -> str`: Returns issue URL
-- `get_pr_status(pr_number: int) -> PRStatus`: Returns current status
-- `create_workflow_dispatch(workflow_id: str) -> bool`: Trigger workflow
-
-## Dependencies
-- External: `requests` (2.28+)
-- Internal: `.models.PRStatus`
-
-## Test Requirements
-- ✅ HTTP errors are caught and re-raised as custom exceptions
-- ✅ Credentials are validated before use
-- ✅ JSON parsing handles malformed responses
-```
-
-This spec ensures the module handles GitHub API consistently and predictably.
-
-## Specification Lifecycle
-
-### Phase 1: Planning
-Use spec generator to plan module BEFORE implementation.
-```
-User: Generate a spec for a new validation module
-Claude: [Creates comprehensive spec]
-User: Review spec, make changes
-Claude: Update spec based on feedback
-```
-
-### Phase 2: Implementation
-Builder Agent uses spec to implement.
-```
-Claude (Builder): Read spec and implement exactly as specified
-→ Module works correctly
-→ Tests pass
-```
-
-### Phase 3: Documentation
-Spec becomes the authoritative documentation.
-```
-Other developers read spec to understand module
-Other modules depend on the "studs" defined in spec
-```
-
-### Phase 4: Evolution
-When requirements change, update the spec.
-```
-User: Module needs new function
-Claude: Update spec first
-Claude: Regenerate implementation from new spec
-```
-
-## Integration with Builder Agent
-
-The Builder Agent can directly use module specs:
-
-1. **Read spec**: `Specs/module-name.md`
-2. **Implement from spec**: Create module exactly as specified
-3. **Verify contract**: All exported items work as documented
-4. **Test according to spec**: Implement test requirements
-5. **Result**: Working module that matches spec perfectly
-
-## Common Spec Mistakes to Avoid
-
-### ❌ Mistake 1: Specifying Implementation
+Each skill follows this structure:
 
 ```
-BAD: "Use Pydantic for validation, store in Redis cache"
-GOOD: "Validate input according to schema, cache results"
+skill-name/
+├── SKILL.md           # Required: YAML frontmatter + instructions
+├── README.md          # Optional: User-facing documentation
+├── examples/          # Optional: Example usage
+└── tests/             # Optional: Validation tests
 ```
 
-The WHAT, not the HOW.
+### SKILL.md Format
 
-### ❌ Mistake 2: Ambiguous Contracts
+```yaml
+---
+name: skill-name
+description: |
+  Clear description of what this skill does and when Claude should use it.
+  Include both the capability AND the usage context.
+---
 
-```
-BAD: "Handle errors gracefully"
-GOOD: "Raise ValueError if input is invalid, return None if not found"
-```
+# Skill Instructions
 
-Be specific about behavior.
+Detailed instructions for Claude on how to use this skill...
 
-### ❌ Mistake 3: Unclear Dependencies
-
-```
-BAD: "Some external stuff"
-GOOD: "PyJWT 2.8+, PyYAML 6.0+"
-```
-
-List exact packages and versions.
-
-### ❌ Mistake 4: Missing Test Requirements
-
-```
-BAD: "Test that it works"
-GOOD:
-- ✅ Valid input returns expected output
-- ✅ Invalid input raises ValueError
-- ✅ Empty input returns None
+## Examples
+Concrete examples with input/output...
 ```
 
-Specify testable behaviors.
+## 📊 Quality Standards
 
-### ❌ Mistake 5: Insufficient Examples
+All skills meet these quality standards:
 
-```
-BAD: "See code for usage"
-GOOD: Include 3-5 realistic examples
-```
+- ✅ **Complete Documentation**: SKILL.md with YAML frontmatter
+- ✅ **Clear Examples**: Real-world usage demonstrations
+- ✅ **Philosophy Aligned**: Ruthless simplicity, modular design, zero-BS
+- ✅ **Tested**: Quality review completed
+- ✅ **Production Ready**: No stubs, TODOs, or placeholders
 
-Make it easy to understand intended usage.
+## 🚀 Creating New Skills
 
-## Verification Checklist
+To create a new skill:
 
-After generating a spec, verify:
+1. **Research**: Check if similar skills exist
+2. **Evaluate**: Score against 6 criteria (target score: 40+)
+3. **Create**: Follow skill structure above
+4. **Document**: Clear SKILL.md with examples
+5. **Test**: Validate with real usage
+6. **Review**: Ensure philosophy compliance
 
-- [ ] Single, clear responsibility
-- [ ] Public interface is complete
-- [ ] All exports are documented
-- [ ] Type hints are precise
-- [ ] Dependencies are listed
-- [ ] Test requirements are realistic
-- [ ] Examples are working code
-- [ ] Someone could rebuild this module from spec alone
-- [ ] Follows brick philosophy
-- [ ] No implementation details
-- [ ] No future-proofing or speculation
+See [Evaluation Matrix](../runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md) for guidance on prioritization.
 
-## Tips for Effective Specs
+## 📚 Related Documentation
 
-1. **Be Precise**: Vague specs lead to incorrect implementations
-2. **Include Examples**: Working code clarifies intent better than prose
-3. **List Errors**: Document what can fail and how
-4. **Name Clearly**: Function/class names should be self-documenting
-5. **Justify Dependencies**: If you need an external package, explain why
-6. **Keep it Simple**: If the spec is complex, the module needs simplification
-7. **Test Early**: Use spec to design tests before implementation
-8. **Document Why**: Include context about design decisions
-9. **Check Completeness**: Could someone rebuild this module from this spec?
-10. **Embrace Regeneration**: Write specs that enable rebuilding
+- [CLAUDE.md](../../CLAUDE.md) - Project overview and agent system
+- [PHILOSOPHY.md](../context/PHILOSOPHY.md) - Ruthless simplicity principles
+- [PATTERNS.md](../context/PATTERNS.md) - Reusable solution patterns
+- [Agent Catalog](../agents/CATALOG.md) - Specialized agents
 
-## Philosophy
+## 🤝 Contributing
 
-This skill embodies amplihack's core values:
+When adding new skills:
 
-- **Ruthless Simplicity**: Specs focus on essentials, not implementation details
-- **Brick Philosophy**: Clear contracts enable independent module building
-- **Regeneratable**: Every module can be rebuilt from its spec
-- **Human-AI Partnership**: Humans define specs, AI implements them
-- **Trust in Emergence**: Simple, well-specified modules combine into complex systems
+1. Create GitHub issue with evaluation scores
+2. Implement in separate worktree/branch
+3. Follow naming: `feat/issue-{number}-{skill-name}`
+4. Create PR with comprehensive description
+5. Link to research and evaluation docs
+6. Ensure quality review completed
 
-## Related Skills and Workflows
+---
 
-- **Builder Agent**: Implements modules from specs
-- **Reviewer Agent**: Verifies code matches specs
-- **Tester Agent**: Tests according to spec requirements
-- **Document-Driven Development**: Uses specs as source of truth
+**Last Updated**: November 8, 2025
+**Total Skills**: 12 (all HIGH priority, scores 40.0-50.0)
+**Status**: Production Ready
 
-## Feedback and Evolution
-
-This skill should evolve based on usage:
-
-- What makes specs more useful?
-- What information is consistently needed?
-- What leads to failed implementations?
-- How can specs better prevent mistakes?
-
-Document learnings in `.claude/context/DISCOVERIES.md`.
+🤖 Skills documentation maintained as part of amplihack project
