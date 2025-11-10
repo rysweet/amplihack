@@ -477,7 +477,7 @@ def verify_hooks():
             hook_file = hook_info["file"]
             hook_path = os.path.join(hooks_dir, hook_file)
             if os.path.exists(hook_path):
-                print(f"    ✅ {hook_file} found")
+                logger.info(f"    ✅ {hook_file} found")
             else:
                 print(f"    ❌ {hook_file} missing")
                 system_all_exist = False
