@@ -407,3 +407,4 @@ Format your response as:
         "session_id": session.session_id,
         "success": synthesis_result.exit_code == 0,
     }
+# Debate pattern implementation
