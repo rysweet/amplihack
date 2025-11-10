@@ -1,0 +1,282 @@
+[
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/LAUNCHER_REVIEW_SUMMARY.md",
+    "line": null,
+    "severity": "PHILOSOPHY",
+    "category": "documentation_placement",
+    "description": "Review summary document in project root - should be in docs/ or deleted after PR review",
+    "recommendation": "Move to docs/reviews/ or delete if PR is merged. Project root should only contain README.md, CLAUDE.md, CHANGELOG.md, LICENSE.md, CONTRIBUTING.md"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/launcher_system_review.json",
+    "line": null,
+    "severity": "PHILOSOPHY",
+    "category": "documentation_placement",
+    "description": "Review JSON file in project root - temporary artifact from code review",
+    "recommendation": "Move to docs/reviews/ or delete. These are transient review documents, not permanent references"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/neo4j_graph_models_review.json",
+    "line": null,
+    "severity": "PHILOSOPHY",
+    "category": "documentation_placement",
+    "description": "Review JSON file in project root - temporary artifact from code review",
+    "recommendation": "Move to docs/reviews/ or delete. These are transient review documents"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/wave1_memory_neo4j_review.json",
+    "line": null,
+    "severity": "PHILOSOPHY",
+    "category": "documentation_placement",
+    "description": "Review JSON file in project root - temporary artifact from code review",
+    "recommendation": "Move to docs/reviews/ or delete. These are transient review documents"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/.claude/tools/amplihack/hooks/README_PRE_PUSH.md",
+    "line": null,
+    "severity": "PHILOSOPHY",
+    "category": "documentation_placement",
+    "description": "README with underscores in hooks directory - should follow standard naming (README.md)",
+    "recommendation": "Rename to README.md if it's documentation for the hooks directory, or move to docs/hooks/ if it's reference material"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "28-37",
+    "severity": "YAGNI",
+    "category": "security_theater",
+    "description": "Prompt injection patterns are overly broad and unused - PROMPT_INJECTION_PATTERNS defined but only used in _sanitize_injected_content() which is only called for file content, not user input",
+    "recommendation": "Remove prompt injection patterns entirely. The threat model is unclear - file content from append/ directory is already under user control. This is security theater that doesn't prevent any real attacks."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "40-71",
+    "severity": "YAGNI",
+    "category": "unnecessary_complexity",
+    "description": "_sanitize_injected_content() is overly complex for its use case - truncates content and removes 'suspicious patterns' that are unlikely to be actual injection attempts in markdown files",
+    "recommendation": "Replace with simple size limit check. Remove pattern matching - if user controls the append directory, they can already inject arbitrary content. This is false security."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "124-130",
+    "severity": "YAGNI",
+    "category": "premature_security",
+    "description": "Session-level security limits (max_total_api_calls, max_session_duration, max_session_output) are hardcoded and may be premature optimization",
+    "recommendation": "Move to configuration if truly needed, but consider removing if not actually preventing abuse. These limits could break legitimate long-running sessions."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "181-194",
+    "severity": "YAGNI",
+    "category": "unnecessary_abstraction",
+    "description": "_format_elapsed() is a 13-line helper for simple time formatting - overly verbose for what could be 1-2 lines",
+    "recommendation": "Inline as: f'{int(s)}s' if s < 60 else f'{int(s//60)}m {int(s%60)}s' - or use a standard library like humanize"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "196-212",
+    "severity": "COMPLEXITY",
+    "category": "complex_string_building",
+    "description": "_progress_str() has nested conditionals and string concatenation - builds fork info conditionally which adds complexity",
+    "recommendation": "Simplify with f-string comprehension: fork_suffix = f' [Fork {n+1}]' if n > 0 else ''"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "214-230",
+    "severity": "COMPLEXITY",
+    "category": "unnecessary_abstraction",
+    "description": "run_sdk() method exists only to print error for Claude - should be removed or merged with _run_sdk_subprocess",
+    "recommendation": "Remove run_sdk() entirely. Code should never call it for Claude SDK path. Simplify by removing this indirection layer."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "232-337",
+    "severity": "COMPLEXITY",
+    "category": "massive_function",
+    "description": "_run_sdk_subprocess() is 105 lines with nested threading, PTY management, and stream handling - too many responsibilities",
+    "recommendation": "Split into: _create_pty_stdin(), _mirror_streams(), _cleanup_pty(). Each function should do ONE thing. This violates Single Responsibility Principle massively."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "268-299",
+    "severity": "COMPLEXITY",
+    "category": "nested_functions",
+    "description": "Three nested functions (read_stream, feed_pty_stdin) inside _run_sdk_subprocess - hard to test and reason about",
+    "recommendation": "Extract these as methods or separate module. Nested functions hide complexity but don't reduce it."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "381-399",
+    "severity": "YAGNI",
+    "category": "over_documentation",
+    "description": "_build_philosophy_context() returns massive docstring prompt - could be a simple file read or constant",
+    "recommendation": "Move this to a template file in .claude/templates/ and read it. Embedding multi-line prompts in code is maintenance nightmare."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "401-440",
+    "severity": "COMPLEXITY",
+    "category": "terminal_formatting",
+    "description": "_format_todos_for_terminal() has manual ANSI color codes and formatting logic - unnecessary complexity",
+    "recommendation": "Use Rich library (already imported for UI) or remove formatting entirely. Manual ANSI codes are error-prone."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "442-477",
+    "severity": "COMPLEXITY",
+    "category": "excessive_logging",
+    "description": "_handle_todo_write() has 9 logging statements for simple todo update - logs entry point, formatting, state updates, UI updates, etc.",
+    "recommendation": "Remove debug logging or use proper DEBUG level. This function logs more than it does work - logging should not dominate logic."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "479-633",
+    "severity": "COMPLEXITY",
+    "category": "massive_function",
+    "description": "_run_turn_with_sdk() is 154 lines handling SDK streaming, message parsing, tool detection, output limits - multiple responsibilities",
+    "recommendation": "Split into: _configure_sdk_options(), _stream_messages(), _handle_assistant_message(), _handle_tool_use(). Function is doing WAY too much."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "558-595",
+    "severity": "COMPLEXITY",
+    "category": "nested_conditionals",
+    "description": "TodoWrite tool processing has 5 levels of nested if statements - checking hasattr, then type, then attribute again, then dict fallback",
+    "recommendation": "Use early returns and helper function: _extract_todos_from_block(block) that handles the complexity in one place"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "634-654",
+    "severity": "YAGNI",
+    "category": "premature_abstraction",
+    "description": "_is_retryable_error() checks for 8 different error patterns but only used in one place with hardcoded retry logic",
+    "recommendation": "Inline the pattern list at call site or remove if retry logic changes. This abstraction doesn't provide value - it's called once."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "656-708",
+    "severity": "COMPLEXITY",
+    "category": "unnecessary_retry_logic",
+    "description": "_run_turn_with_retry() implements custom retry with exponential backoff but doesn't integrate with SDK's built-in retry",
+    "recommendation": "Check if SDK already has retry logic. If so, remove this. If not, use tenacity library instead of reimplementing retry patterns."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "710-759",
+    "severity": "YAGNI",
+    "category": "unused_code",
+    "description": "run_hook() method for Copilot/Codex but main implementation is Claude SDK only - dead code path",
+    "recommendation": "Remove Copilot/Codex support if not actively used. Code suggests Claude SDK is the only real path. This is dead code complexity."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "813-975",
+    "severity": "COMPLEXITY",
+    "category": "massive_duplication",
+    "description": "_run_sync_session() and _run_async_session() duplicate 90% of logic - both have identical turn 1 (clarify), turn 2 (plan), turns 3+ (execute/evaluate) structure",
+    "recommendation": "Extract _build_turn_prompts() and _execute_turn_cycle() to eliminate duplication. These should share ALL prompt building and flow logic."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "827-873",
+    "severity": "COMPLEXITY",
+    "category": "prompt_duplication",
+    "description": "Turn 1 and Turn 2 prompts are duplicated between sync and async sessions - 80+ lines of identical prompt text",
+    "recommendation": "Create prompt templates: CLARIFY_PROMPT, PLAN_PROMPT, EXECUTE_PROMPT as module constants or load from files"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "1193-1361",
+    "severity": "COMPLEXITY",
+    "category": "massive_function",
+    "description": "_export_session_transcript() is 168 lines handling import, path search, security validation, builder loading, export, verification - absurdly complex",
+    "recommendation": "Split into separate module: transcript_exporter.py with methods: _find_builder(), _validate_export_path(), _verify_export_files(). This is a mini-application inside a method."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/launcher/auto_mode.py",
+    "line": "1206-1271",
+    "severity": "COMPLEXITY",
+    "category": "import_hackery",
+    "description": "Dynamic import logic with multiple search paths, strict path resolution, security validation - this is an anti-pattern",
+    "recommendation": "Use proper package imports. If builder is part of the package, just 'from amplihack.tools.builders import ClaudeTranscriptBuilder'. Stop fighting the import system."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/.claude/tools/amplihack/hooks/quality_checker.py",
+    "line": "43-60",
+    "severity": "YAGNI",
+    "category": "unnecessary_abstraction",
+    "description": "get_commit_range() method is overly complex for simple string formatting - checks for new branch with all zeros",
+    "recommendation": "Inline at call site. This is 17 lines for what should be: range = f'{remote}..{local}' if remote != '0'*40 else 'origin/main..HEAD'"
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/.claude/tools/amplihack/hooks/quality_checker.py",
+    "line": "166-217",
+    "severity": "COMPLEXITY",
+    "category": "report_formatting",
+    "description": "format_violations_report() builds multi-line report with manual string formatting, grouping by file, adding headers/footers - verbose",
+    "recommendation": "Use a template string or Rich library for formatting. This is 51 lines of string manipulation that could be 10 lines with proper tooling."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/.claude/tools/amplihack/hooks/violations.py",
+    "line": "46-58",
+    "severity": "COMPLEXITY",
+    "category": "string_formatting",
+    "description": "__str__() method builds multi-line formatted output with manual newlines and indentation",
+    "recommendation": "Use textwrap.dedent() or simpler format. Manual multi-line string building is error-prone."
+  },
+  {
+    "file": "GENERAL",
+    "line": null,
+    "severity": "PHILOSOPHY",
+    "category": "auto_mode_length",
+    "description": "auto_mode.py is 1360 lines - violates Single Responsibility Principle massively. Should be split into: launcher, session, turn, transcript, prompts modules",
+    "recommendation": "Split into: launcher/session.py (session lifecycle), launcher/turn_executor.py (turn execution), launcher/prompt_templates.py (prompt strings), launcher/transcript.py (transcript export). Maximum file size should be ~300 lines."
+  },
+  {
+    "file": "GENERAL",
+    "line": null,
+    "severity": "PHILOSOPHY",
+    "category": "subprocess_vs_sdk",
+    "description": "Dual implementation paths (subprocess for Copilot/Codex, SDK for Claude) add massive complexity but only Claude SDK appears to be actively used",
+    "recommendation": "Remove subprocess path entirely if Copilot/Codex are not used. If they are, split into separate launchers: claude_launcher.py, copilot_launcher.py. Don't mix both in one class."
+  },
+  {
+    "file": "GENERAL",
+    "line": null,
+    "severity": "YAGNI",
+    "category": "fork_complexity",
+    "description": "Fork management adds significant complexity (fork_manager, session time tracking, message clearing) for handling 60-minute sessions. Unclear if this is needed vs just starting fresh sessions.",
+    "recommendation": "Verify fork requirement with actual usage data. If 99% of sessions are <60min, remove fork logic entirely. Simplicity > handling rare edge cases."
+  },
+  {
+    "file": "GENERAL",
+    "line": null,
+    "severity": "PHILOSOPHY",
+    "category": "ui_optional",
+    "description": "UI mode (auto_mode_ui.py) is optional but adds complexity throughout auto_mode.py with if self.ui_enabled checks everywhere",
+    "recommendation": "Use null object pattern: always create UI object, but NoOpUI if ui_mode=False. Removes all conditional checks - cleaner code."
+  },
+  {
+    "file": "GENERAL",
+    "line": null,
+    "severity": "COMPLEXITY",
+    "category": "async_vs_sync",
+    "description": "Two complete session implementations (_run_async_session and _run_sync_session) with 90% duplicate code is a major architectural smell",
+    "recommendation": "Unify under single async implementation. Convert subprocess path to async if needed, or remove it entirely. Having two parallel implementations is unmaintainable."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/proxy/integrated_proxy.py",
+    "line": null,
+    "severity": "COMPLEXITY",
+    "category": "file_size",
+    "description": "File is 4162 lines - largest file in codebase, almost certainly violates Single Responsibility Principle",
+    "recommendation": "Audit and split into multiple modules. No single proxy module should be >1000 lines. This needs aggressive decomposition."
+  },
+  {
+    "file": "/Users/ryan/src/Fritmp/amplihack/src/amplihack/proxy/server.py",
+    "line": null,
+    "severity": "COMPLEXITY",
+    "category": "file_size",
+    "description": "File is 2379 lines - second largest file, likely mixing multiple responsibilities",
+    "recommendation": "Split into server/core.py, server/handlers.py, server/middleware.py, etc. Large files indicate poor separation of concerns."
+  }
+]

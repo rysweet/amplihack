@@ -1,0 +1,434 @@
+{
+  "review_metadata": {
+    "wave": 2,
+    "focus": "Neo4j Graph Models",
+    "reviewer": "Database Agent",
+    "date": "2025-11-08",
+    "files_reviewed": [
+      "src/amplihack/memory/neo4j/code_graph.py (732 lines)",
+      "src/amplihack/memory/neo4j/doc_graph.py (804 lines)",
+      "src/amplihack/memory/neo4j/external_knowledge.py (792 lines)",
+      "src/amplihack/memory/neo4j/agent_memory.py (503 lines)",
+      "src/amplihack/memory/neo4j/schema.py (271 lines)",
+      "src/amplihack/memory/neo4j/neo4j_schema.py (202 lines)"
+    ],
+    "total_issues": 47,
+    "critical": 8,
+    "high": 15,
+    "medium": 18,
+    "low": 6
+  },
+
+  "database_specific_issues": {
+    "schema_design": [
+      {
+        "severity": "critical",
+        "category": "schema_design",
+        "issue": "Inconsistent node property typing across graph models",
+        "location": "code_graph.py:220-248, doc_graph.py:436-476",
+        "description": "Node properties are stored with inconsistent types (strings vs native types). For example, 'lines_of_code' is stored as string in some contexts but should be integer. 'last_modified' should be datetime not ISO string. Neo4j supports native datetime and numeric types which provide better indexing and querying.",
+        "recommendation": "Use Neo4j native types: INTEGER for numeric values, DATETIME for timestamps. Convert data before storage: `cf.lines_of_code = toInteger(file.lines_of_code)`, `cf.last_modified = datetime(file.last_modified)`",
+        "impact": "Poor query performance, type coercion overhead, incorrect sort/comparison operations"
+      },
+      {
+        "severity": "high",
+        "category": "schema_design",
+        "issue": "JSON metadata serialization loses queryability",
+        "location": "external_knowledge.py:402, doc_graph.py:186",
+        "description": "Metadata is serialized to JSON strings and stored as text properties, making it impossible to query on nested metadata fields. Neo4j supports map properties that preserve structure and allow dot-notation queries.",
+        "recommendation": "Store metadata as Neo4j map properties directly instead of JSON strings: `ed.metadata = $metadata` (pass dict directly). This allows queries like `WHERE ed.metadata.content_type = 'text/html'`",
+        "impact": "Cannot efficiently filter or query based on metadata content"
+      },
+      {
+        "severity": "high",
+        "category": "schema_design",
+        "issue": "Missing composite indexes for common query patterns",
+        "location": "schema.py:160-190, code_graph.py:85-110",
+        "description": "Single-property indexes exist but common queries use multiple properties together. For example, filtering by agent_type AND project_id, or source AND version. Composite indexes would significantly improve query performance.",
+        "recommendation": "Add composite indexes: `CREATE INDEX memory_agent_project IF NOT EXISTS FOR (m:Memory) ON (m.agent_type, m.project_id)`, `CREATE INDEX external_doc_source_version IF NOT EXISTS FOR (ed:ExternalDoc) ON (ed.source, ed.version)`",
+        "impact": "Slower queries when filtering on multiple properties, full index scans instead of optimized lookups"
+      },
+      {
+        "severity": "critical",
+        "category": "schema_design",
+        "issue": "Unbounded relationship properties violate graph modeling best practices",
+        "location": "code_graph.py:363-370, doc_graph.py:577-602",
+        "description": "Relationships store complex properties like entire arrays (parameters, examples) which should be separate nodes. For example, IMPORTS relationship stores symbol/alias directly but complex metadata goes on relationship. This makes relationship traversal expensive and queries complex.",
+        "recommendation": "Extract relationship metadata to intermediate nodes when complex. For IMPORTS with metadata, create: (source)-[:IMPORTS]->(ImportDeclaration {symbol, alias})-[:FROM]->(target). Keep relationships lightweight.",
+        "impact": "Expensive relationship traversals, difficult to query relationship metadata, potential memory issues"
+      },
+      {
+        "severity": "medium",
+        "category": "schema_design",
+        "issue": "Circular dependency risk in schema initialization order",
+        "location": "code_graph.py:49-56, doc_graph.py:49-65",
+        "description": "Schema initialization methods call each other without clear dependency ordering. If constraints depend on indexes or vice versa, initialization could fail or create inconsistent state. No explicit ordering documented.",
+        "recommendation": "Document and enforce schema initialization order: 1) Drop existing if needed, 2) Create constraints (which auto-create indexes), 3) Create additional indexes, 4) Verify schema. Add dependency tracking.",
+        "impact": "Potential initialization failures, inconsistent schema state across deployments"
+      },
+      {
+        "severity": "medium",
+        "category": "schema_design",
+        "issue": "Node labels not normalized - potential label explosion",
+        "location": "code_graph.py:221 (CodeFile), doc_graph.py:436 (DocFile), external_knowledge.py:381 (ExternalDoc)",
+        "description": "Each integration uses different but overlapping labels (CodeFile, DocFile). No shared base labels for common properties/behaviors (e.g., all are 'File' with specific subtypes). This prevents polymorphic queries across file types.",
+        "recommendation": "Use multi-label strategy: `(cf:File:CodeFile)`, `(df:File:DocFile)`. This allows queries like `MATCH (f:File)` to find all files, or `MATCH (f:File:CodeFile)` for specific type. Enables shared indexes on File label.",
+        "impact": "Duplicate code for similar operations, cannot write generic file queries, missed optimization opportunities"
+      }
+    ],
+
+    "query_patterns": [
+      {
+        "severity": "critical",
+        "category": "query_patterns",
+        "issue": "String pattern matching on large text fields without full-text indexes",
+        "location": "doc_graph.py:734-755, external_knowledge.py:631-642",
+        "description": "Using `CONTAINS` operator on large content/text fields for search without full-text indexes. This forces Neo4j to scan every node's content property completely. Query performance degrades linearly with data size. Line 736: `WHERE toLower(df.content) CONTAINS toLower($query)` will be extremely slow.",
+        "recommendation": "Create full-text indexes: `CREATE FULLTEXT INDEX doc_content IF NOT EXISTS FOR (df:DocFile) ON EACH [df.content, df.title]`, then use: `CALL db.index.fulltext.queryNodes('doc_content', $query) YIELD node, score`. Provides relevance scoring and 100-1000x better performance.",
+        "impact": "Catastrophic performance degradation as content grows, timeouts on production data"
+      },
+      {
+        "severity": "high",
+        "category": "query_patterns",
+        "issue": "Multiple OPTIONAL MATCH clauses cause cartesian product explosions",
+        "location": "code_graph.py:564-601, doc_graph.py:778-803",
+        "description": "Queries chain multiple OPTIONAL MATCH without proper WITH clauses to fence cardinality. For example, code_graph.py lines 567-593 have 3 sequential OPTIONAL MATCHes that can create M×N×P rows if relationships exist. Each OPTIONAL MATCH multiplies result rows.",
+        "recommendation": "Use WITH clauses to collect results and control cardinality: `OPTIONAL MATCH (m)-[:RELATES_TO_FILE]->(cf) WITH m, collect(cf) as files OPTIONAL MATCH (m)-[:RELATES_TO_FUNCTION]->(f) WITH m, files, collect(f) as functions`. Use LIMIT on subqueries.",
+        "impact": "Exponential memory growth, query timeouts, incorrect aggregation results"
+      },
+      {
+        "severity": "high",
+        "category": "query_patterns",
+        "issue": "N+1 query anti-pattern in relationship creation loops",
+        "location": "code_graph.py:393-406, external_knowledge.py:408-426",
+        "description": "Iterating through relationships in Python and executing one query per relationship. For example, _import_relationships() loops through each relationship and calls individual _create_X_relationship() methods. This results in N database round-trips instead of 1 batched operation.",
+        "recommendation": "Use UNWIND for batch operations: `UNWIND $relationships as rel MATCH (source {id: rel.source_id}) MATCH (target {id: rel.target_id}) MERGE (source)-[:CALLS]->(target)`. Execute once with all relationships as parameter array.",
+        "impact": "100x slower imports, network latency dominates, connection pool exhaustion"
+      },
+      {
+        "severity": "high",
+        "category": "query_patterns",
+        "issue": "Missing query parameter validation allows Cypher injection",
+        "location": "external_knowledge.py:435-445, doc_graph.py:632-667",
+        "description": "String concatenation used to build relationship types dynamically: `query = f\"MERGE (ed)-[r:{relationship_type}]->(cf)\"`. If relationship_type comes from user input without validation, this allows Cypher injection attacks. Dynamic labels/types should be parameterized or validated against whitelist.",
+        "recommendation": "Validate relationship types against whitelist before query construction: `ALLOWED_REL_TYPES = {'EXPLAINS', 'DOCUMENTS', 'SOURCED_FROM'}; if relationship_type not in ALLOWED_REL_TYPES: raise ValueError`. Or use APOC procedures for dynamic relationships: `CALL apoc.create.relationship(src, $rel_type, {}, target)`",
+        "impact": "Security vulnerability, potential data corruption or unauthorized access"
+      },
+      {
+        "severity": "medium",
+        "category": "query_patterns",
+        "issue": "Inefficient bidirectional path queries without direction hints",
+        "location": "code_graph.py:563-608, doc_graph.py:693-716",
+        "description": "Relationship patterns don't specify direction when direction is known. For example, `MATCH (m:Memory)-[:RELATES_TO_FILE]->(cf)` when relationship is always outbound from Memory. Neo4j has to check both directions without direction hint, doubling traversal work.",
+        "recommendation": "Always specify relationship direction when known: `MATCH (m)-[:RELATES_TO_FILE]->(cf)` for outbound, `MATCH (m)<-[:RELATES_TO_FILE]-(cf)` for inbound. Use `-[:REL]-` only when truly bidirectional. Document relationship direction conventions.",
+        "impact": "2x slower relationship traversals, unnecessary index lookups"
+      },
+      {
+        "severity": "medium",
+        "category": "query_patterns",
+        "issue": "Missing LIMIT clauses on potentially unbounded queries",
+        "location": "agent_memory.py:175-184, doc_graph.py:631-667",
+        "description": "Several queries don't have LIMIT clauses or use very large default limits. For example, recall() defaults to limit=20 but is still parameterized. If called with limit=1000000, query could return enormous result set causing OOM. No hard caps enforced.",
+        "recommendation": "Add hard upper limits and pagination: `SKIP $offset LIMIT min($limit, 1000)`. For production, use cursor-based pagination: return node IDs, let client request next page with `WHERE id(n) > $last_id ORDER BY id(n) LIMIT $page_size`",
+        "impact": "Memory exhaustion, query timeouts, service degradation"
+      },
+      {
+        "severity": "low",
+        "category": "query_patterns",
+        "issue": "Redundant toLower() calls in WHERE clauses",
+        "location": "doc_graph.py:653-657, external_knowledge.py:634-635",
+        "description": "Case-insensitive matching done with `toLower(field) = toLower($param)` prevents index usage even on indexed fields. Neo4j has case-insensitive indexes and collation options that would be more efficient.",
+        "recommendation": "Create case-insensitive indexes: `CREATE INDEX concept_name_ci IF NOT EXISTS FOR (c:Concept) ON (c.name) OPTIONS {indexConfig: {`spatial.wgs-84.min`: [-180.0, -90.0], `spatial.wgs-84.max`: [180.0, 90.0]}}`. Or use `=~ '(?i)...'` regex for case-insensitive matching with indexes.",
+        "impact": "Minor performance loss, index not utilized"
+      }
+    ],
+
+    "graph_integrity": [
+      {
+        "severity": "high",
+        "category": "graph_integrity",
+        "issue": "Orphaned nodes created when referenced nodes don't exist",
+        "location": "code_graph.py:278-292, doc_graph.py:498-527",
+        "description": "MERGE operations create nodes but subsequent MATCH for relationships fails silently. For example, _import_classes() MERGEs Class nodes, then MATCHes CodeFile. If CodeFile doesn't exist, relationship isn't created but Class remains orphaned. No validation or cleanup of orphans.",
+        "recommendation": "Use OPTIONAL MATCH with FOREACH for conditional relationship creation, or validate referenced nodes exist before import: `MATCH (cf:CodeFile {path: cls.file_path}) WITH cf, cls WHERE cf IS NOT NULL MERGE (c:Class {id: cls.id}) ... MERGE (c)-[:DEFINED_IN]->(cf)`. Add orphan cleanup job.",
+        "impact": "Data inconsistency, orphaned nodes accumulate, incorrect query results"
+      },
+      {
+        "severity": "high",
+        "category": "graph_integrity",
+        "issue": "No referential integrity validation for cross-graph relationships",
+        "location": "code_graph.py:465-490, doc_graph.py:604-629",
+        "description": "Methods like link_code_to_memories() and link_docs_to_code() create relationships between different graph domains without validating both nodes exist. If code graph is stale and doc graph is fresh, links could point to deleted code nodes. No cascade delete or orphan detection.",
+        "recommendation": "Add validation queries before linking: `MATCH (m:Memory {id: $mem_id}), (cf:CodeFile {path: $path}) WITH m, cf WHERE m IS NOT NULL AND cf IS NOT NULL MERGE (m)-[r:RELATES_TO]->(cf)`. Implement cascade delete: `ON DELETE DETACH` or cleanup jobs to remove dangling relationships.",
+        "impact": "Broken relationships, query errors when traversing, data integrity violations"
+      },
+      {
+        "severity": "medium",
+        "category": "graph_integrity",
+        "issue": "Duplicate relationships created without uniqueness constraints",
+        "location": "code_graph.py:410-426, doc_graph.py:632-667",
+        "description": "Using MERGE for relationships but uniqueness only on endpoints, not relationship properties. For example, IMPORTS relationship with different symbols could create multiple relationships between same files. MERGE on relationship should include all uniqueness properties.",
+        "recommendation": "Include relationship properties in MERGE uniqueness: `MERGE (source)-[r:IMPORTS {symbol: imp.symbol}]->(target)`. Or use composite key on relationship. For many-to-many with properties, consider intermediate node pattern.",
+        "impact": "Duplicate relationships, incorrect counts, query result ambiguity"
+      },
+      {
+        "severity": "medium",
+        "category": "graph_integrity",
+        "issue": "No transaction boundaries for multi-step import operations",
+        "location": "code_graph.py:196-204, doc_graph.py:411-431",
+        "description": "Import methods perform multiple operations (files, classes, functions, relationships) but don't wrap in explicit transaction. If operation fails halfway through (e.g., relationship import fails), partial data remains in database. No rollback capability.",
+        "recommendation": "Wrap multi-step operations in transactions using Neo4j transaction functions: `with self.driver.session() as session: result = session.write_transaction(lambda tx: self._do_import(tx, data))`. Implement compensating transactions or full rollback on error.",
+        "impact": "Data corruption on failures, inconsistent state, difficult recovery"
+      },
+      {
+        "severity": "low",
+        "category": "graph_integrity",
+        "issue": "Missing graph validation queries to detect structural anomalies",
+        "location": "schema.py:60-86",
+        "description": "verify_schema() checks constraints/indexes but doesn't validate graph structure. No queries to detect orphaned nodes, circular references, missing required relationships, or invalid property values. Structural issues could persist undetected.",
+        "recommendation": "Add structural validation queries: `MATCH (c:Class) WHERE NOT (c)-[:DEFINED_IN]->(:CodeFile) RETURN count(c) as orphaned_classes`, `MATCH (m:Memory) WHERE m.confidence < 0 OR m.confidence > 1 RETURN count(m) as invalid_confidence`. Run as health check.",
+        "impact": "Undetected data quality issues, incorrect query results"
+      }
+    ],
+
+    "performance": [
+      {
+        "severity": "critical",
+        "category": "performance",
+        "issue": "No connection pooling configuration or connection reuse strategy",
+        "location": "agent_memory.py:71-77, All integration classes",
+        "description": "Each integration class instance creates new connector but no evidence of connection pooling. Neo4j driver creates connection pool automatically but needs configuration. Default pool size (100) may be too large for embedded Neo4j or too small for high concurrency. No connection lifecycle management.",
+        "recommendation": "Configure Neo4j driver pool: `GraphDatabase.driver(uri, auth=auth, max_connection_pool_size=50, connection_acquisition_timeout=60)`. Reuse driver across application. Implement connection health checks. Use context managers for sessions.",
+        "impact": "Connection exhaustion, high latency from connection overhead, resource leaks"
+      },
+      {
+        "severity": "high",
+        "category": "performance",
+        "issue": "Large result sets loaded entirely into memory without streaming",
+        "location": "code_graph.py:250-251, external_knowledge.py:645-646",
+        "description": "Query execution uses `execute_write(query, params)` which loads entire result set into memory before returning. For large imports or queries (thousands of nodes), this causes high memory usage. Neo4j supports result streaming but not utilized.",
+        "recommendation": "Use iterators for large result sets: `for record in session.run(query, params):` instead of loading all results. For imports, process in batches: `UNWIND $batch as item ... LIMIT 1000`. Implement pagination with cursors for large queries.",
+        "impact": "Memory exhaustion on large operations, OOM errors, degraded performance"
+      },
+      {
+        "severity": "high",
+        "category": "performance",
+        "issue": "No query result caching for frequently accessed static data",
+        "location": "agent_memory.py:406-427, schema.py:87-131",
+        "description": "Methods like get_stats() and get_schema_status() execute full queries every call even though results change infrequently. No caching layer for expensive aggregation queries or schema metadata. High-frequency calls cause unnecessary database load.",
+        "recommendation": "Implement caching for static/slow-changing data: `@lru_cache(maxsize=128, ttl=300) def get_stats()`. Use Redis or in-memory cache for high-traffic queries. Invalidate cache on schema changes. Cache at method or connector level.",
+        "impact": "Unnecessary database load, slow response times, reduced throughput"
+      },
+      {
+        "severity": "medium",
+        "category": "performance",
+        "issue": "Synchronous blocking operations in async-friendly context",
+        "location": "external_knowledge.py:236-264, All fetch/import operations",
+        "description": "All database operations are synchronous blocking calls. In async web applications or concurrent agents, blocking calls serialize operations and reduce throughput. Neo4j driver supports async mode but not used.",
+        "recommendation": "Provide async versions of key methods using Neo4j async driver: `async def fetch_api_docs_async() -> Optional[ExternalDoc]: async with self.driver.async_session() as session: result = await session.run(query, params)`. Use asyncio.gather for parallel operations.",
+        "impact": "Poor concurrency, reduced throughput in async applications, blocked event loops"
+      },
+      {
+        "severity": "medium",
+        "category": "performance",
+        "issue": "Repeated datetime.now() calls and timezone conversions",
+        "location": "code_graph.py:246, 289, 342, external_knowledge.py:405, 451",
+        "description": "Every insert operation calls `datetime.now().isoformat()` multiple times, creating timestamp strings. String timestamps prevent temporal queries and comparisons. Neo4j has native datetime support with timezone handling.",
+        "recommendation": "Use Neo4j datetime functions: `SET n.created_at = datetime()` in Cypher instead of passing ISO strings. For client-side timestamps, use Neo4j driver's DateTime type: `from neo4j.time import DateTime; params['created_at'] = DateTime.now()`. Store as native datetime for temporal queries.",
+        "impact": "Inefficient timestamp storage, slower temporal queries, timezone ambiguity"
+      }
+    ]
+  },
+
+  "standard_review_dimensions": {
+    "correctness": [
+      {
+        "severity": "high",
+        "category": "correctness",
+        "issue": "Silent failures in constraint/index creation without proper error handling",
+        "location": "code_graph.py:79-83, schema.py:154-158",
+        "description": "Constraint and index creation catches all exceptions and logs as debug, treating failures as 'already exists'. But failures could be due to conflicts, syntax errors, or permission issues. No distinction between expected (already exists) and unexpected errors.",
+        "recommendation": "Catch specific Neo4j exceptions: `except ClientError as e: if e.code == 'Neo.ClientError.Schema.EquivalentSchemaRuleAlreadyExists': logger.debug('Already exists') else: logger.error('Failed: %s', e); raise`. Check error codes instead of generic catch.",
+        "impact": "Schema initialization appears successful but may be incomplete, subtle bugs"
+      },
+      {
+        "severity": "high",
+        "category": "correctness",
+        "issue": "Incorrect error handling in fallback query logic",
+        "location": "code_graph.py:522-530",
+        "description": "_link_memories_to_files() tries APOC query first, then fallback to non-APOC. But exception catch is too broad - network errors, syntax errors, or actual data problems all trigger fallback. Fallback query has different semantics (simple string matching vs JSON parsing).",
+        "recommendation": "Detect APOC availability once at init time: `has_apoc = self._check_apoc_available()`. Use appropriate query based on capability. Don't rely on runtime errors for capability detection. Make fallback behavior explicit.",
+        "impact": "Unpredictable behavior, fallback may give different results, hard to debug"
+      },
+      {
+        "severity": "medium",
+        "category": "correctness",
+        "issue": "Race condition in schema initialization between multiple processes",
+        "location": "schema.py:35-58, All initialize_*_schema methods",
+        "description": "Schema initialization is marked idempotent but concurrent calls from multiple processes could race. IF NOT EXISTS clauses help but transactions aren't serialized. Multiple processes starting simultaneously could all try to initialize schema, causing conflicts or duplicate work.",
+        "recommendation": "Use distributed locking for schema initialization: acquire lock from Neo4j or external lock service before initialization. Or use application-level singleton pattern: one process initializes, others wait. Add schema version tracking to detect partial initialization.",
+        "impact": "Concurrent initialization failures, wasted resources, potential inconsistency"
+      },
+      {
+        "severity": "medium",
+        "category": "correctness",
+        "issue": "Incorrect count aggregation with OPTIONAL MATCH",
+        "location": "doc_graph.py:779-803",
+        "description": "Using count(DISTINCT node) with OPTIONAL MATCH can give incorrect results. If OPTIONAL MATCH returns null, count(null) = 0, but count(DISTINCT null) may still be counted as 1 depending on aggregation. Sum of nullable properties needs COALESCE.",
+        "recommendation": "Use COALESCE for nullable aggregations: `count(DISTINCT COALESCE(s, null))` or better `size([s IN collect(DISTINCT s) WHERE s IS NOT NULL])`. For SUM: `COALESCE(sum(df.word_count), 0) as total_words`. Test with OPTIONAL MATCH returning nulls.",
+        "impact": "Incorrect statistics, off-by-one errors in counts"
+      }
+    ],
+
+    "type_safety": [
+      {
+        "severity": "medium",
+        "category": "type_safety",
+        "issue": "Untyped Neo4j result records lead to KeyError at runtime",
+        "location": "code_graph.py:250-251, schema.py:264",
+        "description": "Accessing result records with dict-style indexing `result[0]['count']` without checking if result is empty or key exists. If query returns no results or different schema, KeyError raised. No type hints on Neo4j return types.",
+        "recommendation": "Use defensive access patterns: `count = result[0].get('count', 0) if result else 0`. Add type hints: `def get_code_stats(self) -> Dict[str, Any]:`. Use TypedDict or dataclass for structured results. Validate result shape before accessing.",
+        "impact": "Runtime KeyError exceptions, crashes on unexpected query results"
+      },
+      {
+        "severity": "medium",
+        "category": "type_safety",
+        "issue": "Type coercion ambiguity in dataclass serialization",
+        "location": "external_knowledge.py:39-64",
+        "description": "ExternalDoc dataclass has fields with default_factory but serialization to Neo4j params doesn't use dataclass helpers. Manual conversion with json.dumps() loses type information and can't round-trip correctly. fetched_at is datetime but serialized to string.",
+        "recommendation": "Use dataclass utilities for serialization: `from dataclasses import asdict; params = asdict(doc)`. Or use Pydantic models with validators: `class ExternalDoc(BaseModel): fetched_at: datetime = Field(default_factory=datetime.now)`. Pydantic handles Neo4j serialization correctly.",
+        "impact": "Type mismatches on deserialization, data loss, difficult debugging"
+      },
+      {
+        "severity": "low",
+        "category": "type_safety",
+        "issue": "Missing type hints on connector execute methods",
+        "location": "All execute_write/execute_query calls",
+        "description": "Neo4jConnector methods likely return `List[Dict[str, Any]]` but not explicitly typed. Callers assume structure without verification. Return type should be generic over result type: `execute_query[T](query: str, params: Dict) -> List[T]`.",
+        "recommendation": "Add generic type hints to connector interface: `def execute_query(self, query: str, params: Optional[Dict] = None) -> List[Record]:`. Use Neo4j Record type or define custom result type. Add runtime validation of result schema.",
+        "impact": "Type checker can't catch errors, harder to refactor safely"
+      }
+    ],
+
+    "exception_handling": [
+      {
+        "severity": "high",
+        "category": "exception_handling",
+        "issue": "Broad exception catching hides specific database errors",
+        "location": "external_knowledge.py:408-413, code_graph.py:54-56",
+        "description": "Using bare `except Exception` catches too many error types including programming errors (AttributeError, TypeError). Database-specific errors (connection failures, constraint violations, timeouts) should be handled differently than code bugs.",
+        "recommendation": "Catch specific Neo4j exceptions: `from neo4j.exceptions import ServiceUnavailable, TransientError, ClientError`. Handle each appropriately: retry transient errors, log client errors, propagate service unavailable. Let programming errors bubble up.",
+        "impact": "Bugs masked as database errors, improper error recovery, silent failures"
+      },
+      {
+        "severity": "high",
+        "category": "exception_handling",
+        "issue": "No retry logic for transient database failures",
+        "location": "All database operations",
+        "description": "Network blips, leader elections, or temporary resource exhaustion cause transient failures. No retry logic implemented - operations fail immediately. Neo4j driver has built-in retry for some operations but not all. Custom retry needed for transient errors.",
+        "recommendation": "Implement exponential backoff retry: `from tenacity import retry, stop_after_attempt, wait_exponential @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10)) def execute_with_retry(...)`. Retry only on TransientError.",
+        "impact": "Brittle operations, failures on temporary issues, poor reliability"
+      },
+      {
+        "severity": "medium",
+        "category": "exception_handling",
+        "issue": "Resource leaks on exception paths",
+        "location": "external_knowledge.py:134-160",
+        "description": "NamedTemporaryFile created but cleanup in finally block may not execute if error before finally. If exception occurs during blarify execution, tmp file may not be deleted. No guarantee of cleanup on all paths.",
+        "recommendation": "Use context managers for all resources: `with NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp: try: ... finally: tmp_path.unlink(missing_ok=True)`. Or better, use delete=True and let context manager handle cleanup automatically.",
+        "impact": "Temporary file leaks, disk space exhaustion over time"
+      },
+      {
+        "severity": "medium",
+        "category": "exception_handling",
+        "issue": "Swallowed exceptions in batch operations lose error context",
+        "location": "code_graph.py:393-406",
+        "description": "_import_relationships() loops through items and handles errors per-item but loses context of which items failed. If 100 relationships processed and 10 fail, no information about which ones or why. Partial success not communicated to caller.",
+        "recommendation": "Collect errors and return detailed results: `results = {'succeeded': [], 'failed': []}`. For each item, track success/failure with reason. Return or log full error report. Consider fail-fast vs best-effort based on use case.",
+        "impact": "Silent partial failures, difficult to diagnose issues, data inconsistency"
+      }
+    ],
+
+    "code_reuse": [
+      {
+        "severity": "high",
+        "category": "code_reuse",
+        "issue": "Massive code duplication across code_graph, doc_graph, external_knowledge",
+        "location": "code_graph.py:40-110, doc_graph.py:49-124, external_knowledge.py:126-201",
+        "description": "Schema initialization logic (constraints, indexes) nearly identical in all three files. Each has _create_constraints(), _create_indexes(), initialize_schema() with 80%+ duplicate code. Same pattern for error handling, logging, connection management.",
+        "recommendation": "Extract to shared base class: `class GraphIntegration: def initialize_schema(self): self._create_constraints(); self._create_indexes()`. Each subclass overrides constraint/index definitions as data. Or use mixin pattern for schema initialization capability.",
+        "impact": "Maintenance nightmare, bugs fixed in one place but not others, code bloat"
+      },
+      {
+        "severity": "high",
+        "category": "code_reuse",
+        "issue": "Repeated import node patterns should use shared function",
+        "location": "code_graph.py:206-251, doc_graph.py:433-476, external_knowledge.py:369-413",
+        "description": "_import_X() methods all follow same pattern: validate input, build MERGE query, execute with params, return count. Only difference is query template and node type. This pattern repeated 10+ times across files.",
+        "recommendation": "Create generic import function: `def import_nodes(self, node_label: str, nodes: List[Dict], unique_key: str, properties: List[str]) -> int:`. Generate MERGE query from parameters. Or use builder pattern for query construction.",
+        "impact": "Difficult to maintain, inconsistent behavior, harder to optimize or add features"
+      },
+      {
+        "severity": "medium",
+        "category": "code_reuse",
+        "issue": "Get stats queries duplicated with slight variations",
+        "location": "code_graph.py:620-651, doc_graph.py:769-803, external_knowledge.py:756-791",
+        "description": "Each integration has get_X_stats() method with nearly identical structure: MATCH nodes, OPTIONAL MATCH relationships, count and aggregate. Only difference is node labels. Could be parameterized.",
+        "recommendation": "Create generic stats query builder: `def get_stats(self, node_label: str, relationship_patterns: List[Tuple[str, str]]) -> Dict[str, Any]:`. Build query dynamically from parameters. Return standard stats structure.",
+        "impact": "Inconsistent stats reporting, duplicate maintenance, missed optimizations"
+      },
+      {
+        "severity": "low",
+        "category": "code_reuse",
+        "issue": "Duplicate project linking logic in import methods",
+        "location": "code_graph.py:232-238, doc_graph.py:453-458",
+        "description": "Project linking pattern `WHERE $project_id IS NOT NULL ... FOREACH ... MERGE -[:BELONGS_TO_PROJECT]->` repeated in multiple import methods. Same logic could be extracted to helper method.",
+        "recommendation": "Extract to helper: `def link_to_project(self, node_label: str, node_id_field: str, project_id: Optional[str]):`. Call from import methods. Or use Cypher procedure: `CALL custom.linkToProject($nodeId, $projectId)`.",
+        "impact": "Minor duplication, harder to maintain project linking logic"
+      }
+    ]
+  },
+
+  "recommendations": {
+    "immediate_actions": [
+      "Fix critical Cypher injection vulnerability in dynamic relationship type construction - validate all user inputs",
+      "Add composite indexes for common multi-property query patterns (agent_type+project_id, source+version)",
+      "Implement full-text search indexes for content fields to replace CONTAINS pattern matching",
+      "Add connection pooling configuration and resource lifecycle management",
+      "Fix orphaned node creation by validating referenced nodes exist before relationship creation"
+    ],
+
+    "short_term_improvements": [
+      "Extract shared schema initialization logic to base class to eliminate duplication",
+      "Implement batch import operations using UNWIND to eliminate N+1 query pattern",
+      "Add transaction boundaries around multi-step import operations with rollback capability",
+      "Create generic import/stats functions to reduce code duplication across graph models",
+      "Add defensive result checking and type hints for Neo4j query results"
+    ],
+
+    "architectural_enhancements": [
+      "Design multi-label node hierarchy (File base label with CodeFile/DocFile subtypes)",
+      "Implement async variants of database operations for concurrent agent workloads",
+      "Add query result caching layer for expensive aggregation and schema queries",
+      "Create graph validation framework to detect structural anomalies (orphans, cycles, invalid data)",
+      "Implement streaming result processing for large dataset operations"
+    ],
+
+    "database_best_practices": [
+      "Use Neo4j native types (INTEGER, DATETIME) instead of string serialization for better performance",
+      "Store metadata as map properties rather than JSON strings for queryability",
+      "Specify relationship direction in queries when known to avoid bidirectional traversal overhead",
+      "Use LIMIT clauses on all potentially unbounded queries with reasonable hard caps",
+      "Implement cursor-based pagination for large result sets instead of loading into memory"
+    ]
+  },
+
+  "positive_observations": [
+    "Idempotent schema initialization with IF NOT EXISTS clauses enables safe repeated execution",
+    "Consistent use of MERGE for upsert semantics prevents duplicate nodes on re-import",
+    "Good separation of concerns with specialized integration classes for each graph domain",
+    "Comprehensive constraint and index definitions cover most query patterns",
+    "Fallback query logic for APOC unavailability shows consideration for different deployment environments",
+    "Good use of parameterized queries prevents basic SQL injection in most cases"
+  ]
+}

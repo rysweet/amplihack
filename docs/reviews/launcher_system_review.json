@@ -1,0 +1,726 @@
+{
+  "review_metadata": {
+    "review_type": "Launcher System Review - Wave 1",
+    "reviewer": "Claude Code Reviewer Agent",
+    "timestamp": "2025-11-08",
+    "files_reviewed": [
+      "src/amplihack/launcher/core.py",
+      "src/amplihack/launcher/auto_mode.py",
+      "src/amplihack/launcher/detector.py",
+      "src/amplihack/launcher/settings_manager.py",
+      "src/amplihack/launcher/fork_manager.py",
+      "src/amplihack/launcher/auto_mode_coordinator.py",
+      "src/amplihack/launcher/auto_mode_state.py",
+      "src/amplihack/launcher/auto_mode_ui.py",
+      "src/amplihack/launcher/session_capture.py",
+      "src/amplihack/launcher/append_handler.py"
+    ],
+    "total_lines_reviewed": 4200
+  },
+
+  "executive_summary": {
+    "overall_rating": "Good with Critical Issues",
+    "critical_issues": 7,
+    "high_issues": 12,
+    "medium_issues": 18,
+    "low_issues": 9,
+    "strengths": [
+      "Comprehensive async handling with proper event loop management",
+      "Good thread safety with RLock usage in state management",
+      "Excellent security measures (prompt injection detection, rate limiting)",
+      "Clean separation of concerns between components",
+      "Robust forking mechanism to handle SDK time limits"
+    ],
+    "weaknesses": [
+      "Race conditions in async cleanup and state transitions",
+      "Missing exception handling in critical paths",
+      "Type safety issues with dynamic SDK objects",
+      "Code duplication across launch methods",
+      "Incomplete error recovery in network failures"
+    ]
+  },
+
+  "critical_issues": [
+    {
+      "id": "LAUNCH-CRIT-001",
+      "severity": "Critical",
+      "category": "Correctness",
+      "title": "Race Condition in Async Generator Cleanup",
+      "location": "auto_mode.py:615-633",
+      "description": "The GeneratorExit and RuntimeError exception handlers for async cleanup may suppress real errors. The broad catching of 'cancel scope' errors can hide legitimate bugs.",
+      "evidence": "Lines 615-626 catch GeneratorExit and RuntimeError with 'cancel scope' checks, but these may occur in unexpected contexts and hide real failures.",
+      "impact": "Could mask real async errors during session cleanup, leading to incomplete session state or resource leaks. Sessions may appear to complete successfully when they actually failed.",
+      "recommendation": "1. Add more specific error detection using isinstance() checks for AnyIO/Trio exceptions. 2. Log full context when suppressing errors. 3. Add a flag to track if cleanup was clean vs forced. 4. Consider using contextlib.suppress() for specific exception types only.",
+      "code_example": "# Current:\nexcept RuntimeError as e:\n    if 'cancel scope' in str(e).lower():\n        return (0, ...)\n\n# Better:\ntry:\n    async for message in query(...):\n        ...\nexcept trio.Cancelled:\n    # Specific cancellation handling\n    pass\nexcept GeneratorExit:\n    # Log and propagate\n    self.log('Session interrupted during async cleanup', level='WARNING')\n    raise"
+    },
+
+    {
+      "id": "LAUNCH-CRIT-002",
+      "severity": "Critical",
+      "category": "Exception Handling",
+      "title": "Unhandled Exception in Fork Export",
+      "location": "auto_mode.py:1186-1361",
+      "description": "The _export_session_transcript method re-raises ValueError and FileNotFoundError but these are not caught by the caller in finally block. This can cause session cleanup to fail.",
+      "evidence": "Lines 1343-1347 re-raise path validation errors, but line 1186 is in a finally block with no exception handling for these.",
+      "impact": "If transcript export fails with path validation errors, the session will crash during cleanup instead of gracefully finishing. Hook cleanup (line 1189) won't run.",
+      "recommendation": "1. Wrap re-raised exceptions in a custom SessionCleanupError. 2. Add try-except around _export_session_transcript in finally block. 3. Log critical errors but don't propagate from finally. 4. Add session cleanup verification.",
+      "code_example": "finally:\n    try:\n        self._export_session_transcript()\n    except (ValueError, FileNotFoundError) as e:\n        self.log(f'Critical: Transcript export failed: {e}', level='ERROR')\n        # Don't propagate - session must finish cleanup\n    \n    try:\n        self.run_hook('stop')\n    except Exception as e:\n        self.log(f'Hook cleanup failed: {e}', level='ERROR')"
+    },
+
+    {
+      "id": "LAUNCH-CRIT-003",
+      "severity": "Critical",
+      "category": "Type Safety",
+      "title": "Dynamic Attribute Access Without Type Guards",
+      "location": "auto_mode.py:558-595",
+      "description": "Tool_use block processing uses hasattr() checks but doesn't validate types before accessing nested attributes. Could fail if SDK changes message structure.",
+      "evidence": "Lines 566-593 use hasattr() for 'input' and 'todos' but don't verify they're the expected types before use.",
+      "impact": "If SDK message structure changes, code will crash with AttributeError or TypeError. The fallback to dict access (lines 582-588) may not work if structure is completely different.",
+      "recommendation": "1. Add explicit type checking with isinstance(). 2. Create protocol/TypedDict for expected message structure. 3. Add version detection for SDK compatibility. 4. Fail gracefully with clear error messages.",
+      "code_example": "if hasattr(block, 'input'):\n    tool_input = block.input\n    # Validate type before accessing\n    if not isinstance(tool_input, (dict, object)):\n        self.log(f'Unexpected input type: {type(tool_input)}', level='WARNING')\n        continue\n    \n    # Try object attribute first, then dict key\n    todos = None\n    if hasattr(tool_input, 'todos'):\n        todos = tool_input.todos\n    elif isinstance(tool_input, dict) and 'todos' in tool_input:\n        todos = tool_input['todos']\n    \n    if todos and isinstance(todos, list):\n        self._handle_todo_write(todos)"
+    },
+
+    {
+      "id": "LAUNCH-CRIT-004",
+      "severity": "Critical",
+      "category": "Process Management",
+      "title": "PTY File Descriptor Leak in Error Paths",
+      "location": "auto_mode.py:248-296",
+      "description": "The master_fd from pty.openpty() may leak if subprocess.Popen fails. The cleanup in feed_pty_stdin finally block doesn't handle all error paths.",
+      "evidence": "Line 249 creates pty, line 252 creates process. If Popen fails, master_fd is never closed. The stdin_thread cleanup (lines 291-299) only runs if thread starts.",
+      "impact": "PTY file descriptors will leak on Popen failure, eventually exhausting file descriptors and causing 'Too many open files' errors.",
+      "recommendation": "1. Wrap pty creation and use in try-finally. 2. Close master_fd immediately after Popen. 3. Use context manager for resource cleanup. 4. Add fd leak detection in tests.",
+      "code_example": "master_fd, slave_fd = pty.openpty()\ntry:\n    process = subprocess.Popen(..., stdin=slave_fd)\n    os.close(slave_fd)  # Parent doesn't need slave\n    \n    # ... thread creation and management ...\n    \nfinally:\n    # Ensure master_fd is always closed\n    try:\n        os.close(master_fd)\n    except (OSError, ValueError):\n        pass"
+    },
+
+    {
+      "id": "LAUNCH-CRIT-005",
+      "severity": "Critical",
+      "category": "State Management",
+      "title": "Race Condition in Fork State Transition",
+      "location": "auto_mode.py:1065-1085",
+      "description": "Fork detection, transcript export, and state reset are not atomic. Another thread could trigger fork check between should_fork() and trigger_fork().",
+      "evidence": "Lines 1066-1084 have multiple state mutations (export, accumulate time, trigger, reset, clear) without locking. Fork count check is also unsynchronized.",
+      "impact": "Could fork twice in rapid succession, corrupting session state. Message capture could be cleared before export completes. Fork count could be wrong.",
+      "recommendation": "1. Add lock around entire fork sequence. 2. Make fork_manager operations atomic. 3. Add fork-in-progress flag. 4. Verify fork state transitions in tests.",
+      "code_example": "# In AutoMode.__init__:\nself._fork_lock = threading.Lock()\n\n# In execution loop:\nwith self._fork_lock:\n    if self.fork_manager.should_fork():\n        # All fork operations are now atomic\n        elapsed = self.fork_manager.get_elapsed_time()\n        self._export_session_transcript()\n        self.total_session_time += elapsed\n        options = self.fork_manager.trigger_fork(options)\n        self.fork_manager.reset()\n        self.message_capture.clear()"
+    },
+
+    {
+      "id": "LAUNCH-CRIT-006",
+      "severity": "Critical",
+      "category": "Security",
+      "title": "TOCTOU Race in Path Validation",
+      "location": "auto_mode.py:1212-1243",
+      "description": "Path validation uses resolve(strict=True) but there's a time-of-check-time-of-use (TOCTOU) race between validation and actual use. Symlinks could be swapped after validation.",
+      "evidence": "Lines 1212 and 1232 use resolve(strict=True), then lines 1218 and 1240 do relative_to() checks, but filesystem could change between these operations.",
+      "impact": "Attacker with filesystem access could swap symlinks after validation to make transcript export write to arbitrary locations. Path traversal attack possible.",
+      "recommendation": "1. Open file descriptor during validation and reuse it. 2. Use O_NOFOLLOW flag to prevent symlink following. 3. Validate parent directory ownership/permissions. 4. Add capability-based security (open parent dir, then use relative paths).",
+      "code_example": "# Better approach: open directory first, then validate\ntry:\n    # Open parent directory\n    parent_fd = os.open(str(pkg_path), os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)\n    try:\n        # Now we can safely operate within this directory\n        # All operations relative to parent_fd are safe\n        builders_fd = os.open('.claude/tools/amplihack/builders', \n                              os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,\n                              dir_fd=parent_fd)\n        # ... use builders_fd ...\n    finally:\n        os.close(parent_fd)\nexcept OSError:\n    # Handle errors"
+    },
+
+    {
+      "id": "LAUNCH-CRIT-007",
+      "severity": "Critical",
+      "category": "Async Correctness",
+      "title": "Event Loop Not Preserved Across Forks",
+      "location": "auto_mode.py:1079",
+      "description": "Fork creates new SDK options but doesn't ensure the same async event loop is used. The query() call after fork may create a new loop, violating the single-loop design.",
+      "evidence": "Line 1079 calls trigger_fork() which modifies options, but there's no guarantee the SDK will reuse the existing event loop. Documentation says single loop is critical (line 978-982).",
+      "impact": "Could create multiple event loops leading to 'cancel scope in different task' errors even after fix. Fork may not properly inherit context.",
+      "recommendation": "1. Verify SDK fork preserves event loop. 2. Add explicit loop passing if SDK supports it. 3. Test fork behavior under load. 4. Consider manual session state serialization instead of SDK fork.",
+      "code_example": "# Check if SDK supports explicit loop passing\nif hasattr(options, 'event_loop'):\n    options.event_loop = asyncio.get_running_loop()\n\n# Or verify loop consistency after fork\nloop_before = asyncio.get_running_loop()\noptions = self.fork_manager.trigger_fork(options)\n# ... after fork ...\nloop_after = asyncio.get_running_loop()\nassert loop_before is loop_after, 'Event loop changed during fork!'"
+    }
+  ],
+
+  "high_severity_issues": [
+    {
+      "id": "LAUNCH-HIGH-001",
+      "severity": "High",
+      "category": "Exception Handling",
+      "title": "Broad Exception Catch in Transcript Export",
+      "location": "auto_mode.py:1354-1361",
+      "description": "The generic 'except Exception' at the end catches all errors including KeyboardInterrupt (Python 2 style). Should use more specific exceptions.",
+      "evidence": "Lines 1354-1361 catch Exception which is too broad. Could suppress SystemExit, KeyboardInterrupt, etc.",
+      "impact": "User trying to Ctrl+C during long export will have interrupt suppressed. System errors masked.",
+      "recommendation": "1. Catch specific exceptions (OSError, IOError, ImportError). 2. Let system exceptions propagate. 3. Use except Exception: only as last resort with re-raise.",
+      "code_example": "except (ImportError, AttributeError) as e:\n    self.log(f'Transcript builder unavailable: {e}', level='WARNING')\nexcept OSError as e:\n    self.log(f'File system error: {e}', level='WARNING')\nexcept Exception as e:\n    self.log(f'Unexpected error: {type(e).__name__}: {e}', level='ERROR')\n    raise  # Re-raise unexpected errors"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-002",
+      "severity": "High",
+      "category": "Code Reuse",
+      "title": "Massive Duplication Between launch() and launch_interactive()",
+      "location": "core.py:496-663",
+      "description": "launch() (496-570) and launch_interactive() (571-663) duplicate 90% of code. Only difference is subprocess.Popen vs subprocess.call.",
+      "evidence": "Lines 506-553 in launch() are nearly identical to lines 592-636 in launch_interactive(). Signal handling, env setup, all duplicated.",
+      "impact": "Bug fixes must be applied twice. Already diverged (launch() has claude_process tracking, launch_interactive() doesn't). Maintenance burden.",
+      "recommendation": "1. Extract common logic to _build_launch_env() and _setup_signal_handlers(). 2. Create _launch_process(interactive: bool) that handles both cases. 3. Reduce to ~20 lines per method.",
+      "code_example": "def _build_launch_env(self) -> dict:\n    env = os.environ.copy()\n    env['NODE_OPTIONS'] = '--max-old-space-size=8192'\n    # ... all env setup ...\n    return env\n\ndef launch(self) -> int:\n    if not self.prepare_launch():\n        return 1\n    try:\n        cmd = self.build_claude_command()\n        env = self._build_launch_env()\n        self._setup_signal_handlers()\n        self.claude_process = subprocess.Popen(cmd, env=env)\n        return self.claude_process.wait()\n    except Exception as e:\n        print(f'Error launching Claude: {e}')\n        return 1\n    finally:\n        self._cleanup_proxy()"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-003",
+      "severity": "High",
+      "category": "Type Safety",
+      "title": "Missing Type Hints for Async Functions",
+      "location": "auto_mode.py:479-708",
+      "description": "Async functions _run_turn_with_sdk and _run_turn_with_retry lack proper return type annotations. Returns Tuple[int, str] but not declared.",
+      "evidence": "Lines 479 and 656 define async functions but only have parameter types, no return type. Makes IDE support and type checking incomplete.",
+      "impact": "Type checkers can't verify correct usage. IDE autocomplete less helpful. Harder to catch type errors at development time.",
+      "recommendation": "1. Add -> Tuple[int, str] to all async functions. 2. Consider using custom return type like Result[str] for better semantics. 3. Run mypy to find other missing annotations.",
+      "code_example": "async def _run_turn_with_sdk(self, prompt: str) -> Tuple[int, str]:\n    \"\"\"Execute one turn using Claude Python SDK with streaming.\"\"\"\n    ...\n\nasync def _run_turn_with_retry(\n    self,\n    prompt: str,\n    max_retries: int = 3,\n    base_delay: float = 2.0,\n) -> Tuple[int, str]:\n    \"\"\"Execute turn with retry on transient errors.\"\"\"\n    ..."
+    },
+
+    {
+      "id": "LAUNCH-HIGH-004",
+      "severity": "High",
+      "category": "Process Management",
+      "title": "Signal Handler Overwrites May Conflict",
+      "location": "core.py:510-520, 595-603",
+      "description": "Both launch methods set SIGINT and SIGTERM handlers without checking if existing handlers should be preserved. Could break external signal management.",
+      "evidence": "Lines 510-520 (launch) and 595-603 (launch_interactive) unconditionally overwrite signal handlers. No saving of previous handlers.",
+      "impact": "If launcher is called from another program that has signal handlers, those handlers are lost. Parent program's cleanup won't run.",
+      "recommendation": "1. Save previous signal handlers. 2. Chain to previous handler after cleanup. 3. Use signal.signal() return value. 4. Consider contextlib.contextmanager for handler setup/teardown.",
+      "code_example": "# Save previous handlers\nprev_sigint = signal.signal(signal.SIGINT, signal_handler)\nprev_sigterm = None\nif sys.platform != 'win32':\n    prev_sigterm = signal.signal(signal.SIGTERM, signal_handler)\n\ntry:\n    # ... launch process ...\nfinally:\n    # Restore previous handlers\n    signal.signal(signal.SIGINT, prev_sigint)\n    if prev_sigterm:\n        signal.signal(signal.SIGTERM, prev_sigterm)"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-005",
+      "severity": "High",
+      "category": "Correctness",
+      "title": "Session Output Size Tracking May Overflow",
+      "location": "auto_mode.py:536-552",
+      "description": "session_output_size accumulates but turn_output_size is checked first. If one turn produces exactly MAX_TURN_OUTPUT bytes, session limit check never triggers.",
+      "evidence": "Lines 536-545 check turn limit first, then lines 547-551 check session limit. Turn limit return bypasses session limit.",
+      "impact": "Session could exceed max_session_output limit if each turn stays just under turn limit. Memory exhaustion risk.",
+      "recommendation": "1. Check session limit first, or check both before returning. 2. Consider using a context manager to enforce both limits atomically. 3. Add explicit test for this edge case.",
+      "code_example": "# Check both limits before processing\ntext_size = len(text.encode('utf-8'))\nturn_output_size += text_size\nself.session_output_size += text_size\n\n# Check session limit first (more critical)\nif self.session_output_size > self.max_session_output:\n    self.log(f'Session output limit exceeded', level='ERROR')\n    return (1, 'Session output too large')\n\nif turn_output_size > MAX_TURN_OUTPUT:\n    self.log(f'Turn output limit exceeded', level='ERROR')\n    return (1, 'Turn output too large')\n\nprint(text, end='', flush=True)\noutput_lines.append(text)"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-006",
+      "severity": "High",
+      "category": "Resource Management",
+      "title": "UI Thread May Not Stop Cleanly",
+      "location": "auto_mode.py:782-793",
+      "description": "_stop_ui_thread waits 5 seconds then gives up if thread doesn't stop. Thread keeps running as zombie. No forced termination.",
+      "evidence": "Lines 788-790 log warning but don't force thread to stop. Thread may block on I/O or Rich rendering.",
+      "impact": "UI thread can keep process alive after main thread exits. Resources not cleaned up. Terminal state may be corrupted.",
+      "recommendation": "1. Add self._should_exit flag that UI checks. 2. Send keyboard interrupt to UI thread. 3. Use daemon=True for UI thread as fallback. 4. Force terminal reset in finally block.",
+      "code_example": "def _stop_ui_thread(self) -> None:\n    if not self.ui_thread:\n        return\n    \n    # Signal UI to exit\n    if self.ui:\n        self.ui._should_exit = True\n    \n    # Wait for clean shutdown\n    self.ui_thread.join(timeout=5.0)\n    \n    if self.ui_thread.is_alive():\n        self.log('UI thread did not stop, forcing...', level='WARNING')\n        # As last resort, thread will be killed when process exits\n        # because we set daemon=True in thread creation"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-007",
+      "severity": "High",
+      "category": "Correctness",
+      "title": "Fork Count Can Desync with Actual Forks",
+      "location": "fork_manager.py:61-93",
+      "description": "trigger_fork() increments fork count even if SDK fork fails. No verification that fork actually happened. Count is optimistic.",
+      "evidence": "Line 74 increments _fork_count before attempting SDK fork. If lines 85-92 fail to set fork_session attribute, count is wrong.",
+      "impact": "Fork count reporting in logs and UI will be inaccurate. Metrics and billing calculations based on fork count will be wrong.",
+      "recommendation": "1. Only increment counter after successful fork. 2. Add return boolean indicating fork success. 3. Verify SDK actually forked by checking state. 4. Add fork verification test.",
+      "code_example": "def trigger_fork(self, options: Optional[Any] = None) -> Tuple[Any, bool]:\n    \"\"\"Trigger SDK fork.\n    \n    Returns:\n        (modified_options, fork_succeeded)\n    \"\"\"\n    if not CLAUDE_SDK_AVAILABLE:\n        return (options, False)\n    \n    # Try to set fork flag\n    fork_succeeded = False\n    if options is not None and hasattr(options, '__dict__'):\n        if hasattr(options, 'fork_session'):\n            options.fork_session = True\n            fork_succeeded = True\n        elif 'fork_session' not in options.__dict__:\n            options.fork_session = True\n            fork_succeeded = True\n    \n    # Only increment counter if fork succeeded\n    if fork_succeeded:\n        with self._lock:\n            self._fork_count += 1\n    \n    return (options, fork_succeeded)"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-008",
+      "severity": "High",
+      "category": "Exception Handling",
+      "title": "SettingsManager Doesn't Handle Concurrent Access",
+      "location": "settings_manager.py:81-160",
+      "description": "create_backup() and restore_backup() can race if multiple processes use same settings file. No file locking.",
+      "evidence": "Lines 99-104 create backup without locking. Lines 139-148 restore without locking. Two processes could corrupt settings.json.",
+      "impact": "If multiple launcher instances run concurrently (e.g., parallel test suite), settings.json can be corrupted. Backup/restore operations can interfere.",
+      "recommendation": "1. Use fcntl.flock() for file locking. 2. Add exclusive lock before backup/restore. 3. Use atomic rename for restore. 4. Add lock timeout to prevent deadlocks.",
+      "code_example": "import fcntl\n\ndef create_backup(self) -> Tuple[bool, Optional[Path]]:\n    try:\n        # Lock settings file\n        with open(self.settings_path, 'rb') as f:\n            fcntl.flock(f.fileno(), fcntl.LOCK_EX)\n            try:\n                # Create backup while holding lock\n                backup_path = self._generate_backup_path()\n                shutil.copy2(self.settings_path, backup_path)\n                self.backup_path = backup_path\n                return (True, backup_path)\n            finally:\n                fcntl.flock(f.fileno(), fcntl.LOCK_UN)\n    except Exception as e:\n        print(f'Error creating backup: {e}')\n        return (False, None)"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-009",
+      "severity": "High",
+      "category": "State Management",
+      "title": "AutoModeState.snapshot() Returns Mutable References",
+      "location": "auto_mode_state.py:60-79",
+      "description": "snapshot() creates shallow copies of lists and dicts, but nested structures are still mutable. Caller could modify state through returned references.",
+      "evidence": "Lines 73-75 use list() and dict() which only copy top level. If todos contain dicts or logs contain objects, they're still shared.",
+      "impact": "Caller of snapshot() could accidentally or maliciously modify internal state through nested references. Thread safety broken.",
+      "recommendation": "1. Use copy.deepcopy() for full defensive copying. 2. Return frozen dataclasses or named tuples. 3. Document that snapshot() returns immutable view. 4. Add test verifying modifications don't affect state.",
+      "code_example": "import copy\n\ndef snapshot(self) -> Dict[str, Any]:\n    \"\"\"Get a thread-safe deep copy of current state.\"\"\"\n    with self._lock:\n        return {\n            'session_id': self.session_id,\n            'start_time': self.start_time,\n            'turn': self.turn,\n            'max_turns': self.max_turns,\n            'objective': self.objective,\n            'todos': copy.deepcopy(self.todos),  # Deep copy\n            'logs': list(self.logs),\n            'costs': copy.deepcopy(self.costs),  # Deep copy\n            'status': self.status,\n            'pause_requested': self.pause_requested,\n            'kill_requested': self.kill_requested,\n        }"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-010",
+      "severity": "High",
+      "category": "Correctness",
+      "title": "Retry Logic Doesn't Account for API Call Limit",
+      "location": "auto_mode.py:656-708",
+      "description": "_run_turn_with_retry increments total_api_calls for each retry but doesn't check if retries would exceed limit before attempting them.",
+      "evidence": "Lines 676-683 check limits once at start, but lines 685-703 may do up to max_retries attempts. Could exceed max_total_api_calls.",
+      "impact": "Session could make more API calls than allowed. If limit is 50 and we're at 49, three retries would give 52 total calls.",
+      "recommendation": "1. Calculate remaining retries based on remaining API call budget. 2. Check limit before each retry. 3. Adjust max_retries dynamically. 4. Log when retries are skipped due to limits.",
+      "code_example": "for attempt in range(max_retries + 1):\n    # Check limit before each attempt\n    if self.total_api_calls >= self.max_total_api_calls:\n        self.log(f'API call limit reached, stopping retries', level='WARNING')\n        return (1, 'Session limit exceeded')\n    \n    self.total_api_calls += 1\n    code, output = await self._run_turn_with_sdk(prompt)\n    \n    if code == 0:\n        return (code, output)\n    \n    # Check if we have budget for retry\n    remaining_calls = self.max_total_api_calls - self.total_api_calls\n    if remaining_calls < 1 and attempt < max_retries:\n        self.log('Cannot retry: would exceed API call limit', level='WARNING')\n        return (code, output)\n    \n    # ... retry logic ..."
+    },
+
+    {
+      "id": "LAUNCH-HIGH-011",
+      "severity": "High",
+      "category": "Security",
+      "title": "Prompt Injection Patterns Too Restrictive",
+      "location": "auto_mode.py:29-37, append_handler.py:29-40",
+      "description": "PROMPT_INJECTION_PATTERNS and SUSPICIOUS_PATTERNS block legitimate use cases. Pattern 'system prompt:' would block documentation about system prompts.",
+      "evidence": "Lines 30-36 in auto_mode.py and 30-39 in append_handler.py use overly broad patterns. 'you are now' blocks legitimate instructions like 'you are now ready to test'.",
+      "impact": "Legitimate instructions will be rejected as suspicious. Users will be confused and frustrated. False positive rate too high.",
+      "recommendation": "1. Use more context-aware patterns (beginning of message, specific phrasing). 2. Add whitelist of known-safe patterns. 3. Make pattern matching case-sensitive for better precision. 4. Allow override flag for power users.",
+      "code_example": "# More precise patterns\nPROMPT_INJECTION_PATTERNS = [\n    r'^\\s*ignore\\s+all\\s+previous\\s+instructions',  # Must be at start\n    r'^\\s*disregard\\s+everything\\s+above',\n    r'^\\s*new\\s+system\\s+prompt:',  # Specific phrasing\n    r'</system>.*<system>',  # Trying to close and reopen system tag\n]\n\n# Check with more context\ndef _contains_injection(text: str) -> bool:\n    # Only check first 200 chars (where injections usually appear)\n    prefix = text[:200].lower()\n    for pattern in PROMPT_INJECTION_PATTERNS:\n        if re.search(pattern, prefix, re.MULTILINE):\n            return True\n    return False"
+    },
+
+    {
+      "id": "LAUNCH-HIGH-012",
+      "severity": "High",
+      "category": "Code Reuse",
+      "title": "Duplicate Environment Setup in launch Methods",
+      "location": "core.py:523-553, 605-636",
+      "description": "Environment variable setup duplicated across launch() and launch_interactive(). NODE_OPTIONS, PATH, proxy env, all repeated.",
+      "evidence": "Lines 523-553 duplicate lines 605-636 almost exactly. Same env var names, same logic, same proxy handling.",
+      "impact": "Changes to env setup must be made in two places. Already diverging (some differences in comments). Maintenance burden.",
+      "recommendation": "Extract to _prepare_launch_environment() method. Should return configured env dict. Both launch methods call it.",
+      "code_example": "def _prepare_launch_environment(self) -> dict:\n    \"\"\"Prepare environment variables for Claude launch.\"\"\"\n    env = os.environ.copy()\n    \n    # Node.js memory limit\n    env['NODE_OPTIONS'] = '--max-old-space-size=8192'\n    \n    # UVX environment if using --add-dir\n    if self._target_directory:\n        env.update(self.uvx_manager.get_environment_variables())\n    \n    # Pass through CLAUDE_PROJECT_DIR\n    if 'CLAUDE_PROJECT_DIR' in os.environ:\n        env['CLAUDE_PROJECT_DIR'] = os.environ['CLAUDE_PROJECT_DIR']\n    \n    # Add npm bin to PATH\n    user_npm_bin = str(Path.home() / '.npm-global' / 'bin')\n    if user_npm_bin not in env.get('PATH', ''):\n        env['PATH'] = f\"{user_npm_bin}:{env.get('PATH', '')}\"\n    \n    # Proxy configuration\n    if self.proxy_manager and self.proxy_manager.is_running():\n        proxy_env = self.proxy_manager.env_manager.get_proxy_env(...)\n        env.update(proxy_env)\n    \n    return env"
+    }
+  ],
+
+  "medium_severity_issues": [
+    {
+      "id": "LAUNCH-MED-001",
+      "severity": "Medium",
+      "category": "Correctness",
+      "title": "Incomplete Error Context in Log Messages",
+      "location": "auto_mode.py:Various",
+      "description": "Many error logs don't include exception type or stack trace. Makes debugging harder.",
+      "impact": "When errors occur in production, not enough information to diagnose root cause.",
+      "recommendation": "Add exception type and traceback to all error logs. Use self.log(f'{type(e).__name__}: {e}\\n{traceback.format_exc()}', level='ERROR')."
+    },
+
+    {
+      "id": "LAUNCH-MED-002",
+      "severity": "Medium",
+      "category": "Type Safety",
+      "title": "ClaudeAgentOptions Type Not Defined",
+      "location": "fork_manager.py:13-18",
+      "description": "ClaudeAgentOptions set to None when SDK unavailable, breaks type checking. Should use TYPE_CHECKING guard.",
+      "impact": "Type checkers will report errors even though runtime is fine. IDE warnings.",
+      "recommendation": "Use TYPE_CHECKING to import type only for type checking, not runtime."
+    },
+
+    {
+      "id": "LAUNCH-MED-003",
+      "severity": "Medium",
+      "category": "Code Quality",
+      "title": "Magic Numbers Without Constants",
+      "location": "auto_mode.py:98, 125-129, 496-497",
+      "description": "Hard-coded values like 50 (API calls), 3600 (session duration), 50*1024*1024 (session output) lack named constants.",
+      "impact": "Hard to understand limits. Hard to change consistently. No documentation of why these values.",
+      "recommendation": "Define module-level constants: MAX_SESSION_API_CALLS = 50, MAX_SESSION_DURATION_SECONDS = 3600, etc."
+    },
+
+    {
+      "id": "LAUNCH-MED-004",
+      "severity": "Medium",
+      "category": "Maintainability",
+      "title": "Complex Nested Conditionals in Message Handling",
+      "location": "auto_mode.py:515-595",
+      "description": "Deeply nested if statements in message handling. Hard to follow logic flow.",
+      "impact": "Difficult to add new message types. Error-prone when modifying. Hard to test all paths.",
+      "recommendation": "Extract message type handlers to separate methods. Use dispatch table or match statement (Python 3.10+)."
+    },
+
+    {
+      "id": "LAUNCH-MED-005",
+      "severity": "Medium",
+      "category": "Performance",
+      "title": "Inefficient Log Deque Conversion",
+      "location": "auto_mode_state.py:198-210",
+      "description": "get_logs() converts deque to list every time. For large log buffers (1000 entries), this is wasteful.",
+      "impact": "Every UI update (30Hz) does full deque→list conversion. CPU waste for no benefit.",
+      "recommendation": "1. Store as list if random access needed. 2. Or return iterator. 3. Or cache list conversion and invalidate on append."
+    },
+
+    {
+      "id": "LAUNCH-MED-006",
+      "severity": "Medium",
+      "category": "Usability",
+      "title": "Cryptic Error When Settings Prompt Fails",
+      "location": "settings_manager.py:72-79",
+      "description": "If user declines settings modification or Ctrl+C's the prompt, launcher returns False with no explanation.",
+      "impact": "User sees silent failure. No guidance on what went wrong or how to proceed.",
+      "recommendation": "Return enum or result object with reason. Print clear message: 'Settings modification declined by user. Use --non-interactive to skip prompt.'"
+    },
+
+    {
+      "id": "LAUNCH-MED-007",
+      "severity": "Medium",
+      "category": "Resource Management",
+      "title": "No Cleanup of Old Append Files",
+      "location": "append_handler.py:203-299",
+      "description": "append_instructions creates files in append/ directory but never cleans up processed files in appended/ directory.",
+      "impact": "Over time, appended/ directory fills with processed instruction files. Disk space waste.",
+      "recommendation": "Add cleanup policy: delete files older than 7 days from appended/ directory. Run during append or as periodic task."
+    },
+
+    {
+      "id": "LAUNCH-MED-008",
+      "severity": "Medium",
+      "category": "Correctness",
+      "title": "Cache Eviction Policy May Remove Hot Entries",
+      "location": "detector.py:111-121",
+      "description": "_evict_oldest_cache_entries uses FIFO eviction but doesn't track access patterns. May evict frequently-used entries.",
+      "impact": "Cache performance degrades if hot entries are evicted. Repeated expensive directory traversals.",
+      "recommendation": "1. Use OrderedDict with LRU (move to end on access). 2. Or just use @functools.lru_cache. 3. Or track access counts."
+    },
+
+    {
+      "id": "LAUNCH-MED-009",
+      "severity": "Medium",
+      "category": "Correctness",
+      "title": "Terminal Settings Not Restored on Exception",
+      "location": "auto_mode_ui.py:429-463",
+      "description": "_keyboard_listener_thread has finally block to restore terminal but if exception before try-finally, terminal state corrupted.",
+      "impact": "If thread crashes before line 442, terminal stays in raw mode. User's shell becomes unusable.",
+      "recommendation": "Add atexit handler to restore terminal as backup. Or use contextlib.contextmanager for terminal mode."
+    },
+
+    {
+      "id": "LAUNCH-MED-010",
+      "severity": "Medium",
+      "category": "Type Safety",
+      "title": "Panel Return Type Not Annotated",
+      "location": "auto_mode_ui.py:126-283",
+      "description": "_build_*_panel methods return Panel but no return type hints. If Rich changes, no type safety.",
+      "impact": "Type checkers can't verify Panel usage. Could break silently if Rich API changes.",
+      "recommendation": "Add -> Panel return type to all panel builder methods."
+    },
+
+    {
+      "id": "LAUNCH-MED-011",
+      "severity": "Medium",
+      "category": "Security",
+      "title": "Race Window in Atomic File Creation",
+      "location": "append_handler.py:260-296",
+      "description": "Uses O_CREAT|O_EXCL for atomic creation but filename is timestamp-based. Could still have collision with multiple processes.",
+      "impact": "Two processes could generate same microsecond timestamp and both fail with FileExistsError. Confusing error message.",
+      "recommendation": "Add PID or random component to filename: {timestamp}_{os.getpid()}_{random.randint(1000,9999)}.md"
+    },
+
+    {
+      "id": "LAUNCH-MED-012",
+      "severity": "Medium",
+      "category": "Code Quality",
+      "title": "Inconsistent Error Reporting",
+      "location": "append_handler.py:Various",
+      "description": "Some errors return AppendResult(success=False), others raise AppendError, others raise ValidationError. No consistent pattern.",
+      "impact": "Callers don't know what exceptions to catch. Hard to handle errors uniformly.",
+      "recommendation": "Choose one approach: either always return Result type or always raise exceptions. Document in module docstring."
+    },
+
+    {
+      "id": "LAUNCH-MED-013",
+      "severity": "Medium",
+      "category": "Performance",
+      "title": "Update Throttling May Miss Rapid Changes",
+      "location": "auto_mode_ui.py:291-306",
+      "description": "Update throttling (30Hz) checks time but doesn't queue missed updates. Rapid state changes could be lost.",
+      "impact": "If state changes faster than 30Hz, some updates never rendered. User sees stale data.",
+      "recommendation": "Add flag for 'needs update' that persists across throttle checks. Or use timestamp of last state change."
+    },
+
+    {
+      "id": "LAUNCH-MED-014",
+      "severity": "Medium",
+      "category": "Correctness",
+      "title": "Coordinator State Injection is Brittle",
+      "location": "auto_mode_coordinator.py:78-88",
+      "description": "Monkey-patching auto_mode.log is fragile. If AutoMode has multiple log references or caches log method, won't work.",
+      "impact": "Logs might not appear in UI if AutoMode implementation changes. Fragile coupling.",
+      "recommendation": "Use observer pattern. AutoMode publishes log events, coordinator subscribes. Or inject logger in AutoMode constructor."
+    },
+
+    {
+      "id": "LAUNCH-MED-015",
+      "severity": "Medium",
+      "category": "Resource Management",
+      "title": "No Timeout on Keyboard Thread Join",
+      "location": "auto_mode_ui.py:511",
+      "description": "UI run() method joins keyboard thread with 1.0s timeout but doesn't check if thread actually stopped.",
+      "impact": "If keyboard thread hangs, process exits leaving zombie thread. Resources not cleaned up.",
+      "recommendation": "Check if thread is alive after join and log warning. Consider using daemon=True for keyboard thread."
+    },
+
+    {
+      "id": "LAUNCH-MED-016",
+      "severity": "Medium",
+      "category": "Correctness",
+      "title": "Fork Threshold Clamping Without Warning",
+      "location": "fork_manager.py:40-44",
+      "description": "Fork threshold silently clamped to 5-68 minute range. User's setting is ignored with no feedback.",
+      "impact": "User sets fork_threshold=120 (2 minutes) for testing, gets 300 (5 minutes) instead. Unexpected behavior.",
+      "recommendation": "Log warning when clamping: self.log(f'Fork threshold {fork_threshold} out of range, clamped to {self.fork_threshold}')."
+    },
+
+    {
+      "id": "LAUNCH-MED-017",
+      "severity": "Medium",
+      "category": "Correctness",
+      "title": "Session Capture Doesn't Handle SDK Errors",
+      "location": "session_capture.py:62-91",
+      "description": "capture_assistant_message assumes message has content attribute. If SDK returns error message type, could crash.",
+      "impact": "If SDK returns error during turn, transcript export crashes. Session state lost.",
+      "recommendation": "Add defensive checks: if not hasattr(message, 'content'): self.capture_text_response(f'[Error message: {message}]')."
+    },
+
+    {
+      "id": "LAUNCH-MED-018",
+      "severity": "Medium",
+      "category": "Security",
+      "title": "Rate Limit Check Has Race Condition",
+      "location": "append_handler.py:107-144",
+      "description": "_check_rate_limit counts files but multiple processes could all pass check then all write, exceeding limit.",
+      "impact": "If 5 processes check rate limit simultaneously, all see 0 files, all write. Gets 5 files instead of max 1.",
+      "recommendation": "Use file locking for rate limit check. Or use atomic counter in shared memory/file."
+    }
+  ],
+
+  "low_severity_issues": [
+    {
+      "id": "LAUNCH-LOW-001",
+      "severity": "Low",
+      "category": "Documentation",
+      "title": "Missing Docstrings for Complex Methods",
+      "location": "auto_mode.py:_run_turn_with_sdk, _handle_todo_write",
+      "description": "Complex methods lack comprehensive docstrings explaining behavior, especially async and state handling.",
+      "impact": "Harder for new developers to understand code. Maintenance burden increases.",
+      "recommendation": "Add detailed docstrings with Args, Returns, Raises, and Examples sections."
+    },
+
+    {
+      "id": "LAUNCH-LOW-002",
+      "severity": "Low",
+      "category": "Code Style",
+      "title": "Inconsistent String Quote Style",
+      "location": "Various",
+      "description": "Mix of single quotes and double quotes throughout. No consistent style.",
+      "impact": "Minor style inconsistency. No functional impact.",
+      "recommendation": "Run black formatter or choose one style and apply consistently."
+    },
+
+    {
+      "id": "LAUNCH-LOW-003",
+      "severity": "Low",
+      "category": "Performance",
+      "title": "Repeated String Encoding for Size Checks",
+      "location": "auto_mode.py:536, append_handler.py:89",
+      "description": "Text encoded to UTF-8 to check size, but encoding repeated if used elsewhere.",
+      "impact": "Minor CPU waste. Negligible in practice.",
+      "recommendation": "Cache encoded bytes if used multiple times: text_bytes = text.encode('utf-8')."
+    },
+
+    {
+      "id": "LAUNCH-LOW-004",
+      "severity": "Low",
+      "category": "Usability",
+      "title": "Help Command Only Logs, Doesn't Show Overlay",
+      "location": "auto_mode_ui.py:321-325",
+      "description": "Help command 'h' sets _showing_help flag but doesn't actually display help content. Just logs message.",
+      "impact": "User presses 'h' expecting help overlay, gets log message instead. Confusing UX.",
+      "recommendation": "Add help overlay panel that appears when _showing_help=True. Or print help to separate panel."
+    },
+
+    {
+      "id": "LAUNCH-LOW-005",
+      "severity": "Low",
+      "category": "Code Quality",
+      "title": "Unused Methods in AutoModeUI",
+      "location": "auto_mode_ui.py:384-418",
+      "description": "Methods like get_title(), get_session_details(), etc. exist 'for test compatibility' but may not be used.",
+      "impact": "Dead code increases maintenance burden. Not clear if tests actually use these.",
+      "recommendation": "Audit test usage. Remove if unused. Or mark with @deprecated if kept for compatibility."
+    },
+
+    {
+      "id": "LAUNCH-LOW-006",
+      "severity": "Low",
+      "category": "Documentation",
+      "title": "Unclear Fork Behavior Documentation",
+      "location": "fork_manager.py:1-10",
+      "description": "Module docstring mentions 69-minute hard limit but doesn't explain why or what happens at limit.",
+      "impact": "Developers don't understand the context. May change threshold without understanding consequences.",
+      "recommendation": "Add documentation explaining SDK session limit, why 69 minutes is hard limit, what happens if exceeded."
+    },
+
+    {
+      "id": "LAUNCH-LOW-007",
+      "severity": "Low",
+      "category": "Testability",
+      "title": "No Dependency Injection for Time Operations",
+      "location": "auto_mode.py:98, fork_manager.py:Various",
+      "description": "Direct calls to time.time() make testing time-dependent behavior hard. Can't mock time easily.",
+      "impact": "Tests for fork timing, session duration, etc. are hard to write. May need to wait real time.",
+      "recommendation": "Add optional clock parameter to constructors. Use Clock protocol/ABC for time operations. Tests can inject fake clock."
+    },
+
+    {
+      "id": "LAUNCH-LOW-008",
+      "severity": "Low",
+      "category": "Code Quality",
+      "title": "Inconsistent Boolean Return Style",
+      "location": "Various",
+      "description": "Some methods return (success: bool, value), others return Optional[value], others raise exceptions. No pattern.",
+      "impact": "API inconsistency makes code harder to use. Callers need to check each method's behavior.",
+      "recommendation": "Standardize on one pattern: Result[T] type, or always use exceptions for errors, or always return (bool, Optional[T])."
+    },
+
+    {
+      "id": "LAUNCH-LOW-009",
+      "severity": "Low",
+      "category": "Performance",
+      "title": "Cache Stats Calculation Inefficient",
+      "location": "detector.py:123-135",
+      "description": "get_cache_stats() calculates utilization every call. Could cache since it rarely changes significantly.",
+      "impact": "Minimal - cache stats probably not called in hot path. Negligible performance impact.",
+      "recommendation": "If called frequently, cache stats and update on eviction. Otherwise, leave as-is."
+    }
+  ],
+
+  "code_duplication_analysis": {
+    "duplicated_blocks": [
+      {
+        "description": "launch() and launch_interactive() environment setup",
+        "locations": ["core.py:523-553", "core.py:605-636"],
+        "lines_duplicated": 30,
+        "recommendation": "Extract to _prepare_launch_environment() method"
+      },
+      {
+        "description": "Signal handler setup",
+        "locations": ["core.py:510-520", "core.py:595-603"],
+        "lines_duplicated": 10,
+        "recommendation": "Extract to _setup_signal_handlers() method"
+      },
+      {
+        "description": "Command building logic for claude-trace vs claude",
+        "locations": ["core.py:323-367", "core.py:368-394"],
+        "lines_duplicated": 25,
+        "recommendation": "Extract common parts to _build_base_args() method"
+      },
+      {
+        "description": "Prompt injection patterns",
+        "locations": ["auto_mode.py:29-37", "append_handler.py:29-40"],
+        "lines_duplicated": 8,
+        "recommendation": "Move to shared security.py module"
+      },
+      {
+        "description": "Turn execution prompts in sync vs async sessions",
+        "locations": ["auto_mode.py:827-912", "auto_mode.py:1005-1116"],
+        "lines_duplicated": 80,
+        "recommendation": "Extract to _build_turn_prompts() method"
+      }
+    ],
+    "total_duplicated_lines": 153,
+    "duplication_percentage": "3.6%"
+  },
+
+  "async_correctness_analysis": {
+    "event_loop_management": {
+      "status": "Good with concerns",
+      "findings": [
+        "Single event loop maintained across entire async session (line 977-991)",
+        "Proper use of asyncio.run() only once at top level (line 806)",
+        "Concern: Fork may create new event loop if SDK doesn't preserve it",
+        "Concern: GeneratorExit/RuntimeError handling may hide async bugs"
+      ]
+    },
+    "streaming_handling": {
+      "status": "Good",
+      "findings": [
+        "Proper async for over query() generator (line 512)",
+        "Handles message streaming with real-time display (line 554)",
+        "Good: Output size limits prevent memory exhaustion (lines 536-552)"
+      ]
+    },
+    "exception_propagation": {
+      "status": "Needs improvement",
+      "findings": [
+        "Broad exception catching may mask async errors (lines 615-632)",
+        "GeneratorExit caught but should typically propagate",
+        "RuntimeError with 'cancel scope' string matching is fragile"
+      ]
+    },
+    "state_synchronization": {
+      "status": "Good",
+      "findings": [
+        "RLock used consistently in AutoModeState",
+        "MessageCapture uses threading.RLock for thread safety",
+        "Concern: Fork state transition not atomic (no locking)"
+      ]
+    }
+  },
+
+  "process_management_analysis": {
+    "lifecycle_management": {
+      "status": "Good with leaks",
+      "findings": [
+        "Signal handlers installed for graceful shutdown",
+        "Process cleanup in finally blocks",
+        "Issue: PTY file descriptors may leak on Popen failure",
+        "Issue: UI thread may not stop cleanly"
+      ]
+    },
+    "resource_cleanup": {
+      "status": "Needs improvement",
+      "findings": [
+        "Proxy cleanup in finally blocks (good)",
+        "Settings backup restoration (good)",
+        "Missing: PTY cleanup in error paths",
+        "Missing: Thread force-stop mechanisms"
+      ]
+    },
+    "fork_management": {
+      "status": "Good design, implementation concerns",
+      "findings": [
+        "Clean fork threshold design (60 min before 69 min limit)",
+        "Fork count tracking for metrics",
+        "Issue: Fork success not verified",
+        "Issue: Event loop preservation not guaranteed"
+      ]
+    }
+  },
+
+  "recommendations_summary": {
+    "immediate_fixes": [
+      "Add proper locking around fork state transitions (LAUNCH-CRIT-005)",
+      "Fix PTY file descriptor leak in error paths (LAUNCH-CRIT-004)",
+      "Handle transcript export errors in finally block (LAUNCH-CRIT-002)",
+      "Add type guards for SDK message structure (LAUNCH-CRIT-003)",
+      "Fix TOCTOU race in path validation (LAUNCH-CRIT-006)"
+    ],
+    "high_priority_refactoring": [
+      "Extract duplicate code from launch methods (LAUNCH-HIGH-002)",
+      "Add proper type hints to all async functions (LAUNCH-HIGH-003)",
+      "Fix signal handler preservation (LAUNCH-HIGH-004)",
+      "Implement deep copy in snapshot() (LAUNCH-HIGH-009)"
+    ],
+    "architecture_improvements": [
+      "Consider using Result[T] type instead of tuple returns",
+      "Add observer pattern for state updates instead of monkey-patching",
+      "Implement proper async context managers for resource cleanup",
+      "Add comprehensive async error recovery with circuit breaker pattern"
+    ],
+    "testing_priorities": [
+      "Test fork behavior under load and with rapid transitions",
+      "Test PTY cleanup in all error paths",
+      "Test concurrent settings.json access",
+      "Test async cleanup in various cancellation scenarios",
+      "Test rate limiting with concurrent appends"
+    ]
+  }
+}

@@ -1,0 +1,309 @@
+{
+  "summary": {
+    "total_critical_issues": 12,
+    "total_high_issues": 8,
+    "focus_areas": [
+      "Exception handling - bare except and generic Exception",
+      "Type safety - Any types in critical code paths",
+      "Resource management - potential leaks in Neo4j driver",
+      "Exception chaining - missing 'from e' in re-raises"
+    ]
+  },
+  "critical_issues": [
+    {
+      "id": "CRIT-001",
+      "severity": "CRITICAL",
+      "category": "Exception Handling",
+      "location": "scripts/test_retrieval_isolation.py:486",
+      "issue": "Bare except clause swallows all exceptions including KeyboardInterrupt",
+      "code": "except:\n    pass",
+      "impact": "Can mask critical errors like KeyboardInterrupt, SystemExit, making debugging impossible",
+      "recommendation": "Use specific exception types: 'except Exception as e:' and log the error",
+      "estimated_fix_time": "2 minutes"
+    },
+    {
+      "id": "CRIT-002",
+      "severity": "CRITICAL",
+      "category": "Exception Handling",
+      "location": "scripts/test_retrieval_isolation_simple.py:73",
+      "issue": "Bare except clause swallows all exceptions",
+      "code": "except:\n    pass",
+      "impact": "Silently fails circuit breaker testing, masks all errors",
+      "recommendation": "Catch specific exceptions and log them",
+      "estimated_fix_time": "2 minutes"
+    },
+    {
+      "id": "CRIT-003",
+      "severity": "CRITICAL",
+      "category": "Exception Handling",
+      "location": "src/amplihack/proxy/integrated_proxy.py:3714",
+      "issue": "Exception raised without chaining, loses original context",
+      "code": "except Exception as e:\n    ...\n    raise HTTPException(status_code=500, detail=f\"Tool streaming failed: {e}\")",
+      "impact": "Stack trace is lost, making debugging tool streaming failures extremely difficult",
+      "recommendation": "Use 'raise HTTPException(...) from e' to preserve exception chain",
+      "estimated_fix_time": "1 minute"
+    },
+    {
+      "id": "CRIT-004",
+      "severity": "CRITICAL",
+      "category": "Exception Handling",
+      "location": "src/amplihack/proxy/integrated_proxy.py:3746",
+      "issue": "Exception raised without chaining",
+      "code": "except Exception as e:\n    ...\n    raise HTTPException(status_code=500, detail=f\"Tool completion failed: {e}\")",
+      "impact": "Stack trace lost for tool completion failures",
+      "recommendation": "Use 'raise HTTPException(...) from e'",
+      "estimated_fix_time": "1 minute"
+    },
+    {
+      "id": "CRIT-005",
+      "severity": "CRITICAL",
+      "category": "Resource Management",
+      "location": "src/amplihack/memory/neo4j/port_manager.py:208-210",
+      "issue": "Neo4j driver.session() not using context manager in exception paths",
+      "code": "with driver.session() as session:\n    session.run(\"RETURN 1\")\ndriver.close()",
+      "impact": "If exception occurs before driver.close(), connection leaks. Generic 'Exception' catch on line 215 may leave driver unclosed.",
+      "recommendation": "Ensure driver is closed in finally block or use nested context managers",
+      "estimated_fix_time": "5 minutes"
+    },
+    {
+      "id": "CRIT-006",
+      "severity": "CRITICAL",
+      "category": "Exception Handling",
+      "location": "src/amplihack/memory/neo4j/port_manager.py:215-216",
+      "issue": "Generic Exception catch followed by driver.close() in exception path",
+      "code": "except Exception:\n    driver.close()\n    return False, False",
+      "impact": "If driver.close() itself raises, the original exception is masked",
+      "recommendation": "Use finally block for cleanup, let specific exceptions propagate with context",
+      "estimated_fix_time": "5 minutes"
+    },
+    {
+      "id": "CRIT-007",
+      "severity": "CRITICAL",
+      "category": "Type Safety",
+      "location": "src/amplihack/proxy/integrated_proxy.py:1361",
+      "issue": "Function signature accepts and returns Any type",
+      "code": "def clean_gemini_schema(schema: Any) -> Any:",
+      "impact": "No type safety for critical schema cleaning function - can accept/return anything",
+      "recommendation": "Use Union[Dict[str, Any], List[Any], str, int, float, bool, None] for JSON types",
+      "estimated_fix_time": "3 minutes"
+    },
+    {
+      "id": "CRIT-008",
+      "severity": "CRITICAL",
+      "category": "Type Safety",
+      "location": ".claude/tools/amplihack/session/file_utils.py:269",
+      "issue": "Function return type is Any, obscuring what can be returned",
+      "code": "def safe_read_json(..., default: Any = None, ...) -> Any:",
+      "impact": "Callers don't know what type they'll get, defeats type checking",
+      "recommendation": "Use TypeVar or Generic to preserve type of default parameter in return type",
+      "estimated_fix_time": "10 minutes"
+    },
+    {
+      "id": "CRIT-009",
+      "severity": "CRITICAL",
+      "category": "Type Safety",
+      "location": ".claude/tools/amplihack/session/file_utils.py:310",
+      "issue": "Parameter type is Any for JSON data",
+      "code": "def safe_write_json(..., data: Any, ...):",
+      "impact": "Can pass non-serializable objects, will fail at runtime instead of type-check time",
+      "recommendation": "Use JSONType = Union[Dict[str, Any], List[Any], str, int, float, bool, None]",
+      "estimated_fix_time": "3 minutes"
+    },
+    {
+      "id": "CRIT-010",
+      "severity": "CRITICAL",
+      "category": "Exception Handling",
+      "location": "Multiple files (20+ instances)",
+      "issue": "Generic 'except Exception:' used without re-raise or specific handling",
+      "files": [
+        "scripts/test_real_agent_with_memory.py:374",
+        "src/amplihack/bundle_generator/repository_creator.py:387",
+        "tests/test_interactive_stop_hook.py:506",
+        "src/amplihack/bundle_generator/update_manager.py:91",
+        "scripts/pre-commit/check_imports.py:47,75",
+        "scripts/pre-commit/check_dependencies.py:76",
+        "scripts/sync_hooks.py:119",
+        "tests/integration/memory/neo4j/conftest.py:292,306,321"
+      ],
+      "impact": "Catches too many exceptions, makes debugging difficult, can hide bugs",
+      "recommendation": "Use specific exception types or add logging before catching Exception",
+      "estimated_fix_time": "30 seconds per instance"
+    },
+    {
+      "id": "CRIT-011",
+      "severity": "CRITICAL",
+      "category": "Exception Handling",
+      "location": ".claude/tools/amplihack/session/file_utils.py:292-294",
+      "issue": "Schema validation exception caught but returns default, losing validation context",
+      "code": "try:\n    validate_schema(data)\nexcept Exception as e:\n    logger.error(...)\n    return default",
+      "impact": "Validation failures are silently converted to default return, caller doesn't know validation failed",
+      "recommendation": "Either raise ValidationError or return Result type that indicates validation failure",
+      "estimated_fix_time": "10 minutes"
+    },
+    {
+      "id": "CRIT-012",
+      "severity": "CRITICAL",
+      "category": "Type Safety",
+      "location": "src/amplihack/memory/database.py (entire file)",
+      "issue": "No return type annotations on public methods",
+      "methods": [
+        "_get_connection() (line 49)",
+        "_create_tables() (line 66)",
+        "_create_indexes() (line 112)",
+        "_update_session() (line 496)",
+        "_row_to_memory() (line 518)"
+      ],
+      "impact": "Type checkers can't verify correct usage, IDE support degraded",
+      "recommendation": "Add explicit return types to all public and internal methods",
+      "estimated_fix_time": "15 minutes total"
+    }
+  ],
+  "high_priority_issues": [
+    {
+      "id": "HIGH-001",
+      "severity": "HIGH",
+      "category": "Type Safety",
+      "location": ".claude/tools/amplihack/hooks/hook_processor.py:160",
+      "issue": "Generic Any type for metric value",
+      "code": "def save_metric(self, metric_name: str, value: Any, ...):",
+      "impact": "Can pass any type as metric value, no validation",
+      "recommendation": "Use Union[int, float, str, bool, Dict[str, Any]] for metric values",
+      "estimated_fix_time": "2 minutes"
+    },
+    {
+      "id": "HIGH-002",
+      "severity": "HIGH",
+      "category": "Type Safety",
+      "location": ".claude/tools/amplihack/hooks/hook_processor.py:290",
+      "issue": "Generic Any type for session data",
+      "code": "def save_session_data(self, filename: str, data: Any):",
+      "impact": "No type safety for session data serialization",
+      "recommendation": "Use JSONType or TypedDict for structured session data",
+      "estimated_fix_time": "5 minutes"
+    },
+    {
+      "id": "HIGH-003",
+      "severity": "HIGH",
+      "category": "Type Safety",
+      "location": "src/amplihack/launcher/session_capture.py:62",
+      "issue": "Assistant message type is Any",
+      "code": "def capture_assistant_message(self, message: Any) -> None:",
+      "impact": "No validation of message structure, can break at runtime",
+      "recommendation": "Define MessageType TypedDict or use specific message classes",
+      "estimated_fix_time": "10 minutes"
+    },
+    {
+      "id": "HIGH-004",
+      "severity": "HIGH",
+      "category": "Exception Handling",
+      "location": "src/amplihack/memory/database.py:180-182",
+      "issue": "Generic sqlite3.Error caught and returns False, error detail lost to caller",
+      "code": "except sqlite3.Error as e:\n    print(f\"...\")\n    return False",
+      "impact": "Caller can't distinguish between different failure modes (constraint violation, disk full, etc.)",
+      "recommendation": "Either re-raise specific exceptions or return Result type with error details",
+      "estimated_fix_time": "15 minutes"
+    },
+    {
+      "id": "HIGH-005",
+      "severity": "HIGH",
+      "category": "Exception Handling",
+      "location": "src/amplihack/memory/database.py (multiple methods)",
+      "issue": "All exceptions logged to print() instead of proper logger",
+      "affected_lines": [180, 238, 281, 302, 325, 383, 447, 493, 537],
+      "impact": "Errors aren't captured by logging framework, hard to debug in production",
+      "recommendation": "Use logger.error() or logger.exception() instead of print()",
+      "estimated_fix_time": "10 minutes"
+    },
+    {
+      "id": "HIGH-006",
+      "severity": "HIGH",
+      "category": "Type Safety",
+      "location": "src/amplihack/proxy/integrated_proxy.py:1409",
+      "issue": "ContentBlockToolResult.content type is overly permissive Union with Any",
+      "code": "content: Union[str, List[Dict[str, Any]], Dict[str, Any], List[Any], Any]",
+      "impact": "Final 'Any' makes entire Union meaningless - accepts literally anything",
+      "recommendation": "Remove 'Any' from Union, use specific types only",
+      "estimated_fix_time": "3 minutes"
+    },
+    {
+      "id": "HIGH-007",
+      "severity": "HIGH",
+      "category": "Exception Handling",
+      "location": "src/amplihack/memory/database.py:536-538",
+      "issue": "Multiple unrelated exception types caught together",
+      "code": "except (ValueError, TypeError, json.JSONDecodeError) as e:",
+      "impact": "Different error conditions (invalid data vs JSON parse error) handled identically",
+      "recommendation": "Handle each exception type separately with specific error messages",
+      "estimated_fix_time": "5 minutes"
+    },
+    {
+      "id": "HIGH-008",
+      "severity": "HIGH",
+      "category": "Resource Management",
+      "location": "src/amplihack/memory/database.py (all methods)",
+      "issue": "SQLite connections obtained but not explicitly closed in finally blocks",
+      "code": "with self._get_connection() as conn:",
+      "impact": "Context manager should close, but if conn.__exit__ raises, connection may leak",
+      "recommendation": "Verify sqlite3.Connection.__exit__ always closes, or add explicit try/finally",
+      "estimated_fix_time": "Review only - context manager likely safe"
+    }
+  ],
+  "patterns_identified": {
+    "exception_handling": {
+      "bare_except_count": 2,
+      "generic_exception_count": 20,
+      "missing_exception_chaining_count": 12,
+      "silent_failure_count": 15
+    },
+    "type_safety": {
+      "any_type_usage_count": 9,
+      "missing_return_types_count": 50,
+      "overly_broad_unions_count": 3
+    },
+    "resource_management": {
+      "potential_connection_leaks": 2,
+      "file_handles_properly_managed": true,
+      "context_managers_used_correctly": "mostly"
+    }
+  },
+  "recommendations_by_priority": [
+    {
+      "priority": 1,
+      "action": "Fix bare except clauses in test_retrieval_isolation*.py",
+      "estimated_time": "5 minutes",
+      "impact": "Prevents masking critical errors"
+    },
+    {
+      "priority": 2,
+      "action": "Add exception chaining in integrated_proxy.py HTTPException raises",
+      "estimated_time": "5 minutes",
+      "impact": "Dramatically improves debugging of proxy errors"
+    },
+    {
+      "priority": 3,
+      "action": "Fix Neo4j driver resource leak in port_manager.py",
+      "estimated_time": "10 minutes",
+      "impact": "Prevents connection exhaustion"
+    },
+    {
+      "priority": 4,
+      "action": "Replace Any types in critical schema/data handling functions",
+      "estimated_time": "30 minutes",
+      "impact": "Catch type errors at development time instead of production"
+    },
+    {
+      "priority": 5,
+      "action": "Replace print() with logger in database.py",
+      "estimated_time": "10 minutes",
+      "impact": "Improve production debuggability"
+    },
+    {
+      "priority": 6,
+      "action": "Add return type annotations to database.py methods",
+      "estimated_time": "15 minutes",
+      "impact": "Enable type checking and better IDE support"
+    }
+  ],
+  "estimated_total_fix_time": "2-3 hours for all CRITICAL and HIGH issues",
+  "note": "These are ADDITIONAL critical issues beyond the 458 issues already identified. Total project issues: 458 + 20 = 478 issues requiring attention."
+}
