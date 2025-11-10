@@ -10,9 +10,13 @@ import time
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 
 logger = logging.getLogger(__name__)
+
+# JSON type for safer type hints
+JSONType = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
+T = TypeVar('T', bound=JSONType)
 
 
 class FileOperationError(Exception):
@@ -266,8 +270,8 @@ def safe_write_file(
 
 @retry_file_operation(max_retries=3, delay=0.1)
 def safe_read_json(
-    file_path: Union[str, Path], default: Any = None, validate_schema: Optional[Callable] = None
-) -> Any:
+    file_path: Union[str, Path], default: Optional[T] = None, validate_schema: Optional[Callable] = None
+) -> Union[JSONType, T]:
     """Safely read JSON file with validation.
 
     Args:
@@ -307,7 +311,7 @@ def safe_read_json(
 @retry_file_operation(max_retries=3, delay=0.1)
 def safe_write_json(
     file_path: Union[str, Path],
-    data: Any,
+    data: JSONType,
     indent: int = 2,
     sort_keys: bool = True,
     atomic: bool = True,
