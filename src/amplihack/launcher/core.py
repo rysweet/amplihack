@@ -472,7 +472,7 @@ class ClaudeLauncher:
             project_dir_str = str(target_dir.resolve())
 
             # Recursively replace $CLAUDE_PROJECT_DIR in hook commands
-            def replace_in_hooks(obj):
+            def replace_in_hooks(obj) -> None:
                 nonlocal hooks_modified
                 if isinstance(obj, dict):
                     for key, value in obj.items():
