@@ -239,3 +239,4 @@ def run_batched(
             accumulated_output += batch_output
 
     return all_results
+# Performance optimization for parallel execution
