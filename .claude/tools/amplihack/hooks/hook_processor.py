@@ -315,3 +315,4 @@ class HookProcessor(ABC):
             self.log(f"Saved session data to {filename}")
         except Exception as e:
             self.log(f"Failed to save session data: {e}", "WARNING")
+# Hook processing utilities
