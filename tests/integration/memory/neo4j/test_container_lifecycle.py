@@ -17,6 +17,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+import pytest
+
 
 @pytest.mark.integration
 class TestStartStopRestartCycle:
