@@ -1,5 +1,7 @@
 """Core launcher functionality for Claude Code."""
 
+import atexit
+import logging
 import os
 import shlex
 import signal
@@ -16,6 +18,8 @@ from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
 from .repo_checkout import checkout_repository
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeLauncher:
@@ -75,6 +79,9 @@ class ClaudeLauncher:
         self._cached_uvx_decision = None  # Cache for UVX --add-dir decision
         self._target_directory = None  # Target directory for --add-dir
 
+        # Setup signal handlers for graceful shutdown
+        self._setup_signal_handlers()
+
     def prepare_launch(self) -> bool:
         """Prepare environment for launching Claude.
 
@@ -85,37 +92,40 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Interactive Neo4j startup (blocks until ready or user decides)
+        # 2. Check and sync Neo4j credentials from existing containers (if any)
+        self._check_neo4j_credentials()
+
+        # 3. Interactive Neo4j startup (blocks until ready or user decides)
         if not self._interactive_neo4j_startup():
             # User chose to exit rather than continue without Neo4j
             return False
 
-        # 3. Handle repository checkout if needed
+        # 4. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
 
-        # 3. Find and validate target directory
+        # 5. Find and validate target directory
         target_dir = self._find_target_directory()
         if not target_dir:
             print("Failed to determine target directory")
             return False
 
-        # 4. Ensure required runtime directories exist
+        # 6. Ensure required runtime directories exist
         if not self._ensure_runtime_directories(target_dir):
             print("Warning: Could not create runtime directories")
             # Don't fail - just warn
 
-        # 5. Fix hook paths in settings.json to use absolute paths
+        # 7. Fix hook paths in settings.json to use absolute paths
         if not self._fix_hook_paths_in_settings(target_dir):
             print("Warning: Could not fix hook paths in settings.json")
             # Don't fail - hooks might still work
 
-        # 6. Handle directory change if needed (unless UVX with --add-dir)
+        # 8. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 7. Start proxy if needed
+        # 9. Start proxy if needed
         return self._start_proxy_if_needed()
 
     def _handle_repo_checkout(self) -> bool:
@@ -784,4 +794,55 @@ class ClaudeLauncher:
         except Exception:
             # Graceful degradation - never crash launcher
             # No error message needed as Neo4j detection is optional
+            pass
+
+    def _setup_signal_handlers(self) -> None:
+        """Setup signal handlers for graceful shutdown.
+
+        Registers handlers for SIGINT (Ctrl-C) and SIGTERM that:
+        1. Trigger Neo4j cleanup via stop hook
+        2. Allow process to exit gracefully
+
+        Also registers atexit handler as fallback.
+        """
+
+        def signal_handler(signum: int, frame) -> None:
+            """Handle shutdown signals."""
+            signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
+            logger.info(f"Received {signal_name}, initiating graceful shutdown...")
+
+            # Trigger Neo4j cleanup via stop hook
+            try:
+                from amplihack.hooks.manager import execute_stop_hook
+
+                logger.info("Executing stop hook for cleanup...")
+                execute_stop_hook()
+            except Exception as e:
+                logger.warning(f"Stop hook execution failed: {e}")
+
+            # Exit gracefully
+            logger.info("Graceful shutdown complete")
+            sys.exit(0)
+
+        # Register signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        # Also register atexit handler as fallback
+        atexit.register(self._cleanup_on_exit)
+
+        logger.debug("Signal handlers registered for graceful shutdown")
+
+    def _cleanup_on_exit(self) -> None:
+        """Fallback cleanup handler for atexit.
+
+        This is a fail-safe that runs when the process exits normally
+        without receiving signals. Executes stop hook silently.
+        """
+        try:
+            from amplihack.hooks.manager import execute_stop_hook
+
+            execute_stop_hook()
+        except Exception:
+            # Fail silently in atexit - cleanup is best-effort
             pass

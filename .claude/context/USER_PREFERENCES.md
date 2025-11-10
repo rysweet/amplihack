@@ -81,6 +81,24 @@ Sycophancy erodes trust. ALWAYS stick to facts and be direct. NEVER use excessiv
 
 Always prefer complete work with high quality over speed of implementation.
 
+### Neo4j Auto-Shutdown
+
+Controls whether Neo4j database shuts down automatically on session exit.
+
+**Current setting:** ask
+
+**Options:**
+- `always` - Always shut down Neo4j when last connection closes (no prompt)
+- `never` - Never shut down Neo4j (no prompt)
+- `ask` - Prompt user each time (default)
+
+**Usage:**
+```bash
+/amplihack:customize set neo4j_auto_shutdown always
+/amplihack:customize set neo4j_auto_shutdown never
+/amplihack:customize set neo4j_auto_shutdown ask
+```
+
 **Management Commands**:
 
 - /amplihack:customize list-workflows - Show all available workflows

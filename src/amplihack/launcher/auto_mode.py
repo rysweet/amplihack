@@ -128,6 +128,11 @@ class AutoMode:
         self.session_output_size = 0
         self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
 
+        # Safety: Detect if we're using temp staging directory (safety feature)
+        self.staged_dir = os.environ.get("AMPLIHACK_STAGED_DIR")
+        self.original_cwd_from_env = os.environ.get("AMPLIHACK_ORIGINAL_CWD")
+        self.using_temp_staging = self.staged_dir is not None
+
         # Initialize UI if enabled
         self.ui_thread = None
         if self.ui_enabled:
@@ -816,6 +821,17 @@ Document your decisions and reasoning in comments/logs."""
         self.log(f"Starting auto mode (max {self.max_turns} turns)")
         self.log(f"Prompt: {self.prompt}")
 
+        # Safety: Transform prompt if using temp staging (safety feature)
+        if self.using_temp_staging and self.original_cwd_from_env:
+            from amplihack.safety import PromptTransformer
+            transformer = PromptTransformer()
+            self.prompt = transformer.transform_prompt(
+                original_prompt=self.prompt,
+                target_directory=self.original_cwd_from_env,
+                used_temp=True
+            )
+            self.log(f"Transformed prompt for temp staging (target: {self.original_cwd_from_env})")
+
         self.run_hook("session_start")
 
         try:
@@ -985,6 +1001,17 @@ Current Turn: {turn}/{self.max_turns}"""
         self.fork_manager.start_time = self.start_time  # Initialize fork manager timer
         self.log(f"Starting auto mode with Claude SDK (max {self.max_turns} turns)")
         self.log(f"Prompt: {self.prompt}")
+
+        # Safety: Transform prompt if using temp staging (safety feature)
+        if self.using_temp_staging and self.original_cwd_from_env:
+            from amplihack.safety import PromptTransformer
+            transformer = PromptTransformer()
+            self.prompt = transformer.transform_prompt(
+                original_prompt=self.prompt,
+                target_directory=self.original_cwd_from_env,
+                used_temp=True
+            )
+            self.log(f"Transformed prompt for temp staging (target: {self.original_cwd_from_env})")
 
         self.run_hook("session_start")
 

@@ -422,7 +422,7 @@ class TestSessionFinderEdgeCases:
             finder = SessionFinder(start_dir=temp_workspace)
 
             # Should not hang
-            session_info = finder.find_active_session()
+            finder.find_active_session()
 
             # Test should complete (not hang)
             assert True, "Should complete without hanging"

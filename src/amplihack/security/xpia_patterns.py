@@ -39,6 +39,10 @@ class AttackPattern:
 
     def matches(self, text: str) -> bool:
         """Check if text matches this attack pattern"""
+        # Special handling for context window overflow pattern (CM001)
+        # to avoid ReDoS vulnerability
+        if self.id == "CM001":
+            return len(text) >= 5000
         return bool(self.pattern.search(text))
 
 
@@ -148,10 +152,9 @@ class XPIAPatterns:
                 id="CM001",
                 name="Context Window Overflow",
                 category=PatternCategory.CONTEXT_MANIPULATION,
-                pattern=re.compile(
-                    r"(.{1000,})" * 5,  # Repeated long strings
-                    re.DOTALL,
-                ),
+                # Safe pattern - actual detection done via length check in matches()
+                # to avoid ReDoS vulnerability from catastrophic backtracking
+                pattern=re.compile(r"^.{5000,}$", re.DOTALL),
                 severity="medium",
                 description="Attempts to overflow context with excessive content",
                 mitigation="Limit input size and validate structure",

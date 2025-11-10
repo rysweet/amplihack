@@ -414,7 +414,7 @@ class TestInstructionIntegrationWithRunLoop:
 
         # Run auto mode (will use mocked SDK)
         # This will fail initially as integration may not be complete
-        with pytest.raises(Exception):
+        with pytest.raises((AttributeError, NotImplementedError, RuntimeError)):
             auto_mode_with_mocked_sdk.run()
 
     def test_new_instructions_included_in_prompt(self, auto_mode_with_mocked_sdk):
@@ -438,7 +438,7 @@ class TestInstructionIntegrationWithRunLoop:
         auto_mode_with_mocked_sdk.run_sdk = capture_sdk_call
 
         # This will fail initially
-        with pytest.raises(Exception):
+        with pytest.raises((AttributeError, NotImplementedError, RuntimeError)):
             auto_mode_with_mocked_sdk.run()
 
             # Check that instruction was included

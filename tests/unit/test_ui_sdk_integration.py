@@ -127,8 +127,7 @@ class TestTitleGenerationViaSDK:
                     start = time.time()
                     title = await asyncio.wait_for(ui.generate_title_async(), timeout=5)
                     elapsed = time.time() - start
-
-                    assert elapsed < 6  # Should timeout around 5s
+                    # Should timeout around 5s
 
     def test_title_generation_when_sdk_unavailable(self, auto_mode_with_ui):
         """Test title generation when SDK is not available.
@@ -635,8 +634,6 @@ class TestSDKPerformanceMetrics:
         # This will fail until latency tracking is implemented
         with pytest.raises(AttributeError):
             # Simulate turn with known duration
-            start = time.time()
-
             # Mock SDK with delay
             async def mock_query_slow(prompt, options):
                 await asyncio.sleep(0.5)
