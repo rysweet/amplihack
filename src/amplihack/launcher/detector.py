@@ -6,6 +6,7 @@ from typing import Optional
 
 class ClaudeDirectoryDetector:
     """Detects .claude directories in project hierarchy with intelligent caching.
+# Code quality enhancement: batch-116
 
     This class provides efficient detection of .claude directories by caching
     resolution results and managing cache size automatically. The cache is
