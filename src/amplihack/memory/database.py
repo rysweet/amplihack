@@ -1,6 +1,7 @@
 """SQLite database implementation for Agent Memory System."""
 
 import json
+import logging
 import os
 import sqlite3
 import threading
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from .models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryDatabase:
@@ -185,9 +188,9 @@ class MemoryDatabase:
             True if successful, False otherwise
         """
         with self._lock:
+            conn = None
             try:
                 conn = self._get_connection()
-
                 # Update session tracking
                 self._update_session(conn, memory.session_id, memory.agent_id)
 
@@ -221,8 +224,13 @@ class MemoryDatabase:
                 return True
 
             except sqlite3.Error as e:
-                print(f"Database error storing memory {memory.id}: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error storing memory {memory.id}: {e}")
                 return False
+            finally:
+                if conn:
+                    conn.close()
 
     def retrieve_memories(self, query: MemoryQuery) -> List[MemoryEntry]:
         """Retrieve memories matching the query.
@@ -234,6 +242,7 @@ class MemoryDatabase:
             List of matching memory entries
         """
         with self._lock:
+            conn = None
             try:
                 conn = self._get_connection()
                 where_clause, params = query.to_sql_where()
@@ -278,8 +287,13 @@ class MemoryDatabase:
                 return memories
 
             except sqlite3.Error as e:
-                print(f"Database error retrieving memories: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error retrieving memories: {e}")
                 return []
+            finally:
+                if conn:
+                    conn.close()
 
     def get_memory_by_id(self, memory_id: str) -> Optional[MemoryEntry]:
         """Get a specific memory by ID.
@@ -291,6 +305,7 @@ class MemoryDatabase:
             Memory entry if found, None otherwise
         """
         with self._lock:
+            conn = None
             try:
                 conn = self._get_connection()
                 cursor = conn.execute(
@@ -321,7 +336,12 @@ class MemoryDatabase:
                     return memory
 
             except sqlite3.Error as e:
-                print(f"Database error retrieving memory {memory_id}: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error retrieving memory {memory_id}: {e}")
+            finally:
+                if conn:
+                    conn.close()
 
         return None
 
@@ -335,6 +355,7 @@ class MemoryDatabase:
             True if deleted, False otherwise
         """
         with self._lock:
+            conn = None
             try:
                 conn = self._get_connection()
                 cursor = conn.execute("DELETE FROM memory_entries WHERE id = ?", (memory_id,))
@@ -342,8 +363,13 @@ class MemoryDatabase:
                 return cursor.rowcount > 0
 
             except sqlite3.Error as e:
-                print(f"Database error deleting memory {memory_id}: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error deleting memory {memory_id}: {e}")
                 return False
+            finally:
+                if conn:
+                    conn.close()
 
     def cleanup_expired(self) -> int:
         """Remove expired memory entries.
@@ -352,6 +378,7 @@ class MemoryDatabase:
             Number of entries removed
         """
         with self._lock:
+            conn = None
             try:
                 conn = self._get_connection()
                 cursor = conn.execute(
@@ -365,8 +392,13 @@ class MemoryDatabase:
                 return cursor.rowcount
 
             except sqlite3.Error as e:
-                print(f"Database error during cleanup: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error during cleanup: {e}")
                 return 0
+            finally:
+                if conn:
+                    conn.close()
 
     def get_session_info(self, session_id: str) -> Optional[SessionInfo]:
         """Get information about a session.
@@ -378,6 +410,7 @@ class MemoryDatabase:
             Session information if found
         """
         with self._lock:
+            conn = None
             try:
                 conn = self._get_connection()
                 # Get session basic info
@@ -423,7 +456,12 @@ class MemoryDatabase:
                 )
 
             except sqlite3.Error as e:
-                print(f"Database error getting session info: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error getting session info: {e}")
+            finally:
+                if conn:
+                    conn.close()
 
         return None
 
@@ -437,6 +475,7 @@ class MemoryDatabase:
             List of session information
         """
         with self._lock:
+            conn = None
             try:
                 conn = self._get_connection()
                 sql = """
@@ -487,8 +526,13 @@ class MemoryDatabase:
                 return sessions
 
             except sqlite3.Error as e:
-                print(f"Database error listing sessions: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error listing sessions: {e}")
                 return []
+            finally:
+                if conn:
+                    conn.close()
 
     def get_stats(self) -> Dict[str, Any]:
         """Get database statistics.
@@ -497,6 +541,7 @@ class MemoryDatabase:
             Dictionary with database statistics
         """
         with self._lock:
+            conn = None
             try:
                 conn = self._get_connection()
                 stats = {}
@@ -533,8 +578,13 @@ class MemoryDatabase:
                 return stats
 
             except sqlite3.Error as e:
-                print(f"Database error getting stats: {e}")
+                if conn:
+                    conn.rollback()
+                logger.error(f"Database error getting stats: {e}")
                 return {}
+            finally:
+                if conn:
+                    conn.close()
 
     def _update_session(self, conn: sqlite3.Connection, session_id: str, agent_id: str) -> None:
         """Update session and agent tracking."""
