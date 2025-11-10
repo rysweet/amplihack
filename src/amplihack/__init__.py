@@ -512,7 +512,7 @@ def _local_install(repo_root):
     Install amplihack files from the given repo_root directory.
     This provides a comprehensive installation that mirrors the shell script.
     """
-    print("\n🚀 Starting amplihack installation...")
+    logger.info("\n🚀 Starting amplihack installation...")
     print(f"   Source: {repo_root}")
     print(f"   Target: {CLAUDE_DIR}\n")
 
