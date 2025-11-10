@@ -148,3 +148,4 @@ class ReflectionStateMachine:
                 self.state_file.unlink()
             except OSError:
                 pass
+# State machine implementation
