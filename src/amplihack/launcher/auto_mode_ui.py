@@ -426,7 +426,7 @@ class AutoModeUI:
         """Internal method to append to buffer (for test mocking)."""
         self.state.add_log(message)
 
-    def _keyboard_listener_thread(self):
+    def _keyboard_listener_thread(self) -> None:
         """Background thread to capture keyboard input without blocking.
 
         Runs in daemon mode and listens for single-character commands.
