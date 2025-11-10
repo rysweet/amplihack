@@ -784,7 +784,13 @@ class ClaudeLauncher:
             # Check and sync credentials if needed
             neo4j_manager.check_and_sync()
 
-        except Exception:
-            # Graceful degradation - never crash launcher
-            # No error message needed as Neo4j detection is optional
-            pass
+        except ImportError:
+            # Neo4j module not available - expected in some deployments
+            logger.debug("Neo4j module not available")
+        except (OSError, PermissionError) as e:
+            # File system or permission errors - log but continue
+            logger.debug(f"Neo4j credential check failed: {e}")
+        except Exception as e:
+            # Graceful degradation for unexpected errors - never crash launcher
+            # Log as debug since Neo4j detection is optional
+            logger.debug(f"Unexpected error during Neo4j credential check: {e}")
