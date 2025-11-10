@@ -565,7 +565,7 @@ def _local_install(repo_root):
     print(f"   Manifest written to {MANIFEST_JSON}")
 
     # Step 8: Final summary
-    print("\n" + "=" * 60)
+    logger.info("\n" + "=" * 60)
     if settings_ok and hooks_ok and len(copied_dirs) > 0:
         print("✅ Amplihack installation completed successfully!")
         print(f"\n📍 Installed to: {CLAUDE_DIR}")
