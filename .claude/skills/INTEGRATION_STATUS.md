@@ -4,10 +4,11 @@
 
 | Skill | Status | Dependencies | Tests | PR | Notes |
 |-------|--------|--------------|-------|----|----|
-| pdf   | ✓ Integrated | ✓ Documented | ✓ Passing | #1259 | Ready for use |
-| xlsx  | ✓ Integrated | ✓ Documented | ✓ Passing | #1260 (Issue #1247) | Ready for use |
-| docx  | ✗ Not Started | - | - | #1261 | In progress |
-| pptx  | ✗ Not Started | - | - | #1262 | In progress |
+| pdf   | ✓ Integrated | ✓ Documented | ✓ Passing | #1259 | Merged to main |
+| xlsx  | ✓ Integrated | ✓ Documented | ✓ Passing | #1260 | Merged to main |
+| docx  | ✓ Integrated | ✓ Documented | ✓ Passing | #1261 | Ready for use |
+| pptx  | ✗ Not Started | - | - | - | Planned PR #1262 |
+>>>>>>> ed0e803 (Add Word (DOCX) Skill from Anthropic)
 
 ## Status Legend
 
