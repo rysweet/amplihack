@@ -122,3 +122,4 @@ def show_error(error_msg: str) -> None:
     safe_error = create_safe_preview(error_msg, "Error")
     print(f"❌ REFLECTION ERROR: {safe_error}")
     sys.stdout.flush()
+# Display formatting utilities
