@@ -3802,7 +3802,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
 
         # Return detailed error
         status_code = error_details.get("status_code", 500)
-        raise HTTPException(status_code=status_code, detail=error_message)
+        raise HTTPException(status_code=status_code, detail=error_message) from e
 
 
 @app.post("/v1/messages/count_tokens")
@@ -3873,7 +3873,7 @@ async def count_tokens(request: TokenCountRequest, raw_request: Request):
 
         error_traceback = traceback.format_exc()
         logger.error(f"Error counting tokens: {e!s}\n{error_traceback}")
-        raise HTTPException(status_code=500, detail=f"Error counting tokens: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error counting tokens: {e!s}") from e
 
 
 @app.get("/")
