@@ -38,6 +38,7 @@ class PreToolUseHook(HookProcessor):
             # Block --no-verify flag in any git command
             if "--no-verify" in command and ("git commit" in command or "git push" in command):
                 self.log(f"BLOCKED: Dangerous operation detected: {command}", "ERROR")
+                self.save_metric("no_verify_blocks", 1)
 
                 return {
                     "block": True,
@@ -64,6 +65,7 @@ For true emergencies, ask a human to override this protection.
                 }
 
         # Allow all other operations
+        self.save_metric("tool_use_allowed", 1)
         return {}
 
 
