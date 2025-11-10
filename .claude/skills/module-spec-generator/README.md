@@ -57,7 +57,7 @@ Anthropic's office document skills integrated into amplihack for comprehensive d
 | **pdf** | Integrated | Comprehensive PDF manipulation - extract, create, merge, OCR | [README](pdf/README.md) |
 | **xlsx** | Integrated | Excel spreadsheet manipulation with formulas and charts | [README](xlsx/README.md) |
 | **docx** | Integrated | Word document processing with tracked changes | [README](docx/README.md) |
-| **pptx** | Planned | PowerPoint presentation generation | Coming in PR #4 |
+| **pptx** | Integrated | PowerPoint presentation generation | [README](pptx/README.md) |
 
 ## 📖 Research & Documentation
 
@@ -303,6 +303,6 @@ The amplihack integration code and core skills follow the amplihack project lice
 
 **Last Updated**: November 9, 2025
 **Total Skills**: 16 (12 core + 4 office)
-**Status**: Production Ready (12 core skills + 3 office skills integrated)
+**Status**: Production Ready (12 core skills + 4 office skills integrated - COMPLETE!)
 
 🤖 Skills documentation maintained as part of amplihack project
