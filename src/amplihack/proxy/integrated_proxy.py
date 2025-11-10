@@ -1410,7 +1410,7 @@ class ContentBlockToolResult(BaseModel):
     model_config = {"extra": "allow"}  # Allow extra fields like cache_control
     type: Literal["tool_result"]
     tool_use_id: str
-    content: Union[str, List[Dict[str, Any]], Dict[str, Any], List[Any], Any]
+    content: Union[str, List[Dict[str, Any]], Dict[str, Any], List[Any]]
 
 
 class SystemContent(BaseModel):
