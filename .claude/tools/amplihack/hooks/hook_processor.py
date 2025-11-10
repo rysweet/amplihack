@@ -19,7 +19,10 @@ import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+
+# JSON type for serializable data
+JSONType = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
 
 
 class HookProcessor(ABC):
@@ -287,7 +290,7 @@ class HookProcessor(ABC):
         # Include microseconds to prevent collisions
         return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
-    def save_session_data(self, filename: str, data: Any):
+    def save_session_data(self, filename: str, data: JSONType):
         """Save data to a session-specific file with path validation.
 
         Args:
