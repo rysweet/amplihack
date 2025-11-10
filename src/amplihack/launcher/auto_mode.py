@@ -249,8 +249,10 @@ class AutoMode:
 
         self.log(f"Running: {cmd[0]} ...")
 
-        # Create a pseudo-terminal for stdin
-        # This allows any subprocess (including children) to read from it
+        # PTY Setup: Create pseudo-terminal to prevent stdin blocking
+        # Why: Some SDKs (like claude) may read stdin even when not needed,
+        # causing the process to block. PTY provides a virtual stdin that
+        # can be auto-fed with newlines to prevent blocking.
         master_fd, slave_fd = pty.openpty()
 
         # Use Popen to capture and mirror output in real-time
@@ -263,7 +265,8 @@ class AutoMode:
             cwd=self.working_dir,
         )
 
-        # Close slave_fd in parent process (child has a copy)
+        # Close slave_fd in parent process (child inherited a copy)
+        # Parent only needs master_fd for writing
         os.close(slave_fd)
 
         # Capture output while mirroring to stdout/stderr
