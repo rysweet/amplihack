@@ -78,7 +78,7 @@ class ColorizedFormatter(logging.Formatter):
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
-    def format(self, record):
+    def format(self, record) -> None:
         if record.levelno == logging.debug and "MODEL MAPPING" in record.msg:
             # Apply colors and formatting to model mapping logs
             return f"{self.BOLD}{self.GREEN}{record.msg}{self.RESET}"
