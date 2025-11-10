@@ -498,3 +498,4 @@ def analyze_session_patterns(
         "sdk_used": analyzer.sdk_available,
         "analysis_method": "llm" if analyzer.sdk_available else "keyword_fallback",
     }
+# Contextual error analysis
