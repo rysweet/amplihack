@@ -30,6 +30,7 @@ class MemoryDatabase:
 
         self.db_path = db_path
         self._lock = threading.RLock()
+        self._connection: Optional[sqlite3.Connection] = None
         self._init_database()
 
     def _init_database(self) -> None:
@@ -44,27 +45,48 @@ class MemoryDatabase:
         # Set secure file permissions (600 - owner read/write only)
         os.chmod(self.db_path, 0o600)
 
-        # Initialize schema
-        with self._get_connection() as conn:
-            self._create_tables(conn)
-            self._create_indexes(conn)
+        # Initialize schema using pooled connection
+        conn = self._get_connection()
+        self._create_tables(conn)
+        self._create_indexes(conn)
 
     def _get_connection(self) -> sqlite3.Connection:
-        """Get database connection with proper configuration."""
-        conn = sqlite3.connect(
-            self.db_path,
-            timeout=30.0,  # 30 second timeout
-            check_same_thread=False,  # Allow multi-threading
-        )
+        """Get or create pooled database connection with proper configuration.
 
-        # Configure for performance and safety
-        conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
-        conn.execute("PRAGMA synchronous=NORMAL")  # Balance safety/speed
-        conn.execute("PRAGMA temp_store=MEMORY")  # Use memory for temp tables
-        conn.execute("PRAGMA mmap_size=268435456")  # 256MB memory map
-        conn.execute("PRAGMA foreign_keys=ON")  # Enable foreign key constraints
+        Returns a single reusable connection instance that persists for the
+        lifetime of the MemoryDatabase object.
+        """
+        with self._lock:
+            # Return existing connection if healthy
+            if self._connection is not None:
+                try:
+                    # Health check: verify connection is still valid
+                    self._connection.execute("SELECT 1")
+                    return self._connection
+                except sqlite3.Error:
+                    # Connection is broken, will create a new one
+                    try:
+                        self._connection.close()
+                    except Exception:
+                        pass
+                    self._connection = None
 
-        return conn
+            # Create new connection
+            conn = sqlite3.connect(
+                self.db_path,
+                timeout=30.0,  # 30 second timeout
+                check_same_thread=False,  # Allow multi-threading
+            )
+
+            # Configure for performance and safety
+            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
+            conn.execute("PRAGMA synchronous=NORMAL")  # Balance safety/speed
+            conn.execute("PRAGMA temp_store=MEMORY")  # Use memory for temp tables
+            conn.execute("PRAGMA mmap_size=268435456")  # 256MB memory map
+            conn.execute("PRAGMA foreign_keys=ON")  # Enable foreign key constraints
+
+            self._connection = conn
+            return conn
 
     def _create_tables(self, conn: sqlite3.Connection) -> None:
         """Create database tables."""
@@ -135,6 +157,26 @@ class MemoryDatabase:
             conn.execute(index_sql)
 
         conn.commit()
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit with proper cleanup."""
+        self.close()
+        return False
+
+    def close(self) -> None:
+        """Close database connection and cleanup resources."""
+        with self._lock:
+            if self._connection is not None:
+                try:
+                    self._connection.close()
+                except Exception:
+                    pass
+                finally:
+                    self._connection = None
 
     def store_memory(self, memory: MemoryEntry) -> bool:
         """Store a memory entry.
@@ -585,5 +627,5 @@ class MemoryDatabase:
                 parent_id=row[12],
             )
         except (ValueError, TypeError, json.JSONDecodeError) as e:
-            print(f"Error converting row to memory: {e}")
+            logger.error(f"Error converting row to memory: {e}")
             return None

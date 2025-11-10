@@ -8,12 +8,12 @@ Tests all scenarios from the architecture specification:
 5. Git repo with changes in non-essential .claude/ subdirs
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 import subprocess
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-from amplihack.safety.git_conflict_detector import GitConflictDetector, ConflictDetectionResult
+from amplihack.safety.git_conflict_detector import GitConflictDetector
 
 
 class TestGitConflictDetector(unittest.TestCase):

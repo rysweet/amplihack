@@ -4,13 +4,10 @@ import os
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
-
 from amplihack.memory.neo4j.container_selection import (
     ContainerInfo,
     NameResolutionContext,
     discover_amplihack_containers,
-    extract_ports,
     format_ports,
     get_default_container_name,
     resolve_container_name,

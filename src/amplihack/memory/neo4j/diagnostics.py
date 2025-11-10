@@ -4,7 +4,7 @@ Shows clear evidence that Neo4j is running and has data.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
