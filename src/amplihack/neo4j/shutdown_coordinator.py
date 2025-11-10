@@ -262,7 +262,7 @@ class Neo4jShutdownCoordinator:
         # Use threading to implement timeout
         user_input: list[Optional[str]] = [None]  # Mutable container for thread communication
 
-        def get_input():
+        def get_input() -> None:
             try:
                 response = input("Neo4j database is running. Shutdown now? (y/n/Always/Never): ")
                 user_input[0] = response.strip().lower()
