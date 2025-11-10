@@ -15,7 +15,7 @@ class DockerManager:
 
     IMAGE_NAME = "amplihack:latest"
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize DockerManager."""
         self.detector = DockerDetector()
 
