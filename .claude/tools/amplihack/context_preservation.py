@@ -380,3 +380,4 @@ Implement conversation transcript and original request preservation for amplihac
     agent_context = preserver.format_agent_context(original_request)
     print("\nAgent context preview:")
     print(agent_context[:200] + "...")
+# Context preservation utilities
