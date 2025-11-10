@@ -53,7 +53,7 @@ class AutoModeUI:
     - h: Show help overlay
     """
 
-    def __init__(self, state: AutoModeState, auto_mode, working_dir: Path):
+    def __init__(self, state: AutoModeState, auto_mode, working_dir: Path) -> None:
         """Initialize UI.
 
         Args:
