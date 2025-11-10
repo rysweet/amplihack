@@ -26,7 +26,7 @@ class ClaudeDirectoryDetector:
         concurrent use or add external synchronization.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize detector with caching support."""
         self._cache = {}
         self._cache_max_size = 100  # Prevent unlimited cache growth
