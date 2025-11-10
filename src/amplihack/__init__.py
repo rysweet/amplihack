@@ -261,7 +261,7 @@ def all_rel_dirs(base: str) -> set[str]:
     return result
 
 
-def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
+def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path) -> None:
     """Update hook paths for a given hook system (amplihack or xpia).
 
     Args:
