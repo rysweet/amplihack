@@ -410,3 +410,4 @@ class OperationContext:
         else:
             message = None
         self.logger.end_operation(success=success, message=message)
+# Toolkit logging utilities
