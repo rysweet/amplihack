@@ -27,7 +27,7 @@ def bundle():
 @click.option("--output", "-o", type=click.Path(), default="./bundles", help="Output directory")
 @click.option("--validate", is_flag=True, help="Validate generated bundle")
 @click.option("--test", is_flag=True, help="Test agent before bundling")
-def generate(prompt: str, output: str, validate: bool, test: bool):
+def generate(prompt: str, output: str, validate: bool, test: bool) -> None:
     """Generate an agent bundle from a natural language prompt."""
     try:
         output_path = Path(output)
