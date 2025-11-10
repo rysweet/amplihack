@@ -654,7 +654,7 @@ def uninstall():
         print("Nothing to uninstall.")
 
 
-def filecmp(f1, f2):
+def filecmp(f1, f2) -> None:
     try:
         if os.path.getsize(f1) != os.path.getsize(f2):
             return False
