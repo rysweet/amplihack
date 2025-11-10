@@ -12,15 +12,13 @@ Focus on the new container port detection functionality.
 
 import subprocess
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
-
-import pytest
+from unittest.mock import Mock, patch
 
 from amplihack.memory.neo4j.port_manager import (
-    get_container_ports,
-    resolve_port_conflicts,
-    is_port_in_use,
     find_available_port,
+    get_container_ports,
+    is_port_in_use,
+    resolve_port_conflicts,
 )
 
 

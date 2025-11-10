@@ -5,9 +5,9 @@ Provides mocks and test data for isolated unit testing without
 requiring real Docker or Neo4j instances.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 
 # =============================================================================
 # Mock Docker Client Fixtures

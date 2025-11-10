@@ -8,10 +8,7 @@ Marked with @pytest.mark.gadugi for selective execution.
 """
 
 import os
-import signal
-import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
@@ -31,9 +28,10 @@ def test_neo4j_cleanup_interactive_prompt_yes():
     Real scenario: User exits session with Neo4j running, is last connection,
     chooses 'yes' to shutdown.
     """
+    from unittest.mock import Mock, patch
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock, patch
 
     # Mock connection tracker to simulate last connection
     tracker = Mock(spec=Neo4jConnectionTracker)
@@ -66,9 +64,10 @@ def test_neo4j_cleanup_interactive_prompt_no():
 
     Real scenario: User exits session, is last connection, chooses 'no'.
     """
+    from unittest.mock import Mock, patch
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock, patch
 
     tracker = Mock(spec=Neo4jConnectionTracker)
     tracker.is_last_connection.return_value = True
@@ -101,9 +100,10 @@ def test_neo4j_cleanup_preference_always():
 
     Real scenario: User has set preference to always shutdown, should not see prompt.
     """
+    from unittest.mock import Mock, patch
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock, patch
 
     tracker = Mock(spec=Neo4jConnectionTracker)
     tracker.is_last_connection.return_value = True
@@ -134,9 +134,10 @@ def test_neo4j_cleanup_preference_never():
 
     Real scenario: User has set preference to never shutdown.
     """
+    from unittest.mock import Mock, patch
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock, patch
 
     tracker = Mock(spec=Neo4jConnectionTracker)
     tracker.is_last_connection.return_value = True
@@ -165,9 +166,10 @@ def test_neo4j_cleanup_preference_persistence():
 
     Real scenario: User responds with 'always' or 'never' to save preference.
     """
+    from unittest.mock import Mock, patch
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock, patch, MagicMock
 
     tracker = Mock(spec=Neo4jConnectionTracker)
     tracker.is_last_connection.return_value = True
@@ -211,9 +213,10 @@ def test_neo4j_cleanup_auto_mode_skips_prompt():
 
     Real scenario: Running in auto mode (AMPLIHACK_AUTO_MODE=true).
     """
+    from unittest.mock import Mock
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock
 
     tracker = Mock(spec=Neo4jConnectionTracker)
     tracker.is_last_connection.return_value = True
@@ -244,9 +247,10 @@ def test_neo4j_cleanup_multiple_connections_no_prompt():
 
     Real scenario: Other sessions are using Neo4j, should not prompt.
     """
+    from unittest.mock import Mock
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock
 
     tracker = Mock(spec=Neo4jConnectionTracker)
     tracker.is_last_connection.return_value = False  # Multiple connections
@@ -273,9 +277,10 @@ def test_neo4j_cleanup_fail_safe_on_error():
 
     Real scenario: Neo4j query fails, should not crash or block exit.
     """
+    from unittest.mock import Mock
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock
 
     # Mock tracker that raises exception
     tracker = Mock(spec=Neo4jConnectionTracker)
@@ -306,10 +311,10 @@ def test_neo4j_cleanup_timeout_defaults_to_no():
 
     Real scenario: User doesn't respond to prompt within 10 seconds.
     """
+    from unittest.mock import Mock, patch
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock, patch
-    import threading
 
     tracker = Mock(spec=Neo4jConnectionTracker)
     tracker.is_last_connection.return_value = True
@@ -342,9 +347,10 @@ def test_neo4j_cleanup_complete_flow():
 
     Real scenario: Session ends, Neo4j running, last connection, user accepts shutdown.
     """
+    from unittest.mock import Mock, patch
+
     from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
     from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-    from unittest.mock import Mock, patch
 
     # Setup mocks
     tracker = Mock(spec=Neo4jConnectionTracker)

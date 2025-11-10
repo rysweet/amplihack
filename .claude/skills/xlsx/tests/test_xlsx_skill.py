@@ -10,13 +10,14 @@ Tests are organized into 4 levels:
 Tests skip gracefully if dependencies are not installed.
 """
 
-import sys
-import subprocess
 import json
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
+
 
 # Test helpers
 def check_dependency(package_name: str) -> bool:

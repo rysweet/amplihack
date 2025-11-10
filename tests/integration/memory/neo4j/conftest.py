@@ -5,10 +5,10 @@ Provides real or containerized Neo4j instances for integration testing.
 Uses testcontainers when available, falls back to requiring real Docker.
 """
 
-import pytest
-import time
 import subprocess
+import time
 
+import pytest
 
 # =============================================================================
 # Neo4j Container Fixtures (using testcontainers or real Docker)

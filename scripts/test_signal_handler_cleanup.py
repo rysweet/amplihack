@@ -19,7 +19,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))

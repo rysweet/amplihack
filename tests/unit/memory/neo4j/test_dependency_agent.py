@@ -11,8 +11,9 @@ Tests the DependencyAgent class responsible for:
 All tests should FAIL initially (TDD approach).
 """
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 
 class TestDockerDaemonCheck:

@@ -7,14 +7,14 @@ Tests all scenarios from the architecture specification:
 4. Environment variables are set correctly
 """
 
-import unittest
 import os
-import tempfile
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 import shutil
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from amplihack.safety.safe_copy_strategy import SafeCopyStrategy, CopyStrategy
+from amplihack.safety.safe_copy_strategy import SafeCopyStrategy
 
 
 class TestSafeCopyStrategy(unittest.TestCase):

@@ -6,8 +6,8 @@ Claude SDK behavior.
 """
 
 import unittest
-from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
 
 class TestAutoModeTodoWriteFix(unittest.TestCase):

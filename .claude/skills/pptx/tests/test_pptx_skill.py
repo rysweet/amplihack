@@ -303,7 +303,6 @@ def test_pptx_to_pdf_conversion():
     """Test converting PPTX to PDF using LibreOffice."""
     import subprocess
     import tempfile
-    from io import BytesIO
 
     from pptx import Presentation
 

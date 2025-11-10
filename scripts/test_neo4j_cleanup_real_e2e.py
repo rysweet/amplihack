@@ -98,9 +98,9 @@ def test_stop_hook_cleanup_prompt():
     print("="*70)
 
     try:
+        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
         from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
         from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
 
         # Test with REAL components - use config system (no hardcoded credentials!)
         print("→ Creating real connection tracker (using config system)...")
@@ -157,9 +157,9 @@ def test_preference_loading_real():
     print("="*70)
 
     try:
-        from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-        from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
         from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
+        from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
+        from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
 
         # Check if USER_PREFERENCES.md exists
         prefs_file = Path.cwd() / ".claude" / "context" / "USER_PREFERENCES.md"
