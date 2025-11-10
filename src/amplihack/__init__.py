@@ -528,7 +528,7 @@ def _local_install(repo_root):
 
     if not copied_dirs:
         print("\n❌ No directories were copied. Installation may be incomplete.")
-        print("   Please check that the source repository is valid.\n")
+        logger.info("   Please check that the source repository is valid.\n")
         return
 
     # Step 4: Create runtime directories
