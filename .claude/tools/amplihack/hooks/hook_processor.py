@@ -287,7 +287,7 @@ class HookProcessor(ABC):
         # Include microseconds to prevent collisions
         return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
-    def save_session_data(self, filename: str, data: Any):
+    def save_session_data(self, filename: str, data: Union[Dict[str, Any], List[Any], str]):
         """Save data to a session-specific file with path validation.
 
         Args:
