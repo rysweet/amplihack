@@ -235,7 +235,6 @@ class ClaudeSession:
     def _simulate_command_execution(self, command: str, **kwargs) -> Dict[str, Any]:
         """Simulate command execution (replace with actual Claude integration)."""
         import random
-        import time
 
         # Simulate processing time
         time.sleep(random.uniform(0.1, 0.5))
@@ -246,6 +245,7 @@ class ClaudeSession:
             "timestamp": time.time(),
             "session_id": self.state.session_id,
             "kwargs": kwargs,
+            "execution_duration": random.uniform(0.1, 0.5),
         }
 
     def _update_activity(self) -> None:
