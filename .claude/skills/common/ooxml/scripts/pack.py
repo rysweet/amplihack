@@ -91,13 +91,15 @@ def pack_document(input_dir, output_file, validate=False):
 def validate_document(doc_path):
     """Validate document by converting to HTML with soffice."""
     # Determine the correct filter based on file extension
-    match doc_path.suffix.lower():
-        case ".docx":
-            filter_name = "html:HTML"
-        case ".pptx":
-            filter_name = "html:impress_html_Export"
-        case ".xlsx":
-            filter_name = "html:HTML (StarCalc)"
+    suffix = doc_path.suffix.lower()
+    if suffix == ".docx":
+        filter_name = "html:HTML"
+    elif suffix == ".pptx":
+        filter_name = "html:impress_html_Export"
+    elif suffix == ".xlsx":
+        filter_name = "html:HTML (StarCalc)"
+    else:
+        raise ValueError(f"Unsupported file extension: {suffix}")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
