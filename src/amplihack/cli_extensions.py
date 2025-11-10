@@ -117,7 +117,7 @@ def package(bundle_path: str, format: str, output: Optional[str]):
 @click.option("--pypi", is_flag=True, help="Distribute to PyPI")
 @click.option("--local", is_flag=True, help="Distribute locally")
 @click.option("--release", is_flag=True, help="Create a release")
-def distribute(package_path: str, github: bool, pypi: bool, local: bool, release: bool):
+def distribute(package_path: str, github: bool, pypi: bool, local: bool, release: bool) -> None:
     """Distribute a package."""
     try:
         package_path = Path(package_path)
