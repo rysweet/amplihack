@@ -584,6 +584,12 @@ class MemoryDatabase:
                 expires_at=datetime.fromisoformat(row[11]) if row[11] else None,
                 parent_id=row[12],
             )
-        except (ValueError, TypeError, json.JSONDecodeError) as e:
-            print(f"Error converting row to memory: {e}")
+        except ValueError as e:
+            logger.error(f"Invalid value in row data: {e}")
+            return None
+        except TypeError as e:
+            logger.error(f"Type mismatch in row data: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error in row data: {e}")
             return None
