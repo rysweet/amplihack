@@ -493,7 +493,7 @@ def verify_hooks():
     return all_exist
 
 
-def create_runtime_dirs():
+def create_runtime_dirs() -> None:
     """Create necessary runtime directories."""
     for dir_path in RUNTIME_DIRS:
         full_path = os.path.join(CLAUDE_DIR, dir_path)
