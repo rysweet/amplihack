@@ -664,7 +664,7 @@ def filecmp(f1, f2):
         return False
 
 
-def main():
+def main() -> None:
     # Import and use the enhanced CLI
     from .cli import main as cli_main
 
