@@ -415,11 +415,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Save original directory (which is now also the working directory)
         original_cwd = os.getcwd()
 
-        # Store it for later use (though now it's the same as current directory)
-        os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
+        # Safety: Check for git conflicts before copying
+        from . import ESSENTIAL_DIRS
+        from .safety import GitConflictDetector, SafeCopyStrategy
 
-        # Use .claude directory in current working directory instead of temp
-        temp_claude_dir = os.path.join(original_cwd, ".claude")
+        detector = GitConflictDetector(original_cwd)
+        conflict_result = detector.detect_conflicts(ESSENTIAL_DIRS)
+
+        strategy_manager = SafeCopyStrategy()
+        copy_strategy = strategy_manager.determine_target(
+            original_target=os.path.join(original_cwd, ".claude"),
+            has_conflicts=conflict_result.has_conflicts,
+            conflicting_files=conflict_result.conflicting_files
+        )
+
+        temp_claude_dir = str(copy_strategy.target_dir)
+
+        # Store original_cwd for auto mode (always set, regardless of conflicts)
+        os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
             print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")

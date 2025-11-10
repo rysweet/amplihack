@@ -19,13 +19,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .base_graph import BaseGraphManager
 from .connector import Neo4jConnector
-from .config import get_config
 
 logger = logging.getLogger(__name__)
 
 
-class DocGraphIntegration:
+class DocGraphIntegration(BaseGraphManager):
     """Integrates documentation knowledge graphs with Neo4j memory system.
 
     Handles:
@@ -43,36 +43,21 @@ class DocGraphIntegration:
         Args:
             connector: Connected Neo4jConnector instance
         """
-        self.conn = connector
-        self.config = get_config()
+        super().__init__(connector)
 
-    def initialize_doc_schema(self) -> bool:
-        """Initialize schema for documentation graph nodes (idempotent).
+    def _get_schema_name(self) -> str:
+        """Get human-readable schema name for logging."""
+        return "documentation graph"
 
-        Returns:
-            True if successful, False otherwise
-        """
-        logger.info("Initializing documentation graph schema")
-
-        try:
-            self._create_doc_constraints()
-            self._create_doc_indexes()
-            logger.info("Documentation graph schema initialization complete")
-            return True
-
-        except Exception as e:
-            logger.error("Documentation graph schema initialization failed: %s", e)
-            return False
-
-    def _create_doc_constraints(self):
-        """Create unique constraints for documentation nodes (idempotent)."""
-        constraints = [
+    def _get_constraints(self) -> List[str]:
+        """Get constraint definitions for documentation graph."""
+        return [
             # DocFile path uniqueness
             """
             CREATE CONSTRAINT doc_file_path IF NOT EXISTS
             FOR (df:DocFile) REQUIRE df.path IS UNIQUE
             """,
-            # Concept name uniqueness (within category)
+            # Concept ID uniqueness
             """
             CREATE CONSTRAINT concept_id IF NOT EXISTS
             FOR (c:Concept) REQUIRE c.id IS UNIQUE
@@ -84,16 +69,9 @@ class DocGraphIntegration:
             """,
         ]
 
-        for constraint in constraints:
-            try:
-                self.conn.execute_write(constraint)
-                logger.debug("Created documentation constraint")
-            except Exception as e:
-                logger.debug("Documentation constraint already exists or error: %s", e)
-
-    def _create_doc_indexes(self):
-        """Create performance indexes for documentation nodes (idempotent)."""
-        indexes = [
+    def _get_indexes(self) -> List[str]:
+        """Get index definitions for documentation graph."""
+        return [
             # DocFile title index
             """
             CREATE INDEX doc_file_title IF NOT EXISTS
@@ -116,12 +94,13 @@ class DocGraphIntegration:
             """,
         ]
 
-        for index in indexes:
-            try:
-                self.conn.execute_write(index)
-                logger.debug("Created documentation index")
-            except Exception as e:
-                logger.debug("Documentation index already exists or error: %s", e)
+    def initialize_doc_schema(self) -> bool:
+        """Initialize schema for documentation graph nodes (idempotent).
+
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.initialize_schema()
 
     def parse_markdown_doc(self, file_path: Path) -> Dict[str, Any]:
         """Parse markdown documentation file into structured data.

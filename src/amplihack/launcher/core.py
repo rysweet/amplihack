@@ -720,8 +720,8 @@ class ClaudeLauncher:
                     return
 
                 # Start Neo4j
-                from ..memory.neo4j.lifecycle import ensure_neo4j_running
                 from ..memory.neo4j.diagnostics import verify_neo4j_working
+                from ..memory.neo4j.lifecycle import ensure_neo4j_running
 
                 thread_logger.info("Starting Neo4j memory system...")
                 if ensure_neo4j_running(blocking=True):

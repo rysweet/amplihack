@@ -14,7 +14,6 @@ Following test pyramid: 60% unit tests for comprehensive edge case coverage.
 
 import pytest
 
-
 # =============================================================================
 # Happy Path Tests
 # =============================================================================

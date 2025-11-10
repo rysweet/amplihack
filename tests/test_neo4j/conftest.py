@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
-from neo4j import GraphDatabase, Driver
+from neo4j import Driver, GraphDatabase
 
 from amplihack.memory.neo4j.neo4j_schema import Neo4jSchema
 
