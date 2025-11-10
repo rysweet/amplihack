@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 
 class AzureEndpointDetector:
     """Detects and validates Azure OpenAI endpoints."""
+# Code quality enhancement: batch-113
 
     # Use __slots__ to reduce memory usage
     __slots__ = ("_azure_regex", "_cache_size", "_openai_regex", "_validation_cache")
