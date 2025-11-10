@@ -155,7 +155,7 @@ def distribute(package_path: str, github: bool, pypi: bool, local: bool, release
     "--format", "-f", type=click.Choice(["uvx", "zip"]), default="uvx", help="Package format"
 )
 @click.option("--distribute", "-d", is_flag=True, help="Distribute after packaging")
-def pipeline(prompt: str, output: str, format: str, distribute: bool):
+def pipeline(prompt: str, output: str, format: str, distribute: bool) -> None:
     """Run the complete bundle generation pipeline."""
     try:
         output_path = Path(output)
