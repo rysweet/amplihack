@@ -591,7 +591,7 @@ def _local_install(repo_root):
     print("=" * 60 + "\n")
 
 
-def uninstall():
+def uninstall() -> None:
     """Uninstall amplihack components from ~/.claude."""
     removed_any = False
     files, dirs = read_manifest()
