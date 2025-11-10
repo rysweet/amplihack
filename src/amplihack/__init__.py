@@ -449,7 +449,7 @@ def ensure_settings_json():
     try:
         with open(settings_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
-        print(f"  ✅ Settings updated ({hooks_updated} hooks configured)")
+        logger.info(f"  ✅ Settings updated ({hooks_updated} hooks configured)")
         return True
     except Exception as e:
         print(f"  ❌ Failed to write settings.json: {e}")
