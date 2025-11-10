@@ -6,7 +6,17 @@ for export via ClaudeTranscriptBuilder.
 
 import threading
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Protocol
+
+
+class MessageBlock(Protocol):
+    """Protocol for SDK message content blocks."""
+    text: str
+
+
+class SDKMessage(Protocol):
+    """Protocol for SDK AssistantMessage structure."""
+    content: List[MessageBlock]
 
 
 class MessageCapture:
@@ -59,14 +69,14 @@ class MessageCapture:
         with self._lock:
             self._messages.append(message)
 
-    def capture_assistant_message(self, message: Any) -> None:
+    def capture_assistant_message(self, message: SDKMessage) -> None:
         """Capture assistant response from SDK.
 
         Extracts text content from SDK AssistantMessage object and stores
         in transcript format.
 
         Args:
-            message: SDK AssistantMessage object with content blocks
+            message: SDK AssistantMessage object with content blocks and text attributes
 
         Side Effects:
             Appends extracted text to internal buffer
