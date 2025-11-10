@@ -45,7 +45,7 @@ logging.getLogger("litellm.completion").setLevel(logging.ERROR)
 
 # Create a filter to block any log messages containing specific strings
 class MessageFilter(logging.Filter):
-    def filter(self, record):
+    def filter(self, record) -> None:
         # Block messages containing these strings
         blocked_phrases = [
             "LiteLLM completion()",
