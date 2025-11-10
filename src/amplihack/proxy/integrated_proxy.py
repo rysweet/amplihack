@@ -580,7 +580,7 @@ class AzureErrorLogger:
         self.error_patterns = {}
         self.last_health_check = None
 
-    def log_azure_error(self, azure_error: AzureAPIError, request_context: Optional[dict] = None):
+    def log_azure_error(self, azure_error: AzureAPIError, request_context: Optional[dict] = None) -> None:
         """Log Azure error with context and update metrics."""
         error_entry = {
             "timestamp": asyncio.get_event_loop().time(),
@@ -639,7 +639,7 @@ class AzureErrorLogger:
             user_id = request_context.get("user_id", "unknown")
             logger.info(f"📊 Error Context: Model={model}, User={user_id}")
 
-    def log_azure_success(self, request_context: Optional[dict] = None):
+    def log_azure_success(self, request_context: Optional[dict] = None) -> None:
         """Log successful Azure API call for health monitoring."""
         if request_context:
             model = request_context.get("model", "unknown")
@@ -713,7 +713,7 @@ def log_azure_operation(
 
 
 # Configure logging with file output and rotation
-def setup_logging():
+def setup_logging() -> None:
     """Set up logging with file rotation and console output."""
     # Create logs directory
     logs_dir = Path("logs")
@@ -1357,8 +1357,12 @@ OPENAI_MODELS = [
 GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
 
 
+# Type alias for JSON schema structures
+JSONSchema = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
+
+
 # Helper function to clean schema for Gemini
-def clean_gemini_schema(schema: Any) -> Any:
+def clean_gemini_schema(schema: JSONSchema) -> JSONSchema:
     """Recursively removes unsupported fields from a JSON schema for Gemini."""
     if isinstance(schema, dict):
         # Remove specific keys unsupported by Gemini tool parameters
