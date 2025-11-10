@@ -358,7 +358,7 @@ class MemoryManager:
         unique_id = str(uuid.uuid4())[:8]
         return f"session_{timestamp}_{unique_id}"
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """Context manager entry."""
         return self
 
