@@ -1,474 +1,218 @@
-# Amplihack Skills Catalog
+# Claude Code Skills for Amplihack
 
-Skills provide automatic invocation of amplihack's capabilities based on context. Unlike slash commands that require explicit user invocation, Skills activate automatically when patterns are detected.
+This directory contains production-ready Claude Code Skills that extend amplihack's capabilities across coding, creative work, and knowledge management.
 
-## Philosophy
+## 📚 About Claude Code Skills
 
-**Skills are thin coordination layers** that:
-- Detect when specialized capabilities are needed
-- Invoke appropriate agents/workflows automatically
-- Reduce cognitive load on users
-- Make expertise accessible without memorization
+Claude Code Skills are modular, reusable capabilities that extend Claude's functionality. They consist of folders containing a `SKILL.md` file with YAML frontmatter and Markdown instructions, along with optional supporting scripts and resources.
 
-**Skills complement (not replace) slash commands**:
-- Skills = Auto-detection layer
-- Agents = Core expertise
-- Slash Commands = Explicit control
+**Key Benefits:**
+- **Token Efficient**: Skills load on-demand, consuming minimal tokens until needed
+- **Auto-Detection**: Claude automatically uses skills based on context
+- **Philosophy Aligned**: All skills follow amplihack's ruthless simplicity and modular design
+- **Portable**: Work across Claude.ai, API, and Claude Code environments
+- **Self-Contained**: Each skill is independently usable and testable
 
-## Skill Categories
+## 🎯 Skill Types
 
-### Development Workflow
+Amplihack has **TWO types of skills** that work together:
 
-Skills that enhance the development process:
+### Type 1: Capability Skills (12 skills)
 
-- **[Architecting Solutions](development/architecting-solutions/SKILL.md)**
-  - Auto-triggers: Design questions, "how should I", architecture discussions
-  - Purpose: Ensures design-before-code philosophy
-  - Invokes: Architect agent
+**Purpose**: Provide specific new functionality for tasks beyond coding.
 
-- **[Setting Up Projects](development/setting-up-projects/SKILL.md)**
-  - Auto-triggers: New projects, missing configs, pre-commit setup
-  - Purpose: Instant best practices and boilerplate
-  - Invokes: Builder agent + templates
+These skills add NEW capabilities like decision recording, email drafting, meeting synthesis, etc. They don't wrap existing agents - they provide genuinely new functionality.
 
-- **[Debugging Issues](development/debugging-issues/SKILL.md)**
-  - Auto-triggers: Errors, "why doesn't", troubleshooting
-  - Purpose: Systematic problem-solving
-  - Invokes: Debugging workflow
+| Skill | Score | Description | Issue | PR |
+|-------|-------|-------------|-------|-----|
+| **module-spec-generator** | 50.0 | Generate brick module specifications | [#1219](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1219) | - |
+| **meeting-synthesizer** | 50.0 | Extract action items and decisions from meetings | [#1220](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1220) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+| **decision-logger** | 49.5 | Structured decision recording (What\|Why\|Alternatives) | [#1221](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1221) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+| **mermaid-diagram-generator** | 48.0 | Converts descriptions to Mermaid diagrams | [#1222](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1222) | [#1268](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1268) |
+| **email-drafter** | 47.0 | Professional email generation (formal/casual/technical) | [#1223](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1223) | [#1232](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1232) |
+| **philosophy-guardian** | 45.5 | Reviews code against amplihack philosophy | [#1224](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1224) | [#1235](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1235) |
+| **test-gap-analyzer** | 44.5 | Identifies untested functions and coverage gaps | [#1225](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1225) | [#1233](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1233) |
+| **storytelling-synthesizer** | 44.0 | Transforms technical work into compelling narratives | [#1226](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1226) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
+| **learning-path-builder** | 43.5 | Creates personalized technology learning paths | [#1227](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1227) | [#1237](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1237) |
+| **code-smell-detector** | 42.5 | Detects anti-patterns and over-engineering | [#1228](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1228) | [#1234](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1234) |
+| **knowledge-extractor** | 40.5 | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
+| **pr-review-assistant** | 40.0 | Philosophy-aware PR reviews | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | [#1258](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1258) |
 
-### Code Quality
+### Type 2: Agent-Wrapper Skills (7 skills)
 
-Skills that maintain and improve code quality:
+**Purpose**: Auto-detect when to invoke existing agents, reducing need to remember command names.
 
-- **[Reviewing Code](quality/reviewing-code/SKILL.md)**
-  - Auto-triggers: "review this", before PR, quality checks
-  - Purpose: Consistent quality gates
-  - Invokes: Reviewer agent
+These skills are thin coordination layers that automatically trigger amplihack's existing agents based on conversation context.
 
-- **[Testing Code](quality/testing-code/SKILL.md)**
-  - Auto-triggers: New features, "add tests", test gaps
-  - Purpose: Test-driven development
-  - Invokes: Tester agent
+| Skill | Auto-Triggers | Invokes | Location |
+|-------|---------------|---------|----------|
+| **Architecting Solutions** | Design questions, "how should I", architecture discussions | Architect agent | [development/architecting-solutions/](development/architecting-solutions/) |
+| **Reviewing Code** | "review this", before PR, quality checks | Reviewer agent | [quality/reviewing-code/](quality/reviewing-code/) |
+| **Testing Code** | New features, "add tests", test gaps | Tester agent | [quality/testing-code/](quality/testing-code/) |
+| **Researching Topics** | "how does X work", unfamiliar terms | Web search + knowledge builder | [research/researching-topics/](research/researching-topics/) |
+| **Analyzing Problems Deeply** | Complex problems, "I'm not sure", ambiguity | Ultrathink workflow | [meta-cognitive/analyzing-deeply/](meta-cognitive/analyzing-deeply/) |
+| **Setting Up Projects** | New projects, missing configs, pre-commit setup | Builder agent + templates | [development/setting-up-projects/](development/setting-up-projects/) |
+| **Creating Pull Requests** | "create PR", ready to merge | Smart PR generation | [collaboration/creating-pull-requests/](collaboration/creating-pull-requests/) |
 
-- **[Securing Code](quality/securing-code/SKILL.md)**
-  - Auto-triggers: Auth/secrets/validation code
-  - Purpose: Proactive security
-  - Invokes: Security agent
+## 📖 Research & Documentation
 
-### Research & Learning
+### Research Reports
 
-Skills that accelerate learning and research:
+- **[Complete Research Report](../runtime/logs/20251108_skills_research/RESEARCH.md)** (357 lines)
+  - Comprehensive analysis of Claude Code Skills ecosystem
+  - Comparison with MCP (Model Context Protocol)
+  - 23+ documented skills from Anthropic and community
+  - Key insights from Simon Willison and other experts
 
-- **[Researching Topics](research/researching-topics/SKILL.md)**
-  - Auto-triggers: "how does X work", unfamiliar terms
-  - Purpose: Quick research and synthesis
-  - Invokes: Web search + synthesis
-  - Escalates: /knowledge-builder for deep research
+- **[Evaluation Matrix & Ideas](../runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** (842 lines)
+  - 6-criteria evaluation framework aligned with amplihack philosophy
+  - 20 brainstormed skill ideas with priority scores
+  - Implementation phases and effort estimates
+  - Detailed scoring rubrics
 
-- **[Explaining Concepts](research/explaining-concepts/SKILL.md)**
-  - Auto-triggers: "explain", "what is", learning requests
-  - Purpose: Progressive explanation system
-  - Invokes: Teaching methodology
+### Evaluation Criteria (Capability Skills)
 
-- **[Building Knowledge](research/building-knowledge/SKILL.md)**
-  - Auto-triggers: Documentation tasks, knowledge gaps
-  - Purpose: Quick documentation (light version)
-  - Escalates: /knowledge-builder for comprehensive research
+Capability skills were evaluated on:
 
-### Meta-Cognitive
+1. **Ruthless Simplicity** (1-5): Single clear purpose, minimal dependencies
+2. **Modular Design** (1-5): Self-contained, clear interfaces (bricks & studs)
+3. **Zero-BS Implementation** (1-5): Actually works, no stubs
+4. **Reusability** (1-5): Useful across multiple contexts
+5. **Maintenance Burden** (1-5, lower is better): Stable dependencies
+6. **User Value** (1-5): Solves frequent pain points, measurable time savings
 
-Skills that enhance thinking and decision-making:
-
-- **[Analyzing Problems Deeply](meta-cognitive/analyzing-deeply/SKILL.md)**
-  - Auto-triggers: Complex problems, "I'm not sure", ambiguity
-  - Purpose: Structured deep thinking
-  - Invokes: Ultrathink workflow
-
-- **[Evaluating Tradeoffs](meta-cognitive/evaluating-tradeoffs/SKILL.md)**
-  - Auto-triggers: "should I use X or Y", decision points
-  - Purpose: Multi-perspective analysis
-  - Invokes: Consensus/debate workflow
-
-### Collaboration
-
-Skills that improve team workflow:
-
-- **[Creating Pull Requests](collaboration/creating-pull-requests/SKILL.md)**
-  - Auto-triggers: "create PR", ready to merge
-  - Purpose: High-quality PR descriptions
-  - Invokes: Smart PR generation
-
-- **[Writing RFCs](collaboration/writing-rfcs/SKILL.md)**
-  - Auto-triggers: "design doc", major changes
-  - Purpose: Structured design communication
-  - Invokes: RFC template + architect
-
-## Implementation Status
-
-### Phase 1: Foundation (Implemented)
-Core workflow Skills that trigger most frequently:
-
-- ✅ Architecting Solutions
-- ✅ Reviewing Code
-- ✅ Researching Topics
-- ✅ Analyzing Problems Deeply
-
-### Phase 2: Quality & Depth (In Progress)
-Expand quality assurance and deep analysis:
-
-- ✅ Testing Code
-- ✅ Setting Up Projects
-- ⏳ Securing Code
-- ⏳ Debugging Issues
-
-### Phase 3: Collaboration (Planned)
-Team workflow automation:
-
-- ✅ Creating Pull Requests
-- ⏳ Explaining Concepts
-- ⏳ Evaluating Tradeoffs
-- ⏳ Writing RFCs
-- ⏳ Building Knowledge
-
-## How Skills Work
-
-### Auto-Activation
-
-Skills activate based on their `description` field in YAML frontmatter:
-
-```yaml
----
-name: "Skill Name"
-description: "Describes what the skill does and WHEN it should activate. Should include clear trigger signals."
----
+**Priority Score Formula:**
+```
+Priority = (Simplicity * 2) + (Modular * 2) + (Zero-BS * 1.5) +
+           (Reusability * 1.5) + ((6 - Maintenance) * 1) + (User Value * 2.5)
+Max Score: 50 points
 ```
 
-The Claude Code model reads descriptions and automatically invokes Skills when context matches.
+All 12 capability skills scored 40.0-50.0 (HIGH priority).
 
-### Trigger Signals
+## 🔍 Using Skills
 
-Good descriptions include specific phrases that signal activation:
+Skills are automatically discovered from:
+- User settings: `~/.config/claude/skills/`
+- Project settings: `.claude/skills/`
+- Plugin-provided skills
+- Built-in skills
 
-- "Activates when user asks..."
-- "Triggers on questions like..."
-- "When encountering..."
-- "Before creating..."
+### Invoking Skills
 
-Example:
-```yaml
-description: "Performs code review. Activates when user requests review, before creating PRs, or when code changes are ready."
+**Capability Skills** (explicit invocation):
+```
+Claude, use the decision-logger skill to record this architectural decision.
+Claude, analyze test coverage using test-gap-analyzer.
+Claude, generate a Mermaid diagram for this workflow.
 ```
 
-### Tool Restrictions
+**Agent-Wrapper Skills** (automatic detection):
+```
+User: "How should I design the authentication system?"
+→ Architecting Solutions skill auto-activates
+→ Provides design analysis automatically
 
-Skills can restrict which tools they access using `allowed-tools`:
-
-```yaml
----
-name: "Read-Only Analysis"
-allowed-tools: ["Read", "Grep", "Glob", "Bash"]
----
+User: "Can you review this code?"
+→ Reviewing Code skill auto-activates
+→ Performs comprehensive review
 ```
 
-Useful for:
-- Security (read-only skills can't modify code)
-- Focus (limit to relevant tools)
-- Performance (fewer tool options)
-
-### Progressive Disclosure
-
-Keep SKILL.md files under 500 lines by referencing external docs:
-
-```markdown
-For detailed methodology, see: Specs/Architecture.md
-For examples, see: Examples/ArchitectureReviews.md
-For templates, see: Templates/ModuleSpec.md
-```
-
-## Skills vs Slash Commands
-
-### Use Skills When:
-- Pattern is recognizable from context
-- Frequently needed capability
-- Auto-activation reduces friction
-- User doesn't need to know command exists
-
-### Use Slash Commands When:
-- Requires explicit user setup
-- Complex multi-step workflow
-- User wants full control
-- Configuration/preferences needed
-- Ambiguous without user input
-
-### Both (Skill + Command Pairs)
-
-Some capabilities benefit from dual access:
-
-| Auto (Skill) | Explicit (Command) | When |
-|--------------|-------------------|------|
-| Researching Topics | /knowledge-builder | Quick vs deep research |
-| Reviewing Code | /review --deep | Standard vs custom review |
-| Analyzing Deeply | /ultrathink | Auto vs forced deep analysis |
-
-## Integration with Agents
-
-Skills are **thin wrappers** that invoke existing agents:
-
-```
-User Request
-    ↓
-Skill (Auto-Detection)
-    ↓
-Agent (Core Logic)
-    ↓
-Tools (Execution)
-```
-
-Example:
-- **Skill**: "Architecting Solutions" detects design questions
-- **Agent**: Architect agent performs actual analysis
-- **Tools**: Read, Grep, etc. for implementation
-
-**Benefits**:
-- Skills add auto-detection without duplicating logic
-- Agents remain single source of truth
-- Easy to maintain (logic in one place)
-- Skills can be added/removed without affecting agents
-
-## Creating New Skills
-
-### 1. Identify Need
-
-Ask:
-- Is this capability frequently needed?
-- Can context signal when it's needed?
-- Would auto-activation add value?
-- Is there an existing agent to invoke?
-
-### 2. Choose Category
-
-- `development/` - Development workflow
-- `quality/` - Code quality and review
-- `research/` - Research and learning
-- `meta-cognitive/` - Thinking and decisions
-- `collaboration/` - Team workflow
-
-### 3. Create Structure
+### Managing Skills
 
 ```bash
-mkdir -p .claude/skills/[category]/[skill-name]
-touch .claude/skills/[category]/[skill-name]/SKILL.md
+/agents                # List available agents and skills
+/reload-skills         # Reload after modifications
 ```
 
-### 4. Write SKILL.md
+## 🏗️ Skill Structure
 
-Use this template:
+Each skill follows this structure:
 
-```markdown
+```
+skill-name/
+├── SKILL.md           # Required: YAML frontmatter + instructions
+├── README.md          # Optional: User-facing documentation
+├── examples/          # Optional: Example usage
+└── tests/             # Optional: Validation tests
+```
+
+### SKILL.md Format
+
+```yaml
 ---
-name: "Skill Name (Gerund Form)"
-description: "What it does and when it activates. Include trigger signals."
-allowed-tools: ["Tool1", "Tool2"]  # Optional
+name: skill-name
+description: |
+  Clear description of what this skill does and when Claude should use it.
+  Include both the capability AND the usage context.
 ---
 
-# Skill Name
+# Skill Instructions
 
-Brief introduction.
-
-## When to Activate
-- Trigger signal 1
-- Trigger signal 2
-
-## Process
-1. Step 1
-2. Step 2
-
-## Integration Points
-- Invokes: [Agent/Command]
-- Escalates To: [Deeper capability]
-- References: [Documentation]
+Detailed instructions for Claude on how to use this skill...
 
 ## Examples
-[2-3 clear examples]
-
-## Related
-- Slash command: /command
-- Documentation: Specs/Guide.md
+Concrete examples with input/output...
 ```
 
-### 5. Test Activation
+## 📊 Quality Standards
 
-Verify:
-- Activates on intended patterns
-- No false positives
-- Works with existing agents
-- Provides value over manual invocation
+All skills meet these quality standards:
 
-## Best Practices
+- ✅ **Complete Documentation**: SKILL.md with YAML frontmatter
+- ✅ **Clear Examples**: Real-world usage demonstrations
+- ✅ **Philosophy Aligned**: Ruthless simplicity, modular design, zero-BS
+- ✅ **Tested**: Quality review completed
+- ✅ **Production Ready**: No stubs, TODOs, or placeholders
 
-### Naming
-- Use gerund form: "Processing", "Analyzing", "Building"
-- Be specific: "Reviewing Code" not "Code Stuff"
-- Match user mental models
+## 🚀 Creating New Skills
 
-### Descriptions
-- Third person: "Performs X when Y"
-- Include clear trigger signals
-- Mention what it invokes/escalates to
-- Keep under 3 sentences
+### For Capability Skills
 
-### Content
-- Keep under 500 lines
-- Reference external docs for details
-- Include 2-3 examples
-- Show integration points
+To create a new capability skill:
 
-### Tool Restrictions
-- Use `allowed-tools` for focused Skills
-- Read-only Skills: `["Read", "Grep", "Glob", "Bash"]`
-- Write Skills: Add `["Write", "Edit"]`
-- Full access: Omit field
+1. **Research**: Check if similar skills exist
+2. **Evaluate**: Score against 6 criteria (target score: 40+)
+3. **Create**: Follow skill structure above
+4. **Document**: Clear SKILL.md with examples
+5. **Test**: Validate with real usage
+6. **Review**: Ensure philosophy compliance
 
-## Monitoring and Iteration
+See [Evaluation Matrix](../runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md) for guidance on prioritization.
 
-### Track Metrics
-- Activation frequency
-- False positive rate
-- User satisfaction
-- Time saved
+### For Agent-Wrapper Skills
 
-### Iterate Based On
-- Actual usage patterns
-- User feedback
-- False activation cases
-- Missing trigger signals
+To create an agent-wrapper skill:
 
-### Refine Over Time
-- Update descriptions for better matching
-- Add examples based on real usage
-- Adjust tool restrictions
-- Split/merge Skills as needed
+1. **Identify Pattern**: Find repetitive agent invocations
+2. **Define Triggers**: What phrases/contexts should activate this?
+3. **Create Thin Wrapper**: Just detection logic + agent invocation
+4. **No Logic Duplication**: All real work stays in agents
+5. **Test Auto-Detection**: Verify skill activates appropriately
 
-## Examples from Real Usage
+## 📚 Related Documentation
 
-### Example 1: Architecture Discussion
+- [CLAUDE.md](../../CLAUDE.md) - Project overview and agent system
+- [PHILOSOPHY.md](../context/PHILOSOPHY.md) - Ruthless simplicity principles
+- [PATTERNS.md](../context/PATTERNS.md) - Reusable solution patterns
+- [Agent Catalog](../agents/CATALOG.md) - Specialized agents
 
-```
-User: "I'm building a real-time chat app. Should I use WebSockets or polling?"
+## 🤝 Contributing
 
-→ "Architecting Solutions" skill activates
-→ Invokes Architect agent
-→ Provides design analysis with tradeoffs
-→ Recommends WebSockets with fallback
-→ Creates module specifications
-```
+When adding new skills:
 
-**Value**: User didn't need to know `/architect` command exists
-
-### Example 2: Code Review Request
-
-```
-User: "Can you review this authentication code before I commit?"
-
-→ "Reviewing Code" skill activates
-→ Invokes Reviewer agent + Security agent
-→ Performs multi-level review
-→ Finds timing attack vulnerability
-→ Suggests fixes with examples
-```
-
-**Value**: Automatic security analysis included
-
-### Example 3: Research Need
-
-```
-User: "What's the difference between JWT and session tokens?"
-
-→ "Researching Topics" skill activates
-→ Performs web search
-→ Synthesizes key differences
-→ Provides security implications
-→ Offers to escalate to /knowledge-builder
-```
-
-**Value**: Quick answer with option for deep-dive
-
-### Example 4: Ambiguous Problem
-
-```
-User: "Our API is slow but I'm not sure why."
-
-→ "Analyzing Problems Deeply" skill activates
-→ Asks clarifying questions
-→ Performs systematic analysis
-→ Identifies likely causes
-→ Suggests diagnostic steps
-```
-
-**Value**: Structured approach to unclear problem
-
-## Troubleshooting
-
-### Skill Not Activating
-
-**Possible Causes**:
-- Description doesn't match user's language
-- Trigger signals too specific
-- Other skill matched first
-
-**Solutions**:
-- Broaden description
-- Add more trigger phrases
-- Test with various phrasings
-
-### False Positives
-
-**Possible Causes**:
-- Description too broad
-- Overlaps with other Skills
-- Matches unintended patterns
-
-**Solutions**:
-- Narrow description
-- Add exclusion criteria
-- Differentiate from similar Skills
-
-### Performance Issues
-
-**Possible Causes**:
-- Skill too complex
-- Too many tool invocations
-- Heavy external calls
-
-**Solutions**:
-- Simplify skill logic
-- Move heavy work to agents
-- Add caching where appropriate
-
-## Documentation
-
-- **Architecture**: See [Specs/SkillsIntegration.md](../../Specs/SkillsIntegration.md)
-- **Agent System**: See [.claude/agents/](..agents/)
-- **Slash Commands**: See [.claude/commands/](../commands/)
-- **Claude Code Docs**: https://docs.claude.com/claude-code
-
-## Contributing
-
-To add a new Skill:
-
-1. Discuss need and design
-2. Create skill directory
-3. Write SKILL.md following template
-4. Test activation patterns
-5. Document in this README
-6. Update implementation status
-
-## Questions?
-
-- Review existing Skills for examples
-- Check [Specs/SkillsIntegration.md](../../Specs/SkillsIntegration.md) for architecture
-- Reference Claude Code Skills documentation
+1. Determine skill type (capability vs. agent-wrapper)
+2. Create GitHub issue with rationale
+3. Implement in separate worktree/branch
+4. Follow naming: `feat/issue-{number}-{skill-name}`
+5. Create PR with comprehensive description
+6. Link to research and evaluation docs (if capability skill)
+7. Ensure quality review completed
 
 ---
 
-**Remember**: Skills make amplihack's power invisible and automatic. The best Skills are the ones users don't know they're using.
+**Last Updated**: November 10, 2025
+**Total Skills**: 19 (12 capability + 7 agent-wrapper)
+**Status**: Production Ready
+
+🤖 Skills documentation maintained as part of amplihack project
