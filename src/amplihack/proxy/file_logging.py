@@ -10,7 +10,7 @@ from typing import Optional, Union
 class FileLoggingHandler(logging.Handler):
     """File-based logging handler with credential sanitization."""
 
-    def __init__(self, log_file: Path):
+    def __init__(self, log_file: Path) -> None:
         """Initialize the file logging handler.
 
         Args:
