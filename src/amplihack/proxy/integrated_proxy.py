@@ -3711,7 +3711,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                             handle_streaming(response_generator, request),
                             media_type="text/event-stream",
                         )
-                    raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}")
+                    raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}") from e
             else:
                 # Regular streaming for non-tool requests
                 response_generator = await litellm.acompletion(**litellm_request)
