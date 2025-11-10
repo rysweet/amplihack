@@ -5,10 +5,10 @@ All operations are idempotent (safe to run multiple times).
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
-from .connector import Neo4jConnector
 from .config import get_config
+from .connector import Neo4jConnector
 
 logger = logging.getLogger(__name__)
 

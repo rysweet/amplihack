@@ -11,9 +11,9 @@ if env_file.exists():
 """
 Test session integration - verify Neo4j starts with amplihack session.
 """
+import subprocess
 import sys
 import time
-import subprocess
 from pathlib import Path
 
 # Add src to path

@@ -11,14 +11,14 @@ Each example is self-contained and includes:
 - Performance notes
 """
 
-from neo4j import GraphDatabase
-from datetime import datetime
-from typing import List, Dict, Any, Optional
-import json
 import hashlib
-from dataclasses import dataclass, asdict
+import json
+from dataclasses import asdict, dataclass
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
+from neo4j import GraphDatabase
 
 # ============================================================================
 # PATTERN 1.1: Three-Tier Hierarchical Graph

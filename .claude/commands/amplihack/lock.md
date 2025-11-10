@@ -51,16 +51,36 @@ import tempfile
 args = sys.argv[1:] if len(sys.argv) > 1 else []
 custom_message = " ".join(args).strip() if args else None
 
-lock_flag = Path(".claude/runtime/locks/.lock_active")
-continuation_prompt = Path(".claude/runtime/locks/.continuation_prompt")
+# Detect project root (same way stop hook does)
+project_root = Path.cwd()
+while project_root != project_root.parent:
+    if (project_root / ".claude").exists():
+        break
+    project_root = project_root.parent
+
+print(f"DEBUG: Project root detected at: {project_root}")
+print(f"DEBUG: Current working directory: {Path.cwd()}")
+
+# Use absolute paths
+lock_flag = project_root / ".claude" / "runtime" / "locks" / ".lock_active"
+continuation_prompt = project_root / ".claude" / "runtime" / "locks" / ".continuation_prompt"
+
+print(f"DEBUG: Lock file path: {lock_flag}")
+
 lock_flag.parent.mkdir(parents=True, exist_ok=True)
 
 # Atomic file creation with exclusive flag
 try:
     fd = os.open(str(lock_flag), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     os.close(fd)
+
+    # Verify file was created
+    if not lock_flag.exists():
+        raise RuntimeError(f"Lock file creation verification failed: {lock_flag}")
+
     print("✓ Lock enabled - Claude will continue working until unlocked")
     print("  Use /amplihack:unlock to disable continuous work mode")
+    print(f"DEBUG: Lock file verified at: {lock_flag}")
 
     # Process custom message if provided
     if custom_message:

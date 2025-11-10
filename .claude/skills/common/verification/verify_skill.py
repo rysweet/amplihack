@@ -120,7 +120,7 @@ def verify_skill(
         print(f"✓ {skill_name} skill is ready (all required dependencies met)")
     else:
         print(f"✗ {skill_name} skill is missing required dependencies")
-        print(f"\nInstall missing packages:")
+        print("\nInstall missing packages:")
         missing = [pkg for pkg in python_packages_required if not check_python_package(pkg)[0]]
         if missing:
             print(f"  pip install {' '.join(missing)}")
@@ -137,7 +137,7 @@ def verify_skill(
     system_total = len(system_commands_optional)
 
     if optional_total > 0 or system_total > 0:
-        print(f"\nOptional features:")
+        print("\nOptional features:")
         if optional_total > 0:
             print(f"  Python packages: {optional_available}/{optional_total} available")
         if system_total > 0:
