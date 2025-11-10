@@ -47,6 +47,12 @@ class FilesystemPackager:
         Raises:
             PackagingError: If path is unsafe
         """
+        # Check for symlink before resolving (prevent path traversal)
+        if self.output_dir.is_symlink():
+            raise PackagingError(
+                f"Output directory cannot be a symlink: {self.output_dir}"
+            )
+
         resolved = self.output_dir.resolve()
 
         # Prevent writing to system directories (but allow temp directories)
