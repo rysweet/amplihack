@@ -397,7 +397,7 @@ def ensure_settings_json():
         try:
             with open(settings_path, encoding="utf-8") as f:
                 settings = json.load(f)
-            print("  📋 Found existing settings.json")
+            logger.info("  📋 Found existing settings.json")
 
             # Back up existing settings
             import time
