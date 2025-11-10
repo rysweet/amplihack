@@ -44,7 +44,8 @@ def extract_used_types(file_path: Path) -> set:
                     used_types.add(node.id)
 
         return used_types
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Failed to analyze types in {file_path}: {e}", file=sys.stderr)
         return set()
 
 
@@ -72,7 +73,8 @@ def extract_actual_imports(file_path: Path) -> Dict[str, set]:
                     imports[alias.name] = {"*"}  # Treat as importing everything
 
         return imports
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Failed to extract imports from {file_path}: {e}", file=sys.stderr)
         return {}
 
 
