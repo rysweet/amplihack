@@ -24,50 +24,8 @@ except ImportError:
 from amplihack.launcher.session_capture import MessageCapture
 from amplihack.launcher.fork_manager import ForkManager
 
-# Security constants for content sanitization
-MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
-PROMPT_INJECTION_PATTERNS = [
-    r"ignore\s+previous\s+instructions",
-    r"disregard\s+all\s+prior",
-    r"forget\s+everything",
-    r"new\s+instructions:",
-    r"system\s+prompt:",
-    r"you\s+are\s+now",
-    r"override\s+all",
-]
-
-
-def _sanitize_injected_content(content: str) -> str:
-    """Sanitize content before injecting into prompts.
-
-    Args:
-        content: Content to sanitize
-
-    Returns:
-        Sanitized content (truncated and with suspicious patterns removed)
-    """
-    if not content:
-        return content
-
-    # Truncate if too large
-    if len(content.encode("utf-8")) > MAX_INJECTED_CONTENT_SIZE:
-        # Truncate to size limit with warning
-        content = content[: MAX_INJECTED_CONTENT_SIZE // 2]  # UTF-8 safe truncation
-        content += "\n\n[Content truncated due to size limit]"
-
-    # Remove prompt injection patterns
-    content_lower = content.lower()
-    for pattern in PROMPT_INJECTION_PATTERNS:
-        if re.search(pattern, content_lower, re.IGNORECASE):
-            # Replace suspicious patterns with safe marker
-            content = re.sub(
-                pattern,
-                "[REDACTED: suspicious pattern]",
-                content,
-                flags=re.IGNORECASE,
-            )
-
-    return content
+# Content size limit for injected files (simple size check only)
+MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit
 
 
 class AutoMode:
@@ -363,12 +321,15 @@ class AutoMode:
                 with open(md_file) as f:
                     content = f.read()
 
-                # Sanitize content before injection
-                sanitized_content = _sanitize_injected_content(content)
+                # Simple size check (user controls append directory anyway)
+                if len(content.encode("utf-8")) > MAX_INJECTED_CONTENT_SIZE:
+                    content = content[: MAX_INJECTED_CONTENT_SIZE // 2]
+                    content += "\n\n[Content truncated due to size limit]"
+                    self.log(f"Truncated {md_file.name} due to size", level="WARNING")
 
                 timestamp = md_file.stem
                 new_instructions.append(
-                    f"\n## Additional Instruction (appended at {timestamp})\n\n{sanitized_content}\n"
+                    f"\n## Additional Instruction (appended at {timestamp})\n\n{content}\n"
                 )
 
                 # Move file to appended directory
