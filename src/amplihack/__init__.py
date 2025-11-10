@@ -465,7 +465,7 @@ def verify_hooks():
 
         # Skip XPIA if directory doesn't exist (optional feature)
         if hook_system == "xpia" and not os.path.exists(hooks_dir):
-            print("  ℹ️  XPIA security hooks not installed (optional feature)")
+            logger.info("  ℹ️  XPIA security hooks not installed (optional feature)")
             continue
 
         # Print header with appropriate icon
