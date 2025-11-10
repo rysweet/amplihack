@@ -21,11 +21,11 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from amplihack.memory.neo4j import (
-    Neo4jConnector,
+    APIReference,
+    ExternalDoc,
     ExternalKnowledgeManager,
     KnowledgeSource,
-    ExternalDoc,
-    APIReference,
+    Neo4jConnector,
     SchemaManager,
     ensure_neo4j_running,
 )

@@ -20,9 +20,8 @@ try:
 except ImportError:
     REQUESTS_AVAILABLE = False
 
-from .connector import Neo4jConnector
-from .config import get_config
 from .base_graph import BaseGraphManager
+from .connector import Neo4jConnector
 
 logger = logging.getLogger(__name__)
 

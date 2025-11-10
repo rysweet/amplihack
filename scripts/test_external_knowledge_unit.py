@@ -14,10 +14,10 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from amplihack.memory.neo4j.external_knowledge import (
+    APIReference,
+    ExternalDoc,
     ExternalKnowledgeManager,
     KnowledgeSource,
-    ExternalDoc,
-    APIReference,
 )
 
 

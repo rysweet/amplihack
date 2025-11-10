@@ -44,8 +44,8 @@ def wait_for_neo4j_with_feedback(max_wait: int = 60) -> bool:
     Returns:
         True if ready, False if timeout
     """
-    from .connector import Neo4jConnector
     from .config import get_config
+    from .connector import Neo4jConnector
 
     print("\n⏳ Waiting for Neo4j to be ready...")
     print("   (This usually takes 20-30 seconds on first startup)")
@@ -85,8 +85,8 @@ def wait_for_neo4j_with_feedback(max_wait: int = 60) -> bool:
 def show_neo4j_stats_or_empty():
     """Show Neo4j stats or note if database is empty."""
     try:
-        from .diagnostics import get_neo4j_stats
         from .connector import Neo4jConnector
+        from .diagnostics import get_neo4j_stats
 
         with Neo4jConnector() as conn:
             stats = get_neo4j_stats(conn)
@@ -196,7 +196,7 @@ def interactive_neo4j_startup() -> bool:
     Returns:
         True if should continue (with or without Neo4j), False to exit
     """
-    from . import lifecycle, auto_setup
+    from . import auto_setup, lifecycle
 
     print("\n" + "=" * 70)
     print("🚀 Neo4j Memory System Startup")
@@ -232,10 +232,11 @@ def interactive_neo4j_startup() -> bool:
 def _check_code_understanding_freshness():
     """Check if Code Understanding Engine needs updating or initial ingestion."""
     try:
-        from .code_freshness import is_code_index_stale, get_code_index_last_updated
-        from .connector import Neo4jConnector
-        from .code_graph import BlarifyIntegration
         import threading
+
+        from .code_freshness import get_code_index_last_updated, is_code_index_stale
+        from .code_graph import BlarifyIntegration
+        from .connector import Neo4jConnector
 
         with Neo4jConnector() as conn:
             project_root = Path.cwd()
