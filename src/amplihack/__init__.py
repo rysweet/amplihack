@@ -456,7 +456,7 @@ def ensure_settings_json():
         return False
 
 
-def verify_hooks():
+def verify_hooks() -> None:
     """Verify that all hook files exist."""
     all_exist = True
 
