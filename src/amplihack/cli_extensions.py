@@ -194,6 +194,6 @@ def pipeline(prompt: str, output: str, format: str, distribute: bool):
         raise click.Abort()
 
 
-def register_cli_extensions(cli):
+def register_cli_extensions(cli) -> None:
     """Register bundle generator commands with the main CLI."""
     cli.add_command(bundle)
