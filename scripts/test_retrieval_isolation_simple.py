@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
@@ -70,8 +73,8 @@ def test_circuit_breaker():
         for _ in range(3):
             try:
                 breaker.call(lambda: 1 / 0)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Expected circuit breaker failure: {e}")
 
         assert breaker.state == CircuitState.OPEN
         print("✓ Circuit opens after failures")
