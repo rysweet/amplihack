@@ -540,7 +540,7 @@ def _local_install(repo_root):
     settings_ok = ensure_settings_json()
 
     # Step 6: Verify hook files exist
-    print("\n🔍 Verifying hook files:")
+    logger.info("\n🔍 Verifying hook files:")
     hooks_ok = verify_hooks()
 
     # Step 7: Generate manifest for uninstall
