@@ -3743,7 +3743,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                         logger.info("🔄 Falling back to regular completion")
                         litellm_response = litellm.completion(**litellm_request)
                     else:
-                        raise HTTPException(status_code=500, detail=f"Tool completion failed: {e}")
+                        raise HTTPException(status_code=500, detail=f"Tool completion failed: {e}") from e
             else:
                 # Regular completion for non-tool requests
                 litellm_response = litellm.completion(**litellm_request)
