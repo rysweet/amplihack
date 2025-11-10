@@ -514,7 +514,7 @@ class ClaudeLauncher:
             print(f"Launching Claude with command: {' '.join(cmd)}")
 
             # Set up signal handling for graceful shutdown
-            def signal_handler(sig, frame):
+            def signal_handler(sig, frame) -> None:
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.claude_process:
                     self.claude_process.terminate()
