@@ -285,18 +285,21 @@ class AutoMode:
             except KeyboardInterrupt:
                 # Allow clean shutdown on Ctrl+C
                 pass
+            except (BrokenPipeError, ConnectionError) as e:
+                # Process closed pipe or connection - expected during shutdown
+                self.log(f"PTY connection closed: {e}", level="DEBUG")
+            except OSError as e:
+                # File descriptor or system errors
+                self.log(f"PTY stdin feed OS error: {e}", level="WARNING")
             except Exception as e:
                 # Log unexpected errors for debugging
-                self.log(f"PTY stdin feed error: {e}", level="WARNING")
+                self.log(f"PTY stdin feed unexpected error: {e}", level="WARNING")
             finally:
                 try:
                     os.close(fd)
                 except (OSError, ValueError):
-                    # File descriptor already closed or invalid
+                    # File descriptor already closed or invalid - expected
                     pass
-                except Exception as e:
-                    # Log any other unexpected cleanup errors
-                    self.log(f"PTY cleanup error: {e}", level="WARNING")
 
         # Create threads to read stdout and stderr concurrently
         stdout_thread = threading.Thread(
