@@ -319,7 +319,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
                                 if timeout and "timeout" not in hook:
                                     hook["timeout"] = timeout
                                 hooks_updated += 1
-                                print(f"  🔄 Updated {hook_type} hook path")
+                                logger.info(f"  🔄 Updated {hook_type} hook path")
 
     return hooks_updated
 
