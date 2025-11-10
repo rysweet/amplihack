@@ -324,7 +324,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
     return hooks_updated
 
 
-def ensure_settings_json():
+def ensure_settings_json() -> None:
     """Ensure settings.json exists with proper hook configuration."""
     import sys
 
