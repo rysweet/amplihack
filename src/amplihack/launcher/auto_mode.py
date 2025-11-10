@@ -768,7 +768,7 @@ Document your decisions and reasoning in comments/logs."""
         if not self.ui_enabled or not self.ui:
             return
 
-        def ui_runner():
+        def ui_runner() -> None:
             """Thread target to run the UI."""
             try:
                 if self.ui is not None:
