@@ -452,7 +452,7 @@ def ensure_settings_json():
         print(f"  ✅ Settings updated ({hooks_updated} hooks configured)")
         return True
     except Exception as e:
-        print(f"  ❌ Failed to write settings.json: {e}")
+        logger.info(f"  ❌ Failed to write settings.json: {e}")
         return False
 
 
