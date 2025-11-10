@@ -403,6 +403,23 @@ Decision Authority:
 
 Document your decisions and reasoning in comments/logs."""
 
+    def _extract_todos_from_tool_input(self, tool_input) -> list | None:
+        """Extract todos list from TodoWrite tool input.
+
+        Args:
+            tool_input: Tool input object or dict
+
+        Returns:
+            List of todos if found, None otherwise
+        """
+        # Try attribute access first (SDK object)
+        if hasattr(tool_input, "todos"):
+            return tool_input.todos
+        # Fallback to dict access for backwards compatibility
+        if isinstance(tool_input, dict) and "todos" in tool_input:
+            return tool_input["todos"]
+        return None
+
     def _format_todos_for_terminal(self, todos: list) -> str:
         """Format todo list for terminal display with ANSI colors.
 
@@ -566,8 +583,7 @@ Document your decisions and reasoning in comments/logs."""
 
                                 if tool_name == "TodoWrite":
                                     self.log("🎯 TodoWrite tool detected!", level="INFO")
-                                    # Extract todos from input object (not dict!)
-                                    # block.input is an object with attributes, not a dict
+                                    # Extract todos using helper method to reduce nesting
                                     if hasattr(block, "input"):
                                         tool_input = block.input
                                         self.log(
@@ -575,25 +591,16 @@ Document your decisions and reasoning in comments/logs."""
                                             level="INFO",
                                         )
 
-                                        # Check if input has todos attribute
-                                        if hasattr(tool_input, "todos"):
-                                            todos = tool_input.todos
+                                        todos = self._extract_todos_from_tool_input(tool_input)
+                                        if todos:
                                             self.log(
-                                                f"✓ Input has todos attribute with {len(todos)} items",
-                                                level="INFO",
-                                            )
-                                            self._handle_todo_write(todos)
-                                        # Fallback: try dict-style access for backwards compatibility
-                                        elif isinstance(tool_input, dict) and "todos" in tool_input:
-                                            todos = tool_input["todos"]
-                                            self.log(
-                                                f"✓ Input is dict with todos key ({len(todos)} items)",
+                                                f"✓ Extracted {len(todos)} todos from input",
                                                 level="INFO",
                                             )
                                             self._handle_todo_write(todos)
                                         else:
                                             self.log(
-                                                f"⚠️  Input has no todos attribute or key. Attributes: {dir(tool_input)}",
+                                                f"⚠️  Could not extract todos. Input type: {type(tool_input)}",
                                                 level="WARNING",
                                             )
                                     else:
