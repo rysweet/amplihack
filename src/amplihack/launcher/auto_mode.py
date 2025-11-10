@@ -695,10 +695,12 @@ Document your decisions and reasoning in comments/logs."""
                 # Success - return immediately
                 return (code, output)
 
-            # Check if error is retryable
+            # Check if error is retryable (500, 429, 503, timeouts, rate limits)
             if self._is_retryable_error(output):
                 if attempt < max_retries:
-                    delay = base_delay * (2**attempt)  # Exponential backoff: 2s, 4s, 8s
+                    # Exponential backoff: 2s, 4s, 8s (base_delay * 2^attempt)
+                    # Gives API time to recover from transient load issues
+                    delay = base_delay * (2**attempt)
                     self.log(
                         f"Retryable error detected (attempt {attempt + 1}/{max_retries + 1}), "
                         f"waiting {delay:.1f}s before retry..."
