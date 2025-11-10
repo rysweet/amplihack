@@ -9,9 +9,12 @@ AI-powered reflection.
 
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # Try to import Claude SDK
 try:
@@ -182,8 +185,9 @@ def get_repository_context(project_root: Path) -> str:
 **Context**: Repository detection unavailable
 """
 
-    except Exception:
+    except (subprocess.SubprocessError, OSError, ValueError) as e:
         # Subprocess failed - provide generic guidance
+        logger.warning(f"Repository context detection failed: {e}")
         return f"""
 ## Repository Context
 

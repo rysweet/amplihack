@@ -5,9 +5,12 @@ Preserves original user requests and conversation context to prevent loss during
 """
 
 import json
+import logging
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # Use clean import through dedicated paths module
 from paths import get_project_root
@@ -237,7 +240,8 @@ All agents should receive this context to ensure user requirements are preserved
         try:
             with open(json_file) as f:
                 return json.load(f)
-        except Exception:
+        except (json.JSONDecodeError, OSError, FileNotFoundError) as e:
+            logger.debug(f"Failed to load JSON file {json_file}: {e}")
             return None
 
     def format_agent_context(self, original_request: Optional[Dict[str, Any]] = None) -> str:

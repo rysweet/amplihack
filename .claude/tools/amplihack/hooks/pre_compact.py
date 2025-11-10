@@ -6,10 +6,13 @@ Ensures no conversation history is lost when Claude Code compacts context.
 """
 
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
 
 # Clean import setup
 sys.path.insert(0, str(Path(__file__).parent))
@@ -106,7 +109,8 @@ class PreCompactHook(HookProcessor):
                 try:
                     with open(metadata_file) as f:
                         events = json.load(f)
-                except Exception:
+                except (json.JSONDecodeError, OSError, ValueError) as e:
+                    logger.warning(f"Failed to load compaction metadata: {e}")
                     events = []
 
             events.append(compaction_info)

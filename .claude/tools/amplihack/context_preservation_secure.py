@@ -13,11 +13,14 @@ SECURITY FEATURES:
 
 import html
 import json
+import logging
 import re
 import signal
 import unicodedata
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 # Use clean import through dedicated paths module
 from paths import get_project_root
@@ -376,8 +379,9 @@ class ContextPreserver:
                 "extracted_at": datetime.now().isoformat(),
                 "security_error": error_msg,
             }
-        except Exception:
+        except (ValueError, RuntimeError, KeyError) as e:
             # Unexpected error - fail securely
+            logger.error(f"Unexpected error in extract_from_prompt: {type(e).__name__}")
             return {
                 "timestamp": datetime.now().isoformat(),
                 "session_id": self.session_id,
@@ -564,8 +568,9 @@ class ContextPreserver:
                     ):
                         criteria.append(parts[1].strip())
 
-        except Exception:
+        except (ValueError, IndexError, AttributeError) as e:
             # If processing fails, add a fallback criterion
+            logger.debug(f"Success criteria parsing failed: {e}")
             criteria.append("[Success criteria extraction failed - manual review needed]")
 
         return criteria[: SecurityConfig.MAX_CRITERIA]
@@ -702,7 +707,8 @@ All agents should receive this context to ensure user requirements are preserved
         try:
             with open(json_file) as f:
                 return json.load(f)
-        except Exception:
+        except (json.JSONDecodeError, OSError, FileNotFoundError) as e:
+            logger.debug(f"Failed to load JSON file {json_file}: {e}")
             return None
 
     def format_agent_context(self, original_request: Optional[Dict[str, Any]] = None) -> str:
@@ -838,8 +844,9 @@ All agents should receive this context to ensure user requirements are preserved
 
             return sorted(session_dirs)[-1].name
 
-        except Exception:
+        except (OSError, ValueError, IndexError) as e:
             # Fail securely - return None if any error occurs
+            logger.debug(f"Failed to detect latest session: {e}")
             return None
 
 

@@ -141,7 +141,8 @@ class StopHook(HookProcessor):
                     self.project_root / ".claude" / "runtime" / "reflection" / "current_findings.md"
                 )
                 current_findings.write_text(filled_template)
-            except Exception:
+            except (OSError, IOError) as e:
+                self.log(f"Warning: Could not write current findings: {e}", "WARNING")
                 pass
 
             self.log("Reflection complete - blocking with presentation instructions")
