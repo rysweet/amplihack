@@ -104,6 +104,11 @@ HOOK_CONFIGS = {
 
 
 def ensure_dirs():
+    """Ensure that the Claude directory exists.
+
+    Creates the CLAUDE_DIR directory if it doesn't exist, including any
+    necessary parent directories.
+    """
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 

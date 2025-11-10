@@ -10,7 +10,11 @@ import time
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+
+# Type aliases for JSON data
+JSONType = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
+T = TypeVar('T')
 
 logger = logging.getLogger(__name__)
 

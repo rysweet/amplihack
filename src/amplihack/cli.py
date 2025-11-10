@@ -464,8 +464,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         original_cwd = os.getcwd()
 
         # Safety: Check for git conflicts before copying
-        from .safety import GitConflictDetector, SafeCopyStrategy
         from . import ESSENTIAL_DIRS
+        from .safety import GitConflictDetector, SafeCopyStrategy
 
         detector = GitConflictDetector(original_cwd)
         conflict_result = detector.detect_conflicts(ESSENTIAL_DIRS)

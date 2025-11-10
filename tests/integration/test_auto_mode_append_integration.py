@@ -24,9 +24,8 @@ from amplihack.launcher.auto_mode import AutoMode
 
 # Import components to be implemented
 try:
-    from amplihack.launcher.session_finder import SessionFinder, SessionInfo
-
     from amplihack.launcher.append_handler import AppendResult, append_instructions
+    from amplihack.launcher.session_finder import SessionFinder, SessionInfo
 except ImportError:
     # Placeholders for not-yet-implemented components
     class SessionFinder:
@@ -311,7 +310,7 @@ class TestAppendFromSubdirectory:
         - Should find active session in workspace root
         - Should write to session's append/ directory
         """
-        workspace = project_with_subdirs["workspace"]
+        project_with_subdirs["workspace"]
         auto_mode = project_with_subdirs["auto_mode"]
         api_dir = project_with_subdirs["subdirs"]["api"]
 
@@ -336,7 +335,7 @@ class TestAppendFromSubdirectory:
         - All instructions should go to same session
         - All should be discoverable from workspace root
         """
-        workspace = project_with_subdirs["workspace"]
+        project_with_subdirs["workspace"]
         auto_mode = project_with_subdirs["auto_mode"]
         subdirs = project_with_subdirs["subdirs"]
 
