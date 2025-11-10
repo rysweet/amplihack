@@ -54,10 +54,13 @@ class MemoryBackend:
             str(self.db_path),
             check_same_thread=False,  # Allow multi-threading with lock
             timeout=30.0,  # 30 second timeout
+            isolation_level="DEFERRED",  # Explicit transaction control
         )
 
-        # Enable foreign key constraints
+        # Enable foreign key constraints and optimize SQLite performance
         self._connection.execute("PRAGMA foreign_keys = ON")
+        self._connection.execute("PRAGMA journal_mode = WAL")  # Write-Ahead Logging
+        self._connection.execute("PRAGMA synchronous = NORMAL")  # Balance safety/speed
 
         # Create schema following database agent design
         self._create_schema()
