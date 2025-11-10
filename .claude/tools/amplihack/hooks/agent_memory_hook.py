@@ -281,3 +281,4 @@ def format_learning_extraction_notice(metadata: Dict[str, Any]) -> str:
         return f"🧠 Stored {count} new learnings from agents: {agent_list}"
 
     return ""
+# Agent memory hook handler
