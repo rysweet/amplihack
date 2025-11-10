@@ -296,9 +296,15 @@ class ClaudeLauncher:
             print(f"  stdout: {stdout_log.name}")
             print(f"  stderr: {stderr_log.name}")
 
+        except (FileNotFoundError, PermissionError) as e:
+            # Log file system errors but don't fail proxy startup
+            logger.debug(f"Could not access proxy log files: {e}")
+        except subprocess.SubprocessError as e:
+            # Log subprocess errors (osascript failures) but don't fail
+            logger.debug(f"Could not open log tail window: {e}")
         except Exception as e:
-            # Log error but don't fail proxy startup
-            print(f"Warning: Could not open log tail window: {e}")
+            # Catch unexpected errors but don't fail proxy startup
+            logger.warning(f"Unexpected error opening log tail window: {e}")
 
     def _has_model_arg(self) -> bool:
         """Check if user has already specified --model in claude_args.
