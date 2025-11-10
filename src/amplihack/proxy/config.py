@@ -280,6 +280,7 @@ class ProxyConfig:
             error_msg = "Azure endpoint must use HTTPS for security"
             self.validation_errors.append(error_msg)
             print(error_msg)
+            return False  # Block HTTP endpoints
 
         # Validate API version format if provided
         if not self.validate_azure_api_version():
