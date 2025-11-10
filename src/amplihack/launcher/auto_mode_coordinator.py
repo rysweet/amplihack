@@ -79,7 +79,7 @@ class AutoModeCoordinator:
             # Inject state update hooks into auto mode
             original_log = self.auto_mode.log
 
-            def state_aware_log(msg: str, level: str = "INFO"):
+            def state_aware_log(msg: str, level: str = "INFO") -> None:
                 """Log that also updates shared state."""
                 original_log(msg, level)
                 self.state.add_log(f"[{level}] {msg}")
