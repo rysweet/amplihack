@@ -13,7 +13,7 @@ from .models import MemoryQuery
 class MemoryMaintenance:
     """Handles memory system maintenance, cleanup, and optimization."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Optional[Path] = None) -> None:
         """Initialize maintenance system.
 
         Args:
