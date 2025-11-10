@@ -527,7 +527,7 @@ def _local_install(repo_root):
     copied_dirs = copytree_manifest(repo_root, CLAUDE_DIR)
 
     if not copied_dirs:
-        print("\n❌ No directories were copied. Installation may be incomplete.")
+        logger.info("\n❌ No directories were copied. Installation may be incomplete.")
         print("   Please check that the source repository is valid.\n")
         return
 
