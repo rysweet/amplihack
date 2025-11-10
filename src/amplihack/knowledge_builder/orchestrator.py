@@ -12,7 +12,7 @@ from amplihack.knowledge_builder.modules.question_generator import QuestionGener
 class KnowledgeBuilder:
     """Main orchestrator for Knowledge Builder workflow."""
 
-    def __init__(self, topic: str, claude_cmd: str = "claude", output_base: Path | None = None):
+    def __init__(self, topic: str, claude_cmd: str = "claude", output_base: Path | None = None) -> None:
         """Initialize Knowledge Builder.
 
         Args:
