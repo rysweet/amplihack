@@ -407,7 +407,7 @@ def ensure_settings_json():
             shutil.copy2(settings_path, backup_path)
             print(f"  💾 Backed up to {backup_name}")
         except Exception as e:
-            print(f"  ⚠️  Could not read existing settings.json: {e}")
+            logger.info(f"  ⚠️  Could not read existing settings.json: {e}")
             print("  🔧 Creating new settings.json from template")
             settings = SETTINGS_TEMPLATE.copy()
     else:
