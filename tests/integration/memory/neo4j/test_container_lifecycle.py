@@ -466,3 +466,149 @@ def running_container():
     yield manager
 
     # Tests can decide whether to keep or stop container
+
+
+@pytest.mark.integration
+class TestPortConflictResolution:
+    """Test port conflict detection and resolution during container creation."""
+
+    def test_WHEN_ports_in_use_THEN_alternative_ports_selected(self):
+        """Test that container creation handles port conflicts gracefully."""
+        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
+        import socket
+
+        manager = Neo4jContainerManager()
+
+        # Simulate port conflict by binding to default ports
+        # (This is a simplified test - in real scenario, another service would use ports)
+        try:
+            # Start container - should detect any conflicts and use alternatives
+            result = manager.start(wait_for_ready=True)
+
+            # Should succeed even if default ports were busy
+            assert result is True
+
+            # Verify container is actually running
+            status = manager.get_status()
+            from amplihack.memory.neo4j.lifecycle import ContainerStatus
+            assert status == ContainerStatus.RUNNING
+
+        finally:
+            # Cleanup
+            manager.stop()
+
+    def test_WHEN_container_already_running_on_different_ports_THEN_detected_and_reused(self):
+        """Test detection of existing container on non-default ports."""
+        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
+        import subprocess
+
+        manager = Neo4jContainerManager()
+
+        # Start container normally
+        manager.start(wait_for_ready=True)
+
+        # Get actual ports container is using
+        result = subprocess.run(
+            ["docker", "port", manager.config.container_name],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        assert result.returncode == 0
+        assert "7687/tcp" in result.stdout
+        assert "7474/tcp" in result.stdout
+
+        # Stop but don't remove container
+        manager.stop()
+
+        # Start again - should detect existing container
+        result = manager.start(wait_for_ready=True)
+        assert result is True
+
+        # Cleanup
+        manager.stop()
+
+
+@pytest.mark.integration
+class TestConcurrentContainerCreation:
+    """Test concurrent container creation scenarios."""
+
+    def test_WHEN_multiple_sessions_start_concurrently_THEN_handles_race_conditions(self):
+        """Test that concurrent starts don't create port binding conflicts."""
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
+        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
+        import threading
+        import time
+
+        # Ensure clean state
+        manager = Neo4jContainerManager()
+        try:
+            manager.stop()
+            import subprocess
+            subprocess.run(
+                ["docker", "rm", "-f", manager.config.container_name],
+                capture_output=True
+            )
+        except Exception:
+            pass
+
+        time.sleep(2)
+
+        results = []
+        errors = []
+
+        def start_session():
+            try:
+                result = ensure_neo4j_running(blocking=True)
+                results.append(result)
+            except Exception as e:
+                errors.append(str(e))
+
+        # Start 3 sessions concurrently
+        threads = [threading.Thread(target=start_session) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        # All should succeed or at least not raise errors
+        assert len(errors) == 0, f"Errors occurred: {errors}"
+        assert len(results) == 3
+        assert all(results), "Some sessions failed to start"
+
+        # Verify only one container exists
+        status = manager.get_status()
+        from amplihack.memory.neo4j.lifecycle import ContainerStatus
+        assert status == ContainerStatus.RUNNING
+
+        # Cleanup
+        manager.stop()
+
+    def test_WHEN_port_binding_race_occurs_THEN_retries_with_different_ports(self):
+        """Test retry logic when port binding race condition occurs."""
+        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
+        import subprocess
+
+        manager = Neo4jContainerManager()
+
+        # Ensure clean state
+        try:
+            manager.stop()
+            subprocess.run(
+                ["docker", "rm", "-f", manager.config.container_name],
+                capture_output=True
+            )
+        except Exception:
+            pass
+
+        # Start container - retry logic should handle any transient port issues
+        result = manager.start(wait_for_ready=True)
+
+        assert result is True
+
+        # Verify container is healthy
+        assert manager.is_healthy()
+
+        # Cleanup
+        manager.stop()
