@@ -425,6 +425,16 @@ class URLPatterns:
         r"(\.\./|\.\./|\%2e\%2e)",  # Path traversal
         r"(<script|javascript:|onerror=|onclick=)",  # XSS attempts
         r"(union\s+select|drop\s+table|insert\s+into)",  # SQL injection
+        # JWT and authentication tokens
+        r"(jwt|bearer|auth_token|access_token|refresh_token)",
+        r"(api[_-]?key|apikey)",
+        # SSRF attack vectors
+        r"(url|uri|link|redirect|callback|webhook|dest|destination|target)",
+        r"(fetch|download|load|include|require|import)",
+        # AWS metadata and cloud service endpoints
+        r"(169\.254\.169\.254|metadata|instance-data)",
+        # File protocol and local file inclusion
+        r"(file://|ftp://|gopher://|dict://|ldap://)",
     ]
 
     @classmethod
