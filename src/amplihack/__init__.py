@@ -500,7 +500,7 @@ def create_runtime_dirs():
         try:
             os.makedirs(full_path, exist_ok=True)
             if not os.path.exists(full_path):
-                print(f"  ❌ Failed to create {dir_path}")
+                logger.info(f"  ❌ Failed to create {dir_path}")
             else:
                 print(f"  ✅ Runtime directory {dir_path} ready")
         except Exception as e:
