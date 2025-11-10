@@ -116,9 +116,10 @@ def sync_hooks(source_path: Path, template_path: Path, dry_run: bool = False) ->
             print(f"✅ Successfully synced {len(transformed_hooks)} hook types")
             return True
 
-        except Exception:
+        except Exception as e:
             # Clean up temp file on error
             Path(temp_path).unlink(missing_ok=True)
+            print(f"❌ Hook sync failed: {e}", file=sys.stderr)
             raise
 
     except FileNotFoundError as e:
