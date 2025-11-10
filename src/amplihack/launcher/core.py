@@ -694,7 +694,7 @@ class ClaudeLauncher:
             print("Continuing with basic memory system...\n")
             return True
 
-    def _auto_setup_and_start_neo4j_OLD(self):
+    def _auto_setup_and_start_neo4j_OLD(self) -> None:
         """Auto-setup prerequisites and start Neo4j in background.
 
         Self-healing approach:
