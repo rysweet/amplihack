@@ -166,7 +166,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
 
                 # Skip on Windows - uses different permission model
                 if sys.platform == "win32":
-                    print("  ℹ️  Skipping POSIX permissions on Windows")
+                    logger.info("  ℹ️  Skipping POSIX permissions on Windows")
                 else:
                     files_updated = 0
                     permission_errors = 0
