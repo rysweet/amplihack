@@ -514,7 +514,7 @@ def _local_install(repo_root):
     """
     print("\n🚀 Starting amplihack installation...")
     print(f"   Source: {repo_root}")
-    print(f"   Target: {CLAUDE_DIR}\n")
+    logger.info(f"   Target: {CLAUDE_DIR}\n")
 
     # Step 1: Ensure base directory exists
     ensure_dirs()
