@@ -488,7 +488,7 @@ def verify_hooks():
 
         # Additional message for XPIA if all hooks found
         if hook_system == "xpia" and system_all_exist:
-            print("  🔒 XPIA security hooks configured")
+            logger.info("  🔒 XPIA security hooks configured")
 
     return all_exist
 
