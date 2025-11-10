@@ -311,7 +311,7 @@ def safe_read_json(
 @retry_file_operation(max_retries=3, delay=0.1)
 def safe_write_json(
     file_path: Union[str, Path],
-    data: Any,
+    data: JSONType,
     indent: int = 2,
     sort_keys: bool = True,
     atomic: bool = True,
@@ -321,7 +321,7 @@ def safe_write_json(
 
     Args:
         file_path: Path to JSON file
-        data: Data to serialize
+        data: JSON-serializable data to write
         indent: JSON indentation
         sort_keys: Sort JSON keys
         atomic: Use atomic write
