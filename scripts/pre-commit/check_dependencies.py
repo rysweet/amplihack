@@ -73,7 +73,8 @@ def extract_imports(file_path: Path) -> Tuple[Set[str], Set[str]]:
         visit_node(tree)
         return all_imports, protected_imports
 
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Failed to analyze imports in {file_path}: {e}", file=sys.stderr)
         return set(), set()
 
 
