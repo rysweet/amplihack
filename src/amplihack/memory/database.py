@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class MemoryDatabase:
     """Thread-safe SQLite database for agent memory storage."""
 
-    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Optional[Union[Path, str]] = None) -> None:
         """Initialize database connection.
 
         Args:
