@@ -479,7 +479,7 @@ def verify_hooks():
             if os.path.exists(hook_path):
                 print(f"    ✅ {hook_file} found")
             else:
-                print(f"    ❌ {hook_file} missing")
+                logger.info(f"    ❌ {hook_file} missing")
                 system_all_exist = False
 
         # Only mark all_exist as False if amplihack hooks are missing
