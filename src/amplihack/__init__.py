@@ -381,7 +381,7 @@ def ensure_settings_json():
             success, backup_path = settings_manager.create_backup()
             if not success:
                 # Continue without backup rather than failing
-                print("  ⚠️  Could not create backup - continuing anyway")
+                logger.info("  ⚠️  Could not create backup - continuing anyway")
                 backup_path = None
             elif backup_path:
                 print(f"  💾 Backup created at {backup_path}")
