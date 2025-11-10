@@ -24,27 +24,18 @@ except ImportError:
 from amplihack.launcher.session_capture import MessageCapture
 from amplihack.launcher.fork_manager import ForkManager
 
-# Security constants for content sanitization
+# Content size limit for appended files
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
-PROMPT_INJECTION_PATTERNS = [
-    r"ignore\s+previous\s+instructions",
-    r"disregard\s+all\s+prior",
-    r"forget\s+everything",
-    r"new\s+instructions:",
-    r"system\s+prompt:",
-    r"you\s+are\s+now",
-    r"override\s+all",
-]
 
 
 def _sanitize_injected_content(content: str) -> str:
-    """Sanitize content before injecting into prompts.
+    """Truncate content if too large.
 
     Args:
-        content: Content to sanitize
+        content: Content to check
 
     Returns:
-        Sanitized content (truncated and with suspicious patterns removed)
+        Content truncated if needed
     """
     if not content:
         return content
@@ -54,18 +45,6 @@ def _sanitize_injected_content(content: str) -> str:
         # Truncate to size limit with warning
         content = content[: MAX_INJECTED_CONTENT_SIZE // 2]  # UTF-8 safe truncation
         content += "\n\n[Content truncated due to size limit]"
-
-    # Remove prompt injection patterns
-    content_lower = content.lower()
-    for pattern in PROMPT_INJECTION_PATTERNS:
-        if re.search(pattern, content_lower, re.IGNORECASE):
-            # Replace suspicious patterns with safe marker
-            content = re.sub(
-                pattern,
-                "[REDACTED: suspicious pattern]",
-                content,
-                flags=re.IGNORECASE,
-            )
 
     return content
 
@@ -121,12 +100,9 @@ class AutoMode:
             f.write(f"**SDK**: {sdk}\n")
             f.write(f"**Max Turns**: {max_turns}\n")
 
-        # Security: Session-level limits to prevent resource exhaustion
+        # Session-level tracking (limits would be configured via environment if needed)
         self.total_api_calls = 0
-        self.max_total_api_calls = 50  # Max API calls per session
-        self.max_session_duration = 3600  # 1 hour max
         self.session_output_size = 0
-        self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
 
         # Safety: Detect if we're using temp staging directory (safety feature)
         self.staged_dir = os.environ.get("AMPLIHACK_STAGED_DIR")
@@ -184,19 +160,8 @@ class AutoMode:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
 
     def _format_elapsed(self, seconds: float) -> str:
-        """Format elapsed time as Xm Ys or Xs.
-
-        Args:
-            seconds: Elapsed time in seconds
-
-        Returns:
-            Formatted string like "45s" or "1m 23s"
-        """
-        if seconds < 60:
-            return f"{int(seconds)}s"
-        minutes = int(seconds // 60)
-        remaining_seconds = int(seconds % 60)
-        return f"{minutes}m {remaining_seconds}s"
+        """Format elapsed time as Xm Ys or Xs."""
+        return f"{int(seconds)}s" if seconds < 60 else f"{int(seconds//60)}m {int(seconds%60)}s"
 
     def _progress_str(self, phase: str) -> str:
         """Build progress indicator string with total duration across forks.
