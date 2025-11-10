@@ -194,7 +194,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
                         print(f"  ⚠️  {permission_errors} permission errors (hooks may not execute)")
 
             copied.append(dir_path)
-            print(f"  ✅ Copied {dir_path}")
+            logger.info(f"  ✅ Copied {dir_path}")
         except Exception as e:
             print(f"  ❌ Failed to copy {dir_path}: {e}")
 
