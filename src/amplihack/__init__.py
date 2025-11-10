@@ -411,7 +411,7 @@ def ensure_settings_json():
             print("  🔧 Creating new settings.json from template")
             settings = SETTINGS_TEMPLATE.copy()
     else:
-        print("  🔧 Creating new settings.json")
+        logger.info("  🔧 Creating new settings.json")
         settings = SETTINGS_TEMPLATE.copy()
 
     # Update amplihack hook paths (relative paths for cross-platform compatibility)
