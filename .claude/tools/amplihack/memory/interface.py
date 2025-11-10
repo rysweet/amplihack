@@ -226,3 +226,4 @@ class AgentMemory:
     def __repr__(self) -> str:
         """String representation for debugging."""
         return f"AgentMemory(agent='{self.agent_name}', session='{self.session_id}', enabled={self.enabled})"
+# Memory backend interface
