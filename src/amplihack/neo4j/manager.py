@@ -26,7 +26,7 @@ class Neo4jManager:
     6. Never crashes the launcher
     """
 
-    def __init__(self, env_file: Optional[Path] = None, interactive: bool = True):
+    def __init__(self, env_file: Optional[Path] = None, interactive: bool = True) -> None:
         """Initialize Neo4j manager.
 
         Args:
