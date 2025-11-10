@@ -24,7 +24,7 @@ class SettingsManager:
         backup_path: Path to the current backup file (if created)
     """
 
-    def __init__(self, settings_path: Path, session_id: str, non_interactive: bool = False):
+    def __init__(self, settings_path: Path, session_id: str, non_interactive: bool = False) -> None:
         """Initialize SettingsManager.
 
         Args:
