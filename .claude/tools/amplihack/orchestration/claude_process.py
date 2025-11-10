@@ -331,3 +331,4 @@ class ClaudeProcess:
             except Exception:
                 pass
             self._master_fd = None
+# Process execution wrapper
