@@ -470,7 +470,7 @@ def verify_hooks():
 
         # Print header with appropriate icon
         icon = "🔒" if hook_system == "xpia" else "📋"
-        print(f"  {icon} {hook_system.capitalize()} hooks:")
+        logger.info(f"  {icon} {hook_system.capitalize()} hooks:")
 
         system_all_exist = True
         for hook_info in hooks:
