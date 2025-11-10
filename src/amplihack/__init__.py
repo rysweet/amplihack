@@ -384,7 +384,7 @@ def ensure_settings_json():
                 print("  ⚠️  Could not create backup - continuing anyway")
                 backup_path = None
             elif backup_path:
-                print(f"  💾 Backup created at {backup_path}")
+                logger.info(f"  💾 Backup created at {backup_path}")
 
     except Exception as e:
         # If SettingsManager fails for any reason, continue without it
