@@ -33,6 +33,7 @@ class RetryExhaustedError(DefensiveError):
 class FileOperationError(DefensiveError):
     """File operation failed after retries."""
 
+
 def parse_llm_json(response: str, strict: bool = False) -> Dict[str, Any]:
     """Extract and parse JSON from LLM response text.
 

@@ -1,15 +1,9 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with code in this
-repository.
-
-## Project Overview
-
-**Microsoft Hackathon 2025 - Agentic Coding Framework**
-
-We are building an advanced agentic coding framework that leverages AI agents to
-accelerate software development through intelligent automation, code generation,
-and collaborative problem-solving.
+This file provides guidance to Claude Code when working with your codebase. It
+configures the amplihack agentic coding framework - a development tool that uses
+specialized AI agents to accelerate software development through intelligent
+automation and collaborative problem-solving.
 
 ## Important Files to Import
 
