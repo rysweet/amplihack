@@ -207,7 +207,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
             shutil.copy2(settings_src, settings_dst)
             print("  ✅ Copied settings.json")
         except Exception as e:
-            print(f"  ⚠️  Could not copy settings.json: {e}")
+            logger.info(f"  ⚠️  Could not copy settings.json: {e}")
 
     return copied
 
