@@ -205,7 +205,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
     if os.path.exists(settings_src) and not os.path.exists(settings_dst):
         try:
             shutil.copy2(settings_src, settings_dst)
-            print("  ✅ Copied settings.json")
+            logger.info("  ✅ Copied settings.json")
         except Exception as e:
             print(f"  ⚠️  Could not copy settings.json: {e}")
 
