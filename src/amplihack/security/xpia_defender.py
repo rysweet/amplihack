@@ -597,12 +597,28 @@ class WebFetchXPIADefender(XPIADefender):
                     )
                 )
 
-            # Check for local/private addresses
-            if (
-                domain in ["localhost", "127.0.0.1", "0.0.0.0"]
-                or domain.startswith("192.168.")
-                or domain.startswith("10.")
-            ):
+            # Check for local/private addresses including AWS metadata
+            import ipaddress
+
+            is_private = False
+            try:
+                ip = ipaddress.ip_address(domain)
+                is_private = ip.is_private or ip.is_loopback or ip.is_link_local
+            except ValueError:
+                # Not an IP, check domain names
+                is_private = domain in ["localhost", "0.0.0.0", "::1"]
+
+            # Explicitly block AWS metadata service
+            if domain == "169.254.169.254":
+                threats.append(
+                    ThreatDetection(
+                        threat_type=ThreatType.PRIVILEGE_ESCALATION,
+                        severity=RiskLevel.CRITICAL,
+                        description="Blocked AWS metadata service access",
+                        mitigation="AWS metadata access not allowed",
+                    )
+                )
+            elif is_private:
                 threats.append(
                     ThreatDetection(
                         threat_type=ThreatType.PRIVILEGE_ESCALATION,
