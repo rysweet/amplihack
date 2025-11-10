@@ -468,25 +468,61 @@ class XPIADefender(XPIADefenseInterface):
 
         return recommendations
 
+    def _sanitize_for_logging(self, text: str) -> str:
+        """Redact sensitive patterns from log messages"""
+        if not text:
+            return text
+
+        # Patterns to redact (ordered by specificity)
+        patterns = [
+            # API keys and tokens (various formats)
+            (r'\b[A-Za-z0-9_-]{20,}\b', '[REDACTED_TOKEN]'),
+            (r'api[_-]?key["\']?\s*[:=]\s*["\']?([A-Za-z0-9_-]+)', 'api_key=[REDACTED]'),
+            (r'token["\']?\s*[:=]\s*["\']?([A-Za-z0-9_-]+)', 'token=[REDACTED]'),
+            # Passwords
+            (r'password["\']?\s*[:=]\s*["\']?([^"\'\s]+)', 'password=[REDACTED]'),
+            (r'pass["\']?\s*[:=]\s*["\']?([^"\'\s]+)', 'pass=[REDACTED]'),
+            # AWS keys
+            (r'(AKIA[0-9A-Z]{16})', '[REDACTED_AWS_KEY]'),
+            # Private keys (PEM format markers)
+            (r'-----BEGIN [A-Z ]+ PRIVATE KEY-----', '[REDACTED_PRIVATE_KEY]'),
+            # Email addresses (partial redaction)
+            (r'\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', r'\1@[REDACTED]'),
+            # IP addresses (keep first octet for debugging)
+            (r'\b(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\b', r'\1.XXX.XXX.XXX'),
+            # Authorization headers
+            (r'Authorization:\s*Bearer\s+([A-Za-z0-9_-]+)', 'Authorization: Bearer [REDACTED]'),
+            (r'Authorization:\s*Basic\s+([A-Za-z0-9+/=]+)', 'Authorization: Basic [REDACTED]'),
+        ]
+
+        sanitized = text
+        for pattern, replacement in patterns:
+            sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+
+        return sanitized
+
     def _log_security_event(
         self,
         content_type: ContentType,
         threats: List[ThreatDetection],
         context: Optional[ValidationContext],
     ):
-        """Log security event for audit"""
+        """Log security event for audit with sensitive data redaction"""
+        # Sanitize threat descriptions before logging
+        sanitized_threats = [
+            {
+                "type": threat.threat_type.value,
+                "severity": threat.severity.value,
+                "description": self._sanitize_for_logging(threat.description),
+            }
+            for threat in threats
+        ]
+
         event = {
             "timestamp": datetime.now().isoformat(),
             "content_type": content_type.value,
             "threat_count": len(threats),
-            "threats": [
-                {
-                    "type": threat.threat_type.value,
-                    "severity": threat.severity.value,
-                    "description": threat.description,
-                }
-                for threat in threats
-            ],
+            "threats": sanitized_threats,
             "context": {
                 "source": context.source if context else "unknown",
                 "session_id": context.session_id if context else None,
