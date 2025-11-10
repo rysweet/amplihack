@@ -103,11 +103,12 @@ HOOK_CONFIGS = {
 }
 
 
-def ensure_dirs():
+def ensure_dirs() -> None:
+    """Ensure required directories exist."""
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 
-def copytree_manifest(repo_root, dst, rel_top=".claude"):
+def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> list[str]:
     """Copy all essential directories from repo to destination.
 
     Args:
@@ -211,22 +212,32 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
     return copied
 
 
-def write_manifest(files, dirs):
+def write_manifest(files: list[str], dirs: list[str]) -> None:
+    """Write manifest file with list of files and directories."""
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
     with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
         json.dump({"files": files, "dirs": dirs}, f, indent=2)
 
 
-def read_manifest():
+def read_manifest() -> tuple[list[str], list[str]]:
+    """Read manifest file and return files and directories lists."""
     try:
         with open(MANIFEST_JSON, encoding="utf-8") as f:
             mf = json.load(f)
             return mf.get("files", []), mf.get("dirs", [])
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return [], []
 
 
-def get_all_files_and_dirs(root_dirs):
+def get_all_files_and_dirs(root_dirs: list[str]) -> tuple[list[str], list[str]]:
+    """Get all files and directories from root directories.
+
+    Args:
+        root_dirs: List of root directory paths to scan
+
+    Returns:
+        Tuple of (sorted file paths, sorted directory paths)
+    """
     all_files = []
     all_dirs = set()
     for d in root_dirs:
@@ -241,7 +252,8 @@ def get_all_files_and_dirs(root_dirs):
     return sorted(all_files), sorted(all_dirs)
 
 
-def all_rel_dirs(base):
+def all_rel_dirs(base: str) -> set[str]:
+    """Get all relative directory paths from base directory."""
     result = set()
     for r, dirs, _files in os.walk(base):
         rel = os.path.relpath(r, CLAUDE_DIR)

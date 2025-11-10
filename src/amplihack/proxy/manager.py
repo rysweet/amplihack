@@ -233,7 +233,7 @@ class ProxyManager:
         """
         return f"http://localhost:{self.proxy_port}"
 
-    def __enter__(self):
+    def __enter__(self) -> "ProxyManager":
         """Context manager entry - starts proxy.
 
         Returns:
@@ -242,7 +242,12 @@ class ProxyManager:
         self.start_proxy()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[object],
+    ) -> None:
         """Context manager exit - stops proxy.
 
         Args:
