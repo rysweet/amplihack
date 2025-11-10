@@ -504,7 +504,7 @@ def create_runtime_dirs():
             else:
                 print(f"  ✅ Runtime directory {dir_path} ready")
         except Exception as e:
-            print(f"  ❌ Error creating {dir_path}: {e}")
+            logger.info(f"  ❌ Error creating {dir_path}: {e}")
 
 
 def _local_install(repo_root):
