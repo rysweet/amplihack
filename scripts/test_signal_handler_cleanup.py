@@ -19,7 +19,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -306,7 +305,7 @@ except KeyboardInterrupt:
         time.sleep(1)
 
         # Send SIGINT
-        print(f"→ Sending SIGINT...")
+        print("→ Sending SIGINT...")
         process.send_signal(signal.SIGINT)
 
         # Verify it exits within reasonable time (fail-safe test)

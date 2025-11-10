@@ -31,10 +31,10 @@ from amplihack.memory.neo4j import (
     DeclarativeMemory,
     EpisodicMemory,
     MemoryStore,
+    Neo4jConnector,
     ProceduralMemory,
     ProspectiveMemory,
     ShortTermMemory,
-    Neo4jConnector,
     ensure_neo4j_running,
 )
 

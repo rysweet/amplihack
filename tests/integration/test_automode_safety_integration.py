@@ -8,14 +8,14 @@ Tests the complete end-to-end flow from CLI to auto mode, verifying that:
 5. Auto mode prompt transformation works correctly
 """
 
-import unittest
 import os
-import tempfile
 import shutil
+import tempfile
+import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from amplihack.safety import GitConflictDetector, SafeCopyStrategy, PromptTransformer
+from amplihack.safety import GitConflictDetector, PromptTransformer, SafeCopyStrategy
 
 
 class TestAutoModeSafetyIntegration(unittest.TestCase):

@@ -27,7 +27,7 @@ Design: docs/memory/EFFECTIVENESS_TEST_DESIGN.md
 import argparse
 import json
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -36,7 +36,6 @@ import numpy as np
 from scipy import stats
 from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.power import tt_ind_solve_power
-
 
 # ============================================================================
 # Data Models
@@ -496,7 +495,7 @@ class MemoryTestHarness:
 
         try:
             # Run scenario with configuration
-            output = config.run_scenario(scenario)
+            config.run_scenario(scenario)
 
             # TODO: Collect metrics from actual output
             # For now, record mock metrics

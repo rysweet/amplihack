@@ -15,14 +15,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from amplifier_module_orchestrator_amplihack import (
-        initialize_orchestrator,
-        execute_workflow,
         OrchestratorConfig,
         WorkflowRequest,
+        execute_workflow,
+        initialize_orchestrator,
     )
 except ImportError:
     # Module not installed, try local import
-    from core import initialize_orchestrator, execute_workflow  # type: ignore
+    from core import execute_workflow, initialize_orchestrator  # type: ignore
     from models import OrchestratorConfig, WorkflowRequest  # type: ignore
 
 
