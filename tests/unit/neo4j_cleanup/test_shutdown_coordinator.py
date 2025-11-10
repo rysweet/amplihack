@@ -3,9 +3,10 @@
 Tests shutdown decision logic, user prompting, and execution.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 
 from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
 

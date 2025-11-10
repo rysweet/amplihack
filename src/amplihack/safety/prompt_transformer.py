@@ -1,8 +1,8 @@
 """Prompt transformation for directory change instructions."""
 
+import re
 from pathlib import Path
 from typing import Union
-import re
 
 
 class PromptTransformer:

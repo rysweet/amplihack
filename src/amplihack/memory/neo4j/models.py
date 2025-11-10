@@ -7,8 +7,7 @@ and ingestion metadata in the Neo4j graph database.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
-from uuid import uuid4
+from typing import Dict, Optional
 
 
 class IngestionStatus(Enum):
