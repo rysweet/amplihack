@@ -7,6 +7,7 @@ from typing import Optional
 
 class FrameworkPathResolver:
     """Resolves framework file paths for both local and UVX deployments."""
+# Code quality enhancement: batch-119
 
     _cached_root: Optional[Path] = None
 
