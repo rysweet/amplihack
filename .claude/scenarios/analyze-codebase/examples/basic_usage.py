@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 from ..tool import CodebaseAnalyzer
 
 
-def example_basic_analysis():
+def example_basic_analysis() -> None:
     """Example: Basic directory analysis."""
     print("=" * 60)
     print("EXAMPLE 1: Basic Directory Analysis")
@@ -33,7 +33,7 @@ def example_basic_analysis():
         print(f"Error: {e}")
 
 
-def example_json_output():
+def example_json_output() -> None:
     """Example: JSON output for programmatic use."""
     print("=" * 60)
     print("EXAMPLE 2: JSON Output")
@@ -67,7 +67,7 @@ def example_json_output():
         print(f"Error: {e}")
 
 
-def example_custom_configuration():
+def example_custom_configuration() -> None:
     """Example: Custom analyzer configuration."""
     print("=" * 60)
     print("EXAMPLE 3: Custom Configuration")
@@ -91,7 +91,7 @@ def example_custom_configuration():
         print(f"Error: {e}")
 
 
-def example_single_file_analysis():
+def example_single_file_analysis() -> None:
     """Example: Analyzing a single file."""
     print("=" * 60)
     print("EXAMPLE 4: Single File Analysis")
@@ -143,7 +143,7 @@ if __name__ == "__main__":
             sample_file.unlink()
 
 
-def example_error_handling():
+def example_error_handling() -> None:
     """Example: Error handling and edge cases."""
     print("=" * 60)
     print("EXAMPLE 5: Error Handling")
@@ -169,7 +169,7 @@ def example_error_handling():
             print(f"Unexpected error type: {type(e).__name__}: {e}")
 
 
-def example_output_comparison():
+def example_output_comparison() -> None:
     """Example: Comparing text vs JSON output."""
     print("=" * 60)
     print("EXAMPLE 6: Output Format Comparison")
@@ -201,7 +201,7 @@ def example_output_comparison():
         print(f"Error: {e}")
 
 
-def main():
+def main() -> None:
     """Run all examples."""
     print("🔍 Analyze Codebase Tool - Usage Examples")
     print("=" * 60)

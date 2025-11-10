@@ -19,7 +19,7 @@ from tool import CodebaseAnalyzer
 class TestCodebaseAnalyzer:
     """Test suite for CodebaseAnalyzer."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up test fixtures."""
         self.temp_dir = Path(tempfile.mkdtemp())
         self.analyzer = CodebaseAnalyzer()
@@ -48,11 +48,11 @@ class DataProcessor:
         return item * 2
         """)
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up test fixtures."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_analyzer_initialization(self):
+    def test_analyzer_initialization(self) -> None:
         """Test analyzer initialization."""
         analyzer = CodebaseAnalyzer()
         assert analyzer.skip_patterns
