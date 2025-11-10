@@ -536,7 +536,7 @@ def _local_install(repo_root):
     create_runtime_dirs()
 
     # Step 5: Configure settings.json
-    print("\n⚙️  Configuring settings.json:")
+    logger.info("\n⚙️  Configuring settings.json:")
     settings_ok = ensure_settings_json()
 
     # Step 6: Verify hook files exist
