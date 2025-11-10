@@ -562,7 +562,7 @@ def _local_install(repo_root):
     files, post_dirs = get_all_files_and_dirs(all_essential)
     new_dirs = sorted(set(post_dirs) - pre_dirs)
     write_manifest(files, new_dirs)
-    print(f"   Manifest written to {MANIFEST_JSON}")
+    logger.info(f"   Manifest written to {MANIFEST_JSON}")
 
     # Step 8: Final summary
     print("\n" + "=" * 60)
