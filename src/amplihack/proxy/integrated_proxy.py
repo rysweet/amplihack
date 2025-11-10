@@ -206,12 +206,12 @@ def classify_azure_error(status_code: int, error_text: str) -> AzureAPIError:
     if status_code in [401, 403]:
         if "unauthorized" in error_message.lower() or "authentication" in error_message.lower():
             return AzureAuthenticationError(
-                f"Authentication failed. Please check your Azure API key and permissions. Details: {error_message}",
+                "Authentication failed. Please check your Azure API key and permissions.",
                 status_code,
             )
         if "forbidden" in error_message.lower() or "access denied" in error_message.lower():
             return AzureAuthenticationError(
-                f"Access denied. Your API key may lack required permissions. Details: {error_message}",
+                "Access denied. Your API key may lack required permissions.",
                 status_code,
             )
         return AzureAuthenticationError(user_message, status_code)
@@ -301,7 +301,7 @@ def extract_user_friendly_message(azure_error: AzureAPIError) -> str:
         return "Temporary Azure service issue. The request will be retried automatically."
     if isinstance(azure_error, AzureFallbackError):
         return "Azure API unavailable. Using fallback processing mode."
-    return f"Azure API error: {azure_error!s}"
+    return "Azure API error occurred. Check logs for details."
 
 
 # Azure Retry Logic with Exponential Backoff
