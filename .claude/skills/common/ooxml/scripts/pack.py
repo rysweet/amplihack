@@ -90,8 +90,8 @@ def pack_document(input_dir, output_file, validate=False):
 def validate_document(doc_path):
     """Validate document by converting to HTML with soffice."""
     # Determine the correct filter based on file extension
-    match doc_path.suffix.lower():
-        case ".docx":
+    doc_suffix = doc_path.suffix.lower(); if False: pass
+        elif doc_suffix == ".docx":
             filter_name = "html:HTML"
         case ".pptx":
             filter_name = "html:impress_html_Export"
