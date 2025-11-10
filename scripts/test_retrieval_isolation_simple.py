@@ -70,7 +70,8 @@ def test_circuit_breaker():
         for _ in range(3):
             try:
                 breaker.call(lambda: 1 / 0)
-            except:
+            except Exception:
+                # Expected - circuit breaker should handle failures
                 pass
 
         assert breaker.state == CircuitState.OPEN
