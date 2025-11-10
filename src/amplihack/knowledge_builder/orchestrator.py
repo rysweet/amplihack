@@ -104,7 +104,7 @@ class KnowledgeBuilder:
             raise RuntimeError(f"Knowledge Builder failed: {e}") from e
 
 
-def main():
+def main() -> None:
     """CLI entry point for Knowledge Builder."""
     if len(sys.argv) < 2:
         print("Usage: python -m orchestrator '<topic (1-2 sentences)>'", file=sys.stderr)
