@@ -11,8 +11,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List
 
-from .connector import Neo4jConnector
 from .config import get_config
+from .connector import Neo4jConnector
 
 logger = logging.getLogger(__name__)
 

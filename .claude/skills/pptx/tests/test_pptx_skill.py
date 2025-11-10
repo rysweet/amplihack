@@ -303,7 +303,6 @@ def test_pptx_to_pdf_conversion():
     """Test converting PPTX to PDF using LibreOffice."""
     import subprocess
     import tempfile
-    from io import BytesIO
 
     from pptx import Presentation
 
@@ -321,7 +320,7 @@ def test_pptx_to_pdf_conversion():
 
         # Convert to PDF
         try:
-            result = subprocess.run(
+            subprocess.run(
                 ["soffice", "--headless", "--convert-to", "pdf", str(pptx_path)],
                 capture_output=True,
                 timeout=30,

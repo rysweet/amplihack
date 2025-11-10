@@ -3,9 +3,10 @@
 Tests connection counting and last connection detection.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
 import requests
-from unittest.mock import Mock, patch
 
 from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
 

@@ -2,8 +2,6 @@
 
 from datetime import datetime
 
-import pytest
-
 from amplihack.memory.neo4j.identifier import CodebaseIdentifier
 from amplihack.memory.neo4j.models import IngestionMetadata
 from amplihack.memory.neo4j.query_builder import QueryBuilder

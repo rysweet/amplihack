@@ -10,13 +10,14 @@ Tests are organized into 4 levels:
 Tests skip gracefully if dependencies are not installed.
 """
 
-import sys
-import subprocess
 import json
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
+
 
 # Test helpers
 def check_dependency(package_name: str) -> bool:
@@ -591,7 +592,7 @@ def test_summary(capsys):
     print("XLSX SKILL TEST SUMMARY")
     print("="*70)
     print(f"Skill Directory: {SKILL_DIR}")
-    print(f"\nDependency Status:")
+    print("\nDependency Status:")
     print(f"  pandas: {'✓ Installed' if HAS_PANDAS else '✗ Not Installed'}")
     print(f"  openpyxl: {'✓ Installed' if HAS_OPENPYXL else '✗ Not Installed'}")
     print(f"  LibreOffice: {'✓ Available' if HAS_LIBREOFFICE else '✗ Not Available'}")

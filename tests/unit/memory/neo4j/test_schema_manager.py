@@ -10,8 +10,9 @@ Tests the SchemaManager class responsible for:
 All tests should FAIL initially (TDD approach).
 """
 
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 
 class TestSchemaInitialization:
@@ -64,8 +65,8 @@ class TestSchemaInitialization:
 
     def test_WHEN_schema_initialization_fails_THEN_error_raised(self):
         """Test error handling during schema initialization."""
-        from amplihack.memory.neo4j.schema_manager import SchemaManager
         from amplihack.memory.neo4j.exceptions import SchemaInitializationError
+        from amplihack.memory.neo4j.schema_manager import SchemaManager
 
         mock_connector = Mock()
         mock_connector.execute_write = Mock(side_effect=Exception("Database error"))
