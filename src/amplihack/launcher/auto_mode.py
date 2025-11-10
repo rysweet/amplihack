@@ -277,7 +277,7 @@ class AutoMode:
                 mirror_stream.write(line)
                 mirror_stream.flush()
 
-        def feed_pty_stdin(fd, proc):
+        def feed_pty_stdin(fd, proc) -> None:
             """Auto-feed pty master with newlines to prevent any stdin blocking."""
             try:
                 while proc.poll() is None:
