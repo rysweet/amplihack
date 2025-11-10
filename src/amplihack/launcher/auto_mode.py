@@ -169,7 +169,7 @@ class AutoMode:
                 self.ui_enabled = False
                 self.ui = None
 
-    def log(self, msg: str, level: str = "INFO"):
+    def log(self, msg: str, level: str = "INFO") -> None:
         """Log message with optional level."""
         # Only print INFO, WARNING, ERROR to console - skip DEBUG
         if level in ("INFO", "WARNING", "ERROR"):
