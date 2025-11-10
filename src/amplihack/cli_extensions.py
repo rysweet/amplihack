@@ -18,7 +18,7 @@ from .bundle_generator.models import DistributionMethod, PackageFormat
 
 
 @click.group()
-def bundle():
+def bundle() -> None:
     """Agent Bundle Generator commands."""
 
 
