@@ -523,7 +523,7 @@ def _local_install(repo_root):
     pre_dirs = all_rel_dirs(CLAUDE_DIR)
 
     # Step 3: Copy all essential directories
-    print("📁 Copying essential directories:")
+    logger.info("📁 Copying essential directories:")
     copied_dirs = copytree_manifest(repo_root, CLAUDE_DIR)
 
     if not copied_dirs:
