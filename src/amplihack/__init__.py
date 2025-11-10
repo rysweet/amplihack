@@ -186,7 +186,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
                                         files_updated += 1
                                     except (OSError, PermissionError) as e:
                                         permission_errors += 1
-                                        print(f"  ⚠️  Could not chmod {file}: {e}")
+                                        logger.info(f"  ⚠️  Could not chmod {file}: {e}")
 
                     if files_updated > 0:
                         print(f"  🔐 Set execute permissions on {files_updated} hook files")
