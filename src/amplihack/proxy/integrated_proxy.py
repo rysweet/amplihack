@@ -1271,7 +1271,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
             raise
         except Exception as e:
             logger.error(f"Error in create_message: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     return app
 
@@ -3711,7 +3711,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                             handle_streaming(response_generator, request),
                             media_type="text/event-stream",
                         )
-                    raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}")
+                    raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}") from e
             else:
                 # Regular streaming for non-tool requests
                 response_generator = await litellm.acompletion(**litellm_request)
@@ -3743,7 +3743,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                         logger.info("🔄 Falling back to regular completion")
                         litellm_response = litellm.completion(**litellm_request)
                     else:
-                        raise HTTPException(status_code=500, detail=f"Tool completion failed: {e}")
+                        raise HTTPException(status_code=500, detail=f"Tool completion failed: {e}") from e
             else:
                 # Regular completion for non-tool requests
                 litellm_response = litellm.completion(**litellm_request)
