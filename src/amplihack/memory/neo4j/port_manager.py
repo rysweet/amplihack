@@ -201,25 +201,29 @@ def detect_neo4j_on_port(port: int, password: str) -> Tuple[bool, bool]:
         from neo4j import GraphDatabase
         from neo4j.exceptions import AuthError, ServiceUnavailable
 
-        driver = GraphDatabase.driver(f"bolt://localhost:{port}", auth=("neo4j", password))
-
+        driver = None
         try:
+            driver = GraphDatabase.driver(f"bolt://localhost:{port}", auth=("neo4j", password))
             # Try a simple query
             with driver.session() as session:
                 session.run("RETURN 1")
-            driver.close()
             return True, True  # Is Neo4j, can connect
         except AuthError:
-            driver.close()
             return True, False  # Is Neo4j, wrong password
-        except Exception:
-            driver.close()
+        except ServiceUnavailable:
+            return False, False  # Not Neo4j (or not responding)
+        except Exception as e:
+            logger.debug("Neo4j connection test failed: %s", e)
             return False, False  # Not Neo4j or connection failed
+        finally:
+            if driver is not None:
+                try:
+                    driver.close()
+                except Exception as close_error:
+                    logger.debug("Error closing Neo4j driver: %s", close_error)
 
-    except ServiceUnavailable:
-        return False, False  # Not Neo4j (or not responding)
     except Exception as e:
-        logger.debug("Neo4j connection test failed: %s", e)
+        logger.debug("Neo4j driver initialization failed: %s", e)
         return False, False
 
 
