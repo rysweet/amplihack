@@ -532,7 +532,7 @@ def _local_install(repo_root):
         return
 
     # Step 4: Create runtime directories
-    print("\n📂 Creating runtime directories:")
+    logger.info("\n📂 Creating runtime directories:")
     create_runtime_dirs()
 
     # Step 5: Configure settings.json
