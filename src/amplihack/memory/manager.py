@@ -11,6 +11,7 @@ from .models import MemoryEntry, MemoryQuery, MemoryType
 
 class MemoryManager:
     """High-level interface for agent memory operations.
+# Code quality enhancement: batch-105
 
     Provides simple store/retrieve operations with automatic session management,
     batch operations for efficiency, and memory lifecycle management.
