@@ -156,7 +156,7 @@ class FileLoggingHandlerWithRotation(logging.Handler):
 class FileLoggingService:
     """File-based logging service with automatic terminal launching."""
 
-    def __init__(self, port: int):
+    def __init__(self, port: int) -> None:
         """Initialize the file logging service.
 
         Args:
