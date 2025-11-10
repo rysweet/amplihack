@@ -78,8 +78,16 @@ class Neo4jManager:
             # Present options and sync
             return self._handle_credential_sync(containers)
 
-        except Exception:
+        except (OSError, IOError, RuntimeError) as e:
             # Graceful degradation - never crash launcher
+            # Log specific error for debugging
+            import sys
+            print(f"Neo4j credential sync warning: {type(e).__name__}: {e}", file=sys.stderr)
+            return True
+        except Exception as e:
+            # Catch-all for unexpected errors with logging
+            import sys
+            print(f"Neo4j credential sync unexpected error: {type(e).__name__}: {e}", file=sys.stderr)
             return True
 
     def _handle_credential_sync(self, containers: List[Neo4jContainer]) -> bool:

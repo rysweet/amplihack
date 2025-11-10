@@ -116,7 +116,7 @@ class IngestionMetadata:
         if self.ingestion_counter < 1:
             raise ValueError("ingestion_counter must be >= 1")
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for Neo4j storage.
 
         Returns:
@@ -126,7 +126,7 @@ class IngestionMetadata:
             "ingestion_id": self.ingestion_id,
             "timestamp": self.timestamp.isoformat(),
             "commit_sha": self.commit_sha,
-            "ingestion_counter": str(self.ingestion_counter),
+            "ingestion_counter": self.ingestion_counter,  # Keep as INTEGER
             **self.metadata,
         }
 

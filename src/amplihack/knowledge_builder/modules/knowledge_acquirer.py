@@ -1,12 +1,12 @@
 """Knowledge acquirer using web search."""
 
-import subprocess
 from typing import List
 
 from amplihack.knowledge_builder.kb_types import Question
+from amplihack.knowledge_builder.modules.claude_caller import ClaudeCaller
 
 
-class KnowledgeAcquirer:
+class KnowledgeAcquirer(ClaudeCaller):
     """Acquires knowledge by answering questions via web search."""
 
     def __init__(self, claude_cmd: str = "claude"):
@@ -15,7 +15,7 @@ class KnowledgeAcquirer:
         Args:
             claude_cmd: Claude command to use (default: "claude")
         """
-        self.claude_cmd = claude_cmd
+        super().__init__(claude_cmd)
 
     def answer_question(self, question: Question, topic: str) -> tuple[str, List[str]]:
         """Answer a question using web search.
@@ -42,22 +42,17 @@ Requirements:
   - [url2]
   - [url3]"""
 
-        result = subprocess.run(
-            [self.claude_cmd, "--dangerously-skip-permissions", "-p", prompt],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        success, stdout, stderr = self._call_claude(prompt)
 
-        if result.returncode != 0:
+        if not success:
             return f"Unable to answer: {question.text}", []
 
         # Parse output
-        output = result.stdout.strip()
+        output = stdout.strip()
         answer = ""
         sources = []
 
-        # Extract answer
+        # Extract answer with improved fallback logic
         if "ANSWER:" in output:
             answer_section = output.split("ANSWER:", 1)[1]
             if "SOURCES:" in answer_section:
@@ -65,8 +60,9 @@ Requirements:
             else:
                 answer = answer_section.strip()
         else:
-            # Fallback: take first paragraph
-            answer = output.split("\n\n")[0].strip()
+            # Improved fallback: take first substantial paragraph
+            paragraphs = [p.strip() for p in output.split("\n\n") if p.strip()]
+            answer = paragraphs[0] if paragraphs else output.strip()[:200]
 
         # Extract sources
         if "SOURCES:" in output:

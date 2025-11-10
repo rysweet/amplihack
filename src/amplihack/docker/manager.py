@@ -31,12 +31,21 @@ class DockerManager:
 
         print(f"Building Docker image: {self.IMAGE_NAME}")
 
-        # Find Dockerfile at project root
-        project_root = Path(__file__).parent.parent.parent.parent
-        dockerfile = project_root / "Dockerfile"
+        # Find Dockerfile at project root by searching upward from current file
+        current = Path(__file__).resolve()
+        project_root = None
+        dockerfile = None
 
-        if not dockerfile.exists():
-            print(f"Dockerfile not found at {dockerfile}", file=sys.stderr)
+        # Search upward for Dockerfile (max 5 levels to avoid infinite loop)
+        for parent in [current.parent] + list(current.parents)[:5]:
+            candidate = parent / "Dockerfile"
+            if candidate.exists():
+                project_root = parent
+                dockerfile = candidate
+                break
+
+        if not dockerfile or not project_root:
+            print("Dockerfile not found in project hierarchy", file=sys.stderr)
             return False
 
         try:
@@ -81,12 +90,22 @@ class DockerManager:
         work_dir = Path(cwd or os.getcwd()).resolve()
 
         # Build Docker command with security options
+        # Use current user's UID/GID to avoid permission issues
+        uid = os.getuid() if hasattr(os, 'getuid') else 1000
+        gid = os.getgid() if hasattr(os, 'getgid') else 1000
+
         docker_cmd = [
             "docker",
             "run",
             "--rm",
             "--interactive",
-            "--tty" if sys.stdin.isatty() else "--no-TTY",
+        ]
+
+        # Add TTY flag only if stdin is a TTY
+        if sys.stdin.isatty():
+            docker_cmd.append("--tty")
+
+        docker_cmd.extend([
             # Security options
             "--security-opt",
             "no-new-privileges",
@@ -95,15 +114,15 @@ class DockerManager:
             "4g",  # Limit memory to 4GB
             "--cpus",
             "2",  # Limit CPU to 2 cores
-            # Run as non-root user (UID 1000)
+            # Run as current user to avoid permission issues
             "--user",
-            "1000:1000",
+            f"{uid}:{gid}",
             # Mount workspace
             "-v",
             f"{work_dir}:/workspace",
             "-w",
             "/workspace",
-        ]
+        ])
 
         # Forward important environment variables
         env_vars = self._get_env_vars()
@@ -117,8 +136,15 @@ class DockerManager:
         # Run the container
         try:
             return subprocess.run(docker_cmd, check=False).returncode
-        except subprocess.SubprocessError as e:
+        except subprocess.TimeoutExpired as e:
+            print(f"Docker container timed out: {e}", file=sys.stderr)
+            return 124  # Standard timeout exit code
+        except (subprocess.CalledProcessError, OSError) as e:
             print(f"Error running Docker container: {e}", file=sys.stderr)
+            return 1
+        except subprocess.SubprocessError as e:
+            # Catch any other subprocess-related errors
+            print(f"Unexpected subprocess error: {e}", file=sys.stderr)
             return 1
 
     def _sanitize_env_value(self, value: str) -> str:
