@@ -358,7 +358,7 @@ class BlarifyIntegration(BaseGraphManager):
         return result[0]["count"] if result else 0
 
     def _import_relationships(self, relationships: List[Dict[str, Any]]) -> int:
-        """Import code relationships (calls, inherits, references).
+        """Import code relationships using UNWIND for batch operations.
 
         Args:
             relationships: List of relationship dictionaries from blarify
@@ -369,21 +369,52 @@ class BlarifyIntegration(BaseGraphManager):
         if not relationships:
             return 0
 
+        # Batch relationships by type
+        calls = [r for r in relationships if r.get("type") == "CALLS"]
+        inherits = [r for r in relationships if r.get("type") == "INHERITS"]
+        references = [r for r in relationships if r.get("type") == "REFERENCES"]
+
         count = 0
 
-        for rel in relationships:
-            rel_type = rel.get("type")
-            source_id = rel.get("source_id")
-            target_id = rel.get("target_id")
+        # Batch create CALLS relationships
+        if calls:
+            count += self._batch_create_relationships(calls, "CALLS", "Function", "Function")
 
-            if rel_type == "CALLS":
-                count += self._create_call_relationship(source_id, target_id)
-            elif rel_type == "INHERITS":
-                count += self._create_inheritance_relationship(source_id, target_id)
-            elif rel_type == "REFERENCES":
-                count += self._create_reference_relationship(source_id, target_id)
+        # Batch create INHERITS relationships
+        if inherits:
+            count += self._batch_create_relationships(inherits, "INHERITS", "Class", "Class")
+
+        # Batch create REFERENCES relationships
+        if references:
+            count += self._batch_create_relationships(references, "REFERENCES", None, None)
 
         return count
+
+    def _batch_create_relationships(self, rels: List[Dict], rel_type: str,
+                                   source_label: Optional[str], target_label: Optional[str]) -> int:
+        """Batch create relationships using UNWIND."""
+        if source_label and target_label:
+            query = f"""
+            UNWIND $rels AS rel
+            MATCH (source:{source_label} {{id: rel.source_id}})
+            MATCH (target:{target_label} {{id: rel.target_id}})
+            MERGE (source)-[r:{rel_type}]->(target)
+            ON CREATE SET r.created_at = $created_at
+            RETURN count(r) as count
+            """
+        else:
+            query = f"""
+            UNWIND $rels AS rel
+            MATCH (source {{id: rel.source_id}})
+            MATCH (target {{id: rel.target_id}})
+            MERGE (source)-[r:{rel_type}]->(target)
+            ON CREATE SET r.created_at = $created_at
+            RETURN count(r) as count
+            """
+
+        params = {"rels": rels, "created_at": datetime.now().isoformat()}
+        result = self.conn.execute_write(query, params)
+        return result[0]["count"] if result else 0
 
     def _create_call_relationship(self, source_id: str, target_id: str) -> int:
         """Create CALLS relationship between functions."""
