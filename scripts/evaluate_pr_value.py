@@ -32,7 +32,7 @@ print("")
 # Test if Neo4j is available
 print("Step 1: Verify Neo4j is running...")
 try:
-    from amplihack.memory.neo4j import lifecycle, AgentMemoryManager
+    from amplihack.memory.neo4j import AgentMemoryManager, lifecycle
 
     if lifecycle.ensure_neo4j_running(blocking=True):
         print("✅ Neo4j is running")

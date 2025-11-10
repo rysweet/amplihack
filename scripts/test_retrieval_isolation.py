@@ -18,25 +18,25 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from amplihack.memory.neo4j.connector import Neo4jConnector, CircuitBreaker, CircuitState
-from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
-from amplihack.memory.neo4j.schema import SchemaManager
-from amplihack.memory.neo4j.retrieval import (
-    RetrievalContext,
-    TemporalRetrieval,
-    SimilarityRetrieval,
-    GraphTraversal,
-    HybridRetrieval,
-)
+from amplihack.memory.neo4j.connector import CircuitBreaker, CircuitState, Neo4jConnector
 from amplihack.memory.neo4j.consolidation import (
     MemoryConsolidator,
 )
+from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
 from amplihack.memory.neo4j.monitoring import (
+    HealthMonitor,
     MetricsCollector,
     MonitoredConnector,
-    HealthMonitor,
     OperationType,
 )
+from amplihack.memory.neo4j.retrieval import (
+    GraphTraversal,
+    HybridRetrieval,
+    RetrievalContext,
+    SimilarityRetrieval,
+    TemporalRetrieval,
+)
+from amplihack.memory.neo4j.schema import SchemaManager
 
 
 class TestResults:
@@ -483,7 +483,7 @@ def test_circuit_breaker(results: TestResults):
         for _ in range(3):
             try:
                 breaker.call(fail_func)
-            except:
+            except Exception:
                 pass
 
         results.record(
