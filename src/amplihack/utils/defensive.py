@@ -197,8 +197,13 @@ def retry_with_feedback(
             if error_handler:
                 try:
                     feedback = error_handler(exc, attempt)
-                except Exception:
-                    # Error handler failed, continue with default retry
+                except (TypeError, ValueError, AttributeError) as e:
+                    # Error handler invalid or failed - log and continue with default retry
+                    logger.debug(f"Error handler failed: {e}")
+                    feedback = None
+                except Exception as e:
+                    # Unexpected error in handler - log warning and continue
+                    logger.warning(f"Unexpected error in error handler: {e}")
                     feedback = None
 
             # Wait before next attempt (exponential backoff)

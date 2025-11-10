@@ -503,7 +503,8 @@ class TestLockReleaseOnException:
         with patch.object(stop_hook, "get_session_messages", side_effect=Exception("Test error")):
             try:
                 stop_hook._run_new_analysis(lock, state_machine, input_data, "test-session")
-            except Exception:
+            except Exception as e:
+                # Expected: Should handle exception gracefully
                 pass
 
         # Lock should be released
