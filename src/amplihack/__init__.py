@@ -408,7 +408,7 @@ def ensure_settings_json():
             print(f"  💾 Backed up to {backup_name}")
         except Exception as e:
             print(f"  ⚠️  Could not read existing settings.json: {e}")
-            print("  🔧 Creating new settings.json from template")
+            logger.info("  🔧 Creating new settings.json from template")
             settings = SETTINGS_TEMPLATE.copy()
     else:
         print("  🔧 Creating new settings.json")
