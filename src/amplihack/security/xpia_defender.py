@@ -5,6 +5,7 @@ Core security validation logic for detecting and preventing
 Cross-Prompt Injection Attacks (XPIA).
 """
 
+import ipaddress
 import json
 import logging
 import os
@@ -597,17 +598,43 @@ class WebFetchXPIADefender(XPIADefender):
                     )
                 )
 
-            # Check for local/private addresses
-            if (
-                domain in ["localhost", "127.0.0.1", "0.0.0.0"]
-                or domain.startswith("192.168.")
-                or domain.startswith("10.")
-            ):
+            # Check for local/private addresses (IPv4 and IPv6)
+            is_private = False
+            private_reason = ""
+
+            # Check hostname-based private addresses
+            if domain.lower() in ["localhost", "localhost.localdomain"]:
+                is_private = True
+                private_reason = "localhost hostname"
+            # Check for IPv6 localhost variations
+            elif domain in ["[::1]", "::1", "[0:0:0:0:0:0:0:1]"]:
+                is_private = True
+                private_reason = "IPv6 localhost"
+            else:
+                # Try parsing as IP address
+                try:
+                    # Remove brackets for IPv6 addresses
+                    ip_str = domain.strip("[]")
+                    ip_obj = ipaddress.ip_address(ip_str)
+
+                    if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local:
+                        is_private = True
+                        if ip_obj.is_loopback:
+                            private_reason = f"{ip_obj.version} loopback address"
+                        elif ip_obj.is_link_local:
+                            private_reason = f"{ip_obj.version} link-local address"
+                        else:
+                            private_reason = f"IPv{ip_obj.version} private address"
+                except ValueError:
+                    # Not a valid IP, continue with other checks
+                    pass
+
+            if is_private:
                 threats.append(
                     ThreatDetection(
                         threat_type=ThreatType.PRIVILEGE_ESCALATION,
                         severity=RiskLevel.HIGH,
-                        description="URL points to local/private address",
+                        description=f"URL points to {private_reason}: {domain}",
                         mitigation="Block access to local resources",
                     )
                 )
