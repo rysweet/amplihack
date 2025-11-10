@@ -141,7 +141,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
 
         # Skip if source doesn't exist
         if not os.path.exists(source_dir):
-            print(f"  ⚠️  Warning: {dir_path} not found in source, skipping")
+            logger.info(f"  ⚠️  Warning: {dir_path} not found in source, skipping")
             continue
 
         target_dir = os.path.join(dst, dir_path)
