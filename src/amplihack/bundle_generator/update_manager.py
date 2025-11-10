@@ -88,7 +88,8 @@ class UpdateManager:
         if current_version != latest_version:
             try:
                 changes = self._get_changelog(current_version, latest_version)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to get changelog: {e}")
                 changes = ["Changelog unavailable"]
 
         return UpdateInfo(
