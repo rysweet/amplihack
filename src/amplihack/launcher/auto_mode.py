@@ -270,7 +270,7 @@ class AutoMode:
         stdout_lines = []
         stderr_lines = []
 
-        def read_stream(stream, output_list, mirror_stream):
+        def read_stream(stream, output_list, mirror_stream) -> None:
             """Read from stream and mirror to output."""
             for line in iter(stream.readline, ""):
                 output_list.append(line)
