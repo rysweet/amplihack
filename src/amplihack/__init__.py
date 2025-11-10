@@ -569,7 +569,7 @@ def _local_install(repo_root):
     if settings_ok and hooks_ok and len(copied_dirs) > 0:
         print("✅ Amplihack installation completed successfully!")
         print(f"\n📍 Installed to: {CLAUDE_DIR}")
-        print("\n📦 Components installed:")
+        logger.info("\n📦 Components installed:")
         for dir_path in sorted(copied_dirs):
             print(f"   • {dir_path}")
         print("\n🎯 Features enabled:")
