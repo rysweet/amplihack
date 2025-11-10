@@ -104,7 +104,7 @@ class FileLoggingHandlerWithRotation(logging.Handler):
         super().setFormatter(fmt)
         self._rotating_handler.setFormatter(fmt)
 
-    def setLevel(self, level):
+    def setLevel(self, level) -> None:
         """Set level for both this handler and the internal rotating handler."""
         super().setLevel(level)
         self._rotating_handler.setLevel(level)
