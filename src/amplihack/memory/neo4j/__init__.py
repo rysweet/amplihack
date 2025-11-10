@@ -127,6 +127,7 @@ __all__ = [
     "CodebaseIdentity",
     "IngestionMetadata",
     "IngestionResult",
+    "IngestionStatus",
     "IngestionTracker",
     # Retrieval
     "RetrievalContext",

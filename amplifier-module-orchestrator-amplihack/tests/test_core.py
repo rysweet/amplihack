@@ -8,8 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core import initialize_orchestrator, execute_workflow  # type: ignore
-from models import OrchestratorConfig, WorkflowRequest, AgentType  # type: ignore
+from core import execute_workflow, initialize_orchestrator  # type: ignore
+from models import AgentType, OrchestratorConfig, WorkflowRequest  # type: ignore
 
 
 class TestOrchestratorInitialization:

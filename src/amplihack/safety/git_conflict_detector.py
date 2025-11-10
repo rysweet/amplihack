@@ -1,8 +1,8 @@
 """Git conflict detection for safe file copying."""
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-import subprocess
 from typing import List, Union
 
 

@@ -585,5 +585,5 @@ class MemoryDatabase:
                 parent_id=row[12],
             )
         except (ValueError, TypeError, json.JSONDecodeError) as e:
-            print(f"Error converting row to memory: {e}")
+            logger.error(f"Error converting row to memory: {e}")
             return None
