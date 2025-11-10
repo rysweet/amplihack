@@ -712,7 +712,7 @@ Document your decisions and reasoning in comments/logs."""
 
         return (code, output)
 
-    def run_hook(self, hook: str):
+    def run_hook(self, hook: str) -> None:
         """Run hook for copilot and codex (Claude SDK handles hooks automatically)."""
         if self.sdk not in ["copilot", "codex"]:
             # Claude SDK runs hooks automatically
