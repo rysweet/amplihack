@@ -15,6 +15,9 @@ from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 # TypeVar for preserving type of default parameter
 T = TypeVar('T')
 
+# JSON type for parameters - serializable types only
+JSONType = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
+
 logger = logging.getLogger(__name__)
 
 
@@ -310,7 +313,7 @@ def safe_read_json(
 @retry_file_operation(max_retries=3, delay=0.1)
 def safe_write_json(
     file_path: Union[str, Path],
-    data: Any,
+    data: JSONType,
     indent: int = 2,
     sort_keys: bool = True,
     atomic: bool = True,
