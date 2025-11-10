@@ -19,7 +19,7 @@ import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 
 class HookProcessor(ABC):
@@ -157,7 +157,7 @@ class HookProcessor(ABC):
         sys.stdout.write("\n")
         sys.stdout.flush()
 
-    def save_metric(self, metric_name: str, value: Any, metadata: Optional[Dict] = None):
+    def save_metric(self, metric_name: str, value: Union[int, float, str, bool, Dict[str, Any]], metadata: Optional[Dict] = None):
         """Save a metric to the metrics directory.
 
         Args:
