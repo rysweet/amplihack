@@ -425,7 +425,7 @@ def ensure_settings_json():
     # Update XPIA hook paths if XPIA hooks directory exists
     xpia_hooks_abs = os.path.join(HOME, ".claude", "tools", "xpia", "hooks")
     if os.path.exists(xpia_hooks_abs):
-        print("  🔒 XPIA security hooks directory found")
+        logger.info("  🔒 XPIA security hooks directory found")
 
         xpia_hooks_rel = ".claude/tools/xpia/hooks"
         xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_rel)
