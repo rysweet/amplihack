@@ -19,7 +19,12 @@ import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
+
+# Type for metric values
+MetricValue = Union[int, float, str, bool, Dict[str, Any]]
+# Type for JSON-serializable session data
+JSONType = Union[Dict[str, Any], list, str, int, float, bool, None]
 
 
 class HookProcessor(ABC):
@@ -157,12 +162,12 @@ class HookProcessor(ABC):
         sys.stdout.write("\n")
         sys.stdout.flush()
 
-    def save_metric(self, metric_name: str, value: Any, metadata: Optional[Dict] = None):
+    def save_metric(self, metric_name: str, value: MetricValue, metadata: Optional[Dict] = None):
         """Save a metric to the metrics directory.
 
         Args:
             metric_name: Name of the metric
-            value: Metric value
+            value: Metric value (int, float, str, bool, or dict)
             metadata: Optional additional metadata
         """
         metrics_file = self.metrics_dir / f"{self.hook_name}_metrics.jsonl"
@@ -287,12 +292,12 @@ class HookProcessor(ABC):
         # Include microseconds to prevent collisions
         return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
-    def save_session_data(self, filename: str, data: Any):
+    def save_session_data(self, filename: str, data: JSONType):
         """Save data to a session-specific file with path validation.
 
         Args:
             filename: Name of the file (without path)
-            data: Data to save (will be JSON serialized if dict/list)
+            data: JSON-serializable data to save (dict, list, str, int, float, bool, or None)
         """
         # Validate filename to prevent path traversal
         if ".." in filename or "/" in filename or "\\" in filename:
