@@ -52,7 +52,7 @@ class AutoModeState:
     # Thread synchronization
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize the lock after dataclass initialization."""
         if not hasattr(self, "_lock") or self._lock is None:
             object.__setattr__(self, "_lock", threading.Lock())
