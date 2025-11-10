@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class UVXManager:
     """Manages UVX environment detection and Claude command enhancement."""
 
-    def __init__(self, force_staging: bool = False):
+    def __init__(self, force_staging: bool = False) -> None:
         """Initialize UVX manager.
 
         Args:
