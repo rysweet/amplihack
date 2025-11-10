@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import shlex
 
 # Import from specifications
 from datetime import datetime
@@ -205,24 +206,75 @@ class XPIADefender(XPIADefenseInterface):
         threats: List[ThreatDetection] = []
         full_command = f"{command} {' '.join(arguments or [])}"
 
-        # Check for dangerous commands
-        dangerous_commands = [
-            "rm -rf /",
-            "mkfs",
-            "dd if=/dev/zero",
-            "fork bomb",
-            ":(){ :|:& };:",
-            "> /dev/sda",
-            "chmod 777 /",
-        ]
+        # Parse command using shlex to handle shell quoting/escaping
+        try:
+            parsed_tokens = shlex.split(full_command)
+        except ValueError:
+            # If shlex parsing fails, treat as suspicious
+            threats.append(
+                ThreatDetection(
+                    threat_type=ThreatType.MALICIOUS_CODE,
+                    severity=RiskLevel.HIGH,
+                    description="Command contains malformed shell syntax",
+                    mitigation="Block execution - cannot safely parse command",
+                )
+            )
+            parsed_tokens = []
 
-        for danger in dangerous_commands:
-            if danger in full_command:
+        # Check for dangerous commands (using parsed tokens to avoid bypass)
+        dangerous_commands = {
+            "mkfs", "dd", "chmod", "chown", "rm"
+        }
+        dangerous_paths = {
+            "/", "/dev/sda", "/dev/zero", "/etc"
+        }
+
+        # Check if any token is a dangerous command
+        if parsed_tokens:
+            base_cmd = parsed_tokens[0].split('/')[-1]  # Handle full paths
+            if base_cmd in dangerous_commands:
+                # Check for dangerous flags/arguments
+                remaining = ' '.join(parsed_tokens[1:])
+                if base_cmd == "rm" and ("-rf /" in remaining or "-rf/" in remaining):
+                    threats.append(
+                        ThreatDetection(
+                            threat_type=ThreatType.MALICIOUS_CODE,
+                            severity=RiskLevel.CRITICAL,
+                            description=f"Dangerous command detected: rm -rf /",
+                            mitigation="Block execution immediately",
+                        )
+                    )
+                elif base_cmd == "chmod" and "777" in remaining and any(p in remaining for p in dangerous_paths):
+                    threats.append(
+                        ThreatDetection(
+                            threat_type=ThreatType.MALICIOUS_CODE,
+                            severity=RiskLevel.CRITICAL,
+                            description=f"Dangerous command detected: chmod 777 on system path",
+                            mitigation="Block execution immediately",
+                        )
+                    )
+                elif base_cmd == "dd" and "if=/dev/zero" in remaining:
+                    threats.append(
+                        ThreatDetection(
+                            threat_type=ThreatType.MALICIOUS_CODE,
+                            severity=RiskLevel.CRITICAL,
+                            description=f"Dangerous command detected: dd if=/dev/zero",
+                            mitigation="Block execution immediately",
+                        )
+                    )
+
+        # Check for fork bomb pattern (cannot be easily parsed by shlex)
+        fork_bomb_patterns = [
+            r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;?\s*:",
+            r"fork\s+bomb"
+        ]
+        for pattern in fork_bomb_patterns:
+            if re.search(pattern, full_command, re.IGNORECASE):
                 threats.append(
                     ThreatDetection(
                         threat_type=ThreatType.MALICIOUS_CODE,
                         severity=RiskLevel.CRITICAL,
-                        description=f"Dangerous command detected: {danger}",
+                        description="Fork bomb pattern detected",
                         mitigation="Block execution immediately",
                     )
                 )
