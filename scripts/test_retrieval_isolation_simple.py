@@ -70,7 +70,8 @@ def test_circuit_breaker():
         for _ in range(3):
             try:
                 breaker.call(lambda: 1 / 0)
-            except:
+            except Exception as e:
+                # Expected: Circuit breaker should catch ZeroDivisionError
                 pass
 
         assert breaker.state == CircuitState.OPEN
