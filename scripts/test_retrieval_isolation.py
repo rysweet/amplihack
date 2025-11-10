@@ -483,7 +483,7 @@ def test_circuit_breaker(results: TestResults):
         for _ in range(3):
             try:
                 breaker.call(fail_func)
-            except:
+            except Exception:
                 pass
 
         results.record(
