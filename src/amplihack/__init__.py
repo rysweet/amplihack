@@ -432,7 +432,7 @@ def ensure_settings_json():
         hooks_updated += xpia_updated
 
         if xpia_updated > 0:
-            print(f"  🔒 XPIA security hooks configured ({xpia_updated} hooks)")
+            logger.info(f"  🔒 XPIA security hooks configured ({xpia_updated} hooks)")
 
     # Ensure permissions are set correctly
     if "permissions" not in settings:
