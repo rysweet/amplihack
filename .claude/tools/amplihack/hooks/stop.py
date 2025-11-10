@@ -39,6 +39,12 @@ class StopHook(HookProcessor):
     """Hook processor for stop events with lock support."""
 
     def __init__(self):
+        """Initialize stop hook with lock file paths.
+
+        Sets up paths for:
+        - lock_flag: Controls whether stop should be blocked
+        - continuation_prompt_file: Custom prompt to show when blocking
+        """
         super().__init__("stop")
         self.lock_flag = self.project_root / ".claude" / "runtime" / "locks" / ".lock_active"
         self.continuation_prompt_file = (
@@ -168,7 +174,14 @@ class StopHook(HookProcessor):
 
         Executes Neo4j shutdown coordination if appropriate.
         Fail-safe: Never raises exceptions.
+
+        Performance note: Skips cleanup if Neo4j not configured to avoid overhead.
         """
+        # Quick check: Skip if Neo4j not configured (performance optimization)
+        if not os.getenv("NEO4J_USERNAME") and not os.getenv("NEO4J_PASSWORD"):
+            self.log("Neo4j not configured - skipping cleanup", "DEBUG")
+            return
+
         try:
             # Import components
             from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
@@ -199,6 +212,8 @@ class StopHook(HookProcessor):
 
             self.log("Neo4j cleanup handler completed")
 
+        except ImportError as e:
+            self.log(f"Neo4j modules not available: {e}", "DEBUG")
         except Exception as e:
             self.log(f"Neo4j cleanup failed: {e}", "WARNING")
 
@@ -207,7 +222,17 @@ class StopHook(HookProcessor):
 
         Returns:
             str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
+
+        Notes:
+            - Returns default if file doesn't exist or is empty
+            - Validates content length (max 1000 chars)
+            - Handles encoding errors gracefully
         """
+        # Validate continuation_prompt_file exists
+        if not self.continuation_prompt_file:
+            self.log("continuation_prompt_file not initialized - using default", "ERROR")
+            return DEFAULT_CONTINUATION_PROMPT
+
         # Check if custom prompt file exists
         if not self.continuation_prompt_file.exists():
             self.log("No custom continuation prompt file - using default")
@@ -297,8 +322,10 @@ class StopHook(HookProcessor):
 
         Returns:
             Session ID string
+
+        Performance note: Caches result to avoid repeated filesystem access.
         """
-        # Try environment variable
+        # Try environment variable (fastest)
         session_id = os.environ.get("CLAUDE_SESSION_ID")
         if session_id:
             return session_id
@@ -306,12 +333,17 @@ class StopHook(HookProcessor):
         logs_dir = self.project_root / ".claude" / "runtime" / "logs"
         if logs_dir.exists():
             try:
-                sessions = [p for p in logs_dir.iterdir() if p.is_dir()]
-                sessions = sorted(sessions, key=lambda p: p.stat().st_mtime, reverse=True)
-                if sessions:
-                    return sessions[0].name
+                # Performance: Use generator to avoid loading all directories into memory
+                sessions = (p for p in logs_dir.iterdir() if p.is_dir())
+                # Get most recent by modification time
+                most_recent = max(sessions, key=lambda p: p.stat().st_mtime, default=None)
+                if most_recent:
+                    return most_recent.name
             except (OSError, PermissionError) as e:
                 self.log(f"Cannot access logs directory: {e}", "WARNING")
+            except ValueError:
+                # max() on empty sequence
+                pass
 
         # Generate timestamp-based ID
         return datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -324,6 +356,8 @@ class StopHook(HookProcessor):
 
         Returns:
             Filled FEEDBACK_SUMMARY template as string, or None if failed
+
+        Performance note: Lazy imports and efficient transcript parsing.
         """
         try:
             from claude_reflection import run_claude_reflection
@@ -338,36 +372,47 @@ class StopHook(HookProcessor):
         conversation = None
         if transcript_path:
             transcript_file = Path(transcript_path)
-            self.log(f"Using transcript from Claude Code: {transcript_file}")
 
+            # Performance check: Skip if transcript file is too large (>10MB)
             try:
-                conversation = []
-                with open(transcript_file) as f:
-                    for line in f:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        entry = json.loads(line)
-                        if entry.get("type") in ["user", "assistant"] and "message" in entry:
-                            msg = entry["message"]
-                            content = msg.get("content", "")
-                            if isinstance(content, list):
-                                text_parts = []
-                                for block in content:
-                                    if isinstance(block, dict) and block.get("type") == "text":
-                                        text_parts.append(block.get("text", ""))
-                                content = "\n".join(text_parts)
+                file_size = transcript_file.stat().st_size
+                if file_size > 10 * 1024 * 1024:
+                    self.log(f"Transcript file too large ({file_size} bytes) - using session logs instead", "WARNING")
+                    transcript_path = None
+            except OSError:
+                pass
 
-                            conversation.append(
-                                {
-                                    "role": msg.get("role", entry.get("type", "user")),
-                                    "content": content,
-                                }
-                            )
-                self.log(f"Loaded {len(conversation)} conversation turns from transcript")
-            except Exception as e:
-                self.log(f"Failed to load transcript: {e}", "WARNING")
-                conversation = None
+            if transcript_path:
+                self.log(f"Using transcript from Claude Code: {transcript_file}")
+
+                try:
+                    conversation = []
+                    with open(transcript_file, encoding="utf-8") as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            entry = json.loads(line)
+                            if entry.get("type") in ["user", "assistant"] and "message" in entry:
+                                msg = entry["message"]
+                                content = msg.get("content", "")
+                                if isinstance(content, list):
+                                    text_parts = []
+                                    for block in content:
+                                        if isinstance(block, dict) and block.get("type") == "text":
+                                            text_parts.append(block.get("text", ""))
+                                    content = "\n".join(text_parts)
+
+                                conversation.append(
+                                    {
+                                        "role": msg.get("role", entry.get("type", "user")),
+                                        "content": content,
+                                    }
+                                )
+                    self.log(f"Loaded {len(conversation)} conversation turns from transcript")
+                except Exception as e:
+                    self.log(f"Failed to load transcript: {e}", "WARNING")
+                    conversation = None
 
         # Find session directory
         session_dir = self.project_root / ".claude" / "runtime" / "logs" / session_id

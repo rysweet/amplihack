@@ -36,6 +36,12 @@ class SessionManager:
 
         Args:
             runtime_dir: Directory for session storage. Defaults to .claude/runtime/sessions/
+
+        Notes:
+            - Creates runtime_dir if it doesn't exist
+            - Starts auto-save thread for active sessions
+            - Loads existing session registry from disk
+            - Thread-safe via RLock for all operations
         """
         self.runtime_dir = runtime_dir or Path(".claude/runtime/sessions")
         self.runtime_dir.mkdir(parents=True, exist_ok=True)
@@ -73,7 +79,16 @@ class SessionManager:
 
         Returns:
             Session ID
+
+        Raises:
+            ValueError: If name is empty or invalid
         """
+        if not name or not name.strip():
+            raise ValueError("session name cannot be empty")
+
+        if len(name) > 255:
+            raise ValueError("session name too long (max 255 chars)")
+
         config = config or SessionConfig()
         session = ClaudeSession(config)
 
@@ -101,7 +116,13 @@ class SessionManager:
 
         Returns:
             ClaudeSession if active, None otherwise
+
+        Raises:
+            ValueError: If session_id is empty
         """
+        if not session_id or not session_id.strip():
+            raise ValueError("session_id cannot be empty")
+
         with self._lock:
             session = self._active_sessions.get(session_id)
             if session:
@@ -117,7 +138,13 @@ class SessionManager:
 
         Returns:
             True if saved successfully
+
+        Raises:
+            ValueError: If session_id is empty
         """
+        if not session_id or not session_id.strip():
+            raise ValueError("session_id cannot be empty")
+
         with self._lock:
             session = self._active_sessions.get(session_id)
             if not session:
@@ -128,11 +155,12 @@ class SessionManager:
                 session_data = self._serialize_session(session)
                 session_file = self.runtime_dir / f"{session_id}.json"
 
-                # Check if save is needed
+                # Check if save is needed (performance optimization)
                 if not force and session_file.exists():
                     existing_hash = self._get_file_hash(session_file)
                     new_hash = self._get_data_hash(session_data)
                     if existing_hash == new_hash:
+                        self.logger.debug(f"Session {session_id} unchanged, skipping save")
                         return True  # No changes, skip save
 
                 safe_write_json(session_file, session_data)
@@ -276,7 +304,13 @@ class SessionManager:
 
         Returns:
             Number of sessions cleaned up
+
+        Raises:
+            ValueError: If max_age_days is not positive
         """
+        if max_age_days <= 0:
+            raise ValueError("max_age_days must be positive")
+
         cutoff_time = time.time() - (max_age_days * 24 * 3600)
         cleaned_count = 0
 
@@ -293,7 +327,19 @@ class SessionManager:
         return cleaned_count
 
     def _serialize_session(self, session: ClaudeSession) -> Dict[str, Any]:
-        """Serialize session to JSON-compatible format."""
+        """Serialize session to JSON-compatible format.
+
+        Args:
+            session: ClaudeSession instance to serialize
+
+        Returns:
+            Dict containing all session state, config, and metadata
+
+        Notes:
+            - Limits command history to last 100 commands
+            - Includes current statistics snapshot
+            - Adds saved_at timestamp for tracking
+        """
         return {
             "session_id": session.state.session_id,
             "state": asdict(session.state),
@@ -305,7 +351,20 @@ class SessionManager:
         }
 
     def _deserialize_session(self, data: Dict[str, Any]) -> Optional[ClaudeSession]:
-        """Deserialize session from saved data."""
+        """Deserialize session from saved data.
+
+        Args:
+            data: Serialized session data from JSON file
+
+        Returns:
+            Reconstructed ClaudeSession or None if deserialization fails
+
+        Notes:
+            - Recreates SessionConfig from saved config data
+            - Restores session state attributes
+            - Restores command history
+            - Returns None and logs error on failure
+        """
         try:
             # Reconstruct config
             config_data = data.get("config", {})
@@ -372,21 +431,38 @@ class SessionManager:
                 self.logger.error(f"Auto-save failed: {e}")
 
     def _get_file_hash(self, file_path: Path) -> str:
-        """Get MD5 hash of file contents."""
+        """Get MD5 hash of file contents.
+
+        Performance note: Uses binary reading for efficiency.
+
+        Returns:
+            MD5 hash or empty string on error
+        """
         try:
-            content = safe_read_file(file_path)
-            if content:
-                return hashlib.md5(content.encode()).hexdigest()
-        except Exception:
-            pass
-        return ""
+            # Use binary mode for better performance
+            hash_md5 = hashlib.md5()
+            with open(file_path, "rb") as f:
+                # Read in chunks to handle large files efficiently
+                for chunk in iter(lambda: f.read(8192), b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+        except Exception as e:
+            self.logger.debug(f"Failed to compute hash for {file_path}: {e}")
+            return ""
 
     def _get_data_hash(self, data: Dict[str, Any]) -> str:
-        """Get MD5 hash of data."""
+        """Get MD5 hash of data.
+
+        Performance note: Uses efficient JSON serialization.
+
+        Returns:
+            MD5 hash or empty string on error
+        """
         try:
             content = json.dumps(data, sort_keys=True)
             return hashlib.md5(content.encode()).hexdigest()
-        except Exception:
+        except Exception as e:
+            self.logger.debug(f"Failed to compute data hash: {e}")
             return ""
 
     def stop(self) -> None:

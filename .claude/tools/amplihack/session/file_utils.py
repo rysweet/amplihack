@@ -36,16 +36,27 @@ def retry_file_operation(
     """Decorator for retrying file operations with exponential backoff.
 
     Args:
-        max_retries: Maximum number of retry attempts
-        delay: Initial delay between retries in seconds
-        backoff: Multiplier for delay on each retry
-        exceptions: Tuple of exceptions to catch and retry
+        max_retries: Maximum number of retry attempts (default: 3)
+        delay: Initial delay between retries in seconds (default: 0.1)
+        backoff: Multiplier for delay on each retry (default: 2.0)
+        exceptions: Tuple of exceptions to catch and retry (default: OSError, IOError, PermissionError)
+
+    Returns:
+        Decorator function that wraps the target function
+
+    Raises:
+        RetryExhaustedError: When all retry attempts are exhausted
 
     Example:
         >>> @retry_file_operation(max_retries=5, delay=0.2)
         ... def write_important_file(path, content):
         ...     with open(path, 'w') as f:
         ...         f.write(content)
+
+    Notes:
+        - Delay increases exponentially: delay, delay*backoff, delay*backoff^2, ...
+        - Logs warnings for each retry attempt
+        - Last exception is wrapped in RetryExhaustedError
     """
 
     def decorator(func: Callable) -> Callable:
@@ -86,10 +97,17 @@ def file_lock(lock_file: Path, timeout: float = 30.0):
         timeout: Maximum time to wait for lock
 
     Raises:
+        ValueError: If timeout is not positive
         TimeoutError: If lock cannot be acquired within timeout
+
+    Performance note: Uses exponential backoff to reduce CPU usage.
     """
+    if timeout <= 0:
+        raise ValueError("timeout must be positive")
+
     lock_acquired = False
     start_time = time.time()
+    wait_time = 0.01  # Start with 10ms
 
     try:
         while time.time() - start_time < timeout:
@@ -101,7 +119,9 @@ def file_lock(lock_file: Path, timeout: float = 30.0):
                 lock_acquired = True
                 break
             except FileExistsError:
-                time.sleep(0.1)
+                # Exponential backoff to reduce CPU usage
+                time.sleep(wait_time)
+                wait_time = min(wait_time * 2, 0.5)  # Cap at 500ms
 
         if not lock_acquired:
             raise TimeoutError(f"Could not acquire file lock: {lock_file}")
@@ -125,7 +145,16 @@ def get_file_checksum(file_path: Path, algorithm: str = "md5") -> str:
 
     Returns:
         Hexadecimal checksum string
+
+    Raises:
+        ValueError: If algorithm is not supported or file_path is invalid
     """
+    if not file_path:
+        raise ValueError("file_path cannot be None or empty")
+
+    if algorithm not in ("md5", "sha1", "sha256", "sha512"):
+        raise ValueError(f"unsupported algorithm: {algorithm}")
+
     hash_algo = hashlib.new(algorithm)
 
     try:
@@ -210,8 +239,18 @@ def safe_write_file(
         True if successful
 
     Raises:
+        ValueError: If file_path or content is invalid
         FileOperationError: If write operation fails
     """
+    if not file_path:
+        raise ValueError("file_path cannot be None or empty")
+
+    if content is None:
+        raise ValueError("content cannot be None")
+
+    if mode not in ("w", "a", "x", "w+", "a+"):
+        raise ValueError(f"unsupported mode: {mode}")
+
     file_path = Path(file_path)
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -361,6 +400,8 @@ def safe_copy_file(
 
     Returns:
         True if successful
+
+    Performance note: Verification uses efficient chunk-based checksums.
     """
     src_path = Path(src_path)
     dst_path = Path(dst_path)
@@ -384,7 +425,11 @@ def safe_copy_file(
 
             if src_checksum != dst_checksum:
                 logger.error("Copy verification failed: checksum mismatch")
-                dst_path.unlink(missing_ok=True)
+                # Clean up failed copy
+                try:
+                    dst_path.unlink(missing_ok=True)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup failed copy: {cleanup_error}")
                 return False
 
         logger.debug(f"Successfully copied: {src_path} -> {dst_path}")
@@ -392,6 +437,12 @@ def safe_copy_file(
 
     except Exception as e:
         logger.error(f"Failed to copy file {src_path} -> {dst_path}: {e}")
+        # Attempt cleanup on error
+        try:
+            if dst_path.exists():
+                dst_path.unlink(missing_ok=True)
+        except Exception:
+            pass
         return False
 
 
@@ -451,7 +502,19 @@ def cleanup_temp_files(
 
     Returns:
         Number of files cleaned up
+
+    Raises:
+        ValueError: If temp_dir is invalid or max_age_hours is not positive
     """
+    if not temp_dir:
+        raise ValueError("temp_dir cannot be None or empty")
+
+    if max_age_hours <= 0:
+        raise ValueError("max_age_hours must be positive")
+
+    if not pattern or not pattern.strip():
+        raise ValueError("pattern cannot be empty")
+
     temp_dir = Path(temp_dir)
     if not temp_dir.exists():
         return 0
@@ -491,13 +554,39 @@ class BatchFileOperations:
         self.results: List[bool] = []
 
     def add_write(self, file_path: Union[str, Path], content: str, **kwargs) -> None:
-        """Add write operation to batch."""
+        """Add write operation to batch.
+
+        Args:
+            file_path: Path to file to write
+            content: Content to write
+            **kwargs: Additional arguments for safe_write_file
+
+        Raises:
+            ValueError: If file_path or content is invalid
+        """
+        if not file_path:
+            raise ValueError("file_path cannot be None or empty")
+        if content is None:
+            raise ValueError("content cannot be None")
+
         self.operations.append(
             {"type": "write", "file_path": Path(file_path), "content": content, "kwargs": kwargs}
         )
 
     def add_copy(self, src_path: Union[str, Path], dst_path: Union[str, Path], **kwargs) -> None:
-        """Add copy operation to batch."""
+        """Add copy operation to batch.
+
+        Args:
+            src_path: Source file path
+            dst_path: Destination file path
+            **kwargs: Additional arguments for safe_copy_file
+
+        Raises:
+            ValueError: If paths are invalid
+        """
+        if not src_path or not dst_path:
+            raise ValueError("src_path and dst_path cannot be None or empty")
+
         self.operations.append(
             {
                 "type": "copy",
@@ -508,7 +597,19 @@ class BatchFileOperations:
         )
 
     def add_move(self, src_path: Union[str, Path], dst_path: Union[str, Path], **kwargs) -> None:
-        """Add move operation to batch."""
+        """Add move operation to batch.
+
+        Args:
+            src_path: Source file path
+            dst_path: Destination file path
+            **kwargs: Additional arguments for safe_move_file
+
+        Raises:
+            ValueError: If paths are invalid
+        """
+        if not src_path or not dst_path:
+            raise ValueError("src_path and dst_path cannot be None or empty")
+
         self.operations.append(
             {
                 "type": "move",

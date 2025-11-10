@@ -66,8 +66,20 @@ class ClaudeSession:
 
         Args:
             config: Session configuration. Uses defaults if None.
+
+        Raises:
+            ValueError: If config contains invalid values
         """
         self.config = config or SessionConfig()
+
+        # Validate config values
+        if self.config.timeout <= 0:
+            raise ValueError("timeout must be positive")
+        if self.config.max_retries < 0:
+            raise ValueError("max_retries must be non-negative")
+        if self.config.heartbeat_interval < 0:
+            raise ValueError("heartbeat_interval must be non-negative")
+
         self.state = SessionState(session_id=self.config.session_id or self._generate_session_id())
         self.logger = self._setup_logger()
         self._heartbeat_thread: Optional[threading.Thread] = None
@@ -76,14 +88,30 @@ class ClaudeSession:
         self._checkpoints: List[SessionState] = []
 
     def _generate_session_id(self) -> str:
-        """Generate unique session ID."""
+        """Generate unique session ID.
+
+        Returns:
+            Unique session identifier in format: claude_session_<timestamp>_<uuid_prefix>
+
+        Example:
+            claude_session_1699123456_a1b2c3d4
+        """
         import uuid
 
         timestamp = int(time.time())
         return f"claude_session_{timestamp}_{uuid.uuid4().hex[:8]}"
 
     def _setup_logger(self) -> logging.Logger:
-        """Setup session-specific logger."""
+        """Setup session-specific logger.
+
+        Returns:
+            Configured logger instance for this session
+
+        Notes:
+            - Uses session_id in logger name for filtering
+            - Only adds handler if none exist to avoid duplicates
+            - Respects config.enable_logging flag
+        """
         logger = logging.getLogger(f"claude_session.{self.state.session_id}")
         logger.setLevel(getattr(logging, self.config.log_level))
 
@@ -131,7 +159,16 @@ class ClaudeSession:
         self._heartbeat_thread.start()
 
     def _heartbeat_loop(self) -> None:
-        """Heartbeat monitoring loop."""
+        """Heartbeat monitoring loop.
+
+        Runs in background thread, checking session health at regular intervals.
+        Exits when shutdown_event is set or session becomes inactive.
+
+        Notes:
+            - Uses wait() instead of sleep() for faster shutdown response
+            - Catches all exceptions to prevent thread crashes
+            - Logs errors but continues monitoring
+        """
         while not self._shutdown_event.wait(self.config.heartbeat_interval):
             if not self.state.is_active:
                 break
@@ -142,7 +179,16 @@ class ClaudeSession:
                 self.logger.error(f"Heartbeat check failed: {e}")
 
     def _check_session_health(self) -> None:
-        """Check session health and handle timeouts."""
+        """Check session health and handle timeouts.
+
+        Compares time since last activity against configured timeout.
+        Triggers timeout handler if threshold exceeded.
+
+        Notes:
+            - Called periodically by heartbeat thread
+            - Uses wall-clock time for timeout calculation
+            - Logs warning before triggering timeout
+        """
         current_time = time.time()
         time_since_activity = current_time - self.state.last_activity
 
@@ -170,9 +216,16 @@ class ClaudeSession:
             Command result
 
         Raises:
+            ValueError: If command is empty or timeout is invalid
             TimeoutError: If command times out
             SessionError: If session is not active
         """
+        if not command or not command.strip():
+            raise ValueError("command cannot be empty")
+
+        if timeout is not None and timeout <= 0:
+            raise ValueError("timeout must be positive")
+
         if not self.state.is_active:
             raise SessionError("Session is not active")
 
@@ -233,7 +286,20 @@ class ClaudeSession:
         return result
 
     def _simulate_command_execution(self, command: str, **kwargs) -> Dict[str, Any]:
-        """Simulate command execution (replace with actual Claude integration)."""
+        """Simulate command execution (replace with actual Claude integration).
+
+        Args:
+            command: Command string to execute
+            **kwargs: Additional command parameters
+
+        Returns:
+            Dict containing command result with status and metadata
+
+        Notes:
+            - This is a placeholder for actual Claude API integration
+            - Simulates processing time with random delay
+            - Always returns success status for testing
+        """
         import random
         import time
 
@@ -265,12 +331,21 @@ class ClaudeSession:
 
         Args:
             index: Checkpoint index (-1 for most recent)
+
+        Raises:
+            SessionError: If no checkpoints available or index out of range
         """
         if not self._checkpoints:
             raise SessionError("No checkpoints available")
 
-        checkpoint = self._checkpoints[index]
-        self.state = checkpoint
+        try:
+            checkpoint = self._checkpoints[index]
+        except IndexError:
+            raise SessionError(f"Checkpoint index {index} out of range (have {len(self._checkpoints)} checkpoints)")
+
+        # Use deepcopy to avoid reference issues
+        import copy
+        self.state = copy.deepcopy(checkpoint)
         self.logger.info(f"Restored checkpoint {index}")
 
     def get_statistics(self) -> Dict[str, Any]:
@@ -296,7 +371,13 @@ class ClaudeSession:
 
         Returns:
             List of recent commands
+
+        Raises:
+            ValueError: If limit is not positive
         """
+        if limit <= 0:
+            raise ValueError("limit must be positive")
+
         return self._command_history[-limit:]
 
     def clear_history(self) -> None:
