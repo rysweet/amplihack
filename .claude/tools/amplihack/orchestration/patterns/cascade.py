@@ -397,3 +397,4 @@ Execute the task now with the {level_name} approach.
         "session_id": session.session_id,
         "success": False,
     }
+# Cascade pattern implementation
