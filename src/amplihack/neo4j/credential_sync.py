@@ -46,7 +46,7 @@ class CredentialSync:
     MAX_PASSWORD_LENGTH = 128
     MAX_USERNAME_LENGTH = 64
 
-    def __init__(self, env_file: Optional[Path] = None):
+    def __init__(self, env_file: Optional[Path] = None) -> None:
         """Initialize credential sync.
 
         Args:
