@@ -208,3 +208,4 @@ def create_safe_preview(content: str, context: str = "") -> str:
 def filter_pattern_suggestion(suggestion: str) -> str:
     """Filter pattern suggestion using global sanitizer."""
     return _sanitizer.filter_pattern_suggestion(suggestion)
+# Security utilities
