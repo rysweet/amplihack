@@ -483,8 +483,8 @@ def test_circuit_breaker(results: TestResults):
         for _ in range(3):
             try:
                 breaker.call(fail_func)
-            except:
-                pass
+            except Exception:
+                pass  # Expected failures for circuit breaker testing
 
         results.record(
             "Circuit: Opens on failures",
