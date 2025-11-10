@@ -513,7 +513,7 @@ def _local_install(repo_root):
     This provides a comprehensive installation that mirrors the shell script.
     """
     print("\n🚀 Starting amplihack installation...")
-    print(f"   Source: {repo_root}")
+    logger.info(f"   Source: {repo_root}")
     print(f"   Target: {CLAUDE_DIR}\n")
 
     # Step 1: Ensure base directory exists
