@@ -131,7 +131,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
     elif os.path.exists(parent_path):
         base = parent_path
     else:
-        print(f"  ❌ .claude not found at {direct_path} or {parent_path}")
+        logger.info(f"  ❌ .claude not found at {direct_path} or {parent_path}")
         return []
 
     copied = []
