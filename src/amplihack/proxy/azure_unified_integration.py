@@ -61,7 +61,7 @@ class AzureUnifiedProvider:
     for high-throughput scenarios.
     """
 
-    def __init__(self, api_key: str, base_url: str, api_version: str):
+    def __init__(self, api_key: str, base_url: str, api_version: str) -> None:
         self.api_key = api_key
         self.base_url = base_url
         self.chat_api_version = api_version  # For Chat API
