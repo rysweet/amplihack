@@ -388,7 +388,7 @@ def ensure_settings_json():
 
     except Exception as e:
         # If SettingsManager fails for any reason, continue without it
-        print(f"  ⚠️  Settings manager unavailable - continuing without backup: {e}")
+        logger.info(f"  ⚠️  Settings manager unavailable - continuing without backup: {e}")
         if is_uvx:
             print("  🚀 UVX environment detected - auto-configuring hooks")
 
