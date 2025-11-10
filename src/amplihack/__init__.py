@@ -507,7 +507,7 @@ def create_runtime_dirs():
             print(f"  ❌ Error creating {dir_path}: {e}")
 
 
-def _local_install(repo_root):
+def _local_install(repo_root) -> None:
     """
     Install amplihack files from the given repo_root directory.
     This provides a comprehensive installation that mirrors the shell script.
