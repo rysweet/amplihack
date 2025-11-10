@@ -1,6 +1,6 @@
 # Claude Code Skills for Amplihack
 
-This directory contains production-ready Claude Code Skills that extend amplihack's capabilities across coding, creative work, and knowledge management.
+This directory contains production-ready Claude Code Skills that extend amplihack's capabilities across coding, creative work, knowledge management, and document processing.
 
 ## 📚 About Claude Code Skills
 
@@ -12,9 +12,11 @@ Claude Code Skills are modular, reusable capabilities that extend Claude's funct
 - **Portable**: Work across Claude.ai, API, and Claude Code environments
 - **Self-Contained**: Each skill is independently usable and testable
 
-## 🎯 Implemented Skills (12 Total)
+## 🎯 Implemented Skills
 
-### Phase 1: Quick Wins (4 skills)
+### Core Skills (12 Total)
+
+#### Phase 1: Quick Wins (4 skills)
 
 | Skill | Score | Description | Issue | PR |
 |-------|-------|-------------|-------|-----|
@@ -23,7 +25,7 @@ Claude Code Skills are modular, reusable capabilities that extend Claude's funct
 | **module-spec-generator** | 50.0 | Generate brick module specifications | [#1219](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1219) | TBD |
 | **meeting-synthesizer** | 50.0 | Extract action items and decisions from meetings | [#1220](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1220) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
 
-### Phase 2: Philosophy Enforcement (3 skills)
+#### Phase 2: Philosophy Enforcement (3 skills)
 
 | Skill | Score | Description | Issue | PR |
 |-------|-------|-------------|-------|-----|
@@ -31,20 +33,31 @@ Claude Code Skills are modular, reusable capabilities that extend Claude's funct
 | **test-gap-analyzer** | 44.5 | Identifies untested functions and coverage gaps | [#1225](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1225) | [#1233](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1233) |
 | **code-smell-detector** | 42.5 | Detects anti-patterns and over-engineering | [#1228](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1228) | [#1234](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1234) |
 
-### Phase 3: Creative (2 skills)
+#### Phase 3: Creative (2 skills)
 
 | Skill | Score | Description | Issue | PR |
 |-------|-------|-------------|-------|-----|
 | **mermaid-diagram-generator** | 48.0 | Converts descriptions to Mermaid diagrams | [#1222](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1222) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
 | **storytelling-synthesizer** | 44.0 | Transforms technical work into compelling narratives | [#1226](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1226) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
 
-### Phase 4: Advanced (3 skills)
+#### Phase 4: Advanced (3 skills)
 
 | Skill | Score | Description | Issue | PR |
 |-------|-------|-------------|-------|-----|
 | **learning-path-builder** | 43.5 | Creates personalized technology learning paths | [#1227](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1227) | [#1237](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1237) |
 | **knowledge-extractor** | 40.5 | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
 | **pr-review-assistant** | 40.0 | Philosophy-aware PR reviews | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | TBD |
+
+### Office Document Skills (4 Skills)
+
+Anthropic's office document skills integrated into amplihack for comprehensive document processing capabilities.
+
+| Skill | Status | Description | Documentation |
+|-------|--------|-------------|---------------|
+| **pdf** | Integrated | Comprehensive PDF manipulation - extract, create, merge, OCR | [README](pdf/README.md) |
+| **xlsx** | Planned | Excel spreadsheet manipulation with formulas and charts | Coming in PR #2 |
+| **docx** | Planned | Word document processing with tracked changes | Coming in PR #3 |
+| **pptx** | Planned | PowerPoint presentation generation | Coming in PR #4 |
 
 ## 📖 Research & Documentation
 
@@ -96,6 +109,8 @@ Claude, use the decision-logger skill to record this architectural decision.
 Claude, analyze test coverage using test-gap-analyzer.
 
 Claude, generate a Mermaid diagram for this workflow using mermaid-diagram-generator.
+
+Claude, extract all tables from sales_report.pdf to Excel using the pdf skill.
 ```
 
 ### Managing Skills
@@ -113,6 +128,7 @@ Each skill follows this structure:
 skill-name/
 ├── SKILL.md           # Required: YAML frontmatter + instructions
 ├── README.md          # Optional: User-facing documentation
+├── DEPENDENCIES.md    # Optional: Dependency documentation (Office skills)
 ├── examples/          # Optional: Example usage
 └── tests/             # Optional: Validation tests
 ```
@@ -145,25 +161,118 @@ All skills meet these quality standards:
 - ✅ **Tested**: Quality review completed
 - ✅ **Production Ready**: No stubs, TODOs, or placeholders
 
-## 🚀 Creating New Skills
+## 🚀 Office Skills Quick Start
 
-To create a new skill:
+### 1. Choose Your Skill
 
-1. **Research**: Check if similar skills exist
-2. **Evaluate**: Score against 6 criteria (target score: 40+)
-3. **Create**: Follow skill structure above
-4. **Document**: Clear SKILL.md with examples
-5. **Test**: Validate with real usage
-6. **Review**: Ensure philosophy compliance
+Identify which document type you need to work with:
 
-See [Evaluation Matrix](../runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md) for guidance on prioritization.
+- PDF files → Use `pdf` skill
+- Excel files (.xlsx) → Use `xlsx` skill (coming soon)
+- Word documents (.docx) → Use `docx` skill (coming soon)
+- PowerPoint slides (.pptx) → Use `pptx` skill (coming soon)
 
-## 📚 Related Documentation
+### 2. Install Dependencies
 
-- [CLAUDE.md](../../CLAUDE.md) - Project overview and agent system
-- [PHILOSOPHY.md](../context/PHILOSOPHY.md) - Ruthless simplicity principles
-- [PATTERNS.md](../context/PATTERNS.md) - Reusable solution patterns
-- [Agent Catalog](../agents/CATALOG.md) - Specialized agents
+Each skill has different dependencies. See skill-specific DEPENDENCIES.md:
+
+```bash
+# For PDF skill
+pip install pypdf pdfplumber reportlab pandas
+
+# Optional OCR support
+pip install pytesseract pdf2image
+brew install tesseract poppler  # macOS
+```
+
+### 3. Verify Installation
+
+Use the verification script to check dependencies:
+
+```bash
+cd .claude/skills
+python common/verification/verify_skill.py pdf
+```
+
+### 4. Use in Claude Code
+
+Simply mention the task in conversation:
+
+```
+User: Extract all tables from sales_report.pdf to Excel
+Claude: [Uses PDF skill to extract and convert tables]
+
+User: Create a professional PDF report with our Q4 data
+Claude: [Uses PDF skill to generate formatted report]
+```
+
+## Office Skills Architecture
+
+### Directory Structure
+
+```
+.claude/skills/
+├── README.md                    # This file
+├── INTEGRATION_STATUS.md        # Office skills integration tracker
+├── common/                      # Shared infrastructure for Office skills
+│   ├── README.md
+│   ├── dependencies.txt         # Shared dependencies
+│   ├── ooxml/                   # OOXML scripts (docx + pptx)
+│   └── verification/            # Dependency verification
+├── pdf/                         # PDF skill
+│   ├── SKILL.md                 # Official skill definition
+│   ├── README.md                # Integration notes
+│   ├── DEPENDENCIES.md          # Dependency documentation
+│   ├── examples/
+│   └── tests/
+├── decision-logger/             # Core skill example
+├── email-drafter/               # Core skill example
+└── ... (other skills)
+```
+
+### Design Principles
+
+Each skill follows amplihack's brick philosophy:
+
+1. **Self-contained**: All skill code in its directory
+2. **Clear contract**: Well-defined inputs and outputs
+3. **Regeneratable**: Can be rebuilt from specification
+4. **Independent**: No cross-skill dependencies
+5. **Graceful degradation**: Optional features skip cleanly
+
+## Philosophy Compliance
+
+Skills integration follows amplihack's core principles:
+
+### Ruthless Simplicity
+
+- Use established libraries, no custom parsers
+- Minimal abstractions
+- Direct, straightforward implementations
+
+### Modular Design
+
+- Each skill is an independent brick
+- Clear public contracts (SKILL.md)
+- No implicit dependencies
+
+### Zero-BS Implementation
+
+- No stubs or placeholders
+- All code works or degrades gracefully
+- No fake implementations
+
+### Explicit Over Implicit
+
+- All dependencies documented
+- No automatic installation
+- Clear error messages with solutions
+
+### Regeneratable
+
+- Each skill can be rebuilt from SKILL.md
+- Documentation is specification
+- Tests verify contracts
 
 ## 🤝 Contributing
 
@@ -176,10 +285,24 @@ When adding new skills:
 5. Link to research and evaluation docs
 6. Ensure quality review completed
 
+## 📚 Related Documentation
+
+- [CLAUDE.md](../../CLAUDE.md) - Project overview and agent system
+- [PHILOSOPHY.md](../context/PHILOSOPHY.md) - Ruthless simplicity principles
+- [PATTERNS.md](../context/PATTERNS.md) - Reusable solution patterns
+- [Agent Catalog](../agents/CATALOG.md) - Specialized agents
+- [Office Skills Integration Status](INTEGRATION_STATUS.md) - Progress tracker
+
+## License
+
+The Office skills are provided by Anthropic under their proprietary license. See individual SKILL.md files and Anthropic's LICENSE.txt for complete terms.
+
+The amplihack integration code and core skills follow the amplihack project license.
+
 ---
 
 **Last Updated**: November 8, 2025
-**Total Skills**: 12 (all HIGH priority, scores 40.0-50.0)
-**Status**: Production Ready
+**Total Skills**: 16 (12 core + 4 office)
+**Status**: Production Ready (12 core skills + 1 office skill integrated)
 
 🤖 Skills documentation maintained as part of amplihack project
