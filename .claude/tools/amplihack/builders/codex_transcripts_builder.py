@@ -766,3 +766,4 @@ workflows and tool usage based on session analysis.
             self.output_dir / f"insights_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
         )
         report_file.write_text(report_content)
+# Codex transcript builder
