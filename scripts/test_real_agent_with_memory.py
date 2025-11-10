@@ -371,8 +371,8 @@ def main():
     # Step 2: Seed test pattern
     try:
         memory_id = seed_test_pattern()
-    except Exception:
-        print("\n❌ FAILED: Cannot seed test pattern")
+    except Exception as e:
+        print(f"\n❌ FAILED: Cannot seed test pattern: {e}")
         sys.exit(1)
 
     # Step 3: Simulate agent invocation with memory injection

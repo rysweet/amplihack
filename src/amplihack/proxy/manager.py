@@ -747,15 +747,15 @@ class ProxyManager:
         if self._stdout_log_file:
             try:
                 self._stdout_log_file.close()
-            except Exception:
-                pass  # Ignore errors when closing
+            except (OSError, ValueError):
+                pass  # Ignore I/O errors when closing - file may already be closed
             self._stdout_log_file = None
 
         if self._stderr_log_file:
             try:
                 self._stderr_log_file.close()
-            except Exception:
-                pass  # Ignore errors when closing
+            except (OSError, ValueError):
+                pass  # Ignore I/O errors when closing - file may already be closed
             self._stderr_log_file = None
 
     def _display_log_locations(self) -> None:
