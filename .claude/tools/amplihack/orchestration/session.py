@@ -178,3 +178,4 @@ Session Summary:
   Log Dir: {self.log_dir}
   Processes Created: {self._process_counter}
         """.strip()
+# Session management
