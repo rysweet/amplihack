@@ -289,8 +289,9 @@ def cleanup_test_containers():
     # Session cleanup
     try:
         subprocess.run(["docker", "rm", "-f", "test-neo4j"], capture_output=True, timeout=10)
-    except Exception:
-        pass  # Best effort cleanup
+    except Exception as e:
+        # Best effort cleanup - log but don't fail
+        print(f"Note: Docker cleanup failed (non-critical): {e}", file=sys.stderr)
 
 
 @pytest.fixture(scope="session", autouse=True)
