@@ -207,14 +207,16 @@ def detect_neo4j_on_port(port: int, password: str) -> Tuple[bool, bool]:
             # Try a simple query
             with driver.session() as session:
                 session.run("RETURN 1")
-            driver.close()
             return True, True  # Is Neo4j, can connect
         except AuthError:
-            driver.close()
             return True, False  # Is Neo4j, wrong password
-        except Exception:
-            driver.close()
+        except ServiceUnavailable:
+            return False, False  # Not Neo4j (or not responding)
+        except Exception as e:
+            logger.debug("Neo4j connection test failed: %s", e)
             return False, False  # Not Neo4j or connection failed
+        finally:
+            driver.close()
 
     except ServiceUnavailable:
         return False, False  # Not Neo4j (or not responding)
