@@ -244,7 +244,14 @@ class Neo4jContainerManager:
 
         # Resolve port conflicts BEFORE attempting to create container
         try:
-            project_root = self.config.compose_file.parent.parent  # Get project root from compose file path
+            # Find project root by walking up to find .claude directory
+            from pathlib import Path
+            project_root = Path.cwd()
+            while project_root != project_root.parent:
+                if (project_root / ".claude").exists():
+                    break
+                project_root = project_root.parent
+
             bolt_port, http_port, messages = resolve_port_conflicts(
                 bolt_port=self.config.bolt_port,
                 http_port=self.config.http_port,

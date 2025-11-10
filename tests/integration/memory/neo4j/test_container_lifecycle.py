@@ -14,6 +14,7 @@ All tests should FAIL initially (TDD approach).
 
 import pytest
 import time
+from unittest.mock import patch, MagicMock
 
 
 @pytest.mark.integration
@@ -412,7 +413,7 @@ class TestErrorScenarios:
         manager = ContainerManager()
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=1, stderr="Error: port already in use")
+            mock_run.return_value = MagicMock(returncode=1, stderr="Error: port already in use")
 
             with pytest.raises(ContainerStartError) as exc_info:
                 manager.start_container()
@@ -427,7 +428,7 @@ class TestErrorScenarios:
         manager = ContainerManager()
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(returncode=1, stderr="Error: error while mounting volume")
+            mock_run.return_value = MagicMock(returncode=1, stderr="Error: error while mounting volume")
 
             with pytest.raises(VolumeError) as exc_info:
                 manager.start_container()
