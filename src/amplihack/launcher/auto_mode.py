@@ -210,11 +210,10 @@ class AutoMode:
         current_fork_time = time.time() - self.start_time
         total_time = self.total_session_time + current_fork_time
 
-        fork_info = ""
-        if self.fork_manager and self.fork_manager.get_fork_count() > 0:
-            fork_info = f" [Fork {self.fork_manager.get_fork_count() + 1}]"
+        # Simplified fork suffix using conditional expression
+        fork_suffix = f" [Fork {self.fork_manager.get_fork_count() + 1}]" if (self.fork_manager and self.fork_manager.get_fork_count() > 0) else ""
 
-        return f"[Turn {self.turn}/{self.max_turns} | {phase} | {self._format_elapsed(total_time)}{fork_info}]"
+        return f"[Turn {self.turn}/{self.max_turns} | {phase} | {self._format_elapsed(total_time)}{fork_suffix}]"
 
     def run_sdk(self, prompt: str) -> Tuple[int, str]:
         """Run SDK command with prompt, choosing method by provider.
