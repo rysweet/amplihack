@@ -196,7 +196,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
             copied.append(dir_path)
             print(f"  ✅ Copied {dir_path}")
         except Exception as e:
-            print(f"  ❌ Failed to copy {dir_path}: {e}")
+            logger.info(f"  ❌ Failed to copy {dir_path}: {e}")
 
     # Also copy settings.json if it exists and target doesn't have one
     settings_src = os.path.join(base, "settings.json")
