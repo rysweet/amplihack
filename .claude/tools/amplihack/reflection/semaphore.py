@@ -101,3 +101,4 @@ class ReflectionLock:
                 return LockData(**data)
         except (OSError, json.JSONDecodeError, TypeError):
             return None  # Corrupt or unreadable
+# Semaphore implementation
