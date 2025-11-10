@@ -1358,7 +1358,7 @@ GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
 
 
 # Helper function to clean schema for Gemini
-def clean_gemini_schema(schema: Any) -> Any:
+def clean_gemini_schema(schema: Union[Dict[str, Any], List[Any], str, int, float, bool, None]) -> Union[Dict[str, Any], List[Any], str, int, float, bool, None]:
     """Recursively removes unsupported fields from a JSON schema for Gemini."""
     if isinstance(schema, dict):
         # Remove specific keys unsupported by Gemini tool parameters
