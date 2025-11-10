@@ -372,7 +372,7 @@ def ensure_settings_json():
 
             # Prompt user for modification (or auto-approve if UVX/non-interactive)
             if not settings_manager.prompt_user_for_modification():
-                print("  ⚠️  Settings modification declined by user")
+                logger.info("  ⚠️  Settings modification declined by user")
                 return False
             if is_uvx:
                 print("  🚀 UVX environment detected - auto-configuring hooks")
