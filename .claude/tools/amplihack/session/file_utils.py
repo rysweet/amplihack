@@ -558,3 +558,4 @@ class BatchFileOperations:
         if self.operations and not self.results:
             # Auto-execute if not already done
             self.execute()
+# File operation utilities
