@@ -375,7 +375,7 @@ def ensure_settings_json():
                 print("  ⚠️  Settings modification declined by user")
                 return False
             if is_uvx:
-                print("  🚀 UVX environment detected - auto-configuring hooks")
+                logger.info("  🚀 UVX environment detected - auto-configuring hooks")
 
             # Create backup
             success, backup_path = settings_manager.create_backup()
