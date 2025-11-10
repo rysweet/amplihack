@@ -544,7 +544,7 @@ def _local_install(repo_root):
     hooks_ok = verify_hooks()
 
     # Step 7: Generate manifest for uninstall
-    print("\n📝 Generating uninstall manifest:")
+    logger.info("\n📝 Generating uninstall manifest:")
 
     # Build list of all directories to track
     all_essential = []
