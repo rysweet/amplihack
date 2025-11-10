@@ -505,7 +505,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             import atexit
             import shutil
 
-            def cleanup_temp_dir():
+            def cleanup_temp_dir() -> None:
                 """Clean up temporary directory created for safety."""
                 try:
                     # Remove the temp directory (parent of .claude)
