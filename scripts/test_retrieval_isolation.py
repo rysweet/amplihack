@@ -10,9 +10,12 @@ Tests:
 - Performance metrics
 """
 
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Add src to path
 project_root = Path(__file__).parent.parent
@@ -483,8 +486,8 @@ def test_circuit_breaker(results: TestResults):
         for _ in range(3):
             try:
                 breaker.call(fail_func)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Expected circuit breaker failure: {e}")
 
         results.record(
             "Circuit: Opens on failures",
