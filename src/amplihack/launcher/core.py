@@ -705,7 +705,7 @@ class ClaudeLauncher:
         """
         import threading
 
-        def start_neo4j():
+        def start_neo4j() -> None:
             """Background thread function with auto-setup."""
             import logging
 
