@@ -5,7 +5,10 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    raise ImportError("pytest is required for running tests")
 
 
 class TestLockUnlockCommands:
@@ -14,7 +17,7 @@ class TestLockUnlockCommands:
     @pytest.fixture
     def lock_flag(self, tmp_path):
         """Create lock flag path in temp directory."""
-        lock_path = tmp_path / ".claude" / "tools" / "amplihack" / ".lock_active"
+        lock_path = tmp_path / ".claude" / "runtime" / "locks" / ".lock_active"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
         return lock_path
 
@@ -82,7 +85,7 @@ class TestStopHook:
     def test_stop_hook_blocks_when_locked(self, tmp_path, monkeypatch):
         """Test that stop hook blocks when lock is active."""
         # Create lock flag
-        lock_flag = tmp_path / ".claude" / "tools" / "amplihack" / ".lock_active"
+        lock_flag = tmp_path / ".claude" / "runtime" / "locks" / ".lock_active"
         lock_flag.parent.mkdir(parents=True, exist_ok=True)
         lock_flag.touch()
 
@@ -115,7 +118,7 @@ class TestStopHook:
         class MockStopHook:
             def __init__(self):
                 self.project_root = tmp_path
-                self.lock_flag = tmp_path / ".claude" / "tools" / "amplihack" / ".lock_active"
+                self.lock_flag = tmp_path / ".claude" / "runtime" / "locks" / ".lock_active"
 
             def process(self, input_data):
                 if self.lock_flag.exists():
@@ -138,7 +141,7 @@ class TestStopHook:
         class MockStopHook:
             def __init__(self):
                 self.project_root = tmp_path
-                self.lock_flag = tmp_path / ".claude" / "tools" / "amplihack" / ".lock_active"
+                self.lock_flag = tmp_path / ".claude" / "runtime" / "locks" / ".lock_active"
 
             def process(self, input_data):
                 try:
@@ -170,7 +173,7 @@ class TestLockWithCustomPrompts:
     @pytest.fixture
     def lock_dir(self, tmp_path):
         """Create lock directory in temp path."""
-        lock_path = tmp_path / ".claude" / "tools" / "amplihack"
+        lock_path = tmp_path / ".claude" / "runtime" / "locks"
         lock_path.mkdir(parents=True, exist_ok=True)
         return lock_path
 
@@ -290,9 +293,9 @@ class TestStopHookWithCustomPrompts:
 
             def __init__(self, project_root):
                 self.project_root = project_root
-                self.lock_flag = project_root / ".claude" / "tools" / "amplihack" / ".lock_active"
+                self.lock_flag = project_root / ".claude" / "runtime" / "locks" / ".lock_active"
                 self.continuation_prompt_file = (
-                    project_root / ".claude" / "tools" / "amplihack" / ".continuation_prompt"
+                    project_root / ".claude" / "runtime" / "locks" / ".continuation_prompt"
                 )
 
             def read_continuation_prompt(self):
@@ -333,7 +336,7 @@ class TestStopHookWithCustomPrompts:
 
                 return {"decision": "allow", "continue": False}
 
-        lock_dir = tmp_path / ".claude" / "tools" / "amplihack"
+        lock_dir = tmp_path / ".claude" / "runtime" / "locks"
         lock_dir.mkdir(parents=True, exist_ok=True)
         return MockStopHookWithCustom(tmp_path)
 

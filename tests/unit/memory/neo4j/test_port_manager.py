@@ -12,15 +12,13 @@ Focus on the new container port detection functionality.
 
 import subprocess
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
-
-import pytest
+from unittest.mock import Mock, patch
 
 from amplihack.memory.neo4j.port_manager import (
-    get_container_ports,
-    resolve_port_conflicts,
-    is_port_in_use,
     find_available_port,
+    get_container_ports,
+    is_port_in_use,
+    resolve_port_conflicts,
 )
 
 
@@ -407,7 +405,7 @@ class TestEdgeCases:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=1, stdout="", stderr="Not found")
 
-            result = get_container_ports("my-custom-neo4j")
+            get_container_ports("my-custom-neo4j")
 
             mock_run.assert_called_once()
             call_args = mock_run.call_args[0][0]

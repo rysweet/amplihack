@@ -11,8 +11,9 @@ Tests the DependencyAgent class responsible for:
 All tests should FAIL initially (TDD approach).
 """
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 
 class TestDockerDaemonCheck:
@@ -179,7 +180,7 @@ class TestPythonPackageCheck:
             with patch("subprocess.run") as mock_run:
                 mock_run.return_value = Mock(returncode=0)
 
-                result = agent.check_python_packages(auto_install=True)
+                agent.check_python_packages(auto_install=True)
 
                 # Should have attempted pip install
                 mock_run.assert_called_once()
@@ -252,7 +253,7 @@ class TestPortAvailability:
             mock_sock = MagicMock()
             mock_socket.return_value.__enter__.return_value = mock_sock
 
-            result = agent.check_port_availability(bolt_port=7688, http_port=7475)
+            agent.check_port_availability(bolt_port=7688, http_port=7475)
 
             # Should check custom ports
             bind_calls = mock_sock.bind.call_args_list
@@ -336,7 +337,7 @@ class TestFullPrerequisiteCheck:
                 Mock(success=True),
             ]
 
-            report = agent.check_all_prerequisites(auto_fix=True)
+            agent.check_all_prerequisites(auto_fix=True)
 
             # Should have attempted fix
             assert mock_packages.call_count == 2
