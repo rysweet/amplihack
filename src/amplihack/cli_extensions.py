@@ -93,7 +93,7 @@ def generate(prompt: str, output: str, validate: bool, test: bool):
     help="Package format",
 )
 @click.option("--output", "-o", type=click.Path(), help="Output path")
-def package(bundle_path: str, format: str, output: Optional[str]):
+def package(bundle_path: str, format: str, output: Optional[str]) -> None:
     """Package a bundle for distribution."""
     try:
         bundle_path = Path(bundle_path)
