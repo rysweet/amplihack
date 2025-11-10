@@ -15,11 +15,18 @@ from typing import Dict, List, Optional
 
 # Try to import Claude SDK
 try:
-    from claude_agent_sdk import query, ClaudeAgentOptions
+    from claude_agent_sdk import ClaudeAgentOptions, query
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
+
+# Repository constants
+AMPLIHACK_REPO_URI = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+
+# Template paths (relative to this file)
+TEMPLATE_DIR = Path(__file__).parent / "templates"
+REFLECTION_PROMPT_TEMPLATE = TEMPLATE_DIR / "reflection_prompt.txt"
 
 
 def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
@@ -46,7 +53,7 @@ def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
                 # Handle different data structures
                 if isinstance(data, list):
                     return data
-                elif isinstance(data, dict) and "messages" in data:
+                if isinstance(data, dict) and "messages" in data:
                     return data["messages"]
             except (OSError, json.JSONDecodeError):
                 continue
@@ -80,6 +87,111 @@ def load_feedback_template(project_root: Path) -> str:
     return template_path.read_text()
 
 
+def load_prompt_template() -> str:
+    """Load reflection prompt template.
+
+    Returns:
+        Raw template content with {VARIABLE} placeholders
+
+    Raises:
+        FileNotFoundError: If template file is missing (configuration error)
+    """
+    if not REFLECTION_PROMPT_TEMPLATE.exists():
+        raise FileNotFoundError(
+            f"Reflection prompt template not found at {REFLECTION_PROMPT_TEMPLATE}. "
+            "This is a configuration error - the template file must exist."
+        )
+
+    return REFLECTION_PROMPT_TEMPLATE.read_text()
+
+
+def format_reflection_prompt(template: str, variables: Dict[str, str]) -> str:
+    """Format reflection prompt with variable substitution.
+
+    Args:
+        template: Raw template with {VARIABLE} placeholders
+        variables: Dictionary of variable name -> value mappings
+
+    Returns:
+        Formatted prompt with all variables substituted
+
+    Raises:
+        KeyError: If required variable is missing
+    """
+    return template.format(**variables)
+
+
+def get_repository_context(project_root: Path) -> str:
+    """Detect repository context to distinguish amplihack vs project issues.
+
+    Args:
+        project_root: Project root directory
+
+    Returns:
+        Formatted repository context guidance for reflection prompt
+    """
+    import subprocess
+
+    try:
+        # Get current repository URL
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode == 0:
+            current_repo = result.stdout.strip()
+
+            # Normalize URLs for comparison (handle .git suffix and https/ssh)
+            def normalize_url(url: str) -> str:
+                url = url.rstrip("/").replace(".git", "")
+                if url.startswith("git@github.com:"):
+                    url = url.replace("git@github.com:", "https://github.com/")
+                return url.lower()
+
+            current_normalized = normalize_url(current_repo)
+            amplihack_normalized = normalize_url(AMPLIHACK_REPO_URI)
+
+            is_amplihack_repo = current_normalized == amplihack_normalized
+
+            if is_amplihack_repo:
+                return f"""
+## Repository Context
+
+**Current Repository**: {current_repo}
+**Context**: Working on Amplihack itself
+
+**IMPORTANT**: Since we're working on the Amplihack framework itself, ALL issues identified in this session are Amplihack framework issues and should be filed against the Amplihack repository.
+"""
+            return f"""
+## Repository Context
+
+**Current Repository**: {current_repo}
+**Amplihack Repository**: {AMPLIHACK_REPO_URI}
+**Context**: Working on a user project (not Amplihack itself)
+"""
+
+        # Git command failed - provide generic guidance
+        return f"""
+## Repository Context
+
+**Amplihack Repository**: {AMPLIHACK_REPO_URI}
+**Context**: Repository detection unavailable
+"""
+
+    except Exception:
+        # Subprocess failed - provide generic guidance
+        return f"""
+## Repository Context
+
+**Amplihack Repository**: {AMPLIHACK_REPO_URI}
+**Context**: Repository detection unavailable
+"""
+
+
 async def analyze_session_with_claude(
     conversation: List[Dict], template: str, project_root: Path
 ) -> Optional[str]:
@@ -104,6 +216,7 @@ async def analyze_session_with_claude(
         try:
             sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
             from amplihack.utils.paths import FrameworkPathResolver
+
             preferences_file = FrameworkPathResolver.resolve_preferences_file()
         except ImportError:
             # Fallback to default location
@@ -125,32 +238,22 @@ The following preferences are REQUIRED and CANNOT be ignored:
         print(f"Warning: Could not load USER_PREFERENCES: {e}", file=sys.stderr)
         # Continue without preferences
 
-    # Build reflection prompt
-    prompt = f"""You are analyzing a completed Claude Code session to provide feedback and identify learning opportunities.
-{user_preferences_context}
+    # Get repository context for issue categorization
+    repository_context = get_repository_context(project_root)
 
-## Session Conversation
-
-The session had {len(conversation)} messages. Here are key excerpts:
-
-{_format_conversation_summary(conversation)}
-
-## Your Task
-
-Please analyze this session and fill out the following feedback template:
-
-{template}
-
-## Guidelines
-
-1. **Be specific and actionable** - Reference actual events from the session
-2. **Identify patterns** - What worked well? What could improve?
-3. **Track workflow adherence** - Did Claude follow the DEFAULT_WORKFLOW.md steps?
-4. **Note subagent usage** - Which specialized agents were used (architect, builder, reviewer, etc.)?
-5. **Suggest improvements** - What would make future similar sessions better?
-
-Please provide the filled-out template now.
-"""
+    # Load prompt template and format with variables
+    prompt_template = load_prompt_template()
+    prompt = format_reflection_prompt(
+        prompt_template,
+        {
+            "user_preferences_context": user_preferences_context,
+            "repository_context": repository_context,
+            "amplihack_repo_uri": AMPLIHACK_REPO_URI,
+            "message_count": str(len(conversation)),
+            "conversation_summary": _format_conversation_summary(conversation),
+            "template": template,
+        },
+    )
 
     try:
         # Configure SDK
@@ -197,7 +300,7 @@ def _format_conversation_summary(conversation: List[Dict], max_length: int = 500
         if len(content) > 500:
             content = content[:497] + "..."
 
-        msg_summary = f"\n**Message {i+1} ({role}):** {content}\n"
+        msg_summary = f"\n**Message {i + 1} ({role}):** {content}\n"
 
         # Check if adding this would exceed limit
         if current_length + len(msg_summary) > max_length:
@@ -235,9 +338,7 @@ def run_claude_reflection(
 
     # Run async analysis
     try:
-        result = asyncio.run(
-            analyze_session_with_claude(conversation, template, project_root)
-        )
+        result = asyncio.run(analyze_session_with_claude(conversation, template, project_root))
         return result
     except Exception as e:
         print(f"Claude reflection failed: {e}", file=sys.stderr)

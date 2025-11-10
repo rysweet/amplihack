@@ -6,26 +6,30 @@ No mocks - pure unit tests of logic.
 
 import sys
 from pathlib import Path
-import pytest
+
+try:
+    import pytest
+except ImportError:
+    raise ImportError("pytest is required to run tests. Install with: pip install pytest")
+
 from datetime import datetime
 
 # Add orchestration to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / ".claude/tools/amplihack"))
 
 from orchestration.patterns.expert_panel import (
-    VoteChoice,
-    ExpertReview,
     AggregatedDecision,
     DissentReport,
-    aggregate_simple_majority,
-    aggregate_weighted,
-    aggregate_unanimous,
-    generate_dissent_report,
-    _extract_section,
+    ExpertReview,
+    VoteChoice,
     _extract_list_items,
     _extract_scores,
+    _extract_section,
+    aggregate_simple_majority,
+    aggregate_unanimous,
+    aggregate_weighted,
+    generate_dissent_report,
 )
-
 
 # Data Model Tests
 

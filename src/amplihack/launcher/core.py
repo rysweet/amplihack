@@ -1,5 +1,7 @@
 """Core launcher functionality for Claude Code."""
 
+import atexit
+import logging
 import os
 import shlex
 import signal
@@ -8,6 +10,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
 from ..utils.claude_cli import get_claude_cli_path
 from ..utils.claude_trace import get_claude_command
@@ -15,6 +18,8 @@ from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
 from .repo_checkout import checkout_repository
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeLauncher:
@@ -74,6 +79,9 @@ class ClaudeLauncher:
         self._cached_uvx_decision = None  # Cache for UVX --add-dir decision
         self._target_directory = None  # Target directory for --add-dir
 
+        # Setup signal handlers for graceful shutdown
+        self._setup_signal_handlers()
+
     def prepare_launch(self) -> bool:
         """Prepare environment for launching Claude.
 
@@ -84,32 +92,40 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Handle repository checkout if needed
+        # 2. Check and sync Neo4j credentials from existing containers (if any)
+        self._check_neo4j_credentials()
+
+        # 3. Interactive Neo4j startup (blocks until ready or user decides)
+        if not self._interactive_neo4j_startup():
+            # User chose to exit rather than continue without Neo4j
+            return False
+
+        # 4. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
 
-        # 3. Find and validate target directory
+        # 5. Find and validate target directory
         target_dir = self._find_target_directory()
         if not target_dir:
             print("Failed to determine target directory")
             return False
 
-        # 4. Ensure required runtime directories exist
+        # 6. Ensure required runtime directories exist
         if not self._ensure_runtime_directories(target_dir):
             print("Warning: Could not create runtime directories")
             # Don't fail - just warn
 
-        # 5. Fix hook paths in settings.json to use absolute paths
+        # 7. Fix hook paths in settings.json to use absolute paths
         if not self._fix_hook_paths_in_settings(target_dir):
             print("Warning: Could not fix hook paths in settings.json")
             # Don't fail - hooks might still work
 
-        # 6. Handle directory change if needed (unless UVX with --add-dir)
+        # 8. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 7. Start proxy if needed
+        # 9. Start proxy if needed
         return self._start_proxy_if_needed()
 
     def _handle_repo_checkout(self) -> bool:
@@ -652,6 +668,81 @@ class ClaudeLauncher:
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
 
+    def _interactive_neo4j_startup(self) -> bool:
+        """Interactive Neo4j startup with user feedback.
+
+        BLOCKS until Neo4j ready or user decides to continue without it.
+
+        Returns:
+            True to continue, False to exit
+        """
+        import logging
+
+        method_logger = logging.getLogger(__name__)
+
+        try:
+            from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
+
+            return interactive_neo4j_startup()
+        except ImportError:
+            # Neo4j modules not available - continue without
+            method_logger.debug("Neo4j modules not found")
+            return True
+        except Exception as e:
+            method_logger.error("Neo4j startup failed: %s", e)
+            print(f"\n⚠️  Neo4j startup error: {e}")
+            print("Continuing with basic memory system...\n")
+            return True
+
+    def _auto_setup_and_start_neo4j_OLD(self):
+        """Auto-setup prerequisites and start Neo4j in background.
+
+        Self-healing approach:
+        - Creates .env with password if missing
+        - Starts Docker if not running
+        - Starts Neo4j container
+        All in background thread, non-blocking.
+        """
+        import threading
+
+        def start_neo4j():
+            """Background thread function with auto-setup."""
+            import logging
+
+            thread_logger = logging.getLogger(__name__)
+
+            try:
+                # Auto-setup prerequisites
+                from ..memory.neo4j.auto_setup import ensure_prerequisites
+
+                if not ensure_prerequisites():
+                    thread_logger.warning("Neo4j prerequisites not met, falling back to SQLite")
+                    return
+
+                # Start Neo4j
+                from ..memory.neo4j.diagnostics import verify_neo4j_working
+                from ..memory.neo4j.lifecycle import ensure_neo4j_running
+
+                thread_logger.info("Starting Neo4j memory system...")
+                if ensure_neo4j_running(blocking=True):
+                    # Verify and show stats
+                    verify_neo4j_working()
+
+            except Exception as e:
+                # Never crash session start due to Neo4j issues
+                thread_logger.warning("Neo4j initialization error: %s", e)
+                thread_logger.info("Continuing with existing memory system")
+
+        # Start in background thread
+        thread = threading.Thread(
+            target=start_neo4j,
+            name="neo4j-startup",
+            daemon=True,  # Don't block process exit
+        )
+        thread.start()
+
+        # Don't wait - return immediately
+
     def _paths_are_same_with_cache(self, path1: Path, path2: Path) -> bool:
         """Compare paths with caching for resolved paths.
 
@@ -686,3 +777,72 @@ class ClaudeLauncher:
         Call this when UVX environment may have changed.
         """
         self._cached_uvx_decision = None
+
+    def _check_neo4j_credentials(self) -> None:
+        """Check and sync Neo4j credentials from containers.
+
+        This method is called during prepare_launch and gracefully handles
+        all errors to ensure launcher never crashes due to Neo4j detection.
+        """
+        try:
+            # Create Neo4j manager (interactive mode)
+            neo4j_manager = Neo4jManager()
+
+            # Check and sync credentials if needed
+            neo4j_manager.check_and_sync()
+
+        except Exception:
+            # Graceful degradation - never crash launcher
+            # No error message needed as Neo4j detection is optional
+            pass
+
+    def _setup_signal_handlers(self) -> None:
+        """Setup signal handlers for graceful shutdown.
+
+        Registers handlers for SIGINT (Ctrl-C) and SIGTERM that:
+        1. Trigger Neo4j cleanup via stop hook
+        2. Allow process to exit gracefully
+
+        Also registers atexit handler as fallback.
+        """
+
+        def signal_handler(signum: int, frame) -> None:
+            """Handle shutdown signals."""
+            signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
+            logger.info(f"Received {signal_name}, initiating graceful shutdown...")
+
+            # Trigger Neo4j cleanup via stop hook
+            try:
+                from amplihack.hooks.manager import execute_stop_hook
+
+                logger.info("Executing stop hook for cleanup...")
+                execute_stop_hook()
+            except Exception as e:
+                logger.warning(f"Stop hook execution failed: {e}")
+
+            # Exit gracefully
+            logger.info("Graceful shutdown complete")
+            sys.exit(0)
+
+        # Register signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        # Also register atexit handler as fallback
+        atexit.register(self._cleanup_on_exit)
+
+        logger.debug("Signal handlers registered for graceful shutdown")
+
+    def _cleanup_on_exit(self) -> None:
+        """Fallback cleanup handler for atexit.
+
+        This is a fail-safe that runs when the process exits normally
+        without receiving signals. Executes stop hook silently.
+        """
+        try:
+            from amplihack.hooks.manager import execute_stop_hook
+
+            execute_stop_hook()
+        except Exception:
+            # Fail silently in atexit - cleanup is best-effort
+            pass

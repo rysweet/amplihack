@@ -494,6 +494,7 @@ def temp_project_root(tmp_path):
     (project / ".claude/tools/amplihack/hooks").mkdir(parents=True)
     (project / ".claude/runtime/logs").mkdir(parents=True)
     (project / ".claude/runtime/metrics").mkdir(parents=True)
+    (project / ".claude/runtime/locks").mkdir(parents=True)
 
     return project
 
@@ -516,10 +517,8 @@ def stop_hook(temp_project_root):
 
     hook = StopHook()
     hook.project_root = temp_project_root
-    hook.lock_flag = temp_project_root / ".claude/tools/amplihack/.lock_active"
-    hook.continuation_prompt_file = (
-        temp_project_root / ".claude/tools/amplihack/.continuation_prompt"
-    )
+    hook.lock_flag = temp_project_root / ".claude/runtime/locks/.lock_active"
+    hook.continuation_prompt_file = temp_project_root / ".claude/runtime/locks/.continuation_prompt"
     hook.log_dir = temp_project_root / ".claude/runtime/logs"
     hook.metrics_dir = temp_project_root / ".claude/runtime/metrics"
     hook.analysis_dir = temp_project_root / ".claude/runtime/analysis"
@@ -572,8 +571,8 @@ def captured_subprocess(temp_project_root):
     Returns:
         callable: Function to run hook subprocess
     """
-    import sys
     import os
+    import sys
 
     # Path to the actual stop.py hook
     hook_script = Path(__file__).parent.parent / ".claude/tools/amplihack/hooks/stop.py"
@@ -589,11 +588,11 @@ def captured_subprocess(temp_project_root):
             CompletedProcess with stdout, stderr, exit code
         """
         # Setup environment - make sure directories exist
-        (temp_project_root / ".claude/tools/amplihack").mkdir(parents=True, exist_ok=True)
+        (temp_project_root / ".claude/runtime/locks").mkdir(parents=True, exist_ok=True)
 
         # Setup lock file if requested
         if lock_active:
-            lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+            lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
             lock_file.touch()
 
         # Prepare input

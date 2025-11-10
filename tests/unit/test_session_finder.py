@@ -9,7 +9,6 @@ Following TDD approach - these tests should FAIL initially as SessionFinder is n
 import sys
 import tempfile
 import time
-from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,11 +26,9 @@ except ImportError:
     # Define placeholder classes so tests can be written
     class SessionFinder:
         """Placeholder - to be implemented."""
-        pass
 
     class SessionInfo:
         """Placeholder - to be implemented."""
-        pass
 
 
 class TestSessionFinderBasicDiscovery:
@@ -130,6 +127,7 @@ class TestSessionFinderBasicDiscovery:
         claude_dir = temp_workspace / ".claude"
         if claude_dir.exists():
             import shutil
+
             shutil.rmtree(claude_dir)
 
         finder = SessionFinder(start_dir=temp_workspace)
@@ -153,7 +151,7 @@ class TestSessionFinderMultipleSessions:
             timestamps = [
                 int(time.time()) - 3600,  # 1 hour ago
                 int(time.time()) - 1800,  # 30 minutes ago
-                int(time.time()) - 300,   # 5 minutes ago (most recent)
+                int(time.time()) - 300,  # 5 minutes ago (most recent)
             ]
 
             for ts in timestamps:
@@ -178,8 +176,7 @@ class TestSessionFinderMultipleSessions:
 
         assert session_info is not None, "Should find a session"
         # Should be the most recent timestamp
-        assert str(timestamps[-1]) in session_info.session_id, \
-            "Should return most recent session"
+        assert str(timestamps[-1]) in session_info.session_id, "Should return most recent session"
 
     def test_list_all_active_sessions(self, workspace_with_multiple_sessions):
         """Test listing all active sessions.
@@ -195,13 +192,15 @@ class TestSessionFinderMultipleSessions:
 
         assert len(all_sessions) == 3, "Should find all 3 sessions"
         assert isinstance(all_sessions, list), "Should return list"
-        assert all(isinstance(s, SessionInfo) for s in all_sessions), \
+        assert all(isinstance(s, SessionInfo) for s in all_sessions), (
             "All items should be SessionInfo"
+        )
 
         # Check ordering (newest first)
         if len(all_sessions) > 1:
-            assert all_sessions[0].timestamp >= all_sessions[1].timestamp, \
+            assert all_sessions[0].timestamp >= all_sessions[1].timestamp, (
                 "Should be ordered newest first"
+            )
 
     def test_find_session_by_sdk_type(self, workspace_with_multiple_sessions):
         """Test filtering sessions by SDK type.
@@ -333,16 +332,16 @@ class TestSessionInfo:
                 sdk="claude",
                 timestamp=1729699200,
                 append_dir=Path("/tmp/logs/auto_claude_1729699200/append"),
-                prompt_file=Path("/tmp/logs/auto_claude_1729699200/prompt.md")
+                prompt_file=Path("/tmp/logs/auto_claude_1729699200/prompt.md"),
             )
 
-            assert hasattr(session_info, 'session_id')
-            assert hasattr(session_info, 'session_dir')
-            assert hasattr(session_info, 'workspace_root')
-            assert hasattr(session_info, 'sdk')
-            assert hasattr(session_info, 'timestamp')
-            assert hasattr(session_info, 'append_dir')
-            assert hasattr(session_info, 'prompt_file')
+            assert hasattr(session_info, "session_id")
+            assert hasattr(session_info, "session_dir")
+            assert hasattr(session_info, "workspace_root")
+            assert hasattr(session_info, "sdk")
+            assert hasattr(session_info, "timestamp")
+            assert hasattr(session_info, "append_dir")
+            assert hasattr(session_info, "prompt_file")
 
     def test_session_info_is_active_method(self):
         """Test is_active() method on SessionInfo.
@@ -360,10 +359,10 @@ class TestSessionInfo:
                 sdk="claude",
                 timestamp=int(time.time()),  # Recent timestamp
                 append_dir=Path("/tmp/logs/auto_claude_1729699200/append"),
-                prompt_file=Path("/tmp/logs/auto_claude_1729699200/prompt.md")
+                prompt_file=Path("/tmp/logs/auto_claude_1729699200/prompt.md"),
             )
 
-            assert hasattr(session_info, 'is_active'), "Should have is_active method"
+            assert hasattr(session_info, "is_active"), "Should have is_active method"
             assert callable(session_info.is_active), "is_active should be callable"
 
 
@@ -392,7 +391,7 @@ class TestSessionFinderEdgeCases:
         session_dir.mkdir()
 
         # Mock permission error
-        with patch.object(Path, 'iterdir', side_effect=PermissionError("Access denied")):
+        with patch.object(Path, "iterdir", side_effect=PermissionError("Access denied")):
             finder = SessionFinder(start_dir=temp_workspace)
 
             # Should not crash
@@ -423,7 +422,7 @@ class TestSessionFinderEdgeCases:
             finder = SessionFinder(start_dir=temp_workspace)
 
             # Should not hang
-            session_info = finder.find_active_session()
+            finder.find_active_session()
 
             # Test should complete (not hang)
             assert True, "Should complete without hanging"
@@ -461,7 +460,7 @@ class TestSessionFinderEdgeCases:
         # This will fail until default behavior is implemented
         with pytest.raises((TypeError, AttributeError, NameError)):
             finder = SessionFinder()  # No start_dir specified
-            assert hasattr(finder, 'start_dir'), "Should have default start_dir"
+            assert hasattr(finder, "start_dir"), "Should have default start_dir"
 
 
 class TestSessionFinderPerformance:
@@ -485,9 +484,7 @@ class TestSessionFinderPerformance:
 
             yield workspace
 
-    def test_find_session_efficiently_with_many_directories(
-        self, workspace_with_many_sessions
-    ):
+    def test_find_session_efficiently_with_many_directories(self, workspace_with_many_sessions):
         """Test that session finding is efficient with many directories.
 
         Expected behavior:

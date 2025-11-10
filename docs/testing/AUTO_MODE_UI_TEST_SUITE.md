@@ -7,6 +7,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Test Suite Overview
 
 ### Files Created
+
 1. **tests/unit/test_auto_mode_ui.py** (380 lines)
    - UI component tests
    - 10 test classes, 40+ tests
@@ -48,6 +49,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ```
 
 ### Coverage by Type
+
 - **Unit Tests**: 60% (~70 tests) - Component isolation, edge cases, boundaries
 - **Integration Tests**: 30% (~35 tests) - SDK integration, thread communication
 - **E2E Tests**: 10% (~20 tests) - Complete user journeys
@@ -55,6 +57,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Feature Requirements Tested
 
 ### 1. Interactive UI with 5 Areas
+
 - ✓ Title panel (generated from prompt via Claude SDK)
 - ✓ Session details panel (turn counter, elapsed time, cost tracking)
 - ✓ Todo list panel (status indicators, current task highlighting)
@@ -62,12 +65,14 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 - ✓ Prompt input panel (multiline support, instruction queueing)
 
 ### 2. Keyboard Commands
+
 - ✓ 'x' - Exit UI, continue auto mode in background
 - ✓ 'p' - Pause/resume execution
 - ✓ 'k' - Kill auto mode completely
 - ✓ 'h' - Show help overlay (bonus)
 
 ### 3. Claude Agent SDK Integration
+
 - ✓ Title generation via SDK query()
 - ✓ Cost tracking (input/output tokens, estimated cost)
 - ✓ Message streaming (AssistantMessage, ToolUseMessage, ResultMessage)
@@ -75,12 +80,14 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 - ✓ Performance metrics (latency, throughput)
 
 ### 4. Rich CLI Library Implementation
+
 - ✓ Layout structure (5 panels with proper sizing)
 - ✓ Live updates (panel content refresh)
 - ✓ Styling (colors, highlighting, status indicators)
 - ✓ Unicode support (emoji, CJK characters)
 
 ### 5. Thread-Based Execution
+
 - ✓ Background thread for auto mode
 - ✓ Main thread for UI rendering
 - ✓ Thread-safe state sharing (Locks, Events, Queue)
@@ -90,80 +97,95 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Test Organization
 
 ### Phase 1: UI Foundation
+
 **File**: test_auto_mode_ui.py
 **Classes**: TestAutoModeUIInitialization, TestUITitleGeneration, TestSessionDetailsDisplay
 
 **Focus**:
+
 - UI instance creation with ui_mode=True
 - Rich layout with 5 panels
 - Title generation (SDK + fallback)
 - Session panel (turn, time, cost)
 
 **Key Tests**:
+
 - test_ui_mode_creates_ui_instance()
 - test_ui_has_required_components()
 - test_title_generation_uses_claude_sdk()
 - test_session_panel_shows_turn_counter()
 
 ### Phase 2: Threading Infrastructure
+
 **File**: test_ui_threading.py
 **Classes**: TestAutoModeBackgroundThread, TestThreadSafeStateSharing, TestGracefulShutdown
 
 **Focus**:
+
 - Background thread creation
 - Thread-safe state (turn, logs, todos, cost)
 - UI-to-AutoMode communication
 - Shutdown and cleanup
 
 **Key Tests**:
+
 - test_auto_mode_creates_background_thread()
 - test_turn_counter_is_thread_safe()
 - test_log_queue_is_thread_safe()
 - test_shutdown_cleans_up_resources()
 
 ### Phase 3: SDK Integration
+
 **File**: test_ui_sdk_integration.py
 **Classes**: TestTitleGenerationViaSDK, TestCostTrackingDisplay, TestSDKStreamingToUI
 
 **Focus**:
+
 - Claude SDK query() calls
 - Token counting and cost calculation
 - Message streaming to logs
 - Error handling and retries
 
 **Key Tests**:
+
 - test_title_generation_calls_claude_sdk()
 - test_cost_accumulates_across_turns()
 - test_assistant_messages_stream_to_logs()
 - test_sdk_connection_error_shown_in_ui()
 
 ### Phase 4: User Interactions
+
 **File**: test_auto_mode_ui.py
 **Classes**: TestPromptInputHandling, TestKeyboardCommands, TestTodoListIntegration
 
 **Focus**:
+
 - Keyboard command handling
 - Prompt input and injection
 - Todo list updates
 - Log area updates
 
 **Key Tests**:
+
 - test_keyboard_command_x_exits_ui()
 - test_keyboard_command_p_pauses_execution()
 - test_input_creates_instruction_file()
 - test_todo_panel_displays_current_todos()
 
 ### Phase 5: End-to-End Workflows
+
 **File**: test_auto_mode_ui_integration.py
 **Classes**: TestFullUIWorkflow, TestPromptInjectionViaUI, TestPauseAndResume
 
 **Focus**:
+
 - Complete startup to completion
 - Live instruction injection
 - Pause/resume flow
 - Exit to terminal mode
 
 **Key Tests**:
+
 - test_ui_starts_and_displays_initial_state()
 - test_inject_instruction_during_execution()
 - test_pause_stops_new_turns()
@@ -172,13 +194,15 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Critical Paths Tested
 
 ### Startup Flow
+
 1. AutoMode(ui_mode=True) → Creates UI instance
-2. UI.__init__() → Creates 5 panels with Rich layout
+2. UI.**init**() → Creates 5 panels with Rich layout
 3. generate_title() → Claude SDK query for concise title
 4. start_background() → Creates execution thread
 5. UI render loop → Display initial state
 
 ### Execution Flow
+
 1. Auto mode runs in background thread
 2. Logs queued via Queue → UI consumes and displays
 3. Turn counter updated → Session panel refreshes
@@ -186,6 +210,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 5. Cost info updated → Session panel shows tokens/cost
 
 ### Injection Flow
+
 1. User types in input panel → Text queued
 2. User submits → Write to append/TIMESTAMP.md
 3. Auto mode checks before turn → Detects new file
@@ -193,6 +218,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 5. Move to appended/ → Process instruction
 
 ### Pause/Resume Flow
+
 1. User presses 'p' → Set pause_event
 2. Auto mode checks event → Complete current turn
 3. Auto mode waits on event → No new turns start
@@ -200,6 +226,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 5. Auto mode continues → Normal execution resumes
 
 ### Exit Flow
+
 1. User presses 'x' → Set ui.should_exit()
 2. UI render loop exits → Close UI
 3. Switch to terminal mode → Continue logging to stdout
@@ -209,24 +236,28 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Boundary Conditions Tested
 
 ### Empty/Zero Cases
+
 - Empty prompt → Default title "Auto Mode Session"
 - max_turns=0 → Graceful handling
 - Empty todo list → "No tasks yet" message
 - No cost info → Display "N/A"
 
 ### Large Values
+
 - 500+ char prompts → Truncate to 50 chars
 - 1M+ tokens → Comma formatting (1,000,000)
 - 100+ rapid log messages → Batch updates (30/sec)
 - 1000+ log lines → Buffer truncation
 
 ### Edge Cases
+
 - Negative elapsed time → Clamp to 0s (clock skew)
 - Unicode in logs → Emoji, CJK display correctly
 - Concurrent reads/writes → No race conditions
 - Thread timeout → Max 5s wait on shutdown
 
 ### Error Cases
+
 - SDK connection error → Display error, continue
 - Rate limit (429) → Show retry countdown, backoff
 - UI thread crash → Auto mode isolated, continues
@@ -236,21 +267,25 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Thread Safety Verification
 
 ### Protected State
+
 - **turn_counter**: threading.Lock
 - **todos_list**: threading.Lock
 - **cost_info**: threading.Lock
 - **log_messages**: Queue (thread-safe by default)
 
 ### Signals
+
 - **pause_event**: threading.Event
 - **stop_event**: threading.Event
 
 ### Race Condition Tests
+
 - 100 concurrent turn increments → Final value correct
 - Concurrent todo reads/writes → No corruption
 - Log queue overflow → Oldest dropped, no block
 
 ### Deadlock Prevention
+
 - Timeout on all Queue.get() calls (1-5 seconds)
 - Timeout on Thread.join() calls (5 seconds)
 - Lock acquisition order documented
@@ -259,16 +294,19 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Performance Targets
 
 ### UI Responsiveness
+
 - **Frame Rate**: 30 FPS target (33ms per frame)
 - **Input Latency**: <100ms from keypress to UI update
 - **Log Batching**: Max 30 updates/sec (reduce flickering)
 
 ### Memory Usage
+
 - **Log Buffer**: 1000 lines max (~100KB)
 - **Queue Size**: 500 items max (~50KB)
 - **No Leaks**: Memory stable over 1000 turns
 
 ### Throughput
+
 - **Streaming**: Handle 100+ messages/sec
 - **Tokens/sec**: Display output rate
 - **Turn Latency**: Track and display per-turn time
@@ -276,6 +314,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Implementation Roadmap
 
 ### Week 1: UI Foundation
+
 - [ ] Add ui_mode parameter to AutoMode
 - [ ] Create UIManager class with Rich layout
 - [ ] Implement 5 panel structure
@@ -283,6 +322,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 - **Tests to Pass**: TestAutoModeUIInitialization (10 tests)
 
 ### Week 2: Threading Infrastructure
+
 - [ ] Add background thread for execution
 - [ ] Implement thread-safe state (Locks)
 - [ ] Add log queue (Queue)
@@ -290,6 +330,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 - **Tests to Pass**: TestAutoModeBackgroundThread, TestThreadSafeStateSharing (15 tests)
 
 ### Week 3: SDK Integration
+
 - [ ] Async title generation via SDK
 - [ ] Cost tracking from ResultMessage.usage
 - [ ] Message streaming to log queue
@@ -297,6 +338,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 - **Tests to Pass**: TestTitleGenerationViaSDK, TestCostTrackingDisplay (20 tests)
 
 ### Week 4: User Interactions
+
 - [ ] Keyboard input handling (x, p, k)
 - [ ] Prompt input panel with submit
 - [ ] Instruction file creation
@@ -304,6 +346,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 - **Tests to Pass**: TestKeyboardCommands, TestPromptInputHandling (15 tests)
 
 ### Week 5: E2E Integration
+
 - [ ] Complete startup workflow
 - [ ] Live injection during execution
 - [ ] Pause/resume functionality
@@ -311,6 +354,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 - **Tests to Pass**: TestFullUIWorkflow, TestPromptInjectionViaUI (20 tests)
 
 ### Week 6: Polish & Bug Fixes
+
 - [ ] Fix remaining edge cases
 - [ ] Performance optimization
 - [ ] UI styling and colors
@@ -322,6 +366,7 @@ This comprehensive test-driven development (TDD) test suite provides complete sp
 ## Running the Tests
 
 ### All Tests
+
 ```bash
 # Run all unit tests
 pytest tests/unit/test_auto_mode_ui.py -v
@@ -336,6 +381,7 @@ pytest tests/unit/test_auto_mode_ui.py tests/unit/test_ui_threading.py tests/uni
 ```
 
 ### By Phase
+
 ```bash
 # Phase 1: UI Foundation
 pytest tests/unit/test_auto_mode_ui.py::TestAutoModeUIInitialization -v
@@ -358,6 +404,7 @@ pytest tests/integration/test_auto_mode_ui_integration.py::TestFullUIWorkflow -v
 ```
 
 ### With Coverage
+
 ```bash
 pytest tests/unit/test_auto_mode_ui.py \
        tests/unit/test_ui_threading.py \
@@ -391,24 +438,28 @@ This is **expected and correct** - tests drive implementation!
 ## Success Criteria
 
 ### Code Complete
+
 - [ ] All 115+ tests passing
 - [ ] Code coverage >85%
 - [ ] No race conditions detected
 - [ ] Memory usage stable
 
 ### Performance Targets Met
+
 - [ ] UI renders at 30 FPS
 - [ ] Input latency <100ms
 - [ ] No blocking operations
 - [ ] Graceful degradation on errors
 
 ### Quality Gates Passed
+
 - [ ] Manual testing confirms usability
 - [ ] No crashes on edge cases
 - [ ] Clean shutdown on all paths
 - [ ] Documentation complete
 
 ### User Acceptance
+
 - [ ] UI is intuitive and responsive
 - [ ] Commands work as expected
 - [ ] Error messages are helpful
@@ -436,6 +487,7 @@ This is **expected and correct** - tests drive implementation!
 ## Contact & Support
 
 For questions about this test suite:
+
 1. Read the detailed README in tests/unit/
 2. Review test code for specifications
 3. Check existing auto_mode.py for current implementation

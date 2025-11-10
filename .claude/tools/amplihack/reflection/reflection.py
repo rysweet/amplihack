@@ -116,7 +116,7 @@ except ImportError:
 
 def is_reflection_enabled() -> bool:
     """Check if reflection is enabled via environment variable."""
-    return os.environ.get("REFLECTION_ENABLED", "true").lower() not in ["false", "0", "no", "off"]
+    return os.environ.get("REFLECTION_ENABLED", "false").lower() not in ["false", "0", "no", "off"]
 
 
 def analyze_session_patterns(messages: List[Dict]) -> List[Dict]:

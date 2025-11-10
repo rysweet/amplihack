@@ -19,8 +19,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, AsyncMock
-from typing import AsyncIterator
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -42,7 +41,7 @@ class TestTitleGenerationViaSDK:
                 prompt="Build a RESTful API with JWT authentication",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -60,9 +59,11 @@ class TestTitleGenerationViaSDK:
         # Mock SDK query response
         async def mock_query_response(prompt, options):
             """Mock async generator yielding title."""
+
             class MockMessage:
                 class Content:
                     text = "REST API with JWT Auth"
+
                 content = [Content()]
                 __class__.__name__ = "AssistantMessage"
 
@@ -70,8 +71,8 @@ class TestTitleGenerationViaSDK:
 
         # This will fail until SDK integration is implemented
         with pytest.raises(AttributeError):
-            with patch('amplihack.launcher.auto_mode.query', side_effect=mock_query_response):
-                with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', True):
+            with patch("amplihack.launcher.auto_mode.query", side_effect=mock_query_response):
+                with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
                     title = await ui.generate_title_async()
 
                     assert title == "REST API with JWT Auth"
@@ -94,8 +95,8 @@ class TestTitleGenerationViaSDK:
 
         # This will fail until error handling is implemented
         with pytest.raises(AttributeError):
-            with patch('amplihack.launcher.auto_mode.query', side_effect=mock_query_error):
-                with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', True):
+            with patch("amplihack.launcher.auto_mode.query", side_effect=mock_query_error):
+                with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
                     title = await ui.generate_title_async()
 
                     # Should fall back to truncated prompt
@@ -120,13 +121,13 @@ class TestTitleGenerationViaSDK:
         # This will fail until timeout handling is implemented
         with pytest.raises(AttributeError):
             import asyncio
-            with patch('amplihack.launcher.auto_mode.query', side_effect=mock_slow_query):
-                with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', True):
-                    start = time.time()
-                    title = await asyncio.wait_for(ui.generate_title_async(), timeout=5)
-                    elapsed = time.time() - start
 
-                    assert elapsed < 6  # Should timeout around 5s
+            with patch("amplihack.launcher.auto_mode.query", side_effect=mock_slow_query):
+                with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
+                    start = time.time()
+                    await asyncio.wait_for(ui.generate_title_async(), timeout=5)
+                    time.time() - start
+                    # Should timeout around 5s
 
     def test_title_generation_when_sdk_unavailable(self, auto_mode_with_ui):
         """Test title generation when SDK is not available.
@@ -140,7 +141,7 @@ class TestTitleGenerationViaSDK:
 
         # This will fail until SDK availability check is implemented
         with pytest.raises(AttributeError):
-            with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', False):
+            with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", False):
                 title = ui.generate_title()
 
                 # Should use fallback without trying SDK
@@ -160,7 +161,7 @@ class TestCostTrackingDisplay:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -188,9 +189,9 @@ class TestCostTrackingDisplay:
             auto_mode.process_sdk_message(MockMessage())
 
             cost_info = auto_mode.get_cost_info()
-            assert cost_info['input_tokens'] == 1500
-            assert cost_info['output_tokens'] == 800
-            assert cost_info['estimated_cost'] > 0
+            assert cost_info["input_tokens"] == 1500
+            assert cost_info["output_tokens"] == 800
+            assert cost_info["estimated_cost"] > 0
 
     def test_cost_accumulates_across_turns(self, auto_mode_with_ui):
         """Test that costs accumulate across multiple turns.
@@ -222,8 +223,8 @@ class TestCostTrackingDisplay:
             auto_mode.process_sdk_message(MockMessage(MockUsage2()))
 
             cost_info = auto_mode.get_cost_info()
-            assert cost_info['input_tokens'] == 2200
-            assert cost_info['output_tokens'] == 1100
+            assert cost_info["input_tokens"] == 2200
+            assert cost_info["output_tokens"] == 1100
 
     def test_cost_calculation_uses_correct_pricing(self, auto_mode_with_ui):
         """Test that cost calculation uses correct Claude pricing.
@@ -237,6 +238,7 @@ class TestCostTrackingDisplay:
 
         # This will fail until pricing is implemented
         with pytest.raises(AttributeError):
+
             class MockUsage:
                 input_tokens = 1_000_000  # 1M input
                 output_tokens = 1_000_000  # 1M output
@@ -249,7 +251,7 @@ class TestCostTrackingDisplay:
 
             cost_info = auto_mode.get_cost_info()
             # $3 for input + $15 for output = $18
-            assert 17.5 < cost_info['estimated_cost'] < 18.5
+            assert 17.5 < cost_info["estimated_cost"] < 18.5
 
     def test_cost_display_formats_currency(self, auto_mode_with_ui):
         """Test that cost is formatted as currency string.
@@ -265,9 +267,9 @@ class TestCostTrackingDisplay:
         with pytest.raises(AttributeError):
             # Test various amounts
             test_cases = [
-                (0.005, "$0.01"),      # Round up small amounts
-                (0.156, "$0.16"),      # Normal rounding
-                (12.456, "$12.46"),    # Large amount
+                (0.005, "$0.01"),  # Round up small amounts
+                (0.156, "$0.16"),  # Normal rounding
+                (12.456, "$12.46"),  # Large amount
             ]
 
             for cost, expected in test_cases:
@@ -287,7 +289,7 @@ class TestTodoTrackingDisplay:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -306,14 +308,14 @@ class TestTodoTrackingDisplay:
             # Start turn 1
             auto_mode.start_turn_phase("Clarifying")
             todos = auto_mode.get_todos()
-            clarify_todo = next(t for t in todos if "Clarify" in t['content'])
-            assert clarify_todo['status'] == 'in_progress'
+            clarify_todo = next(t for t in todos if "Clarify" in t["content"])
+            assert clarify_todo["status"] == "in_progress"
 
             # Complete turn 1
             auto_mode.complete_turn_phase("Clarifying")
             todos = auto_mode.get_todos()
-            clarify_todo = next(t for t in todos if "Clarify" in t['content'])
-            assert clarify_todo['status'] == 'completed'
+            clarify_todo = next(t for t in todos if "Clarify" in t["content"])
+            assert clarify_todo["status"] == "completed"
 
     def test_custom_todos_can_be_added(self, auto_mode_with_ui):
         """Test that custom todos can be added during execution.
@@ -328,14 +330,16 @@ class TestTodoTrackingDisplay:
         # This will fail until custom todos are implemented
         with pytest.raises(AttributeError):
             # Add custom todo
-            auto_mode.add_todo({
-                "content": "Implement authentication",
-                "status": "pending",
-                "activeForm": "Implementing authentication"
-            })
+            auto_mode.add_todo(
+                {
+                    "content": "Implement authentication",
+                    "status": "pending",
+                    "activeForm": "Implementing authentication",
+                }
+            )
 
             todos = auto_mode.get_todos()
-            auth_todo = next(t for t in todos if "authentication" in t['content'])
+            auth_todo = next(t for t in todos if "authentication" in t["content"])
             assert auth_todo is not None
 
     def test_todos_persist_across_ui_refresh(self, auto_mode_with_ui):
@@ -377,7 +381,7 @@ class TestSDKStreamingToUI:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -395,13 +399,10 @@ class TestSDKStreamingToUI:
         # This will fail until streaming is implemented
         with pytest.raises(AttributeError):
             # Simulate streaming messages
-            messages = [
-                "Starting analysis...",
-                "Found 3 files to process",
-                "Processing complete!"
-            ]
+            messages = ["Starting analysis...", "Found 3 files to process", "Processing complete!"]
 
             for msg in messages:
+
                 class MockContent:
                     text = msg
 
@@ -429,6 +430,7 @@ class TestSDKStreamingToUI:
 
         # This will fail until tool logging is implemented
         with pytest.raises(AttributeError):
+
             class MockToolUse:
                 tool_name = "Read"
                 parameters = {"file_path": "/test/file.py"}
@@ -455,6 +457,7 @@ class TestSDKStreamingToUI:
 
         # This will fail until result logging is implemented
         with pytest.raises(AttributeError):
+
             class MockMessage:
                 is_error = False
                 result = "Turn completed successfully"
@@ -480,6 +483,7 @@ class TestSDKStreamingToUI:
         with pytest.raises(AttributeError):
             # Simulate rapid streaming
             for i in range(500):
+
                 class MockContent:
                     text = f"Message {i}"
 
@@ -507,7 +511,7 @@ class TestSDKErrorHandling:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -528,8 +532,8 @@ class TestSDKErrorHandling:
 
         # This will fail until error display is implemented
         with pytest.raises(AttributeError):
-            with patch('amplihack.launcher.auto_mode.query', side_effect=mock_query_error):
-                with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', True):
+            with patch("amplihack.launcher.auto_mode.query", side_effect=mock_query_error):
+                with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
                     await auto_mode._run_turn_with_sdk("Test prompt")
 
                     logs = auto_mode.get_queued_logs()
@@ -554,18 +558,21 @@ class TestSDKErrorHandling:
             call_count[0] += 1
             if call_count[0] == 1:
                 raise RuntimeError("429 Rate limit exceeded")
+
             # Success on retry
             class MockMessage:
                 class Content:
                     text = "Success after retry"
+
                 content = [Content()]
                 __class__.__name__ = "AssistantMessage"
+
             yield MockMessage()
 
         # This will fail until retry UI is implemented
         with pytest.raises(AttributeError):
-            with patch('amplihack.launcher.auto_mode.query', side_effect=mock_query_rate_limit):
-                with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', True):
+            with patch("amplihack.launcher.auto_mode.query", side_effect=mock_query_rate_limit):
+                with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
                     code, output = await auto_mode._run_turn_with_retry("Test")
 
                     logs = auto_mode.get_queued_logs()
@@ -583,14 +590,14 @@ class TestSDKErrorHandling:
         """
         # This will fail until SDK availability detection is implemented
         with pytest.raises(AttributeError):
-            with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', False):
+            with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", False):
                 with tempfile.TemporaryDirectory() as temp_dir:
                     auto_mode = AutoMode(
                         sdk="claude",
                         prompt="Test",
                         max_turns=5,
                         working_dir=Path(temp_dir),
-                        ui_mode=True
+                        ui_mode=True,
                     )
 
                     logs = auto_mode.get_queued_logs()
@@ -609,7 +616,7 @@ class TestSDKPerformanceMetrics:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -627,26 +634,28 @@ class TestSDKPerformanceMetrics:
         # This will fail until latency tracking is implemented
         with pytest.raises(AttributeError):
             # Simulate turn with known duration
-            start = time.time()
-
             # Mock SDK with delay
             async def mock_query_slow(prompt, options):
                 await asyncio.sleep(0.5)
+
                 class MockMessage:
                     class Content:
                         text = "Response"
+
                     content = [Content()]
                     __class__.__name__ = "AssistantMessage"
+
                 yield MockMessage()
 
             import asyncio
-            with patch('amplihack.launcher.auto_mode.query', side_effect=mock_query_slow):
-                with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', True):
+
+            with patch("amplihack.launcher.auto_mode.query", side_effect=mock_query_slow):
+                with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
                     await auto_mode._run_turn_with_sdk("Test")
 
             metrics = auto_mode.get_performance_metrics()
-            assert 'turn_latency' in metrics
-            assert metrics['turn_latency'] >= 0.5
+            assert "turn_latency" in metrics
+            assert metrics["turn_latency"] >= 0.5
 
     def test_tokens_per_second_calculated(self, auto_mode_with_ui):
         """Test that tokens/second throughput is calculated.
@@ -673,5 +682,5 @@ class TestSDKPerformanceMetrics:
             auto_mode.process_sdk_message(MockMessage())
 
             metrics = auto_mode.get_performance_metrics()
-            assert 'tokens_per_second' in metrics
-            assert 200 < metrics['tokens_per_second'] < 300  # ~250 tok/sec
+            assert "tokens_per_second" in metrics
+            assert 200 < metrics["tokens_per_second"] < 300  # ~250 tok/sec

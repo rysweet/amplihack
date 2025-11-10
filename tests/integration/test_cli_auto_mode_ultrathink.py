@@ -8,10 +8,9 @@ Following test pyramid: 30% integration tests for workflow verification.
 """
 
 import argparse
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # =============================================================================
 # Integration Tests - handle_auto_mode() with ensure_ultrathink_command()
@@ -46,7 +45,7 @@ def test_integration_auto_001_normal_prompt_prepends_ultrathink(mock_auto_mode):
     cmd_args = ["-p", "implement feature X"]
 
     # Execute
-    exit_code = handle_auto_mode("claude", args, cmd_args)
+    handle_auto_mode("claude", args, cmd_args)
 
     # Verify AutoMode was called with transformed prompt
     mock_auto_mode.assert_called_once()
@@ -64,7 +63,7 @@ def test_integration_auto_002_slash_command_unchanged(mock_auto_mode):
     args = argparse.Namespace(auto=True, max_turns=10, ui=False)
     cmd_args = ["-p", "/analyze src"]
 
-    exit_code = handle_auto_mode("claude", args, cmd_args)
+    handle_auto_mode("claude", args, cmd_args)
 
     # Verify AutoMode was called
     mock_auto_mode.assert_called_once()
@@ -77,7 +76,7 @@ def test_integration_auto_003_whitespace_stripped(mock_auto_mode):
     args = argparse.Namespace(auto=True, max_turns=10, ui=False)
     cmd_args = ["-p", "  implement feature  "]
 
-    exit_code = handle_auto_mode("claude", args, cmd_args)
+    handle_auto_mode("claude", args, cmd_args)
 
     # Verify AutoMode was called
     mock_auto_mode.assert_called_once()
@@ -122,7 +121,7 @@ def test_integration_auto_006_max_turns_passed_through(mock_auto_mode):
     args = argparse.Namespace(auto=True, max_turns=25, ui=False)
     cmd_args = ["-p", "implement feature"]
 
-    exit_code = handle_auto_mode("claude", args, cmd_args)
+    handle_auto_mode("claude", args, cmd_args)
 
     # Verify max_turns was passed
     call_args = mock_auto_mode.call_args
@@ -136,7 +135,7 @@ def test_integration_auto_007_ui_mode_passed_through(mock_auto_mode):
     args = argparse.Namespace(auto=True, max_turns=10, ui=True)
     cmd_args = ["-p", "implement feature"]
 
-    exit_code = handle_auto_mode("claude", args, cmd_args)
+    handle_auto_mode("claude", args, cmd_args)
 
     # Verify ui_mode was passed
     call_args = mock_auto_mode.call_args
@@ -150,7 +149,7 @@ def test_integration_auto_008_copilot_sdk(mock_auto_mode):
     args = argparse.Namespace(auto=True, max_turns=10, ui=False)
     cmd_args = ["-p", "implement feature"]
 
-    exit_code = handle_auto_mode("copilot", args, cmd_args)
+    handle_auto_mode("copilot", args, cmd_args)
 
     # Verify copilot SDK was passed
     call_args = mock_auto_mode.call_args
@@ -164,7 +163,7 @@ def test_integration_auto_009_codex_sdk(mock_auto_mode):
     args = argparse.Namespace(auto=True, max_turns=10, ui=False)
     cmd_args = ["-p", "implement feature"]
 
-    exit_code = handle_auto_mode("codex", args, cmd_args)
+    handle_auto_mode("codex", args, cmd_args)
 
     # Verify codex SDK was passed
     call_args = mock_auto_mode.call_args
@@ -241,7 +240,7 @@ def test_integration_auto_014_prompt_extraction_first_p_flag():
         args = argparse.Namespace(auto=True, max_turns=10, ui=False)
         cmd_args = ["-p", "first prompt", "-p", "second prompt"]
 
-        exit_code = handle_auto_mode("claude", args, cmd_args)
+        handle_auto_mode("claude", args, cmd_args)
 
         # Should use first prompt
         call_args = mock_auto.call_args
@@ -271,7 +270,7 @@ def test_integration_auto_015_prompt_flag_at_end():
 
 def test_integration_auto_016_full_workflow_with_transformation():
     """INTEGRATION-AUTO-016: Full workflow from CLI args to AutoMode."""
-    from amplihack.cli import handle_auto_mode, ensure_ultrathink_command
+    from amplihack.cli import ensure_ultrathink_command, handle_auto_mode
 
     with patch("amplihack.cli.AutoMode") as mock_auto:
         mock_auto.return_value.run.return_value = 0
@@ -481,8 +480,9 @@ def test_integration_auto_028_pure_function_no_side_effects():
 
 def test_integration_auto_029_function_signature():
     """INTEGRATION-AUTO-029: Verify function signature."""
-    from amplihack.cli import ensure_ultrathink_command
     import inspect
+
+    from amplihack.cli import ensure_ultrathink_command
 
     # Check function exists
     assert callable(ensure_ultrathink_command)

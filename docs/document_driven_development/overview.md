@@ -23,6 +23,7 @@ Document-Driven Development (DDD) is a systematic approach where:
 **Traditional approach**: Code → Docs
 
 What happens:
+
 - Docs written after code (if at all)
 - Docs lag behind code changes
 - Docs and code diverge over time
@@ -39,6 +40,7 @@ What happens:
 **DDD approach**: Docs → Approval → Implementation
 
 What happens:
+
 - Design captured in docs first
 - Human reviews and approves design
 - **Only then** write code
@@ -57,6 +59,7 @@ What happens:
 **Context poisoning** = AI loads inconsistent information, makes wrong decisions
 
 **How DDD prevents it**:
+
 - Single source of truth for each concept
 - No duplicate documentation
 - No stale docs (updated before code)
@@ -67,6 +70,7 @@ What happens:
 **Problem**: Implementation complexity obscures design intent
 
 **How DDD helps**:
+
 - Docs define interfaces before implementation
 - Contracts clear before complexity added
 - Easier to review design than code
@@ -77,6 +81,7 @@ What happens:
 **Problem**: Design flaws discovered after expensive implementation
 
 **How DDD helps**:
+
 - Design reviewed at approval gate
 - Catch flaws before coding
 - Iterate on docs (cheap) not code (expensive)
@@ -87,6 +92,7 @@ What happens:
 **Problem**: AI tools rely on docs for context
 
 **How DDD helps**:
+
 - Docs always current
 - No conflicting information
 - Clear specifications
@@ -97,6 +103,7 @@ What happens:
 **Problem**: Docs and code slowly diverge over time
 
 **How DDD helps**:
+
 - Docs come first, so can't lag
 - If code needs to differ, update docs first
 - Always in sync by design
@@ -107,6 +114,7 @@ What happens:
 **Problem**: Unclear module boundaries and interfaces
 
 **How DDD helps**:
+
 - Docs define "studs" (interfaces) first
 - Then build "bricks" (implementations)
 - Clear contracts between modules
@@ -117,6 +125,7 @@ What happens:
 **Problem**: Critical decisions made during coding under pressure
 
 **How DDD helps**:
+
 - Design decisions at planning phase
 - Time to think through trade-offs
 - Expert review before commitment
@@ -131,24 +140,28 @@ DDD builds on these principles:
 ### From [PHILOSOPHY.md](../../.claude/context/PHILOSOPHY.md)
 
 **Ruthless Simplicity**:
+
 - Start minimal, grow as needed
 - Avoid future-proofing
 - Question every abstraction
 - Clear over clever
 
 **Applied in DDD**:
+
 - Simple docs easier to maintain
 - No speculative features in docs
 - Each doc has one clear purpose
 - Progressive organization
 
 **Bricks and Studs**:
+
 - Self-contained modules
 - Clear interfaces (studs)
 - Regeneratable from spec
 - Human architects, AI builds
 
 **Applied in DDD**:
+
 - Docs define interfaces (studs)
 - Code implements modules (bricks)
 - Can regenerate from docs
@@ -213,6 +226,7 @@ Phase 6: Cleanup & Push
 ### ✅ Use DDD For
 
 **Large changes**:
+
 - New features requiring multiple files
 - System redesigns or refactoring
 - API changes affecting documentation
@@ -220,12 +234,14 @@ Phase 6: Cleanup & Push
 - Cross-cutting concerns
 
 **High-stakes work**:
+
 - User-facing features
 - Breaking changes
 - Complex integrations
 - Architecture decisions
 
 **Collaborative work**:
+
 - Multiple developers involved
 - Need clear specification
 - External review required
@@ -233,12 +249,14 @@ Phase 6: Cleanup & Push
 ### ❌ Don't Use DDD For
 
 **Simple changes**:
+
 - Typo fixes
 - Single-file bug fixes
 - Trivial updates
 - Documentation-only changes
 
 **Emergency situations**:
+
 - Production hotfixes
 - Critical security patches
 - System down scenarios
@@ -291,23 +309,27 @@ Phase 6: Cleanup & Push
 You're doing DDD well when:
 
 **Documentation Quality**:
+
 - ✅ Docs and code never diverge
 - ✅ Zero context poisoning incidents
 - ✅ Examples all work when copy-pasted
 - ✅ New developers understand from docs alone
 
 **Process Quality**:
+
 - ✅ Changes require minimal rework
 - ✅ Design flaws caught at approval gate
 - ✅ Philosophy principles naturally followed
 - ✅ Git history is clean (no thrashing)
 
 **AI Collaboration**:
+
 - ✅ AI tools make correct decisions consistently
 - ✅ No "wrong approach implemented confidently"
 - ✅ Can regenerate modules from specs
 
 **Team Impact**:
+
 - ✅ Implementation time decreases (better specs)
 - ✅ Bug rate decreases (fewer misunderstandings)
 - ✅ Questions about features, not "which docs are right?"
@@ -321,12 +343,14 @@ You're doing DDD well when:
 DDD is more than writing documentation before code:
 
 **Traditional "docs first"**:
+
 - Write docs
 - Write code
 - Docs drift over time
 - No systematic process
 
 **DDD**:
+
 - Systematic process with phases
 - Approval gate before implementation
 - Specific techniques (file crawling, retcon, etc.)
@@ -338,12 +362,14 @@ DDD is more than writing documentation before code:
 DDD differs from traditional spec-driven development:
 
 **Traditional specs**:
+
 - Often separate from user docs
 - Written in formal specification language
 - Rarely updated after initial write
 - Developers don't read them
 
 **DDD**:
+
 - User docs ARE the specs
 - Written in clear human language
 - Always current (updated first)
@@ -433,6 +459,7 @@ DDD differs from traditional spec-driven development:
 ## Related Resources
 
 **Philosophy Foundation**:
+
 - [PHILOSOPHY.md](../../.claude/context/PHILOSOPHY.md) - Ruthless simplicity and modular design principles
 
 **Return to**: [Main Index](README.md)

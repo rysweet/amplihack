@@ -6,8 +6,8 @@ Claude SDK behavior.
 """
 
 import unittest
-from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
 
 class TestAutoModeTodoWriteFix(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestAutoModeTodoWriteFix(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         # Mock Claude SDK availability
-        self.claude_sdk_patcher = patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', True)
+        self.claude_sdk_patcher = patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True)
         self.claude_sdk_patcher.start()
 
     def tearDown(self):
@@ -40,19 +40,17 @@ class TestAutoModeTodoWriteFix(unittest.TestCase):
         mock_block.input = mock_tool_input  # Object, not dict!
 
         # Create AutoMode instance with proper mocking
-        with patch('amplihack.launcher.auto_mode.Path.mkdir'), \
-             patch('builtins.open', MagicMock()):
+        with patch("amplihack.launcher.auto_mode.Path.mkdir"), patch("builtins.open", MagicMock()):
             auto_mode = AutoMode(
                 sdk="claude",
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path("/tmp/test"),
-                ui_mode=False
+                ui_mode=False,
             )
 
         # Track if _handle_todo_write was called
         called_with_todos = []
-        original_handle = auto_mode._handle_todo_write
 
         def mock_handle(todos):
             called_with_todos.append(todos)
@@ -92,14 +90,13 @@ class TestAutoModeTodoWriteFix(unittest.TestCase):
         }
 
         # Create AutoMode instance with proper mocking
-        with patch('amplihack.launcher.auto_mode.Path.mkdir'), \
-             patch('builtins.open', MagicMock()):
+        with patch("amplihack.launcher.auto_mode.Path.mkdir"), patch("builtins.open", MagicMock()):
             auto_mode = AutoMode(
                 sdk="claude",
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path("/tmp/test"),
-                ui_mode=False
+                ui_mode=False,
             )
 
         # Track if _handle_todo_write was called
@@ -139,14 +136,13 @@ class TestAutoModeTodoWriteFix(unittest.TestCase):
         mock_block.input = mock_tool_input
 
         # Create AutoMode instance with proper mocking
-        with patch('amplihack.launcher.auto_mode.Path.mkdir'), \
-             patch('builtins.open', MagicMock()):
+        with patch("amplihack.launcher.auto_mode.Path.mkdir"), patch("builtins.open", MagicMock()):
             auto_mode = AutoMode(
                 sdk="claude",
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path("/tmp/test"),
-                ui_mode=False
+                ui_mode=False,
             )
 
         # Track if _handle_todo_write was called
@@ -175,5 +171,5 @@ class TestAutoModeTodoWriteFix(unittest.TestCase):
         self.assertEqual(called_count, 0, "Should not call _handle_todo_write when todos missing")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

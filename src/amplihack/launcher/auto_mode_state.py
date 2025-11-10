@@ -54,8 +54,8 @@ class AutoModeState:
 
     def __post_init__(self):
         """Initialize the lock after dataclass initialization."""
-        if not hasattr(self, '_lock') or self._lock is None:
-            object.__setattr__(self, '_lock', threading.Lock())
+        if not hasattr(self, "_lock") or self._lock is None:
+            object.__setattr__(self, "_lock", threading.Lock())
 
     def snapshot(self) -> Dict[str, Any]:
         """Get a thread-safe snapshot of current state.
@@ -65,17 +65,17 @@ class AutoModeState:
         """
         with self._lock:
             return {
-                'session_id': self.session_id,
-                'start_time': self.start_time,
-                'turn': self.turn,
-                'max_turns': self.max_turns,
-                'objective': self.objective,
-                'todos': list(self.todos),  # Copy list
-                'logs': list(self.logs),    # Copy deque to list
-                'costs': dict(self.costs),  # Copy dict
-                'status': self.status,
-                'pause_requested': self.pause_requested,
-                'kill_requested': self.kill_requested,
+                "session_id": self.session_id,
+                "start_time": self.start_time,
+                "turn": self.turn,
+                "max_turns": self.max_turns,
+                "objective": self.objective,
+                "todos": list(self.todos),  # Copy list
+                "logs": list(self.logs),  # Copy deque to list
+                "costs": dict(self.costs),  # Copy dict
+                "status": self.status,
+                "pause_requested": self.pause_requested,
+                "kill_requested": self.kill_requested,
             }
 
     def add_log(self, message: str, timestamp: bool = True) -> None:
@@ -109,8 +109,9 @@ class AutoModeState:
         with self._lock:
             self.todos = list(todos)  # Copy to avoid reference issues
 
-    def update_costs(self, input_tokens: int = 0, output_tokens: int = 0,
-                     estimated_cost: float = 0.0) -> None:
+    def update_costs(
+        self, input_tokens: int = 0, output_tokens: int = 0, estimated_cost: float = 0.0
+    ) -> None:
         """Update cost tracking information.
 
         Args:
@@ -120,9 +121,9 @@ class AutoModeState:
         """
         with self._lock:
             # Accumulate tokens
-            self.costs['input_tokens'] = self.costs.get('input_tokens', 0) + input_tokens
-            self.costs['output_tokens'] = self.costs.get('output_tokens', 0) + output_tokens
-            self.costs['estimated_cost'] = self.costs.get('estimated_cost', 0.0) + estimated_cost
+            self.costs["input_tokens"] = self.costs.get("input_tokens", 0) + input_tokens
+            self.costs["output_tokens"] = self.costs.get("output_tokens", 0) + output_tokens
+            self.costs["estimated_cost"] = self.costs.get("estimated_cost", 0.0) + estimated_cost
 
     def update_status(self, status: str) -> None:
         """Update execution status.

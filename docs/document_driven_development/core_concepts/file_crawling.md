@@ -17,6 +17,7 @@ File crawling is a technique for processing large numbers of files systematicall
 ### AI Limitations
 
 AI assistants have critical limitations:
+
 - **Limited context window** - Cannot hold 100+ files at once
 - **Attention degradation** - Misses files in large lists
 - **Memory limitations** - Forgets files between iterations
@@ -34,6 +35,7 @@ for file in files:  # AI will forget most of these
 ```
 
 **What happens**:
+
 - AI loads all 100 filenames (1000+ tokens each iteration)
 - Can only focus on ~20 files before attention degrades
 - Forgets remaining 80 files
@@ -94,6 +96,7 @@ rm /tmp/checklist.txt
 ## When to Use File Crawling
 
 ### ✅ Use When:
+
 - Processing 10+ files systematically
 - Each file requires similar updates
 - Need clear progress visibility
@@ -101,6 +104,7 @@ rm /tmp/checklist.txt
 - Working across multiple turns
 
 ### ✅ Common in DDD:
+
 - **Phase 1**: Processing all documentation files
 - **Phase 3**: Code reconnaissance across modules
 - **Phase 4**: Implementing changes across files

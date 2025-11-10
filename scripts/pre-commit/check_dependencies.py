@@ -15,11 +15,19 @@ Exit Codes:
 import ast
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import List, Set, Tuple
 
 # Known optional dependencies that require try/except handling
 OPTIONAL_DEPENDENCIES = {
-    "rich": ["rich.console", "rich.layout", "rich.live", "rich.panel", "rich.table", "rich.text", "rich"],
+    "rich": [
+        "rich.console",
+        "rich.layout",
+        "rich.live",
+        "rich.panel",
+        "rich.table",
+        "rich.text",
+        "rich",
+    ],
     "pytest": ["pytest"],
     "mypy": ["mypy"],
 }

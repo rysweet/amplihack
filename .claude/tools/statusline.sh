@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Amplihack Status Line
+# Shows: directory, git branch, model, cost, duration
+#
+# Configure in ~/.claude/settings.json:
+#   "statusLine": {
+#     "type": "command",
+#     "command": "$CLAUDE_PROJECT_DIR/.claude/tools/statusline.sh"
+#   }
+
+# Read JSON from Claude Code
+input=$(cat)
+
+# Extract values without jq (portable)
+extract_json() {
+    local key="$1"
+    local default="$2"
+    local value=$(echo "$input" | grep -o "\"$key\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | sed "s/.*: *\"\([^\"]*\)\".*/\1/" | head -1)
+    if [ -z "$value" ]; then
+        value=$(echo "$input" | grep -o "\"$key\"[[:space:]]*:[[:space:]]*[^,}]*" | sed "s/.*: *\([^,}]*\).*/\1/" | tr -d ' ' | head -1)
+    fi
+    echo "${value:-$default}"
+}
+
+# Extract session data
+current_dir=$(extract_json "current_dir" "")
+[ -z "$current_dir" ] && current_dir=$(extract_json "cwd" "$(pwd)")
+model_name=$(extract_json "display_name" "Claude")
+model_id=$(extract_json "id" "")
+total_cost=$(extract_json "total_cost_usd" "0")
+total_duration=$(extract_json "total_duration_ms" "0")
+
+# Change to directory for git
+cd "$current_dir" 2>/dev/null || cd "$(pwd)"
+
+# Format directory (~ for home)
+display_dir=$(echo "$current_dir" | sed "s|^$HOME|~|")
+
+# Model color (red=Opus, green=Sonnet, blue=Haiku)
+case "$model_id" in
+    *opus*) model_color="31" ;;
+    *sonnet*) model_color="32" ;;
+    *haiku*) model_color="34" ;;
+    *)
+        case "$model_name" in
+            *Opus*|*opus*) model_color="31" ;;
+            *Sonnet*|*sonnet*) model_color="32" ;;
+            *Haiku*|*haiku*) model_color="34" ;;
+            *) model_color="37" ;;
+        esac
+        ;;
+esac
+
+# Git info
+git_info=""
+if git rev-parse --is-inside-work-tree &>/dev/null; then
+    branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+    if [ -n "$branch" ]; then
+        # Check for uncommitted changes
+        if ! git diff-index --quiet HEAD 2>/dev/null; then
+            git_color="33"  # Yellow (dirty)
+            dirty_marker="*"
+        else
+            git_color="36"  # Cyan (clean)
+            dirty_marker=""
+        fi
+
+        # Get remote name
+        remote=$(git remote 2>/dev/null | head -1)
+        if [ -n "$remote" ]; then
+            git_info=" \033[${git_color}m($branch$dirty_marker → $remote)\033[0m"
+        else
+            git_info=" \033[${git_color}m($branch$dirty_marker)\033[0m"
+        fi
+    fi
+fi
+
+# Format cost (handle awk variations)
+cost_formatted=$(echo "$total_cost" | awk '{printf "%.2f", $1}' 2>/dev/null || echo "0.00")
+
+# Format duration
+if [ "$total_duration" -eq 0 ] 2>/dev/null; then
+    duration_str=""
+else
+    duration_seconds=$((total_duration / 1000))
+    if [ $duration_seconds -lt 60 ]; then
+        duration_str=" ⏱${duration_seconds}s"
+    elif [ $duration_seconds -lt 3600 ]; then
+        duration_minutes=$((duration_seconds / 60))
+        duration_str=" ⏱${duration_minutes}m"
+    else
+        duration_hours=$((duration_seconds / 3600))
+        duration_str=" ⏱${duration_hours}h"
+    fi
+fi
+
+# Output status line
+echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m 💰\$$cost_formatted$duration_str"

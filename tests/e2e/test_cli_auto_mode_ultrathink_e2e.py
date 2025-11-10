@@ -9,10 +9,8 @@ Following test pyramid: 10% E2E tests for critical user workflows.
 
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
-
 
 # =============================================================================
 # E2E Test Configuration

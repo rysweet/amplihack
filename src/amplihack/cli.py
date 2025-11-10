@@ -10,48 +10,6 @@ from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
-from .version import __version__
-
-
-def ensure_ultrathink_command(prompt: str) -> str:
-    """Ensure auto mode prompt starts with /amplihack:ultrathink command.
-
-    Auto mode prompts should use ultrathink for optimal orchestration.
-    This function prepends the command if needed, but preserves
-    prompts that already specify a different slash command.
-
-    Args:
-        prompt: User's prompt string
-
-    Returns:
-        Prompt with /amplihack:ultrathink prepended if needed
-
-    Examples:
-        >>> ensure_ultrathink_command("implement feature X")
-        "/amplihack:ultrathink implement feature X"
-
-        >>> ensure_ultrathink_command("/analyze src")
-        "/analyze src"
-
-        >>> ensure_ultrathink_command("  trim spaces  ")
-        "/amplihack:ultrathink trim spaces"
-
-        >>> ensure_ultrathink_command("")
-        ""
-    """
-    # 1. Strip leading/trailing whitespace
-    prompt = prompt.strip()
-
-    # 2. Empty prompt: return as-is (existing validation will catch)
-    if not prompt:
-        return prompt
-
-    # 3. Already has slash command: user knows what they want
-    if prompt.startswith("/"):
-        return prompt
-
-    # 4. Normal prompt: prepend ultrathink command
-    return f"/amplihack:ultrathink {prompt}"
 
 
 def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
@@ -64,8 +22,27 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
+    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
+    if getattr(args, "use_graph_mem", False):
+        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
+        print("Neo4j graph memory enabled")
+
+        # Set container name if provided
+        if getattr(args, "use_memory_db", None):
+            # Store in environment for session hooks to access
+            os.environ["NEO4J_CONTAINER_NAME_CLI"] = args.use_memory_db
+            print(f"Using Neo4j container: {args.use_memory_db}")
+
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
+
+    # Handle --no-reflection flag (disable always wins priority)
+    if getattr(args, "no_reflection", False):
+        os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
+    # Handle --auto flag (for Neo4j container selection non-interactive mode)
+    if getattr(args, "auto", False):
+        os.environ["AMPLIHACK_AUTO_MODE"] = "1"
 
     if use_docker:
         print(
@@ -160,6 +137,11 @@ def handle_auto_mode(
     if not getattr(args, "auto", False):
         return None
 
+    # Disable reflection in auto mode (Issue #1146)
+    # Reflection is interactive and blocks autonomous execution
+    # Note: --no-reflection flag (Issue #1147) is also handled in non-auto mode paths
+    os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
     from .launcher.auto_mode import AutoMode
 
     # Extract prompt from args
@@ -168,10 +150,6 @@ def handle_auto_mode(
         idx = cmd_args.index("-p")
         if idx + 1 < len(cmd_args):
             prompt = cmd_args[idx + 1]
-
-    # Transform prompt to use ultrathink command if not already a slash command
-    if prompt:
-        prompt = ensure_ultrathink_command(prompt)
 
     if not prompt:
         print(f'Error: --auto requires a prompt. Use: amplihack {sdk} --auto -- -p "your prompt"')
@@ -196,7 +174,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
     if not getattr(args, "append", None):
         return 0
 
-    from .launcher.append_handler import append_instructions, AppendError
+    from .launcher.append_handler import AppendError, append_instructions
 
     instruction = args.append
 
@@ -339,6 +317,21 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    launch_parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
+    launch_parser.add_argument(
+        "--use-memory-db",
+        metavar="NAME",
+        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
+    )
+    launch_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
@@ -367,6 +360,21 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    claude_parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
+    claude_parser.add_argument(
+        "--use-memory-db",
+        metavar="NAME",
+        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
+    )
+    claude_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
@@ -382,9 +390,19 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
     copilot_parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
+    )
+    copilot_parser.add_argument(
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    copilot_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
     )
 
     # Codex command
@@ -401,9 +419,19 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
     )
     codex_parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
+    )
+    codex_parser.add_argument(
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    codex_parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
     )
 
     # UVX helper command
@@ -427,9 +455,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     Returns:
         Exit code.
     """
-    # Display version at startup
-    print(f"Amplihack v{__version__}")
-
     # Initialize UVX staging if needed (before parsing args)
     temp_claude_dir = None
     if is_uvx_deployment():
@@ -438,15 +463,30 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Save original directory (which is now also the working directory)
         original_cwd = os.getcwd()
 
-        # Store it for later use (though now it's the same as current directory)
+        # Safety: Check for git conflicts before copying
+        from . import ESSENTIAL_DIRS
+        from .safety import GitConflictDetector, SafeCopyStrategy
+
+        detector = GitConflictDetector(original_cwd)
+        conflict_result = detector.detect_conflicts(ESSENTIAL_DIRS)
+
+        strategy_manager = SafeCopyStrategy()
+        copy_strategy = strategy_manager.determine_target(
+            original_target=os.path.join(original_cwd, ".claude"),
+            has_conflicts=conflict_result.has_conflicts,
+            conflicting_files=conflict_result.conflicting_files
+        )
+
+        temp_claude_dir = str(copy_strategy.target_dir)
+
+        # Store original_cwd for auto mode (always set, regardless of conflicts)
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
-        # Use .claude directory in current working directory instead of temp
-        temp_claude_dir = os.path.join(original_cwd, ".claude")
-
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")
-            print(f"Working directory remains: {original_cwd}")
+            print(f"UVX mode: Staging Claude environment in: {temp_claude_dir}")
+            print(f"Original working directory: {original_cwd}")
+            if copy_strategy.used_temp:
+                print("Using temp directory due to conflicts")
 
         # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
@@ -457,9 +497,26 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
-        # Copy .claude contents to temp .claude directory
-        # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
+        # Copy .claude contents to target directory
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+
+        # Register cleanup handler for temp directory
+        if copy_strategy.used_temp and copy_strategy.target_dir:
+            import atexit
+            import shutil
+
+            def cleanup_temp_dir():
+                """Clean up temporary directory created for safety."""
+                try:
+                    # Remove the temp directory (parent of .claude)
+                    temp_parent = copy_strategy.target_dir.parent
+                    if temp_parent.exists() and temp_parent.name.startswith("amplihack-"):
+                        shutil.rmtree(temp_parent, ignore_errors=True)
+                except Exception:
+                    # Silently ignore cleanup errors - not critical
+                    pass
+
+            atexit.register(cleanup_temp_dir)
 
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
         # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
@@ -621,10 +678,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.command == "copilot":
         from .launcher.copilot import launch_copilot
 
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
         if exit_code is not None:
             return exit_code
+
+        # Handle --no-reflection flag (disable always wins priority)
+        if getattr(args, "no_reflection", False):
+            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
         # Normal copilot launch
         has_prompt = claude_args and "-p" in claude_args
@@ -633,10 +698,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.command == "codex":
         from .launcher.codex import launch_codex
 
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
         if exit_code is not None:
             return exit_code
+
+        # Handle --no-reflection flag (disable always wins priority)
+        if getattr(args, "no_reflection", False):
+            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
         # Normal codex launch
         has_prompt = claude_args and "-p" in claude_args

@@ -227,15 +227,17 @@ class ProxyConfig:
         Returns:
             "azure", "github_copilot", or "openai"
         """
-        # Check GitHub first
+        # Check Azure first - Azure-specific config takes priority
+        # This prevents false positives when GitHub env vars are set but Azure is configured
+        if self.is_azure_endpoint():
+            return "azure"
+
+        # Check GitHub
         if self.is_github_endpoint():
             return "github_copilot"
 
-        # Check Azure
-        base_url = self.config.get("AZURE_OPENAI_BASE_URL") or self.config.get(
-            "AZURE_OPENAI_ENDPOINT"
-        )
-        return self._azure_detector.get_endpoint_type(base_url, self.config)
+        # Default to OpenAI
+        return "openai"
 
     def validate_azure_config(self) -> bool:
         """Validate Azure-specific configuration.
