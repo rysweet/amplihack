@@ -571,7 +571,7 @@ def _local_install(repo_root):
         print(f"\n📍 Installed to: {CLAUDE_DIR}")
         print("\n📦 Components installed:")
         for dir_path in sorted(copied_dirs):
-            print(f"   • {dir_path}")
+            logger.info(f"   • {dir_path}")
         print("\n🎯 Features enabled:")
         print("   • Session start hook")
         print("   • Stop hook")
