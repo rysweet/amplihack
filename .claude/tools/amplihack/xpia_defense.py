@@ -1332,3 +1332,4 @@ if __name__ == "__main__":
         print(f"Health: {health['status']}")
 
     asyncio.run(test_xpia())
+# XPIA defense implementation
