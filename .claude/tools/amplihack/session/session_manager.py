@@ -74,6 +74,8 @@ class SessionManager:
         Returns:
             Session ID
         """
+        if not name or not name.strip():
+            raise ValueError('Session name cannot be empty')
         config = config or SessionConfig()
         session = ClaudeSession(config)
 
