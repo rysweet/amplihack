@@ -204,6 +204,8 @@ class PromptParser:
 
     def _clean_prompt(self, prompt: str) -> str:
         """Clean and normalize the prompt text."""
+        if not prompt:
+            return ""
         # Remove extra whitespace
         cleaned = re.sub(r"\s+", " ", prompt)
 
