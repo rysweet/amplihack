@@ -279,7 +279,7 @@ The following preferences are REQUIRED and CANNOT be ignored:
         return None
 
 
-def _format_conversation_summary(conversation: List[Dict], max_length: int = 5000) -> str:
+def _format_conversation_summary(conversation: List[Dict[str, Any]], max_length: int = 5000) -> str:
     """Format conversation summary for analysis.
 
     Args:
