@@ -550,12 +550,10 @@ class ProxyManager:
             if not isinstance(arg, str):
                 return None
 
-            # Special validation for -c flag (inline code execution)
-            if arg == "-c" and i + 1 < len(command):
-                next_arg = command[i + 1]
-                # Only allow simple import statements and print
-                if not self._is_safe_inline_code(next_arg):
-                    return None
+            # Reject -c flag (inline code execution) for security
+            if arg == "-c":
+                logger.error("Inline code execution (-c) not allowed for security")
+                return None
 
             # Validate module names for -m flag
             if arg == "-m" and i + 1 < len(command):
