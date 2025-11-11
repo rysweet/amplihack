@@ -40,12 +40,16 @@ class Neo4jManager:
     def check_and_sync(self) -> bool:
         """Main entry point for Neo4j detection and credential sync.
 
+        NOTE: As of issue #1301, credential sync is now handled during container
+        selection in the unified startup dialog. This method is kept for backwards
+        compatibility but will skip the interactive dialog if credentials are
+        already in sync.
+
         This method:
         1. Checks if Docker is available
         2. Detects running Neo4j containers
-        3. Prompts user for credential sync choice
-        4. Synchronizes credentials
-        5. Reports results
+        3. Verifies credentials are synced (no longer prompts if already done)
+        4. Reports results
 
         Returns:
             True if the launcher should continue normally (successful completion or graceful degradation).
@@ -69,14 +73,16 @@ class Neo4jManager:
                 return True
 
             # Check if credentials already exist and match
+            # NOTE: With unified dialog (#1301), this will typically already be true
             if len(containers) == 1:
                 container = containers[0]
                 if not self.credential_sync.needs_sync(container):
-                    # Credentials already in sync
+                    # Credentials already in sync (likely handled by unified dialog)
                     return True
 
-            # Present options and sync
-            return self._handle_credential_sync(containers)
+            # If credentials still need sync (edge case), handle it silently
+            # This can happen if the unified dialog was bypassed (auto mode, etc.)
+            return self._handle_credential_sync_silent(containers)
 
         except Exception:
             # Graceful degradation - never crash launcher
@@ -130,6 +136,32 @@ class Neo4jManager:
             }
             if choice in messages:
                 print(messages[choice], file=sys.stderr)
+
+        return success
+
+    def _handle_credential_sync_silent(self, containers: List[Neo4jContainer]) -> bool:
+        """Handle credential synchronization silently (for auto mode or edge cases).
+
+        This is used when the unified dialog was bypassed (e.g., auto mode) and
+        credentials still need syncing.
+
+        Args:
+            containers: List of detected containers
+
+        Returns:
+            True if sync completed successfully
+        """
+        # Select first container (auto mode behavior)
+        container = containers[0]
+
+        if not container.username or not container.password:
+            # No credentials to sync
+            return True
+
+        # Auto-sync with container credentials in non-interactive scenarios
+        success = self.credential_sync.sync_credentials(
+            container, SyncChoice.USE_CONTAINER
+        )
 
         return success
 
