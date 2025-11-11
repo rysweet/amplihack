@@ -176,7 +176,7 @@ class SessionManager:
                 self._update_session_access(session_id)
                 self._session_metadata[session_id]["status"] = "resumed"
 
-            self.logger.info(f"Resumed session {session_id}")
+            self.logger.info(f"Resumed session {session_id} (age: {time.time() - session_data.get('saved_at', 0):.0f}s)")
             return session
 
         except Exception as e:
