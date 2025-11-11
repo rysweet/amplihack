@@ -168,6 +168,10 @@ class StopHook(HookProcessor):
 
         Executes Neo4j shutdown coordination if appropriate.
         Fail-safe: Never raises exceptions.
+
+        Note:
+            This operation may take several seconds to complete as it
+            coordinates with the Neo4j container and tracks active connections.
         """
         try:
             # Import components
