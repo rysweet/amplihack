@@ -13,7 +13,7 @@ import logging
 
 from .detector import DockerDetector
 
-import logging
+logger = logging.getLogger(__name__)
 
 
 class DockerManager:

@@ -37,9 +37,9 @@ class TestGetContainerPorts:
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result == (7787, 7774)  # (bolt, http)
+            assert _result == (7787, 7774)  # (bolt, http)
             mock_run.assert_called_once_with(
                 ["docker", "port", "amplihack-neo4j"],
                 capture_output=True,
@@ -60,9 +60,9 @@ class TestGetContainerPorts:
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result == (7787, 7774)
+            assert _result == (7787, 7774)
 
     def test_WHEN_container_running_with_mixed_formats_THEN_ports_extracted(self):
         """Test port extraction with mixed IPv4/IPv6 output."""
@@ -78,10 +78,10 @@ class TestGetContainerPorts:
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
             # Should find both ports from first occurrence
-            assert result == (7787, 7774)
+            assert _result == (7787, 7774)
 
     def test_WHEN_container_running_with_non_standard_ports_THEN_actual_ports_extracted(self):
         """Test port extraction when container uses non-standard host ports."""
@@ -95,9 +95,9 @@ class TestGetContainerPorts:
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result == (9999, 8888)  # bolt=9999, http=8888
+            assert _result == (9999, 8888)  # bolt=9999, http=8888
 
     def test_WHEN_container_not_found_THEN_returns_none(self):
         """Test container not found (non-zero exit code)."""
@@ -108,9 +108,9 @@ class TestGetContainerPorts:
                 stderr="Error: No such container: amplihack-neo4j"
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result is None
+            assert _result is None
 
     def test_WHEN_output_malformed_with_only_one_port_THEN_returns_none(self):
         """Test parsing error when only one port is present."""
@@ -123,10 +123,10 @@ class TestGetContainerPorts:
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
             # Missing HTTP port - should return None
-            assert result is None
+            assert _result is None
 
     def test_WHEN_output_malformed_with_invalid_format_THEN_returns_none(self):
         """Test parsing error with completely malformed output."""
@@ -140,9 +140,9 @@ no port mappings here
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result is None
+            assert _result is None
 
     def test_WHEN_output_has_non_numeric_ports_THEN_returns_none(self):
         """Test parsing error when port numbers are not valid integers."""
@@ -156,9 +156,9 @@ no port mappings here
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result is None
+            assert _result is None
 
     def test_WHEN_command_times_out_THEN_returns_none(self):
         """Test timeout handling."""
@@ -168,18 +168,18 @@ no port mappings here
                 timeout=5
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result is None
+            assert _result is None
 
     def test_WHEN_unexpected_exception_THEN_returns_none(self):
         """Test graceful handling of unexpected exceptions."""
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = RuntimeError("Unexpected error")
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result is None
+            assert _result is None
 
     def test_WHEN_empty_output_THEN_returns_none(self):
         """Test handling of empty output."""
@@ -190,9 +190,9 @@ no port mappings here
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result is None
+            assert _result is None
 
     def test_WHEN_output_has_extra_whitespace_THEN_ports_extracted(self):
         """Test robustness to extra whitespace in output."""
@@ -206,9 +206,9 @@ no port mappings here
                 stderr=""
             )
 
-            result = get_container_ports("amplihack-neo4j")
+            _result = get_container_ports("amplihack-neo4j")
 
-            assert result == (7787, 7774)
+            assert _result == (7787, 7774)
 
 
 class TestResolvePortConflictsWithContainer:
@@ -344,9 +344,9 @@ class TestPortAvailability:
             mock_socket.connect_ex.return_value = 1  # Non-zero = not in use
             mock_socket_class.return_value.__enter__.return_value = mock_socket
 
-            result = is_port_in_use(9999)
+            _result = is_port_in_use(9999)
 
-            assert result is False
+            assert _result is False
 
     def test_WHEN_port_in_use_THEN_is_port_in_use_returns_true(self):
         """Test that busy ports are correctly detected."""
@@ -355,9 +355,9 @@ class TestPortAvailability:
             mock_socket.connect_ex.return_value = 0  # Zero = in use
             mock_socket_class.return_value.__enter__.return_value = mock_socket
 
-            result = is_port_in_use(9999)
+            _result = is_port_in_use(9999)
 
-            assert result is True
+            assert _result is True
 
     def test_WHEN_finding_available_port_THEN_returns_first_free(self):
         """Test find_available_port returns first available port."""
@@ -365,18 +365,18 @@ class TestPortAvailability:
             # First 3 ports busy, 4th free
             mock_in_use.side_effect = [True, True, True, False]
 
-            result = find_available_port(8000)
+            _result = find_available_port(8000)
 
-            assert result == 8003  # 8000, 8001, 8002 busy -> 8003 free
+            assert _result == 8003  # 8000, 8001, 8002 busy -> 8003 free
 
     def test_WHEN_no_ports_available_in_range_THEN_returns_none(self):
         """Test find_available_port returns None when range exhausted."""
         with patch("amplihack.memory.neo4j.port_manager.is_port_in_use") as mock_in_use:
             mock_in_use.return_value = True  # All ports busy
 
-            result = find_available_port(8000, max_attempts=10)
+            _result = find_available_port(8000, max_attempts=10)
 
-            assert result is None
+            assert _result is None
             assert mock_in_use.call_count == 10
 
 
@@ -396,16 +396,16 @@ class TestEdgeCases:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
-            result = get_container_ports()
+            _result = get_container_ports()
 
-            assert result == (7787, 7774)
+            assert _result == (7787, 7774)
 
     def test_WHEN_container_name_is_custom_THEN_correct_container_queried(self):
         """Test that custom container names are passed correctly."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=1, stdout="", stderr="Not found")
 
-            result = get_container_ports("my-custom-neo4j")
+            _result = get_container_ports("my-custom-neo4j")
 
             mock_run.assert_called_once()
             call_args = mock_run.call_args[0][0]
@@ -441,11 +441,11 @@ class TestEdgeCases:
                 stderr=""
             )
 
-            result = get_container_ports()
+            _result = get_container_ports()
 
             # Port 0 parsed but treated as invalid (falsy check in line 153)
             # This is correct - Neo4j can't actually listen on port 0
-            assert result is None
+            assert _result is None
 
     def test_WHEN_high_port_numbers_THEN_handled_correctly(self):
         """Test handling of high port numbers (near 65535)."""
@@ -455,9 +455,9 @@ class TestEdgeCases:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
-            result = get_container_ports()
+            _result = get_container_ports()
 
-            assert result == (65535, 65534)
+            assert _result == (65535, 65534)
 
 
 class TestIntegrationScenarios:

@@ -34,8 +34,6 @@ class ClaudeDirectoryDetector:
         self._cache_max_size = 100  # Prevent unlimited cache growth
 
     def find_claude_directory(self, start_path: Optional[Path] = None) -> Optional[Path]:
-        if not path:
-            raise ValueError("Path parameter is required")
         """Find .claude directory in current or parent directories with caching.
 
         Args:
@@ -108,8 +106,6 @@ class ClaudeDirectoryDetector:
         self._cache.clear()
 
     def invalidate_cache_entry(self, start_path: Path) -> None:
-        if not path:
-            raise ValueError("Path parameter is required")
         """Invalidate a specific cache entry.
 
         Args:

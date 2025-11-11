@@ -1,5 +1,6 @@
 """Core launcher functionality for Claude Code."""
 
+import logging
 import os
 import shlex
 import signal
@@ -16,6 +17,8 @@ from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
 from .repo_checkout import checkout_repository
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeLauncher:

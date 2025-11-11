@@ -10,12 +10,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
-import logging
-
 from .credential_sync import CredentialSync, SyncChoice
 from .detector import Neo4jContainer, Neo4jContainerDetector
-
-import logging
 
 
 class Neo4jManager:

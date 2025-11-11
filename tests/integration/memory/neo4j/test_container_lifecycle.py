@@ -13,6 +13,7 @@ All tests should FAIL initially (TDD approach).
 """
 
 import time
+from unittest.mock import Mock, patch
 
 import pytest
 
