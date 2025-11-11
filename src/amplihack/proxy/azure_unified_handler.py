@@ -45,6 +45,7 @@ class AzureUnifiedHandler:
             Response in Anthropic format
         """
         # Convert Anthropic request to OpenAI format for processing
+        logger.debug(f'Handling Anthropic request for model: {anthropic_request.get("model")}')
         openai_request = self._convert_anthropic_to_openai(anthropic_request)
 
         # Let the provider handle routing and transformation
