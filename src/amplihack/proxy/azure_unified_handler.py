@@ -159,7 +159,7 @@ class AzureUnifiedHandler:
                         "type": "tool_use",
                         "id": tool_call.get("id", f"toolu_{int(time.time())}"),
                         "name": tool_call.get("function", {}).get("name", ""),
-                        "input": json.loads(tool_call.get("function", {}).get("arguments", "{}")),
+                        "input": json.loads(tool_call.get("function", {}).get("arguments", "{}") or "{}"),
                     }
                 )
 
