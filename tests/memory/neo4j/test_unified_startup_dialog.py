@@ -1,4 +1,8 @@
-"""Tests for unified Neo4j startup dialog."""
+"""Tests for unified Neo4j startup dialog.
+
+Note: This file contains test fixtures with example passwords like "testpass".
+These are NOT real credentials and should be ignored by security scanners.
+"""
 
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -27,7 +31,7 @@ class TestContainerOption:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="testpass",  # ggignore test fixture
             env_sync_status="match",
             is_running=True,
         )
