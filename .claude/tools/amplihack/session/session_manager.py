@@ -404,7 +404,7 @@ class SessionManager:
 
         self.logger.info("Session manager stopped")
 
-    def __enter__(self):
+    def __enter__(self) -> 'SessionManager':
         """Context manager entry."""
         return self
 
