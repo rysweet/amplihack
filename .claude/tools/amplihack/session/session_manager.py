@@ -307,6 +307,9 @@ class SessionManager:
     def _deserialize_session(self, data: Dict[str, Any]) -> Optional[ClaudeSession]:
         """Deserialize session from saved data."""
         try:
+            if not data:
+                self.logger.error('Cannot deserialize empty data')
+                return None
             # Reconstruct config
             config_data = data.get("config", {})
             config = SessionConfig(**config_data)
