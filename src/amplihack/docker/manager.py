@@ -95,9 +95,9 @@ class DockerManager:
             "4g",  # Limit memory to 4GB
             "--cpus",
             "2",  # Limit CPU to 2 cores
-            # Run as non-root user (UID 1000)
+            # Run as current user for proper permissions
             "--user",
-            "1000:1000",
+            f"{os.getuid()}:{os.getgid()}",
             # Mount workspace
             "-v",
             f"{work_dir}:/workspace",
