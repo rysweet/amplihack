@@ -55,8 +55,9 @@ def test_readme_exists():
     content = readme.read_text()
     assert "amplihack" in content.lower(), "README missing amplihack context"
     assert "docx" in content.lower(), "README should mention DOCX"
-    assert "tracked changes" in content.lower() or "redlining" in content.lower(), \
+    assert "tracked changes" in content.lower() or "redlining" in content.lower(), (
         "README should mention tracked changes or redlining"
+    )
 
 
 def test_dependencies_file_exists():
@@ -68,8 +69,9 @@ def test_dependencies_file_exists():
     # Check for key dependencies mentioned
     assert "defusedxml" in content.lower(), "DEPENDENCIES.md should mention defusedxml"
     assert "pandoc" in content.lower(), "DEPENDENCIES.md should mention pandoc"
-    assert "libreoffice" in content.lower() or "soffice" in content.lower(), \
+    assert "libreoffice" in content.lower() or "soffice" in content.lower(), (
         "DEPENDENCIES.md should mention LibreOffice"
+    )
 
 
 def test_examples_exist():
@@ -242,18 +244,15 @@ def test_pandoc_basic_functionality():
     import tempfile
 
     # Create temporary markdown file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as tmp:
         tmp.write("# Test Document\n\nThis is a test paragraph.")
         tmp_path = tmp.name
 
     try:
         # Convert markdown to DOCX
-        output_path = tmp_path.replace('.md', '.docx')
+        output_path = tmp_path.replace(".md", ".docx")
         result = subprocess.run(
-            ["pandoc", tmp_path, "-o", output_path],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["pandoc", tmp_path, "-o", output_path], capture_output=True, text=True, timeout=10
         )
 
         assert result.returncode == 0, f"Pandoc conversion failed: {result.stderr}"
@@ -277,12 +276,7 @@ def test_soffice_basic_functionality():
     import subprocess
 
     # Just verify soffice can report version
-    result = subprocess.run(
-        ["soffice", "--version"],
-        capture_output=True,
-        text=True,
-        timeout=5
-    )
+    result = subprocess.run(["soffice", "--version"], capture_output=True, text=True, timeout=5)
 
     assert result.returncode == 0, "soffice --version failed"
     assert "libreoffice" in result.stdout.lower(), "Output should mention LibreOffice"
@@ -380,21 +374,18 @@ def test_tracked_changes_xml_structure():
 def test_skill_invocation():
     """Test that skill can be invoked in Claude Code."""
     # Future: Test skill invocation through Claude Code API
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_full_unpack_pack_cycle():
     """Test complete unpack/modify/pack workflow."""
     # Future: Test with actual DOCX file in fixtures
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_tracked_changes_workflow():
     """Test complete tracked changes workflow."""
     # Future: Test redlining workflow end-to-end
-    pass
 
 
 # Utility function for manual testing
@@ -428,9 +419,8 @@ def print_dependency_report():
 
     print("\n" + "=" * 60)
 
-    all_required = (
-        all(check_python_package(pkg) for pkg in PYTHON_PACKAGES_REQUIRED) and
-        all(check_system_command(cmd) for cmd in SYSTEM_COMMANDS_REQUIRED)
+    all_required = all(check_python_package(pkg) for pkg in PYTHON_PACKAGES_REQUIRED) and all(
+        check_system_command(cmd) for cmd in SYSTEM_COMMANDS_REQUIRED
     )
 
     if all_required:

@@ -1,14 +1,15 @@
 """Git conflict detection for safe file copying."""
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-import subprocess
 from typing import List, Union
 
 
 @dataclass
 class ConflictDetectionResult:
     """Result of git conflict detection."""
+
     has_conflicts: bool
     conflicting_files: List[str]
     is_git_repo: bool
@@ -31,7 +32,7 @@ class GitConflictDetector:
         return ConflictDetectionResult(
             has_conflicts=len(conflicting_files) > 0,
             conflicting_files=conflicting_files,
-            is_git_repo=True
+            is_git_repo=True,
         )
 
     def _is_git_repo(self) -> bool:
@@ -42,7 +43,7 @@ class GitConflictDetector:
                 cwd=self.target_dir,
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -56,7 +57,7 @@ class GitConflictDetector:
                 cwd=self.target_dir,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode != 0:
@@ -68,7 +69,7 @@ class GitConflictDetector:
                     continue
                 status = line[:2]
                 filename = line[3:]
-                if any(c in status for c in ['M', 'A', 'D', 'R']):
+                if any(c in status for c in ["M", "A", "D", "R"]):
                     uncommitted.append(filename)
 
             return uncommitted
@@ -76,14 +77,19 @@ class GitConflictDetector:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return []
 
-    def _filter_conflicts(self, uncommitted_files: List[str], essential_dirs: List[str]) -> List[str]:
+    def _filter_conflicts(
+        self, uncommitted_files: List[str], essential_dirs: List[str]
+    ) -> List[str]:
         """Filter uncommitted files for conflicts with essential_dirs."""
         conflicts = []
         for file_path in uncommitted_files:
-            if file_path.startswith('.claude/'):
+            if file_path.startswith(".claude/"):
                 relative_path = file_path[8:]
                 for essential_dir in essential_dirs:
-                    if relative_path.startswith(essential_dir + '/') or relative_path == essential_dir:
+                    if (
+                        relative_path.startswith(essential_dir + "/")
+                        or relative_path == essential_dir
+                    ):
                         conflicts.append(file_path)
                         break
         return conflicts

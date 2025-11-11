@@ -7,6 +7,7 @@ When amplihack is launched via `uvx --from git+...` in a directory with uncommit
 ## Solution Overview
 
 Implement a safety layer that:
+
 1. Detects conflicts between files to be copied and uncommitted git changes
 2. Uses fallback temporary directory when conflicts exist
 3. Transforms auto mode prompts to include directory change instruction
@@ -36,15 +37,18 @@ src/amplihack/safety/
 ## Module 1: Git Conflict Detector
 
 ### Purpose
+
 Detect if files we're about to copy conflict with uncommitted git changes.
 
 ### Contract
 
 **Inputs:**
+
 - `target_dir: str | Path` - Directory where we want to copy
 - `essential_dirs: list[str]` - List of subdirectories to check (e.g., ["agents/amplihack", "commands/amplihack"])
 
 **Outputs:**
+
 - `ConflictDetectionResult` dataclass:
   - `has_conflicts: bool` - True if conflicts exist
   - `conflicting_files: list[str]` - List of conflicting file paths
@@ -234,22 +238,26 @@ class GitConflictDetector:
 ## Module 2: Safe Copy Strategy
 
 ### Purpose
+
 Determine where to copy files (current directory vs temporary directory) based on conflict detection.
 
 ### Contract
 
 **Inputs:**
+
 - `original_target: str | Path` - Original intended copy target
 - `has_conflicts: bool` - Whether conflicts were detected
 - `conflicting_files: list[str]` - List of conflicting files (for logging)
 
 **Outputs:**
+
 - `CopyStrategy` dataclass:
   - `target_dir: Path` - Where to actually copy (original or temp)
   - `used_temp: bool` - True if temp directory was used
   - `temp_dir: Path | None` - Temp directory path if created
 
 **Side Effects:**
+
 - Creates temporary directory if needed
 - Sets environment variable `AMPLIHACK_STAGED_DIR` with target_dir
 
@@ -383,16 +391,19 @@ class SafeCopyStrategy:
 ## Module 3: Prompt Transformer
 
 ### Purpose
+
 Transform auto mode prompts to include directory change instruction when temp directory is used.
 
 ### Contract
 
 **Inputs:**
+
 - `original_prompt: str` - Original user prompt
 - `target_directory: str | Path` - Directory to change to
 - `used_temp: bool` - Whether temp directory was used
 
 **Outputs:**
+
 - `str` - Transformed prompt with directory change instruction
 
 **Side Effects:**
@@ -511,6 +522,7 @@ class PromptTransformer:
 ## Module 4: Integration Layer
 
 ### Purpose
+
 Integrate safety modules into existing CLI and auto mode code.
 
 ### File 1: `cli.py` Modifications
@@ -518,6 +530,7 @@ Integrate safety modules into existing CLI and auto mode code.
 **Location:** Lines 438-467
 
 **Current Code:**
+
 ```python
 if is_uvx_deployment():
     original_cwd = os.getcwd()
@@ -530,6 +543,7 @@ if is_uvx_deployment():
 ```
 
 **New Code:**
+
 ```python
 if is_uvx_deployment():
     original_cwd = os.getcwd()
@@ -578,7 +592,7 @@ self.original_cwd_from_env = os.environ.get("AMPLIHACK_ORIGINAL_CWD")
 self.using_temp_staging = self.staged_dir is not None
 ```
 
-**Modification 2: Prompt transformation (in _run_sync_session and _run_async_session)**
+**Modification 2: Prompt transformation (in \_run_sync_session and \_run_async_session)**
 
 Before executing the first turn (clarify objective), transform the prompt:
 
@@ -596,6 +610,7 @@ if self.using_temp_staging and self.original_cwd_from_env:
 ```
 
 Insert this code at:
+
 - Line 815 in `_run_sync_session()` (after `self.start_time = time.time()`)
 - Line 984 in `_run_async_session()` (after `self.start_time = time.time()`)
 
@@ -695,6 +710,7 @@ __all__ = [
 **Scenario:** Git commands timeout or fail (not installed, permission denied)
 
 **Strategy:**
+
 - Assume no git repo (safe default)
 - Return `ConflictDetectionResult(has_conflicts=False, is_git_repo=False)`
 - Continue with normal copy to current directory
@@ -706,6 +722,7 @@ __all__ = [
 **Scenario:** Cannot create temp directory (disk full, permission denied)
 
 **Strategy:**
+
 - Log error message
 - Fall back to original target directory
 - Warn user about potential conflicts
@@ -718,6 +735,7 @@ __all__ = [
 **Scenario:** Malformed slash commands, unexpected prompt formats
 
 **Strategy:**
+
 - Regex fails to match slash commands
 - Treat entire prompt as "remaining_prompt"
 - Insert directory change at start
@@ -734,6 +752,7 @@ __all__ = [
 **Scenario:** First-time user, no .claude/ directory in current directory
 
 **Behavior:**
+
 - GitConflictDetector checks for .claude/ files in git status
 - No .claude/ files exist yet, so no conflicts
 - Copy proceeds normally to current directory
@@ -745,6 +764,7 @@ __all__ = [
 **Scenario:** .claude/ is its own git submodule
 
 **Behavior:**
+
 - GitConflictDetector runs in parent directory
 - Git status includes submodule changes
 - If submodule has uncommitted changes, conflicts detected
@@ -757,6 +777,7 @@ __all__ = [
 **Scenario:** .claude/ exists but is gitignored or not tracked
 
 **Behavior:**
+
 - GitConflictDetector checks if directory is in git repo
 - If .claude/ is untracked, it won't appear in git status --porcelain
 - No conflicts detected
@@ -771,6 +792,7 @@ __all__ = [
 **Scenario:** .claude/tools/hooks is a symlink
 
 **Behavior:**
+
 - Git status shows changes to symlink target
 - copytree_manifest follows or doesn't follow symlinks (implementation dependent)
 - GitConflictDetector sees symlink path in git status
@@ -782,6 +804,7 @@ __all__ = [
 **Scenario:** User launches amplihack in interactive mode with conflicts
 
 **Behavior:**
+
 - Conflict detection still runs
 - Temp directory still used if conflicts exist
 - No prompt transformation (not in auto mode)
@@ -800,6 +823,7 @@ __all__ = [
 **Likelihood:** Low
 **Impact:** Low (Uses temp directory unnecessarily, but functionally correct)
 **Mitigation:**
+
 - Comprehensive testing of git status parsing
 - Clear logging of what conflicts were detected
 
@@ -808,6 +832,7 @@ __all__ = [
 **Likelihood:** Low-Medium
 **Impact:** HIGH (Data loss - the problem we're trying to solve)
 **Mitigation:**
+
 - Conservative conflict detection (err on side of caution)
 - Comprehensive test coverage
 - Manual testing with real git scenarios
@@ -817,6 +842,7 @@ __all__ = [
 **Likelihood:** Medium
 **Impact:** Medium (Auto mode fails or behaves unexpectedly)
 **Mitigation:**
+
 - Robust regex for slash command detection
 - Extensive test cases covering all slash command patterns
 - Defensive fallback (insert at start if regex fails)
@@ -826,6 +852,7 @@ __all__ = [
 **Likelihood:** Low
 **Impact:** Low (Adds ~100-200ms for git operations)
 **Mitigation:**
+
 - Git commands have 5-10s timeouts
 - Operations are simple (status check only)
 - Acceptable for launch-time overhead
@@ -837,6 +864,7 @@ __all__ = [
 **Likelihood:** Very Low
 **Impact:** Low (Copy proceeds with stale detection, but git history is safe)
 **Mitigation:**
+
 - Accept this as acceptable risk
 - Time window is < 1 second typically
 - If user commits during launch, their changes are now in git history (protected)
@@ -848,17 +876,20 @@ __all__ = [
 ### Unit Tests
 
 **Test Suite 1: GitConflictDetector**
+
 - Location: `tests/safety/test_git_conflict_detector.py`
 - Coverage: All test cases specified in Module 1
 - Mock: subprocess.run for git commands
 - Verify: Correct parsing of git status output
 
 **Test Suite 2: SafeCopyStrategy**
+
 - Location: `tests/safety/test_safe_copy_strategy.py`
 - Coverage: All test cases specified in Module 2
 - Verify: Temp directory creation, env vars set, logging
 
 **Test Suite 3: PromptTransformer**
+
 - Location: `tests/safety/test_prompt_transformer.py`
 - Coverage: All test cases specified in Module 3
 - Focus: Slash command regex patterns
@@ -866,6 +897,7 @@ __all__ = [
 ### Integration Tests
 
 **Test Suite 4: CLI Integration**
+
 - Location: `tests/integration/test_automode_safety_integration.py`
 - Scenarios:
   1. UVX launch with clean git repo
@@ -877,6 +909,7 @@ __all__ = [
 ### Manual Testing
 
 **Scenario 1: Real conflict with data loss potential**
+
 ```bash
 # Setup
 cd /tmp/test-project
@@ -900,6 +933,7 @@ uvx --from git+... amplihack launch --auto -- -p "/amplihack:ultrathink test"
 ```
 
 **Scenario 2: No conflicts**
+
 ```bash
 # Setup
 cd /tmp/test-project
@@ -960,8 +994,8 @@ The solution is successful if:
 
 - [ ] Modify `cli.py` lines 438-467
 - [ ] Modify `auto_mode.py` constructor
-- [ ] Modify `auto_mode.py` _run_sync_session
-- [ ] Modify `auto_mode.py` _run_async_session
+- [ ] Modify `auto_mode.py` \_run_sync_session
+- [ ] Modify `auto_mode.py` \_run_async_session
 
 ### Phase 3: Testing (Tester Agent)
 
@@ -1015,6 +1049,7 @@ The solution is successful if:
 ### No New External Dependencies
 
 All functionality uses Python standard library:
+
 - `subprocess` - Git command execution
 - `tempfile` - Temp directory creation
 - `pathlib` - Path manipulation
@@ -1033,16 +1068,19 @@ All functionality uses Python standard library:
 ## Rollout Strategy
 
 ### Phase 1: Development Branch
+
 - Implement all modules
 - Run unit tests
 - Manual testing in development
 
 ### Phase 2: Testing Branch
+
 - Merge to testing branch
 - Run integration tests
 - Manual testing in real scenarios
 
 ### Phase 3: Production
+
 - Merge to main
 - Monitor for issues in first week
 - Collect user feedback
@@ -1050,6 +1088,7 @@ All functionality uses Python standard library:
 ### Rollback Plan
 
 If critical issues found:
+
 1. Revert commits affecting cli.py and auto_mode.py
 2. Safety modules remain (no harm)
 3. System reverts to original behavior
@@ -1073,21 +1112,25 @@ These are explicitly out of scope for initial implementation.
 This architecture follows the project's core principles:
 
 **Ruthless Simplicity:**
+
 - Three focused modules, each < 200 lines
 - Simple subprocess-based git integration
 - No complex dependency injection or frameworks
 
 **Zero-BS Implementation:**
+
 - No stubs or placeholders in specification
 - Complete algorithms provided
 - All edge cases addressed
 
 **Modular Design (Bricks):**
+
 - Each module has single responsibility
 - Clear contracts with typed inputs/outputs
 - Independently testable and regeneratable
 
 **Trust in Emergence:**
+
 - Simple components compose to solve complex problem
 - No over-engineering for future scenarios
 - Focus on current requirements

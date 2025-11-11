@@ -88,11 +88,13 @@ Controls whether Neo4j database shuts down automatically on session exit.
 **Current setting:** ask
 
 **Options:**
+
 - `always` - Always shut down Neo4j when last connection closes (no prompt)
 - `never` - Never shut down Neo4j (no prompt)
 - `ask` - Prompt user each time (default)
 
 **Usage:**
+
 ```bash
 /amplihack:customize set neo4j_auto_shutdown always
 /amplihack:customize set neo4j_auto_shutdown never
@@ -157,6 +159,27 @@ Example: "Use 2-space indentation, no semicolons in JavaScript"
 
 Custom gates or requirements for your workflow.
 Example: "Always run tests before committing"
+
+## Learned Patterns
+
+<!-- User feedback and learned behaviors are added here -->
+
+### 2025-11-10 12:57:00
+
+**Mandatory End-to-End Testing for Every PR**
+
+I always want you to test each PR like a user would, from the outside in, not just unit testing. For instance you should use "uvx --from git..." syntax to test the branch. You can use agentic test scenarios defined with github.com/rysweet/gadgugi-agentic-test or your own auto mode to test features.
+
+**Implementation Requirements:**
+
+- MUST test with `uvx --from git+https://github.com/org/repo@branch-name package command`
+- MUST verify the actual user workflow that was broken/enhanced
+- MUST validate error messages, configuration updates, and user experience
+- MUST document test results showing the fix works in realistic conditions
+- Can use gadgugi-agentic-test framework for complex test scenarios
+- Can use auto mode for automated feature testing
+
+**This is MANDATORY for Step 8 (Mandatory Local Testing) in DEFAULT_WORKFLOW.md**
 
 ## Using Preferences
 

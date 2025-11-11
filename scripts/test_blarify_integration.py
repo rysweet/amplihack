@@ -30,8 +30,8 @@ if env_file.exists():
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from amplihack.memory.neo4j.connector import Neo4jConnector
 from amplihack.memory.neo4j.code_graph import BlarifyIntegration
+from amplihack.memory.neo4j.connector import Neo4jConnector
 from amplihack.memory.neo4j.memory_store import MemoryStore
 from amplihack.memory.neo4j.schema import SchemaManager
 

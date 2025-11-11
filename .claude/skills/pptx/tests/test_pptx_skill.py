@@ -16,9 +16,7 @@ import pytest
 import yaml
 
 # Add common verification utilities to path
-sys.path.insert(
-    0, str(Path(__file__).parent.parent.parent / "common" / "verification")
-)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "common" / "verification"))
 
 # Define skill dependencies
 PYTHON_PACKAGES_REQUIRED = ["markitdown", "defusedxml"]
@@ -61,7 +59,9 @@ def test_readme_exists():
 
     content = readme.read_text()
     assert "amplihack" in content.lower(), "README missing amplihack context"
-    assert "pptx" in content.lower() or "powerpoint" in content.lower(), "README should mention PPTX/PowerPoint"
+    assert "pptx" in content.lower() or "powerpoint" in content.lower(), (
+        "README should mention PPTX/PowerPoint"
+    )
 
 
 def test_dependencies_file_exists():
@@ -94,7 +94,13 @@ def test_scripts_directory_exists():
     assert scripts_dir.exists(), "scripts/ directory not found"
 
     # Check for PPTX-specific scripts
-    expected_scripts = ["thumbnail.py", "rearrange.py", "inventory.py", "replace.py", "html2pptx.js"]
+    expected_scripts = [
+        "thumbnail.py",
+        "rearrange.py",
+        "inventory.py",
+        "replace.py",
+        "html2pptx.js",
+    ]
     for script in expected_scripts:
         script_path = scripts_dir / script
         assert script_path.exists(), f"scripts/{script} not found"
@@ -108,7 +114,9 @@ def test_ooxml_symlink_exists():
 
     # Verify it points to common/ooxml
     target = ooxml_link.resolve()
-    assert "common" in str(target) and "ooxml" in str(target), "ooxml symlink should point to common/ooxml"
+    assert "common" in str(target) and "ooxml" in str(target), (
+        "ooxml symlink should point to common/ooxml"
+    )
 
 
 # Level 2: Dependency Tests
@@ -303,7 +311,6 @@ def test_pptx_to_pdf_conversion():
     """Test converting PPTX to PDF using LibreOffice."""
     import subprocess
     import tempfile
-    from io import BytesIO
 
     from pptx import Presentation
 
@@ -321,7 +328,7 @@ def test_pptx_to_pdf_conversion():
 
         # Convert to PDF
         try:
-            result = subprocess.run(
+            subprocess.run(
                 ["soffice", "--headless", "--convert-to", "pdf", str(pptx_path)],
                 capture_output=True,
                 timeout=30,
@@ -386,21 +393,18 @@ def test_pptx_specific_scripts_executable():
 def test_skill_invocation():
     """Test that skill can be invoked in Claude Code."""
     # Future: Test skill invocation through Claude Code API
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_skill_with_real_pptx():
     """Test skill with a real PPTX file."""
     # Future: Test with actual PPTX files in fixtures
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_template_workflow():
     """Test complete template-based workflow."""
     # Future: Test rearrange → inventory → replace workflow
-    pass
 
 
 # Utility function for manual testing

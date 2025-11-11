@@ -1,14 +1,11 @@
 """Basic tests for defensive utilities to verify functionality."""
 
-import json
 import tempfile
 from pathlib import Path
 
 import pytest
 
 from amplihack.utils.defensive import (
-    JSONExtractionError,
-    RetryExhaustedError,
     isolate_prompt,
     parse_llm_json,
     read_file_with_retry,

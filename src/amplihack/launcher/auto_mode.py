@@ -21,8 +21,8 @@ except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 # Import session management components
-from amplihack.launcher.session_capture import MessageCapture
 from amplihack.launcher.fork_manager import ForkManager
+from amplihack.launcher.session_capture import MessageCapture
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -824,11 +824,12 @@ Document your decisions and reasoning in comments/logs."""
         # Safety: Transform prompt if using temp staging (safety feature)
         if self.using_temp_staging and self.original_cwd_from_env:
             from amplihack.safety import PromptTransformer
+
             transformer = PromptTransformer()
             self.prompt = transformer.transform_prompt(
                 original_prompt=self.prompt,
                 target_directory=self.original_cwd_from_env,
-                used_temp=True
+                used_temp=True,
             )
             self.log(f"Transformed prompt for temp staging (target: {self.original_cwd_from_env})")
 
@@ -1005,11 +1006,12 @@ Current Turn: {turn}/{self.max_turns}"""
         # Safety: Transform prompt if using temp staging (safety feature)
         if self.using_temp_staging and self.original_cwd_from_env:
             from amplihack.safety import PromptTransformer
+
             transformer = PromptTransformer()
             self.prompt = transformer.transform_prompt(
                 original_prompt=self.prompt,
                 target_directory=self.original_cwd_from_env,
-                used_temp=True
+                used_temp=True,
             )
             self.log(f"Transformed prompt for temp staging (target: {self.original_cwd_from_env})")
 

@@ -86,8 +86,12 @@ class TestCodebaseIdentifier:
         """Test that different repos produce different keys."""
         branch = "main"
 
-        key_repo1 = CodebaseIdentifier._generate_unique_key("https://github.com/test/repo1.git", branch)
-        key_repo2 = CodebaseIdentifier._generate_unique_key("https://github.com/test/repo2.git", branch)
+        key_repo1 = CodebaseIdentifier._generate_unique_key(
+            "https://github.com/test/repo1.git", branch
+        )
+        key_repo2 = CodebaseIdentifier._generate_unique_key(
+            "https://github.com/test/repo2.git", branch
+        )
 
         assert key_repo1 != key_repo2
 
@@ -218,13 +222,22 @@ class TestCodebaseIdentifier:
 
         # Initialize repo without remote
         subprocess.run(["git", "init"], cwd=repo_path, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo_path, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.name", "Test"], cwd=repo_path, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"], cwd=repo_path, check=True, capture_output=True
+        )
 
         # Create commit
         (repo_path / "file.txt").write_text("test")
         subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
-        subprocess.run(["git", "commit", "-m", "test"], cwd=repo_path, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "test"], cwd=repo_path, check=True, capture_output=True
+        )
 
         with pytest.raises(RuntimeError):
             CodebaseIdentifier.from_git_repo(repo_path)
@@ -242,7 +255,9 @@ class TestCodebaseIdentifier:
         commit = result.stdout.strip()
 
         # Detach HEAD
-        subprocess.run(["git", "checkout", commit], cwd=temp_git_repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "checkout", commit], cwd=temp_git_repo, check=True, capture_output=True
+        )
 
         with pytest.raises(RuntimeError, match="detached HEAD"):
             CodebaseIdentifier.from_git_repo(temp_git_repo)

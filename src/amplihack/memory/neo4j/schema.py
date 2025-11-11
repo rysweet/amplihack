@@ -5,10 +5,10 @@ All operations are idempotent (safe to run multiple times).
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
-from .connector import Neo4jConnector
 from .config import get_config
+from .connector import Neo4jConnector
 
 logger = logging.getLogger(__name__)
 
@@ -277,7 +277,13 @@ class SchemaManager:
 
     def _verify_indexes(self) -> bool:
         """Verify indexes exist."""
-        expected = ["memory_type", "memory_created_at", "agent_type_name", "project_path", "code_index_updated"]
+        expected = [
+            "memory_type",
+            "memory_created_at",
+            "agent_type_name",
+            "project_path",
+            "code_index_updated",
+        ]
 
         result = self.conn.execute_query("SHOW INDEXES")
         existing = [r.get("name") for r in result]

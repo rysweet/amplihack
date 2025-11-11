@@ -14,9 +14,19 @@ try:
     from neo4j import GraphDatabase
     from neo4j.exceptions import Neo4jError, ServiceUnavailable
 
+    # Import NotificationDisabledCategory for suppressing warnings
+    try:
+        from neo4j import NotificationDisabledCategory
+
+        NOTIFICATION_CATEGORIES_AVAILABLE = True
+    except ImportError:
+        # Older versions of neo4j driver may not have this
+        NOTIFICATION_CATEGORIES_AVAILABLE = False
+
     NEO4J_AVAILABLE = True
 except ImportError:
     NEO4J_AVAILABLE = False
+    NOTIFICATION_CATEGORIES_AVAILABLE = False
 
     # Create placeholder classes for when neo4j not installed
     class GraphDatabase:
@@ -230,7 +240,16 @@ class Neo4jConnector:
             return self  # Already connected
 
         try:
-            self._driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
+            # Configure driver with warning suppression if available
+            # This suppresses warnings about unknown labels/properties on first startup
+            driver_kwargs = {"auth": (self.user, self.password)}
+
+            if NOTIFICATION_CATEGORIES_AVAILABLE:
+                driver_kwargs["notifications_disabled_categories"] = {
+                    NotificationDisabledCategory.UNKNOWN,  # Suppress unknown label/property warnings
+                }
+
+            self._driver = GraphDatabase.driver(self.uri, **driver_kwargs)
             logger.debug("Connected to Neo4j: %s", self.uri)
             return self
 

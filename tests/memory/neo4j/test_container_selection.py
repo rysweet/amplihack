@@ -4,13 +4,10 @@ import os
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import pytest
-
 from amplihack.memory.neo4j.container_selection import (
     ContainerInfo,
     NameResolutionContext,
     discover_amplihack_containers,
-    extract_ports,
     format_ports,
     get_default_container_name,
     resolve_container_name,
@@ -178,14 +175,15 @@ class TestDiscovery:
     @patch("subprocess.run")
     def test_discover_with_containers(self, mock_run):
         """Discovery returns container list."""
+
         # Mock docker ps returning container names
         def run_side_effect(*args, **kwargs):
             cmd = args[0]
             if "{{.Names}}" in cmd:
                 return Mock(returncode=0, stdout="amplihack-project1\namplihack-project2\n")
-            elif "{{.Status}}" in cmd:
+            if "{{.Status}}" in cmd:
                 return Mock(returncode=0, stdout="Up 2 hours")
-            elif "inspect" in cmd:
+            if "inspect" in cmd:
                 return Mock(returncode=0, stdout='{"7687/tcp":[{"HostPort":"7787"}]}')
             return Mock(returncode=1, stdout="")
 

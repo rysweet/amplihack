@@ -2,24 +2,26 @@
 
 ## When to Use This Skill
 
-| Scenario | Command | Output |
-|----------|---------|--------|
-| Plan new module | Generate spec before coding | Specs/module-name.md |
-| Document existing module | Analyze working code | Specs/module-name.md |
-| Verify spec accuracy | Compare spec vs code | Discrepancy report |
-| Design review | Check brick philosophy compliance | Review feedback |
+| Scenario                 | Command                           | Output               |
+| ------------------------ | --------------------------------- | -------------------- |
+| Plan new module          | Generate spec before coding       | Specs/module-name.md |
+| Document existing module | Analyze working code              | Specs/module-name.md |
+| Verify spec accuracy     | Compare spec vs code              | Discrepancy report   |
+| Design review            | Check brick philosophy compliance | Review feedback      |
 
 ## Specification Template (One Page)
 
-```markdown
+````markdown
 # [Module Name] Specification
 
 ## Purpose
+
 [One sentence describing core responsibility]
 
 ## Public Interface
 
 ### Functions
+
 ```python
 def function_name(param: Type) -> ReturnType:
     """Brief description.
@@ -28,18 +30,23 @@ def function_name(param: Type) -> ReturnType:
     Raises: ...
     """
 ```
+````
 
 ### Classes
+
 - `ClassName`: Description with key methods
 
 ### Constants
+
 - `CONSTANT_NAME`: Description
 
 ## Dependencies
+
 - External: [package name (version)]
 - Internal: [module path]
 
 ## Module Structure
+
 ```
 module_name/
 ├── __init__.py
@@ -49,29 +56,36 @@ module_name/
 ```
 
 ## Test Requirements
+
 - ✅ Test 1: description
 - ✅ Test 2: description
 - ✅ Coverage: 85%+
 
 ## Example Usage
+
 ```python
 from module_name import function, Class
 # usage examples
 ```
 
 ## Regeneration Notes
+
 This module can be rebuilt from this spec preserving:
+
 - ✅ Public contract
 - ✅ Dependencies
 - ✅ Test interface
+
 ```
 
 ## Brick Philosophy Checklist
 
 ```
+
 BRICK = Self-contained module with ONE clear responsibility
 STUD = Public connection point (function/class/API)
 REGENERATABLE = Can rebuild without breaking connections
+
 ```
 
 **Every spec must answer:**
@@ -107,14 +121,16 @@ REGENERATABLE = Can rebuild without breaking connections
 ## File Locations
 
 ```
+
 .claude/skills/module-spec-generator/
-├── SKILL.md                    # Full skill documentation
-├── README.md                   # Skill overview and philosophy
-├── QUICK_REFERENCE.md          # This file
+├── SKILL.md # Full skill documentation
+├── README.md # Skill overview and philosophy
+├── QUICK_REFERENCE.md # This file
 ├── examples/
-│   ├── simple-utility-spec.md           # Simple module example
-│   ├── session-management-spec.md       # Complex module example
-│   └── analysis-workflow.md             # Step-by-step analysis
+│ ├── simple-utility-spec.md # Simple module example
+│ ├── session-management-spec.md # Complex module example
+│ └── analysis-workflow.md # Step-by-step analysis
+
 ```
 
 ## Key Principles
@@ -210,44 +226,52 @@ REGENERATABLE = Can rebuild without breaking connections
 **Example**: string_utils, math_utils, path_utils
 
 ```
+
 Public Interface: 3-5 focused functions
 Dependencies: Often none (pure Python)
 Tests: Unit tests for each function
 Complexity: Low
 Spec Size: 1-2 pages
+
 ```
 
 ### Type 2: Class-Based Module
 **Example**: session_management, configuration, models
 
 ```
+
 Public Interface: 1-3 classes + helper functions
 Dependencies: Usually internal + standard library
 Tests: Unit tests + integration tests
 Complexity: Medium
 Spec Size: 2-3 pages
+
 ```
 
 ### Type 3: Integration Module
 **Example**: github_client, database_driver, api_wrapper
 
 ```
+
 Public Interface: High-level functions wrapping external service
 Dependencies: External package + internal models
 Tests: Unit + integration + fixture handling
 Complexity: Medium-High
 Spec Size: 3-4 pages
+
 ```
 
 ### Type 4: Data Models
 **Example**: config models, database schemas, message formats
 
 ```
+
 Public Interface: Classes/dataclasses with fields
 Dependencies: Often none
 Tests: Validation + serialization tests
 Complexity: Low
 Spec Size: 1-2 pages
+
 ```
 
 ## Examples in This Skill
@@ -302,6 +326,7 @@ Spec Size: 1-2 pages
 When code needs updating:
 
 ```
+
 1. Update spec with new requirements
    ↓
 2. Pass updated spec to Builder Agent
@@ -313,6 +338,8 @@ When code needs updating:
 5. Module is updated
    ↓
 6. All connections preserved (studs unchanged)
+
 ```
 
 This is why clear specs enable rapid iteration.
+```

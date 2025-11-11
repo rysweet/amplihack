@@ -3,9 +3,10 @@
 Tests connection counting and last connection detection.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
 import requests
-from unittest.mock import Mock, patch
 
 from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
 
@@ -85,7 +86,9 @@ class TestNeo4jConnectionTracker:
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "results": [],
-            "errors": [{"code": "Neo.ClientError.Statement.SyntaxError", "message": "Invalid query"}],
+            "errors": [
+                {"code": "Neo.ClientError.Statement.SyntaxError", "message": "Invalid query"}
+            ],
         }
 
         with patch("requests.post", return_value=mock_response):

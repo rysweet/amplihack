@@ -1,15 +1,9 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with code in this
-repository.
-
-## Project Overview
-
-**Microsoft Hackathon 2025 - Agentic Coding Framework**
-
-We are building an advanced agentic coding framework that leverages AI agents to
-accelerate software development through intelligent automation, code generation,
-and collaborative problem-solving.
+This file provides guidance to Claude Code when working with your codebase. It
+configures the amplihack agentic coding framework - a development tool that uses
+specialized AI agents to accelerate software development through intelligent
+automation and collaborative problem-solving.
 
 ## Important Files to Import
 
@@ -598,11 +592,14 @@ across sessions instead of being lost in chat history.
 
 ## Claude Code Skills
 
-Amplihack includes **12 production-ready Claude Code Skills** that extend capabilities across coding, creative work, and knowledge management.
+Amplihack includes **12 production-ready Claude Code Skills** that extend
+capabilities across coding, creative work, and knowledge management.
 
 ### What Are Skills?
 
-Skills are modular, reusable capabilities that Claude loads on-demand. Each skill is:
+Skills are modular, reusable capabilities that Claude loads on-demand. Each
+skill is:
+
 - **Token Efficient**: Loads only when needed
 - **Self-Contained**: Independent, testable modules
 - **Philosophy Aligned**: Follows ruthless simplicity and brick design
@@ -611,21 +608,26 @@ Skills are modular, reusable capabilities that Claude loads on-demand. Each skil
 ### Implemented Skills (12 Total)
 
 **Phase 1: Quick Wins (4 skills)**
+
 - **decision-logger** (49.5): Structured decision recording
 - **email-drafter** (47.0): Professional email generation
 - **module-spec-generator** (50.0): Generate brick module specifications
 - **meeting-synthesizer** (50.0): Extract action items from meetings
 
 **Phase 2: Philosophy Enforcement (3 skills)**
+
 - **philosophy-guardian** (45.5): Reviews code against amplihack philosophy
 - **test-gap-analyzer** (44.5): Identifies test coverage gaps
 - **code-smell-detector** (42.5): Detects anti-patterns
 
 **Phase 3: Creative (2 skills)**
-- **mermaid-diagram-generator** (48.0): Converts descriptions to Mermaid diagrams
+
+- **mermaid-diagram-generator** (48.0): Converts descriptions to Mermaid
+  diagrams
 - **storytelling-synthesizer** (44.0): Technical work → compelling narratives
 
 **Phase 4: Advanced (3 skills)**
+
 - **learning-path-builder** (43.5): Personalized technology learning paths
 - **knowledge-extractor** (40.5): Auto-extracts learnings to DISCOVERIES.md
 - **pr-review-assistant** (40.0): Philosophy-aware PR reviews
@@ -640,11 +642,15 @@ Claude, generate a Mermaid diagram for this workflow.
 
 ### Documentation
 
-- **[Skills Overview & Documentation](.claude/skills/README.md)** - Complete skills catalog with usage examples
-- **[Research Report](.claude/runtime/logs/20251108_skills_research/RESEARCH.md)** - Comprehensive ecosystem analysis (357 lines)
-- **[Evaluation Matrix](.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** - 20 skills evaluated with priority scores (842 lines)
+- **[Skills Overview & Documentation](.claude/skills/README.md)** - Complete
+  skills catalog with usage examples
+- **[Research Report](.claude/runtime/logs/20251108_skills_research/RESEARCH.md)** -
+  Comprehensive ecosystem analysis (357 lines)
+- **[Evaluation Matrix](.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** -
+  20 skills evaluated with priority scores (842 lines)
 
-All 12 skills scored 40.0-50.0 (HIGH priority) using a 6-criteria evaluation framework aligned with amplihack philosophy.
+All 12 skills scored 40.0-50.0 (HIGH priority) using a 6-criteria evaluation
+framework aligned with amplihack philosophy.
 
 ## Scenario Tools
 

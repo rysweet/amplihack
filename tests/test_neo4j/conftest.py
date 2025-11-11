@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
-from neo4j import GraphDatabase, Driver
+from neo4j import Driver, GraphDatabase
 
 from amplihack.memory.neo4j.neo4j_schema import Neo4jSchema
 
@@ -29,7 +29,9 @@ def neo4j_password() -> str:
 
 
 @pytest.fixture(scope="function")
-def neo4j_driver(neo4j_uri: str, neo4j_user: str, neo4j_password: str) -> Generator[Driver, None, None]:
+def neo4j_driver(
+    neo4j_uri: str, neo4j_user: str, neo4j_password: str
+) -> Generator[Driver, None, None]:
     """Create Neo4j driver for testing.
 
     Yields:
@@ -78,8 +80,15 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
 
     # Initialize git repo
     subprocess.run(["git", "init"], cwd=repo_path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo_path, check=True, capture_output=True)
-    subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"], cwd=repo_path, check=True, capture_output=True
+    )
 
     # Add remote
     subprocess.run(
@@ -93,7 +102,9 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
     test_file = repo_path / "README.md"
     test_file.write_text("# Test Repo")
     subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
-    subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=repo_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"], cwd=repo_path, check=True, capture_output=True
+    )
 
     yield repo_path
 

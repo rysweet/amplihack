@@ -7,14 +7,14 @@ Tests all scenarios from the architecture specification:
 4. Environment variables are set correctly
 """
 
-import unittest
 import os
-import tempfile
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 import shutil
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from amplihack.safety.safe_copy_strategy import SafeCopyStrategy, CopyStrategy
+from amplihack.safety.safe_copy_strategy import SafeCopyStrategy
 
 
 class TestSafeCopyStrategy(unittest.TestCase):
@@ -46,9 +46,7 @@ class TestSafeCopyStrategy(unittest.TestCase):
         - No env vars set
         """
         result = self.strategy_manager.determine_target(
-            original_target=self.original_target,
-            has_conflicts=False,
-            conflicting_files=[]
+            original_target=self.original_target, has_conflicts=False, conflicting_files=[]
         )
 
         self.assertEqual(result.target_dir, self.original_target.resolve())
@@ -73,7 +71,7 @@ class TestSafeCopyStrategy(unittest.TestCase):
         result = self.strategy_manager.determine_target(
             original_target=self.original_target,
             has_conflicts=True,
-            conflicting_files=self.conflicting_files
+            conflicting_files=self.conflicting_files,
         )
 
         try:
@@ -94,8 +92,7 @@ class TestSafeCopyStrategy(unittest.TestCase):
             # Verify environment variables
             self.assertEqual(os.environ["AMPLIHACK_STAGED_DIR"], str(result.temp_dir))
             self.assertEqual(
-                os.environ["AMPLIHACK_ORIGINAL_CWD"],
-                str(self.original_target.resolve())
+                os.environ["AMPLIHACK_ORIGINAL_CWD"], str(self.original_target.resolve())
             )
 
         finally:
@@ -112,11 +109,11 @@ class TestSafeCopyStrategy(unittest.TestCase):
         - Conflicting files listed
         - Temp directory path shown
         """
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             result = self.strategy_manager.determine_target(
                 original_target=self.original_target,
                 has_conflicts=True,
-                conflicting_files=self.conflicting_files
+                conflicting_files=self.conflicting_files,
             )
 
             try:
@@ -124,10 +121,12 @@ class TestSafeCopyStrategy(unittest.TestCase):
                 self.assertGreater(mock_print.call_count, 5)
 
                 # Collect all print calls (handle both positional and keyword args)
-                all_output = " ".join([
-                    str(call.args[0]) if call.args else str(call.kwargs.get(''))
-                    for call in mock_print.call_args_list
-                ])
+                all_output = " ".join(
+                    [
+                        str(call.args[0]) if call.args else str(call.kwargs.get(""))
+                        for call in mock_print.call_args_list
+                    ]
+                )
 
                 # Verify warning message content
                 self.assertIn("SAFETY WARNING", all_output)
@@ -146,19 +145,21 @@ class TestSafeCopyStrategy(unittest.TestCase):
         # Create list of 15 conflicting files
         many_files = [f".claude/tools/file{i}.py" for i in range(15)]
 
-        with patch('builtins.print') as mock_print:
+        with patch("builtins.print") as mock_print:
             result = self.strategy_manager.determine_target(
                 original_target=self.original_target,
                 has_conflicts=True,
-                conflicting_files=many_files
+                conflicting_files=many_files,
             )
 
             try:
                 # Collect all print output (handle both positional and keyword args)
-                all_output = " ".join([
-                    str(call.args[0]) if call.args else str(call.kwargs.get(''))
-                    for call in mock_print.call_args_list
-                ])
+                all_output = " ".join(
+                    [
+                        str(call.args[0]) if call.args else str(call.kwargs.get(""))
+                        for call in mock_print.call_args_list
+                    ]
+                )
 
                 # Verify "... and 5 more" message is shown
                 self.assertIn("and 5 more", all_output)
@@ -173,13 +174,13 @@ class TestSafeCopyStrategy(unittest.TestCase):
         result1 = self.strategy_manager.determine_target(
             original_target=self.original_target,
             has_conflicts=True,
-            conflicting_files=self.conflicting_files
+            conflicting_files=self.conflicting_files,
         )
 
         result2 = self.strategy_manager.determine_target(
             original_target=self.original_target,
             has_conflicts=True,
-            conflicting_files=self.conflicting_files
+            conflicting_files=self.conflicting_files,
         )
 
         try:
@@ -201,9 +202,7 @@ class TestSafeCopyStrategy(unittest.TestCase):
         relative_path = "./some/relative/path/.claude"
 
         result = self.strategy_manager.determine_target(
-            original_target=relative_path,
-            has_conflicts=False,
-            conflicting_files=[]
+            original_target=relative_path, has_conflicts=False, conflicting_files=[]
         )
 
         # Verify path was resolved to absolute
@@ -216,7 +215,7 @@ class TestSafeCopyStrategy(unittest.TestCase):
         result1 = self.strategy_manager.determine_target(
             original_target=self.original_target,
             has_conflicts=True,
-            conflicting_files=self.conflicting_files
+            conflicting_files=self.conflicting_files,
         )
 
         first_staged_dir = os.environ["AMPLIHACK_STAGED_DIR"]
@@ -225,7 +224,7 @@ class TestSafeCopyStrategy(unittest.TestCase):
         result2 = self.strategy_manager.determine_target(
             original_target=self.original_target,
             has_conflicts=True,
-            conflicting_files=self.conflicting_files
+            conflicting_files=self.conflicting_files,
         )
 
         second_staged_dir = os.environ["AMPLIHACK_STAGED_DIR"]
@@ -248,11 +247,9 @@ class TestSafeCopyStrategy(unittest.TestCase):
         This is an edge case that shouldn't happen in practice, but we should
         handle it gracefully.
         """
-        with patch('builtins.print'):
+        with patch("builtins.print"):
             result = self.strategy_manager.determine_target(
-                original_target=self.original_target,
-                has_conflicts=True,
-                conflicting_files=[]
+                original_target=self.original_target, has_conflicts=True, conflicting_files=[]
             )
 
             try:
@@ -267,5 +264,5 @@ class TestSafeCopyStrategy(unittest.TestCase):
                     shutil.rmtree(result.temp_dir.parent, ignore_errors=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -206,7 +206,7 @@ def auto_setup_prerequisites() -> Tuple[bool, list[str]]:
 
     # 2. Check/resolve port conflicts
     try:
-        from .port_manager import resolve_port_conflicts, DEFAULT_BOLT_PORT, DEFAULT_HTTP_PORT
+        from .port_manager import DEFAULT_BOLT_PORT, DEFAULT_HTTP_PORT, resolve_port_conflicts
 
         # Get password (might have just been created)
         password = os.getenv("NEO4J_PASSWORD", "")

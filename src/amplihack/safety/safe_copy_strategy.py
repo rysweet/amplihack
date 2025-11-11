@@ -1,15 +1,16 @@
 """Safe copy strategy for conflict-free file operations."""
 
-from dataclasses import dataclass
-from pathlib import Path
 import os
 import tempfile
+from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional, Union
 
 
 @dataclass
 class CopyStrategy:
     """Strategy for where to copy files."""
+
     target_dir: Path
     used_temp: bool
     temp_dir: Optional[Path]
@@ -19,10 +20,7 @@ class SafeCopyStrategy:
     """Determine safe copy target based on conflict detection."""
 
     def determine_target(
-        self,
-        original_target: Union[str, Path],
-        has_conflicts: bool,
-        conflicting_files: List[str]
+        self, original_target: Union[str, Path], has_conflicts: bool, conflicting_files: List[str]
     ) -> CopyStrategy:
         """Determine where to copy files based on conflict status."""
         original_path = Path(original_target).resolve()
@@ -50,7 +48,7 @@ class SafeCopyStrategy:
         if len(conflicting_files) > 10:
             print(f"  ... and {len(conflicting_files) - 10} more")
 
-        print(f"\n📁 To protect your changes, .claude/ will be staged in:")
+        print("\n📁 To protect your changes, .claude/ will be staged in:")
         print(f"   {temp_dir}")
         print("\n💡 Auto mode will automatically work in your original directory.")
         print("=" * 70)

@@ -11,9 +11,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import defusedxml.minidom
 import zipfile
 from pathlib import Path
+
+import defusedxml.minidom
 
 
 def main():
@@ -24,9 +25,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        success = pack_document(
-            args.input_directory, args.output_file, validate=not args.force
-        )
+        success = pack_document(args.input_directory, args.output_file, validate=not args.force)
 
         # Show warning if validation was skipped
         if args.force:
@@ -90,13 +89,15 @@ def pack_document(input_dir, output_file, validate=False):
 def validate_document(doc_path):
     """Validate document by converting to HTML with soffice."""
     # Determine the correct filter based on file extension
-    match doc_path.suffix.lower():
-        case ".docx":
-            filter_name = "html:HTML"
-        case ".pptx":
-            filter_name = "html:impress_html_Export"
-        case ".xlsx":
-            filter_name = "html:HTML (StarCalc)"
+    suffix = doc_path.suffix.lower()
+    if suffix == ".docx":
+        filter_name = "html:HTML"
+    elif suffix == ".pptx":
+        filter_name = "html:impress_html_Export"
+    elif suffix == ".xlsx":
+        filter_name = "html:HTML (StarCalc)"
+    else:
+        raise ValueError(f"Unsupported file extension: {suffix}")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
@@ -132,7 +133,7 @@ def validate_document(doc_path):
 
 def condense_xml(xml_file):
     """Strip unnecessary whitespace and remove comments."""
-    with open(xml_file, "r", encoding="utf-8") as f:
+    with open(xml_file, encoding="utf-8") as f:
         dom = defusedxml.minidom.parse(f)
 
     # Process each element to remove whitespace and comments

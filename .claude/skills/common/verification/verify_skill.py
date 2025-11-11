@@ -55,7 +55,9 @@ def check_system_command(command: str) -> Tuple[bool, str]:
         )
         # Try to extract version from output
         output = result.stdout.decode("utf-8", errors="ignore").split("\n")[0]
-        return True, f"Available ({output[:50]}...)" if len(output) > 50 else f"Available ({output})"
+        return True, f"Available ({output[:50]}...)" if len(
+            output
+        ) > 50 else f"Available ({output})"
     except subprocess.TimeoutExpired:
         return False, "Timeout (command hung)"
     except subprocess.CalledProcessError:
@@ -120,24 +122,20 @@ def verify_skill(
         print(f"✓ {skill_name} skill is ready (all required dependencies met)")
     else:
         print(f"✗ {skill_name} skill is missing required dependencies")
-        print(f"\nInstall missing packages:")
+        print("\nInstall missing packages:")
         missing = [pkg for pkg in python_packages_required if not check_python_package(pkg)[0]]
         if missing:
             print(f"  pip install {' '.join(missing)}")
 
     # Optional features summary
-    optional_available = sum(
-        1 for pkg in python_packages_optional if check_python_package(pkg)[0]
-    )
+    optional_available = sum(1 for pkg in python_packages_optional if check_python_package(pkg)[0])
     optional_total = len(python_packages_optional)
 
-    system_available = sum(
-        1 for cmd in system_commands_optional if check_system_command(cmd)[0]
-    )
+    system_available = sum(1 for cmd in system_commands_optional if check_system_command(cmd)[0])
     system_total = len(system_commands_optional)
 
     if optional_total > 0 or system_total > 0:
-        print(f"\nOptional features:")
+        print("\nOptional features:")
         if optional_total > 0:
             print(f"  Python packages: {optional_available}/{optional_total} available")
         if system_total > 0:

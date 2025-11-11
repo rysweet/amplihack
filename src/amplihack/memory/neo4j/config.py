@@ -88,6 +88,7 @@ class Neo4jConfig:
 
         # Resolve container name using priority hierarchy
         from .container_selection import resolve_container_name
+
         container_name = resolve_container_name(
             cli_arg=cli_container_name,
             env_var=os.getenv("NEO4J_CONTAINER_NAME"),

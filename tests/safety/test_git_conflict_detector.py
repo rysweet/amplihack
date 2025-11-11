@@ -8,12 +8,12 @@ Tests all scenarios from the architecture specification:
 5. Git repo with changes in non-essential .claude/ subdirs
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
-from pathlib import Path
 import subprocess
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-from amplihack.safety.git_conflict_detector import GitConflictDetector, ConflictDetectionResult
+from amplihack.safety.git_conflict_detector import GitConflictDetector
 
 
 class TestGitConflictDetector(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestGitConflictDetector(unittest.TestCase):
         detector = GitConflictDetector(self.target_dir)
 
         # Mock git rev-parse to fail (not a git repo)
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1)
 
             result = detector.detect_conflicts(self.essential_dirs)
@@ -59,7 +59,7 @@ class TestGitConflictDetector(unittest.TestCase):
         """
         detector = GitConflictDetector(self.target_dir)
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call: git rev-parse (success - is git repo)
             # Second call: git status --porcelain (empty output - no changes)
             mock_run.side_effect = [
@@ -86,7 +86,7 @@ class TestGitConflictDetector(unittest.TestCase):
         # Simulate modified file in .claude/tools/amplihack/
         git_status_output = " M .claude/tools/amplihack/hooks/stop.py\n"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -111,7 +111,7 @@ class TestGitConflictDetector(unittest.TestCase):
         # Simulate modified files outside .claude/
         git_status_output = " M src/main.py\nA  tests/test_new.py\n"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -136,7 +136,7 @@ class TestGitConflictDetector(unittest.TestCase):
         # Simulate modified file in .claude/scenarios/ (not essential)
         git_status_output = " M .claude/scenarios/tool.py\n"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -159,7 +159,7 @@ class TestGitConflictDetector(unittest.TestCase):
             " M src/other.py\n"  # This should be filtered out
         )
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -178,7 +178,7 @@ class TestGitConflictDetector(unittest.TestCase):
         """Test timeout handling for git status command."""
         detector = GitConflictDetector(self.target_dir)
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call succeeds (is git repo)
             # Second call times out
             mock_run.side_effect = [
@@ -197,7 +197,7 @@ class TestGitConflictDetector(unittest.TestCase):
         """Test behavior when git command is not found."""
         detector = GitConflictDetector(self.target_dir)
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("git not found")
 
             result = detector.detect_conflicts(self.essential_dirs)
@@ -221,7 +221,7 @@ class TestGitConflictDetector(unittest.TestCase):
             "?? untracked.py\n"  # Untracked (should be ignored)
         )
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -241,7 +241,7 @@ class TestGitConflictDetector(unittest.TestCase):
         # File path exactly matches an essential dir (directory itself modified)
         git_status_output = " M .claude/tools/amplihack\n"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -253,5 +253,5 @@ class TestGitConflictDetector(unittest.TestCase):
             self.assertIn(".claude/tools/amplihack", result.conflicting_files)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
