@@ -4,11 +4,12 @@ Manual Neo4j container starter using docker-py library.
 Bypasses docker-compose dependency issues.
 """
 
-import docker
-import time
 import secrets
 import string
+import time
 from pathlib import Path
+
+import docker
 
 
 def generate_password(length=32):  # ggignore

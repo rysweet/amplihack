@@ -562,7 +562,6 @@ class TestThreadSynchronization:
 
         # This will fail until proper synchronization is implemented
         with pytest.raises(AttributeError):
-            results = []
 
             def increment_turn():
                 for _ in range(100):

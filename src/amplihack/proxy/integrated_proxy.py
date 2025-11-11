@@ -580,7 +580,7 @@ class AzureErrorLogger:
         self.error_patterns = {}
         self.last_health_check = None
 
-    def log_azure_error(self, azure_error: AzureAPIError, request_context: Optional[dict] = None):
+    def log_azure_error(self, azure_error: AzureAPIError, request_context: Optional[dict] = None) -> None:
         """Log Azure error with context and update metrics."""
         error_entry = {
             "timestamp": asyncio.get_event_loop().time(),
@@ -639,7 +639,7 @@ class AzureErrorLogger:
             user_id = request_context.get("user_id", "unknown")
             logger.info(f"📊 Error Context: Model={model}, User={user_id}")
 
-    def log_azure_success(self, request_context: Optional[dict] = None):
+    def log_azure_success(self, request_context: Optional[dict] = None) -> None:
         """Log successful Azure API call for health monitoring."""
         if request_context:
             model = request_context.get("model", "unknown")
@@ -713,7 +713,7 @@ def log_azure_operation(
 
 
 # Configure logging with file output and rotation
-def setup_logging():
+def setup_logging() -> None:
     """Set up logging with file rotation and console output."""
     # Create logs directory
     logs_dir = Path("logs")
@@ -1271,7 +1271,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
             raise
         except Exception as e:
             logger.error(f"Error in create_message: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     return app
 
@@ -1357,8 +1357,12 @@ OPENAI_MODELS = [
 GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
 
 
+# Type alias for JSON schema structures
+JSONSchema = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
+
+
 # Helper function to clean schema for Gemini
-def clean_gemini_schema(schema: Any) -> Any:
+def clean_gemini_schema(schema: JSONSchema) -> JSONSchema:
     """Recursively removes unsupported fields from a JSON schema for Gemini."""
     if isinstance(schema, dict):
         # Remove specific keys unsupported by Gemini tool parameters
@@ -1406,7 +1410,7 @@ class ContentBlockToolResult(BaseModel):
     model_config = {"extra": "allow"}  # Allow extra fields like cache_control
     type: Literal["tool_result"]
     tool_use_id: str
-    content: Union[str, List[Dict[str, Any]], Dict[str, Any], List[Any], Any]
+    content: Union[str, List[Dict[str, Any]], Dict[str, Any], List[Any]]
 
 
 class SystemContent(BaseModel):
@@ -3711,7 +3715,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                             handle_streaming(response_generator, request),
                             media_type="text/event-stream",
                         )
-                    raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}")
+                    raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}") from e
             else:
                 # Regular streaming for non-tool requests
                 response_generator = await litellm.acompletion(**litellm_request)
@@ -3743,7 +3747,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                         logger.info("🔄 Falling back to regular completion")
                         litellm_response = litellm.completion(**litellm_request)
                     else:
-                        raise HTTPException(status_code=500, detail=f"Tool completion failed: {e}")
+                        raise HTTPException(status_code=500, detail=f"Tool completion failed: {e}") from e
             else:
                 # Regular completion for non-tool requests
                 litellm_response = litellm.completion(**litellm_request)
@@ -3802,7 +3806,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
 
         # Return detailed error
         status_code = error_details.get("status_code", 500)
-        raise HTTPException(status_code=status_code, detail=error_message)
+        raise HTTPException(status_code=status_code, detail=error_message) from e
 
 
 @app.post("/v1/messages/count_tokens")
@@ -3873,7 +3877,7 @@ async def count_tokens(request: TokenCountRequest, raw_request: Request):
 
         error_traceback = traceback.format_exc()
         logger.error(f"Error counting tokens: {e!s}\n{error_traceback}")
-        raise HTTPException(status_code=500, detail=f"Error counting tokens: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Error counting tokens: {e!s}") from e
 
 
 @app.get("/")

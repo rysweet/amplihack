@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
-def get_codebase_last_modified(project_root: Path, patterns: list[str] = None) -> datetime:
+def get_codebase_last_modified(project_root: Path, patterns: list[str] | None = None) -> datetime:
     """Get most recent modification time of code files.
 
     Args:
@@ -51,7 +51,7 @@ def get_code_index_last_updated(conn) -> Optional[datetime]:
     """
     try:
         query = """
-        MATCH (m:CodeIndexMetadata)
+        OPTIONAL MATCH (m:CodeIndexMetadata)
         RETURN m.last_updated AS last_updated
         ORDER BY m.last_updated DESC
         LIMIT 1

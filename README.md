@@ -241,6 +241,11 @@ customization instructions.
 - [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agent creation
 - [GitHub Copilot Integration](docs/github-copilot-litellm-integration.md) -
   Copilot CLI support
+- [Office Skills](.claude/skills/README.md) - PDF, Excel, Word, and PowerPoint
+  document processing
+  - [PDF Skill](.claude/skills/pdf/README.md) - Comprehensive PDF manipulation
+  - [XLSX Skill](.claude/skills/xlsx/README.md) - Spreadsheet creation with
+    formulas and financial modeling
 
 ### Patterns
 

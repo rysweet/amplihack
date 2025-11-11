@@ -32,9 +32,9 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from amplihack.memory.neo4j import (
-    Neo4jConnector,
     ExternalKnowledgeManager,
     KnowledgeSource,
+    Neo4jConnector,
     ensure_neo4j_running,
 )
 

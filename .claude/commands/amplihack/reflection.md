@@ -9,8 +9,7 @@ Control the session reflection system that analyzes conversations and provides f
 ```
 
 **Actions:**
-
-- `enable` - Turn on session reflection (default)
+- `enable` - Turn on session reflection
 - `disable` - Turn off session reflection for this session
 - `status` - Check if reflection is currently enabled
 - `clear-semaphore` - Clear the reflection semaphore (allows reflection to run again)
@@ -18,7 +17,6 @@ Control the session reflection system that analyzes conversations and provides f
 ## What is Session Reflection?
 
 The reflection system uses Claude SDK to analyze completed sessions and provide:
-
 - Analysis of what worked well and what could improve
 - Workflow adherence assessment
 - Subagent usage evaluation
@@ -40,7 +38,6 @@ When enabled, reflection runs automatically when you try to stop a session.
    - Action options: create issues, start auto mode, discuss, or stop
 
 **Semaphore Protection:**
-
 - Reflection runs once per session
 - Second stop attempt succeeds (semaphore prevents re-run)
 - Use `clear-semaphore` to force reflection to run again
@@ -62,7 +59,6 @@ print('Reflection enabled')
 ```
 
 Or unset skip variable:
-
 ```bash
 unset AMPLIHACK_SKIP_REFLECTION
 ```
@@ -77,7 +73,6 @@ export AMPLIHACK_SKIP_REFLECTION=1
 ```
 
 Or disable permanently:
-
 ```bash
 # Edit config to disable
 python3 -c "
@@ -120,7 +115,7 @@ echo "Reflection semaphore cleared - reflection will run on next stop"
 
 ```json
 {
-  "enabled": true,
+  "enabled": false,
   "timeout_seconds": 60,
   "triggers": ["session_end"],
   "min_turns": 5
@@ -136,4 +131,4 @@ echo "Reflection semaphore cleared - reflection will run on next stop"
 
 ---
 
-**Note:** Reflection is enabled by default and provides valuable insights for improving your workflow. Only disable it for trivial tasks or rapid iteration sessions.
+**Note:** Reflection is disabled by default to respect user choice. Enable it to gain valuable insights for improving your workflow, especially for complex tasks and learning sessions.

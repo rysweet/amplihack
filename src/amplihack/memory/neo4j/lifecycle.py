@@ -15,6 +15,7 @@ from typing import Optional
 
 from .config import get_config
 from .connector import Neo4jConnector
+from .port_manager import resolve_port_conflicts
 
 logger = logging.getLogger(__name__)
 
@@ -234,69 +235,151 @@ class Neo4jContainerManager:
             return False
 
     def _create_container(self, wait_for_ready: bool) -> bool:
-        """Create and start new container using direct docker run.
+        """Create and start new container with port conflict resolution.
 
-        No longer requires docker-compose file.
+        Automatically detects and resolves port conflicts before creating container.
+        Includes retry logic for race conditions.
         """
-        logger.info("Creating new Neo4j container with direct docker command")
+        logger.info("Creating new Neo4j container with port conflict resolution")
 
+        # Resolve port conflicts BEFORE attempting to create container
         try:
-            # Use direct docker run (no compose file needed)
-            cmd = [
-                "docker",
-                "run",
-                "-d",
-                "--name",
-                self.config.container_name,
-                "--restart",
-                "unless-stopped",
-                "-p",
-                f"127.0.0.1:{self.config.http_port}:7474",
-                "-p",
-                f"127.0.0.1:{self.config.bolt_port}:7687",
-                "-e",
-                f"NEO4J_AUTH=neo4j/{self.config.password}",
-                "-e",
-                'NEO4J_PLUGINS=["apoc"]',
-                "-e",
-                "NEO4J_dbms_security_procedures_unrestricted=apoc.*",
-                "-e",
-                "NEO4J_dbms_security_procedures_allowlist=apoc.*",
-                "-e",
-                f"NEO4J_dbms_memory_heap_max__size={self.config.heap_size}",
-                "-e",
-                f"NEO4J_dbms_memory_pagecache_size={self.config.page_cache_size}",
-                "-v",
-                f"{self.config.container_name}-data:/data",
-                self.config.image,
-            ]
+            # Find project root by walking up to find .claude directory
+            from pathlib import Path
+            project_root = Path.cwd()
+            while project_root != project_root.parent:
+                if (project_root / ".claude").exists():
+                    break
+                project_root = project_root.parent
 
-            logger.debug("Running: %s", " ".join(cmd))
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,
+            bolt_port, http_port, messages = resolve_port_conflicts(
+                bolt_port=self.config.bolt_port,
+                http_port=self.config.http_port,
+                password=self.config.password,
+                project_root=project_root,
+                container_name=self.config.container_name,
             )
 
-            if result.returncode != 0:
-                logger.error("Failed to create container: %s", result.stderr)
-                return False
+            # Display port resolution messages to user
+            for msg in messages:
+                logger.info(msg)
 
-            logger.info("Container created successfully")
+            # Use resolved ports (may differ from config if conflicts detected)
+            actual_bolt_port = bolt_port
+            actual_http_port = http_port
 
-            if wait_for_ready:
-                return self.wait_for_healthy()
-
-            return True
-
-        except subprocess.TimeoutExpired:
-            logger.error("Timeout creating container")
-            return False
         except Exception as e:
-            logger.error("Error creating container: %s", e)
-            return False
+            logger.warning("Port resolution failed, using config ports: %s", e)
+            # Fallback: use config ports if resolution fails
+            actual_bolt_port = self.config.bolt_port
+            actual_http_port = self.config.http_port
+
+        # Retry logic for race conditions (max 3 attempts)
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                logger.info("Container creation attempt %d/%d", attempt, max_attempts)
+
+                # Use direct docker run (no compose file needed)
+                cmd = [
+                    "docker",
+                    "run",
+                    "-d",
+                    "--name",
+                    self.config.container_name,
+                    "--restart",
+                    "unless-stopped",
+                    "-p",
+                    f"127.0.0.1:{actual_http_port}:7474",
+                    "-p",
+                    f"127.0.0.1:{actual_bolt_port}:7687",
+                    "-e",
+                    f"NEO4J_AUTH=neo4j/{self.config.password}",
+                    "-e",
+                    'NEO4J_PLUGINS=["apoc"]',
+                    "-e",
+                    "NEO4J_dbms_security_procedures_unrestricted=apoc.*",
+                    "-e",
+                    "NEO4J_dbms_security_procedures_allowlist=apoc.*",
+                    "-e",
+                    f"NEO4J_dbms_memory_heap_max__size={self.config.heap_size}",
+                    "-e",
+                    f"NEO4J_dbms_memory_pagecache_size={self.config.page_cache_size}",
+                    "-v",
+                    f"{self.config.container_name}-data:/data",
+                    self.config.image,
+                ]
+
+                logger.debug("Running: %s", " ".join(cmd))
+
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+
+                if result.returncode != 0:
+                    error_msg = result.stderr.lower()
+
+                    # Check for port binding errors (race condition)
+                    if "bind" in error_msg and "address already in use" in error_msg:
+                        logger.warning("Port binding race condition detected on attempt %d", attempt)
+
+                        if attempt < max_attempts:
+                            # Try to find new ports and retry
+                            logger.info("Resolving new ports for retry...")
+                            try:
+                                bolt_port, http_port, messages = resolve_port_conflicts(
+                                    bolt_port=actual_bolt_port + 1,  # Start search from next port
+                                    http_port=actual_http_port + 1,
+                                    password=self.config.password,
+                                    project_root=project_root,
+                                    container_name=self.config.container_name,
+                                )
+                                actual_bolt_port = bolt_port
+                                actual_http_port = http_port
+
+                                for msg in messages:
+                                    logger.info(msg)
+
+                                continue  # Retry with new ports
+                            except Exception as e:
+                                logger.error("Failed to resolve new ports: %s", e)
+                                return False
+                        else:
+                            logger.error("Max retries exceeded for port binding")
+                            return False
+
+                    # Other errors
+                    logger.error("Failed to create container: %s", result.stderr)
+                    return False
+
+                # Success!
+                logger.info("Container created successfully on ports %d/%d", actual_bolt_port, actual_http_port)
+
+                if wait_for_ready:
+                    return self.wait_for_healthy()
+
+                return True
+
+            except subprocess.TimeoutExpired:
+                logger.error("Timeout creating container on attempt %d", attempt)
+                if attempt == max_attempts:
+                    return False
+                # Retry on timeout
+                continue
+
+            except Exception as e:
+                logger.error("Error creating container on attempt %d: %s", attempt, e)
+                if attempt == max_attempts:
+                    return False
+                # Retry on exception
+                continue
+
+        # All attempts failed
+        logger.error("Failed to create container after %d attempts", max_attempts)
+        return False
 
 
 # Module-level convenience functions
