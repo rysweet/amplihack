@@ -1,5 +1,6 @@
 """Core launcher functionality for Claude Code."""
 
+import logging
 import os
 import shlex
 import signal
@@ -7,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
 
 from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
@@ -145,6 +148,7 @@ class ClaudeLauncher:
             print(f"Successfully checked out repository to: {repo_path}")
             return True
         except Exception as e:
+            logger.error(f"Repository checkout failed for {self.checkout_repo}: {type(e).__name__}: {e}")
             print(f"Repository checkout failed: {e!s}")
             return False
 
@@ -184,7 +188,8 @@ class ClaudeLauncher:
         # Check if we need to change directories (optimized comparison)
         try:
             same_dir = os.path.samefile(current_dir, target_dir)
-        except (OSError, FileNotFoundError):
+        except (OSError, FileNotFoundError) as e:
+            logger.debug(f"os.samefile failed for {current_dir} and {target_dir}: {type(e).__name__}: {e}")
             # Fallback using cached resolved paths for efficiency
             same_dir = self._paths_are_same_with_cache(current_dir, target_dir)
 
@@ -298,6 +303,7 @@ class ClaudeLauncher:
 
         except Exception as e:
             # Log error but don't fail proxy startup
+            logger.warning(f"Could not open log tail window: {type(e).__name__}: {e}")
             print(f"Warning: Could not open log tail window: {e}")
 
     def _has_model_arg(self) -> bool:
@@ -428,6 +434,7 @@ class ClaudeLauncher:
             return True
 
         except (OSError, PermissionError) as e:
+            logger.warning(f"Could not create runtime directories in {target_dir}: {type(e).__name__}: {e}")
             print(f"Warning: Could not create runtime directories: {e}")
             return False
 
@@ -490,6 +497,7 @@ class ClaudeLauncher:
             return True
 
         except (OSError, json.JSONDecodeError, PermissionError) as e:
+            logger.warning(f"Could not fix hook paths in {settings_file}: {type(e).__name__}: {e}")
             print(f"Warning: Could not fix hook paths: {e}")
             return False
 
