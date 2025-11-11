@@ -141,7 +141,7 @@ class SessionManager:
                 self._session_metadata[session_id]["last_saved"] = time.time()
                 self._session_metadata[session_id]["status"] = "saved"
 
-                self.logger.info(f"Saved session {session_id}")
+                self.logger.info(f"Saved session {session_id} (size: {session_file.stat().st_size} bytes)")
                 return True
 
             except Exception as e:
