@@ -97,7 +97,18 @@ class IntentExtractor:
             )
 
         except Exception as e:
-            raise ExtractionError(f"Failed to extract intent: {e!s}", confidence_score=0.0)
+            logger.exception(
+                "Failed to extract intent from parsed prompt",
+                extra={
+                    "prompt_tokens": len(parsed.tokens) if parsed else 0,
+                    "prompt_entities": len(parsed.entities) if parsed else 0,
+                },
+            )
+            raise ExtractionError(
+                f"Failed to extract intent: {e!s}",
+                confidence_score=0.0,
+                extraction_stage="intent_extraction",
+            )
 
     def _determine_action(self, parsed: ParsedPrompt) -> str:
         """Determine the primary action requested."""

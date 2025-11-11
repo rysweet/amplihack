@@ -233,7 +233,7 @@ class ProxyManager:
         """
         return f"http://localhost:{self.proxy_port}"
 
-    def __enter__(self):
+    def __enter__(self) -> "ProxyManager":
         """Context manager entry - starts proxy.
 
         Returns:
@@ -242,7 +242,12 @@ class ProxyManager:
         self.start_proxy()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[object],
+    ) -> None:
         """Context manager exit - stops proxy.
 
         Args:
@@ -545,12 +550,10 @@ class ProxyManager:
             if not isinstance(arg, str):
                 return None
 
-            # Special validation for -c flag (inline code execution)
-            if arg == "-c" and i + 1 < len(command):
-                next_arg = command[i + 1]
-                # Only allow simple import statements and print
-                if not self._is_safe_inline_code(next_arg):
-                    return None
+            # Reject -c flag (inline code execution) for security
+            if arg == "-c":
+                logger.error("Inline code execution (-c) not allowed for security")
+                return None
 
             # Validate module names for -m flag
             if arg == "-m" and i + 1 < len(command):
