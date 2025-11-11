@@ -115,8 +115,10 @@ class PromptParser:
         Raises:
             ParsingError: If prompt cannot be parsed
         """
-        if not prompt or not prompt.strip():
-            raise ParsingError("Empty prompt provided")
+        if not prompt:
+            raise ParsingError("Prompt cannot be None or empty")
+        if not prompt.strip():
+            raise ParsingError("Prompt cannot be blank or whitespace only")
 
         # Clean and normalize prompt
         cleaned_prompt = self._clean_prompt(prompt)
