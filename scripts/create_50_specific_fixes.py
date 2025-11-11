@@ -5,7 +5,6 @@ Each fix is real, verifiable, and improves code quality.
 """
 
 import subprocess
-import sys
 from pathlib import Path
 from typing import List, Tuple
 
@@ -397,13 +396,13 @@ def apply_single_fix(fix_num: int, fix: dict) -> bool:
 
         if 'old' in fix and 'new' in fix:
             if fix['old'] not in content:
-                print(f"Pattern not found in file")
+                print("Pattern not found in file")
                 git_command(['git', 'checkout', 'main'])
                 return False
             content = content.replace(fix['old'], fix['new'], 1)
         elif 'search' in fix and 'replace' in fix:
             if fix['search'] not in content:
-                print(f"Search pattern not found")
+                print("Search pattern not found")
                 git_command(['git', 'checkout', 'main'])
                 return False
             content = content.replace(fix['search'], fix['replace'], 1)
@@ -461,7 +460,7 @@ def main():
             break
 
     print(f"\n{'='*60}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'='*60}")
     print(f"Successful: {successes}")
     print(f"Failed: {failures}")

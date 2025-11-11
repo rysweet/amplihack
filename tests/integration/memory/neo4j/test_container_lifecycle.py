@@ -13,9 +13,9 @@ All tests should FAIL initially (TDD approach).
 """
 
 import time
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import patch, MagicMock
 
 
 @pytest.mark.integration
@@ -483,8 +483,8 @@ class TestPortConflictResolution:
 
     def test_WHEN_ports_in_use_THEN_alternative_ports_selected(self):
         """Test that container creation handles port conflicts gracefully."""
+
         from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
-        import socket
 
         manager = Neo4jContainerManager()
 
@@ -508,8 +508,9 @@ class TestPortConflictResolution:
 
     def test_WHEN_container_already_running_on_different_ports_THEN_detected_and_reused(self):
         """Test detection of existing container on non-default ports."""
-        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
         import subprocess
+
+        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
 
         manager = Neo4jContainerManager()
 
@@ -545,10 +546,10 @@ class TestConcurrentContainerCreation:
 
     def test_WHEN_multiple_sessions_start_concurrently_THEN_handles_race_conditions(self):
         """Test that concurrent starts don't create port binding conflicts."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
-        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
         import threading
         import time
+
+        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager, ensure_neo4j_running
 
         # Ensure clean state
         manager = Neo4jContainerManager()
@@ -596,8 +597,9 @@ class TestConcurrentContainerCreation:
 
     def test_WHEN_port_binding_race_occurs_THEN_retries_with_different_ports(self):
         """Test retry logic when port binding race condition occurs."""
-        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
         import subprocess
+
+        from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
 
         manager = Neo4jContainerManager()
 

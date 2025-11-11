@@ -2,7 +2,6 @@
 """Apply 49 remaining specific fixes (fix 2-50)."""
 
 import subprocess
-import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -65,7 +64,7 @@ def apply_fix(num, file, desc, old, new):
     try:
         content = file_path.read_text()
         if old not in content:
-            print(f"  Pattern not found")
+            print("  Pattern not found")
             run_cmd(['git', 'checkout', 'main'])
             run_cmd(['git', 'branch', '-D', f'fix/specific-{num}'])
             return False
@@ -81,7 +80,7 @@ def apply_fix(num, file, desc, old, new):
     run_cmd(['git', 'add', str(file)])
     success, _ = run_cmd(['git', 'commit', '-m', f'fix: {desc}\n\nFile: {file}'])
     if not success:
-        print(f"  Failed to commit")
+        print("  Failed to commit")
         run_cmd(['git', 'checkout', 'main'])
         return False
 
@@ -90,7 +89,7 @@ def apply_fix(num, file, desc, old, new):
         print(f"  Failed to push: {output}")
         return False
 
-    print(f"  ✓ Success")
+    print("  ✓ Success")
     run_cmd(['git', 'checkout', 'main'])
     return True
 

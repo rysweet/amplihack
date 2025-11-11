@@ -2,7 +2,6 @@
 """Apply all 50 specific code quality fixes."""
 
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -265,7 +264,7 @@ def main():
             failures += 1
 
     print(f"\n{'='*50}")
-    print(f"COMPLETED")
+    print("COMPLETED")
     print(f"{'='*50}")
     print(f"Successful: {successes}")
     print(f"Failed: {failures}")

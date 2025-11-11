@@ -9,7 +9,6 @@ This script:
 4. Keeps the rest of the file intact
 """
 
-import re
 
 def refactor_integrated_proxy():
     """Refactor integrated_proxy.py to use modular imports."""
@@ -95,7 +94,7 @@ from .modules import (
     with open('integrated_proxy_refactored.py', 'w') as f:
         f.writelines(new_lines)
 
-    print(f"✅ Created integrated_proxy_refactored.py")
+    print("✅ Created integrated_proxy_refactored.py")
     print(f"Original lines: {len(lines)}")
     print(f"New lines: {len(new_lines)}")
     print(f"Removed: {len(lines) - len(new_lines)} lines")
