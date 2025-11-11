@@ -5,7 +5,6 @@ Each fix is real, verifiable, and improves code quality.
 """
 
 import subprocess
-import sys
 from pathlib import Path
 from typing import List, Tuple
 

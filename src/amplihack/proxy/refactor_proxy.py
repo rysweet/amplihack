@@ -9,7 +9,6 @@ This script:
 4. Keeps the rest of the file intact
 """
 
-import re
 
 def refactor_integrated_proxy():
     """Refactor integrated_proxy.py to use modular imports."""

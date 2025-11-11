@@ -484,7 +484,6 @@ class TestPortConflictResolution:
     def test_WHEN_ports_in_use_THEN_alternative_ports_selected(self):
         """Test that container creation handles port conflicts gracefully."""
         from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
-        import socket
 
         manager = Neo4jContainerManager()
 

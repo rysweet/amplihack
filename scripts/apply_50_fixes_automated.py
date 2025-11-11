@@ -4,7 +4,6 @@ Automatically apply 50 specific fixes from identified_fixes.json.
 Creates branches, applies fixes, commits, and pushes.
 """
 
-import ast
 import json
 import subprocess
 import sys

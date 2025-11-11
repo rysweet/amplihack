@@ -2,7 +2,6 @@
 """Apply all 50 specific code quality fixes."""
 
 import subprocess
-import sys
 import time
 from pathlib import Path
 

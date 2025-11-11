@@ -6,7 +6,6 @@ Outputs a JSON file with concrete fix descriptions and file locations.
 
 import ast
 import json
-import re
 from pathlib import Path
 from typing import Dict, List, Any
 
@@ -118,7 +117,7 @@ def analyze_file(file_path: Path) -> List[Dict[str, Any]]:
         visitor = FixIdentifier(str(file_path.relative_to(REPO_ROOT)))
         visitor.visit(tree)
         return visitor.issues
-    except Exception as e:
+    except Exception:
         return []
 
 

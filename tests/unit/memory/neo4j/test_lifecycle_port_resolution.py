@@ -11,10 +11,8 @@ Focus on:
 """
 
 import subprocess
-from pathlib import Path
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
 
-import pytest
 
 from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
 
