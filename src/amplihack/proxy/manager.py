@@ -1,6 +1,7 @@
 """Proxy lifecycle management."""
 
 import atexit
+import logging
 import os
 import re
 import signal
@@ -12,6 +13,8 @@ from typing import Any, Dict, List, Optional
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
+
+logger = logging.getLogger(__name__)
 
 
 class ProxyManager:
@@ -30,10 +33,10 @@ class ProxyManager:
         # Read PORT from proxy_config if available, otherwise use default
         if proxy_config and proxy_config.get("PORT"):
             self.proxy_port = int(proxy_config.get("PORT"))
-            print(f"Using proxy port from config: {self.proxy_port}")
+            logger.info(f"Using proxy port from config: {self.proxy_port}")
         else:
             self.proxy_port = 8080  # Default port
-            print(f"Using default proxy port: {self.proxy_port}")
+            logger.info(f"Using default proxy port: {self.proxy_port}")
 
         # Performance optimizations - cache URL templates and common operations
         self._url_template_cache = {}
@@ -52,7 +55,7 @@ class ProxyManager:
         """
         # We're using the built-in proxy server from src/amplihack/proxy/server.py
         # Just check that Python is available (which it must be since we're running)
-        print("Using built-in proxy server from src/amplihack/proxy/server.py")
+        logger.info("Using built-in proxy server from src/amplihack/proxy/server.py")
         return True
 
     def setup_proxy_config(self) -> bool:
@@ -70,10 +73,10 @@ class ProxyManager:
         # Copy .env file to proxy directory
         try:
             self.proxy_config.save_to(target_env)
-            print(f"Copied proxy configuration to {target_env}")
+            logger.info(f"Copied proxy configuration to {target_env}")
             return True
-        except Exception as e:
-            print(f"Failed to copy proxy configuration: {e}")
+        except (OSError, PermissionError) as e:
+            logger.error(f"Failed to copy proxy configuration: {e}")
             return False
 
     def start_proxy(self) -> bool:
@@ -83,12 +86,12 @@ class ProxyManager:
             True if proxy started successfully, False otherwise.
         """
         if self.proxy_process and self.proxy_process.poll() is None:
-            print("Proxy is already running")
+            logger.info("Proxy is already running")
             return True
 
         # Validate configuration before starting
         if self.proxy_config and not self.proxy_config.validate():
-            print("Invalid proxy configuration")
+            logger.error("Invalid proxy configuration")
             return False
 
         if not self.ensure_proxy_installed():
@@ -96,7 +99,7 @@ class ProxyManager:
 
         try:
             # Start the proxy process using the built-in server
-            print(f"Starting built-in proxy server on port {self.proxy_port}...")
+            logger.info(f"Starting built-in proxy server on port {self.proxy_port}...")
 
             # Create log directory and files
             from datetime import datetime
@@ -124,7 +127,7 @@ class ProxyManager:
             start_command = self._get_proxy_start_command()
 
             if not start_command:
-                print("Failed to determine proxy start command")
+                logger.error("Failed to determine proxy start command")
                 self._close_log_files()
                 return False
 
@@ -145,10 +148,10 @@ class ProxyManager:
 
             # Check if proxy is still running
             if self.proxy_process.poll() is not None:
-                print(f"Proxy failed to start. Exit code: {self.proxy_process.returncode}")
-                print("Check logs for details:")
-                print(f"  stdout: {stdout_log_path}")
-                print(f"  stderr: {stderr_log_path}")
+                logger.error(f"Proxy failed to start. Exit code: {self.proxy_process.returncode}")
+                logger.error("Check logs for details:")
+                logger.error(f"  stdout: {stdout_log_path}")
+                logger.error(f"  stderr: {stderr_log_path}")
                 self._close_log_files()
                 return False
 
@@ -161,14 +164,14 @@ class ProxyManager:
             )
             self.env_manager.setup(self.proxy_port, api_key, azure_config)
 
-            print(f"Proxy started successfully on port {self.proxy_port}")
-            print("Proxy logs:")
-            print(f"  stdout: {stdout_log_path}")
-            print(f"  stderr: {stderr_log_path}")
+            logger.info(f"Proxy started successfully on port {self.proxy_port}")
+            logger.info("Proxy logs:")
+            logger.info(f"  stdout: {stdout_log_path}")
+            logger.info(f"  stderr: {stderr_log_path}")
             return True
 
-        except Exception as e:
-            print(f"Failed to start proxy: {e}")
+        except (OSError, subprocess.SubprocessError, ValueError) as e:
+            logger.error(f"Failed to start proxy: {e}")
             self._close_log_files()
             return False
 
@@ -178,7 +181,7 @@ class ProxyManager:
             return
 
         if self.proxy_process.poll() is None:
-            print("Stopping claude-code-proxy...")
+            logger.info("Stopping claude-code-proxy...")
             try:
                 if os.name == "nt":
                     # Windows
@@ -198,10 +201,10 @@ class ProxyManager:
                         os.killpg(os.getpgid(self.proxy_process.pid), signal.SIGKILL)
                     self.proxy_process.wait()
 
-                print("Proxy stopped successfully")
-            except Exception as e:
+                logger.info("Proxy stopped successfully")
+            except (OSError, subprocess.SubprocessError) as e:
                 sanitized_error = self._sanitize_subprocess_error(str(e))
-                print(f"Error stopping proxy: {sanitized_error}")
+                logger.error(f"Error stopping proxy: {sanitized_error}")
 
         # Close log files
         self._close_log_files()
@@ -644,13 +647,13 @@ class ProxyManager:
         # Try to find installed package first (pip/uvx scenario)
         if importlib.util.find_spec("amplihack.proxy.server"):
             module_path = "amplihack.proxy.server"
-            print(f"Detected installed package, using module: {module_path}")
+            logger.info(f"Detected installed package, using module: {module_path}")
             return [sys.executable, "-m", module_path]
 
         # Try to find source directory (development scenario)
         if importlib.util.find_spec("src.amplihack.proxy.server"):
             module_path = "src.amplihack.proxy.server"
-            print(f"Detected source directory, using module: {module_path}")
+            logger.info(f"Detected source directory, using module: {module_path}")
             return [sys.executable, "-m", module_path]
 
         # Method 2: File-based execution as fallback
@@ -684,7 +687,7 @@ class ProxyManager:
 
         for server_path in server_candidates:
             if self._is_safe_file_path(server_path) and server_path.exists():
-                print(f"Found proxy server file at: {self._sanitize_path_for_display(server_path)}")
+                logger.info(f"Found proxy server file at: {self._sanitize_path_for_display(server_path)}")
                 return [sys.executable, str(server_path)]
 
         # Method 3: Try both module paths with subprocess (last resort)
@@ -716,9 +719,9 @@ class ProxyManager:
                         env=self._create_secure_env(),
                     )
                     if test_result.returncode == 0 and "OK" in test_result.stdout:
-                        print(f"Module {module_path} is executable via subprocess")
+                        logger.info(f"Module {module_path} is executable via subprocess")
                         return [sys.executable, "-m", module_path]
-                except (subprocess.TimeoutExpired, Exception):
+                except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
                     continue
 
         # Method 4: Try to determine if we're in a uvx environment and adjust accordingly
@@ -726,19 +729,19 @@ class ProxyManager:
         exe_path = Path(sys.executable).resolve()
         if "uvx" in str(exe_path) or ".local/bin" in str(exe_path):
             # We're likely in a uvx environment
-            print("Detected uvx environment, trying amplihack.proxy.server directly")
+            logger.info("Detected uvx environment, trying amplihack.proxy.server directly")
             # In uvx, the package should be available as amplihack
             return [sys.executable, "-m", "amplihack.proxy.server"]
 
         # If all methods fail, provide helpful error message (sanitized)
-        print("ERROR: Unable to locate proxy server module.")
-        print("Attempted methods:")
-        print("  1. Import 'amplihack.proxy.server' (installed package)")
-        print("  2. Import 'src.amplihack.proxy.server' (development)")
-        print("  3. File-based execution from package directory")
-        print("  4. Subprocess module execution test")
-        print("  5. uvx environment detection")
-        print("\nPlease ensure the proxy server module is properly installed or available.")
+        logger.error("ERROR: Unable to locate proxy server module.")
+        logger.error("Attempted methods:")
+        logger.error("  1. Import 'amplihack.proxy.server' (installed package)")
+        logger.error("  2. Import 'src.amplihack.proxy.server' (development)")
+        logger.error("  3. File-based execution from package directory")
+        logger.error("  4. Subprocess module execution test")
+        logger.error("  5. uvx environment detection")
+        logger.error("\nPlease ensure the proxy server module is properly installed or available.")
 
         return None
 
@@ -747,15 +750,15 @@ class ProxyManager:
         if self._stdout_log_file:
             try:
                 self._stdout_log_file.close()
-            except Exception:
-                pass  # Ignore errors when closing
+            except (OSError, IOError) as e:
+                logger.debug(f"Error closing stdout log file: {e}")
             self._stdout_log_file = None
 
         if self._stderr_log_file:
             try:
                 self._stderr_log_file.close()
-            except Exception:
-                pass  # Ignore errors when closing
+            except (OSError, IOError) as e:
+                logger.debug(f"Error closing stderr log file: {e}")
             self._stderr_log_file = None
 
     def _display_log_locations(self) -> None:
@@ -774,10 +777,10 @@ class ProxyManager:
             html_log = log_dir / f"proxy-log-{timestamp}.html"
 
             # Display log locations
-            print("Logs will be written to:")
-            print(f"  JSONL: {jsonl_log}")
-            print(f"  HTML:  {html_log}")
+            logger.info("Logs will be written to:")
+            logger.info(f"  JSONL: {jsonl_log}")
+            logger.info(f"  HTML:  {html_log}")
 
-        except Exception as e:
+        except (OSError, ValueError) as e:
             # Don't fail proxy startup if logging display fails
-            print(f"Note: Unable to display log locations: {e}")
+            logger.warning(f"Note: Unable to display log locations: {e}")
