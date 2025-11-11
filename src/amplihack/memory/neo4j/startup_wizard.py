@@ -257,15 +257,23 @@ def _check_code_understanding_freshness():
 
                 if response == "y":
                     print("\n⏳ Indexing codebase (this may take a moment)...")
+
+                    # Progress callback for user feedback
+                    def progress_update(msg: str):
+                        if msg.startswith("."):
+                            print(msg, end="", flush=True)
+                        else:
+                            print(f"   {msg}")
+
                     blarify = BlarifyIntegration(conn)
                     try:
-                        result = blarify.run_blarify(str(project_root))
+                        result = blarify.run_blarify(str(project_root), progress_callback=progress_update)
                         if result:
                             print(
-                                f"✅ Indexed! Created {result.get('files', 0)} files, {result.get('classes', 0)} classes, {result.get('functions', 0)} functions"
+                                f"\n✅ Indexed! Created {result.get('files', 0)} files, {result.get('classes', 0)} classes, {result.get('functions', 0)} functions"
                             )
                     except Exception as e:
-                        print(f"⚠️  Indexing failed: {e}")
+                        print(f"\n⚠️  Indexing failed: {e}")
                         print("   You can index later with: amplihack memory update-code-index")
 
                 elif response == "background":

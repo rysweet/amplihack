@@ -113,17 +113,18 @@ class BlarifyIntegration:
         self,
         codebase_path: str,
         languages: Optional[List[str]] = None,
+        progress_callback: Optional[callable] = None,
     ) -> Dict[str, int]:
         """Run blarify and import results in one operation.
 
         Convenience method that:
-        1. Runs blarify CLI to generate JSON
-        2. Imports results into Neo4j
-        3. Returns import counts
+        1. Runs blarify CLI directly to Neo4j
+        2. Returns stats from Neo4j
 
         Args:
             codebase_path: Path to codebase to analyze
             languages: Optional list of languages to analyze
+            progress_callback: Optional callback for progress updates
 
         Returns:
             Dictionary with counts: {"files": N, "classes": N, "functions": N, ...}
@@ -131,33 +132,34 @@ class BlarifyIntegration:
         Raises:
             RuntimeError: If blarify execution fails
         """
-        from tempfile import NamedTemporaryFile
-        import os
+        logger.info("Running blarify on %s", codebase_path)
 
-        # Create temp file for blarify output
-        with NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-            tmp_path = Path(tmp.name)
+        # Get initial stats
+        initial_stats = self.get_code_stats()
 
-        try:
-            # Run blarify using standalone function
-            logger.info("Running blarify on %s", codebase_path)
-            success = run_blarify(Path(codebase_path), tmp_path, languages)
+        # Run blarify directly to Neo4j (no temp file needed)
+        # Blarify writes directly to the Neo4j database
+        success = run_blarify(
+            codebase_path=Path(codebase_path),
+            output_path=None,  # Not used - blarify writes to Neo4j directly
+            languages=languages,
+            progress_callback=progress_callback
+        )
 
-            if not success:
-                raise RuntimeError("Blarify execution failed")
+        if not success:
+            raise RuntimeError("Blarify execution failed")
 
-            # Import results into Neo4j
-            logger.info("Importing blarify results into Neo4j")
-            counts = self.import_blarify_output(tmp_path, project_id=None)
+        # Get final stats to calculate what was added
+        final_stats = self.get_code_stats()
 
-            logger.info("Blarify import complete: %s", counts)
-            return counts
+        counts = {
+            "files": final_stats.get("file_count", 0) - initial_stats.get("file_count", 0),
+            "classes": final_stats.get("class_count", 0) - initial_stats.get("class_count", 0),
+            "functions": final_stats.get("function_count", 0) - initial_stats.get("function_count", 0),
+        }
 
-        finally:
-            # Cleanup temp file
-            if tmp_path.exists():
-                os.unlink(tmp_path)
-                logger.debug("Cleaned up temporary file: %s", tmp_path)
+        logger.info("Blarify import complete: %s", counts)
+        return counts
 
     def import_blarify_output(
         self,
@@ -672,15 +674,17 @@ class BlarifyIntegration:
 
 def run_blarify(
     codebase_path: Path,
-    output_path: Path,
+    output_path: Optional[Path] = None,
     languages: Optional[List[str]] = None,
+    progress_callback: Optional[callable] = None,
 ) -> bool:
     """Run blarify on a codebase to generate code graph.
 
     Args:
         codebase_path: Path to codebase to analyze
-        output_path: Path to save blarify JSON output
+        output_path: Optional path to save blarify JSON output (not used - blarify writes to Neo4j directly)
         languages: Optional list of languages to analyze
+        progress_callback: Optional callback for progress updates (receives string messages)
 
     Returns:
         True if successful, False otherwise
@@ -701,31 +705,91 @@ def run_blarify(
         )
         return False
 
-    # Build blarify command
+    # Build blarify command using 'create' subcommand (current blarify API)
+    # Note: blarify's actual API uses 'create', not 'analyze'
+    import os
+    from .config import get_config
+
+    config = get_config()
     cmd = [
         "blarify",
-        "analyze",
-        str(codebase_path),
-        "--output",
-        str(output_path),
-        "--format",
-        "json",
+        "create",
+        "--entity-id", "amplihack",
+        "--neo4j-uri", config.uri,
+        "--neo4j-username", config.username,
+        "--neo4j-password", config.password,
+        "--only-hierarchy",  # Skip LLM-based documentation generation
     ]
 
     if languages:
-        cmd.extend(["--languages", ",".join(languages)])
+        # Filter only supported file extensions
+        extensions_map = {
+            "python": ".py",
+            "javascript": ".js",
+            "typescript": ".ts",
+            "java": ".java",
+            "go": ".go",
+        }
+        extensions = [extensions_map.get(lang.lower()) for lang in languages if lang.lower() in extensions_map]
+        if extensions:
+            # Skip extensions not in the list by passing others to skip
+            cmd.extend(["--extensions-to-skip", *[f".{ext}" for ext in ["md", "txt", "json", "yaml", "yml"] if f".{ext}" not in extensions]])
 
     try:
-        result = subprocess.run(
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        logger.info("Blarify completed successfully")
-        logger.debug("Blarify output: %s", result.stdout)
-        return True
+        # Run with streaming output for progress indication
+        if progress_callback:
+            progress_callback("Starting blarify code analysis...")
 
-    except subprocess.CalledProcessError as e:
-        logger.error("Blarify failed: %s", e.stderr)
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            cwd=str(codebase_path),
+            bufsize=1,  # Line buffered
+        )
+
+        import time
+        import sys
+
+        # Monitor progress while process runs
+        last_update = time.time()
+        dots_shown = 0
+
+        while True:
+            # Check if process finished
+            retcode = process.poll()
+            if retcode is not None:
+                break
+
+            # Show progress dots every 2 seconds
+            now = time.time()
+            if progress_callback and now - last_update >= 2:
+                dots_shown += 1
+                progress_callback("." * min(dots_shown, 3))
+                if dots_shown >= 3:
+                    dots_shown = 0
+                last_update = now
+
+            time.sleep(0.5)
+
+        # Get final output
+        stdout, stderr = process.communicate()
+
+        if retcode == 0:
+            if progress_callback:
+                progress_callback("Blarify analysis completed!")
+            logger.info("Blarify completed successfully")
+            logger.debug("Blarify output: %s", stdout)
+            return True
+        else:
+            logger.error("Blarify failed with code %d: %s", retcode, stderr)
+            if progress_callback:
+                progress_callback(f"Blarify failed: {stderr[:100]}")
+            return False
+
+    except Exception as e:
+        logger.error("Blarify execution error: %s", e)
+        if progress_callback:
+            progress_callback(f"Error: {str(e)}")
         return False
