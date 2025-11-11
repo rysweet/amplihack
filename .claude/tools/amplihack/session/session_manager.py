@@ -64,15 +64,18 @@ class SessionManager:
         config: Optional[SessionConfig] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Create a new session.
+        """Create a new session with automatic tracking and persistence.
 
         Args:
-            name: Human-readable session name
-            config: Session configuration
-            metadata: Additional session metadata
+            name: Human-readable session name (required, non-empty)
+            config: Session configuration (defaults to SessionConfig())
+            metadata: Additional session metadata (optional)
 
         Returns:
-            Session ID
+            Session ID (auto-generated UUID)
+
+        Raises:
+            ValueError: If name is empty or invalid
         """
         config = config or SessionConfig()
         session = ClaudeSession(config)
