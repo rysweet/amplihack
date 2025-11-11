@@ -10,15 +10,9 @@ import time
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
-
-# Type alias for JSON-serializable data
-JSONType = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
-
-# TypeVar for preserving default parameter type in safe_read_json
-T = TypeVar('T')
 
 
 class FileOperationError(Exception):
@@ -272,19 +266,17 @@ def safe_write_file(
 
 @retry_file_operation(max_retries=3, delay=0.1)
 def safe_read_json(
-    file_path: Union[str, Path],
-    default: Optional[T] = None,
-    validate_schema: Optional[Callable[[JSONType], None]] = None
-) -> Union[JSONType, T]:
+    file_path: Union[str, Path], default: Any = None, validate_schema: Optional[Callable] = None
+) -> Any:
     """Safely read JSON file with validation.
 
     Args:
         file_path: Path to JSON file
-        default: Default value if file doesn't exist or is invalid (preserves type)
+        default: Default value if file doesn't exist or is invalid
         validate_schema: Optional function to validate JSON structure
 
     Returns:
-        Parsed JSON data or default value (type-safe with default parameter)
+        Parsed JSON data or default value
     """
     try:
         content = safe_read_file(file_path)
@@ -315,7 +307,7 @@ def safe_read_json(
 @retry_file_operation(max_retries=3, delay=0.1)
 def safe_write_json(
     file_path: Union[str, Path],
-    data: JSONType,
+    data: Any,
     indent: int = 2,
     sort_keys: bool = True,
     atomic: bool = True,
@@ -325,7 +317,7 @@ def safe_write_json(
 
     Args:
         file_path: Path to JSON file
-        data: JSON-serializable data (dict, list, str, int, float, bool, None)
+        data: Data to serialize
         indent: JSON indentation
         sort_keys: Sort JSON keys
         atomic: Use atomic write

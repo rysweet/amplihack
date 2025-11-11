@@ -204,8 +204,8 @@ class UserPromptSubmitHook(HookProcessor):
             from agent_memory_hook import (
                 detect_agent_references,
                 detect_slash_command_agent,
-                format_memory_injection_notice,
                 inject_memory_for_agents,
+                format_memory_injection_notice,
             )
 
             # Detect agent references

@@ -326,42 +326,10 @@ class ClaudeLauncher:
         Returns:
             List of command arguments for subprocess.
         """
-        # Get claude command (could be claude, claude-trace, or rustyclawd)
+        # Use claude-trace if requested and available, otherwise use claude
         claude_binary = get_claude_command()
 
-        # Check if this is RustyClawd (Rust implementation)
-        is_rustyclawd = "rustyclawd" in claude_binary.lower() or "claude-code-rs" in claude_binary
-
-        if is_rustyclawd:
-            # RustyClawd has same CLI as claude (simpler than claude-trace)
-            cmd = [claude_binary, "--dangerously-skip-permissions"]
-
-            # Add --verbose if requested
-            if self.verbose:
-                cmd.append("--verbose")
-
-            # Add system prompt if provided
-            if self.append_system_prompt and self.append_system_prompt.exists():
-                cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
-
-            # Add --add-dir if in UVX mode
-            if self._target_directory and self._cached_uvx_decision:
-                cmd.extend(["--add-dir", str(self._target_directory)])
-
-            # Add model
-            if self.proxy_manager:
-                cmd.extend(["--model", "azure/gpt-5-codex"])
-            elif not self._has_model_arg():
-                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
-                cmd.extend(["--model", default_model])
-
-            # Add forwarded arguments
-            if self.claude_args:
-                cmd.extend(self.claude_args)
-
-            return cmd
-
-        elif claude_binary == "claude-trace":
+        if claude_binary == "claude-trace":
             # claude-trace requires --run-with before Claude arguments
             cmd = [claude_binary]
 

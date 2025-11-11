@@ -22,17 +22,26 @@ def should_use_trace() -> bool:
 
 
 def get_claude_command() -> str:
-    """Get the appropriate claude command (claude or claude-trace).
+    """Get the appropriate claude command (claude, claude-trace, or rustyclawd).
 
     Uses smart binary detection to avoid shell script wrappers and
-    prefer reliable Node.js binaries.
+    prefer reliable binaries. Checks for RustyClawd first (Rust implementation).
 
     Returns:
-        Command name to use ('claude' or 'claude-trace')
+        Command name/path to use ('rustyclawd', 'claude-trace', or 'claude')
 
     Side Effects:
         May attempt to install claude-trace via npm if not found
     """
+    # Check for RustyClawd (Rust implementation) first
+    from .rustyclawd_detect import should_use_rustyclawd, get_rustyclawd_path
+
+    if should_use_rustyclawd():
+        rustyclawd = get_rustyclawd_path()
+        if rustyclawd:
+            print(f"Using RustyClawd (Rust implementation): {rustyclawd}")
+            return str(rustyclawd)
+
     if not should_use_trace():
         print("Claude-trace explicitly disabled via AMPLIHACK_USE_TRACE=0")
         return "claude"

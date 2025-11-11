@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 
 # Try to import Claude SDK
 try:
-    from claude_agent_sdk import ClaudeAgentOptions, query
+    from claude_agent_sdk import query, ClaudeAgentOptions
 
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
