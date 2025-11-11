@@ -103,17 +103,18 @@ class PromptParser:
 
     def parse(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> ParsedPrompt:
         """
-        Parse a natural language prompt.
+        Parse a natural language prompt into structured components.
 
         Args:
-            prompt: Natural language description of agents
+            prompt: Natural language description of agents (required, non-empty)
             context: Optional context (existing agents, project type, etc.)
 
         Returns:
-            ParsedPrompt with extracted information
+            ParsedPrompt with extracted information including tokens, sentences,
+            key phrases, and confidence score
 
         Raises:
-            ParsingError: If prompt cannot be parsed
+            ParsingError: If prompt is empty, None, or cannot be parsed
         """
         if not prompt or not prompt.strip():
             raise ParsingError("Empty prompt provided")
