@@ -20,6 +20,10 @@ class AzureUnifiedHandler:
 
     This class provides a single interface that the integrated proxy can use,
     eliminating the need for dual routing logic in the main proxy code.
+
+    The handler automatically detects which API to use based on model name and
+    request format, providing seamless translation between Anthropic, OpenAI,
+    and Azure formats.
     """
 
     def __init__(self, api_key: str, base_url: str, api_version: str = "2025-01-01-preview"):
