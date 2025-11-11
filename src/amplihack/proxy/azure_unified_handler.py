@@ -31,6 +31,10 @@ class AzureUnifiedHandler:
             base_url: Azure base URL
             api_version: API version for Chat API
         """
+        if not api_key or not api_key.strip():
+            raise ValueError('Azure API key cannot be empty')
+        if not base_url or not base_url.strip():
+            raise ValueError('Azure base URL cannot be empty')
         self.provider = AzureUnifiedProvider(api_key, base_url, api_version)
         logger.info(f"✅ Azure unified handler initialized: {base_url}")
 
