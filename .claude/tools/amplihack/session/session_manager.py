@@ -287,7 +287,7 @@ class SessionManager:
                     if self.archive_session(session_id):
                         cleaned_count += 1
             except Exception as e:
-                self.logger.warning(f"Failed to cleanup {session_file}: {e}")
+                self.logger.warning(f"Failed to cleanup {session_file}: {e}", exc_info=True)
 
         self.logger.info(f"Cleaned up {cleaned_count} old sessions")
         return cleaned_count
