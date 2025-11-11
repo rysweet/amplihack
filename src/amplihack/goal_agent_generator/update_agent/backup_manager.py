@@ -63,7 +63,15 @@ class BackupManager:
             ValueError: If backup not found
             IOError: If restore fails
         """
-        backup_path = self.backup_dir / backup_name
+        # Sanitize backup name (no path separators)
+        if any(char in backup_name for char in ['/', '\\', '..']):
+            raise ValueError(f"Invalid backup name: {backup_name}")
+
+        backup_path = (self.backup_dir / backup_name).resolve()
+
+        # Ensure within backup_dir
+        if not str(backup_path).startswith(str(self.backup_dir.resolve())):
+            raise ValueError(f"Path traversal in backup name: {backup_name}")
 
         if not backup_path.exists():
             raise ValueError(f"Backup not found: {backup_name}")
@@ -123,7 +131,15 @@ class BackupManager:
         Raises:
             ValueError: If backup not found
         """
-        backup_path = self.backup_dir / backup_name
+        # Sanitize backup name (no path separators)
+        if any(char in backup_name for char in ['/', '\\', '..']):
+            raise ValueError(f"Invalid backup name: {backup_name}")
+
+        backup_path = (self.backup_dir / backup_name).resolve()
+
+        # Ensure within backup_dir
+        if not str(backup_path).startswith(str(self.backup_dir.resolve())):
+            raise ValueError(f"Path traversal in backup name: {backup_name}")
 
         if not backup_path.exists():
             raise ValueError(f"Backup not found: {backup_name}")

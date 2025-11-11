@@ -141,7 +141,17 @@ class SelectiveUpdater:
 
     def _apply_file_change(self, change: FileChange) -> None:
         """Apply a single file change."""
-        target_path = self.agent_dir / change.file_path
+        # Validate path is within agent_dir
+        target_path = (self.agent_dir / change.file_path).resolve()
+        agent_dir_resolved = self.agent_dir.resolve()
+
+        if not str(target_path).startswith(str(agent_dir_resolved)):
+            raise ValueError(f"Path traversal detected: {change.file_path}")
+
+        # Blacklist sensitive paths
+        forbidden = ['.ssh', '.env', 'credentials', 'secrets', 'private']
+        if any(part in str(change.file_path).lower() for part in forbidden):
+            raise ValueError(f"Forbidden path: {change.file_path}")
 
         if change.change_type == "add":
             # Add new file

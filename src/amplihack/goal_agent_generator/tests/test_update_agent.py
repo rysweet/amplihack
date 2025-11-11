@@ -308,6 +308,79 @@ class TestBackupManager:
         assert deleted == 7
         assert len(manager.list_backups()) == 3
 
+    def test_path_traversal_in_restore_blocked(self, tmp_path: Path):
+        """Test that path traversal in backup_name is blocked."""
+        agent_dir = tmp_path / "test-agent"
+        agent_dir.mkdir()
+        (agent_dir / "file.txt").write_text("content")
+
+        manager = BackupManager(agent_dir)
+
+        # Try to restore using path traversal
+        with pytest.raises(ValueError, match="Invalid backup name"):
+            manager.restore_backup("../../etc/passwd")
+
+        with pytest.raises(ValueError, match="Invalid backup name"):
+            manager.restore_backup("../../../etc/shadow")
+
+        with pytest.raises(ValueError, match="Invalid backup name"):
+            manager.restore_backup("backup/../../../etc/hosts")
+
+    def test_path_separators_in_backup_name_blocked(self, tmp_path: Path):
+        """Test that path separators in backup names are blocked."""
+        agent_dir = tmp_path / "test-agent"
+        agent_dir.mkdir()
+        (agent_dir / "file.txt").write_text("content")
+
+        manager = BackupManager(agent_dir)
+
+        # Try various path separator attacks
+        invalid_names = [
+            "backup/malicious",
+            "backup\\malicious",
+            "..\\..\\file",
+            "/absolute/path",
+        ]
+
+        for invalid_name in invalid_names:
+            with pytest.raises(ValueError, match="Invalid backup name"):
+                manager.restore_backup(invalid_name)
+
+    def test_path_traversal_in_delete_blocked(self, tmp_path: Path):
+        """Test that path traversal in delete_backup is blocked."""
+        agent_dir = tmp_path / "test-agent"
+        agent_dir.mkdir()
+        (agent_dir / "file.txt").write_text("content")
+
+        # Create a file outside agent dir
+        outside_file = tmp_path / "important.txt"
+        outside_file.write_text("important data")
+
+        manager = BackupManager(agent_dir)
+
+        # Try to delete file outside backup_dir
+        with pytest.raises(ValueError, match="Invalid backup name"):
+            manager.delete_backup("../../important.txt")
+
+        # Verify outside file still exists
+        assert outside_file.exists()
+
+    def test_resolved_path_validation(self, tmp_path: Path):
+        """Test that resolved paths are validated against backup_dir."""
+        agent_dir = tmp_path / "test-agent"
+        agent_dir.mkdir()
+        (agent_dir / "file.txt").write_text("content")
+
+        manager = BackupManager(agent_dir)
+
+        # Create a valid backup
+        backup_path = manager.create_backup(label="valid")
+
+        # Now try to access it with traversal (even though it exists)
+        # The validation should still catch the traversal attempt
+        with pytest.raises(ValueError, match="Invalid backup name"):
+            manager.restore_backup("valid/../../etc/passwd")
+
 
 class TestSelectiveUpdater:
     """Tests for SelectiveUpdater."""
@@ -336,6 +409,121 @@ class TestSelectiveUpdater:
         assert results["infrastructure_updated"] == 0
         assert results["skills_updated"] == 0
         assert len(results["errors"]) == 0
+
+    def test_path_traversal_attack_detected(self, tmp_path: Path):
+        """Test that path traversal attacks are detected and blocked."""
+        agent_dir = tmp_path / "test-agent"
+        agent_dir.mkdir()
+        (agent_dir / "main.py").write_text("# Main")
+
+        # Create a file outside the agent dir
+        outside_file = tmp_path / "outside.txt"
+        outside_file.write_text("sensitive data")
+
+        # Try to delete file outside agent_dir using path traversal
+        changeset = UpdateChangeset(
+            current_version="1.0.0",
+            target_version="2.0.0",
+            infrastructure_updates=[
+                FileChange(
+                    file_path=Path("../outside.txt"),
+                    change_type="delete",
+                    category="infrastructure",
+                    safety="safe",
+                )
+            ],
+            skill_updates=[],
+            breaking_changes=[],
+            bug_fixes=[],
+            enhancements=[],
+            total_changes=1,
+            estimated_time="1 second",
+        )
+
+        updater = SelectiveUpdater(agent_dir, amplihack_root=tmp_path)
+        results = updater.apply_changeset(changeset)
+
+        # Should have error, not success
+        assert results["infrastructure_updated"] == 0
+        assert len(results["errors"]) > 0
+        assert "Path traversal detected" in results["errors"][0]
+
+        # Outside file should still exist
+        assert outside_file.exists()
+
+    def test_forbidden_path_blocked(self, tmp_path: Path):
+        """Test that forbidden paths like .ssh, .env are blocked."""
+        agent_dir = tmp_path / "test-agent"
+        agent_dir.mkdir()
+        (agent_dir / ".env").write_text("SECRET_KEY=abc123")
+
+        # Try to modify .env file
+        changeset = UpdateChangeset(
+            current_version="1.0.0",
+            target_version="2.0.0",
+            infrastructure_updates=[
+                FileChange(
+                    file_path=Path(".env"),
+                    change_type="modify",
+                    category="infrastructure",
+                    safety="safe",
+                )
+            ],
+            skill_updates=[],
+            breaking_changes=[],
+            bug_fixes=[],
+            enhancements=[],
+            total_changes=1,
+            estimated_time="1 second",
+        )
+
+        updater = SelectiveUpdater(agent_dir, amplihack_root=tmp_path)
+        results = updater.apply_changeset(changeset)
+
+        # Should have error
+        assert results["infrastructure_updated"] == 0
+        assert len(results["errors"]) > 0
+        assert "Forbidden path" in results["errors"][0]
+
+    def test_multiple_forbidden_paths_blocked(self, tmp_path: Path):
+        """Test that multiple sensitive paths are blocked."""
+        agent_dir = tmp_path / "test-agent"
+        agent_dir.mkdir()
+
+        forbidden_paths = [
+            ".ssh/id_rsa",
+            "credentials/api_key.json",
+            "secrets/password.txt",
+            "private/data.db",
+        ]
+
+        for forbidden_path in forbidden_paths:
+            changeset = UpdateChangeset(
+                current_version="1.0.0",
+                target_version="2.0.0",
+                infrastructure_updates=[
+                    FileChange(
+                        file_path=Path(forbidden_path),
+                        change_type="add",
+                        category="infrastructure",
+                        safety="safe",
+                    )
+                ],
+                skill_updates=[],
+                breaking_changes=[],
+                bug_fixes=[],
+                enhancements=[],
+                total_changes=1,
+                estimated_time="1 second",
+            )
+
+            updater = SelectiveUpdater(agent_dir, amplihack_root=tmp_path)
+            results = updater.apply_changeset(changeset)
+
+            # Each forbidden path should be blocked
+            assert results["infrastructure_updated"] == 0
+            assert len(results["errors"]) > 0
+            assert "Forbidden path" in results["errors"][0]
 
     def test_validate_agent(self, tmp_path: Path):
         """Test agent validation."""

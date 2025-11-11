@@ -3,7 +3,7 @@
     "key1": {
       "value": "value1",
       "owner_agent_id": null,
-      "updated_at": "2025-11-11T18:51:12.073458",
+      "updated_at": "2025-11-11T20:27:40.469743",
       "version": 1
     },
     "key2": {
@@ -11,20 +11,20 @@
         "nested": "data"
       },
       "owner_agent_id": null,
-      "updated_at": "2025-11-11T18:51:12.073640",
+      "updated_at": "2025-11-11T20:27:40.470231",
       "version": 1
     }
   },
   "event_log": [
     {
-      "timestamp": "2025-11-11T18:51:12.073448",
+      "timestamp": "2025-11-11T20:27:40.469730",
       "event_type": "load_error",
       "data": {
         "error": "Expecting value: line 1 column 1 (char 0)"
       }
     },
     {
-      "timestamp": "2025-11-11T18:51:12.073463",
+      "timestamp": "2025-11-11T20:27:40.469748",
       "event_type": "state_set",
       "data": {
         "key": "key1",
@@ -34,7 +34,7 @@
       }
     },
     {
-      "timestamp": "2025-11-11T18:51:12.073644",
+      "timestamp": "2025-11-11T20:27:40.470240",
       "event_type": "state_set",
       "data": {
         "key": "key2",

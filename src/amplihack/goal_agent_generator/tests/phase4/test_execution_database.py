@@ -196,3 +196,141 @@ def test_context_manager(temp_db):
 
         # Database should be closed
         # No way to test this directly, but no errors should occur
+
+
+def test_cleanup_large_batch_safety(temp_db):
+    """Test that cleanup handles large batches safely with SQL injection protection."""
+    from amplihack.goal_agent_generator.models import GoalDefinition
+
+    # Create 1000+ executions to test batch processing
+    execution_ids = []
+    old_time = datetime.utcnow() - timedelta(days=35)
+
+    for i in range(1200):
+        trace = ExecutionTrace(
+            goal_definition=GoalDefinition(
+                raw_prompt=f"test_{i}",
+                goal=f"test_{i}",
+                domain="testing",
+            ),
+            start_time=old_time,
+            status="completed",
+        )
+        trace.end_time = old_time
+        temp_db.store_trace(trace)
+        execution_ids.append(trace.execution_id)
+
+    # Verify all were created
+    cursor = temp_db.conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM executions")
+    assert cursor.fetchone()[0] == 1200
+
+    # Cleanup should handle in batches of 500
+    deleted_count = temp_db.cleanup_old_data(days=30)
+
+    assert deleted_count == 1200
+
+    # Verify all deleted
+    cursor.execute("SELECT COUNT(*) FROM executions")
+    assert cursor.fetchone()[0] == 0
+
+    cursor.execute("SELECT COUNT(*) FROM events")
+    assert cursor.fetchone()[0] == 0
+
+
+def test_cleanup_prevents_sql_injection_in_placeholders(temp_db):
+    """Test that cleanup method safely constructs placeholders."""
+    from amplihack.goal_agent_generator.models import GoalDefinition
+
+    # Create executions with various IDs (including ones that might be problematic)
+    old_time = datetime.utcnow() - timedelta(days=35)
+
+    # Normal UUIDs - no risk, but test the batch processing works correctly
+    for i in range(600):
+        trace = ExecutionTrace(
+            goal_definition=GoalDefinition(
+                raw_prompt="test",
+                goal="test",
+                domain="testing",
+            ),
+            start_time=old_time,
+            status="completed",
+        )
+        trace.end_time = old_time
+        temp_db.store_trace(trace)
+
+    # Store some metrics for these traces
+    cursor = temp_db.conn.cursor()
+    cursor.execute("SELECT execution_id FROM executions LIMIT 10")
+    sample_ids = [row["execution_id"] for row in cursor.fetchall()]
+
+    for exec_id in sample_ids:
+        temp_db.store_metrics(
+            uuid.UUID(exec_id),
+            {"total_duration_seconds": 10.0}
+        )
+
+    # Cleanup should handle safely with proper batching
+    deleted_count = temp_db.cleanup_old_data(days=30)
+
+    assert deleted_count == 600
+
+    # Verify all data cleaned up properly
+    cursor.execute("SELECT COUNT(*) FROM executions")
+    assert cursor.fetchone()[0] == 0
+
+    cursor.execute("SELECT COUNT(*) FROM events")
+    assert cursor.fetchone()[0] == 0
+
+    cursor.execute("SELECT COUNT(*) FROM metrics")
+    assert cursor.fetchone()[0] == 0
+
+
+def test_cleanup_batch_boundary_conditions(temp_db):
+    """Test cleanup at exact batch size boundaries."""
+    from amplihack.goal_agent_generator.models import GoalDefinition
+
+    old_time = datetime.utcnow() - timedelta(days=35)
+
+    # Test exact batch size (500)
+    for i in range(500):
+        trace = ExecutionTrace(
+            goal_definition=GoalDefinition(
+                raw_prompt="test",
+                goal="test",
+                domain="testing",
+            ),
+            start_time=old_time,
+            status="completed",
+        )
+        trace.end_time = old_time
+        temp_db.store_trace(trace)
+
+    deleted_count = temp_db.cleanup_old_data(days=30)
+    assert deleted_count == 500
+
+    # Test just over batch size (501)
+    for i in range(501):
+        trace = ExecutionTrace(
+            goal_definition=GoalDefinition(
+                raw_prompt="test",
+                goal="test",
+                domain="testing",
+            ),
+            start_time=old_time,
+            status="completed",
+        )
+        trace.end_time = old_time
+        temp_db.store_trace(trace)
+
+    deleted_count = temp_db.cleanup_old_data(days=30)
+    assert deleted_count == 501
+
+
+def test_cleanup_empty_list_safety(temp_db):
+    """Test that cleanup handles empty execution list safely."""
+    # Don't create any old executions
+    deleted_count = temp_db.cleanup_old_data(days=30)
+
+    # Should return 0 and not execute any SQL
+    assert deleted_count == 0

@@ -378,23 +378,35 @@ class ExecutionDatabase:
         if not execution_ids:
             return 0
 
+        # Batch deletions in safe chunks
+        BATCH_SIZE = 500
+
         # Delete events
-        cursor.execute(
-            f"DELETE FROM events WHERE execution_id IN ({','.join('?' * len(execution_ids))})",
-            execution_ids,
-        )
+        for i in range(0, len(execution_ids), BATCH_SIZE):
+            batch = execution_ids[i:i + BATCH_SIZE]
+            placeholders = ','.join('?' * len(batch))
+            cursor.execute(
+                f"DELETE FROM events WHERE execution_id IN ({placeholders})",
+                batch
+            )
 
         # Delete metrics
-        cursor.execute(
-            f"DELETE FROM metrics WHERE execution_id IN ({','.join('?' * len(execution_ids))})",
-            execution_ids,
-        )
+        for i in range(0, len(execution_ids), BATCH_SIZE):
+            batch = execution_ids[i:i + BATCH_SIZE]
+            placeholders = ','.join('?' * len(batch))
+            cursor.execute(
+                f"DELETE FROM metrics WHERE execution_id IN ({placeholders})",
+                batch
+            )
 
         # Delete executions
-        cursor.execute(
-            f"DELETE FROM executions WHERE execution_id IN ({','.join('?' * len(execution_ids))})",
-            execution_ids,
-        )
+        for i in range(0, len(execution_ids), BATCH_SIZE):
+            batch = execution_ids[i:i + BATCH_SIZE]
+            placeholders = ','.join('?' * len(batch))
+            cursor.execute(
+                f"DELETE FROM executions WHERE execution_id IN ({placeholders})",
+                batch
+            )
 
         self.conn.commit()
         return len(execution_ids)
