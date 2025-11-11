@@ -451,6 +451,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
+        # Smart PROJECT.md initialization for UVX mode
+        if copied:
+            try:
+                from .utils.project_initializer import initialize_project_md, InitMode
+
+                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
+                if result.success and result.action_taken.value in ["initialized", "regenerated"]:
+                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
+            except Exception as e:
+                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                    print(f"Warning: PROJECT.md initialization failed: {e}")
+
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
         # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
         if copied:

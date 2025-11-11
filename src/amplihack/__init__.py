@@ -535,6 +535,26 @@ def _local_install(repo_root):
         print("   Please check that the source repository is valid.\n")
         return
 
+    # Step 3.5: Smart PROJECT.md initialization
+    print("\n📝 Initializing PROJECT.md:")
+    try:
+        from .utils.project_initializer import initialize_project_md, InitMode
+
+        # Use FORCE mode during installation to fix amplihack-describing PROJECT.md
+        result = initialize_project_md(Path(CLAUDE_DIR).parent, mode=InitMode.FORCE)
+
+        if result.success:
+            if result.action_taken.value in ["initialized", "regenerated"]:
+                print(f"   ✅ PROJECT.md {result.action_taken.value} using {result.method.value}")
+            elif result.action_taken.value == "offered":
+                print(f"   ℹ️  {result.message}")
+            else:
+                print(f"   ✅ PROJECT.md valid (skipped)")
+        else:
+            print(f"   ⚠️  {result.message}")
+    except Exception as e:
+        print(f"   ⚠️  PROJECT.md initialization failed: {e}")
+
     # Step 4: Create runtime directories
     print("\n📂 Creating runtime directories:")
     create_runtime_dirs()
