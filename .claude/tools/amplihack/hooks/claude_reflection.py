@@ -55,7 +55,8 @@ def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
                     return data
                 if isinstance(data, dict) and "messages" in data:
                     return data["messages"]
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError) as e:
+                logger.debug(f'Failed to load conversation: {e}')
                 continue
 
     return None
