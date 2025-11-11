@@ -84,8 +84,12 @@ class Neo4jManager:
             # This can happen if the unified dialog was bypassed (auto mode, etc.)
             return self._handle_credential_sync_silent(containers)
 
-        except Exception:
+        except Exception as e:
             # Graceful degradation - never crash launcher
+            # Log the exception for debugging but continue
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("Neo4j credential sync failed: %s", str(e), exc_info=True)
             return True
 
     def _handle_credential_sync(self, containers: List[Neo4jContainer]) -> bool:

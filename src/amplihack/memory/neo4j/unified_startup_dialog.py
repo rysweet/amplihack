@@ -78,7 +78,7 @@ def detect_container_options(default_name: str) -> List[ContainerOption]:
                 username = detected.username
                 password = detected.password
         except Exception as e:
-            logger.debug(f"Could not detect credentials for {container.name}: {e}")
+            logger.debug("Could not detect credentials for %s: %s", container.name, e)
 
         # Check env sync status
         env_sync_status = _check_env_sync_status(credential_sync, username, password)
@@ -275,8 +275,11 @@ def handle_credential_sync(selected: ContainerOption) -> bool:
         if response == "y":
             # Create a Neo4jContainer object for sync
             container = Neo4jContainer(
+                container_id="",  # Not needed for credential sync
                 name=selected.name,
+                image="",  # Not needed for credential sync
                 status=selected.status,
+                ports={},  # Not needed for credential sync
                 username=selected.username,
                 password=selected.password,
             )
