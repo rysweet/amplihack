@@ -328,6 +328,19 @@ class PromptParser:
         return min(confidence, 1.0)
 
     def identify_agent_count(self, parsed: ParsedPrompt) -> int:
+        """Identify the number of agents requested.
+
+        Args:
+            parsed: ParsedPrompt object (required, must be valid)
+
+        Returns:
+            Estimated number of agents (1-10)
+
+        Raises:
+            ValueError: If parsed is None or invalid
+        """
+        if not parsed:
+            raise ValueError("parsed cannot be None")
         """
         Identify the number of agents requested.
 
