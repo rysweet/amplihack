@@ -21,18 +21,25 @@ T = TypeVar("T")
 class DefensiveError(Exception):
     """Base exception for defensive utility errors."""
 
+    pass
+
 
 class JSONExtractionError(DefensiveError):
     """Failed to extract valid JSON from LLM response."""
+
+    pass
 
 
 class RetryExhaustedError(DefensiveError):
     """Retry attempts exhausted without success."""
 
+    pass
+
 
 class FileOperationError(DefensiveError):
     """File operation failed after retries."""
 
+    pass
 
 def parse_llm_json(response: str, strict: bool = False) -> Dict[str, Any]:
     """Extract and parse JSON from LLM response text.

@@ -150,7 +150,7 @@ class TestUITitleGeneration:
 
         # Mock SDK call
         with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
-            with patch("amplihack.launcher.auto_mode.query") as mock_query:
+            with patch("amplihack.launcher.auto_mode.query"):
                 # This will fail until title generation is implemented
                 with pytest.raises(AttributeError):
                     title = ui.generate_title()
@@ -730,7 +730,7 @@ class TestUIBoundaryConditions:
 
             # This will fail until edge case is handled
             with pytest.raises((AttributeError, ValueError)):
-                session_text = auto_mode.ui.get_session_details()
+                auto_mode.ui.get_session_details()
                 # Should not crash
 
     def test_ui_handles_negative_elapsed_time(self):

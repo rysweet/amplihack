@@ -124,7 +124,7 @@ def _install_claude_cli() -> bool:
         return False
 
     # Configure user-local npm environment
-    env = _configure_user_local_npm()
+    _configure_user_local_npm()
     user_npm_bin = Path.home() / ".npm-global" / "bin"
 
     print("Installing Claude CLI via npm (user-local)...")

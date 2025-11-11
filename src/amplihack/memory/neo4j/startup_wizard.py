@@ -44,11 +44,13 @@ def wait_for_neo4j_with_feedback(max_wait: int = 60) -> bool:
     Returns:
         True if ready, False if timeout
     """
+    from .config import get_config
     from .connector import Neo4jConnector
 
     print("\n⏳ Waiting for Neo4j to be ready...")
     print("   (This usually takes 20-30 seconds on first startup)")
 
+    config = get_config()
     start_time = time.time()
     last_dot = 0
 
@@ -61,7 +63,7 @@ def wait_for_neo4j_with_feedback(max_wait: int = 60) -> bool:
             last_dot = elapsed
 
         # Check container logs first (faster than connection attempt)
-        if check_container_logs_for_ready("amplihack-neo4j"):
+        if check_container_logs_for_ready(config.container_name):
             print(" ✅ Container reports ready!")
 
             # Now verify we can actually connect
@@ -83,8 +85,8 @@ def wait_for_neo4j_with_feedback(max_wait: int = 60) -> bool:
 def show_neo4j_stats_or_empty():
     """Show Neo4j stats or note if database is empty."""
     try:
-        from .diagnostics import get_neo4j_stats
         from .connector import Neo4jConnector
+        from .diagnostics import get_neo4j_stats
 
         with Neo4jConnector() as conn:
             stats = get_neo4j_stats(conn)
@@ -151,22 +153,26 @@ def ask_user_continue_without_neo4j() -> bool:
 
 def _troubleshoot_and_retry() -> bool:
     """Provide troubleshooting and offer retry."""
+    from .config import get_config
+
+    config = get_config()
+
     print("\n" + "=" * 70)
     print("🔧 Troubleshooting Neo4j")
     print("=" * 70)
 
     print("\n1. Check Docker logs:")
-    print("   docker logs amplihack-neo4j")
+    print(f"   docker logs {config.container_name}")
 
     print("\n2. Check container status:")
-    print("   docker ps -a | grep amplihack-neo4j")
+    print(f"   docker ps -a | grep {config.container_name}")
 
     print("\n3. Check ports not in use:")
-    print("   lsof -i :7787 (bolt)")
-    print("   lsof -i :7774 (http)")
+    print(f"   lsof -i :{config.bolt_port} (bolt)")
+    print(f"   lsof -i :{config.http_port} (http)")
 
     print("\n4. Try restarting container:")
-    print("   docker restart amplihack-neo4j")
+    print(f"   docker restart {config.container_name}")
 
     while True:
         response = input("\nRetry connection? (y/n): ").strip().lower()
@@ -190,7 +196,7 @@ def interactive_neo4j_startup() -> bool:
     Returns:
         True if should continue (with or without Neo4j), False to exit
     """
-    from . import lifecycle, auto_setup
+    from . import auto_setup, lifecycle
 
     print("\n" + "=" * 70)
     print("🚀 Neo4j Memory System Startup")
@@ -226,10 +232,11 @@ def interactive_neo4j_startup() -> bool:
 def _check_code_understanding_freshness():
     """Check if Code Understanding Engine needs updating or initial ingestion."""
     try:
-        from .code_freshness import is_code_index_stale, get_code_index_last_updated
-        from .connector import Neo4jConnector
-        from .code_graph import BlarifyIntegration
         import threading
+
+        from .code_freshness import get_code_index_last_updated, is_code_index_stale
+        from .code_graph import BlarifyIntegration
+        from .connector import Neo4jConnector
 
         with Neo4jConnector() as conn:
             project_root = Path.cwd()

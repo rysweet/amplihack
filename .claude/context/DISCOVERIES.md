@@ -4,6 +4,91 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## Mandatory End-to-End Testing Pattern (2025-11-10)
+
+### Problem Discovered
+
+**Step 8 of DEFAULT_WORKFLOW.md was not followed rigorously enough**. Code was committed after:
+- Unit test structure validation
+- Code syntax verification
+- Agent reviews (cleanup, reviewer)
+
+BUT missing the most critical test: **Real user experience validation with `uvx --from`**
+
+### Why This Matters
+
+**The Workflow Explicitly Requires**:
+```
+Step 8: Mandatory Local Testing (NOT in CI)
+- Test simple use cases - Basic functionality verification
+- Test complex use cases - Edge cases and longer operations
+- Test integration points - External dependencies and APIs
+- RULE: Never commit without local testing
+```
+
+**Example**: "If database changes: Test with actual data operations"
+
+### Critical Learning
+
+**ALWAYS test with `uvx --from <branch>` before committing**. This is THE definitive test that:
+- Package installs correctly from the branch
+- All dependencies resolve properly
+- The actual user workflow works end-to-end
+- Error messages appear as users will see them
+- Configuration files get updated correctly
+
+**Testing hierarchy** (all required):
+1. ✅ Unit tests (fast, isolated)
+2. ✅ Integration tests (components together)
+3. ✅ Code reviews (agents verify quality)
+4. **✅ End-to-end user experience test** (`uvx --from <branch>`) ← **MANDATORY BEFORE COMMIT**
+
+### Pattern to Follow
+
+```bash
+# BEFORE committing ANY feature/fix:
+
+# 1. Install from your branch
+uvx --from git+https://github.com/org/repo@your-branch package-name command
+
+# 2. Test the EXACT user workflow that was broken
+# 3. Verify error messages are clear
+# 4. Verify configuration updates work
+# 5. Test edge cases in realistic scenarios
+
+# ONLY THEN commit and push
+```
+
+### Example - Neo4j Port Allocation Fix (Issue #1283)
+
+**What we tested**:
+```python
+# Verified port conflict resolution works:
+✅ Detected occupied ports: 7774/7787
+✅ Found alternatives: 7875/7888
+✅ Clear messages: "⚠️ CONFLICT: Neo4j on port 7787..."
+✅ .env updated: "✅ Updated .env with ports 7888/7875"
+✅ Alternative ports available: Verified with is_port_in_use()
+```
+
+**This test found**: The fix works perfectly! Without this test, we would have pushed code we THOUGHT worked but hadn't verified in realistic conditions.
+
+### Files Affected
+
+- **Workflow Requirement**: `.claude/workflow/DEFAULT_WORKFLOW.md` Step 8
+- **Test Validation**: End-to-end testing MUST use `uvx --from` for package-based projects
+
+### Success Criteria for "Mandatory Local Testing"
+
+For Step 8 to be marked complete, you MUST:
+- [ ] Install with `uvx --from <your-branch>` or equivalent
+- [ ] Run the EXACT command/workflow that was broken
+- [ ] Verify the fix solves the user's problem
+- [ ] Document test results showing success
+- [ ] Only THEN proceed to commit
+
+**No exceptions** - this is mandatory, not optional.
+
 ## Reflection System Data Flow Fix (2025-09-26)
 
 ### Problem Discovered
@@ -1431,3 +1516,150 @@ priority: high
 - **Issue**: #930
 - **PR**: #931 (knowledge-builder refactoring, MERGED)
 - **PR**: #941 (auto mode fix, MERGED)
+
+---
+
+## Neo4j Container Port Mismatch Detection Bug (2025-11-08)
+
+### Issue
+
+Amplihack startup would fail with container name conflicts when starting in a different project directory than where the Neo4j container was originally created, even though a container with the expected name already existed:
+
+```
+✅ Our Neo4j container found on ports 7787/7774
+Query failed... localhost:7688 (Connection refused)
+Failed to create container... Conflict... already in use
+```
+
+### Root Cause
+
+**Logic Flaw in Port Detection**: The `is_our_neo4j_container()` function checked if a container with the expected NAME existed, but didn't retrieve the ACTUAL ports the container was using.
+
+**Exact Bug Location**: `src/amplihack/memory/neo4j/port_manager.py:147-149`
+
+```python
+# BROKEN - Assumes container is on ports from .env
+if is_our_neo4j_container():  # Only checks name, doesn't get ports!
+    messages.append(f"✅ Our Neo4j container found on ports {bolt_port}/{http_port}")
+    return bolt_port, http_port, messages  # Returns WRONG ports from .env
+```
+
+**Error Sequence**:
+1. Container exists on ports 7787/7774 (actual)
+2. `.env` in new directory has port 7688 (wrong)
+3. Code detects container exists by name ✅
+4. Code assumes container is on 7688 (from `.env`) ❌
+5. Connection to 7688 fails (nothing listening)
+6. Code tries to create new container (name conflict)
+
+### Solution
+
+**Added `get_container_ports()` function** that queries actual container ports using `docker port`:
+
+```python
+def get_container_ports(container_name: str = "amplihack-neo4j") -> Optional[Tuple[int, int]]:
+    """Get actual ports from running Neo4j container.
+
+    Uses `docker port` command to inspect actual port mappings,
+    not what .env file claims.
+
+    Returns:
+        (bolt_port, http_port) if container running with ports, None otherwise
+    """
+    result = subprocess.run(
+        ["docker", "port", container_name],
+        capture_output=True,
+        timeout=5,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        return None
+
+    # Parse output: "7687/tcp -> 0.0.0.0:7787"
+    # Extract actual host ports from both ports
+    # ...
+    return bolt_port, http_port
+```
+
+**Updated `resolve_port_conflicts()`** to use actual ports:
+
+```python
+# FIXED - Use actual container ports, not .env ports
+container_ports = get_container_ports("amplihack-neo4j")
+if container_ports:
+    actual_bolt, actual_http = container_ports
+    messages.append(f"✅ Our Neo4j container found on ports {actual_bolt}/{actual_http}")
+
+    # Update .env if ports don't match
+    if (actual_bolt != bolt_port or actual_http != http_port) and project_root:
+        _update_env_ports(project_root, actual_bolt, actual_http)
+        messages.append(f"✅ Updated .env to match container ports")
+
+    return actual_bolt, actual_http, messages
+```
+
+### Key Learnings
+
+1. **Container Detection ≠ Port Detection** - Knowing a container exists doesn't tell you what ports it's using
+2. **`.env` Files Can Lie** - Configuration files can become stale, always verify actual runtime state
+3. **Docker Port Command is Canonical** - `docker port <container>` returns actual mappings, not configured values
+4. **Self-Healing Behavior** - Automatically updating `.env` to match reality prevents future failures
+5. **Challenge User Assumptions** - The user was right that stopping the container wasn't the real fix - the port mismatch was the actual issue
+
+### Prevention
+
+**Before this fix:**
+- Starting amplihack in multiple directories would fail with container conflicts
+- Users had to manually sync `.env` files across projects
+- No automatic detection of port mismatches
+
+**After this fix:**
+- Amplihack automatically detects actual container ports
+- `.env` files auto-update to match reality
+- Can start amplihack in any directory, will reuse existing container
+- Self-healing behavior prevents stale configuration issues
+
+### Testing
+
+**Comprehensive test coverage (29 tests, all passing)**:
+- Docker port output parsing (12 tests)
+- Port conflict resolution (5 tests)
+- Port availability detection (4 tests)
+- Edge cases (5 tests)
+- Integration scenarios (3 tests)
+
+**Test Location**: `tests/unit/memory/neo4j/test_port_manager.py`
+
+### Files Modified
+
+- `src/amplihack/memory/neo4j/port_manager.py`: Added `get_container_ports()`, updated `resolve_port_conflicts()`
+- `tests/unit/memory/neo4j/test_port_manager.py`: Added comprehensive test suite (29 tests)
+
+### Verification
+
+**Original Error Reproduced**: ✅
+**Fix Applied**: ✅
+**All Tests Passing**: ✅ 29/29
+**Self-Healing Confirmed**: ✅ `.env` updates automatically
+
+### Pattern Recognition
+
+**Trigger Signs of Port Mismatch Issues**:
+- "Container found" but connection fails
+- "Conflict" errors when creating containers
+- Port numbers in error messages don't match expected ports
+- Working in different directories with shared container
+
+**Debugging Approach**:
+1. Check if container actually exists (`docker ps`)
+2. Check what ports container is actually using (`docker port <name>`)
+3. Check what ports configuration expects (`.env`, config files)
+4. Fix: Use actual ports, not configured ports
+
+### Philosophy Alignment
+
+- **Ruthless Simplicity**: Single function solves the problem, minimal changes
+- **Self-Healing**: System automatically corrects stale configuration
+- **Zero-BS**: No workarounds, addresses root cause directly
+- **Reality Over Configuration**: Trust Docker's actual state, not config files

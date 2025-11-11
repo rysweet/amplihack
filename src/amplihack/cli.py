@@ -27,12 +27,22 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
         print("Neo4j graph memory enabled")
 
+        # Set container name if provided
+        if getattr(args, "use_memory_db", None):
+            # Store in environment for session hooks to access
+            os.environ["NEO4J_CONTAINER_NAME_CLI"] = args.use_memory_db
+            print(f"Using Neo4j container: {args.use_memory_db}")
+
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
 
     # Handle --no-reflection flag (disable always wins priority)
     if getattr(args, "no_reflection", False):
         os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
+    # Handle --auto flag (for Neo4j container selection non-interactive mode)
+    if getattr(args, "auto", False):
+        os.environ["AMPLIHACK_AUTO_MODE"] = "1"
 
     if use_docker:
         print(
@@ -313,6 +323,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
     )
     launch_parser.add_argument(
+        "--use-memory-db",
+        metavar="NAME",
+        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
+    )
+    launch_parser.add_argument(
         "--no-reflection",
         action="store_true",
         help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
@@ -351,6 +366,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
     )
     claude_parser.add_argument(
+        "--use-memory-db",
+        metavar="NAME",
+        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
+    )
+    claude_parser.add_argument(
         "--no-reflection",
         action="store_true",
         help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
@@ -368,6 +388,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         type=int,
         default=10,
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
+    copilot_parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
     )
     copilot_parser.add_argument(
         "--ui",
@@ -392,6 +417,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         type=int,
         default=10,
         help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
+    codex_parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
     )
     codex_parser.add_argument(
         "--ui",
@@ -458,15 +488,30 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Save original directory (which is now also the working directory)
         original_cwd = os.getcwd()
 
-        # Store it for later use (though now it's the same as current directory)
+        # Safety: Check for git conflicts before copying
+        from . import ESSENTIAL_DIRS
+        from .safety import GitConflictDetector, SafeCopyStrategy
+
+        detector = GitConflictDetector(original_cwd)
+        conflict_result = detector.detect_conflicts(ESSENTIAL_DIRS)
+
+        strategy_manager = SafeCopyStrategy()
+        copy_strategy = strategy_manager.determine_target(
+            original_target=os.path.join(original_cwd, ".claude"),
+            has_conflicts=conflict_result.has_conflicts,
+            conflicting_files=conflict_result.conflicting_files
+        )
+
+        temp_claude_dir = str(copy_strategy.target_dir)
+
+        # Store original_cwd for auto mode (always set, regardless of conflicts)
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
-        # Use .claude directory in current working directory instead of temp
-        temp_claude_dir = os.path.join(original_cwd, ".claude")
-
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")
-            print(f"Working directory remains: {original_cwd}")
+            print(f"UVX mode: Staging Claude environment in: {temp_claude_dir}")
+            print(f"Original working directory: {original_cwd}")
+            if copy_strategy.used_temp:
+                print("Using temp directory due to conflicts")
 
         # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
@@ -477,9 +522,26 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
-        # Copy .claude contents to temp .claude directory
-        # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
+        # Copy .claude contents to target directory
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+
+        # Register cleanup handler for temp directory
+        if copy_strategy.used_temp and copy_strategy.target_dir:
+            import atexit
+            import shutil
+
+            def cleanup_temp_dir():
+                """Clean up temporary directory created for safety."""
+                try:
+                    # Remove the temp directory (parent of .claude)
+                    temp_parent = copy_strategy.target_dir.parent
+                    if temp_parent.exists() and temp_parent.name.startswith("amplihack-"):
+                        shutil.rmtree(temp_parent, ignore_errors=True)
+                except Exception:
+                    # Silently ignore cleanup errors - not critical
+                    pass
+
+            atexit.register(cleanup_temp_dir)
 
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
         # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
@@ -641,6 +703,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.command == "copilot":
         from .launcher.copilot import launch_copilot
 
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
         if exit_code is not None:
@@ -656,6 +722,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     elif args.command == "codex":
         from .launcher.codex import launch_codex
+
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
