@@ -651,8 +651,10 @@ class TestOptionalActivationAndGracefulDegradation:
                         content="This should not be stored",
                     )
                     # If it doesn't raise an exception, it should return None or False
-                except Exception:
-                    pass  # Expected for read-only mode
+                except Exception as e:
+                    # Expected for read-only mode - log for debugging
+                    import logging
+                    logging.debug(f"Expected read-only failure: {type(e).__name__}: {e}")
 
             finally:
                 # Restore write permissions for cleanup
@@ -685,8 +687,10 @@ class TestOptionalActivationAndGracefulDegradation:
                         test_memory = manager.get(memory_ids[0])
                         assert test_memory is not None, "System became unresponsive"
 
-            except Exception:
+            except Exception as e:
                 # System should handle gracefully with clear error messages
+                import logging
+                logging.info(f"Memory limit reached or error occurred: {type(e).__name__}: {e}")
                 assert len(memory_ids) > 0, "System failed immediately"
 
             # Verify stored memories are still accessible
@@ -730,8 +734,10 @@ class TestErrorHandlingAndEdgeCases:
                 _ = error_test_manager.store(**invalid_data)
                 # If it doesn't raise an exception, it should return None
                 # (depending on implementation strategy)
-            except (TypeError, ValueError, AttributeError, RuntimeError):
-                pass  # Expected for invalid data
+            except (TypeError, ValueError, AttributeError, RuntimeError) as e:
+                # Expected for invalid data - log for debugging
+                import logging
+                logging.debug(f"Expected invalid data error: {type(e).__name__}: {e}")
 
     def test_database_corruption_handling(self, error_test_manager):
         """Test handling of database corruption scenarios."""
@@ -762,8 +768,10 @@ class TestErrorHandlingAndEdgeCases:
                 _ = corrupted_manager.get(memory_id)
                 # Should return None or raise appropriate exception
 
-            except (sqlite3.DatabaseError, sqlite3.CorruptionError):
-                pass  # Expected for corrupted database
+            except (sqlite3.DatabaseError, sqlite3.CorruptionError) as e:
+                # Expected for corrupted database - log for debugging
+                import logging
+                logging.debug(f"Expected database corruption error: {type(e).__name__}: {e}")
 
         finally:
             # Restore working database
@@ -837,8 +845,10 @@ class TestErrorHandlingAndEdgeCases:
                 results = error_test_manager.retrieve(**query_params)
                 # Should return empty list or handle gracefully
                 assert isinstance(results, list)
-            except (ValueError, TypeError):
-                pass  # Expected for some invalid queries
+            except (ValueError, TypeError) as e:
+                # Expected for some invalid queries - log for debugging
+                import logging
+                logging.debug(f"Expected query validation error: {type(e).__name__}: {e}")
 
     def test_maintenance_error_handling(self):
         """Test error handling in maintenance operations."""

@@ -358,8 +358,10 @@ class TestRealisticScenarios:
 
                 try:
                     hook._run_new_analysis(lock, state_machine, input_data, "test-session")
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Expected exception during test - log for debugging
+                    import logging
+                    logging.debug(f"Expected exception in test: {type(e).__name__}: {e}")
 
             # Lock should still be released
             assert not lock.is_locked()
