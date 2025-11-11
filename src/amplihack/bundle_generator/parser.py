@@ -167,6 +167,8 @@ class PromptParser:
         """
         requirements = {"functional": [], "technical": [], "constraints": []}
 
+        if not text:
+            return {"functional": [], "technical": [], "constraints": []}
         # Split into lines/sentences
         lines = text.replace(". ", ".\n").split("\n")
 
