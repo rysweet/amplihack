@@ -122,6 +122,7 @@ class PromptParser:
         cleaned_prompt = self._clean_prompt(prompt)
 
         # Extract components
+        logger.debug(f'Parsing prompt of length {len(prompt)}')
         sentences = self._extract_sentences(cleaned_prompt)
         tokens = self._tokenize(cleaned_prompt)
         key_phrases = self._extract_key_phrases(cleaned_prompt, tokens)
