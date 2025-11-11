@@ -105,7 +105,7 @@ class CleanupHandler:
 
                 cleaned_count += 1
 
-            except Exception as e:
+            except (OSError, PermissionError, FileNotFoundError) as e:
                 logger.debug(f"Failed to cleanup {path}: {e}")
 
         # Clean up registry file (use tempfile.gettempdir for cross-platform)
@@ -114,8 +114,8 @@ class CleanupHandler:
         try:
             if registry_path.exists():
                 registry_path.unlink()
-        except Exception:
-            pass
+        except (OSError, PermissionError) as e:
+            logger.debug(f"Failed to cleanup registry file {registry_path}: {e}")
 
         return cleaned_count
 
