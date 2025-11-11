@@ -182,8 +182,9 @@ def get_repository_context(project_root: Path) -> str:
 **Context**: Repository detection unavailable
 """
 
-    except Exception:
+    except Exception as e:
         # Subprocess failed - provide generic guidance
+        logger.debug(f'Repository detection failed: {e}')
         return f"""
 ## Repository Context
 
