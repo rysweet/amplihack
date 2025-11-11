@@ -117,7 +117,8 @@ class Neo4jContainerDetector:
             )
             self._docker_available = result.returncode == 0
             return self._docker_available
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError) as e:
+            logger.debug(f"Docker not available: {type(e).__name__}: {e}")
             self._docker_available = False
             return False
 
@@ -171,7 +172,8 @@ class Neo4jContainerDetector:
 
             return containers
 
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError) as e:
+            logger.warning(f"Failed to detect containers: {type(e).__name__}: {e}")
             return []
 
     def _is_amplihack_container(self, name: str, image: str) -> bool:
@@ -212,7 +214,8 @@ class Neo4jContainerDetector:
                 container_id=container_id, name=name, image=image, status=status, ports=ports
             )
 
-        except (KeyError, ValueError):
+        except (KeyError, ValueError) as e:
+            logger.debug(f"Failed to parse container data: {type(e).__name__}: {e}")
             return None
 
     def _parse_ports(self, ports_str: str) -> dict:
