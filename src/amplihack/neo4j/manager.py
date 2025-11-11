@@ -6,12 +6,15 @@ It provides the main entry point for the launcher integration.
 All user-facing messages are sent to stderr to keep stdout clean for programmatic use.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import List, Optional
 
 from .credential_sync import CredentialSync, SyncChoice
 from .detector import Neo4jContainer, Neo4jContainerDetector
+
+logger = logging.getLogger(__name__)
 
 
 class Neo4jManager:
@@ -78,8 +81,9 @@ class Neo4jManager:
             # Present options and sync
             return self._handle_credential_sync(containers)
 
-        except Exception:
+        except (OSError, PermissionError, ValueError, RuntimeError) as e:
             # Graceful degradation - never crash launcher
+            logger.debug(f"Neo4j credential sync failed, continuing anyway: {e}")
             return True
 
     def _handle_credential_sync(self, containers: List[Neo4jContainer]) -> bool:
