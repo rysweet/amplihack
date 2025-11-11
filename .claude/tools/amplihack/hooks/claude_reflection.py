@@ -84,6 +84,7 @@ def load_feedback_template(project_root: Path) -> str:
 **Learning Opportunities:** [What to improve]
 """
 
+    logger.debug(f'Loaded feedback template from {template_path}')
     return template_path.read_text()
 
 
