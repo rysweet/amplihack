@@ -57,7 +57,10 @@ class ProcessManager:
             timeout: Timeout in seconds for graceful shutdown.
         """
         if process.poll() is not None:
-            return  # Already terminated
+            # Already terminated
+            import logging
+            logging.getLogger(__name__).debug(f'Process {process.pid} already terminated')
+            return
 
         try:
             if ProcessManager.is_windows():
