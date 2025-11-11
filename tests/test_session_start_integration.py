@@ -238,6 +238,10 @@ class TestEndToEndSessionWorkflow:
             # Mock compaction process
             # This function doesn't exist yet - test should fail
             def export_conversation_before_compaction(data):
+                if not isinstance(data, dict):
+                    raise TypeError(f"data must be dict, got {type(data).__name__}")
+                if not data:
+                    raise ValueError("data cannot be empty")
                 raise ImportError("Not implemented")
 
             # Call the function to trigger the failure

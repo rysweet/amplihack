@@ -590,6 +590,8 @@ class TestIntegrationComponents:
         """Test hook registration and management."""
 
         def dummy_callback(data):
+            if not isinstance(data, dict):
+                raise TypeError(f"data must be dict, got {type(data).__name__}")
             return data
 
         registration = HookRegistration(
