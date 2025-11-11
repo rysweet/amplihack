@@ -151,7 +151,7 @@ class TestDetectContainerOptions:
         mock_detector = Mock()
         mock_detected = Mock()
         mock_detected.username = "neo4j"
-        mock_detected.password = "testpass"
+        mock_detected.password = "FAKE_PASSWORD_FOR_TESTS"
         mock_detector.detect_container.return_value = mock_detected
         mock_detector_class.return_value = mock_detector
 
@@ -224,7 +224,7 @@ class TestDisplayUnifiedDialog:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="match",
             is_running=True,
         )
@@ -248,7 +248,7 @@ class TestDisplayUnifiedDialog:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="match",
             is_running=True,
         )
@@ -273,7 +273,7 @@ class TestDisplayUnifiedDialog:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="match",
             is_running=True,
         )
@@ -294,7 +294,7 @@ class TestDisplayUnifiedDialog:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="match",
             is_running=True,
         )
@@ -336,7 +336,7 @@ class TestHandleCredentialSync:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="match",
             is_running=True,
         )
@@ -375,7 +375,7 @@ class TestHandleCredentialSync:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="different",
             is_running=True,
         )
@@ -401,7 +401,7 @@ class TestHandleCredentialSync:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="different",
             is_running=True,
         )
@@ -422,7 +422,7 @@ class TestHandleCredentialSync:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="different",
             is_running=True,
         )
@@ -473,7 +473,7 @@ class TestUnifiedDialog:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",
+            password="FAKE_PASSWORD_FOR_TESTS",
             env_sync_status="match",
             is_running=True,
         )
