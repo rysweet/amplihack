@@ -250,6 +250,7 @@ class SessionManager:
 
         session_file = self.runtime_dir / f"{session_id}.json"
         if not session_file.exists():
+            self.logger.warning(f'Cannot archive non-existent session: {session_id}')
             return False
 
         try:
