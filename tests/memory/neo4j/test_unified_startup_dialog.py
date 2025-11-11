@@ -39,7 +39,7 @@ class TestContainerOption:
         assert option.status == "Up 2 hours"
         assert option.ports == ["7787->7687"]
         assert option.username == "neo4j"
-        assert option.password == "testpass"
+        assert option.password == "FAKE_TEST_PASSWORD"
         assert option.env_sync_status == "match"
         assert option.is_running is True
 
