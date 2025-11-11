@@ -90,7 +90,7 @@ class SessionManager:
             self._active_sessions[session.state.session_id] = session
             self._session_metadata[session.state.session_id] = session_metadata
 
-        self.logger.info(f"Created session '{name}' with ID: {session.state.session_id}")
+        self.logger.info(f"Created session '{name}' with ID: {session.state.session_id} (auto-started: {config.auto_start})")
         return session.state.session_id
 
     def get_session(self, session_id: str) -> Optional[ClaudeSession]:
