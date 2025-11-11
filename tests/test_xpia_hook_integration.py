@@ -383,7 +383,9 @@ class TestXPIAHookExecution(unittest.TestCase):
             hook_result = json.loads(output)
             self.assertIn("status", hook_result)
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
+            import logging
+            logging.error(f"Session start hook timed out after {e.timeout}s")
             self.fail("Session start hook timed out")
 
     def test_pre_tool_use_hook_safe_command(self):
@@ -414,7 +416,9 @@ class TestXPIAHookExecution(unittest.TestCase):
             hook_result = json.loads(result.stdout.strip())
             self.assertEqual(hook_result["action"], "allow")
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
+            import logging
+            logging.error(f"Pre-tool-use hook (safe command) timed out after {e.timeout}s")
             self.fail("Pre-tool-use hook timed out")
 
     def test_pre_tool_use_hook_dangerous_command(self):
@@ -446,7 +450,9 @@ class TestXPIAHookExecution(unittest.TestCase):
             self.assertEqual(hook_result["action"], "deny")
             self.assertIn("blocked", hook_result["message"].lower())
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
+            import logging
+            logging.error(f"Pre-tool-use hook (dangerous command) timed out after {e.timeout}s")
             self.fail("Pre-tool-use hook timed out")
 
 
