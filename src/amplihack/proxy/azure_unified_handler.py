@@ -112,11 +112,13 @@ class AzureUnifiedHandler:
         """Convert OpenAI response format to Anthropic format."""
         if "error" in openai_response:
             # Return error in Anthropic format
+            error_msg = openai_response["error"].get("message", "Unknown error")
+            logger.warning(f'OpenAI API error in response conversion: {error_msg}')
             return {
                 "type": "error",
                 "error": {
                     "type": "api_error",
-                    "message": openai_response["error"].get("message", "Unknown error"),
+                    "message": error_msg,
                 },
             }
 
