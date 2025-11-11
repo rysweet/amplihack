@@ -262,6 +262,7 @@ The following preferences are REQUIRED and CANNOT be ignored:
             permission_mode="bypassPermissions",
         )
 
+        logger.info(f'Starting Claude reflection analysis (conversation: {len(conversation)} messages)')
         # Collect response
         response_parts = []
         async for message in query(prompt=prompt, options=options):
