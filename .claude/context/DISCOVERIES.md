@@ -4,6 +4,91 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## Mandatory End-to-End Testing Pattern (2025-11-10)
+
+### Problem Discovered
+
+**Step 8 of DEFAULT_WORKFLOW.md was not followed rigorously enough**. Code was committed after:
+- Unit test structure validation
+- Code syntax verification
+- Agent reviews (cleanup, reviewer)
+
+BUT missing the most critical test: **Real user experience validation with `uvx --from`**
+
+### Why This Matters
+
+**The Workflow Explicitly Requires**:
+```
+Step 8: Mandatory Local Testing (NOT in CI)
+- Test simple use cases - Basic functionality verification
+- Test complex use cases - Edge cases and longer operations
+- Test integration points - External dependencies and APIs
+- RULE: Never commit without local testing
+```
+
+**Example**: "If database changes: Test with actual data operations"
+
+### Critical Learning
+
+**ALWAYS test with `uvx --from <branch>` before committing**. This is THE definitive test that:
+- Package installs correctly from the branch
+- All dependencies resolve properly
+- The actual user workflow works end-to-end
+- Error messages appear as users will see them
+- Configuration files get updated correctly
+
+**Testing hierarchy** (all required):
+1. ✅ Unit tests (fast, isolated)
+2. ✅ Integration tests (components together)
+3. ✅ Code reviews (agents verify quality)
+4. **✅ End-to-end user experience test** (`uvx --from <branch>`) ← **MANDATORY BEFORE COMMIT**
+
+### Pattern to Follow
+
+```bash
+# BEFORE committing ANY feature/fix:
+
+# 1. Install from your branch
+uvx --from git+https://github.com/org/repo@your-branch package-name command
+
+# 2. Test the EXACT user workflow that was broken
+# 3. Verify error messages are clear
+# 4. Verify configuration updates work
+# 5. Test edge cases in realistic scenarios
+
+# ONLY THEN commit and push
+```
+
+### Example - Neo4j Port Allocation Fix (Issue #1283)
+
+**What we tested**:
+```python
+# Verified port conflict resolution works:
+✅ Detected occupied ports: 7774/7787
+✅ Found alternatives: 7875/7888
+✅ Clear messages: "⚠️ CONFLICT: Neo4j on port 7787..."
+✅ .env updated: "✅ Updated .env with ports 7888/7875"
+✅ Alternative ports available: Verified with is_port_in_use()
+```
+
+**This test found**: The fix works perfectly! Without this test, we would have pushed code we THOUGHT worked but hadn't verified in realistic conditions.
+
+### Files Affected
+
+- **Workflow Requirement**: `.claude/workflow/DEFAULT_WORKFLOW.md` Step 8
+- **Test Validation**: End-to-end testing MUST use `uvx --from` for package-based projects
+
+### Success Criteria for "Mandatory Local Testing"
+
+For Step 8 to be marked complete, you MUST:
+- [ ] Install with `uvx --from <your-branch>` or equivalent
+- [ ] Run the EXACT command/workflow that was broken
+- [ ] Verify the fix solves the user's problem
+- [ ] Document test results showing success
+- [ ] Only THEN proceed to commit
+
+**No exceptions** - this is mandatory, not optional.
+
 ## Reflection System Data Flow Fix (2025-09-26)
 
 ### Problem Discovered
