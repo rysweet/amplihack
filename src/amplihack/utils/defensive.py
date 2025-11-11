@@ -206,8 +206,9 @@ def retry_with_feedback(
             if error_handler:
                 try:
                     feedback = error_handler(exc, attempt)
-                except Exception:
+                except (TypeError, ValueError, AttributeError) as handler_exc:
                     # Error handler failed, continue with default retry
+                    # Log the error handler failure for debugging
                     feedback = None
 
             # Wait before next attempt (exponential backoff)
