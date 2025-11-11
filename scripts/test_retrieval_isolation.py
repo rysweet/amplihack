@@ -484,6 +484,7 @@ def test_circuit_breaker(results: TestResults):
             try:
                 breaker.call(fail_func)
             except Exception:
+                # Expected failure for circuit breaker testing
                 pass
 
         results.record(
