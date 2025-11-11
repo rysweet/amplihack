@@ -87,11 +87,15 @@ def file_lock(lock_file: Path, timeout: float = 30.0):
 
     Args:
         lock_file: Path to lock file
-        timeout: Maximum time to wait for lock
+        timeout: Maximum time to wait for lock (must be positive)
 
     Raises:
         TimeoutError: If lock cannot be acquired within timeout
+        ValueError: If timeout is not positive
     """
+    if timeout <= 0:
+        raise ValueError(f"Timeout must be positive, got: {timeout}")
+
     lock_acquired = False
     start_time = time.time()
 
@@ -128,8 +132,14 @@ def get_file_checksum(file_path: Path, algorithm: str = "md5") -> str:
         algorithm: Hash algorithm (md5, sha1, sha256)
 
     Returns:
-        Hexadecimal checksum string
+        Hexadecimal checksum string (empty string on error)
+
+    Raises:
+        ValueError: If algorithm is not supported
     """
+    if algorithm not in ("md5", "sha1", "sha256", "sha512"):
+        raise ValueError(f"Unsupported hash algorithm: {algorithm}")
+
     hash_algo = hashlib.new(algorithm)
 
     try:
@@ -162,7 +172,11 @@ def safe_read_file(
 
     Raises:
         FileCorruptionError: If checksum verification fails
+        ValueError: If file_path is empty
     """
+    if not file_path:
+        raise ValueError("file_path cannot be empty")
+
     file_path = Path(file_path)
 
     if not file_path.exists():
@@ -215,7 +229,13 @@ def safe_write_file(
 
     Raises:
         FileOperationError: If write operation fails
+        ValueError: If file_path is empty or content is not string
     """
+    if not file_path:
+        raise ValueError("file_path cannot be empty")
+    if not isinstance(content, str):
+        raise ValueError(f"content must be string, got {type(content)}")
+
     file_path = Path(file_path)
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -450,12 +470,18 @@ def cleanup_temp_files(
 
     Args:
         temp_dir: Directory containing temporary files
-        max_age_hours: Maximum age in hours
+        max_age_hours: Maximum age in hours (must be positive)
         pattern: File pattern to match
 
     Returns:
         Number of files cleaned up
+
+    Raises:
+        ValueError: If max_age_hours is not positive
     """
+    if max_age_hours <= 0:
+        raise ValueError(f"max_age_hours must be positive, got: {max_age_hours}")
+
     temp_dir = Path(temp_dir)
     if not temp_dir.exists():
         return 0

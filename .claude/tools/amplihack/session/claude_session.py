@@ -9,7 +9,18 @@ from typing import Any, Dict, List, Optional
 
 @dataclass
 class SessionConfig:
-    """Configuration for Claude session behavior."""
+    """Configuration for Claude session behavior.
+
+    Attributes:
+        timeout: Command timeout in seconds (default: 300.0)
+        max_retries: Maximum retry attempts for failed operations (default: 3)
+        retry_delay: Initial delay between retries in seconds (default: 1.0)
+        heartbeat_interval: Health check interval in seconds (default: 30.0)
+        enable_logging: Enable session logging (default: True)
+        log_level: Logging level - INFO, DEBUG, WARNING, ERROR (default: "INFO")
+        session_id: Custom session ID (default: None, auto-generated)
+        auto_save_interval: Automatic save interval in seconds (default: 60.0)
+    """
 
     timeout: float = 300.0  # 5 minutes default
     max_retries: int = 3
@@ -162,7 +173,7 @@ class ClaudeSession:
         """Execute a command with timeout and retry logic.
 
         Args:
-            command: Command to execute
+            command: Command to execute (must be non-empty string)
             timeout: Override default timeout
             **kwargs: Additional command arguments
 
@@ -172,7 +183,11 @@ class ClaudeSession:
         Raises:
             TimeoutError: If command times out
             SessionError: If session is not active
+            ValueError: If command is empty or invalid
         """
+        if not isinstance(command, str) or not command.strip():
+            raise ValueError("Command must be a non-empty string")
+
         if not self.state.is_active:
             raise SessionError("Session is not active")
 
@@ -265,9 +280,16 @@ class ClaudeSession:
 
         Args:
             index: Checkpoint index (-1 for most recent)
+
+        Raises:
+            SessionError: If no checkpoints available
+            IndexError: If index is out of range
         """
         if not self._checkpoints:
             raise SessionError("No checkpoints available")
+
+        if index < -len(self._checkpoints) or index >= len(self._checkpoints):
+            raise IndexError(f"Checkpoint index {index} out of range (have {len(self._checkpoints)} checkpoints)")
 
         checkpoint = self._checkpoints[index]
         self.state = checkpoint
@@ -292,15 +314,26 @@ class ClaudeSession:
         """Get recent command history.
 
         Args:
-            limit: Maximum number of commands to return
+            limit: Maximum number of commands to return (must be positive)
+
+        Raises:
+            ValueError: If limit is not positive
 
         Returns:
             List of recent commands
         """
+        if limit <= 0:
+            raise ValueError(f"limit must be positive, got: {limit}")
+
         return self._command_history[-limit:]
 
     def clear_history(self) -> None:
-        """Clear command history and checkpoints."""
+        """Clear command history and checkpoints.
+
+        Warning:
+            This operation cannot be undone. All command history and
+            saved checkpoints will be permanently deleted.
+        """
         self._command_history.clear()
         self._checkpoints.clear()
         self.logger.info("Session history cleared")

@@ -73,7 +73,13 @@ class SessionManager:
 
         Returns:
             Session ID
+
+        Raises:
+            ValueError: If name is empty or invalid
         """
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("Session name must be a non-empty string")
+
         config = config or SessionConfig()
         session = ClaudeSession(config)
 
@@ -101,7 +107,13 @@ class SessionManager:
 
         Returns:
             ClaudeSession if active, None otherwise
+
+        Raises:
+            ValueError: If session_id is empty or invalid
         """
+        if not isinstance(session_id, str) or not session_id.strip():
+            raise ValueError("Session ID must be a non-empty string")
+
         with self._lock:
             session = self._active_sessions.get(session_id)
             if session:
@@ -117,7 +129,13 @@ class SessionManager:
 
         Returns:
             True if saved successfully
+
+        Raises:
+            ValueError: If session_id is empty or invalid
         """
+        if not isinstance(session_id, str) or not session_id.strip():
+            raise ValueError("Session ID must be a non-empty string")
+
         with self._lock:
             session = self._active_sessions.get(session_id)
             if not session:

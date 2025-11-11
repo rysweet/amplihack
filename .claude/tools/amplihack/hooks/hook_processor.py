@@ -129,21 +129,22 @@ class HookProcessor(ABC):
 
             with open(self.log_file, "a") as f:
                 f.write(f"[{timestamp}] {level}: {message}\n")
-        except Exception as e:
+        except (OSError, IOError, PermissionError) as e:
             # If we can't log, at least try stderr
-            print(f"Logging error: {e}", file=sys.stderr)
+            print(f"Logging error for {self.hook_name}: {e}", file=sys.stderr)
 
     def read_input(self) -> Dict[str, Any]:
         """Read and parse JSON input from stdin.
 
         Returns:
-            Parsed JSON data as dictionary
+            Parsed JSON data as dictionary. Empty dict if no input provided.
 
         Raises:
             json.JSONDecodeError: If input is not valid JSON
         """
         raw_input = sys.stdin.read()
         if not raw_input.strip():
+            self.log("No input provided, using empty dict", "DEBUG")
             return {}
         return json.loads(raw_input)
 
@@ -164,7 +165,14 @@ class HookProcessor(ABC):
             metric_name: Name of the metric
             value: Metric value
             metadata: Optional additional metadata
+
+        Note:
+            Metrics are appended in JSONL format for easy parsing and analysis.
         """
+        if not isinstance(metric_name, str) or not metric_name.strip():
+            self.log("Invalid metric_name: must be non-empty string", "WARNING")
+            return
+
         metrics_file = self.metrics_dir / f"{self.hook_name}_metrics.jsonl"
 
         metric = {
@@ -180,8 +188,10 @@ class HookProcessor(ABC):
         try:
             with open(metrics_file, "a") as f:
                 f.write(json.dumps(metric) + "\n")
-        except Exception as e:
-            self.log(f"Failed to save metric: {e}", "WARNING")
+        except (OSError, IOError, PermissionError) as e:
+            self.log(f"Failed to save metric '{metric_name}': {e}", "WARNING")
+        except (TypeError, ValueError) as e:
+            self.log(f"Metric '{metric_name}' serialization error: {e}", "WARNING")
 
     @abstractmethod
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
