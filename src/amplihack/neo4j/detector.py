@@ -128,6 +128,7 @@ class Neo4jContainerDetector:
             List of detected Neo4j containers (empty if none found or Docker unavailable)
         """
         if not self.is_docker_available():
+            logger.debug('Docker not available, returning empty container list')
             return []
 
         try:
