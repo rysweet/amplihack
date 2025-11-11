@@ -24,7 +24,7 @@ class CleanupHandler:
     Registers exit handlers and safely removes tracked files.
     """
 
-    def __init__(self, registry: CleanupRegistry, config: UVXConfiguration):
+    def __init__(self, registry: CleanupRegistry, config: UVXConfiguration) -> None:
         """Initialize cleanup handler.
 
         Args:
