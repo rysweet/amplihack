@@ -103,6 +103,9 @@ class SessionManager:
             ClaudeSession if active, None otherwise
         """
         with self._lock:
+            if not session_id or not session_id.strip():
+                self.logger.error('Invalid session_id provided to save_session')
+                return False
             session = self._active_sessions.get(session_id)
             if session:
                 self._update_session_access(session_id)
