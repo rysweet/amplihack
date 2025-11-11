@@ -14,6 +14,9 @@ class ProcessManager:
     def is_windows() -> bool:
         """Check if running on Windows.
 
+        Note:
+            Checks both sys.platform and os.name for maximum compatibility.
+
         Returns:
             True if Windows, False otherwise.
         """
