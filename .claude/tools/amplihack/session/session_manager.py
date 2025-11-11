@@ -377,8 +377,8 @@ class SessionManager:
             content = safe_read_file(file_path)
             if content:
                 return hashlib.md5(content.encode()).hexdigest()
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(f'Failed to compute file hash: {e}')
         return ""
 
     def _get_data_hash(self, data: Dict[str, Any]) -> str:
