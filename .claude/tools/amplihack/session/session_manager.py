@@ -126,7 +126,10 @@ class SessionManager:
 
             try:
                 session_data = self._serialize_session(session)
-                session_file = self.runtime_dir / f"{session_id}.json"
+                if not session_id or not session_id.strip():
+            self.logger.error('Invalid session_id provided to resume_session')
+            return None
+        session_file = self.runtime_dir / f"{session_id}.json"
 
                 # Check if save is needed
                 if not force and session_file.exists():
