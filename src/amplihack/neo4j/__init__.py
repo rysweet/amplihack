@@ -9,8 +9,8 @@ This module provides functionality to:
 The module follows the "Zero-BS" philosophy - all functions work or don't exist.
 """
 
-from .detector import Neo4jContainerDetector, Neo4jContainer
 from .credential_sync import CredentialSync, SyncChoice
+from .detector import Neo4jContainer, Neo4jContainerDetector
 from .manager import Neo4jManager
 
 __all__ = [

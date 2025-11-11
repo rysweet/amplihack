@@ -4,7 +4,6 @@ Pre-push git hook for quality gate enforcement.
 Prevents commits made with --no-verify from reaching remote by detecting quality violations.
 """
 
-import json
 import os
 import subprocess
 import sys

@@ -69,7 +69,6 @@ from .models import (
     CodebaseIdentity,
     IngestionMetadata,
     IngestionResult,
-    IngestionStatus,
 )
 from .monitoring import (
     HealthMonitor,

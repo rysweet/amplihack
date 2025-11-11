@@ -1,7 +1,10 @@
 import json
+import logging
 import os
 import shutil
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 HOME = str(Path.home())
 CLAUDE_DIR = os.path.join(HOME, ".claude")
@@ -130,7 +133,7 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
     elif os.path.exists(parent_path):
         base = parent_path
     else:
-        print(f"  ❌ .claude not found at {direct_path} or {parent_path}")
+        logger.error("  ❌ .claude not found at %s or %s", direct_path, parent_path)
         return []
 
     copied = []
@@ -140,7 +143,7 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
 
         # Skip if source doesn't exist
         if not os.path.exists(source_dir):
-            print(f"  ⚠️  Warning: {dir_path} not found in source, skipping")
+            logger.warning("  ⚠️  Warning: %s not found in source, skipping", dir_path)
             continue
 
         target_dir = os.path.join(dst, dir_path)
@@ -165,7 +168,7 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
 
                 # Skip on Windows - uses different permission model
                 if sys.platform == "win32":
-                    print("  ℹ️  Skipping POSIX permissions on Windows")
+                    logger.info("  ℹ️  Skipping POSIX permissions on Windows")
                 else:
                     files_updated = 0
                     permission_errors = 0
@@ -185,17 +188,17 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
                                         files_updated += 1
                                     except (OSError, PermissionError) as e:
                                         permission_errors += 1
-                                        print(f"  ⚠️  Could not chmod {file}: {e}")
+                                        logger.warning("  ⚠️  Could not chmod %s: %s", file, e)
 
                     if files_updated > 0:
-                        print(f"  🔐 Set execute permissions on {files_updated} hook files")
+                        logger.info("  🔐 Set execute permissions on %d hook files", files_updated)
                     if permission_errors > 0:
-                        print(f"  ⚠️  {permission_errors} permission errors (hooks may not execute)")
+                        logger.warning("  ⚠️  %d permission errors (hooks may not execute)", permission_errors)
 
             copied.append(dir_path)
-            print(f"  ✅ Copied {dir_path}")
+            logger.info("  ✅ Copied %s", dir_path)
         except Exception as e:
-            print(f"  ❌ Failed to copy {dir_path}: {e}")
+            logger.error("  ❌ Failed to copy %s: %s", dir_path, e)
 
     # Also copy settings.json if it exists and target doesn't have one
     settings_src = os.path.join(base, "settings.json")
@@ -204,9 +207,9 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
     if os.path.exists(settings_src) and not os.path.exists(settings_dst):
         try:
             shutil.copy2(settings_src, settings_dst)
-            print("  ✅ Copied settings.json")
+            logger.info("  ✅ Copied settings.json")
         except Exception as e:
-            print(f"  ⚠️  Could not copy settings.json: {e}")
+            logger.warning("  ⚠️  Could not copy settings.json: %s", e)
 
     return copied
 
@@ -307,7 +310,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
                                 if timeout and "timeout" not in hook:
                                     hook["timeout"] = timeout
                                 hooks_updated += 1
-                                print(f"  🔄 Updated {hook_type} hook path")
+                                logger.info("  🔄 Updated %s hook path", hook_type)
 
     return hooks_updated
 
@@ -360,32 +363,32 @@ def ensure_settings_json():
 
             # Prompt user for modification (or auto-approve if UVX/non-interactive)
             if not settings_manager.prompt_user_for_modification():
-                print("  ⚠️  Settings modification declined by user")
+                logger.warning("  ⚠️  Settings modification declined by user")
                 return False
             if is_uvx:
-                print("  🚀 UVX environment detected - auto-configuring hooks")
+                logger.info("  🚀 UVX environment detected - auto-configuring hooks")
 
             # Create backup
             success, backup_path = settings_manager.create_backup()
             if not success:
                 # Continue without backup rather than failing
-                print("  ⚠️  Could not create backup - continuing anyway")
+                logger.warning("  ⚠️  Could not create backup - continuing anyway")
                 backup_path = None
             elif backup_path:
-                print(f"  💾 Backup created at {backup_path}")
+                logger.info("  💾 Backup created at %s", backup_path)
 
     except Exception as e:
         # If SettingsManager fails for any reason, continue without it
-        print(f"  ⚠️  Settings manager unavailable - continuing without backup: {e}")
+        logger.warning("  ⚠️  Settings manager unavailable - continuing without backup: %s", e)
         if is_uvx:
-            print("  🚀 UVX environment detected - auto-configuring hooks")
+            logger.info("  🚀 UVX environment detected - auto-configuring hooks")
 
     # Load existing settings or use template
     if os.path.exists(settings_path):
         try:
             with open(settings_path, encoding="utf-8") as f:
                 settings = json.load(f)
-            print("  📋 Found existing settings.json")
+            logger.info("  📋 Found existing settings.json")
 
             # Back up existing settings
             import time
@@ -393,13 +396,13 @@ def ensure_settings_json():
             backup_name = f"settings.json.backup.{int(time.time())}"
             backup_path = os.path.join(CLAUDE_DIR, backup_name)
             shutil.copy2(settings_path, backup_path)
-            print(f"  💾 Backed up to {backup_name}")
+            logger.info("  💾 Backed up to %s", backup_name)
         except Exception as e:
-            print(f"  ⚠️  Could not read existing settings.json: {e}")
-            print("  🔧 Creating new settings.json from template")
+            logger.warning("  ⚠️  Could not read existing settings.json: %s", e)
+            logger.info("  🔧 Creating new settings.json from template")
             settings = SETTINGS_TEMPLATE.copy()
     else:
-        print("  🔧 Creating new settings.json")
+        logger.info("  🔧 Creating new settings.json")
         settings = SETTINGS_TEMPLATE.copy()
 
     # Update amplihack hook paths (relative paths for cross-platform compatibility)
@@ -413,14 +416,14 @@ def ensure_settings_json():
     # Update XPIA hook paths if XPIA hooks directory exists
     xpia_hooks_abs = os.path.join(HOME, ".claude", "tools", "xpia", "hooks")
     if os.path.exists(xpia_hooks_abs):
-        print("  🔒 XPIA security hooks directory found")
+        logger.info("  🔒 XPIA security hooks directory found")
 
         xpia_hooks_rel = ".claude/tools/xpia/hooks"
         xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_rel)
         hooks_updated += xpia_updated
 
         if xpia_updated > 0:
-            print(f"  🔒 XPIA security hooks configured ({xpia_updated} hooks)")
+            logger.info("  🔒 XPIA security hooks configured (%d hooks)", xpia_updated)
 
     # Ensure permissions are set correctly
     if "permissions" not in settings:
@@ -437,10 +440,10 @@ def ensure_settings_json():
     try:
         with open(settings_path, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
-        print(f"  ✅ Settings updated ({hooks_updated} hooks configured)")
+        logger.info("  ✅ Settings updated (%d hooks configured)", hooks_updated)
         return True
     except Exception as e:
-        print(f"  ❌ Failed to write settings.json: {e}")
+        logger.error("  ❌ Failed to write settings.json: %s", e)
         return False
 
 
@@ -453,21 +456,21 @@ def verify_hooks():
 
         # Skip XPIA if directory doesn't exist (optional feature)
         if hook_system == "xpia" and not os.path.exists(hooks_dir):
-            print("  ℹ️  XPIA security hooks not installed (optional feature)")
+            logger.info("  ℹ️  XPIA security hooks not installed (optional feature)")
             continue
 
         # Print header with appropriate icon
         icon = "🔒" if hook_system == "xpia" else "📋"
-        print(f"  {icon} {hook_system.capitalize()} hooks:")
+        logger.info("  %s %s hooks:", icon, hook_system.capitalize())
 
         system_all_exist = True
         for hook_info in hooks:
             hook_file = hook_info["file"]
             hook_path = os.path.join(hooks_dir, hook_file)
             if os.path.exists(hook_path):
-                print(f"    ✅ {hook_file} found")
+                logger.info("    ✅ %s found", hook_file)
             else:
-                print(f"    ❌ {hook_file} missing")
+                logger.error("    ❌ %s missing", hook_file)
                 system_all_exist = False
 
         # Only mark all_exist as False if amplihack hooks are missing
@@ -476,7 +479,7 @@ def verify_hooks():
 
         # Additional message for XPIA if all hooks found
         if hook_system == "xpia" and system_all_exist:
-            print("  🔒 XPIA security hooks configured")
+            logger.info("  🔒 XPIA security hooks configured")
 
     return all_exist
 
@@ -488,11 +491,11 @@ def create_runtime_dirs():
         try:
             os.makedirs(full_path, exist_ok=True)
             if not os.path.exists(full_path):
-                print(f"  ❌ Failed to create {dir_path}")
+                logger.error("  ❌ Failed to create %s", dir_path)
             else:
-                print(f"  ✅ Runtime directory {dir_path} ready")
+                logger.info("  ✅ Runtime directory %s ready", dir_path)
         except Exception as e:
-            print(f"  ❌ Error creating {dir_path}: {e}")
+            logger.error("  ❌ Error creating %s: %s", dir_path, e)
 
 
 def _local_install(repo_root):
@@ -500,9 +503,9 @@ def _local_install(repo_root):
     Install amplihack files from the given repo_root directory.
     This provides a comprehensive installation that mirrors the shell script.
     """
-    print("\n🚀 Starting amplihack installation...")
-    print(f"   Source: {repo_root}")
-    print(f"   Target: {CLAUDE_DIR}\n")
+    logger.info("\n🚀 Starting amplihack installation...")
+    logger.info("   Source: %s", repo_root)
+    logger.info("   Target: %s\n", CLAUDE_DIR)
 
     # Step 1: Ensure base directory exists
     ensure_dirs()
@@ -511,28 +514,28 @@ def _local_install(repo_root):
     pre_dirs = all_rel_dirs(CLAUDE_DIR)
 
     # Step 3: Copy all essential directories
-    print("📁 Copying essential directories:")
+    logger.info("📁 Copying essential directories:")
     copied_dirs = copytree_manifest(repo_root, CLAUDE_DIR)
 
     if not copied_dirs:
-        print("\n❌ No directories were copied. Installation may be incomplete.")
-        print("   Please check that the source repository is valid.\n")
+        logger.error("\n❌ No directories were copied. Installation may be incomplete.")
+        logger.error("   Please check that the source repository is valid.\n")
         return
 
     # Step 4: Create runtime directories
-    print("\n📂 Creating runtime directories:")
+    logger.info("\n📂 Creating runtime directories:")
     create_runtime_dirs()
 
     # Step 5: Configure settings.json
-    print("\n⚙️  Configuring settings.json:")
+    logger.info("\n⚙️  Configuring settings.json:")
     settings_ok = ensure_settings_json()
 
     # Step 6: Verify hook files exist
-    print("\n🔍 Verifying hook files:")
+    logger.info("\n🔍 Verifying hook files:")
     hooks_ok = verify_hooks()
 
     # Step 7: Generate manifest for uninstall
-    print("\n📝 Generating uninstall manifest:")
+    logger.info("\n📝 Generating uninstall manifest:")
 
     # Build list of all directories to track
     all_essential = []
@@ -550,33 +553,33 @@ def _local_install(repo_root):
     files, post_dirs = get_all_files_and_dirs(all_essential)
     new_dirs = sorted(set(post_dirs) - pre_dirs)
     write_manifest(files, new_dirs)
-    print(f"   Manifest written to {MANIFEST_JSON}")
+    logger.info("   Manifest written to {MANIFEST_JSON}")
 
     # Step 8: Final summary
-    print("\n" + "=" * 60)
+    logger.info("\n" + "=" * 60)
     if settings_ok and hooks_ok and len(copied_dirs) > 0:
-        print("✅ Amplihack installation completed successfully!")
-        print(f"\n📍 Installed to: {CLAUDE_DIR}")
-        print("\n📦 Components installed:")
+        logger.info("✅ Amplihack installation completed successfully!")
+        logger.info("\n📍 Installed to: {CLAUDE_DIR}")
+        logger.info("\n📦 Components installed:")
         for dir_path in sorted(copied_dirs):
-            print(f"   • {dir_path}")
-        print("\n🎯 Features enabled:")
-        print("   • Session start hook")
-        print("   • Stop hook")
-        print("   • Post-tool-use hook")
-        print("   • Pre-compact hook")
-        print("   • Runtime logging and metrics")
-        print("\n💡 To uninstall: amplihack uninstall")
+            logger.info("   • {dir_path}")
+        logger.info("\n🎯 Features enabled:")
+        logger.info("   • Session start hook")
+        logger.info("   • Stop hook")
+        logger.info("   • Post-tool-use hook")
+        logger.info("   • Pre-compact hook")
+        logger.info("   • Runtime logging and metrics")
+        logger.info("\n💡 To uninstall: amplihack uninstall")
     else:
-        print("⚠️  Installation completed with warnings")
+        logger.info("⚠️  Installation completed with warnings")
         if not settings_ok:
-            print("   • Settings.json configuration had issues")
+            logger.info("   • Settings.json configuration had issues")
         if not hooks_ok:
-            print("   • Some hook files are missing")
+            logger.info("   • Some hook files are missing")
         if len(copied_dirs) == 0:
-            print("   • No directories were copied")
-        print("\n💡 You may need to manually verify the installation")
-    print("=" * 60 + "\n")
+            logger.info("   • No directories were copied")
+        logger.info("\n💡 You may need to manually verify the installation")
+    logger.info("=" * 60 + "\n")
 
 
 def uninstall():
@@ -594,7 +597,7 @@ def uninstall():
                 removed_files += 1
                 removed_any = True
             except Exception as e:
-                print(f"  ⚠️  Could not remove file {f}: {e}")
+                logger.info("  ⚠️  Could not remove file {f}: {e}")
 
     # Remove directories from manifest (if any)
     for d in sorted(dirs, key=lambda x: -x.count(os.sep)):
@@ -604,7 +607,7 @@ def uninstall():
                 shutil.rmtree(target, ignore_errors=True)
                 removed_any = True
             except Exception as e:
-                print(f"  ⚠️  Could not remove directory {d}: {e}")
+                logger.info("  ⚠️  Could not remove directory {d}: {e}")
 
     # Always try to remove the main amplihack directories
     # This handles cases where the manifest might not track directories properly
@@ -623,7 +626,7 @@ def uninstall():
                 removed_dirs += 1
                 removed_any = True
             except Exception as e:
-                print(f"  ⚠️  Could not remove {dir_path}: {e}")
+                logger.info("  ⚠️  Could not remove {dir_path}: {e}")
 
     # Remove manifest file
     try:
@@ -633,13 +636,13 @@ def uninstall():
 
     # Report results
     if removed_any:
-        print(f"✅ Uninstalled amplihack from {CLAUDE_DIR}")
+        logger.info("✅ Uninstalled amplihack from {CLAUDE_DIR}")
         if removed_files > 0:
-            print(f"   • Removed {removed_files} files")
+            logger.info("   • Removed {removed_files} files")
         if removed_dirs > 0:
-            print(f"   • Removed {removed_dirs} amplihack directories")
+            logger.info("   • Removed {removed_dirs} amplihack directories")
     else:
-        print("Nothing to uninstall.")
+        logger.info("Nothing to uninstall.")
 
 
 def filecmp(f1, f2):

@@ -7,7 +7,11 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+import logging
+
 from .detector import DockerDetector
+
+import logging
 
 
 class DockerManager:
@@ -29,7 +33,7 @@ class DockerManager:
         if self.detector.check_image_exists(self.IMAGE_NAME):
             return True
 
-        print(f"Building Docker image: {self.IMAGE_NAME}")
+        logger.info("Building Docker image: {self.IMAGE_NAME}")
 
         # Find Dockerfile at project root
         project_root = Path(__file__).parent.parent.parent.parent
@@ -59,7 +63,7 @@ class DockerManager:
                 print(f"Docker build failed: {result.stderr}", file=sys.stderr)
                 return False
 
-            print(f"Successfully built Docker image: {self.IMAGE_NAME}")
+            logger.info("Successfully built Docker image: {self.IMAGE_NAME}")
             return True
 
         except subprocess.SubprocessError as e:

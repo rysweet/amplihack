@@ -4,7 +4,7 @@ Shows clear evidence that Neo4j is running and has data.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -72,23 +72,23 @@ def print_neo4j_status(conn):
     stats = get_neo4j_stats(conn)
 
     if "error" in stats:
-        print(f"❌ Neo4j connection failed: {stats['error']}")
+        logger.info("❌ Neo4j connection failed: {stats['error']}")
         return False
 
     print("\n" + "=" * 70)
-    print("📊 Neo4j Memory System - Status")
+    logger.info("📊 Neo4j Memory System - Status")
     print("=" * 70)
-    print(f"\n✅ Connected to {stats['database']} {stats['version']}")
-    print("\n📈 Graph Statistics:")
-    print(f"   Nodes: {stats['node_count']:,}")
-    print(f"   Relationships: {stats['relationship_count']:,}")
+    logger.info("\n✅ Connected to {stats['database']} {stats['version']}")
+    logger.info("\n📈 Graph Statistics:")
+    logger.info("   Nodes: {stats['node_count']:,}")
+    logger.info("   Relationships: {stats['relationship_count']:,}")
 
     if stats.get("label_counts"):
-        print("\n📋 Node Types:")
+        logger.info("\n📋 Node Types:")
         for label, count in list(stats["label_counts"].items())[:10]:
-            print(f"   {label}: {count:,}")
+            logger.info("   {label}: {count:,}")
 
-    print("\n" + "=" * 70 + "\n")
+    logger.info("\n" + "=" * 70 + "\n")
     return True
 
 
@@ -105,14 +105,14 @@ def verify_neo4j_working() -> bool:
             return print_neo4j_status(conn)
 
     except Exception as e:
-        print(f"\n❌ Neo4j verification failed: {e}\n")
+        logger.info("\n❌ Neo4j verification failed: {e}\n")
         return False
 
 
 if __name__ == "__main__":
     # Test diagnostics
-    print("Testing Neo4j diagnostics...")
+    logger.info("Testing Neo4j diagnostics...")
     if verify_neo4j_working():
-        print("✅ Neo4j is fully operational!")
+        logger.info("✅ Neo4j is fully operational!")
     else:
-        print("❌ Neo4j has issues")
+        logger.info("❌ Neo4j has issues")

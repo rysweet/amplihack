@@ -11,8 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .connector import Neo4jConnector
 from .config import get_config
+from .connector import Neo4jConnector
 
 logger = logging.getLogger(__name__)
 
@@ -131,8 +131,8 @@ class BlarifyIntegration:
         Raises:
             RuntimeError: If blarify execution fails
         """
-        from tempfile import NamedTemporaryFile
         import os
+        from tempfile import NamedTemporaryFile
 
         # Create temp file for blarify output
         with NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:

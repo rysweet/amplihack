@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # =============================================================================
 # Integration Tests - handle_auto_mode() with ensure_ultrathink_command()
 # =============================================================================
@@ -271,7 +270,7 @@ def test_integration_auto_015_prompt_flag_at_end():
 
 def test_integration_auto_016_full_workflow_with_transformation():
     """INTEGRATION-AUTO-016: Full workflow from CLI args to AutoMode."""
-    from amplihack.cli import handle_auto_mode, ensure_ultrathink_command
+    from amplihack.cli import ensure_ultrathink_command, handle_auto_mode
 
     with patch("amplihack.cli.AutoMode") as mock_auto:
         mock_auto.return_value.run.return_value = 0
@@ -481,8 +480,9 @@ def test_integration_auto_028_pure_function_no_side_effects():
 
 def test_integration_auto_029_function_signature():
     """INTEGRATION-AUTO-029: Verify function signature."""
-    from amplihack.cli import ensure_ultrathink_command
     import inspect
+
+    from amplihack.cli import ensure_ultrathink_command
 
     # Check function exists
     assert callable(ensure_ultrathink_command)
