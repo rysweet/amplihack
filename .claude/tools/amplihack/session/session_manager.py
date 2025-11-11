@@ -386,7 +386,8 @@ class SessionManager:
         try:
             content = json.dumps(data, sort_keys=True)
             return hashlib.md5(content.encode()).hexdigest()
-        except Exception:
+        except Exception as e:
+            self.logger.warning(f'Failed to compute data hash: {e}')
             return ""
 
     def stop(self) -> None:
