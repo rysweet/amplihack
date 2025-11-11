@@ -524,7 +524,8 @@ def _local_install(repo_root):
     try:
         from .utils.project_initializer import initialize_project_md, InitMode
 
-        result = initialize_project_md(Path(CLAUDE_DIR).parent, mode=InitMode.AUTO)
+        # Use FORCE mode during installation to fix amplihack-describing PROJECT.md
+        result = initialize_project_md(Path(CLAUDE_DIR).parent, mode=InitMode.FORCE)
 
         if result.success:
             if result.action_taken.value in ["initialized", "regenerated"]:
