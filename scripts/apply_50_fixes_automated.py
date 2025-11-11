@@ -4,12 +4,11 @@ Automatically apply 50 specific fixes from identified_fixes.json.
 Creates branches, applies fixes, commits, and pushes.
 """
 
-import ast
 import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -234,7 +233,7 @@ def apply_fix(issue: Dict[str, Any], fix_number: int) -> bool:
         fix_applied = apply_silent_exception_fix(file_path, line_num, function_name)
 
     if not fix_applied:
-        print(f"Failed to apply fix")
+        print("Failed to apply fix")
         run_git_command(['git', 'checkout', 'main'])
         run_git_command(['git', 'branch', '-D', branch_name])
         return False
@@ -309,9 +308,9 @@ def main():
             failures += 1
 
     print(f"\n{'=' * 60}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'=' * 60}")
-    print(f"Total fixes: 50")
+    print("Total fixes: 50")
     print(f"Successful: {successes}")
     print(f"Failed: {failures}")
     print(f"{'=' * 60}")
