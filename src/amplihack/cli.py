@@ -464,6 +464,47 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     new_parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
+    # Update Agent command
+    update_parser = subparsers.add_parser(
+        "update-agent", help="Update a goal agent with latest improvements"
+    )
+    update_parser.add_argument(
+        "agent_dir",
+        type=str,
+        help="Path to agent directory to update",
+    )
+    update_parser.add_argument(
+        "--check-only",
+        action="store_true",
+        help="Check for updates without applying",
+    )
+    update_parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Auto-apply safe updates without prompting",
+    )
+    update_parser.add_argument(
+        "--backup",
+        action="store_true",
+        default=True,
+        help="Create backup before updating (default: yes)",
+    )
+    update_parser.add_argument(
+        "--no-backup",
+        action="store_false",
+        dest="backup",
+        help="Skip creating backup before updating",
+    )
+    update_parser.add_argument(
+        "--target-version",
+        type=str,
+        default="latest",
+        help="Target version to update to (default: latest)",
+    )
+    update_parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
+    )
+
     # Hidden local install command
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
@@ -775,6 +816,23 @@ def main(argv: Optional[List[str]] = None) -> int:
             output=output_path,
             name=args.name,
             skills_dir=skills_path,
+            verbose=args.verbose,
+        )
+
+    elif args.command == "update-agent":
+        from .goal_agent_generator.update_agent_cli import update_agent
+        from pathlib import Path
+
+        # Convert string path to Path object
+        agent_dir_path = Path(args.agent_dir)
+
+        # Call the update agent CLI
+        return update_agent.callback(
+            agent_dir=agent_dir_path,
+            check_only=args.check_only,
+            auto=args.auto,
+            backup=args.backup,
+            target_version=args.target_version,
             verbose=args.verbose,
         )
 

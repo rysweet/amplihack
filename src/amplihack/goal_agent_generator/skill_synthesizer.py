@@ -1,8 +1,8 @@
 """
 Skill Synthesizer - Match existing skills to required capabilities.
 
-For MVP, copies existing skills from .claude/agents directory.
-Future: AI-generate custom skills.
+Phase 1: Copies existing skills from .claude/agents directory.
+Phase 2: AI-generate custom skills for gaps using Claude.
 """
 
 from pathlib import Path
@@ -28,25 +28,46 @@ class SkillSynthesizer:
         "integrator": ["integrate", "connect", "api", "webhook"],
     }
 
-    def __init__(self, skills_directory: Optional[Path] = None):
+    def __init__(
+        self,
+        skills_directory: Optional[Path] = None,
+        enable_phase2: bool = False,
+        phase2_coverage_threshold: float = 70.0,
+    ):
         """
         Initialize skill synthesizer.
 
         Args:
             skills_directory: Path to existing skills directory
+            enable_phase2: Enable Phase 2 AI skill generation
+            phase2_coverage_threshold: Coverage % threshold to trigger Phase 2 (default 70%)
         """
         self.skills_directory = skills_directory or self._find_skills_directory()
+        self.enable_phase2 = enable_phase2
+        self.phase2_coverage_threshold = phase2_coverage_threshold
 
-    def synthesize_skills(self, execution_plan: ExecutionPlan) -> List[SkillDefinition]:
+        # Phase 2 components (lazy loaded)
+        self._gap_analyzer = None
+        self._skill_generator = None
+        self._skill_registry = None
+
+    def synthesize_skills(
+        self, execution_plan: ExecutionPlan, domain: str = "general"
+    ) -> List[SkillDefinition]:
         """
         Synthesize skills needed for execution plan.
 
+        Phase 1: Match existing skills
+        Phase 2: Generate custom skills if coverage is insufficient
+
         Args:
             execution_plan: Plan requiring skills
+            domain: Domain context for skill generation
 
         Returns:
-            List of matched skills with scores
+            List of matched/generated skills with scores
         """
+        # Phase 1: Find existing skills
         required_skills = set(execution_plan.required_skills)
         synthesized_skills = []
 
@@ -59,7 +80,88 @@ class SkillSynthesizer:
         if not synthesized_skills:
             synthesized_skills.append(self._create_generic_skill())
 
+        # Phase 2: Check if we need to generate custom skills
+        if self.enable_phase2:
+            synthesized_skills = self._apply_phase2(
+                execution_plan, synthesized_skills, domain
+            )
+
         return synthesized_skills
+
+    def _apply_phase2(
+        self,
+        execution_plan: ExecutionPlan,
+        existing_skills: List[SkillDefinition],
+        domain: str,
+    ) -> List[SkillDefinition]:
+        """
+        Apply Phase 2 AI skill generation if needed.
+
+        Args:
+            execution_plan: Execution plan
+            existing_skills: Skills found in Phase 1
+            domain: Domain context
+
+        Returns:
+            Combined list of existing + generated skills
+        """
+        try:
+            # Lazy load Phase 2 components
+            if not self._gap_analyzer:
+                from .phase2 import (
+                    SkillGapAnalyzer,
+                    AISkillGenerator,
+                    SkillRegistry,
+                )
+
+                self._gap_analyzer = SkillGapAnalyzer()
+                self._skill_generator = AISkillGenerator()
+                self._skill_registry = SkillRegistry()
+
+            # Analyze gaps
+            gap_report = self._gap_analyzer.analyze_gaps(execution_plan, existing_skills)
+
+            # Check if we need to generate custom skills
+            if gap_report.coverage_percentage < self.phase2_coverage_threshold:
+                print(
+                    f"Coverage {gap_report.coverage_percentage:.1f}% below threshold "
+                    f"{self.phase2_coverage_threshold}%. Generating custom skills..."
+                )
+
+                # Generate skills for missing capabilities
+                generated_skills = self._skill_generator.generate_skills(
+                    required_capabilities=gap_report.missing_capabilities,
+                    domain=domain,
+                    context=f"Execution plan with {len(execution_plan.phases)} phases",
+                    validate=True,
+                )
+
+                # Register all skills
+                self._skill_registry.register_batch(existing_skills)
+                self._skill_registry.register_batch(generated_skills)
+
+                # Save registry
+                self._skill_registry.save()
+
+                print(
+                    f"Generated {len(generated_skills)} custom skills. "
+                    f"Total skills: {len(existing_skills) + len(generated_skills)}"
+                )
+
+                # Return combined list
+                return existing_skills + generated_skills
+
+            else:
+                print(
+                    f"Coverage {gap_report.coverage_percentage:.1f}% meets threshold. "
+                    "Using existing skills only."
+                )
+
+        except Exception as e:
+            print(f"Phase 2 skill generation failed: {e}")
+            print("Falling back to Phase 1 skills only")
+
+        return existing_skills
 
     def _find_skills_directory(self) -> Path:
         """Find the .claude/agents directory."""
