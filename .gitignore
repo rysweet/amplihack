@@ -135,3 +135,4 @@ worktrees/*
 !worktrees/README.md
 wave16-dedup/
 wave17-dedup/
+wave*-dedup/
