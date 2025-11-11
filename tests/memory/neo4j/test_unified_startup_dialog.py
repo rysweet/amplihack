@@ -31,7 +31,7 @@ class TestContainerOption:
             status="Up 2 hours",
             ports=["7787->7687"],
             username="neo4j",
-            password="testpass",  # ggignore test fixture
+            password="FAKE_TEST_PASSWORD",  # Test fixture - not a real credential
             env_sync_status="match",
             is_running=True,
         )
