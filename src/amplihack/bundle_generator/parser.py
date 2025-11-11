@@ -97,8 +97,8 @@ class PromptParser:
                 import spacy
 
                 self._nlp = spacy.load("en_core_web_sm")
-            except (ImportError, OSError):
-                logger.warning("spaCy not available, falling back to rule-based parsing")
+            except (ImportError, OSError) as e:
+                logger.warning(f"spaCy not available ({e}), falling back to rule-based parsing")
                 self.enable_advanced_nlp = False
 
     def parse(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> ParsedPrompt:
