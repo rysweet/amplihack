@@ -142,6 +142,7 @@ class PromptParser:
         if context:
             metadata["context"] = context
 
+        logger.debug(f'Parse complete: confidence={confidence:.2f}, sentences={len(sentences)}, phrases={len(key_phrases)}')
         return ParsedPrompt(
             raw_prompt=prompt,
             tokens=tokens,
