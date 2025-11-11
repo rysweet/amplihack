@@ -203,6 +203,13 @@ class SessionStartHook(HookProcessor):
             "• Steps include: Requirements → Issue → Branch → Design → Implement → Review → Merge"
         )
 
+        # Add config management tip
+        context_parts.append("\n## ⚙️ Configuration Management")
+        context_parts.append("• View config status: `amplihack config show`")
+        context_parts.append("• Integrate with CLAUDE.md: `amplihack config integrate`")
+        context_parts.append("• Remove integration: `amplihack config remove`")
+        context_parts.append("• Amplihack files are in `.claude/amplihack/` namespace")
+
         # Add verbosity instructions
         context_parts.append("\n## 🎤 Verbosity Mode")
         context_parts.append("• Current setting: balanced")
