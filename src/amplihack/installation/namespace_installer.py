@@ -60,7 +60,14 @@ def install_to_namespace(
         )
 
     # Check if amplihack namespace already exists
-    if installed_path.exists() and not force:
+    try:
+        path_exists = installed_path.exists()
+    except (PermissionError, OSError):
+        # If we can't check due to permissions, treat as not existing
+        # The mkdir() below will properly fail with permission error if needed
+        path_exists = False
+
+    if path_exists and not force:
         return InstallResult(
             success=False,
             installed_path=installed_path,
@@ -80,7 +87,13 @@ def install_to_namespace(
         )
 
     # Remove existing installation if force is enabled
-    if installed_path.exists() and force:
+    try:
+        force_path_exists = installed_path.exists()
+    except (PermissionError, OSError):
+        # If we can't check, assume it doesn't exist
+        force_path_exists = False
+
+    if force_path_exists and force:
         try:
             shutil.rmtree(installed_path)
         except (PermissionError, OSError) as e:
