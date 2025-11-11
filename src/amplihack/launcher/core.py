@@ -465,7 +465,7 @@ class ClaudeLauncher:
             project_dir_str = str(target_dir.resolve())
 
             # Recursively replace $CLAUDE_PROJECT_DIR in hook commands
-            def replace_in_hooks(obj):
+            def replace_in_hooks(obj: object) -> None:
                 nonlocal hooks_modified
                 if isinstance(obj, dict):
                     for key, value in obj.items():
@@ -507,7 +507,7 @@ class ClaudeLauncher:
             print(f"Launching Claude with command: {' '.join(cmd)}")
 
             # Set up signal handling for graceful shutdown
-            def signal_handler(sig, frame):
+            def signal_handler(sig: int, frame: object) -> None:
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.claude_process:
                     self.claude_process.terminate()
@@ -592,7 +592,7 @@ class ClaudeLauncher:
             print(f"Launching Claude with command: {' '.join(cmd)}")
 
             # Set up signal handling for graceful shutdown
-            def signal_handler(sig, frame):
+            def signal_handler(sig: int, frame: object) -> None:
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.proxy_manager:
                     self.proxy_manager.stop_proxy()
@@ -698,7 +698,7 @@ class ClaudeLauncher:
         """
         import threading
 
-        def start_neo4j():
+        def start_neo4j() -> None:
             """Background thread function with auto-setup."""
             import logging
 
