@@ -443,3 +443,112 @@ class TestModels:
                 total_changes=0,
                 estimated_time="0",
             )
+
+
+class TestChangelogParsing:
+    """Tests for real changelog parsing."""
+
+    def test_parse_changelog_section_finds_fixed_items(self, tmp_path: Path):
+        """Test parsing Fixed section from changelog."""
+        amplihack_root = tmp_path / "amplihack"
+        amplihack_root.mkdir()
+
+        changelog_content = """# Changelog
+
+## [2.0.0] - 2025-11-11
+
+### Fixed
+- Fixed issue with skill loading
+- Improved error handling in main.py
+- Fixed coordinator state persistence
+
+### Added
+- New feature X
+"""
+        generator = ChangesetGenerator(amplihack_root)
+        fixed_items = generator._parse_changelog_section(changelog_content, "2.0.0", "Fixed")
+
+        assert len(fixed_items) == 3
+        assert "Fixed issue with skill loading" in fixed_items
+
+    def test_identify_bug_fixes_reads_real_changelog(self, tmp_path: Path):
+        """Test _identify_bug_fixes reads actual CHANGELOG.md."""
+        amplihack_root = tmp_path / "amplihack"
+        amplihack_root.mkdir()
+
+        changelog = """# Changelog
+
+## [3.0.0] - 2025-11-11
+
+### Fixed
+- Real bug fix 1
+- Real bug fix 2
+"""
+        (amplihack_root / "CHANGELOG.md").write_text(changelog)
+
+        generator = ChangesetGenerator(amplihack_root)
+        bug_fixes = generator._identify_bug_fixes("3.0.0")
+
+        assert len(bug_fixes) == 2
+        assert "Real bug fix 1" in bug_fixes
+
+    def test_identify_bug_fixes_empty_when_no_changelog(self, tmp_path: Path):
+        """Test _identify_bug_fixes returns empty list when no changelog."""
+        amplihack_root = tmp_path / "amplihack"
+        amplihack_root.mkdir()
+
+        generator = ChangesetGenerator(amplihack_root)
+        bug_fixes = generator._identify_bug_fixes("3.0.0")
+
+        assert bug_fixes == []
+
+
+class TestSkillContentDetection:
+    """Tests for real skill content change detection."""
+
+    def test_skill_content_changed_detects_difference(self, tmp_path: Path):
+        """Test detecting when skill content differs."""
+        amplihack_root = tmp_path / "amplihack"
+        amplihack_root.mkdir()
+
+        current_skill = tmp_path / "current_skill.md"
+        current_skill.write_text("# Skill v1\nOld content")
+
+        available_skill = tmp_path / "available_skill.md"
+        available_skill.write_text("# Skill v2\nNew content")
+
+        generator = ChangesetGenerator(amplihack_root)
+        changed = generator._skill_content_changed(current_skill, available_skill)
+
+        assert changed is True
+
+    def test_skill_content_changed_same_content(self, tmp_path: Path):
+        """Test detecting when skill content is the same."""
+        amplihack_root = tmp_path / "amplihack"
+        amplihack_root.mkdir()
+
+        content = "# Skill v1\nSame content"
+
+        current_skill = tmp_path / "current_skill.md"
+        current_skill.write_text(content)
+
+        available_skill = tmp_path / "available_skill.md"
+        available_skill.write_text(content)
+
+        generator = ChangesetGenerator(amplihack_root)
+        changed = generator._skill_content_changed(current_skill, available_skill)
+
+        assert changed is False
+
+    def test_skill_content_changed_missing_file(self, tmp_path: Path):
+        """Test handling when skill file is missing."""
+        amplihack_root = tmp_path / "amplihack"
+        amplihack_root.mkdir()
+
+        current_skill = tmp_path / "nonexistent.md"
+        available_skill = tmp_path / "also_nonexistent.md"
+
+        generator = ChangesetGenerator(amplihack_root)
+        changed = generator._skill_content_changed(current_skill, available_skill)
+
+        assert changed is False

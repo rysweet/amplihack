@@ -184,19 +184,25 @@ class ChangesetGenerator:
                     )
                 )
 
-            # Find updated skills
+            # Find updated skills - only report if actually changed
             for skill_name in current_skills:
                 if skill_name in available_skills:
-                    # Check if updated (simplified for MVP)
-                    updates.append(
-                        SkillUpdate(
-                            skill_name=skill_name,
-                            current_version="1.0.0",
-                            new_version="1.1.0",
-                            change_type="update",
-                            changes=["Bug fixes and improvements"],
-                        )
+                    # Check if skill file actually changed
+                    current_skill_path = agent_dir / ".claude" / "agents" / f"{skill_name}.md"
+                    available_skill_path = (
+                        self.amplihack_root / ".claude" / "agents" / "amplihack" / f"{skill_name}.md"
                     )
+
+                    if self._skill_content_changed(current_skill_path, available_skill_path):
+                        updates.append(
+                            SkillUpdate(
+                                skill_name=skill_name,
+                                current_version=None,  # Version tracking not implemented yet
+                                new_version=None,
+                                change_type="update",
+                                changes=["Skill content updated"],
+                            )
+                        )
 
         return updates
 
@@ -290,13 +296,20 @@ class ChangesetGenerator:
         return breaking
 
     def _identify_bug_fixes(self, target_version: str) -> List[str]:
-        """Identify bug fixes in target version."""
-        # Simplified for MVP - would query changelog
-        return [
-            "Fixed issue with skill loading",
-            "Improved error handling in main.py",
-            "Fixed coordinator state persistence",
-        ]
+        """Identify bug fixes in target version by reading CHANGELOG.md.
+
+        Returns:
+            List of bug fix descriptions, or empty list if no changelog
+        """
+        changelog_path = self.amplihack_root / "CHANGELOG.md"
+        if not changelog_path.exists():
+            return []  # No changelog available
+
+        try:
+            changelog_content = changelog_path.read_text()
+            return self._parse_changelog_section(changelog_content, target_version, "Fixed")
+        except (IOError, UnicodeDecodeError):
+            return []  # Failed to read changelog
 
     def _identify_enhancements(
         self,
@@ -317,6 +330,79 @@ class ChangesetGenerator:
             enhancements.append(f"Adds {len(new_skills)} new skills")
 
         return enhancements
+
+    def _parse_changelog_section(
+        self, changelog_content: str, version: str, section_name: str
+    ) -> List[str]:
+        """Parse specific section from changelog for a version.
+
+        Args:
+            changelog_content: Full changelog text
+            version: Version to find (e.g., "2.0.0")
+            section_name: Section to extract (e.g., "Fixed", "Added", "Changed")
+
+        Returns:
+            List of items from that section
+        """
+        items = []
+        in_version = False
+        in_section = False
+
+        for line in changelog_content.split("\n"):
+            line = line.strip()
+
+            # Check if entering version section (e.g., "## [2.0.0]" or "# Version 2.0.0")
+            if version in line and line.startswith("#"):
+                in_version = True
+                continue
+
+            # Check if leaving version section (next version header at same or higher level)
+            if in_version and line.startswith("##") and "[" in line and version not in line:
+                break
+
+            # Check if entering target section
+            if in_version and section_name in line and line.startswith("###"):
+                in_section = True
+                continue
+
+            # Check if leaving section (next section header at same level)
+            if in_section and line.startswith("###"):
+                in_section = False
+                continue
+
+            # Extract items from section (lines starting with -, *, or bullets)
+            if in_section and (line.startswith("-") or line.startswith("*")):
+                # Remove bullet point and clean up
+                item = line.lstrip("-*").strip()
+                if item:
+                    items.append(item)
+
+        return items
+
+    def _skill_content_changed(self, current_path: Path, available_path: Path) -> bool:
+        """Check if skill file content has changed.
+
+        Args:
+            current_path: Path to current skill file
+            available_path: Path to available skill file
+
+        Returns:
+            True if content differs, False if same or error
+        """
+        try:
+            # Check if both files exist
+            if not current_path.exists() or not available_path.exists():
+                return False
+
+            # Compare file content
+            current_content = current_path.read_text()
+            available_content = available_path.read_text()
+
+            return current_content != available_content
+
+        except (IOError, UnicodeDecodeError):
+            # If we can't read files, assume no change
+            return False
 
     def _estimate_time(self, total_changes: int) -> str:
         """Estimate time for update."""
