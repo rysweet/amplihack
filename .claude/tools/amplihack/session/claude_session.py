@@ -76,7 +76,11 @@ class ClaudeSession:
         self._checkpoints: List[SessionState] = []
 
     def _generate_session_id(self) -> str:
-        """Generate unique session ID."""
+        """Generate unique session ID.
+
+        Returns:
+            str: Unique session identifier with timestamp and random component
+        """
         import uuid
 
         timestamp = int(time.time())
