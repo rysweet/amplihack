@@ -29,7 +29,7 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 REFLECTION_PROMPT_TEMPLATE = TEMPLATE_DIR / "reflection_prompt.txt"
 
 
-def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
+def load_session_conversation(session_dir: Path) -> Optional[List[Dict[str, Any]]]:
     """Load conversation messages from session directory.
 
     Args:
