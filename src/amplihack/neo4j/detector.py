@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 BOLT_PORT = 7687  # Neo4j Bolt protocol port (connections)
 HTTP_PORT = 7474  # Neo4j HTTP protocol port (browser, REST API)
 
+# Docker command timeout values (seconds)
+DOCKER_INSPECT_TIMEOUT = 10  # Timeout for docker inspect command
+DOCKER_PS_TIMEOUT = 10  # Timeout for docker ps command
+
 
 @dataclass
 class Neo4jContainer:
@@ -136,7 +140,7 @@ class Neo4jContainerDetector:
                 ["docker", "ps", "-a", "--format", "{{json .}}"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=DOCKER_PS_TIMEOUT,
             )
 
             if result.returncode != 0:
@@ -259,7 +263,7 @@ class Neo4jContainerDetector:
                 ["docker", "inspect", container.container_id],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=DOCKER_INSPECT_TIMEOUT,
             )
 
             if result.returncode != 0:
@@ -303,9 +307,10 @@ class Neo4jContainerDetector:
 
         except subprocess.TimeoutExpired:
             logger.warning(
-                "Timeout while inspecting container %s (10s timeout). "
+                "Timeout while inspecting container %s (%ds timeout). "
                 "Neo4j credentials cannot be extracted in time.",
                 container.container_id[:12],
+                DOCKER_INSPECT_TIMEOUT,
             )
         except subprocess.SubprocessError as e:
             logger.warning(
