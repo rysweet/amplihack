@@ -226,10 +226,10 @@ class TestMultipleSessionStarts:
 
         # Get container ID
         manager = ContainerManager()
-        status1 = manager.get_status()
+        _status1 = manager.get_status()
 
         # Second session (should detect existing)
-        result2 = ensure_neo4j_running(blocking=False)
+        _result2 = ensure_neo4j_running(blocking=False)
         time.sleep(1)
 
         status2 = manager.get_status()

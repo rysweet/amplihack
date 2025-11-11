@@ -104,8 +104,8 @@ def verify_neo4j_working() -> bool:
         with Neo4jConnector() as conn:
             return print_neo4j_status(conn)
 
-    except Exception as e:
-        logger.info("\n❌ Neo4j verification failed: {e}\n")
+    except Exception as _e:
+        logger.info("\n❌ Neo4j verification failed: {_e}\n")
         return False
 
 

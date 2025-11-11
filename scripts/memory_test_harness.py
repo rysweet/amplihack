@@ -495,7 +495,7 @@ class MemoryTestHarness:
 
         try:
             # Run scenario with configuration
-            output = config.run_scenario(scenario)
+            _output = config.run_scenario(scenario)
 
             # TODO: Collect metrics from actual output
             # For now, record mock metrics

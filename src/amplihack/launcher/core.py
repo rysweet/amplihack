@@ -145,6 +145,7 @@ class ClaudeLauncher:
             print(f"Successfully checked out repository to: {repo_path}")
             return True
         except Exception as e:
+            logger.error("Exception occurred: %s", e)
             print(f"Repository checkout failed: {e!s}")
             return False
 
@@ -205,6 +206,7 @@ class ClaudeLauncher:
             print(f"Changed directory to: {target_dir}")
             return True
         except OSError as e:
+            logger.error("OSError occurred: %s", e)
             print(f"Failed to change directory to {target_dir}: {e}")
             return False
 
@@ -297,6 +299,7 @@ class ClaudeLauncher:
             print(f"  stderr: {stderr_log.name}")
 
         except Exception as e:
+            logger.error("Exception occurred: %s", e)
             # Log error but don't fail proxy startup
             print(f"Warning: Could not open log tail window: {e}")
 
@@ -561,6 +564,7 @@ class ClaudeLauncher:
             return exit_code
 
         except Exception as e:
+            logger.error("Exception occurred: %s", e)
             print(f"Error launching Claude: {e}")
             return 1
         finally:
@@ -645,6 +649,7 @@ class ClaudeLauncher:
             return exit_code
 
         except Exception as e:
+            logger.error("Exception occurred: %s", e)
             print(f"Error launching Claude: {e}")
             return 1
         finally:
@@ -722,6 +727,7 @@ class ClaudeLauncher:
                     verify_neo4j_working()
 
             except Exception as e:
+                logger.error("Exception occurred: %s", e)
                 # Never crash session start due to Neo4j issues
                 thread_logger.warning("Neo4j initialization error: %s", e)
                 thread_logger.info("Continuing with existing memory system")

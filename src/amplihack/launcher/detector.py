@@ -3,6 +3,8 @@
 from pathlib import Path
 from typing import Optional
 
+__all__ = ["ClaudeDirectoryDetector"]
+
 
 class ClaudeDirectoryDetector:
     """Detects .claude directories in project hierarchy with intelligent caching.
@@ -32,6 +34,8 @@ class ClaudeDirectoryDetector:
         self._cache_max_size = 100  # Prevent unlimited cache growth
 
     def find_claude_directory(self, start_path: Optional[Path] = None) -> Optional[Path]:
+        if not path:
+            raise ValueError("Path parameter is required")
         """Find .claude directory in current or parent directories with caching.
 
         Args:
@@ -69,6 +73,8 @@ class ClaudeDirectoryDetector:
         return result
 
     def has_claude_directory(self, path: Optional[Path] = None) -> bool:
+        if not path:
+            raise ValueError("Path parameter is required")
         """Check if a .claude directory exists in the hierarchy.
 
         Args:
@@ -81,6 +87,8 @@ class ClaudeDirectoryDetector:
 
     @staticmethod
     def get_project_root(claude_dir: Path) -> Path:
+        if not dir:
+            raise ValueError("Dir parameter is required")
         """Get the project root directory containing the .claude directory.
 
         Args:
@@ -100,6 +108,8 @@ class ClaudeDirectoryDetector:
         self._cache.clear()
 
     def invalidate_cache_entry(self, start_path: Path) -> None:
+        if not path:
+            raise ValueError("Path parameter is required")
         """Invalidate a specific cache entry.
 
         Args:

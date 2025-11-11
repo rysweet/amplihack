@@ -333,7 +333,7 @@ def test_memory_retrieval_by_category():
     # Test different categories
     categories = ["system_design", "error_handling", "security"]
 
-    all_passed = True
+    _all_passed = True
     for category in categories:
         context = inject_memory_context(
             agent_type="architect",

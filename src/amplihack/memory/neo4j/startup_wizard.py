@@ -99,7 +99,7 @@ def show_neo4j_stats_or_empty():
             )
 
             node_count = stats.get("node_count", 0)
-            rel_count = stats.get("relationship_count", 0)
+            _rel_count = stats.get("relationship_count", 0)
 
             if node_count == 0:
                 logger.info("\n📊 Database Status: EMPTY (expected on first startup)")
@@ -155,7 +155,7 @@ def _troubleshoot_and_retry() -> bool:
     """Provide troubleshooting and offer retry."""
     from .config import get_config
 
-    config = get_config()
+    _config = get_config()
 
     print("\n" + "=" * 70)
     logger.info("🔧 Troubleshooting Neo4j")
@@ -265,8 +265,8 @@ def _check_code_understanding_freshness():
                             print(
                                 f"✅ Indexed! Created {result.get('files', 0)} files, {result.get('classes', 0)} classes, {result.get('functions', 0)} functions"
                             )
-                    except Exception as e:
-                        logger.info("⚠️  Indexing failed: {e}")
+                    except Exception as _e:
+                        logger.info("⚠️  Indexing failed: {_e}")
                         logger.info("   You can index later with: amplihack memory update-code-index")
 
                 elif response == "background":

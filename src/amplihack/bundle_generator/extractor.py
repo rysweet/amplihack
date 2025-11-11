@@ -8,6 +8,8 @@ import logging
 import re
 from typing import List, Optional
 
+__all__ = ["IntentExtractor"]
+
 from .exceptions import ExtractionError
 from .models import AgentRequirement, ExtractedIntent, ParsedPrompt
 from .parser import PromptParser

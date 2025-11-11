@@ -25,6 +25,8 @@ class BundleBuilder:
     """
 
     def __init__(self, output_dir: Optional[Path] = None):
+        if not dir:
+            raise ValueError("Dir parameter is required")
         """
         Initialize the bundle builder.
 
@@ -214,6 +216,8 @@ Confidence: {intent.confidence:.1%}
         return tags
 
     def write_bundle(self, bundle: AgentBundle, output_dir: Optional[Path] = None) -> Path:
+        if not dir:
+            raise ValueError("Dir parameter is required")
         """
         Write bundle to disk.
 

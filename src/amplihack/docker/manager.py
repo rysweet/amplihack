@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+__all__ = ["DockerManager"]
+
 import logging
 
 from .detector import DockerDetector

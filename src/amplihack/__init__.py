@@ -107,6 +107,7 @@ HOOK_CONFIGS = {
 
 
 def ensure_dirs():
+    """Ensure dirs."""
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 
@@ -215,12 +216,14 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
 
 
 def write_manifest(files, dirs):
+    """Write manifest."""
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
     with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
         json.dump({"files": files, "dirs": dirs}, f, indent=2)
 
 
 def read_manifest():
+    """Read manifest."""
     try:
         with open(MANIFEST_JSON, encoding="utf-8") as f:
             mf = json.load(f)
@@ -230,6 +233,7 @@ def read_manifest():
 
 
 def get_all_files_and_dirs(root_dirs):
+    """Get all files and dirs."""
     all_files = []
     all_dirs = set()
     for d in root_dirs:
@@ -245,6 +249,7 @@ def get_all_files_and_dirs(root_dirs):
 
 
 def all_rel_dirs(base):
+    """All rel dirs."""
     result = set()
     for r, dirs, _files in os.walk(base):
         rel = os.path.relpath(r, CLAUDE_DIR)
@@ -596,8 +601,8 @@ def uninstall():
                 os.remove(target)
                 removed_files += 1
                 removed_any = True
-            except Exception as e:
-                logger.info("  ⚠️  Could not remove file {f}: {e}")
+            except Exception as _e:
+                logger.info("  ⚠️  Could not remove file {f}: {_e}")
 
     # Remove directories from manifest (if any)
     for d in sorted(dirs, key=lambda x: -x.count(os.sep)):
@@ -606,8 +611,8 @@ def uninstall():
             try:
                 shutil.rmtree(target, ignore_errors=True)
                 removed_any = True
-            except Exception as e:
-                logger.info("  ⚠️  Could not remove directory {d}: {e}")
+            except Exception as _e:
+                logger.info("  ⚠️  Could not remove directory {d}: {_e}")
 
     # Always try to remove the main amplihack directories
     # This handles cases where the manifest might not track directories properly
@@ -625,8 +630,8 @@ def uninstall():
                 shutil.rmtree(dir_path)
                 removed_dirs += 1
                 removed_any = True
-            except Exception as e:
-                logger.info("  ⚠️  Could not remove {dir_path}: {e}")
+            except Exception as _e:
+                logger.info("  ⚠️  Could not remove {dir_path}: {_e}")
 
     # Remove manifest file
     try:
@@ -646,6 +651,7 @@ def uninstall():
 
 
 def filecmp(f1, f2):
+    """Filecmp."""
     try:
         if os.path.getsize(f1) != os.path.getsize(f2):
             return False
@@ -656,6 +662,7 @@ def filecmp(f1, f2):
 
 
 def main():
+    """Main."""
     # Import and use the enhanced CLI
     from .cli import main as cli_main
 
