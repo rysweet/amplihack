@@ -59,7 +59,7 @@ class Neo4jConnectionTracker:
                 self.http_url = f"http://localhost:{config.http_port}/db/neo4j/tx/commit"
                 logger.debug("Using credentials and port from Neo4j config system (port %d)", config.http_port)
             except Exception as e:
-                logger.warning(f"Could not load Neo4j config: {e}, falling back to env vars")
+                logger.warning("Could not load Neo4j config: %s, falling back to env vars", e)
                 # Fallback to environment variables
                 neo4j_username = username or os.getenv("NEO4J_USERNAME", "neo4j")
                 neo4j_password = password or os.getenv("NEO4J_PASSWORD")
