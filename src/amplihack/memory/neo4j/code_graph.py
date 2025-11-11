@@ -701,31 +701,16 @@ def run_blarify(
         )
         return False
 
-    # Build blarify command
-    cmd = [
-        "blarify",
-        "analyze",
-        str(codebase_path),
-        "--output",
-        str(output_path),
-        "--format",
-        "json",
-    ]
-
-    if languages:
-        cmd.extend(["--languages", ",".join(languages)])
-
-    try:
-        result = subprocess.run(
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        logger.info("Blarify completed successfully")
-        logger.debug("Blarify output: %s", result.stdout)
-        return True
-
-    except subprocess.CalledProcessError as e:
-        logger.error("Blarify failed: %s", e.stderr)
-        return False
+    # NOTE: blarify CLI does not support JSON export mode
+    # The current blarify CLI only has 'create' subcommand which writes directly to Neo4j
+    # This function expected an 'analyze' subcommand with JSON output, which doesn't exist
+    logger.error(
+        "blarify JSON export mode is not supported by current blarify CLI.\n"
+        "Current blarify only supports 'create' subcommand which writes directly to Neo4j.\n"
+        "This integration requires JSON export functionality that is not available.\n"
+        "See: https://github.com/blarApp/blarify\n"
+        "\n"
+        "Alternative: Use blarify 'create' directly with Neo4j connection parameters:\n"
+        "  blarify create --entity-id <entity> --neo4j-uri <uri> --neo4j-username <user> --neo4j-password <pass>"
+    )
+    return False

@@ -266,7 +266,10 @@ def _check_code_understanding_freshness():
                             )
                     except Exception as e:
                         print(f"⚠️  Indexing failed: {e}")
-                        print("   You can index later with: amplihack memory update-code-index")
+                        print("   ")
+                        print("   NOTE: Current blarify CLI does not support JSON export.")
+                        print("   The code indexing feature requires blarify with JSON output support.")
+                        print("   You can index later when this functionality is available.")
 
                 elif response == "background":
                     print("\n🔄 Starting background indexing...")
