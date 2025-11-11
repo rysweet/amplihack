@@ -67,8 +67,9 @@ class MemoryDatabase:
                     # Connection is broken, will create a new one
                     try:
                         self._connection.close()
-                    except Exception:
-                        pass
+                    except (sqlite3.Error, RuntimeError) as close_exc:
+                        # Ignore errors when closing broken connection
+                        logger.debug(f"Error closing broken connection: {close_exc}")
                     self._connection = None
 
             # Create new connection
@@ -173,8 +174,8 @@ class MemoryDatabase:
             if self._connection is not None:
                 try:
                     self._connection.close()
-                except Exception:
-                    pass
+                except (sqlite3.Error, RuntimeError) as close_exc:
+                    logger.debug(f"Error closing database connection: {close_exc}")
                 finally:
                     self._connection = None
 
