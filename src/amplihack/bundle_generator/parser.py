@@ -363,6 +363,7 @@ class PromptParser:
 
         # Default to 1 if no count found
         if count == 0:
+            logger.debug('No explicit agent count found, defaulting to 1')
             count = 1
 
         # Cap at 10 agents
