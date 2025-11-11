@@ -133,6 +133,8 @@ class ProcessManager:
         Returns:
             CompletedProcess instance.
         """
+        if not command or len(command) == 0:
+            raise ValueError('Command cannot be empty')
         kwargs = {"cwd": cwd, "env": env, "capture_output": capture_output, "text": True}
 
         # Add shell=True for Windows if needed
