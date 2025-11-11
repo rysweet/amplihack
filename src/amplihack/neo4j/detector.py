@@ -169,7 +169,8 @@ class Neo4jContainerDetector:
                     # Skip malformed container data
                     continue
 
-            return containers
+            logger.info(f'Detected {len(containers)} Neo4j containers')
+        return containers
 
         except (subprocess.TimeoutExpired, subprocess.SubprocessError):
             return []
