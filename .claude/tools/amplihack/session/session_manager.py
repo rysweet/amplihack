@@ -106,6 +106,9 @@ class SessionManager:
             session = self._active_sessions.get(session_id)
             if session:
                 self._update_session_access(session_id)
+                self.logger.debug(f'Retrieved active session: {session_id}')
+            else:
+                self.logger.debug(f'Session not found: {session_id}')
             return session
 
     def save_session(self, session_id: str, force: bool = False) -> bool:
