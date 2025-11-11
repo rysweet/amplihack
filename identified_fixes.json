@@ -1,0 +1,377 @@
+{
+  "total_issues_found": 251308,
+  "selected_for_fixing": 50,
+  "issue_types": {
+    "bare_except": 15,
+    "missing_error_logging": 15,
+    "missing_input_validation": 15,
+    "silent_exception": 5
+  },
+  "issues": [
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave34/scripts/test_retrieval_isolation.py:486",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave34/scripts/test_retrieval_isolation_simple.py:73",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave33/scripts/test_retrieval_isolation.py:486",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave33/scripts/test_retrieval_isolation_simple.py:73",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave8-input-validation/scripts/test_retrieval_isolation.py:486",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave8-input-validation/scripts/test_retrieval_isolation_simple.py:73",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave32/scripts/test_retrieval_isolation.py:486",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave32/scripts/test_retrieval_isolation_simple.py:73",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave35/scripts/test_retrieval_isolation.py:486",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave35/scripts/test_retrieval_isolation_simple.py:73",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave10-fix3/scripts/test_retrieval_isolation.py:486",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave10-fix3/scripts/test_retrieval_isolation_simple.py:73",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave10-fix4/scripts/test_retrieval_isolation.py:486",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave10-fix4/scripts/test_retrieval_isolation_simple.py:73",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "bare_except",
+      "severity": "medium",
+      "location": "worktrees/wave/scripts/test_retrieval_isolation.py:486",
+      "function": "test_circuit_breaker",
+      "fix": "Replace bare 'except:' with specific exception type"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "tests/test_xpia_hook_integration.py:358",
+      "function": "test_session_start_hook",
+      "fix": "Add logging to exception handler in test_session_start_hook"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "tests/test_xpia_hook_integration.py:389",
+      "function": "test_pre_tool_use_hook_safe_command",
+      "fix": "Add logging to exception handler in test_pre_tool_use_hook_safe_command"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "tests/test_xpia_hook_integration.py:420",
+      "function": "test_pre_tool_use_hook_dangerous_command",
+      "fix": "Add logging to exception handler in test_pre_tool_use_hook_dangerous_command"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "scripts/identify_50_fixes.py:111",
+      "function": "analyze_file",
+      "fix": "Add logging to exception handler in analyze_file"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "scripts/identify_50_fixes.py:156",
+      "function": "find_missing_validation",
+      "fix": "Add logging to exception handler in find_missing_validation"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "scripts/identify_50_fixes.py:67",
+      "function": "visit_Try",
+      "fix": "Add logging to exception handler in visit_Try"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/neo4j/detector.py:105",
+      "function": "is_docker_available",
+      "fix": "Add logging to exception handler in is_docker_available"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/neo4j/detector.py:124",
+      "function": "detect_containers",
+      "fix": "Add logging to exception handler in detect_containers"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/neo4j/detector.py:192",
+      "function": "_parse_container",
+      "fix": "Add logging to exception handler in _parse_container"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/neo4j/shutdown_coordinator.py:265",
+      "function": "get_input",
+      "fix": "Add logging to exception handler in get_input"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/launcher/core.py:131",
+      "function": "_handle_repo_checkout",
+      "fix": "Add logging to exception handler in _handle_repo_checkout"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/launcher/core.py:180",
+      "function": "_handle_directory_change",
+      "fix": "Add logging to exception handler in _handle_directory_change"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/launcher/core.py:242",
+      "function": "_open_log_tail_window",
+      "fix": "Add logging to exception handler in _open_log_tail_window"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/launcher/core.py:405",
+      "function": "_ensure_runtime_directories",
+      "fix": "Add logging to exception handler in _ensure_runtime_directories"
+    },
+    {
+      "type": "missing_error_logging",
+      "severity": "medium",
+      "location": "src/amplihack/launcher/core.py:441",
+      "function": "_fix_hook_paths_in_settings",
+      "fix": "Add logging to exception handler in _fix_hook_paths_in_settings"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "apply_additional_fixes.py:16",
+      "function": "extract_magic_number_constants",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in extract_magic_number_constants"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "apply_additional_fixes.py:49",
+      "function": "improve_variable_names",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in improve_variable_names"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "apply_additional_fixes.py:82",
+      "function": "add_error_context",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in add_error_context"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "apply_additional_fixes.py:111",
+      "function": "improve_comprehension_clarity",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in improve_comprehension_clarity"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "apply_additional_fixes.py:140",
+      "function": "add_defensive_checks",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in add_defensive_checks"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "tests/test_session_start_integration.py:240",
+      "function": "export_conversation_before_compaction",
+      "parameter": "data",
+      "fix": "Add validation for parameter 'data' in export_conversation_before_compaction"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "tests/test_xpia_defense.py:592",
+      "function": "dummy_callback",
+      "parameter": "data",
+      "fix": "Add validation for parameter 'data' in dummy_callback"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "scripts/apply_batch_fixes.py:124",
+      "function": "add_docstring_to_function",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in add_docstring_to_function"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "scripts/apply_batch_fixes.py:173",
+      "function": "add_error_handling",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in add_error_handling"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "scripts/sync_hooks.py:18",
+      "function": "transform_hook_path",
+      "parameter": "path",
+      "fix": "Add validation for parameter 'path' in transform_hook_path"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "scripts/identify_50_fixes.py:111",
+      "function": "analyze_file",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in analyze_file"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "scripts/identify_50_fixes.py:125",
+      "function": "find_missing_logging",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in find_missing_logging"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "scripts/identify_50_fixes.py:19",
+      "function": "__init__",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in __init__"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "scripts/test_doc_parsing_standalone.py:227",
+      "function": "_extract_metadata",
+      "parameter": "file_path",
+      "fix": "Add validation for parameter 'file_path' in _extract_metadata"
+    },
+    {
+      "type": "missing_input_validation",
+      "severity": "medium",
+      "location": "scripts/import_external_knowledge.py:227",
+      "function": "import_custom_url",
+      "parameter": "url",
+      "fix": "Add validation for parameter 'url' in import_custom_url"
+    },
+    {
+      "type": "silent_exception",
+      "severity": "medium",
+      "location": "tests/test_loop_prevention_e2e.py:361",
+      "function": "test_lock_released_on_exception",
+      "fix": "Add logging or proper error handling in except block"
+    },
+    {
+      "type": "silent_exception",
+      "severity": "medium",
+      "location": "tests/test_agent_memory_comprehensive.py:654",
+      "function": "test_readonly_mode_degradation",
+      "fix": "Add logging or proper error handling in except block"
+    },
+    {
+      "type": "silent_exception",
+      "severity": "medium",
+      "location": "tests/test_agent_memory_comprehensive.py:733",
+      "function": "test_invalid_memory_data_handling",
+      "fix": "Add logging or proper error handling in except block"
+    },
+    {
+      "type": "silent_exception",
+      "severity": "medium",
+      "location": "tests/test_agent_memory_comprehensive.py:765",
+      "function": "test_database_corruption_handling",
+      "fix": "Add logging or proper error handling in except block"
+    },
+    {
+      "type": "silent_exception",
+      "severity": "medium",
+      "location": "tests/test_agent_memory_comprehensive.py:840",
+      "function": "test_memory_query_edge_cases",
+      "fix": "Add logging or proper error handling in except block"
+    }
+  ]
+}
