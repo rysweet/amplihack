@@ -66,6 +66,7 @@ class AzureUnifiedHandler:
             Response in OpenAI format
         """
         # Provider handles everything
+        logger.debug(f'Handling OpenAI request for model: {openai_request.get("model")}')
         return await self.provider.make_request(
             openai_request, stream=openai_request.get("stream", False)
         )
