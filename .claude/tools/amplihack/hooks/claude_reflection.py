@@ -341,7 +341,9 @@ def run_claude_reflection(
         result = asyncio.run(analyze_session_with_claude(conversation, template, project_root))
         return result
     except Exception as e:
+        import traceback
         print(f"Claude reflection failed: {e}", file=sys.stderr)
+        print(traceback.format_exc(), file=sys.stderr)
         return None
 
 
