@@ -82,7 +82,7 @@ class PromptParser:
         "advanced": ["advanced", "complex", "comprehensive", "sophisticated", "detailed"],
     }
 
-    def __init__(self, enable_advanced_nlp: bool = False):
+    def __init__(self, enable_advanced_nlp: bool = False) -> None:
         """
         Initialize the prompt parser.
 
