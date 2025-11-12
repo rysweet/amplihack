@@ -376,6 +376,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_neo4j_args(claude_parser)
     add_common_sdk_args(claude_parser)
 
+    # RustyClawd command (Rust implementation)
+    rustyclawd_parser = subparsers.add_parser("RustyClawd", help="Launch RustyClawd (Rust implementation)")
+    add_claude_specific_args(rustyclawd_parser)
+    add_auto_mode_args(rustyclawd_parser)
+    add_neo4j_args(rustyclawd_parser)
+    add_common_sdk_args(rustyclawd_parser)
+
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
     add_auto_mode_args(copilot_parser)
