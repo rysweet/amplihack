@@ -197,7 +197,11 @@ class RepositoryCreator:
 
             if result.returncode != 0:
                 error_msg = result.stderr.strip()
-                logger.error(f"Repository creation failed: {error_msg}")
+                logger.error(
+                    f"GitHub repository creation failed: repo='{final_repo_name}', "
+                    f"returncode={result.returncode}, error='{error_msg}' "
+                    f"(check GitHub CLI authentication and permissions)"
+                )
                 return RepositoryResult(
                     success=False,
                     error=error_msg,
@@ -384,5 +388,6 @@ class RepositoryCreator:
 
             return result.returncode == 0
 
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Git verification failed for {directory}: {e}")
             return False

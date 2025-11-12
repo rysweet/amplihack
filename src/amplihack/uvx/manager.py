@@ -89,24 +89,38 @@ class UVXManager:
             True if --add-dir should be used, False otherwise
         """
         if self.force_staging:
-            logger.debug("Not using --add-dir due to force_staging flag")
+            logger.debug(
+                "UVX --add-dir disabled: force_staging=True (user requested staging mode explicitly)"
+            )
             return False
 
         if not self.is_uvx_environment():
-            logger.debug("Not using --add-dir - not in UVX environment")
+            logger.debug(
+                "UVX --add-dir disabled: not running in UVX environment "
+                "(AMPLIHACK_IN_UVX not set or detection failed)"
+            )
             return False
 
         framework_path = self.get_framework_path()
         if not framework_path:
-            logger.debug("Not using --add-dir - no framework path")
+            logger.debug(
+                "UVX --add-dir disabled: framework path not found "
+                "(path resolution failed or framework not installed)"
+            )
             return False
 
         # Check if path is safe
         if not self.validate_path_security(framework_path):
-            logger.warning(f"Not using --add-dir - unsafe path: {framework_path}")
+            logger.warning(
+                f"UVX --add-dir disabled: path failed security validation "
+                f"(path='{framework_path}', may be outside safe directories or contain symlinks)"
+            )
             return False
 
-        logger.debug(f"Will use --add-dir with path: {framework_path}")
+        logger.debug(
+            f"UVX --add-dir enabled: framework_path='{framework_path}' "
+            f"(validated and safe to use)"
+        )
         return True
 
     def should_use_staging(self) -> bool:

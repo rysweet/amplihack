@@ -210,13 +210,13 @@ def interactive_neo4j_startup() -> bool:
 
     print("✅ Prerequisites ready\n")
 
-    # 2. Start Neo4j
+    # 2. Start Neo4j (non-blocking - just start the container)
     print("🐳 Starting Neo4j container...")
-    if not lifecycle.ensure_neo4j_running(blocking=True):
+    if not lifecycle.ensure_neo4j_running(blocking=False):
         print("❌ Failed to start Neo4j\n")
         return ask_user_continue_without_neo4j()
 
-    # 3. Wait for ready with feedback
+    # 3. Wait for ready with feedback (checks docker logs first, then connects)
     if not wait_for_neo4j_with_feedback(max_wait=60):
         return ask_user_continue_without_neo4j()
 
