@@ -1,0 +1,1 @@
+Auto mode works with RustyClawd!
