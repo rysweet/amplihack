@@ -491,10 +491,15 @@ After presenting the findings and getting the user's decision, you may proceed a
         return {"decision": "block", "reason": reason}
 
 
-def main():
-    """Entry point for the stop hook."""
+def stop():
+    """Entry point for the stop hook (called by Claude Code)."""
     hook = StopHook()
     hook.run()
+
+
+def main():
+    """Legacy entry point for the stop hook."""
+    stop()
 
 
 if __name__ == "__main__":
