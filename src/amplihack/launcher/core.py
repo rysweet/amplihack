@@ -603,6 +603,8 @@ class ClaudeLauncher:
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.proxy_manager:
                     self.proxy_manager.stop_proxy()
+                # Set flag to prevent stdin reads during shutdown (avoids SystemExit race)
+                os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
                 sys.exit(0)
 
             signal.signal(signal.SIGINT, signal_handler)

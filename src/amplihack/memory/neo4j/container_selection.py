@@ -341,10 +341,15 @@ def resolve_container_name(
         logger.info("Auto mode: Using default container: %s", default_name)
         return default_name
 
-    # Interactive mode: Show menu
+    # Interactive mode: Use unified dialog (combines container selection + credential sync)
     try:
-        containers = discover_amplihack_containers()
-        return select_container_interactive(containers, default_name)
+        from .unified_startup_dialog import unified_container_and_credential_dialog
+        container_name = unified_container_and_credential_dialog(default_name, auto_mode=False)
+        if container_name:
+            return container_name
+        # User cancelled, fall back to default
+        logger.info("User cancelled selection, using default: %s", default_name)
+        return default_name
     except KeyboardInterrupt:
         # User cancelled - re-raise to allow caller to handle
         raise

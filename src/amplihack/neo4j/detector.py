@@ -98,7 +98,7 @@ class Neo4jContainerDetector:
         r"neo4j-amplihack",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the detector."""
         self._docker_available: Optional[bool] = None
 

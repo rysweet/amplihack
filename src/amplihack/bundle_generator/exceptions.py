@@ -45,6 +45,11 @@ class BundleGeneratorError(Exception):
             "timestamp": self.timestamp.isoformat(),
         }
 
+    def __str__(self) -> str:
+        """Enhanced string representation including error code."""
+        base_message = super().__str__()
+        return f"[{self.error_code}] {base_message}"
+
 
 class ParsingError(BundleGeneratorError):
     """Exception raised when prompt parsing fails."""

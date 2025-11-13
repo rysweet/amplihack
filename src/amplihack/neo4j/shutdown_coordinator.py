@@ -71,7 +71,7 @@ class Neo4jShutdownCoordinator:
 
             return resolved
         except Exception as e:
-            logger.warning(f"Path validation failed: {e}")
+            logger.warning("Path validation failed: %s", e)
             raise
 
     def _load_preference(self) -> str:

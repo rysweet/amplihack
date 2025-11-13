@@ -237,6 +237,94 @@ def parse_args_with_passthrough(
     return args, claude_args
 
 
+def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
+    """Add auto mode arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+    )
+    parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=10,
+        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
+    parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
+    )
+    parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+
+
+def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
+    """Add common SDK arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
+
+
+def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
+    """Add Claude-specific arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--with-proxy-config",
+        metavar="PATH",
+        help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
+    )
+    parser.add_argument(
+        "--builtin-proxy",
+        action="store_true",
+        help="Use built-in proxy server with OpenAI Responses API support instead of external claude-code-proxy",
+    )
+    parser.add_argument(
+        "--checkout-repo",
+        metavar="GITHUB_URI",
+        help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
+    )
+    parser.add_argument(
+        "--docker",
+        action="store_true",
+        help="Run amplihack in Docker container for isolated execution",
+    )
+
+
+def add_neo4j_args(parser: argparse.ArgumentParser) -> None:
+    """Add Neo4j graph memory arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
+    parser.add_argument(
+        "--use-memory-db",
+        metavar="NAME",
+        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
+    )
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser for amplihack CLI.
 
@@ -276,163 +364,27 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     launch_parser = subparsers.add_parser(
         "launch", help="Launch Claude Code with optional proxy configuration"
     )
-    launch_parser.add_argument(
-        "--with-proxy-config",
-        metavar="PATH",
-        help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
-    )
-    launch_parser.add_argument(
-        "--builtin-proxy",
-        action="store_true",
-        help="Use built-in proxy server with OpenAI Responses API support instead of external claude-code-proxy",
-    )
-    launch_parser.add_argument(
-        "--checkout-repo",
-        metavar="GITHUB_URI",
-        help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
-    )
-    launch_parser.add_argument(
-        "--docker",
-        action="store_true",
-        help="Run amplihack in Docker container for isolated execution",
-    )
-    launch_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
-    )
-    launch_parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
-    )
-    launch_parser.add_argument(
-        "--append",
-        metavar="PROMPT",
-        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
-    )
-    launch_parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
-    )
-    launch_parser.add_argument(
-        "--use-graph-mem",
-        action="store_true",
-        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
-    )
-    launch_parser.add_argument(
-        "--use-memory-db",
-        metavar="NAME",
-        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
-    )
-    launch_parser.add_argument(
-        "--no-reflection",
-        action="store_true",
-        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
+    add_claude_specific_args(launch_parser)
+    add_auto_mode_args(launch_parser)
+    add_neo4j_args(launch_parser)
+    add_common_sdk_args(launch_parser)
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
-    claude_parser.add_argument("--with-proxy-config", metavar="PATH")
-    claude_parser.add_argument("--builtin-proxy", action="store_true")
-    claude_parser.add_argument("--checkout-repo", metavar="GITHUB_URI")
-    claude_parser.add_argument("--docker", action="store_true")
-    claude_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
-    )
-    claude_parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
-    )
-    claude_parser.add_argument(
-        "--append",
-        metavar="PROMPT",
-        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
-    )
-    claude_parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
-    )
-    claude_parser.add_argument(
-        "--use-graph-mem",
-        action="store_true",
-        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
-    )
-    claude_parser.add_argument(
-        "--use-memory-db",
-        metavar="NAME",
-        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
-    )
-    claude_parser.add_argument(
-        "--no-reflection",
-        action="store_true",
-        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
+    add_claude_specific_args(claude_parser)
+    add_auto_mode_args(claude_parser)
+    add_neo4j_args(claude_parser)
+    add_common_sdk_args(claude_parser)
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
-    copilot_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
-    )
-    copilot_parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
-    )
-    copilot_parser.add_argument(
-        "--append",
-        metavar="PROMPT",
-        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
-    )
-    copilot_parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
-    )
-    copilot_parser.add_argument(
-        "--no-reflection",
-        action="store_true",
-        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
+    add_auto_mode_args(copilot_parser)
+    add_common_sdk_args(copilot_parser)
 
     # Codex command
     codex_parser = subparsers.add_parser("codex", help="Launch OpenAI Codex CLI")
-    codex_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
-    )
-    codex_parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
-    )
-    codex_parser.add_argument(
-        "--append",
-        metavar="PROMPT",
-        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
-    )
-    codex_parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
-    )
-    codex_parser.add_argument(
-        "--no-reflection",
-        action="store_true",
-        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
+    add_auto_mode_args(codex_parser)
+    add_common_sdk_args(codex_parser)
 
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
@@ -483,10 +435,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"UVX mode: Staging Claude environment in: {temp_claude_dir}")
-            print(f"Original working directory: {original_cwd}")
-            if copy_strategy.used_temp:
-                print("Using temp directory due to conflicts")
+            print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")
+            print(f"Working directory remains: {original_cwd}")
 
         # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
@@ -497,26 +447,22 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
-        # Copy .claude contents to target directory
+        # Copy .claude contents to temp .claude directory
+        # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
-        # Register cleanup handler for temp directory
-        if copy_strategy.used_temp and copy_strategy.target_dir:
-            import atexit
-            import shutil
+        # Smart PROJECT.md initialization for UVX mode
+        if copied:
+            try:
+                from .utils.project_initializer import initialize_project_md, InitMode
 
-            def cleanup_temp_dir():
-                """Clean up temporary directory created for safety."""
-                try:
-                    # Remove the temp directory (parent of .claude)
-                    temp_parent = copy_strategy.target_dir.parent
-                    if temp_parent.exists() and temp_parent.name.startswith("amplihack-"):
-                        shutil.rmtree(temp_parent, ignore_errors=True)
-                except Exception:
-                    # Silently ignore cleanup errors - not critical
-                    pass
-
-            atexit.register(cleanup_temp_dir)
+                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
+                if result.success and result.action_taken.value in ["initialized", "regenerated"]:
+                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
+            except Exception as e:
+                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                    print(f"Warning: PROJECT.md initialization failed: {e}")
 
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
         # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only

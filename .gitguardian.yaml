@@ -17,6 +17,11 @@ secret:
       match: "224876143"  # Occurrence ID from test_connection_tracker.py
     - name: incident-22286686-auth-tuple-prod
       match: "224874751"  # Occurrence ID from connection_tracker.py
+    # Test fixtures from PR #1301
+    - name: test-fixture-fake-password
+      match: 548fa7beca64b45b06c7b975a7b34c866bc6a84650e9237e2075648bac2719be  # SHA256 of FAKE_PASSWORD_FOR_TESTS
+    - name: test-fixture-fake-password-literal
+      match: FAKE_PASSWORD_FOR_TESTS
 
   # Exclude files and paths by globbing patterns
   ignored_paths:

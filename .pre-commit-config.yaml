@@ -57,7 +57,6 @@ repos:
           - --ignore=C414,C401
           - --ignore=ERA001
           - --ignore=A001,A002,A004
-          - --ignore=I001
           - --ignore=PIE810
       - id: ruff-format
 
