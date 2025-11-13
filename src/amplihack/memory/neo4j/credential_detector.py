@@ -54,7 +54,7 @@ def detect_container_password(container_name: str) -> Optional[str]:
         for env_var in env_vars:
             if env_var.startswith("NEO4J_AUTH="):
                 auth_value = env_var.split("=", 1)[1]
-                logger.debug("Found NEO4J_AUTH: %s", auth_value)
+                logger.debug("Found NEO4J_AUTH in container environment")
 
                 # Handle auth disabled case
                 if auth_value == "none":
@@ -67,7 +67,7 @@ def detect_container_password(container_name: str) -> Optional[str]:
                     logger.info("Detected credentials from container (user: %s)", username)
                     return password
 
-                logger.warning("Unexpected NEO4J_AUTH format: %s", auth_value)
+                logger.warning("Unexpected NEO4J_AUTH format (contains %d characters)", len(auth_value))
                 return None
 
         # NEO4J_AUTH not found in environment
