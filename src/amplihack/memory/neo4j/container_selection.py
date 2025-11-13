@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from .credential_detector import detect_container_password
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +28,7 @@ class ContainerInfo:
         status: Container status (e.g., "Up", "Exited")
         ports: List of port mappings
     """
+
     name: str
     status: str
     ports: List[str]
@@ -41,6 +44,7 @@ class NameResolutionContext:
         current_dir: Current working directory path
         auto_mode: Whether running in auto mode (non-interactive)
     """
+
     cli_arg: Optional[str]
     env_var: Optional[str]
     current_dir: Path
@@ -65,13 +69,13 @@ def sanitize_directory_name(dirname: str) -> str:
         'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
     """
     # Replace special chars with dashes
-    sanitized = re.sub(r'[^a-zA-Z0-9-]', '-', dirname)
+    sanitized = re.sub(r"[^a-zA-Z0-9-]", "-", dirname)
 
     # Remove consecutive dashes
-    sanitized = re.sub(r'-+', '-', sanitized)
+    sanitized = re.sub(r"-+", "-", sanitized)
 
     # Remove leading/trailing dashes
-    sanitized = sanitized.strip('-')
+    sanitized = sanitized.strip("-")
 
     # Truncate at 40 chars
     return sanitized[:40]
@@ -124,6 +128,7 @@ def extract_ports(container_name: str) -> List[str]:
 
         # Parse port mappings from JSON
         import json
+
         ports_data = json.loads(result.stdout)
 
         port_mappings = []
@@ -236,9 +241,18 @@ def select_container_interactive(containers: List[ContainerInfo], default_name: 
     for i, container in enumerate(containers, 1):
         status_icon = "✓" if "Up" in container.status else "○"
         ports_str = format_ports(container.ports)
-        print(f"  {i}. {status_icon} {container.name}")
+
+        # Detect credentials for this container
+        detected_password = detect_container_password(container.name)
+        cred_icon = "🔑" if detected_password else "⚠️"
+
+        print(f"  {i}. {status_icon} {cred_icon} {container.name}")
         print(f"     Status: {container.status}")
         print(f"     Ports: {ports_str}")
+        if detected_password:
+            print("     Credentials: Detected")
+        else:
+            print("     Credentials: Not detected (will use environment)")
 
     print(f"\n  {len(containers) + 1}. Create new container: {default_name}")
 
@@ -255,11 +269,10 @@ def select_container_interactive(containers: List[ContainerInfo], default_name: 
                     selected = containers[choice_num - 1].name
                     print(f"\n✓ Selected: {selected}\n")
                     return selected
-                elif choice_num == len(containers) + 1:
+                if choice_num == len(containers) + 1:
                     print(f"\n✓ Creating new: {default_name}\n")
                     return default_name
-                else:
-                    print(f"Please enter a number between 1 and {len(containers) + 1}")
+                print(f"Please enter a number between 1 and {len(containers) + 1}")
             except ValueError:
                 print("Please enter a valid number")
 
