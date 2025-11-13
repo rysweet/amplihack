@@ -6,9 +6,11 @@ Tests the hook lifecycle including:
 - Output writing to stdout
 - Error handling
 - Logging functionality
+- Shutdown flag handling
 """
 
 import json
+import os
 from io import StringIO
 from unittest.mock import patch
 
@@ -203,3 +205,65 @@ def test_unit_run_008_logging_functionality(stop_hook):
             # Should start with [timestamp] format
             assert line.startswith("[")
             assert "T" in line[:30]  # ISO timestamp in first 30 chars
+
+
+def test_unit_run_009_shutdown_flag_skips_stdin_read(stop_hook):
+    """UNIT-RUN-009: Shutdown flag prevents stdin read to avoid SystemExit race."""
+    # Set the shutdown flag
+    os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
+
+    try:
+        # Mock stdin with data (should NOT be read)
+        json_input = '{"session_id": "test"}'
+
+        # Mock stdin and stdout
+        with patch("sys.stdin", StringIO(json_input)), patch(
+            "sys.stdout", new_callable=StringIO
+        ) as mock_stdout:
+            # Run the hook
+            stop_hook.run()
+
+            # Get output
+            output = mock_stdout.getvalue()
+
+            # Expected: Empty dict returned (stdin was not read)
+            output_data = json.loads(output)
+            assert output_data == {}
+
+        # Verify log shows shutdown was detected
+        log_content = stop_hook.log_file.read_text()
+        assert "Skipping stdin read during shutdown" in log_content
+        assert "DEBUG" in log_content
+
+    finally:
+        # Clean up environment variable
+        os.environ.pop("AMPLIHACK_SHUTDOWN_IN_PROGRESS", None)
+
+
+def test_unit_run_010_no_shutdown_flag_reads_stdin_normally(stop_hook):
+    """UNIT-RUN-010: Without shutdown flag, stdin is read normally."""
+    # Ensure shutdown flag is NOT set
+    os.environ.pop("AMPLIHACK_SHUTDOWN_IN_PROGRESS", None)
+
+    # Input
+    input_data = {"session_id": "test"}
+    json_input = json.dumps(input_data)
+
+    # Mock stdin and stdout
+    with patch("sys.stdin", StringIO(json_input)), patch(
+        "sys.stdout", new_callable=StringIO
+    ) as mock_stdout:
+        # Run the hook
+        stop_hook.run()
+
+        # Get output
+        output = mock_stdout.getvalue()
+
+        # Expected: Valid JSON output (stdin was read)
+        output_data = json.loads(output)
+        assert isinstance(output_data, dict)
+
+    # Verify log shows normal operation
+    log_content = stop_hook.log_file.read_text()
+    assert "Received input with keys:" in log_content
+    assert "Skipping stdin read during shutdown" not in log_content
