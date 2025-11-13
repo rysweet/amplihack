@@ -46,22 +46,55 @@ def get_rustyclawd_path() -> Optional[Path]:
     return None
 
 
+def install_rustyclawd() -> bool:
+    """Install or update RustyClawd via cargo.
+
+    Returns:
+        True if installation successful.
+    """
+    import subprocess
+    import sys
+
+    print("Installing/updating RustyClawd...")
+    try:
+        subprocess.run(
+            ["cargo", "install", "--git", "https://github.com/rysweet/RustyClawd", "--bin", "rusty", "--force"],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        print("✅ RustyClawd installed successfully")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Failed to install RustyClawd: {e.stderr}")
+        return False
+    except FileNotFoundError:
+        print("❌ Cargo not found - install Rust from https://rustup.rs")
+        return False
+
+
 def should_use_rustyclawd() -> bool:
     """Determine if RustyClawd should be used instead of Claude Code.
-    
+
     Checks AMPLIHACK_USE_RUSTYCLAWD environment variable and binary availability.
-    
+    Auto-installs if enabled but not found.
+
     Returns:
         True if RustyClawd should be used.
     """
     import os
-    
+
     # Check environment variable override
     env_val = os.getenv("AMPLIHACK_USE_RUSTYCLAWD", "").lower()
     if env_val in ("1", "true", "yes"):
-        return is_rustyclawd_available()
+        # Try to use, install if not available
+        if is_rustyclawd_available():
+            return True
+        else:
+            print("RustyClawd not found, installing...")
+            return install_rustyclawd()
     elif env_val in ("0", "false", "no"):
         return False
-    
+
     # Auto-detect: Use if available (prefer Rust implementation)
     return is_rustyclawd_available()
