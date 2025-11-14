@@ -18,6 +18,52 @@ from .detector import ClaudeDirectoryDetector
 from .repo_checkout import checkout_repository
 
 
+def merge_node_options(user_node_options: Optional[str], default_memory_mb: int = 8192) -> str:
+    """Merge user's NODE_OPTIONS with amplihack defaults.
+
+    Respects user's explicit memory limit if set, otherwise applies default.
+    Preserves all user's other Node.js flags.
+
+    CRITICAL USER REQUIREMENT: "If the user needs more mem, we should honor that"
+    - User's memory limit is NEVER overridden
+    - User's other flags are ALWAYS preserved
+    - Default only applied when user hasn't set memory
+
+    Args:
+        user_node_options: User's current NODE_OPTIONS value (may be None or empty)
+        default_memory_mb: Default memory limit in MB (default: 8192)
+
+    Returns:
+        Merged NODE_OPTIONS string ready for env assignment
+
+    Examples:
+        >>> merge_node_options(None)
+        '--max-old-space-size=8192'
+
+        >>> merge_node_options("")
+        '--max-old-space-size=8192'
+
+        >>> merge_node_options("--inspect --trace-warnings")
+        '--inspect --trace-warnings --max-old-space-size=8192'
+
+        >>> merge_node_options("--max-old-space-size=4096")
+        '--max-old-space-size=4096'
+
+        >>> merge_node_options("--inspect --max-old-space-size=4096 --trace-warnings")
+        '--inspect --max-old-space-size=4096 --trace-warnings'
+    """
+    # Case 1: No user options or empty string
+    if not user_node_options or user_node_options.strip() == "":
+        return f"--max-old-space-size={default_memory_mb}"
+
+    # Case 2: User has set memory limit - RESPECT IT (critical requirement)
+    if "--max-old-space-size" in user_node_options:
+        return user_node_options
+
+    # Case 3: User has other flags but no memory - add default
+    return f"{user_node_options} --max-old-space-size={default_memory_mb}"
+
+
 class ClaudeLauncher:
     """Launches Claude Code with proper configuration and performance optimization.
 
@@ -520,7 +566,8 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Set Node.js memory limit to 8GB for claude/claude-trace
-            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+            # Respects user's existing NODE_OPTIONS if set
+            env["NODE_OPTIONS"] = merge_node_options(os.environ.get("NODE_OPTIONS"))
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -603,7 +650,8 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Set Node.js memory limit to 8GB for claude/claude-trace
-            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+            # Respects user's existing NODE_OPTIONS if set
+            env["NODE_OPTIONS"] = merge_node_options(os.environ.get("NODE_OPTIONS"))
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
