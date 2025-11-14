@@ -18,6 +18,12 @@ ESSENTIAL_DIRS = [
     "tools/xpia",  # XPIA security hooks (Issue #458)
     "context",  # Philosophy, patterns, project info
     "workflow",  # DEFAULT_WORKFLOW.md
+    "skills",  # Claude Code Skills (12 production skills)
+    "templates",  # Investigation & architecture doc templates
+    "scenarios",  # Production scenario tools
+    "docs",  # Investigation examples and documentation
+    "schemas",  # JSON/YAML schemas for validation
+    "config",  # Configuration files for tools
 ]
 
 # Runtime directories that need to be created
@@ -103,11 +109,16 @@ HOOK_CONFIGS = {
 }
 
 
-def ensure_dirs():
+def ensure_dirs() -> None:
+    """Ensure that the Claude directory exists.
+
+    Creates the CLAUDE_DIR directory if it doesn't exist, including any
+    necessary parent directories.
+    """
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 
-def copytree_manifest(repo_root, dst, rel_top=".claude"):
+def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> list[str]:
     """Copy all essential directories from repo to destination.
 
     Args:
@@ -211,22 +222,32 @@ def copytree_manifest(repo_root, dst, rel_top=".claude"):
     return copied
 
 
-def write_manifest(files, dirs):
+def write_manifest(files: list[str], dirs: list[str]) -> None:
+    """Write manifest file with list of files and directories."""
     os.makedirs(os.path.dirname(MANIFEST_JSON), exist_ok=True)
     with open(MANIFEST_JSON, "w", encoding="utf-8") as f:
         json.dump({"files": files, "dirs": dirs}, f, indent=2)
 
 
-def read_manifest():
+def read_manifest() -> tuple[list[str], list[str]]:
+    """Read manifest file and return files and directories lists."""
     try:
         with open(MANIFEST_JSON, encoding="utf-8") as f:
             mf = json.load(f)
             return mf.get("files", []), mf.get("dirs", [])
-    except Exception:
+    except (OSError, json.JSONDecodeError):
         return [], []
 
 
-def get_all_files_and_dirs(root_dirs):
+def get_all_files_and_dirs(root_dirs: list[str]) -> tuple[list[str], list[str]]:
+    """Get all files and directories from root directories.
+
+    Args:
+        root_dirs: List of root directory paths to scan
+
+    Returns:
+        Tuple of (sorted file paths, sorted directory paths)
+    """
     all_files = []
     all_dirs = set()
     for d in root_dirs:
@@ -241,7 +262,8 @@ def get_all_files_and_dirs(root_dirs):
     return sorted(all_files), sorted(all_dirs)
 
 
-def all_rel_dirs(base):
+def all_rel_dirs(base: str) -> set[str]:
+    """Get all relative directory paths from base directory."""
     result = set()
     for r, dirs, _files in os.walk(base):
         rel = os.path.relpath(r, CLAUDE_DIR)
@@ -518,6 +540,26 @@ def _local_install(repo_root):
         print("\n❌ No directories were copied. Installation may be incomplete.")
         print("   Please check that the source repository is valid.\n")
         return
+
+    # Step 3.5: Smart PROJECT.md initialization
+    print("\n📝 Initializing PROJECT.md:")
+    try:
+        from .utils.project_initializer import InitMode, initialize_project_md
+
+        # Use FORCE mode during installation to fix amplihack-describing PROJECT.md
+        result = initialize_project_md(Path(CLAUDE_DIR).parent, mode=InitMode.FORCE)
+
+        if result.success:
+            if result.action_taken.value in ["initialized", "regenerated"]:
+                print(f"   ✅ PROJECT.md {result.action_taken.value} using {result.method.value}")
+            elif result.action_taken.value == "offered":
+                print(f"   ℹ️  {result.message}")
+            else:
+                print("   ✅ PROJECT.md valid (skipped)")
+        else:
+            print(f"   ⚠️  {result.message}")
+    except Exception as e:
+        print(f"   ⚠️  PROJECT.md initialization failed: {e}")
 
     # Step 4: Create runtime directories
     print("\n📂 Creating runtime directories:")

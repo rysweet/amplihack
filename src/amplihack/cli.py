@@ -27,12 +27,22 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
         print("Neo4j graph memory enabled")
 
+        # Set container name if provided
+        if getattr(args, "use_memory_db", None):
+            # Store in environment for session hooks to access
+            os.environ["NEO4J_CONTAINER_NAME_CLI"] = args.use_memory_db
+            print(f"Using Neo4j container: {args.use_memory_db}")
+
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
 
     # Handle --no-reflection flag (disable always wins priority)
     if getattr(args, "no_reflection", False):
         os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
+    # Handle --auto flag (for Neo4j container selection non-interactive mode)
+    if getattr(args, "auto", False):
+        os.environ["AMPLIHACK_AUTO_MODE"] = "1"
 
     if use_docker:
         print(
@@ -227,6 +237,94 @@ def parse_args_with_passthrough(
     return args, claude_args
 
 
+def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
+    """Add auto mode arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
+    )
+    parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=10,
+        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
+    )
+    parser.add_argument(
+        "--append",
+        metavar="PROMPT",
+        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
+    )
+    parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+
+
+def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
+    """Add common SDK arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--no-reflection",
+        action="store_true",
+        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
+
+
+def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
+    """Add Claude-specific arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--with-proxy-config",
+        metavar="PATH",
+        help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
+    )
+    parser.add_argument(
+        "--builtin-proxy",
+        action="store_true",
+        help="Use built-in proxy server with OpenAI Responses API support instead of external claude-code-proxy",
+    )
+    parser.add_argument(
+        "--checkout-repo",
+        metavar="GITHUB_URI",
+        help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
+    )
+    parser.add_argument(
+        "--docker",
+        action="store_true",
+        help="Run amplihack in Docker container for isolated execution",
+    )
+
+
+def add_neo4j_args(parser: argparse.ArgumentParser) -> None:
+    """Add Neo4j graph memory arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
+    parser.add_argument(
+        "--use-memory-db",
+        metavar="NAME",
+        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
+    )
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser for amplihack CLI.
 
@@ -266,143 +364,27 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     launch_parser = subparsers.add_parser(
         "launch", help="Launch Claude Code with optional proxy configuration"
     )
-    launch_parser.add_argument(
-        "--with-proxy-config",
-        metavar="PATH",
-        help="Path to .env file with proxy configuration (for Azure OpenAI integration with auto persistence prompt)",
-    )
-    launch_parser.add_argument(
-        "--builtin-proxy",
-        action="store_true",
-        help="Use built-in proxy server with OpenAI Responses API support instead of external claude-code-proxy",
-    )
-    launch_parser.add_argument(
-        "--checkout-repo",
-        metavar="GITHUB_URI",
-        help="Clone a GitHub repository and use it as working directory. Supports: owner/repo, https://github.com/owner/repo, git@github.com:owner/repo",
-    )
-    launch_parser.add_argument(
-        "--docker",
-        action="store_true",
-        help="Run amplihack in Docker container for isolated execution",
-    )
-    launch_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Run in autonomous agentic mode with iterative loop (clarify → plan → execute → evaluate). Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
-    )
-    launch_parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
-    )
-    launch_parser.add_argument(
-        "--append",
-        metavar="PROMPT",
-        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
-    )
-    launch_parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
-    )
-    launch_parser.add_argument(
-        "--use-graph-mem",
-        action="store_true",
-        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
-    )
-    launch_parser.add_argument(
-        "--no-reflection",
-        action="store_true",
-        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
+    add_claude_specific_args(launch_parser)
+    add_auto_mode_args(launch_parser)
+    add_neo4j_args(launch_parser)
+    add_common_sdk_args(launch_parser)
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
-    claude_parser.add_argument("--with-proxy-config", metavar="PATH")
-    claude_parser.add_argument("--builtin-proxy", action="store_true")
-    claude_parser.add_argument("--checkout-repo", metavar="GITHUB_URI")
-    claude_parser.add_argument("--docker", action="store_true")
-    claude_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
-    )
-    claude_parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
-    )
-    claude_parser.add_argument(
-        "--append",
-        metavar="PROMPT",
-        help="Append new instructions to a running auto mode session. Finds the active auto mode log directory in the current project and injects the new prompt.",
-    )
-    claude_parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
-    )
-    claude_parser.add_argument(
-        "--use-graph-mem",
-        action="store_true",
-        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
-    )
-    claude_parser.add_argument(
-        "--no-reflection",
-        action="store_true",
-        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
+    add_claude_specific_args(claude_parser)
+    add_auto_mode_args(claude_parser)
+    add_neo4j_args(claude_parser)
+    add_common_sdk_args(claude_parser)
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
-    copilot_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
-    )
-    copilot_parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
-    )
-    copilot_parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
-    )
-    copilot_parser.add_argument(
-        "--no-reflection",
-        action="store_true",
-        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
+    add_auto_mode_args(copilot_parser)
+    add_common_sdk_args(copilot_parser)
 
     # Codex command
     codex_parser = subparsers.add_parser("codex", help="Launch OpenAI Codex CLI")
-    codex_parser.add_argument(
-        "--auto",
-        action="store_true",
-        help="Run in autonomous agentic mode. Usage: --auto -- -p 'your task'. See docs/AUTO_MODE.md for details.",
-    )
-    codex_parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=10,
-        help="Max turns for auto mode (default: 10). Guidance: 5-10 for simple tasks, 10-15 for medium complexity, 15-30 for complex tasks.",
-    )
-    codex_parser.add_argument(
-        "--ui",
-        action="store_true",
-        help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
-    )
-    codex_parser.add_argument(
-        "--no-reflection",
-        action="store_true",
-        help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
+    add_auto_mode_args(codex_parser)
+    add_common_sdk_args(codex_parser)
 
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
@@ -433,11 +415,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Save original directory (which is now also the working directory)
         original_cwd = os.getcwd()
 
-        # Store it for later use (though now it's the same as current directory)
-        os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
+        # Safety: Check for git conflicts before copying
+        from . import ESSENTIAL_DIRS
+        from .safety import GitConflictDetector, SafeCopyStrategy
 
-        # Use .claude directory in current working directory instead of temp
-        temp_claude_dir = os.path.join(original_cwd, ".claude")
+        detector = GitConflictDetector(original_cwd)
+        conflict_result = detector.detect_conflicts(ESSENTIAL_DIRS)
+
+        strategy_manager = SafeCopyStrategy()
+        copy_strategy = strategy_manager.determine_target(
+            original_target=os.path.join(original_cwd, ".claude"),
+            has_conflicts=conflict_result.has_conflicts,
+            conflicting_files=conflict_result.conflicting_files
+        )
+
+        temp_claude_dir = str(copy_strategy.target_dir)
+
+        # Store original_cwd for auto mode (always set, regardless of conflicts)
+        os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
             print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")
@@ -455,6 +450,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+
+        # Smart PROJECT.md initialization for UVX mode
+        if copied:
+            try:
+                from .utils.project_initializer import initialize_project_md, InitMode
+
+                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
+                if result.success and result.action_taken.value in ["initialized", "regenerated"]:
+                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
+            except Exception as e:
+                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                    print(f"Warning: PROJECT.md initialization failed: {e}")
 
         # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
         # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
@@ -616,6 +624,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.command == "copilot":
         from .launcher.copilot import launch_copilot
 
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
         if exit_code is not None:
@@ -631,6 +643,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     elif args.command == "codex":
         from .launcher.codex import launch_codex
+
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)

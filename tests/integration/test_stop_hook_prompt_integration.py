@@ -14,7 +14,7 @@ def test_integ_prompt_001_default_to_custom_prompt_transition(
     input_data = {"session_id": "test"}
 
     # Create lock file
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
     # Step 1: Execute with no custom prompt file
@@ -27,7 +27,7 @@ def test_integ_prompt_001_default_to_custom_prompt_transition(
     assert "TODOs" in output1["reason"]
 
     # Step 2: Create custom prompt file
-    prompt_file = temp_project_root / ".claude/tools/amplihack/.continuation_prompt"
+    prompt_file = temp_project_root / ".claude/runtime/locks/.continuation_prompt"
     prompt_file.write_text("Custom work prompt", encoding="utf-8")
 
     # Step 3: Execute again
@@ -46,11 +46,11 @@ def test_integ_prompt_002_custom_prompt_file_updated_during_execution(
     input_data = {"session_id": "test"}
 
     # Create lock file
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
     # Step 1: Create custom prompt "Version 1"
-    prompt_file = temp_project_root / ".claude/tools/amplihack/.continuation_prompt"
+    prompt_file = temp_project_root / ".claude/runtime/locks/.continuation_prompt"
     prompt_file.write_text("Version 1", encoding="utf-8")
 
     # Step 2: Execute hook - verify uses "Version 1"
@@ -76,10 +76,10 @@ def test_integ_prompt_003_custom_prompt_file_deleted_during_lock_active(
     input_data = {"session_id": "test"}
 
     # Step 1: Create lock and custom prompt
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
-    prompt_file = temp_project_root / ".claude/tools/amplihack/.continuation_prompt"
+    prompt_file = temp_project_root / ".claude/runtime/locks/.continuation_prompt"
     prompt_file.write_text("Custom prompt", encoding="utf-8")
 
     # Step 2: Execute hook - verify uses custom
@@ -107,11 +107,11 @@ def test_integ_prompt_004_custom_prompt_with_edge_case_content(
     input_data = {"session_id": "test"}
 
     # Create lock file
-    lock_file = temp_project_root / ".claude/tools/amplihack/.lock_active"
+    lock_file = temp_project_root / ".claude/runtime/locks/.lock_active"
     lock_file.touch()
 
     # Create prompt with special content
-    prompt_file = temp_project_root / ".claude/tools/amplihack/.continuation_prompt"
+    prompt_file = temp_project_root / ".claude/runtime/locks/.continuation_prompt"
 
     # Test 1: Very long line (but under 1000 char limit)
     long_line = "a" * 500

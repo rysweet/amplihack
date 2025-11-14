@@ -5,10 +5,10 @@ Provides real or containerized Neo4j instances for integration testing.
 Uses testcontainers when available, falls back to requiring real Docker.
 """
 
-import pytest
-import time
 import subprocess
+import time
 
+import pytest
 
 # =============================================================================
 # Neo4j Container Fixtures (using testcontainers or real Docker)
@@ -54,7 +54,7 @@ def neo4j_test_container():
 def docker_available():
     """Check if Docker is available for integration tests."""
     try:
-        result = subprocess.run(["docker", "ps"], capture_output=True, timeout=5, check=True)
+        subprocess.run(["docker", "ps"], capture_output=True, timeout=5, check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
         pytest.skip("Docker not available - skipping integration tests")

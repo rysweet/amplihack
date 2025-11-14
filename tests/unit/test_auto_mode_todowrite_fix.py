@@ -6,8 +6,8 @@ Claude SDK behavior.
 """
 
 import unittest
-from unittest.mock import Mock, MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
 
 class TestAutoModeTodoWriteFix(unittest.TestCase):
@@ -51,7 +51,6 @@ class TestAutoModeTodoWriteFix(unittest.TestCase):
 
         # Track if _handle_todo_write was called
         called_with_todos = []
-        original_handle = auto_mode._handle_todo_write
 
         def mock_handle(todos):
             called_with_todos.append(todos)

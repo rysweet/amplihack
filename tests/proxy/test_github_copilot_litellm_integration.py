@@ -1,6 +1,9 @@
 """Tests for GitHub Copilot LiteLLM integration."""
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    raise ImportError("pytest is required to run tests. Install with: pip install pytest")
 
 from amplihack.proxy.config import ProxyConfig
 from amplihack.proxy.github_detector import GitHubEndpointDetector

@@ -13,9 +13,10 @@ These tests may use testcontainers or mock Docker for CI/CD compatibility.
 All tests should FAIL initially (TDD approach).
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
 import time
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 @pytest.mark.integration
@@ -35,8 +36,8 @@ class TestFullStartupFlow:
 
     def test_WHEN_neo4j_starts_THEN_container_is_running_within_timeout(self):
         """Test that container becomes running within reasonable time."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.container_manager import ContainerManager
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=False)
 
@@ -48,8 +49,8 @@ class TestFullStartupFlow:
 
     def test_WHEN_neo4j_ready_THEN_can_connect_successfully(self):
         """Test successful connection after startup."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.connector import Neo4jConnector
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
 
@@ -64,8 +65,8 @@ class TestFullStartupFlow:
 
     def test_WHEN_schema_initialized_THEN_constraints_exist(self):
         """Test that schema is properly initialized after startup."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.connector import Neo4jConnector
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.schema_manager import SchemaManager
 
         ensure_neo4j_running(blocking=True)
@@ -119,8 +120,8 @@ class TestSessionIntegration:
 
     def test_WHEN_session_starts_twice_THEN_neo4j_not_duplicated(self):
         """Test that multiple session starts don't create duplicate containers."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.container_manager import ContainerManager
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         # First start
         ensure_neo4j_running(blocking=False)
@@ -139,8 +140,8 @@ class TestSessionIntegration:
 
     def test_WHEN_session_ends_THEN_neo4j_keeps_running(self):
         """Test that Neo4j container persists after session ends."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.container_manager import ContainerManager
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
 
@@ -158,8 +159,8 @@ class TestSmokeTestConnectAndQuery:
 
     def test_WHEN_neo4j_ready_THEN_can_execute_simple_query(self):
         """Smoke test: execute simple query."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.connector import Neo4jConnector
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
 
@@ -176,8 +177,8 @@ class TestSmokeTestConnectAndQuery:
 
     def test_WHEN_neo4j_ready_THEN_can_create_and_retrieve_node(self):
         """Smoke test: create and retrieve a node."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.connector import Neo4jConnector
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
 
@@ -208,8 +209,8 @@ class TestSmokeTestConnectAndQuery:
 
     def test_WHEN_neo4j_ready_THEN_can_create_memory_with_agent_type(self):
         """Smoke test: create memory node linked to agent type."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.connector import Neo4jConnector
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
 
@@ -276,8 +277,8 @@ class TestGracefulFallback:
 
     def test_WHEN_port_conflict_THEN_clear_error_message_provided(self):
         """Test error messaging for port conflicts."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.exceptions import PortConflictError
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         with patch("socket.socket") as mock_socket:
             mock_sock = MagicMock()
@@ -300,8 +301,9 @@ class TestPerformanceRequirements:
 
     def test_WHEN_session_starts_THEN_completes_within_500ms(self):
         """Test that session start is not blocked by Neo4j (< 500ms)."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         import time
+
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         start_time = time.perf_counter()
 
@@ -314,8 +316,9 @@ class TestPerformanceRequirements:
 
     def test_WHEN_container_starts_THEN_ready_within_30_seconds(self):
         """Test that container becomes ready within acceptable time."""
-        from amplihack.memory.neo4j.container_manager import ContainerManager
         import time
+
+        from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
 
@@ -329,9 +332,10 @@ class TestPerformanceRequirements:
 
     def test_WHEN_query_executed_THEN_completes_within_100ms(self):
         """Test that basic queries are fast (< 100ms)."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
-        from amplihack.memory.neo4j.connector import Neo4jConnector
         import time
+
+        from amplihack.memory.neo4j.connector import Neo4jConnector
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
 
@@ -357,9 +361,9 @@ class TestDataPersistence:
 
     def test_WHEN_data_created_and_container_restarted_THEN_data_persists(self):
         """Test data persistence through container restart."""
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.connector import Neo4jConnector
         from amplihack.memory.neo4j.container_manager import ContainerManager
+        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
 

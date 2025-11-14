@@ -20,8 +20,8 @@ try:
 except ImportError:
     REQUESTS_AVAILABLE = False
 
+from .base_graph import BaseGraphManager
 from .connector import Neo4jConnector
-from .config import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class APIReference:
     version: str = "latest"
 
 
-class ExternalKnowledgeManager:
+class ExternalKnowledgeManager(BaseGraphManager):
     """Manages external knowledge integration with Neo4j.
 
     Handles:
@@ -111,8 +111,7 @@ class ExternalKnowledgeManager:
             cache_dir: Directory for local file cache
             enable_http_cache: Enable HTTP response caching
         """
-        self.conn = connector
-        self.config = get_config()
+        super().__init__(connector)
 
         # Set up cache directory
         self.cache_dir = cache_dir or Path.home() / ".amplihack" / "knowledge_cache"
@@ -123,27 +122,13 @@ class ExternalKnowledgeManager:
         if not REQUESTS_AVAILABLE:
             logger.warning("requests library not available. Install with: pip install requests")
 
-    def initialize_knowledge_schema(self) -> bool:
-        """Initialize schema for external knowledge nodes (idempotent).
+    def _get_schema_name(self) -> str:
+        """Get human-readable schema name for logging."""
+        return "external knowledge"
 
-        Returns:
-            True if successful, False otherwise
-        """
-        logger.info("Initializing external knowledge schema")
-
-        try:
-            self._create_knowledge_constraints()
-            self._create_knowledge_indexes()
-            logger.info("External knowledge schema initialization complete")
-            return True
-
-        except Exception as e:
-            logger.error("External knowledge schema initialization failed: %s", e)
-            return False
-
-    def _create_knowledge_constraints(self):
-        """Create unique constraints for knowledge nodes (idempotent)."""
-        constraints = [
+    def _get_constraints(self) -> List[str]:
+        """Get constraint definitions for external knowledge graph."""
+        return [
             # ExternalDoc URL uniqueness
             """
             CREATE CONSTRAINT external_doc_url IF NOT EXISTS
@@ -156,16 +141,9 @@ class ExternalKnowledgeManager:
             """,
         ]
 
-        for constraint in constraints:
-            try:
-                self.conn.execute_write(constraint)
-                logger.debug("Created knowledge constraint")
-            except Exception as e:
-                logger.debug("Knowledge constraint already exists or error: %s", e)
-
-    def _create_knowledge_indexes(self):
-        """Create performance indexes for knowledge nodes (idempotent)."""
-        indexes = [
+    def _get_indexes(self) -> List[str]:
+        """Get index definitions for external knowledge graph."""
+        return [
             # Source type index
             """
             CREATE INDEX external_doc_source IF NOT EXISTS
@@ -193,12 +171,13 @@ class ExternalKnowledgeManager:
             """,
         ]
 
-        for index in indexes:
-            try:
-                self.conn.execute_write(index)
-                logger.debug("Created knowledge index")
-            except Exception as e:
-                logger.debug("Knowledge index already exists or error: %s", e)
+    def initialize_knowledge_schema(self) -> bool:
+        """Initialize schema for external knowledge nodes (idempotent).
+
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.initialize_schema()
 
     def fetch_api_docs(
         self,

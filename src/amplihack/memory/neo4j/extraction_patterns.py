@@ -54,7 +54,7 @@ def extract_learnings(
         learnings.extend(_extract_diagnostic_patterns(output, task_category))
 
     # Filter out low-quality extractions
-    learnings = [l for l in learnings if _is_substantial(l["content"])]
+    learnings = [learning for learning in learnings if _is_substantial(learning["content"])]
 
     logger.debug(
         f"Extracted {len(learnings)} learnings from {agent_type} output (category: {task_category})"

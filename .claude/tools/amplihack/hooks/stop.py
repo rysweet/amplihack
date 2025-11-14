@@ -27,6 +27,13 @@ except ImportError as e:
     print("Make sure hook_processor.py exists in the same directory", file=sys.stderr)
     sys.exit(1)
 
+# Default continuation prompt when no custom prompt is provided
+DEFAULT_CONTINUATION_PROMPT = (
+    "we must keep pursuing the user's objective and must not stop the turn - "
+    "look for any additional TODOs, next steps, or unfinished work and pursue it "
+    "diligently in as many parallel tasks as you can"
+)
+
 
 class StopHook(HookProcessor):
     """Hook processor for stop events with lock support."""
@@ -34,10 +41,14 @@ class StopHook(HookProcessor):
     def __init__(self):
         super().__init__("stop")
         self.lock_flag = self.project_root / ".claude" / "runtime" / "locks" / ".lock_active"
+        self.continuation_prompt_file = (
+            self.project_root / ".claude" / "runtime" / "locks" / ".continuation_prompt"
+        )
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Check lock flag and block stop if active.
         Run synchronous reflection analysis if enabled.
+        Execute Neo4j cleanup if appropriate.
 
         Args:
             input_data: Input from Claude Code
@@ -45,7 +56,6 @@ class StopHook(HookProcessor):
         Returns:
             Dict with decision to block or allow stop
         """
-        # LOG START - Always log entry for debugging
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
@@ -54,18 +64,25 @@ class StopHook(HookProcessor):
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             self.log("=== STOP HOOK ENDED (fail-safe: approve) ===")
-            # Fail-safe: allow stop if we can't read lock
             return {"decision": "approve"}
 
         if lock_exists:
             # Lock is active - block stop and continue working
             self.log("Lock is active - blocking stop to continue working")
             self.save_metric("lock_blocks", 1)
+
+            # Read custom continuation prompt or use default
+            continuation_prompt = self.read_continuation_prompt()
+
             self.log("=== STOP HOOK ENDED (decision: block - lock active) ===")
             return {
                 "decision": "block",
-                "reason": "we must keep pursuing the user's objective and must not stop the turn - look for any additional TODOs, next steps, or unfinished work and pursue it diligently in as many parallel tasks as you can",
+                "reason": continuation_prompt,
             }
+
+        # Neo4j cleanup integration (runs before reflection to ensure database state is managed
+        # before any potentially long-running reflection analysis that might timeout the user)
+        self._handle_neo4j_cleanup()
 
         # Check if reflection should run
         if not self._should_run_reflection():
@@ -73,7 +90,6 @@ class StopHook(HookProcessor):
             self.log("=== STOP HOOK ENDED (decision: approve - no reflection) ===")
             return {"decision": "approve"}
 
-        # FIX #2: Check for reflection semaphore (prevents infinite loop)
         session_id = self._get_current_session_id()
         semaphore_file = (
             self.project_root
@@ -84,7 +100,6 @@ class StopHook(HookProcessor):
         )
 
         if semaphore_file.exists():
-            # Reflection already presented - remove semaphore and allow stop
             self.log(
                 f"Reflection already presented for session {session_id} - removing semaphore and allowing stop"
             )
@@ -95,12 +110,8 @@ class StopHook(HookProcessor):
             self.log("=== STOP HOOK ENDED (decision: approve - reflection already shown) ===")
             return {"decision": "approve"}
 
-        # RUN REFLECTION SYNCHRONOUSLY (blocks here)
         try:
-            # FIX #4: Announce reflection start (STAGE 1)
             self._announce_reflection_start()
-
-            # FIX #6: Pass transcript_path from input_data
             transcript_path = input_data.get("transcript_path")
             filled_template = self._run_reflection_sync(transcript_path)
 
@@ -131,13 +142,11 @@ class StopHook(HookProcessor):
                 )
                 current_findings.write_text(filled_template)
             except Exception:
-                pass  # Non-critical
+                pass
 
-            # FIX #5: Block with instructions to read and present (STAGE 2)
             self.log("Reflection complete - blocking with presentation instructions")
             result = self._block_with_findings(filled_template, str(reflection_path))
 
-            # FIX #7: Create semaphore after presenting
             try:
                 semaphore_file.parent.mkdir(parents=True, exist_ok=True)
                 semaphore_file.touch()
@@ -149,11 +158,95 @@ class StopHook(HookProcessor):
             return result
 
         except Exception as e:
-            # FAIL-SAFE: Always allow stop on errors
             self.log(f"Reflection error: {e}", "ERROR")
             self.save_metric("reflection_errors", 1)
             self.log("=== STOP HOOK ENDED (decision: approve - error occurred) ===")
             return {"decision": "approve"}
+
+    def _handle_neo4j_cleanup(self) -> None:
+        """Handle Neo4j cleanup on session exit.
+
+        Executes Neo4j shutdown coordination if appropriate.
+        Fail-safe: Never raises exceptions.
+        """
+        try:
+            # Import components
+            from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
+            from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
+            from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
+
+            # Detect auto mode
+            auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "false").lower() == "true"
+
+            self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
+
+            # Initialize components with credentials from environment
+            # Note: Connection tracker will raise ValueError if password not set and
+            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.
+            tracker = Neo4jConnectionTracker(
+                username=os.getenv("NEO4J_USERNAME"),
+                password=os.getenv("NEO4J_PASSWORD")
+            )
+            manager = Neo4jContainerManager()
+            coordinator = Neo4jShutdownCoordinator(
+                connection_tracker=tracker,
+                container_manager=manager,
+                auto_mode=auto_mode,
+            )
+
+            # Execute cleanup
+            coordinator.handle_session_exit()
+
+            self.log("Neo4j cleanup handler completed")
+
+        except Exception as e:
+            self.log(f"Neo4j cleanup failed: {e}", "WARNING")
+
+    def read_continuation_prompt(self) -> str:
+        """Read custom continuation prompt from file or return default.
+
+        Returns:
+            str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
+        """
+        # Check if custom prompt file exists
+        if not self.continuation_prompt_file.exists():
+            self.log("No custom continuation prompt file - using default")
+            return DEFAULT_CONTINUATION_PROMPT
+
+        try:
+            # Read prompt content
+            content = self.continuation_prompt_file.read_text(encoding="utf-8").strip()
+
+            # Check if empty
+            if not content:
+                self.log("Custom continuation prompt file is empty - using default")
+                return DEFAULT_CONTINUATION_PROMPT
+
+            # Check length constraints
+            content_len = len(content)
+
+            # Hard limit: 1000 characters
+            if content_len > 1000:
+                self.log(
+                    f"Custom prompt too long ({content_len} chars) - using default",
+                    "WARNING",
+                )
+                return DEFAULT_CONTINUATION_PROMPT
+
+            # Warning for long prompts (500-1000 chars)
+            if content_len > 500:
+                self.log(
+                    f"Custom prompt is long ({content_len} chars) - consider shortening for clarity",
+                    "WARNING",
+                )
+
+            # Valid custom prompt
+            self.log(f"Using custom continuation prompt ({content_len} chars)")
+            return content
+
+        except (PermissionError, OSError, UnicodeDecodeError) as e:
+            self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
+            return DEFAULT_CONTINUATION_PROMPT
 
     def _should_run_reflection(self) -> bool:
         """Check if reflection should run based on config and environment.
@@ -210,11 +303,9 @@ class StopHook(HookProcessor):
         if session_id:
             return session_id
 
-        # FIX #1: Try finding most recent session directory (not files!)
         logs_dir = self.project_root / ".claude" / "runtime" / "logs"
         if logs_dir.exists():
             try:
-                # Filter to directories only - don't pick up log files like "stop.log"
                 sessions = [p for p in logs_dir.iterdir() if p.is_dir()]
                 sessions = sorted(sessions, key=lambda p: p.stat().st_mtime, reverse=True)
                 if sessions:
@@ -244,14 +335,12 @@ class StopHook(HookProcessor):
         session_id = self._get_current_session_id()
         self.log(f"Running Claude-powered reflection for session: {session_id}")
 
-        # FIX #3: Load JSONL transcript if provided by Claude Code
         conversation = None
         if transcript_path:
             transcript_file = Path(transcript_path)
             self.log(f"Using transcript from Claude Code: {transcript_file}")
 
             try:
-                # Load JSONL format (one JSON per line)
                 conversation = []
                 with open(transcript_file) as f:
                     for line in f:
@@ -317,7 +406,7 @@ class StopHook(HookProcessor):
             return None
 
     def _announce_reflection_start(self) -> None:
-        """Announce that reflection is starting (STAGE 1 - FIX #4)."""
+        """Announce that reflection is starting."""
         print(f"\n{'=' * 70}", file=sys.stderr)
         print("🔍 BEGINNING SELF-REFLECTION ON SESSION", file=sys.stderr)
         print(f"{'=' * 70}\n", file=sys.stderr)
@@ -342,28 +431,22 @@ class StopHook(HookProcessor):
         # Extract task summary from template if possible
         task_slug = "session"
         try:
-            # Try to extract from "## Task Summary" section
             if "## Task Summary" in filled_template:
                 summary_section = filled_template.split("## Task Summary")[1].split("\n\n")[1]
-                # Get first sentence, clean it up
                 first_sentence = summary_section.split(".")[0][:100]
-                # Convert to slug
                 import re
 
                 task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
-                # Limit length
                 task_slug = task_slug[:50]
         except Exception:
-            # Fallback to generic
             task_slug = "session"
 
-        # Generate timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         return f"reflection-{task_slug}-{timestamp}.md"
 
     def _block_with_findings(self, filled_template: str, reflection_file_path: str) -> Dict:
-        """Block stop with instructions to read and present reflection (STAGE 2 - FIX #5).
+        """Block stop with instructions to read and present reflection.
 
         Args:
             filled_template: Filled FEEDBACK_SUMMARY template from Claude
@@ -408,10 +491,15 @@ After presenting the findings and getting the user's decision, you may proceed a
         return {"decision": "block", "reason": reason}
 
 
-def main():
-    """Entry point for the stop hook."""
+def stop():
+    """Entry point for the stop hook (called by Claude Code)."""
     hook = StopHook()
     hook.run()
+
+
+def main():
+    """Legacy entry point for the stop hook."""
+    stop()
 
 
 if __name__ == "__main__":

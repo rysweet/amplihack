@@ -13,8 +13,10 @@ import time
 from enum import Enum
 from typing import Optional
 
-from .config import get_config
+from .config import get_config, update_password
 from .connector import Neo4jConnector
+from .credential_detector import detect_container_password
+from .port_manager import resolve_port_conflicts
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,87 @@ class Neo4jContainerManager:
         """Initialize container manager with configuration."""
         self.config = get_config()
 
+    def _check_container_exists(self) -> bool:
+        """Check if container exists (any status).
+
+        Returns:
+            True if container exists, False otherwise
+        """
+        try:
+            cmd = [
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                f"name=^{self.config.container_name}$",
+                "--format",
+                "{{.Names}}",
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+
+            if result.returncode != 0:
+                return False
+
+            # Check for exact name match
+            names = result.stdout.strip().split("\n")
+            return self.config.container_name in names
+
+        except Exception as e:
+            logger.debug("Error checking container existence: %s", e)
+            return False
+
+    def _update_password(self, password: str) -> None:
+        """Update config password dynamically.
+
+        Args:
+            password: New password to use
+
+        Note:
+            This updates the singleton config instance to use detected credentials.
+        """
+        # Update the config singleton with detected password
+        update_password(password)
+        # Reload config to pick up the new password
+        self.config = get_config()
+
+    def _handle_unhealthy_container(self) -> bool:
+        """Handle unhealthy container by restarting.
+
+        Returns:
+            True if container is now healthy, False otherwise
+        """
+        logger.warning("Container is unhealthy, attempting restart...")
+
+        try:
+            # Stop container
+            cmd = ["docker", "stop", self.config.container_name]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+            if result.returncode != 0:
+                logger.error("Failed to stop unhealthy container: %s", result.stderr)
+                return False
+
+            # Wait a moment
+            time.sleep(2)
+
+            # Start container
+            cmd = ["docker", "start", self.config.container_name]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+            if result.returncode != 0:
+                logger.error("Failed to restart container: %s", result.stderr)
+                return False
+
+            logger.info("Container restarted, waiting for healthy status...")
+            return self.wait_for_healthy()
+
+        except subprocess.TimeoutExpired:
+            logger.error("Timeout handling unhealthy container")
+            return False
+        except Exception as e:
+            logger.error("Error handling unhealthy container: %s", e)
+            return False
+
     def start(self, wait_for_ready: bool = False) -> bool:
         """Start Neo4j container (idempotent).
 
@@ -49,27 +132,50 @@ class Neo4jContainerManager:
             True if started successfully, False otherwise
 
         Behavior:
-            - If already running: Do nothing, return True
-            - If stopped: Start existing container
-            - If not found: Create and start new container
+            - Checks if container exists first
+            - If exists: detect credentials → update config → check status → connect/start
+            - If not exists: create new container with environment password
         """
         logger.info("Starting Neo4j container: %s", self.config.container_name)
 
-        # Check current status
-        status = self.get_status()
+        # Step 1: Check if container exists (any status)
+        container_exists = self._check_container_exists()
 
-        if status == ContainerStatus.RUNNING:
-            logger.info("Container already running")
-            if wait_for_ready:
-                return self.wait_for_healthy()
-            return True
+        if container_exists:
+            logger.info("Container exists, detecting credentials...")
 
-        if status == ContainerStatus.STOPPED:
-            logger.info("Restarting stopped container")
-            return self._restart_container(wait_for_ready)
+            # Step 2: Try to detect password from existing container
+            detected_password = detect_container_password(self.config.container_name)
+
+            # Step 3: Update config if password detected
+            if detected_password:
+                logger.info("🔑 Detected credentials from existing container")
+                self._update_password(detected_password)
+            else:
+                logger.info("No credentials detected, using environment password")
+
+            # Step 4: Check container status
+            status = self.get_status()
+
+            if status == ContainerStatus.RUNNING:
+                logger.info("✓ Container %s already running", self.config.container_name)
+                if wait_for_ready:
+                    return self.wait_for_healthy()
+                return True
+
+            if status == ContainerStatus.STOPPED:
+                logger.info("○ Container %s is stopped, restarting...", self.config.container_name)
+                return self._restart_container(wait_for_ready)
+
+            if status == ContainerStatus.UNHEALTHY:
+                logger.warning("⚠ Container %s is unhealthy", self.config.container_name)
+                return self._handle_unhealthy_container()
+
+            logger.error("Unexpected container status: %s", status)
+            return False
 
         # Container doesn't exist - create it
-        logger.info("Creating new container")
+        logger.info("✨ Creating new container: %s", self.config.container_name)
         return self._create_container(wait_for_ready)
 
     def stop(self, timeout: int = 30) -> bool:
@@ -234,69 +340,151 @@ class Neo4jContainerManager:
             return False
 
     def _create_container(self, wait_for_ready: bool) -> bool:
-        """Create and start new container using direct docker run.
+        """Create and start new container with port conflict resolution.
 
-        No longer requires docker-compose file.
+        Automatically detects and resolves port conflicts before creating container.
+        Includes retry logic for race conditions.
         """
-        logger.info("Creating new Neo4j container with direct docker command")
+        logger.info("Creating new Neo4j container with port conflict resolution")
 
+        # Resolve port conflicts BEFORE attempting to create container
         try:
-            # Use direct docker run (no compose file needed)
-            cmd = [
-                "docker",
-                "run",
-                "-d",
-                "--name",
-                self.config.container_name,
-                "--restart",
-                "unless-stopped",
-                "-p",
-                f"127.0.0.1:{self.config.http_port}:7474",
-                "-p",
-                f"127.0.0.1:{self.config.bolt_port}:7687",
-                "-e",
-                f"NEO4J_AUTH=neo4j/{self.config.password}",
-                "-e",
-                'NEO4J_PLUGINS=["apoc"]',
-                "-e",
-                "NEO4J_dbms_security_procedures_unrestricted=apoc.*",
-                "-e",
-                "NEO4J_dbms_security_procedures_allowlist=apoc.*",
-                "-e",
-                f"NEO4J_dbms_memory_heap_max__size={self.config.heap_size}",
-                "-e",
-                f"NEO4J_dbms_memory_pagecache_size={self.config.page_cache_size}",
-                "-v",
-                f"{self.config.container_name}-data:/data",
-                self.config.image,
-            ]
+            # Find project root by walking up to find .claude directory
+            from pathlib import Path
+            project_root = Path.cwd()
+            while project_root != project_root.parent:
+                if (project_root / ".claude").exists():
+                    break
+                project_root = project_root.parent
 
-            logger.debug("Running: %s", " ".join(cmd))
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,
+            bolt_port, http_port, messages = resolve_port_conflicts(
+                bolt_port=self.config.bolt_port,
+                http_port=self.config.http_port,
+                password=self.config.password,
+                project_root=project_root,
+                container_name=self.config.container_name,
             )
 
-            if result.returncode != 0:
-                logger.error("Failed to create container: %s", result.stderr)
-                return False
+            # Display port resolution messages to user
+            for msg in messages:
+                logger.info(msg)
 
-            logger.info("Container created successfully")
+            # Use resolved ports (may differ from config if conflicts detected)
+            actual_bolt_port = bolt_port
+            actual_http_port = http_port
 
-            if wait_for_ready:
-                return self.wait_for_healthy()
-
-            return True
-
-        except subprocess.TimeoutExpired:
-            logger.error("Timeout creating container")
-            return False
         except Exception as e:
-            logger.error("Error creating container: %s", e)
-            return False
+            logger.warning("Port resolution failed, using config ports: %s", e)
+            # Fallback: use config ports if resolution fails
+            actual_bolt_port = self.config.bolt_port
+            actual_http_port = self.config.http_port
+
+        # Retry logic for race conditions (max 3 attempts)
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                logger.info("Container creation attempt %d/%d", attempt, max_attempts)
+
+                # Use direct docker run (no compose file needed)
+                cmd = [
+                    "docker",
+                    "run",
+                    "-d",
+                    "--name",
+                    self.config.container_name,
+                    "--restart",
+                    "unless-stopped",
+                    "-p",
+                    f"127.0.0.1:{actual_http_port}:7474",
+                    "-p",
+                    f"127.0.0.1:{actual_bolt_port}:7687",
+                    "-e",
+                    f"NEO4J_AUTH=neo4j/{self.config.password}",
+                    "-e",
+                    'NEO4J_PLUGINS=["apoc"]',
+                    "-e",
+                    "NEO4J_dbms_security_procedures_unrestricted=apoc.*",
+                    "-e",
+                    "NEO4J_dbms_security_procedures_allowlist=apoc.*",
+                    "-e",
+                    f"NEO4J_dbms_memory_heap_max__size={self.config.heap_size}",
+                    "-e",
+                    f"NEO4J_dbms_memory_pagecache_size={self.config.page_cache_size}",
+                    "-v",
+                    f"{self.config.container_name}-data:/data",
+                    self.config.image,
+                ]
+
+                logger.debug("Running: %s", " ".join(cmd))
+
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                )
+
+                if result.returncode != 0:
+                    error_msg = result.stderr.lower()
+
+                    # Check for port binding errors (race condition)
+                    if "bind" in error_msg and "address already in use" in error_msg:
+                        logger.warning("Port binding race condition detected on attempt %d", attempt)
+
+                        if attempt < max_attempts:
+                            # Try to find new ports and retry
+                            logger.info("Resolving new ports for retry...")
+                            try:
+                                bolt_port, http_port, messages = resolve_port_conflicts(
+                                    bolt_port=actual_bolt_port + 1,  # Start search from next port
+                                    http_port=actual_http_port + 1,
+                                    password=self.config.password,
+                                    project_root=project_root,
+                                    container_name=self.config.container_name,
+                                )
+                                actual_bolt_port = bolt_port
+                                actual_http_port = http_port
+
+                                for msg in messages:
+                                    logger.info(msg)
+
+                                continue  # Retry with new ports
+                            except Exception as e:
+                                logger.error("Failed to resolve new ports: %s", e)
+                                return False
+                        else:
+                            logger.error("Max retries exceeded for port binding")
+                            return False
+
+                    # Other errors
+                    logger.error("Failed to create container: %s", result.stderr)
+                    return False
+
+                # Success!
+                logger.info("Container created successfully on ports %d/%d", actual_bolt_port, actual_http_port)
+
+                if wait_for_ready:
+                    return self.wait_for_healthy()
+
+                return True
+
+            except subprocess.TimeoutExpired:
+                logger.error("Timeout creating container on attempt %d", attempt)
+                if attempt == max_attempts:
+                    return False
+                # Retry on timeout
+                continue
+
+            except Exception as e:
+                logger.error("Error creating container on attempt %d: %s", attempt, e)
+                if attempt == max_attempts:
+                    return False
+                # Retry on exception
+                continue
+
+        # All attempts failed
+        logger.error("Failed to create container after %d attempts", max_attempts)
+        return False
 
 
 # Module-level convenience functions

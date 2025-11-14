@@ -10,8 +10,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from .connector import Neo4jConnector
 from .config import get_config
+from .connector import Neo4jConnector
 
 logger = logging.getLogger(__name__)
 

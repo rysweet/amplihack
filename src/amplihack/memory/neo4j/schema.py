@@ -5,10 +5,10 @@ All operations are idempotent (safe to run multiple times).
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
-from .connector import Neo4jConnector
 from .config import get_config
+from .connector import Neo4jConnector
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,7 @@ class SchemaManager:
             - Unique constraints on ID fields
             - Performance indexes
             - Agent type seed data
+            - Code index metadata structure
         """
         logger.info("Initializing Neo4j schema")
 
@@ -49,6 +50,7 @@ class SchemaManager:
             self._create_constraints()
             self._create_indexes()
             self._seed_agent_types()
+            self._initialize_code_index_metadata()
 
             logger.info("Schema initialization complete")
             return True
@@ -148,6 +150,11 @@ class SchemaManager:
             CREATE CONSTRAINT memory_id IF NOT EXISTS
             FOR (m:Memory) REQUIRE m.id IS UNIQUE
             """,
+            # Code index metadata project_root uniqueness
+            """
+            CREATE CONSTRAINT code_index_project IF NOT EXISTS
+            FOR (ci:CodeIndexMetadata) REQUIRE ci.project_root IS UNIQUE
+            """,
         ]
 
         for constraint in constraints:
@@ -179,6 +186,11 @@ class SchemaManager:
             """
             CREATE INDEX project_path IF NOT EXISTS
             FOR (p:Project) ON (p.path)
+            """,
+            # Code index last_updated index (for freshness queries)
+            """
+            CREATE INDEX code_index_updated IF NOT EXISTS
+            FOR (ci:CodeIndexMetadata) ON (ci.last_updated)
             """,
         ]
 
@@ -226,9 +238,32 @@ class SchemaManager:
             except Exception as e:
                 logger.debug("Agent type already exists: %s", e)
 
+    def _initialize_code_index_metadata(self):
+        """Initialize CodeIndexMetadata label structure (idempotent).
+
+        Creates the label and property structure so OPTIONAL MATCH queries
+        don't trigger Neo4j warnings about unknown labels/properties on first startup.
+
+        This is a placeholder node that will be updated by the code indexer.
+        """
+        query = """
+        MERGE (ci:CodeIndexMetadata {project_root: "NOT_INITIALIZED"})
+        ON CREATE SET
+            ci.last_updated = "1970-01-01T00:00:00",
+            ci.file_count = 0,
+            ci.created_at = timestamp()
+        RETURN ci
+        """
+
+        try:
+            self.conn.execute_write(query)
+            logger.debug("Initialized CodeIndexMetadata structure")
+        except Exception as e:
+            logger.debug("CodeIndexMetadata structure already exists: %s", e)
+
     def _verify_constraints(self) -> bool:
         """Verify constraints exist."""
-        expected = ["agent_type_id", "project_id", "memory_id"]
+        expected = ["agent_type_id", "project_id", "memory_id", "code_index_project"]
 
         result = self.conn.execute_query("SHOW CONSTRAINTS")
         existing = [r.get("name") for r in result]
@@ -242,7 +277,7 @@ class SchemaManager:
 
     def _verify_indexes(self) -> bool:
         """Verify indexes exist."""
-        expected = ["memory_type", "memory_created_at", "agent_type_name", "project_path"]
+        expected = ["memory_type", "memory_created_at", "agent_type_name", "project_path", "code_index_updated"]
 
         result = self.conn.execute_query("SHOW INDEXES")
         existing = [r.get("name") for r in result]

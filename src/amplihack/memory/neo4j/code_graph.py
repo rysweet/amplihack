@@ -11,13 +11,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .base_graph import BaseGraphManager
 from .connector import Neo4jConnector
-from .config import get_config
 
 logger = logging.getLogger(__name__)
 
 
-class BlarifyIntegration:
+class BlarifyIntegration(BaseGraphManager):
     """Integrates blarify code graphs with Neo4j memory system.
 
     Handles:
@@ -34,57 +34,35 @@ class BlarifyIntegration:
         Args:
             connector: Connected Neo4jConnector instance
         """
-        self.conn = connector
-        self.config = get_config()
+        super().__init__(connector)
 
-    def initialize_code_schema(self) -> bool:
-        """Initialize schema for code graph nodes (idempotent).
+    def _get_schema_name(self) -> str:
+        """Get human-readable schema name for logging."""
+        return "code graph"
 
-        Returns:
-            True if successful, False otherwise
-        """
-        logger.info("Initializing code graph schema")
-
-        try:
-            self._create_code_constraints()
-            self._create_code_indexes()
-            logger.info("Code graph schema initialization complete")
-            return True
-
-        except Exception as e:
-            logger.error("Code graph schema initialization failed: %s", e)
-            return False
-
-    def _create_code_constraints(self):
-        """Create unique constraints for code nodes (idempotent)."""
-        constraints = [
+    def _get_constraints(self) -> List[str]:
+        """Get constraint definitions for code graph."""
+        return [
             # CodeFile path uniqueness
             """
             CREATE CONSTRAINT code_file_path IF NOT EXISTS
             FOR (cf:CodeFile) REQUIRE cf.path IS UNIQUE
             """,
-            # Class name + file uniqueness
+            # Class ID uniqueness
             """
             CREATE CONSTRAINT class_id IF NOT EXISTS
             FOR (c:Class) REQUIRE c.id IS UNIQUE
             """,
-            # Function name + file uniqueness
+            # Function ID uniqueness
             """
             CREATE CONSTRAINT function_id IF NOT EXISTS
             FOR (f:Function) REQUIRE f.id IS UNIQUE
             """,
         ]
 
-        for constraint in constraints:
-            try:
-                self.conn.execute_write(constraint)
-                logger.debug("Created code constraint")
-            except Exception as e:
-                logger.debug("Code constraint already exists or error: %s", e)
-
-    def _create_code_indexes(self):
-        """Create performance indexes for code nodes (idempotent)."""
-        indexes = [
+    def _get_indexes(self) -> List[str]:
+        """Get index definitions for code graph."""
+        return [
             # File language index
             """
             CREATE INDEX code_file_language IF NOT EXISTS
@@ -102,12 +80,63 @@ class BlarifyIntegration:
             """,
         ]
 
-        for index in indexes:
-            try:
-                self.conn.execute_write(index)
-                logger.debug("Created code index")
-            except Exception as e:
-                logger.debug("Code index already exists or error: %s", e)
+    def initialize_code_schema(self) -> bool:
+        """Initialize schema for code graph nodes (idempotent).
+
+        Returns:
+            True if successful, False otherwise
+        """
+        return self.initialize_schema()
+
+    def run_blarify(
+        self,
+        codebase_path: str,
+        languages: Optional[List[str]] = None,
+    ) -> Dict[str, int]:
+        """Run blarify and import results in one operation.
+
+        Convenience method that:
+        1. Runs blarify CLI to generate JSON
+        2. Imports results into Neo4j
+        3. Returns import counts
+
+        Args:
+            codebase_path: Path to codebase to analyze
+            languages: Optional list of languages to analyze
+
+        Returns:
+            Dictionary with counts: {"files": N, "classes": N, "functions": N, ...}
+
+        Raises:
+            RuntimeError: If blarify execution fails
+        """
+        import os
+        from tempfile import NamedTemporaryFile
+
+        # Create temp file for blarify output
+        with NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+
+        try:
+            # Run blarify using standalone function
+            logger.info("Running blarify on %s", codebase_path)
+            success = run_blarify(Path(codebase_path), tmp_path, languages)
+
+            if not success:
+                raise RuntimeError("Blarify execution failed")
+
+            # Import results into Neo4j
+            logger.info("Importing blarify results into Neo4j")
+            counts = self.import_blarify_output(tmp_path, project_id=None)
+
+            logger.info("Blarify import complete: %s", counts)
+            return counts
+
+        finally:
+            # Cleanup temp file
+            if tmp_path.exists():
+                os.unlink(tmp_path)
+                logger.debug("Cleaned up temporary file: %s", tmp_path)
 
     def import_blarify_output(
         self,
@@ -654,12 +683,14 @@ def run_blarify(
     # Build blarify command
     cmd = [
         "blarify",
-        "analyze",
+        "create",
         str(codebase_path),
         "--output",
         str(output_path),
         "--format",
         "json",
+        "--entity-id",
+        codebase_path.name or "amplihack",  # Use directory name or default
     ]
 
     if languages:
