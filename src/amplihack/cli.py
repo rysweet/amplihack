@@ -22,10 +22,18 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
+    # Handle backwards compatibility: Check for deprecated --use-graph-mem flag
+    use_graph_mem = getattr(args, "use_graph_mem", False)
+    enable_neo4j = getattr(args, "enable_neo4j_memory", False)
+
     # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks and launcher)
-    if getattr(args, "enable_neo4j_memory", False):
+    if use_graph_mem or enable_neo4j:
         os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
-        print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
+        if use_graph_mem:
+            print("WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead.")
+            print("Neo4j graph memory enabled via --use-graph-mem flag (deprecated)")
+        else:
+            print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
 
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
@@ -313,6 +321,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
     )
     launch_parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="[DEPRECATED] Use --enable-neo4j-memory instead. This flag is kept for backwards compatibility.",
+    )
+    launch_parser.add_argument(
         "--no-reflection",
         action="store_true",
         help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
@@ -349,6 +362,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--enable-neo4j-memory",
         action="store_true",
         help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
+    )
+    claude_parser.add_argument(
+        "--use-graph-mem",
+        action="store_true",
+        help="[DEPRECATED] Use --enable-neo4j-memory instead. This flag is kept for backwards compatibility.",
     )
     claude_parser.add_argument(
         "--no-reflection",
