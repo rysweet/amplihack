@@ -391,6 +391,31 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
     uvx_parser.add_argument("--info", action="store_true", help="Show UVX staging information")
 
+    # Goal Agent Generator command
+    new_parser = subparsers.add_parser(
+        "new", help="Generate a new goal-seeking agent from a prompt file"
+    )
+    new_parser.add_argument(
+        "--file", "-f", type=str, required=True, help="Path to prompt.md file containing goal"
+    )
+    new_parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default=None,
+        help="Output directory for goal agent (default: ./goal_agents)",
+    )
+    new_parser.add_argument(
+        "--name", "-n", type=str, default=None, help="Custom name for goal agent"
+    )
+    new_parser.add_argument(
+        "--skills-dir",
+        type=str,
+        default=None,
+        help="Custom skills directory (default: .claude/agents/amplihack)",
+    )
+    new_parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
+
     # Hidden local install command
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
@@ -680,6 +705,24 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 0
         print_uvx_usage_instructions()
         return 0
+
+    elif args.command == "new":
+        from .goal_agent_generator.cli import new_goal_agent
+        from pathlib import Path
+
+        # Convert string paths to Path objects
+        file_path = Path(args.file)
+        output_path = Path(args.output) if args.output else None
+        skills_path = Path(args.skills_dir) if args.skills_dir else None
+
+        # Call the goal agent generator CLI
+        return new_goal_agent.callback(
+            file=file_path,
+            output=output_path,
+            name=args.name,
+            skills_dir=skills_path,
+            verbose=args.verbose,
+        )
 
     else:
         create_parser().print_help()
