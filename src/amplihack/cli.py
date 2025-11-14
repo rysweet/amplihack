@@ -22,10 +22,10 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
-    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
-    if getattr(args, "use_graph_mem", False):
-        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
-        print("Neo4j graph memory enabled")
+    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks and launcher)
+    if getattr(args, "enable_neo4j_memory", False):
+        os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
+        print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
 
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
@@ -308,7 +308,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
     launch_parser.add_argument(
-        "--use-graph-mem",
+        "--enable-neo4j-memory",
         action="store_true",
         help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
     )
@@ -346,7 +346,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
     claude_parser.add_argument(
-        "--use-graph-mem",
+        "--enable-neo4j-memory",
         action="store_true",
         help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
     )

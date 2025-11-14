@@ -14,14 +14,14 @@ Manually ingest codebase into Neo4j graph memory for enhanced code understanding
 
 ## Prerequisites
 
-- Neo4j must be enabled via `--use-graph-mem` flag
+- Neo4j must be enabled via `--enable-neo4j-memory` flag
 - Docker must be running
 - Neo4j container must be healthy
 
 ## Process
 
 1. **Verify Neo4j Enabled**
-   - Check AMPLIHACK_USE_GRAPH_MEM environment variable
+   - Check AMPLIHACK_ENABLE_NEO4J_MEMORY environment variable
    - Exit with error if not enabled
 
 2. **Verify Neo4j Running**
@@ -53,11 +53,11 @@ import sys
 from pathlib import Path
 
 # Check if Neo4j enabled
-if os.environ.get("AMPLIHACK_USE_GRAPH_MEM", "").lower() not in ("1", "true", "yes"):
+if os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") != "1":
     print("❌ Error: Neo4j graph memory not enabled")
     print("")
     print("To use graph memory:")
-    print("  amplihack launch --use-graph-mem")
+    print("  amplihack launch --enable-neo4j-memory")
     print("")
     print("See docs/NEO4J.md for more information")
     sys.exit(1)
@@ -84,7 +84,7 @@ except Exception as e:
     print("Is Neo4j running? Try:")
     print("  docker ps | grep amplihack-neo4j")
     print("")
-    print("If not running, restart amplihack with --use-graph-mem")
+    print("If not running, restart amplihack with --enable-neo4j-memory")
     sys.exit(1)
 
 # Determine ingestion scope
@@ -147,7 +147,7 @@ except Exception as e:
 ❌ Error: Neo4j graph memory not enabled
 
 To use graph memory:
-  amplihack launch --use-graph-mem
+  amplihack launch --enable-neo4j-memory
 
 See docs/NEO4J.md for more information
 ```
@@ -160,7 +160,7 @@ See docs/NEO4J.md for more information
 Is Neo4j running? Try:
   docker ps | grep amplihack-neo4j
 
-If not running, restart amplihack with --use-graph-mem
+If not running, restart amplihack with --enable-neo4j-memory
 ```
 
 ### Path Not Found

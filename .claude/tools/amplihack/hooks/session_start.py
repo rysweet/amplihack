@@ -113,11 +113,7 @@ class SessionStartHook(HookProcessor):
         # Most users don't need advanced graph memory features
         import os
 
-        neo4j_enabled = os.environ.get("AMPLIHACK_USE_GRAPH_MEM", "").lower() in (
-            "1",
-            "true",
-            "yes",
-        )
+        neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
 
         if neo4j_enabled:
             self.log("Neo4j opt-in flag detected, starting memory system...")
@@ -138,7 +134,7 @@ class SessionStartHook(HookProcessor):
                 self.log(f"Neo4j startup failed: {e}", "ERROR")
                 self.save_metric("neo4j_enabled", False)
         else:
-            self.log("Neo4j not enabled (use --use-graph-mem to enable)")
+            self.log("Neo4j not enabled (use --enable-neo4j-memory to enable)")
             self.save_metric("neo4j_enabled", False)
 
         # Build context if needed
