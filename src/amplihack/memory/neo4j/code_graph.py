@@ -21,9 +21,10 @@ logger = logging.getLogger(__name__)
 # Try to import rich for progress indication
 try:
     from rich.console import Console
-    from rich.spinner import Spinner
     from rich.live import Live
+    from rich.spinner import Spinner
     from rich.text import Text
+
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -712,7 +713,16 @@ def run_blarify(
     try:
         # Run blarify with progress indication
         if RICH_AVAILABLE:
-            result = _run_with_progress_indicator(cmd, codebase_path)
+            try:
+                result = _run_with_progress_indicator(cmd, codebase_path)
+            except Exception as e:
+                logger.warning("Progress indicator failed, falling back to simple execution: %s", e)
+                result = subprocess.run(
+                    cmd,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
         else:
             # Fallback to simple execution without progress
             result = subprocess.run(
@@ -735,7 +745,9 @@ def run_blarify(
         return False
 
 
-def _run_with_progress_indicator(cmd: List[str], codebase_path: Path) -> subprocess.CompletedProcess:
+def _run_with_progress_indicator(
+    cmd: List[str], codebase_path: Path
+) -> subprocess.CompletedProcess:
     """Run subprocess with a rich progress indicator.
 
     Args:
@@ -748,53 +760,66 @@ def _run_with_progress_indicator(cmd: List[str], codebase_path: Path) -> subproc
     console = Console()
     process_result = None
     process_error = None
+    result_lock = threading.Lock()
 
     def run_subprocess():
         """Run the subprocess in a separate thread."""
         nonlocal process_result, process_error
         try:
-            process_result = subprocess.run(
+            result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
             )
+            with result_lock:
+                process_result = result
         except Exception as e:
-            process_error = e
+            with result_lock:
+                process_error = e
 
-    # Start subprocess in background thread
-    thread = threading.Thread(target=run_subprocess, daemon=True)
+    # Start subprocess in background thread (not daemon - we want proper cleanup)
+    thread = threading.Thread(target=run_subprocess)
     thread.start()
 
     # Show progress indicator while subprocess runs
-    spinner = Spinner("dots", text=Text(f"Indexing codebase: {codebase_path.name}...", style="cyan"))
+    spinner = Spinner(
+        "dots", text=Text(f"Indexing codebase: {codebase_path.name}...", style="cyan")
+    )
 
-    with Live(spinner, console=console, refresh_per_second=10) as live:
-        start_time = time.time()
-        while thread.is_alive():
-            elapsed = time.time() - start_time
-            elapsed_str = f"{int(elapsed)}s"
+    try:
+        with Live(spinner, console=console, refresh_per_second=10) as live:
+            start_time = time.time()
+            while thread.is_alive():
+                elapsed = time.time() - start_time
+                elapsed_str = f"{int(elapsed)}s"
 
-            # Update spinner text with elapsed time
-            spinner.update(
-                text=Text(
-                    f"Indexing codebase: {codebase_path.name}... ({elapsed_str} elapsed)",
-                    style="cyan"
+                # Update spinner text with elapsed time
+                spinner.update(
+                    text=Text(
+                        f"Indexing codebase: {codebase_path.name}... ({elapsed_str} elapsed)",
+                        style="cyan",
+                    )
                 )
-            )
-            live.update(spinner)
+                live.update(spinner)
 
-            # Check every 100ms
-            thread.join(timeout=0.1)
+                # Check every 100ms
+                thread.join(timeout=0.1)
+    finally:
+        # Ensure thread cleanup even if Live context fails
+        thread.join(timeout=5.0)
+        if thread.is_alive():
+            logger.warning("Background thread did not complete cleanly within timeout")
 
-    # Wait for thread to complete
-    thread.join()
+    # Check if there was an error (with lock protection)
+    with result_lock:
+        if process_error:
+            raise process_error
 
-    # Check if there was an error
-    if process_error:
-        raise process_error
+        if process_result is None:
+            raise RuntimeError("Subprocess did not complete successfully")
 
-    # Show completion message
-    if process_result and process_result.returncode == 0:
-        console.print(f"[green]✓[/green] Blarify indexing completed for {codebase_path.name}")
+        # Show completion message
+        if process_result.returncode == 0:
+            console.print(f"[green]✓[/green] Blarify indexing completed for {codebase_path.name}")
 
-    return process_result
+        return process_result
