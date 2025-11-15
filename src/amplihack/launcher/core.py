@@ -403,7 +403,13 @@ class ClaudeLauncher:
 
             # Add Azure model when using proxy
             if self.proxy_manager:
-                claude_args.extend(["--model", "azure/gpt-5-codex"])
+                # Get model from proxy config (which loaded the .env file)
+                azure_model = (
+                    self.proxy_manager.proxy_config.get("BIG_MODEL") or
+                    self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME") or
+                    "gpt-5-codex"  # Fallback default
+                )
+                claude_args.extend(["--model", f"azure/{azure_model}"])
             # Add default model if not using proxy and user hasn't specified one
             elif not self._has_model_arg():
                 default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
@@ -436,7 +442,13 @@ class ClaudeLauncher:
 
         # Add Azure model when using proxy
         if self.proxy_manager:
-            cmd.extend(["--model", "azure/gpt-5-codex"])
+            # Get model from proxy config (which loaded the .env file)
+            azure_model = (
+                self.proxy_manager.proxy_config.get("BIG_MODEL") or
+                self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME") or
+                "gpt-5-codex"  # Fallback default
+            )
+            cmd.extend(["--model", f"azure/{azure_model}"])
         # Add default model if not using proxy and user hasn't specified one
         elif not self._has_model_arg():
             default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
