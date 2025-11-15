@@ -89,10 +89,42 @@ amplihack also supports GitHub Copilot CLI integration. See
 [docs/github-copilot-litellm-integration.md](docs/github-copilot-litellm-integration.md)
 for setup instructions.
 
+## Features
+
+### Goal-Seeking Agent Generator (NEW!)
+
+**Create autonomous agents from simple prompts:**
+
+```bash
+# Write your goal
+cat > my_goal.md <<'EOF'
+# Goal: Automated Code Review
+Review Python code and suggest improvements.
+EOF
+
+# Generate agent
+amplihack new --file my_goal.md
+
+# Run agent
+cd goal_agents/automated-code-review-agent
+python main.py
+```
+
+**Features:**
+- Generate agents in < 0.1 seconds
+- Automatic skill matching
+- Multi-phase execution planning
+- Standalone, distributable agents
+
+**Learn more:** [Goal Agent Generator Guide](docs/GOAL_AGENT_GENERATOR_GUIDE.md)
+
+---
+
 ## Quick Reference - Commands
 
 | Command                        | Description                                        |
 | ------------------------------ | -------------------------------------------------- |
+| `amplihack new`                | **NEW!** Generate goal-seeking agents from prompts |
 | `/amplihack:ultrathink`        | Deep multi-agent analysis for complex tasks        |
 | `/amplihack:analyze`           | Code analysis and philosophy compliance review     |
 | `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute) |
@@ -241,6 +273,11 @@ customization instructions.
 - [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agent creation
 - [GitHub Copilot Integration](docs/github-copilot-litellm-integration.md) -
   Copilot CLI support
+- [Office Skills](.claude/skills/README.md) - PDF, Excel, Word, and PowerPoint
+  document processing
+  - [PDF Skill](.claude/skills/pdf/README.md) - Comprehensive PDF manipulation
+  - [XLSX Skill](.claude/skills/xlsx/README.md) - Spreadsheet creation with
+    formulas and financial modeling
 
 ### Patterns
 

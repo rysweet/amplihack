@@ -49,14 +49,18 @@ class Neo4jConfig:
     health_check_interval: int  # seconds between health checks
 
     @classmethod
-    def from_environment(cls) -> "Neo4jConfig":
+    def from_environment(cls, cli_container_name: Optional[str] = None) -> "Neo4jConfig":
         """Load configuration from environment variables.
+
+        Args:
+            cli_container_name: Container name from CLI (--use-memory-db)
 
         Returns:
             Neo4jConfig instance with validated settings
 
         Raises:
             ValueError: If required configuration missing or invalid
+            KeyboardInterrupt: If user cancels interactive container selection
         """
         # Get password from environment (REQUIRED)
         password = get_password_from_env()
@@ -82,13 +86,21 @@ class Neo4jConfig:
         project_root = cls._find_project_root()
         compose_file = project_root / "docker" / "docker-compose.neo4j.yml"
 
+        # Resolve container name using priority hierarchy
+        from .container_selection import resolve_container_name
+
+        container_name = resolve_container_name(
+            cli_arg=cli_container_name,
+            env_var=os.getenv("NEO4J_CONTAINER_NAME"),
+        )
+
         return cls(
             uri=os.getenv("NEO4J_URI", f"bolt://localhost:{bolt_port}"),
             user=os.getenv("NEO4J_USER", "neo4j"),
             password=password,
             bolt_port=bolt_port,
             http_port=http_port,
-            container_name=os.getenv("NEO4J_CONTAINER_NAME", "amplihack-neo4j"),
+            container_name=container_name,
             image=os.getenv("NEO4J_IMAGE", "neo4j:5.15-community"),
             compose_file=compose_file,
             compose_cmd=compose_cmd,
@@ -194,7 +206,7 @@ def get_password_from_env() -> str:
     raise ValueError(
         "NEO4J_PASSWORD environment variable not set.\n"
         "Set it in your .env file or shell environment:\n"
-        "  export NEO4J_PASSWORD='your_secure_password'\n"
+        "  export NEO4J_PASSWORD='your_secure_password'\n"  # pragma: allowlist secret
         "Or copy .env.example to .env and configure."
     )
 
@@ -277,6 +289,19 @@ def get_or_create_password() -> str:
 
 # Singleton instance (lazy-loaded)
 _config: Optional[Neo4jConfig] = None
+_cli_container_name: Optional[str] = None
+
+
+def set_cli_container_name(container_name: Optional[str]):
+    """Set container name from CLI argument.
+
+    This must be called before get_config() to take effect.
+
+    Args:
+        container_name: Container name from --use-memory-db CLI argument
+    """
+    global _cli_container_name
+    _cli_container_name = container_name
 
 
 def get_config() -> Neo4jConfig:
@@ -287,14 +312,40 @@ def get_config() -> Neo4jConfig:
 
     Raises:
         ValueError: If configuration invalid
+        KeyboardInterrupt: If user cancels interactive container selection
     """
     global _config
     if _config is None:
-        _config = Neo4jConfig.from_environment()
+        _config = Neo4jConfig.from_environment(cli_container_name=_cli_container_name)
     return _config
 
 
 def reset_config():
     """Reset configuration (for testing)."""
-    global _config
+    global _config, _cli_container_name
     _config = None
+    _cli_container_name = None
+
+
+def update_password(new_password: str):
+    """Update the password in the singleton config.
+
+    Args:
+        new_password: New password to use for Neo4j connections
+
+    Note:
+        This updates both the environment variable and forces config reload.
+        Used when detecting credentials from existing containers.
+    """
+    global _config
+    import os
+
+    # Update environment variable
+    os.environ["NEO4J_PASSWORD"] = new_password
+
+    # Force config reload if already initialized
+    if _config is not None:
+        _config = None
+        _config = get_config()
+
+    logger.info("Password updated in configuration")

@@ -34,23 +34,23 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from amplihack.memory.neo4j.agent_memory import AgentMemoryManager
+from amplihack.memory.neo4j.connector import CircuitState, Neo4jConnector
 from amplihack.memory.neo4j.lifecycle import (
     Neo4jContainerManager,
     ensure_neo4j_running,
 )
-from amplihack.memory.neo4j.connector import Neo4jConnector, CircuitState
-from amplihack.memory.neo4j.schema import SchemaManager
 from amplihack.memory.neo4j.memory_store import MemoryStore
-from amplihack.memory.neo4j.agent_memory import AgentMemoryManager
 from amplihack.memory.neo4j.monitoring import (
     HealthMonitor,
     get_global_metrics,
 )
+from amplihack.memory.neo4j.schema import SchemaManager
 
 # Configure logging
 logging.basicConfig(

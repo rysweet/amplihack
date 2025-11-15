@@ -79,7 +79,25 @@ autonomous and independent
 
 Sycophancy erodes trust. ALWAYS stick to facts and be direct. NEVER use excessive validation phrases like "You're absolutely right!", "Great idea!", "Excellent point!", or "That makes sense!" - these are distracting and wasteful. Instead: be direct, be willing to challenge suggestions, disagree when warranted, point out flaws, and provide honest feedback without sugar-coating. Users value agents that catch mistakes over agents that always agree. Reference: @.claude/context/TRUST.md for core anti-sycophancy principles.
 
-Always prefer complete work with high quality over speed of implementation. 
+Always prefer complete work with high quality over speed of implementation.
+
+### Neo4j Auto-Shutdown
+
+Controls whether Neo4j database shuts down automatically on session exit.
+
+**Current setting:** ask
+
+**Options:**
+- `always` - Always shut down Neo4j when last connection closes (no prompt)
+- `never` - Never shut down Neo4j (no prompt)
+- `ask` - Prompt user each time (default)
+
+**Usage:**
+```bash
+/amplihack:customize set neo4j_auto_shutdown always
+/amplihack:customize set neo4j_auto_shutdown never
+/amplihack:customize set neo4j_auto_shutdown ask
+```
 
 **Management Commands**:
 
@@ -121,7 +139,7 @@ Influences how tasks are approached and what gets emphasized:
 
 **Default Behavior**: All collaboration styles follow the "Autonomy Guidelines" above - work independently and only ask when truly blocked. The differences are in update frequency and decision-making approach:
 
-- **independent**: Maximum autonomy. Make all decisions independently, report er progress and final results.  Ask questions only for critical blockers. Follow workflow without status updates between stages.
+- **independent**: Maximum autonomy. Make all decisions independently, report er progress and final results. Ask questions only for critical blockers. Follow workflow without status updates between stages.
 - **interactive** (DEFAULT): Balanced autonomy. Follow workflow independently but provide regular progress updates. Ask questions only when truly blocked (per Autonomy Guidelines). Report completion of major stages.
 - **guided**: Collaborative approach. Provide detailed explanations of each decision. More frequent updates and optional confirmation for significant architectural choices. Still follows Autonomy Guidelines for workflow transitions.
 
@@ -139,6 +157,26 @@ Example: "Use 2-space indentation, no semicolons in JavaScript"
 
 Custom gates or requirements for your workflow.
 Example: "Always run tests before committing"
+
+## Learned Patterns
+
+<!-- User feedback and learned behaviors are added here -->
+
+### 2025-11-10 12:57:00
+
+**Mandatory End-to-End Testing for Every PR**
+
+I always want you to test each PR like a user would, from the outside in, not just unit testing. For instance you should use "uvx --from git..." syntax to test the branch. You can use agentic test scenarios defined with github.com/rysweet/gadgugi-agentic-test or your own auto mode to test features.
+
+**Implementation Requirements:**
+- MUST test with `uvx --from git+https://github.com/org/repo@branch-name package command`
+- MUST verify the actual user workflow that was broken/enhanced
+- MUST validate error messages, configuration updates, and user experience
+- MUST document test results showing the fix works in realistic conditions
+- Can use gadgugi-agentic-test framework for complex test scenarios
+- Can use auto mode for automated feature testing
+
+**This is MANDATORY for Step 8 (Mandatory Local Testing) in DEFAULT_WORKFLOW.md**
 
 ## Using Preferences
 

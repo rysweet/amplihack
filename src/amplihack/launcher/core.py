@@ -1,5 +1,7 @@
 """Core launcher functionality for Claude Code."""
 
+import atexit
+import logging
 import os
 import shlex
 import signal
@@ -16,6 +18,54 @@ from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
 from .detector import ClaudeDirectoryDetector
 from .repo_checkout import checkout_repository
+
+logger = logging.getLogger(__name__)
+
+
+def merge_node_options(user_node_options: Optional[str], default_memory_mb: int = 8192) -> str:
+    """Merge user's NODE_OPTIONS with amplihack defaults.
+
+    Respects user's explicit memory limit if set, otherwise applies default.
+    Preserves all user's other Node.js flags.
+
+    CRITICAL USER REQUIREMENT: "If the user needs more mem, we should honor that"
+    - User's memory limit is NEVER overridden
+    - User's other flags are ALWAYS preserved
+    - Default only applied when user hasn't set memory
+
+    Args:
+        user_node_options: User's current NODE_OPTIONS value (may be None or empty)
+        default_memory_mb: Default memory limit in MB (default: 8192)
+
+    Returns:
+        Merged NODE_OPTIONS string ready for env assignment
+
+    Examples:
+        >>> merge_node_options(None)
+        '--max-old-space-size=8192'
+
+        >>> merge_node_options("")
+        '--max-old-space-size=8192'
+
+        >>> merge_node_options("--inspect --trace-warnings")
+        '--inspect --trace-warnings --max-old-space-size=8192'
+
+        >>> merge_node_options("--max-old-space-size=4096")
+        '--max-old-space-size=4096'
+
+        >>> merge_node_options("--inspect --max-old-space-size=4096 --trace-warnings")
+        '--inspect --max-old-space-size=4096 --trace-warnings'
+    """
+    # Case 1: No user options or empty string
+    if not user_node_options or user_node_options.strip() == "":
+        return f"--max-old-space-size={default_memory_mb}"
+
+    # Case 2: User has set memory limit - RESPECT IT (critical requirement)
+    if "--max-old-space-size" in user_node_options:
+        return user_node_options
+
+    # Case 3: User has other flags but no memory - add default
+    return f"{user_node_options} --max-old-space-size={default_memory_mb}"
 
 
 class ClaudeLauncher:
@@ -75,6 +125,9 @@ class ClaudeLauncher:
         self._cached_uvx_decision = None  # Cache for UVX --add-dir decision
         self._target_directory = None  # Target directory for --add-dir
 
+        # Setup signal handlers for graceful shutdown
+        self._setup_signal_handlers()
+
     def prepare_launch(self) -> bool:
         """Prepare environment for launching Claude.
 
@@ -85,37 +138,40 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Interactive Neo4j startup (blocks until ready or user decides)
+        # 2. Check and sync Neo4j credentials from existing containers (if any)
+        self._check_neo4j_credentials()
+
+        # 3. Interactive Neo4j startup (blocks until ready or user decides)
         if not self._interactive_neo4j_startup():
             # User chose to exit rather than continue without Neo4j
             return False
 
-        # 3. Handle repository checkout if needed
+        # 4. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
 
-        # 3. Find and validate target directory
+        # 5. Find and validate target directory
         target_dir = self._find_target_directory()
         if not target_dir:
             print("Failed to determine target directory")
             return False
 
-        # 4. Ensure required runtime directories exist
+        # 6. Ensure required runtime directories exist
         if not self._ensure_runtime_directories(target_dir):
             print("Warning: Could not create runtime directories")
             # Don't fail - just warn
 
-        # 5. Fix hook paths in settings.json to use absolute paths
+        # 7. Fix hook paths in settings.json to use absolute paths
         if not self._fix_hook_paths_in_settings(target_dir):
             print("Warning: Could not fix hook paths in settings.json")
             # Don't fail - hooks might still work
 
-        # 6. Handle directory change if needed (unless UVX with --add-dir)
+        # 8. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 7. Start proxy if needed
+        # 9. Start proxy if needed
         return self._start_proxy_if_needed()
 
     def _handle_repo_checkout(self) -> bool:
@@ -520,7 +576,8 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Set Node.js memory limit to 8GB for claude/claude-trace
-            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+            # Respects user's existing NODE_OPTIONS if set
+            env["NODE_OPTIONS"] = merge_node_options(os.environ.get("NODE_OPTIONS"))
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -593,6 +650,8 @@ class ClaudeLauncher:
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.proxy_manager:
                     self.proxy_manager.stop_proxy()
+                # Set flag to prevent stdin reads during shutdown (avoids SystemExit race)
+                os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
                 sys.exit(0)
 
             signal.signal(signal.SIGINT, signal_handler)
@@ -603,7 +662,8 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Set Node.js memory limit to 8GB for claude/claude-trace
-            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+            # Respects user's existing NODE_OPTIONS if set
+            env["NODE_OPTIONS"] = merge_node_options(os.environ.get("NODE_OPTIONS"))
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -724,8 +784,8 @@ class ClaudeLauncher:
                     return
 
                 # Start Neo4j
-                from ..memory.neo4j.lifecycle import ensure_neo4j_running
                 from ..memory.neo4j.diagnostics import verify_neo4j_working
+                from ..memory.neo4j.lifecycle import ensure_neo4j_running
 
                 thread_logger.info("Starting Neo4j memory system...")
                 if ensure_neo4j_running(blocking=True):
@@ -798,4 +858,58 @@ class ClaudeLauncher:
         except Exception:
             # Graceful degradation - never crash launcher
             # No error message needed as Neo4j detection is optional
+            pass
+
+    def _setup_signal_handlers(self) -> None:
+        """Setup signal handlers for graceful shutdown.
+
+        Registers handlers for SIGINT (Ctrl-C) and SIGTERM that:
+        1. Trigger Neo4j cleanup via stop hook
+        2. Allow process to exit gracefully
+
+        Also registers atexit handler as fallback.
+        """
+
+        def signal_handler(signum: int, frame) -> None:
+            """Handle shutdown signals."""
+            signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
+            logger.info(f"Received {signal_name}, initiating graceful shutdown...")
+
+            # Trigger Neo4j cleanup via stop hook
+            try:
+                from amplihack.hooks.manager import execute_stop_hook
+
+                logger.info("Executing stop hook for cleanup...")
+                execute_stop_hook()
+            except Exception as e:
+                logger.warning(f"Stop hook execution failed: {e}")
+
+            # Exit gracefully
+            logger.info("Graceful shutdown complete")
+            sys.exit(0)
+
+        # Register signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        # Also register atexit handler as fallback
+        atexit.register(self._cleanup_on_exit)
+
+        logger.debug("Signal handlers registered for graceful shutdown")
+
+    def _cleanup_on_exit(self) -> None:
+        """Fallback cleanup handler for atexit.
+
+        This is a fail-safe that runs when the process exits normally
+        without receiving signals. Executes stop hook silently.
+        """
+        try:
+            # Set flag to prevent stdin reads during shutdown (avoids hang + traceback)
+            os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
+
+            from amplihack.hooks.manager import execute_stop_hook
+
+            execute_stop_hook()
+        except Exception:
+            # Fail silently in atexit - cleanup is best-effort
             pass

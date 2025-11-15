@@ -32,8 +32,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from amplihack.memory.neo4j.connector import Neo4jConnector
 from amplihack.memory.neo4j.code_graph import BlarifyIntegration, run_blarify
+from amplihack.memory.neo4j.connector import Neo4jConnector
 
 logging.basicConfig(
     level=logging.INFO,

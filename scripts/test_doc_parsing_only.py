@@ -11,8 +11,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from amplihack.memory.neo4j.doc_graph import DocGraphIntegration
 from amplihack.memory.neo4j import Neo4jConnector
+from amplihack.memory.neo4j.doc_graph import DocGraphIntegration
 
 
 def setup_logging():

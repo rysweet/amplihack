@@ -139,7 +139,6 @@ class SessionStartHook(HookProcessor):
 
         # Build context if needed
         context_parts = []
-        preference_enforcement = []
 
         # Add project context
         context_parts.append("## Project Context")
@@ -230,8 +229,6 @@ class SessionStartHook(HookProcessor):
                     "Type `/help` for available commands",
                 ]
             )
-
-            startup_message = "\n".join(startup_msg_parts)
 
             # CRITICAL: Inject original request context at top priority
             if original_request_context:

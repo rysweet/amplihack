@@ -10,8 +10,9 @@ Tests the ContainerManager class responsible for:
 All tests should FAIL initially (TDD approach).
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 
 class TestContainerManagerStartup:
@@ -138,8 +139,9 @@ class TestContainerHealthCheck:
 
     def test_WHEN_health_check_times_out_THEN_returns_false(self):
         """Test health check timeout handling."""
-        from amplihack.memory.neo4j.container_manager import ContainerManager
         import subprocess
+
+        from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
         with patch("subprocess.run") as mock_run:
