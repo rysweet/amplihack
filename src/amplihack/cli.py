@@ -22,10 +22,18 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
-    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
-    if getattr(args, "use_graph_mem", False):
-        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
-        print("Neo4j graph memory enabled")
+    # Handle backwards compatibility: Check for deprecated --use-graph-mem flag
+    use_graph_mem = getattr(args, "use_graph_mem", False)
+    enable_neo4j = getattr(args, "enable_neo4j_memory", False)
+
+    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks and launcher)
+    if use_graph_mem or enable_neo4j:
+        os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
+        if use_graph_mem:
+            print("WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead.")
+            print("Neo4j graph memory enabled via --use-graph-mem flag (deprecated)")
+        else:
+            print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
 
         # Set container name if provided
         if getattr(args, "use_memory_db", None):

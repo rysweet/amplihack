@@ -722,6 +722,7 @@ class ClaudeLauncher:
         """Interactive Neo4j startup with user feedback.
 
         BLOCKS until Neo4j ready or user decides to continue without it.
+        Neo4j is disabled by default unless AMPLIHACK_ENABLE_NEO4J_MEMORY=1 is set.
 
         Returns:
             True to continue, False to exit
@@ -730,6 +731,18 @@ class ClaudeLauncher:
 
         method_logger = logging.getLogger(__name__)
 
+        # Check if Neo4j is enabled via environment variable (default: disabled)
+        neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
+
+        if not neo4j_enabled:
+            print("ℹ️  Neo4j graph memory is disabled by default.")
+            print("   To enable: amplihack launch --enable-neo4j-memory")
+            print("   Continuing with basic memory system...\n")
+            return True
+
+        # Neo4j is enabled - proceed with interactive startup
+        print("✓ Neo4j graph memory enabled")
+
         try:
             from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
 
@@ -737,6 +750,7 @@ class ClaudeLauncher:
         except ImportError:
             # Neo4j modules not available - continue without
             method_logger.debug("Neo4j modules not found")
+            print("⚠️  Neo4j modules not available, continuing without graph memory\n")
             return True
         except Exception as e:
             method_logger.error("Neo4j startup failed: %s", e)
