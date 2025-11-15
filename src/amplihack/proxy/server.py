@@ -171,7 +171,7 @@ def log_request_lifecycle(request_id: str, event: str, details: Optional[Dict[st
 # Configure LiteLLM for Azure if Azure endpoint is present
 # Check Azure-specific variables first, then fall back to generic OPENAI_BASE_URL
 AZURE_BASE_URL = (
-    os.environ.get("AZURE_OPENAI_ENDPOINT") 
+    os.environ.get("AZURE_OPENAI_ENDPOINT")
     or os.environ.get("AZURE_ENDPOINT")
     or os.environ.get("AZURE_OPENAI_BASE_URL")
     or os.environ.get("OPENAI_BASE_URL", "")
@@ -890,9 +890,11 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                 messages.append({"role": msg.role, "content": processed_content})
 
     # Cap max_tokens for OpenAI and Azure models to their limit of 16384
-    if (anthropic_request.model.startswith("openai/") 
+    if (
+        anthropic_request.model.startswith("openai/")
         or anthropic_request.model.startswith("azure/")
-        or anthropic_request.model.startswith("gemini/")):
+        or anthropic_request.model.startswith("gemini/")
+    ):
         litellm_request["max_tokens"] = min(anthropic_request.max_tokens, 16384)
         logger.debug(
             f"Capping max_tokens to 16384 for OpenAI/Azure/Gemini model (original value: {anthropic_request.max_tokens})"

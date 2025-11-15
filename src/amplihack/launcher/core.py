@@ -404,9 +404,13 @@ class ClaudeLauncher:
             # Add Azure model when using proxy
             if self.proxy_manager:
                 # Get model from proxy config (which loaded the .env file)
-                azure_model = (
-                    self.proxy_manager.proxy_config.get("BIG_MODEL") or
-                    self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME") or
+                azure_model = next(
+                    (
+                        model for model in [
+                            self.proxy_manager.proxy_config.get("BIG_MODEL"),
+                            self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
+                        ] if model and model.strip()
+                    ),
                     "gpt-5-codex"  # Fallback default
                 )
                 claude_args.extend(["--model", f"azure/{azure_model}"])
