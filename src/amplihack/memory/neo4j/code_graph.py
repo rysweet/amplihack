@@ -7,6 +7,8 @@ as the memory system, creating relationships between code and memories.
 import json
 import logging
 import subprocess
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -15,6 +17,17 @@ from .base_graph import BaseGraphManager
 from .connector import Neo4jConnector
 
 logger = logging.getLogger(__name__)
+
+# Try to import rich for progress indication
+try:
+    from rich.console import Console
+    from rich.spinner import Spinner
+    from rich.live import Live
+    from rich.text import Text
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+    logger.debug("rich library not available, progress indicators will be disabled")
 
 
 class BlarifyIntegration(BaseGraphManager):
@@ -697,12 +710,22 @@ def run_blarify(
         cmd.extend(["--languages", ",".join(languages)])
 
     try:
-        result = subprocess.run(
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        # Run blarify with progress indication
+        if RICH_AVAILABLE:
+            result = _run_with_progress_indicator(cmd, codebase_path)
+        else:
+            # Fallback to simple execution without progress
+            result = subprocess.run(
+                cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        if result.returncode != 0:
+            logger.error("Blarify failed: %s", result.stderr)
+            return False
+
         logger.info("Blarify completed successfully")
         logger.debug("Blarify output: %s", result.stdout)
         return True
@@ -710,3 +733,68 @@ def run_blarify(
     except subprocess.CalledProcessError as e:
         logger.error("Blarify failed: %s", e.stderr)
         return False
+
+
+def _run_with_progress_indicator(cmd: List[str], codebase_path: Path) -> subprocess.CompletedProcess:
+    """Run subprocess with a rich progress indicator.
+
+    Args:
+        cmd: Command to execute
+        codebase_path: Path being analyzed (for display)
+
+    Returns:
+        CompletedProcess instance with results
+    """
+    console = Console()
+    process_result = None
+    process_error = None
+
+    def run_subprocess():
+        """Run the subprocess in a separate thread."""
+        nonlocal process_result, process_error
+        try:
+            process_result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+            )
+        except Exception as e:
+            process_error = e
+
+    # Start subprocess in background thread
+    thread = threading.Thread(target=run_subprocess, daemon=True)
+    thread.start()
+
+    # Show progress indicator while subprocess runs
+    spinner = Spinner("dots", text=Text(f"Indexing codebase: {codebase_path.name}...", style="cyan"))
+
+    with Live(spinner, console=console, refresh_per_second=10) as live:
+        start_time = time.time()
+        while thread.is_alive():
+            elapsed = time.time() - start_time
+            elapsed_str = f"{int(elapsed)}s"
+
+            # Update spinner text with elapsed time
+            spinner.update(
+                text=Text(
+                    f"Indexing codebase: {codebase_path.name}... ({elapsed_str} elapsed)",
+                    style="cyan"
+                )
+            )
+            live.update(spinner)
+
+            # Check every 100ms
+            thread.join(timeout=0.1)
+
+    # Wait for thread to complete
+    thread.join()
+
+    # Check if there was an error
+    if process_error:
+        raise process_error
+
+    # Show completion message
+    if process_result and process_result.returncode == 0:
+        console.print(f"[green]✓[/green] Blarify indexing completed for {codebase_path.name}")
+
+    return process_result
