@@ -70,16 +70,20 @@ Examples in [examples.md](./examples.md).
 
 ## Documentation
 
-**Comprehensive guides**:
+**Supporting Files** (progressive disclosure):
 - [reference.md](./reference.md): Architecture, patterns, YAML spec, best practices
 - [examples.md](./examples.md): Real-world usage, testing, troubleshooting
 
-**Official sources** (embedded in reference.md):
-- Claude Code Skills docs
-- Anthropic Agent SDK docs
-- Engineering blog posts
-- Claude Cookbooks
-- Community examples
+**Original Documentation Sources** (embedded in reference.md):
+
+1. **Official Claude Code Skills**: https://code.claude.com/docs/en/skills
+2. **Anthropic Agent SDK Skills**: https://docs.claude.com/en/docs/agent-sdk/skills
+3. **Agent Skills Engineering Blog**: https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills
+4. **Claude Cookbooks - Skills**: https://github.com/anthropics/claude-cookbooks/tree/main/skills
+5. **Skills Custom Development Notebook**: https://github.com/anthropics/claude-cookbooks/blob/main/skills/notebooks/03_skills_custom_development.ipynb
+6. **metaskills/skill-builder** (Reference): https://github.com/metaskills/skill-builder
+
+All documentation is embedded in reference.md for offline access. Links provided for updates and verification.
 
 ---
 
