@@ -8,7 +8,41 @@ This document provides practical examples of using the `/amplihack:skill-builder
 /amplihack:skill-builder <skill-name> <skill-type> <description>
 ```
 
-## Example 1: Creating an Agent Skill
+**Skill Types**: `skill`, `agent`, `command`, `scenario`
+
+## Example 1: Creating a Claude Code Skill (Auto-Discovery)
+
+Create an auto-discoverable skill that loads when Claude detects relevance:
+
+```bash
+/amplihack:skill-builder json-validator skill "Validates JSON data against schemas with detailed error reporting and format checking"
+```
+
+**Expected Workflow:**
+1. Validates arguments (name, type, description)
+2. Creates todo list with 8 steps
+3. Invokes prompt-writer to clarify requirements
+4. Invokes architect to design skill structure with progressive disclosure
+5. Invokes builder to generate SKILL.md with YAML frontmatter
+6. Invokes reviewer to validate philosophy compliance
+7. Validates YAML frontmatter and token budget
+8. Creates directory and file at: `.claude/skills/json-validator/SKILL.md`
+
+**Expected Output:**
+- Auto-discoverable skill with keyword-rich description
+- Progressive disclosure structure (SKILL.md core <5K tokens)
+- Optional supporting files (reference.md, examples.md, scripts/)
+- Activates automatically when user says "validate JSON" or similar
+- Philosophy compliance score >85%
+
+**How It Works After Creation:**
+```
+User: "Can you validate this JSON for me?"
+Claude: *json-validator skill loads automatically*
+        "I'll validate that JSON using schema validation..."
+```
+
+## Example 2: Creating an Agent Skill
 
 Create a specialized agent for data transformation:
 

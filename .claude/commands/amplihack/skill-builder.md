@@ -15,14 +15,15 @@ argument-hint: <skill-name> <skill-type> <description>
 
 **Arguments:**
 - `skill-name`: Name of the skill (kebab-case, e.g., "data-transformer")
-- `skill-type`: Type of skill - one of: `agent`, `command`, `scenario`
+- `skill-type`: Type of skill - one of: `agent`, `command`, `scenario`, `skill`
 - `description`: Brief description of what the skill does (1-2 sentences)
 
 **Examples:**
 ```bash
-/amplihack:skill-builder data-transformer agent "Transforms data between different formats with validation"
+/amplihack:skill-builder data-transformer skill "Transforms data between different formats with validation"
 /amplihack:skill-builder analyze-dependencies command "Analyzes project dependencies and generates report"
 /amplihack:skill-builder code-reviewer scenario "Reviews code for quality, security, and best practices"
+/amplihack:skill-builder api-client agent "Manages API client connections with retry logic"
 ```
 
 ## Purpose
@@ -68,12 +69,13 @@ description = args[2] # e.g., "Transforms data between formats"
    - Valid examples: "data-transformer", "code-reviewer", "api-client"
 
 2. **skill-type**:
-   - Must be one of: `agent`, `command`, `scenario`
+   - Must be one of: `agent`, `command`, `scenario`, `skill`
    - Case-insensitive (normalize to lowercase)
    - Maps to output directories:
-     - `agent` → `.claude/agents/amplihack/specialized/`
-     - `command` → `.claude/commands/amplihack/`
-     - `scenario` → `.claude/scenarios/`
+     - `skill` → `.claude/skills/{skill-name}/` (creates SKILL.md for auto-discovery)
+     - `agent` → `.claude/agents/amplihack/specialized/` (creates agent .md file)
+     - `command` → `.claude/commands/amplihack/` (creates command .md file)
+     - `scenario` → `.claude/scenarios/{skill-name}/` (creates directory with README.md)
 
 3. **description**:
    - Length: 10-200 characters
@@ -254,14 +256,15 @@ optional:
 1. Determine output path:
    ```python
    output_paths = {
+       "skill": ".claude/skills/{skill_name}/SKILL.md",
        "agent": ".claude/agents/amplihack/specialized/{skill_name}.md",
        "command": ".claude/commands/amplihack/{skill_name}.md",
-       "scenario": ".claude/scenarios/{skill_name}/SKILL.md"
+       "scenario": ".claude/scenarios/{skill_name}/README.md"
    }
    output_path = output_paths[skill_type]
    ```
 
-2. Create directories if needed (scenario type creates directory)
+2. Create directories if needed (skill and scenario types create directories)
 
 3. Write skill file using Write tool
 
@@ -500,6 +503,44 @@ This skill follows Amplihack principles:
 ```
 
 ## Type-Specific Guidance
+
+### For Claude Code Skills (`skill`)
+
+**Location**: `.claude/skills/{skill-name}/SKILL.md`
+
+**Purpose**: Auto-discoverable skills that Claude loads based on description matching
+
+**Additional Considerations:**
+- Skills auto-activate when description matches user intent
+- Description MUST include trigger keywords users would say
+- Keep core instructions under 5,000 tokens
+- Use progressive disclosure for details (reference.md, examples.md)
+- Can include scripts/ directory for executable code
+- Skills are token-efficient (load only when needed)
+
+**YAML Frontmatter Requirements:**
+```yaml
+---
+name: skill-name
+description: Keyword-rich description for auto-discovery (optimized for trigger words)
+---
+```
+
+**Description Best Practices:**
+- Include action verbs: "analyze", "generate", "transform", "validate"
+- Mention file types: ".xlsx", ".pdf", "JSON", "YAML"
+- Add domain keywords: "financial", "testing", "documentation"
+- Specify use cases: "Use when analyzing test coverage", "Use for data transformation"
+- Length: 50-200 characters (not too short, not too long)
+
+**Directory Structure:**
+```
+.claude/skills/{skill-name}/
+├── SKILL.md           # Required: Main skill with YAML frontmatter
+├── reference.md       # Optional: Detailed documentation
+├── examples.md        # Optional: Usage examples
+└── scripts/           # Optional: Executable utilities
+```
 
 ### For Agent Skills (`agent`)
 

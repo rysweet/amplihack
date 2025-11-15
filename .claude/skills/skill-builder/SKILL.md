@@ -52,112 +52,34 @@ I orchestrate the skill creation process using amplihack's specialized agents:
 
 ## Skill Types Supported
 
-**Agent Skills**: For AI-driven automation tasks
-- Location: `.claude/agents/amplihack/specialized/`
-- Use when: Task requires intelligent decision-making
+- **skill**: Claude Code skills in `.claude/skills/` (auto-discovery)
+- **agent**: Specialized agents in `.claude/agents/amplihack/specialized/`
+- **command**: Slash commands in `.claude/commands/amplihack/`
+- **scenario**: Production tools in `.claude/scenarios/`
 
-**Command Skills**: For user-invoked workflows
-- Location: `.claude/commands/amplihack/`
-- Use when: Explicit user control needed
+See [examples.md](./examples.md) for detailed examples of each type.
 
-**Scenario Skills**: For production tools
-- Location: `.claude/scenarios/`
-- Use when: Mature, well-tested functionality
+## Command Interface
 
-## Key Validation Rules
-
-**Name Format**:
-- Kebab-case only (lowercase-with-hyphens)
-- 3-50 characters
-- No underscores or special characters
-
-**Description Quality**:
-- 10-200 characters
-- Include trigger keywords
-- Be specific and actionable
-- Example: "Transforms data between JSON, YAML, and XML formats with validation"
-
-**Token Budget**:
-- Core instructions: <5,000 tokens (warn >5K, error >20K)
-- Use progressive disclosure for details
-- Move code to scripts/ directory
-- Reference docs in reference.md
-
-**YAML Frontmatter**:
-```yaml
----
-name: skill-name
-description: Clear, keyword-rich description
----
-```
-
-## Research Foundation
-
-This skill implements patterns from:
-- [Claude Code Skills](https://code.claude.com/docs/en/skills)
-- [Anthropic Agent SDK](https://docs.claude.com/en/docs/agent-sdk/skills)
-- [Agent Skills Blog](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)
-- [Claude Cookbooks](https://github.com/anthropics/claude-cookbooks/tree/main/skills)
-- [metaskills/skill-builder](https://github.com/metaskills/skill-builder)
-
-## Explicit Command
-
-For explicit invocation with specific parameters:
+For explicit invocation:
 ```bash
 /amplihack:skill-builder <skill-name> <skill-type> <description>
 ```
 
-Example:
-```bash
-/amplihack:skill-builder data-validator agent "Validates JSON schemas with detailed error reporting"
-```
+Examples in [examples.md](./examples.md).
 
-## Integration
+## Documentation
 
-This skill works with:
-- **Command version**: `/amplihack:skill-builder` for power users
-- **Auto-invocation**: Loads automatically when skill building detected
-- **Agent orchestration**: Uses prompt-writer, architect, builder, reviewer, tester
-- **Philosophy validation**: Ensures ruthless simplicity and zero-BS compliance
+**Comprehensive guides**:
+- [reference.md](./reference.md): Architecture, patterns, YAML spec, best practices
+- [examples.md](./examples.md): Real-world usage, testing, troubleshooting
 
-## Example Interactions
-
-**User**: "I need to create a skill for analyzing test coverage"
-
-**I activate and**:
-1. Clarify: What aspects of test coverage? (unit, integration, E2E)
-2. Design: Plan skill structure for test-gap-analyzer
-3. Generate: Create SKILL.md with proper frontmatter
-4. Validate: Check token budget and description quality
-5. Test: Define activation scenarios
-
-**User**: "Build a skill that generates Mermaid diagrams"
-
-**I activate and**:
-1. Clarify: What types of diagrams? (flowchart, sequence, class, etc.)
-2. Design: Structure for mermaid-diagram-generator
-3. Generate: Complete skill with examples
-4. Validate: Philosophy compliance check
-5. Deliver: Production-ready skill
-
-## Philosophy Alignment
-
-- **Ruthless Simplicity**: Start minimal, add only as needed
-- **Self-Contained**: All templates and logic embedded
-- **Zero-BS**: No stubs, placeholders, or fake implementations
-- **Regeneratable**: Clear specifications for reproducibility
-- **Token Efficient**: Progressive disclosure, <5K token core
-
-## Success Criteria
-
-Generated skills must:
-- ✅ Have valid YAML frontmatter
-- ✅ Include clear, keyword-rich description
-- ✅ Stay within token budget
-- ✅ Pass philosophy compliance (>85%)
-- ✅ Include working examples
-- ✅ Have no stubs or placeholders
-- ✅ Be immediately usable
+**Official sources** (embedded in reference.md):
+- Claude Code Skills docs
+- Anthropic Agent SDK docs
+- Engineering blog posts
+- Claude Cookbooks
+- Community examples
 
 ---
 
