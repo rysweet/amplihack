@@ -352,7 +352,66 @@ Economic analysis rests on several fundamental principles:
 - How intense is competition?
 - What are efficiency implications?
 
-### Framework 5: Microeconomics vs. Macroeconomics
+### Framework 5: Market Failures and Externalities
+
+**Definition**: Situations where markets fail to allocate resources efficiently, requiring potential intervention
+
+**Types of Market Failures**:
+
+1. **Externalities**
+   - **Negative externality**: Cost imposed on third parties (pollution, congestion)
+   - **Positive externality**: Benefit to third parties (education, vaccination)
+   - **Result**: Market overproduces goods with negative externalities, underproduces goods with positive externalities
+   - **Efficiency loss**: Social cost/benefit differs from private cost/benefit
+
+2. **Public Goods**
+   - Non-excludable (can't prevent use)
+   - Non-rivalrous (one person's use doesn't reduce availability)
+   - **Problem**: Free-rider problem → Underprovision
+   - **Examples**: National defense, clean air, lighthouse
+
+3. **Information Asymmetries**
+   - **Adverse selection**: Hidden characteristics (used car quality)
+   - **Moral hazard**: Hidden actions (insurance reduces care)
+   - **Result**: Market unraveling or inefficiency
+
+4. **Market Power**
+   - Monopoly or oligopoly
+   - Ability to set prices above marginal cost
+   - **Result**: Deadweight loss, reduced output
+
+**Pigouvian Taxation**:
+- **Purpose**: Tax equal to marginal external cost
+- **Effect**: Internalizes externality, restores efficiency
+- **Example**: Carbon tax = social cost of carbon
+- **Named after**: Arthur Pigou (1877-1959)
+
+**Coase Theorem**:
+- If transaction costs are low and property rights well-defined, private bargaining can solve externalities
+- **Implication**: Government intervention not always needed
+- **Reality**: Transaction costs often high, making Pigouvian solutions necessary
+
+**Applications**:
+- Environmental policy (carbon tax, cap-and-trade)
+- Public goods provision (taxes for defense, infrastructure)
+- Regulation (information disclosure, safety standards)
+- Antitrust policy (prevent market power abuse)
+
+**Policy Tools**:
+- **Pigouvian taxes**: Tax externalities
+- **Subsidies**: Subsidize positive externalities
+- **Regulation**: Direct control (emissions standards)
+- **Cap-and-trade**: Market-based quantity control
+- **Property rights**: Assign and enforce rights (Coase)
+
+**Example - Carbon Tax**:
+- Negative externality: CO2 emissions cause climate damage
+- Social cost > private cost
+- Pigouvian tax ($50/ton) = estimated social cost of carbon
+- Internalizes externality → Efficient outcome
+- Revenue recycling can address distributional concerns
+
+### Framework 6: Microeconomics vs. Macroeconomics
 
 **Microeconomics**:
 - Focus: Individual markets, firms, consumers
