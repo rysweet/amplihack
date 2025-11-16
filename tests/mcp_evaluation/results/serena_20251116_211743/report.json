@@ -1,0 +1,74 @@
+{
+  "tool": {
+    "id": "serena",
+    "name": "Serena MCP Server",
+    "version": "1.0.0"
+  },
+  "timestamp": "2025-11-16T21:17:44.536404",
+  "summary": {
+    "total_scenarios": 3,
+    "integrate_recommended": 2,
+    "consider_recommended": 1,
+    "avg_time_improvement_percent": 25.357804968483503,
+    "avg_quality_improvement": 0.06666666666666665
+  },
+  "recommendations": [
+    "INTEGRATE: 2/3 scenarios show clear value"
+  ],
+  "results": [
+    {
+      "scenario_id": "cross_file_nav_001",
+      "scenario_name": "Find Interface Implementations",
+      "quality_delta": {
+        "correctness_delta": 0.0,
+        "test_failures_delta": 0,
+        "requirements_delta": 0
+      },
+      "efficiency_delta": {
+        "time_delta_seconds": -8.821487426757812e-06,
+        "time_delta_percent": -42.5287356321839,
+        "token_delta": 385,
+        "file_reads_delta": 2,
+        "file_writes_delta": 0
+      },
+      "tool_value": {},
+      "recommendation": "INTEGRATE - Significant measurable value"
+    },
+    {
+      "scenario_id": "code_analysis_001",
+      "scenario_name": "Map Class Dependencies",
+      "quality_delta": {
+        "correctness_delta": 0.0,
+        "test_failures_delta": 0,
+        "requirements_delta": 0
+      },
+      "efficiency_delta": {
+        "time_delta_seconds": 5.4836273193359375e-06,
+        "time_delta_percent": 76.66666666666667,
+        "token_delta": 131,
+        "file_reads_delta": 11,
+        "file_writes_delta": 0
+      },
+      "tool_value": {},
+      "recommendation": "DON'T INTEGRATE - No clear advantage"
+    },
+    {
+      "scenario_id": "code_modification_001",
+      "scenario_name": "Add Type Hints to Service Methods",
+      "quality_delta": {
+        "correctness_delta": 0.19999999999999996,
+        "test_failures_delta": 0,
+        "requirements_delta": 1
+      },
+      "efficiency_delta": {
+        "time_delta_seconds": 3.0994415283203125e-06,
+        "time_delta_percent": 41.935483870967744,
+        "token_delta": 467,
+        "file_reads_delta": 2,
+        "file_writes_delta": 0
+      },
+      "tool_value": {},
+      "recommendation": "CONSIDER - Some value demonstrated"
+    }
+  ]
+}
