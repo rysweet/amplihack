@@ -10,11 +10,12 @@ Tests cover:
 
 import json
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    pytest = None
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -151,8 +152,9 @@ class TestCheckerTimeouts:
 
     def test_timeout_context_manager(self):
         """Test that timeout context manager works."""
-        from power_steering_checker import _timeout
         import time
+
+        from power_steering_checker import _timeout
 
         # This should NOT timeout
         try:
@@ -166,8 +168,9 @@ class TestCheckerTimeouts:
 
     def test_timeout_context_manager_triggers(self):
         """Test that timeout context manager triggers on long operations."""
-        from power_steering_checker import _timeout
         import time
+
+        from power_steering_checker import _timeout
 
         # This SHOULD timeout
         with pytest.raises(TimeoutError):

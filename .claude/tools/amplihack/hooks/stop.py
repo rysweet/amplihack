@@ -229,7 +229,7 @@ class StopHook(HookProcessor):
 
             # Initialize components with credentials from environment
             # Note: Connection tracker will raise ValueError if password not set and  # pragma: allowlist secret
-            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.
+            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.  # pragma: allowlist secret
             tracker = Neo4jConnectionTracker(
                 username=os.getenv("NEO4J_USERNAME"), password=os.getenv("NEO4J_PASSWORD")
             )
