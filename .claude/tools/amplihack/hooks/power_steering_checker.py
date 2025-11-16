@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+import yaml
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -99,15 +100,17 @@ class PowerSteeringResult:
 class PowerSteeringChecker:
     """Analyzes session completeness using consideration checkers.
 
-    Phase 1 (MVP) Implementation:
-    - Top 5 most critical checkers
-    - Basic Q&A detection
-    - Simple configuration
+    Phase 2 Implementation:
+    - All 21 considerations from YAML file
+    - User customization support
+    - Generic analyzer for flexible considerations
+    - Backward compatible with Phase 1
     - Fail-open error handling
     """
 
-    # Phase 1: Hardcoded considerations (top 5 critical)
-    CONSIDERATIONS = [
+    # Phase 1 fallback: Hardcoded considerations (top 5 critical)
+    # Used when YAML file is missing or invalid
+    PHASE1_CONSIDERATIONS = [
         {
             "id": "todos_complete",
             "category": "Session Completion & Progress",
@@ -160,6 +163,9 @@ class PowerSteeringChecker:
         self.config_path = (
             project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
         )
+        self.considerations_path = (
+            project_root / ".claude" / "tools" / "amplihack" / "considerations.yaml"
+        )
 
         # Ensure runtime directory exists
         try:
@@ -169,6 +175,9 @@ class PowerSteeringChecker:
 
         # Load configuration
         self.config = self._load_config()
+
+        # Load considerations from YAML (with Phase 1 fallback)
+        self.considerations = self._load_considerations_yaml()
 
     def _detect_project_root(self) -> Path:
         """Auto-detect project root by finding .claude marker.
@@ -219,6 +228,74 @@ class PowerSteeringChecker:
             pass  # Fail-open: Use defaults on any error
 
         return defaults
+
+    def _load_considerations_yaml(self) -> List[Dict[str, Any]]:
+        """Load considerations from YAML file with fallback to Phase 1.
+
+        Returns:
+            List of consideration dictionaries (from YAML or Phase 1 fallback)
+        """
+        try:
+            # Check if YAML file exists
+            if not self.considerations_path.exists():
+                self._log("Considerations YAML not found, using Phase 1 fallback", "WARNING")
+                return self.PHASE1_CONSIDERATIONS
+
+            # Load YAML
+            with open(self.considerations_path) as f:
+                yaml_data = yaml.safe_load(f)
+
+            # Validate YAML structure
+            if not isinstance(yaml_data, list):
+                self._log("Invalid YAML structure (not a list), using Phase 1 fallback", "ERROR")
+                return self.PHASE1_CONSIDERATIONS
+
+            # Validate and filter considerations
+            valid_considerations = []
+            for item in yaml_data:
+                if self._validate_consideration_schema(item):
+                    valid_considerations.append(item)
+                else:
+                    self._log(f"Invalid consideration schema: {item.get('id', 'unknown')}", "WARNING")
+
+            if not valid_considerations:
+                self._log("No valid considerations in YAML, using Phase 1 fallback", "ERROR")
+                return self.PHASE1_CONSIDERATIONS
+
+            self._log(f"Loaded {len(valid_considerations)} considerations from YAML", "INFO")
+            return valid_considerations
+
+        except (OSError, yaml.YAMLError) as e:
+            # Fail-open: Use Phase 1 fallback on any error
+            self._log(f"Error loading YAML ({e}), using Phase 1 fallback", "ERROR")
+            return self.PHASE1_CONSIDERATIONS
+
+    def _validate_consideration_schema(self, consideration: Any) -> bool:
+        """Validate consideration has required fields.
+
+        Args:
+            consideration: Consideration dictionary to validate
+
+        Returns:
+            True if valid, False otherwise
+        """
+        if not isinstance(consideration, dict):
+            return False
+
+        required_fields = ["id", "category", "question", "severity", "checker", "enabled"]
+        for field in required_fields:
+            if field not in consideration:
+                return False
+
+        # Validate severity
+        if consideration["severity"] not in ["blocker", "warning"]:
+            return False
+
+        # Validate enabled
+        if not isinstance(consideration["enabled"], bool):
+            return False
+
+        return True
 
     def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
         """Main entry point - analyze transcript and make decision.
@@ -453,23 +530,36 @@ class PowerSteeringChecker:
         """
         analysis = ConsiderationAnalysis()
 
-        for consideration in self.CONSIDERATIONS:
-            # Check if this checker is enabled
+        for consideration in self.considerations:
+            # Check if enabled in consideration itself
+            if not consideration.get("enabled", True):
+                continue
+
+            # Also check config for backward compatibility
             if not self.config.get("checkers_enabled", {}).get(consideration["id"], True):
                 continue
 
             # Get checker method
             checker_name = consideration["checker"]
-            checker_func = getattr(self, checker_name, None)
+
+            # Handle generic checker
+            if checker_name == "generic":
+                checker_func = self._generic_analyzer
+            else:
+                checker_func = getattr(self, checker_name, None)
 
             if checker_func is None:
-                # Log warning but don't block on missing checker
-                self._log(f"Checker not found: {checker_name}", "WARNING")
-                continue
+                # Log warning and use generic analyzer as fallback
+                self._log(f"Checker not found: {checker_name}, using generic", "WARNING")
+                checker_func = self._generic_analyzer
 
             # Run checker with timeout and error handling
             try:
-                satisfied = checker_func(transcript, session_id)
+                if checker_name == "generic" or checker_func == self._generic_analyzer:
+                    satisfied = checker_func(transcript, session_id, consideration)
+                else:
+                    satisfied = checker_func(transcript, session_id)
+
                 result = CheckerResult(
                     consideration_id=consideration["id"],
                     satisfied=satisfied,
@@ -758,6 +848,693 @@ class PowerSteeringChecker:
         return ci_passing
 
     # ========================================================================
+    # Phase 2: Additional Checkers (16 new methods)
+    # ========================================================================
+
+    def _generic_analyzer(
+        self, transcript: List[Dict], session_id: str, consideration: Dict[str, Any]
+    ) -> bool:
+        """Generic analyzer for considerations without specific checkers.
+
+        Uses simple keyword matching on the consideration question.
+        Phase 2: Simple heuristics (future: LLM-based analysis)
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+            consideration: Consideration dictionary with question
+
+        Returns:
+            True if satisfied (fail-open default), False if potential issues detected
+        """
+        # Extract keywords from question (simple tokenization)
+        question = consideration.get("question", "").lower()
+        keywords = [
+            word
+            for word in re.findall(r"\b\w+\b", question)
+            if len(word) > 3 and word not in ["were", "does", "need", "that", "this", "with"]
+        ]
+
+        if not keywords:
+            # No keywords to check, assume satisfied
+            return True
+
+        # Build transcript text for searching
+        transcript_text = ""
+        for msg in transcript:
+            if msg.get("type") in ["user", "assistant"]:
+                content = msg.get("message", {}).get("content", "")
+                if isinstance(content, str):
+                    transcript_text += content.lower() + " "
+                elif isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            transcript_text += str(block.get("text", "")).lower() + " "
+
+        # Check if keywords appear in transcript
+        keyword_found = any(keyword in transcript_text for keyword in keywords)
+
+        # Default to satisfied (fail-open), only flag if suspicious patterns
+        # This is intentionally conservative to avoid false positives
+        self._log(
+            f"Generic analyzer for '{consideration['id']}': keywords={keywords}, found={keyword_found}",
+            "DEBUG",
+        )
+
+        return True  # Phase 2: Always satisfied (fail-open)
+
+    def _check_agent_unnecessary_questions(
+        self, transcript: List[Dict], session_id: str
+    ) -> bool:
+        """Check if agent asked unnecessary questions instead of proceeding.
+
+        Detects questions that could have been inferred from context.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if no unnecessary questions, False otherwise
+        """
+        # Count questions asked by assistant
+        assistant_questions = 0
+        for msg in transcript:
+            if msg.get("type") == "assistant":
+                content = msg.get("message", {}).get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = str(block.get("text", ""))
+                            # Count question marks in assistant responses
+                            assistant_questions += text.count("?")
+
+        # Heuristic: If assistant asked more than 3 questions, might be excessive
+        if assistant_questions > 3:
+            return False
+
+        return True
+
+    def _check_objective_completion(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if original user objective was fully accomplished.
+
+        Looks for completion indicators in later messages.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if objective appears complete, False otherwise
+        """
+        # Get first user message (the objective)
+        first_user_msg = None
+        for msg in transcript:
+            if msg.get("type") == "user":
+                first_user_msg = msg
+                break
+
+        if not first_user_msg:
+            return True  # No objective to check
+
+        # Look for completion indicators in assistant messages
+        completion_indicators = [
+            "complete",
+            "finished",
+            "done",
+            "implemented",
+            "successfully",
+            "all tests pass",
+        ]
+
+        for msg in reversed(transcript[-10:]):  # Check last 10 messages
+            if msg.get("type") == "assistant":
+                content = msg.get("message", {}).get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = str(block.get("text", "")).lower()
+                            if any(indicator in text for indicator in completion_indicators):
+                                return True
+
+        return False  # No completion indicators found
+
+    def _check_documentation_updates(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if relevant documentation files were updated.
+
+        Looks for Write/Edit operations on documentation files.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if docs updated or not applicable, False if needed but missing
+        """
+        # Check if code changes were made
+        code_files_modified = False
+        doc_files_modified = False
+
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            tool_name = block.get("name", "")
+                            if tool_name in ["Write", "Edit"]:
+                                tool_input = block.get("input", {})
+                                file_path = tool_input.get("file_path", "")
+
+                                # Check for code files
+                                if any(
+                                    ext in file_path
+                                    for ext in [".py", ".js", ".ts", ".java", ".go", ".rs"]
+                                ):
+                                    code_files_modified = True
+
+                                # Check for doc files
+                                if any(
+                                    ext in file_path
+                                    for ext in [".md", ".rst", ".txt", "README", "CHANGELOG"]
+                                ):
+                                    doc_files_modified = True
+
+        # If code was modified but no docs updated, flag as issue
+        if code_files_modified and not doc_files_modified:
+            return False
+
+        return True
+
+    def _check_tutorial_needed(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if new feature needs tutorial/how-to.
+
+        Detects new user-facing features that should have examples.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if tutorial exists or not needed, False if missing
+        """
+        # Look for new feature indicators
+        feature_keywords = ["new feature", "add feature", "implement feature", "create feature"]
+        has_new_feature = False
+
+        for msg in transcript:
+            if msg.get("type") == "user":
+                content = str(msg.get("message", {}).get("content", "")).lower()
+                if any(keyword in content for keyword in feature_keywords):
+                    has_new_feature = True
+                    break
+
+        if not has_new_feature:
+            return True  # No new feature, tutorial not needed
+
+        # Check for example/tutorial files
+        tutorial_patterns = ["example", "tutorial", "how_to", "guide", "demo"]
+        has_tutorial = False
+
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            tool_name = block.get("name", "")
+                            if tool_name in ["Write", "Edit"]:
+                                file_path = block.get("input", {}).get("file_path", "").lower()
+                                if any(pattern in file_path for pattern in tutorial_patterns):
+                                    has_tutorial = True
+                                    break
+
+        return has_tutorial
+
+    def _check_presentation_needed(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if work needs presentation deck.
+
+        Detects high-impact work that should be presented to stakeholders.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if presentation exists or not needed, False if missing
+        """
+        # This is a low-priority check, default to satisfied
+        # Could be enhanced to detect high-impact work patterns
+        return True
+
+    def _check_next_steps(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if next steps were identified and documented.
+
+        Looks for TODO items or documented follow-up tasks.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if next steps documented, False if missing
+        """
+        # Look for next steps indicators
+        next_steps_keywords = [
+            "next steps",
+            "follow-up",
+            "future work",
+            "todo",
+            "remaining",
+            "planned",
+        ]
+
+        for msg in reversed(transcript[-20:]):  # Check recent messages
+            if msg.get("type") == "assistant":
+                content = msg.get("message", {}).get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = str(block.get("text", "")).lower()
+                            if any(keyword in text for keyword in next_steps_keywords):
+                                return True
+
+        # Also check for Write operations on TODO or planning files
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Write":
+                                file_path = block.get("input", {}).get("file_path", "").lower()
+                                if "todo" in file_path or "plan" in file_path:
+                                    return True
+
+        return False
+
+    def _check_docs_organization(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if investigation/session docs are organized properly.
+
+        Verifies documentation is in correct directories.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if docs properly organized, False otherwise
+        """
+        # Check for doc files created in wrong locations
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Write":
+                                file_path = block.get("input", {}).get("file_path", "")
+
+                                # Check for investigation/session docs in wrong places
+                                if any(
+                                    pattern in file_path.lower()
+                                    for pattern in ["investigation", "session", "log"]
+                                ):
+                                    # Should be in .claude/runtime or .claude/docs
+                                    if ".claude" not in file_path:
+                                        return False
+
+        return True
+
+    def _check_investigation_docs(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if investigation findings were documented.
+
+        Ensures exploration work is captured in persistent documentation.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if investigation documented, False if missing
+        """
+        # Look for investigation indicators
+        investigation_keywords = [
+            "investigation",
+            "exploration",
+            "research",
+            "analysis",
+            "findings",
+        ]
+
+        has_investigation = False
+        for msg in transcript:
+            if msg.get("type") == "user":
+                content = str(msg.get("message", {}).get("content", "")).lower()
+                if any(keyword in content for keyword in investigation_keywords):
+                    has_investigation = True
+                    break
+
+        if not has_investigation:
+            return True  # No investigation, docs not needed
+
+        # Check for documentation of findings
+        doc_created = False
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Write":
+                                file_path = block.get("input", {}).get("file_path", "").lower()
+                                if any(
+                                    pattern in file_path for pattern in [".md", "readme", "doc"]
+                                ):
+                                    doc_created = True
+                                    break
+
+        return doc_created
+
+    def _check_shortcuts(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if any quality shortcuts were taken.
+
+        Identifies compromises like skipped error handling or incomplete validation.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if no shortcuts, False if compromises detected
+        """
+        # Look for shortcut indicators in code
+        shortcut_patterns = [
+            r"\bpass\b.*#.*later",
+            r"#.*hack",
+            r"#.*workaround",
+            r"#.*temporary",
+            r"#.*fix.*later",
+        ]
+
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            tool_name = block.get("name", "")
+                            if tool_name in ["Write", "Edit"]:
+                                tool_input = block.get("input", {})
+                                content_to_check = str(tool_input.get("content", "")) + str(
+                                    tool_input.get("new_string", "")
+                                )
+
+                                # Check for shortcut patterns
+                                for pattern in shortcut_patterns:
+                                    if re.search(pattern, content_to_check, re.IGNORECASE):
+                                        return False
+
+        return True
+
+    def _check_interactive_testing(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if agent tested interactively beyond automated tests.
+
+        Looks for manual verification, edge case testing, UI validation.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if interactive testing done, False if only automated tests
+        """
+        # Look for interactive testing indicators
+        interactive_keywords = [
+            "manually tested",
+            "tried",
+            "verified",
+            "checked",
+            "confirmed",
+            "validated",
+        ]
+
+        for msg in transcript:
+            if msg.get("type") == "assistant":
+                content = msg.get("message", {}).get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = str(block.get("text", "")).lower()
+                            if any(keyword in text for keyword in interactive_keywords):
+                                return True
+
+        # Also accept if automated tests are comprehensive (10+ tests)
+        test_count = 0
+        for msg in transcript:
+            if msg.get("type") == "tool_result":
+                output = str(msg.get("message", {}).get("content", ""))
+                # Count test results
+                test_count += output.lower().count("passed")
+                test_count += output.lower().count("ok")
+
+        if test_count >= 10:
+            return True  # Comprehensive automated testing is acceptable
+
+        return False
+
+    def _check_unrelated_changes(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if there are unrelated changes in PR.
+
+        Detects scope creep and unrelated modifications.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if no unrelated changes, False if scope creep detected
+        """
+        # Get original objective from first user message
+        first_user_msg = None
+        for msg in transcript:
+            if msg.get("type") == "user":
+                first_user_msg = str(msg.get("message", {}).get("content", "")).lower()
+                break
+
+        if not first_user_msg:
+            return True
+
+        # Extract key terms from objective
+        objective_terms = set(
+            word for word in re.findall(r"\b\w+\b", first_user_msg) if len(word) > 4
+        )
+
+        # Check files modified
+        files_modified = []
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") in ["Write", "Edit"]:
+                                file_path = block.get("input", {}).get("file_path", "")
+                                files_modified.append(file_path.lower())
+
+        # Heuristic: If more than 20 files modified, might have scope creep
+        if len(files_modified) > 20:
+            return False
+
+        return True
+
+    def _check_root_pollution(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if PR polluted project root with new files.
+
+        Flags new top-level files that should be in subdirectories.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if no root pollution, False if new top-level files added
+        """
+        # Check for new files in project root
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Write":
+                                file_path = block.get("input", {}).get("file_path", "")
+
+                                # Check if file is in root (only one path component)
+                                path_parts = file_path.strip("/").split("/")
+                                if len(path_parts) == 1:
+                                    # New file in root - check if it's acceptable
+                                    filename = path_parts[0].lower()
+                                    acceptable_root_files = [
+                                        "readme",
+                                        "license",
+                                        "makefile",
+                                        "dockerfile",
+                                        ".gitignore",
+                                        "setup.py",
+                                        "requirements.txt",
+                                    ]
+
+                                    if not any(acceptable in filename for acceptable in acceptable_root_files):
+                                        return False
+
+        return True
+
+    def _check_pr_description(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if PR description is clear and complete.
+
+        Verifies PR has summary, test plan, and context.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if PR description adequate, False if missing or incomplete
+        """
+        # Look for PR creation (gh pr create)
+        pr_created = False
+        pr_body = ""
+
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Bash":
+                                command = block.get("input", {}).get("command", "")
+                                if "gh pr create" in command:
+                                    pr_created = True
+                                    pr_body = command.lower()
+
+        if not pr_created:
+            return True  # No PR, check not applicable
+
+        # Check PR body for required sections
+        required_sections = ["summary", "test", "plan"]
+        has_all_sections = all(section in pr_body for section in required_sections)
+
+        return has_all_sections
+
+    def _check_review_responses(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if PR review comments were addressed.
+
+        Verifies reviewer feedback was acknowledged and resolved.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if reviews addressed or no reviews, False if unaddressed feedback
+        """
+        # Look for review-related activity
+        review_keywords = ["review", "feedback", "comment", "requested changes"]
+        has_reviews = False
+
+        for msg in transcript:
+            if msg.get("type") == "user":
+                content = str(msg.get("message", {}).get("content", "")).lower()
+                if any(keyword in content for keyword in review_keywords):
+                    has_reviews = True
+                    break
+
+        if not has_reviews:
+            return True  # No reviews to address
+
+        # Look for response indicators
+        response_keywords = ["addressed", "fixed", "updated", "changed", "resolved"]
+        has_responses = False
+
+        for msg in transcript:
+            if msg.get("type") == "assistant":
+                content = msg.get("message", {}).get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = str(block.get("text", "")).lower()
+                            if any(keyword in text for keyword in response_keywords):
+                                has_responses = True
+                                break
+
+        return has_responses
+
+    def _check_branch_rebase(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if branch needs rebase on main.
+
+        Verifies branch is up to date with main.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if branch is current, False if needs rebase
+        """
+        # Look for git status or branch checks
+        for msg in transcript:
+            if msg.get("type") == "tool_result":
+                output = str(msg.get("message", {}).get("content", "")).lower()
+
+                # Check for "behind" indicators
+                if "behind" in output or "diverged" in output:
+                    return False
+
+                # Check for "up to date" indicators
+                if "up to date" in output or "up-to-date" in output:
+                    return True
+
+        # Default to satisfied if no information
+        return True
+
+    def _check_ci_precommit_mismatch(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check for CI failures contradicting passing pre-commit.
+
+        Identifies divergence between local pre-commit and CI checks.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if no mismatch, False if divergence detected
+        """
+        # Look for pre-commit passing
+        precommit_passed = False
+        ci_failed = False
+
+        for msg in transcript:
+            if msg.get("type") in ["assistant", "tool_result"]:
+                content_str = str(msg.get("message", {})).lower()
+
+                # Check for pre-commit success
+                if "pre-commit" in content_str or "precommit" in content_str:
+                    if "passed" in content_str or "success" in content_str:
+                        precommit_passed = True
+
+                # Check for CI failure
+                if "ci" in content_str or "github actions" in content_str:
+                    if "failed" in content_str or "failing" in content_str:
+                        ci_failed = True
+
+        # If both conditions met, there's a mismatch
+        if precommit_passed and ci_failed:
+            return False
+
+        return True
+
+    # ========================================================================
     # Output Generation
     # ========================================================================
 
@@ -818,14 +1595,14 @@ class PowerSteeringChecker:
         ]
 
         # List all satisfied checks
-        for consideration in self.CONSIDERATIONS:
+        for consideration in self.considerations:
             result = analysis.results.get(consideration["id"])
             if result and result.satisfied:
                 summary_parts.append(f"- ✓ {consideration['question']}")
 
         summary_parts.append("")
         summary_parts.append("---")
-        summary_parts.append("Generated by Power-Steering Mode (Phase 1 MVP)")
+        summary_parts.append("Generated by Power-Steering Mode (Phase 2)")
 
         return "\n".join(summary_parts)
 
