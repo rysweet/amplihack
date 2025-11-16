@@ -24,7 +24,6 @@ ESSENTIAL_DIRS = [
     "docs",  # Investigation examples and documentation
     "schemas",  # JSON/YAML schemas for validation
     "config",  # Configuration files for tools
-    "data",  # Learning paths and reference data
 ]
 
 # Runtime directories that need to be created

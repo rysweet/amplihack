@@ -41,7 +41,6 @@ class FileOperationError(DefensiveError):
 
     pass
 
-
 def parse_llm_json(response: str, strict: bool = False) -> Dict[str, Any]:
     """Extract and parse JSON from LLM response text.
 
