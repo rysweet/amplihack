@@ -42,6 +42,9 @@ class SessionStartHook(HookProcessor):
         Returns:
             Additional context to add to the session
         """
+        # Check for version mismatch FIRST (before any heavy operations)
+        self._check_version_mismatch()
+
         # Extract prompt
         prompt = input_data.get("prompt", "")
         self.log(f"Prompt length: {len(prompt)}")
@@ -250,6 +253,159 @@ class SessionStartHook(HookProcessor):
             self.log(f"Injected {len(full_context)} characters of context")
 
         return output
+
+    def _check_version_mismatch(self) -> None:
+        """Check for version mismatch and offer to update.
+
+        Phase 2: Interactive update with user prompt.
+        Fails gracefully - never raises exceptions.
+        """
+        try:
+            # Import modules
+            sys.path.insert(0, str(self.project_root / ".claude" / "tools" / "amplihack"))
+            from update_engine import perform_update
+            from update_prefs import load_update_preference, save_update_preference
+            from version_checker import check_version_mismatch
+
+            # Check for mismatch
+            version_info = check_version_mismatch()
+
+            if not version_info.is_mismatched:
+                self.log("✅ .claude/ directory version matches package")
+                return
+
+            # Log mismatch
+            self.log(
+                f"⚠️ Version mismatch detected: package={version_info.package_commit}, project={version_info.project_commit}",
+                "WARNING",
+            )
+
+            # Check user preference
+            preference = load_update_preference()
+
+            if preference == "always":
+                # Auto-update without prompting
+                self.log("Auto-updating per user preference")
+                result = perform_update(
+                    version_info.package_path, version_info.project_path, version_info.project_commit
+                )
+
+                if result.success:
+                    print(
+                        f"\n✓ Updated .claude/ directory to version {result.new_version}",
+                        file=sys.stderr,
+                    )
+                    print(
+                        f"  Updated {len(result.updated_files)} files, preserved {len(result.preserved_files)} files",
+                        file=sys.stderr,
+                    )
+                    print(f"  Backup: {result.backup_path}\n", file=sys.stderr)
+                else:
+                    print(
+                        f"\n✗ Update failed: {result.error}",
+                        file=sys.stderr,
+                    )
+                    print(f"  Backup preserved: {result.backup_path}\n", file=sys.stderr)
+
+                self.save_metric("auto_update_executed", result.success)
+                return
+
+            if preference == "never":
+                # Skip per user preference - just log
+                self.log("Skipping update per user preference (never)")
+                print(
+                    f"\n⚠️  .claude/ directory out of date (package: {version_info.package_commit}, project: {version_info.project_commit or 'unknown'})",
+                    file=sys.stderr,
+                )
+                print(
+                    "  Auto-update disabled. To update: /amplihack:customize set auto_update always\n",
+                    file=sys.stderr,
+                )
+                return
+
+            # No preference - prompt user
+            print("\n" + "=" * 70, file=sys.stderr)
+            print("⚠️  Version Mismatch Detected", file=sys.stderr)
+            print("=" * 70, file=sys.stderr)
+            print(
+                "\nYour project's .claude/ directory is out of date:",
+                file=sys.stderr,
+            )
+            print(f"  Package version:  {version_info.package_commit} (installed)", file=sys.stderr)
+            print(
+                f"  Project version:  {version_info.project_commit or 'unknown'} (in .claude/.version)",
+                file=sys.stderr,
+            )
+            print(
+                "\nThis may cause bugs or unexpected behavior (like stale hooks).",
+                file=sys.stderr,
+            )
+            print("\nUpdate now? Your custom files will be preserved.", file=sys.stderr)
+            print("\n[y] Yes, update now", file=sys.stderr)
+            print("[n] No, skip this time", file=sys.stderr)
+            print("[a] Always auto-update (don't ask again)", file=sys.stderr)
+            print("[v] Never auto-update (don't ask again)", file=sys.stderr)
+            print("\n" + "=" * 70, file=sys.stderr)
+
+            # Get user input with timeout
+            import select
+
+            print("\nChoice (y/n/a/v): ", end="", file=sys.stderr, flush=True)
+
+            # 30 second timeout for user response
+            ready, _, _ = select.select([sys.stdin], [], [], 30)
+
+            if not ready:
+                print("\n\n(timeout - skipping update)\n", file=sys.stderr)
+                self.log("User prompt timed out - skipping update")
+                return
+
+            choice = sys.stdin.readline().strip().lower()
+
+            # Handle response
+            if choice in ["a", "always"]:
+                save_update_preference("always")
+                self.log("User selected 'always' - saving preference and updating")
+                choice = "yes"
+            elif choice in ["v", "never"]:
+                save_update_preference("never")
+                self.log("User selected 'never' - saving preference and skipping")
+                print("\n✓ Preference saved: never auto-update\n", file=sys.stderr)
+                return
+            elif choice not in ["y", "yes"]:
+                self.log(f"User declined update (choice: {choice})")
+                print("\n✓ Skipping update\n", file=sys.stderr)
+                return
+
+            # Perform update
+            print("\nUpdating .claude/ directory...\n", file=sys.stderr)
+            result = perform_update(
+                version_info.package_path, version_info.project_path, version_info.project_commit
+            )
+
+            if result.success:
+                print(f"\n✓ Update complete! Version {result.new_version}", file=sys.stderr)
+                print(
+                    f"  Updated: {len(result.updated_files)} files",
+                    file=sys.stderr,
+                )
+                print(
+                    f"  Preserved: {len(result.preserved_files)} files (you modified these)",
+                    file=sys.stderr,
+                )
+                print(f"  Backup: {result.backup_path}", file=sys.stderr)
+                print("\n" + "=" * 70 + "\n", file=sys.stderr)
+                self.save_metric("update_success", True)
+            else:
+                print(f"\n✗ Update failed: {result.error}", file=sys.stderr)
+                print(f"  Backup preserved: {result.backup_path}", file=sys.stderr)
+                print("\n" + "=" * 70 + "\n", file=sys.stderr)
+                self.save_metric("update_success", False)
+
+        except Exception as e:
+            # Fail gracefully - don't break session start
+            self.log(f"Version check failed: {e}", "WARNING")
+            self.save_metric("version_check_error", True)
 
 
 def main():
