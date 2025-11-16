@@ -1281,6 +1281,23 @@ Journalistic analysis rests on fundamental principles:
 - **Resources**: Fact-checking, ethics, journalism training
 - **Fact-Checking**: PolitiFact (Truth-O-Meter)
 
+### Journalism Ethics and Standards (2025)
+
+#### SPJ Code of Ethics
+- [SPJ Code of Ethics](https://www.spj.org/spj-code-of-ethics/) - Most widely used code in journalism today
+- [Explore SPJ: Ethics](https://www.spj.org/ethics/) - Comprehensive ethics resources
+- [SPJ Ethics Week 2025](https://www.spj.org/spj-ethics-week/) - Annual focus on responsible reporting values
+- [Journalism Organizations Ethics Statement 2025](https://www.spj.org/journalism-organizations-unite-to-defend-ethics-integrity-during-ethics-week-2025/) - Coalition of 50+ organizations defending ethical journalism
+
+#### Columbia Journalism Review Resources
+- [Is Objectivity Still Worth Pursuing? - CJR](https://www.cjr.org/analysis/is-objectivity-in-journalism-still-worth-pursuing.php) - Contemporary ethics debates
+- [Exploring Ethics Through Journalism Hotlines - CJR](https://www.cjr.org/behind_the_news/ethics_hotlines.php) - Practical ethics application
+- [Thirteen Journalists on Rethinking Ethics - CJR](https://www.cjr.org/feature/thirteen-journalists-on-how-they-are-rethinking-ethics-newsroom-leaders-ethicists-trump-fake-news-ai.php) - Contemporary challenges (AI, misinformation)
+- [Professional Organizations - Columbia Guide](https://guides.library.columbia.edu/journalism/orgs) - Journalism professional organizations resource guide
+
+#### Nieman Lab and Academic Resources
+- [Journalism Scholars Making Journalism Better - Nieman Lab](https://www.niemanlab.org/2024/10/journalism-scholars-want-to-make-journalism-better-theyre-not-quite-sure-how/) - Academic perspectives on improving journalism
+
 ### Essential Resources
 
 - **AP Stylebook**: Industry standard for journalism style

@@ -1467,12 +1467,33 @@ Critique: Not universal hierarchy; cultures vary
 
 ## Reference Materials (Expandable)
 
-### Essential Resources
+### Professional Organizations and Resources
 
 **American Psychological Association (APA)**:
 - Professional organization for psychologists
 - Website: https://www.apa.org/
 - APA Style (citation format)
+- [APA Journals - 120+ peer-reviewed journals](https://www.apa.org/pubs/journals/)
+- [APA PsycArticles Database - EBSCO](https://about.ebsco.com/products/research-databases/apa-psycarticles) - Full-text journal collection
+
+**Association for Psychological Science (APS)**:
+- [Psychological Science Journal - APS](https://journals.sagepub.com/home/pss) - Flagship empirical psychology journal, highest ranked in the field
+- [APS Publications](https://www.psychologicalscience.org/publications) - Leading empirical research journals
+- Focus: Cognitive, social, developmental, health psychology, behavioral neuroscience, biopsychology
+
+### Academic Journal Resources
+
+#### Key APA Journals and Databases
+- [APA Journals - East Carolina Guide](https://libguides.ecu.edu/APA_journals) - Guide to APA journal collection
+- [Journal Articles - Psychology - George Mason](https://infoguides.gmu.edu/psychology/journals) - Comprehensive psychology journal guide
+- [APA Journals on JSTOR](https://www.jstor.org/publisher/apapubs) - Historical archives of APA journals
+- [Category: APA Journals - Wikipedia](https://en.wikipedia.org/wiki/Category:American_Psychological_Association_academic_journals) - Complete list of APA journals
+
+#### Specialized Journals
+- Journal of Experimental Psychology: Learning, Memory, and Cognition - Original experimental studies on cognition
+- Various APA specialized journals covering clinical, developmental, social psychology domains
+
+### Essential Resources
 - Ethics code
 
 **Major Journals**:

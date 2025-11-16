@@ -38,7 +38,54 @@ These skills add NEW capabilities like decision recording, email drafting, meeti
 | **knowledge-extractor** | 40.5 | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
 | **pr-review-assistant** | 40.0 | Philosophy-aware PR reviews | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | [#1258](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1258) |
 
-### Type 2: Agent-Wrapper Skills (7 skills)
+### Type 2: Domain Expert Analyst Skills (23 skills) 🆕
+
+**Purpose**: Analyze events through specialized disciplinary lenses using rigorous academic frameworks.
+
+These skills provide deep domain expertise for multi-perspective analysis of events, policies, and phenomena. Each analyst applies discipline-specific theories, methods, and evidence.
+
+**Social Sciences** (5):
+- **economist-analyst** - Markets, incentives, supply/demand, policy analysis
+- **political-scientist-analyst** - Power, institutions, IR theory, comparative politics
+- **historian-analyst** - Causation, continuity/change, historical context, precedents
+- **sociologist-analyst** - Social structures, inequality, collective behavior
+- **anthropologist-analyst** - Cultural analysis, ethnography, cross-cultural comparison
+
+**Humanities & Communication** (4):
+- **novelist-analyst** - Narrative structure, character development, dramatic tension
+- **journalist-analyst** - Investigation, verification, 5Ws+H, fact-checking
+- **poet-analyst** - Metaphor, imagery, close reading, emotional truth
+- **futurist-analyst** - Scenario planning, trend analysis, strategic foresight
+
+**Natural Sciences** (5):
+- **physicist-analyst** - Physical principles, conservation laws, modeling
+- **chemist-analyst** - Molecular structure, reactions, synthesis planning
+- **psychologist-analyst** - Cognition, behavior, social influence, neuroscience
+- **environmentalist-analyst** - Ecosystems, climate, sustainability, biodiversity
+- **biologist-analyst** - Evolution, genetics, ecology, systems biology
+
+**Applied Fields** (6):
+- **computer-scientist-analyst** - Algorithms, complexity, systems design
+- **cybersecurity-analyst** - Threat modeling, defense, incident response
+- **lawyer-analyst** - Legal analysis, IRAC, statutory interpretation
+- **indigenous-leader-analyst** - Traditional knowledge, Seven Generations, Two-Eyed Seeing
+- **engineer-analyst** - Systems analysis, optimization, failure analysis, trade-offs
+- **urban-planner-analyst** - Land use, zoning, transportation, housing, sustainability
+
+**Philosophy & Ethics** (3):
+- **ethicist-analyst** - Moral frameworks, value conflicts, normative analysis
+- **philosopher-analyst** - Logic, epistemology, metaphysics, conceptual analysis
+- **epidemiologist-analyst** - Disease patterns, public health, outbreak investigation
+
+**Key Features**:
+- All 23 analysts have comprehensive test suites (tests/quiz.md with 5 scenarios each)
+- Domain-specific search capability (see ANALYST_SEARCH_CAPABILITY.md)
+- Progressive disclosure structure (SKILL.md + README.md + QUICK_REFERENCE.md)
+- 100+ scholarly sources preserved across all agents
+- Consistent 16-section template pattern
+- PR: [#1346](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1346)
+
+### Type 3: Agent-Wrapper Skills (7 skills)
 
 **Purpose**: Auto-detect when to invoke existing agents, reducing need to remember command names.
 

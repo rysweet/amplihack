@@ -1166,6 +1166,24 @@ Test Strategy: "Invest in precision medicine capabilities"
 - **Website**: https://www.iftf.org/
 - **Focus**: Applied futures research
 
+### Foresight Methods and Publications
+
+#### Key Methodologies (2025)
+- [Foresight (futures studies) - Wikipedia](https://en.wikipedia.org/wiki/Foresight_(futures_studies)) - Comprehensive overview of foresight methodologies
+- [Scenario Planning for Futures - Mitsui Report 2025](https://www.mitsui.com/mgssi/en/report/detail/__icsFiles/afieldfile/2025/01/20/2411_p_fujii_e.pdf) - Contemporary scenario planning approaches
+- [Strategic Foresight - World Economic Forum 2025](https://www.weforum.org/stories/2025/07/strategic-foresight-future-ready-organizations-wef/) - Why strategic foresight prepares organizations
+- [New Approach to Scenario Planning - WEF 2025](https://www.weforum.org/stories/2025/02/scenario-game-navigate-uncertainty-and-develop-foresight/) - Scenario game for navigating uncertainty
+
+#### Academic and Research Resources
+- [Navigating the Future with Strategic Foresight - BCG 2025](https://www.bcg.com/publications/2025/navigating-the-future-with-strategic-foresight) - Consulting perspective on foresight
+- [Futures Thinking in Action - UN Futures Lab](https://un-futureslab.org/project/futures-thinking-and-strategic-foresight-in-action-insights-from-the-global-south/) - Global South insights
+- [Futures Publications - WFSF](https://wfsf.org/futures-publications-journals/) - Journals in futures studies
+- [Futures, Foresight, Scenarios - Learning for Sustainability](https://learningforsustainability.net/futures-thinking/) - Comprehensive resource on futures thinking methods
+- [Foresight and Futures Thinking for Development - Wiley 2025](https://onlinelibrary.wiley.com/doi/10.1111/dpr.12790) - International development applications
+
+#### Strategic Planning Resources
+- [Taking a Futurist Approach to Strategic Planning - SAIS](https://sais.org/resource/taking-a-futurist-approach-to-strategic-planning/) - Practical application guide
+
 ### Essential Resources
 
 - *The Art of the Long View* - Peter Schwartz
