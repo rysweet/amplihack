@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Amplihack Status Line
-# Shows: directory, git branch, model, cost, duration
+# Shows: directory, git branch, model, tokens, cost, duration
 #
 # Configure in ~/.claude/settings.json:
 #   "statusLine": {
@@ -30,6 +30,7 @@ model_name=$(extract_json "display_name" "Claude")
 model_id=$(extract_json "id" "")
 total_cost=$(extract_json "total_cost_usd" "0")
 total_duration=$(extract_json "total_duration_ms" "0")
+transcript_path=$(extract_json "transcript_path" "")
 
 # Change to directory for git
 cd "$current_dir" 2>/dev/null || cd "$(pwd)"
@@ -76,6 +77,58 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
     fi
 fi
 
+# Calculate tokens from transcript
+calculate_tokens() {
+    local transcript="$1"
+
+    # Return 0 if transcript doesn't exist or is empty
+    if [ -z "$transcript" ] || [ ! -f "$transcript" ]; then
+        echo "0"
+        return
+    fi
+
+    # Extract all token values from transcript using grep/awk
+    local input_tokens=$(grep -o '"input_tokens"[[:space:]]*:[[:space:]]*[0-9]*' "$transcript" 2>/dev/null | grep -o '[0-9]*$' | awk '{s+=$1} END {print s+0}')
+    local output_tokens=$(grep -o '"output_tokens"[[:space:]]*:[[:space:]]*[0-9]*' "$transcript" 2>/dev/null | grep -o '[0-9]*$' | awk '{s+=$1} END {print s+0}')
+    local cache_read=$(grep -o '"cache_read_input_tokens"[[:space:]]*:[[:space:]]*[0-9]*' "$transcript" 2>/dev/null | grep -o '[0-9]*$' | awk '{s+=$1} END {print s+0}')
+    local cache_write=$(grep -o '"cache_creation_input_tokens"[[:space:]]*:[[:space:]]*[0-9]*' "$transcript" 2>/dev/null | grep -o '[0-9]*$' | awk '{s+=$1} END {print s+0}')
+
+    # Sum all token types
+    echo $((input_tokens + output_tokens + cache_read + cache_write))
+}
+
+# Format tokens for display
+format_tokens() {
+    local tokens="$1"
+
+    # Handle zero/empty
+    if [ -z "$tokens" ] || [ "$tokens" -eq 0 ] 2>/dev/null; then
+        echo ""
+        return
+    fi
+
+    # Format based on magnitude
+    if [ "$tokens" -ge 1000000 ]; then
+        # Millions: 1.2M
+        echo "$(awk "BEGIN {printf \"%.1f\", $tokens/1000000}" 2>/dev/null || echo "0")M"
+    elif [ "$tokens" -ge 1000 ]; then
+        # Thousands: 234K
+        echo "$(($tokens / 1000))K"
+    else
+        # Under 1K: show exact number
+        echo "$tokens"
+    fi
+}
+
+# Get and format token count
+total_tokens=$(calculate_tokens "$transcript_path")
+tokens_formatted=$(format_tokens "$total_tokens")
+if [ -n "$tokens_formatted" ]; then
+    tokens_str=" \033[36m🎫 $tokens_formatted\033[0m"
+else
+    tokens_str=""
+fi
+
 # Format cost (handle awk variations)
 cost_formatted=$(echo "$total_cost" | awk '{printf "%.2f", $1}' 2>/dev/null || echo "0.00")
 
@@ -96,4 +149,4 @@ else
 fi
 
 # Output status line
-echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m 💰\$$cost_formatted$duration_str"
+echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str"
