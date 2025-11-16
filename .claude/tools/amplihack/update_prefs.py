@@ -43,6 +43,10 @@ def _get_preference_file_path() -> Path:
 def load_update_preference() -> Optional[str]:
     """Load user's auto-update preference from storage.
 
+    Priority:
+    1. USER_PREFERENCES.md (if set via /amplihack:customize)
+    2. .claude/.update_preference (if set via session_start prompt)
+
     Returns:
         'always': Automatically update without prompting
         'never': Never update automatically
@@ -57,6 +61,27 @@ def load_update_preference() -> Optional[str]:
         >>> else:
         ...     ask_user()
     """
+    # Priority 1: Check USER_PREFERENCES.md
+    try:
+        # Navigate from .claude/tools/amplihack to .claude/context
+        claude_dir = Path(__file__).resolve().parent.parent.parent
+        user_prefs_file = claude_dir / "context" / "USER_PREFERENCES.md"
+
+        if user_prefs_file.exists():
+            content = user_prefs_file.read_text()
+            # Look for "### Auto Update" section
+            if "### Auto Update" in content:
+                lines = content.split("\n")
+                for i, line in enumerate(lines):
+                    if "### Auto Update" in line and i + 2 < len(lines):
+                        value = lines[i + 2].strip().lower()
+                        if value in ["always", "never"]:
+                            return value
+                        # If "ask" or empty, fall through to check .update_preference
+    except Exception:
+        pass  # Fall through to .update_preference file
+
+    # Priority 2: Check .claude/.update_preference
     try:
         pref_file = _get_preference_file_path()
 
