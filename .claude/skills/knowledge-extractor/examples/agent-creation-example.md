@@ -17,6 +17,7 @@ After diagnosing CI failures for the 3rd time using the same 5-step workflow, ea
 ### Step 1: Identify Repeated Workflow
 
 **Session 1 workflow**:
+
 1. Check CI logs for error patterns (5 min)
 2. Verify environment (Python version, tools) (5 min)
 3. Compare local vs CI setup (10 min)
@@ -24,6 +25,7 @@ After diagnosing CI failures for the 3rd time using the same 5-step workflow, ea
 5. Suggest/implement fix (10 min)
 
 **Session 2 workflow**:
+
 1. Check logs for errors (5 min)
 2. Verify environment (5 min)
 3. Check merge conflicts (7 min)
@@ -31,6 +33,7 @@ After diagnosing CI failures for the 3rd time using the same 5-step workflow, ea
 5. Suggest fixes (3 min)
 
 **Session 3 workflow**:
+
 1. Check logs (4 min)
 2. Verify environment (5 min)
 3. Check for conflicts (6 min)
@@ -46,6 +49,7 @@ After diagnosing CI failures for the 3rd time using the same 5-step workflow, ea
 **Annual time**: 35 min × 10 sessions = 350 minutes = 5.8 hours
 
 **If automated**:
+
 - Phase 1 (Basic checks): 2 min (vs 10 min)
 - Phase 2 (Parallel diagnosis): 8 min (vs 20 min)
 - Phase 3 (Synthesis): 5 min (vs 5 min)
@@ -57,7 +61,7 @@ After diagnosing CI failures for the 3rd time using the same 5-step workflow, ea
 
 ### Step 3: Create Agent Recommendation
 
-```markdown
+````markdown
 ## Recommended Agent: ci-diagnostic-workflow
 
 ### Problem
@@ -69,6 +73,7 @@ Each diagnosis takes 25-45 minutes (average 35 minutes). We encounter
 ### Scope
 
 **In Scope**:
+
 - Analyze CI logs for error patterns
 - Check environment (Python version, tool versions)
 - Detect common issues (merge conflicts, version mismatches, pre-commit hooks)
@@ -77,6 +82,7 @@ Each diagnosis takes 25-45 minutes (average 35 minutes). We encounter
 - Coordinate parallel diagnostic agents for complex issues
 
 **Out of Scope**:
+
 - Auto-fixing issues (too risky without review)
 - Merging branches or resolving conflicts
 - Changing CI configuration
@@ -92,10 +98,12 @@ Each diagnosis takes 25-45 minutes (average 35 minutes). We encounter
     "environment_info": dict,      # Python version, tool versions
 }
 ```
+````
 
 ### Process
 
 **Phase 1: Environment Quick Check** (2 minutes)
+
 1. Parse Python version from CI environment
 2. Check tool versions (ruff, pytest, etc.)
 3. Detect obvious mismatches with local setup
@@ -103,12 +111,14 @@ Each diagnosis takes 25-45 minutes (average 35 minutes). We encounter
 
 **Phase 2: Parallel Diagnostic Analysis** (8 minutes)
 Deploy specialized agents in parallel:
+
 - Log Parser: Extract error signatures from CI logs
 - Pattern Matcher: Compare against known failure patterns
 - Conflict Detector: Identify merge conflicts
 - Version Analyzer: Check for version mismatches
 
 **Phase 3: Synthesis and Recommendation** (5 minutes)
+
 1. Combine findings from all analyzers
 2. Identify primary root cause
 3. Rank alternative explanations
@@ -151,16 +161,19 @@ Workflow Step 7: CI Check
 ### Value Calculation
 
 **Time Savings Per Issue**:
+
 - Manual diagnosis: 35 minutes
 - With agent: 15 minutes (setup + review)
 - **Savings: 20 minutes per issue = 57% reduction**
 
 **Annual Impact**:
+
 - Issues per year: 10-12 (2-3 per week)
 - Time saved: 20 min × 12 = 240 minutes = 4 hours
 - **ROI: ~1 hour development → 4 hours saved = 4:1 ratio**
 
 **Secondary Benefits**:
+
 - Faster time-to-fix (quicker PR merging)
 - Fewer repeated CI failures (learning from patterns)
 - Better documentation of common issues
@@ -169,6 +182,7 @@ Workflow Step 7: CI Check
 ### Implementation Strategy
 
 Agent implementation:
+
 1. Create `.claude/agents/amplihack/ci-diagnostic-workflow.md`
 2. Leverage existing agents:
    - fix-agent (for automated fixes)
@@ -180,6 +194,7 @@ Agent implementation:
 ### Quality Metrics
 
 Track effectiveness:
+
 - Average diagnosis time (target: <20 min)
 - Root cause accuracy (target: >90%)
 - Developer satisfaction (target: >8/10)
@@ -189,6 +204,7 @@ Track effectiveness:
 ### Success Criteria
 
 Agent is successful when:
+
 - [ ] Reduces diagnosis time by 50%+ (35 min → <18 min)
 - [ ] Root cause identified correctly 90%+ of time
 - [ ] Used for 80%+ of CI failures
@@ -198,14 +214,17 @@ Agent is successful when:
 ### Related Knowledge
 
 **Patterns Used**:
+
 - CI Failure Rapid Diagnosis (from PATTERNS.md)
 - Parallel Agent Deployment (from PATTERNS.md)
 - Specialized Agent Creation (from PATTERNS.md)
 
 **Integration Points**:
+
 - DEFAULT_WORKFLOW.md: Step 7 (CI Check)
 - CLAUDE.md: Agent delegation triggers
 - DISCOVERIES.md: CI failure patterns
+
 ```
 
 ### Step 4: Validation Checklist
@@ -261,3 +280,4 @@ Agent is successful when:
 ## Key Principle
 
 When you recognize a workflow repeated 2-3 times taking 30+ minutes, automation becomes valuable. Extract the workflow as an agent to transform manual work into orchestrated intelligence.
+```

@@ -3,6 +3,7 @@
 ## Agent Anatomy
 
 An agent in Microsoft Agent Framework is a stateful conversational entity that combines:
+
 - **Model client**: Connection to an LLM
 - **Instructions**: System prompt defining behavior
 - **Tools**: Functions the agent can call
@@ -89,6 +90,7 @@ response2 = await agent.run(thread=thread, message="Follow-up")
 ```
 
 **Processing Flow**:
+
 1. Message arrives → middleware preprocessing
 2. Thread retrieves conversation history
 3. Context providers inject additional context
@@ -157,6 +159,7 @@ print(f"Est. hours: {breakdown.estimated_hours}")
 ```
 
 **C# Example**:
+
 ```csharp
 public class TaskBreakdown
 {
@@ -212,6 +215,7 @@ async for chunk in agent.run_stream(thread=thread, message="Explain quantum comp
 ```
 
 **C# Example**:
+
 ```csharp
 await foreach (var chunk in agent.RunStreamAsync(thread, "Explain quantum computing"))
 {

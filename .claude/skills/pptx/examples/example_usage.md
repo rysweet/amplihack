@@ -24,6 +24,7 @@ This document provides practical examples of using the PPTX skill in Claude Code
 **User**: Create a 5-slide presentation about renewable energy with a modern green color palette
 
 **Claude**:
+
 ```
 I'll create a presentation using the Sage & Terracotta palette which complements the renewable energy theme:
 - Sage (#87A96B) - main color
@@ -46,6 +47,7 @@ Slides:
 **User**: Create a quarterly sales presentation with charts showing revenue trends
 
 **Claude**:
+
 ```
 I'll create a presentation with two-column layouts for charts:
 - Classic Blue palette for professional appearance
@@ -64,6 +66,7 @@ I'll create a presentation with two-column layouts for charts:
 **User**: Use this template.pptx to create a 10-slide investor pitch
 
 **Claude**:
+
 ```
 Workflow:
 1. Extract template text and create thumbnail grid
@@ -88,6 +91,7 @@ Workflow:
 **User**: Take slides 5-8 from template.pptx and create 12 slides by duplicating the pattern
 
 **Claude**:
+
 ```
 Using rearrange.py to duplicate and reorder:
 
@@ -107,6 +111,7 @@ This creates 12 slides by repeating the 5-8 pattern three times.
 **User**: Add speaker notes to slides 2, 3, and 5 in presentation.pptx
 
 **Claude**:
+
 ```
 Using OOXML workflow:
 1. Unpack: python ooxml/scripts/unpack.py presentation.pptx workspace/
@@ -123,6 +128,7 @@ Using OOXML workflow:
 **User**: Change slide 4 from single-column to two-column layout
 
 **Claude**:
+
 ```
 OOXML approach:
 1. Unpack presentation
@@ -145,6 +151,7 @@ OOXML approach:
 **User**: Extract all text from this presentation to markdown
 
 **Claude**:
+
 ```bash
 python -m markitdown presentation.pptx > content.md
 ```
@@ -156,6 +163,7 @@ Result: Clean markdown with slide structure preserved, perfect for analysis or d
 **User**: What fonts and colors are used in this template?
 
 **Claude**:
+
 ```
 I'll analyze the design:
 1. Unpack presentation
@@ -181,6 +189,7 @@ Findings:
 **User**: Create a presentation for a tech startup - suggest a color palette
 
 **Claude**:
+
 ```
 For a tech startup, I recommend the "Deep Purple & Emerald" palette:
 - Purple (#B165FB) - innovation and creativity
@@ -200,6 +209,7 @@ Alternative: "Vibrant Orange" (#F96D00, #F2F2F2, #222831) for more energy.
 **User**: Make the titles really stand out in this presentation
 
 **Claude**:
+
 ```
 I'll apply strong visual hierarchy:
 - Title slides: 72pt bold headers with 11pt body (extreme size contrast)
@@ -220,6 +230,7 @@ I'll apply strong visual hierarchy:
 **User**: Create slides with bar chart, line chart, and pie chart showing sales data
 
 **Claude**:
+
 ```
 Using two-column layouts (PREFERRED for charts):
 - Header spanning full width
@@ -240,6 +251,7 @@ Chart styling:
 **User**: Show quarterly metrics in an impactful way
 
 **Claude**:
+
 ```
 I'll use oversized numbers for key metrics:
 - 125pt font size for main numbers
@@ -260,6 +272,7 @@ I'll use oversized numbers for key metrics:
 **User**: Create a project status report using corporate-template.pptx
 
 **Claude**:
+
 ```
 Complete workflow:
 
@@ -300,6 +313,7 @@ Step 6: Apply replacements
 **User**: Use template slide 15 which has image placeholders
 
 **Claude**:
+
 ```
 Slide 15 has 3 image placeholder shapes.
 
@@ -324,15 +338,18 @@ For images, post-process with python-pptx or manual insertion.
 **User**: Create thumbnails of this 50-slide presentation for quick review
 
 **Claude**:
+
 ```bash
 python scripts/thumbnail.py presentation.pptx review --cols 5
 ```
 
 Output:
+
 - review-1.jpg: Slides 0-29 (5×6 grid)
 - review-2.jpg: Slides 30-49 (4×5 grid)
 
 Review thumbnails for:
+
 - Text cutoff at slide edges
 - Overlap between elements
 - Positioning issues
@@ -344,6 +361,7 @@ Review thumbnails for:
 **User**: The thumbnail shows text cutoff on slides 3 and 7
 
 **Claude**:
+
 ```
 I'll fix the layout issues:
 
@@ -369,6 +387,7 @@ Slide 7: Bullet list too long
 **User**: Convert presentation.pptx to PDF
 
 **Claude**:
+
 ```bash
 soffice --headless --convert-to pdf presentation.pptx
 ```
@@ -380,6 +399,7 @@ Result: presentation.pdf with all slides preserved
 **User**: Export each slide as a high-resolution image
 
 **Claude**:
+
 ```bash
 # First convert to PDF
 soffice --headless --convert-to pdf presentation.pptx
@@ -399,6 +419,7 @@ Result: slide-1.jpg, slide-2.jpg, slide-3.jpg, etc.
 **User**: Use title slide from template-A.pptx and content slides from template-B.pptx
 
 **Claude**:
+
 ```
 Multi-template workflow:
 
@@ -422,6 +443,7 @@ Multi-template workflow:
 **User**: Apply the same text replacements to 10 different presentations
 
 **Claude**:
+
 ```bash
 for file in *.pptx; do
   echo "Processing $file"
@@ -438,6 +460,7 @@ Enables bulk updates while preserving each presentation's unique formatting.
 **User**: Show me all unique slide layouts in this template
 
 **Claude**:
+
 ```
 Analysis workflow:
 1. Unpack template

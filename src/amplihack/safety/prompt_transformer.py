@@ -9,10 +9,7 @@ class PromptTransformer:
     """Transform auto mode prompts to include directory change."""
 
     def transform_prompt(
-        self,
-        original_prompt: str,
-        target_directory: Union[str, Path],
-        used_temp: bool
+        self, original_prompt: str, target_directory: Union[str, Path], used_temp: bool
     ) -> str:
         """Transform prompt to include directory change instruction."""
         if not used_temp:
@@ -33,12 +30,12 @@ class PromptTransformer:
         remaining = prompt_stripped
 
         while remaining:
-            match = re.match(r'^(/[\w:-]+)(\s+|$)', remaining)
+            match = re.match(r"^(/[\w:-]+)(\s+|$)", remaining)
             if not match:
                 break
             slash_commands.append(match.group(1))
-            remaining = remaining[match.end():].strip()
+            remaining = remaining[match.end() :].strip()
 
         if slash_commands:
-            return ' '.join(slash_commands), remaining
+            return " ".join(slash_commands), remaining
         return "", prompt_stripped

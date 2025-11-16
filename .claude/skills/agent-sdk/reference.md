@@ -54,6 +54,7 @@ The Agent SDK implements a sophisticated agent loop that handles the complete li
 ```
 
 **Key Characteristics:**
+
 - **Automatic Iteration**: Continues until Claude returns text (not tool calls) or max_turns reached
 - **Parallel Tool Execution**: Multiple tool calls in single turn executed concurrently
 - **Error Recovery**: Failed tools return error messages to Claude for recovery
@@ -98,6 +99,7 @@ agent = Agent(
 **Subagent Context Isolation:**
 
 Subagents create isolated context bubbles:
+
 - Inherit parent's system prompt (optional override)
 - Empty conversation history (fresh start)
 - Subset of parent's tools (optional additional tools)
@@ -149,6 +151,7 @@ results = await asyncio.gather(*[
 **Error Handling:**
 
 When a tool fails, the SDK returns an error result to Claude:
+
 ```python
 {
     "tool_use_id": "toolu_123",
@@ -159,6 +162,7 @@ When a tool fails, the SDK returns an error result to Claude:
 ```
 
 Claude can then:
+
 - Retry with corrected arguments
 - Try an alternative approach
 - Ask user for clarification
@@ -169,6 +173,7 @@ Claude can then:
 **Model Context Protocol (MCP)** is a standardized protocol for exposing tools to language models.
 
 **MCP Architecture:**
+
 ```
 Agent SDK ←→ MCP Client ←→ MCP Server ←→ External Service
              (SDK)         (stdio/SSE)   (Filesystem, GitHub, etc.)
@@ -177,6 +182,7 @@ Agent SDK ←→ MCP Client ←→ MCP Server ←→ External Service
 **Connection Types:**
 
 1. **stdio**: Process-based communication (npm packages)
+
 ```python
 from claude_agents.mcp import MCPClient
 
@@ -184,6 +190,7 @@ mcp = MCPClient("npx", ["-y", "@modelcontextprotocol/server-filesystem", "/path/
 ```
 
 2. **SSE**: HTTP Server-Sent Events (remote servers)
+
 ```python
 mcp = MCPClient.from_sse("http://localhost:3000/mcp")
 ```
@@ -191,12 +198,14 @@ mcp = MCPClient.from_sse("http://localhost:3000/mcp")
 **Tool Discovery:**
 
 MCP servers expose their tools via the protocol. The SDK automatically:
+
 1. Queries server for available tools
 2. Converts MCP tool schemas to SDK Tool format
 3. Routes tool calls to appropriate server
 4. Translates results back to SDK format
 
 **Multiple MCP Servers:**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -214,6 +223,7 @@ agent = Agent(
 ### Python Setup
 
 **Installation:**
+
 ```bash
 pip install claude-agents
 
@@ -222,6 +232,7 @@ pip install claude-agents[all]  # Includes MCP clients, dev tools
 ```
 
 **Basic Configuration:**
+
 ```python
 from claude_agents import Agent
 
@@ -256,6 +267,7 @@ agent = Agent(
 ```
 
 **Advanced Options:**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -285,13 +297,15 @@ agent = Agent(
 ### TypeScript Setup
 
 **Installation:**
+
 ```bash
 npm install @anthropics/agent-sdk
 ```
 
 **Basic Configuration:**
+
 ```typescript
-import { Agent } from '@anthropics/agent-sdk';
+import { Agent } from "@anthropics/agent-sdk";
 
 const agent = new Agent({
   // Required
@@ -313,11 +327,12 @@ const agent = new Agent({
 
   // Context management
   maxTurns: 25,
-  maxContextTokens: undefined
+  maxContextTokens: undefined,
 });
 ```
 
 **Async Execution:**
+
 ```typescript
 const result = await agent.run("Your task here");
 console.log(result.response);
@@ -326,11 +341,13 @@ console.log(result.response);
 ### Authentication
 
 **Environment Variable (Recommended):**
+
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
 **Explicit in Code:**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -339,6 +356,7 @@ agent = Agent(
 ```
 
 **From File:**
+
 ```python
 import os
 from pathlib import Path
@@ -350,6 +368,7 @@ agent = Agent(model="claude-sonnet-4-5-20250929", api_key=api_key)
 ### Environment Configuration
 
 **Common Environment Variables:**
+
 ```bash
 # Authentication
 ANTHROPIC_API_KEY=sk-ant-...
@@ -403,6 +422,7 @@ tool = Tool(
 ```
 
 **Supported Parameter Types:**
+
 - `string`: Text values
 - `integer`: Whole numbers
 - `number`: Integers or floats
@@ -412,6 +432,7 @@ tool = Tool(
 - `null`: Explicit null values
 
 **Advanced Schema Features:**
+
 ```python
 input_schema={
     "type": "object",
@@ -443,6 +464,7 @@ input_schema={
 The SDK includes production-ready built-in tools:
 
 **1. bash** - Execute shell commands
+
 ```python
 {
     "name": "bash",
@@ -459,6 +481,7 @@ The SDK includes production-ready built-in tools:
 ```
 
 **2. read_file** - Read file contents
+
 ```python
 {
     "name": "read_file",
@@ -474,6 +497,7 @@ The SDK includes production-ready built-in tools:
 ```
 
 **3. write_file** - Write or create files
+
 ```python
 {
     "name": "write_file",
@@ -490,6 +514,7 @@ The SDK includes production-ready built-in tools:
 ```
 
 **4. edit_file** - Modify existing files
+
 ```python
 {
     "name": "edit_file",
@@ -507,6 +532,7 @@ The SDK includes production-ready built-in tools:
 ```
 
 **5. glob** - File pattern matching
+
 ```python
 {
     "name": "glob",
@@ -523,6 +549,7 @@ The SDK includes production-ready built-in tools:
 ```
 
 **6. grep** - Content search
+
 ```python
 {
     "name": "grep",
@@ -540,6 +567,7 @@ The SDK includes production-ready built-in tools:
 ```
 
 **Using Built-in Tools:**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -550,6 +578,7 @@ agent = Agent(
 ### Custom Tool Creation
 
 **Simple Function Tool:**
+
 ```python
 def get_current_time() -> str:
     """Get the current time."""
@@ -565,6 +594,7 @@ time_tool = Tool(
 ```
 
 **Tool with Parameters:**
+
 ```python
 def calculate_compound_interest(
     principal: float,
@@ -599,6 +629,7 @@ interest_tool = Tool(
 ```
 
 **Async Tool:**
+
 ```python
 import asyncio
 import aiohttp
@@ -626,6 +657,7 @@ fetch_tool = Tool(
 ### Permissions & Security
 
 **Allowed Tools (Whitelist Approach):**
+
 ```python
 # Only specific tools can be used
 agent = Agent(
@@ -636,6 +668,7 @@ agent = Agent(
 ```
 
 **Disallowed Tools (Blacklist Approach):**
+
 ```python
 # All tools except specified ones
 agent = Agent(
@@ -646,6 +679,7 @@ agent = Agent(
 ```
 
 **Dynamic Permissions (via Hooks):**
+
 ```python
 from claude_agents.hooks import PreToolUseHook
 
@@ -666,6 +700,7 @@ agent = Agent(
 ```
 
 **Permission Modes:**
+
 ```python
 # Permissive mode (default): Agent can use allowed tools freely
 agent = Agent(
@@ -685,6 +720,7 @@ agent = Agent(
 ### MCP Tool Integration
 
 **Connecting MCP Servers:**
+
 ```python
 from claude_agents import Agent
 from claude_agents.mcp import MCPClient
@@ -705,12 +741,14 @@ agent = Agent(
 
 **MCP Tool Naming:**
 MCP tools are prefixed with server name to avoid conflicts:
+
 ```python
 # Filesystem tools: fs_read_file, fs_write_file, fs_list_directory
 # GitHub tools: github_create_issue, github_list_prs, github_create_pr
 ```
 
 **Filtering MCP Tools:**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -728,6 +766,7 @@ agent = Agent(
 ### Hook Types
 
 **1. PreToolUseHook** - Before tool execution
+
 ```python
 from claude_agents.hooks import PreToolUseHook
 
@@ -748,6 +787,7 @@ class MyPreHook(PreToolUseHook):
 ```
 
 **2. PostToolUseHook** - After tool execution
+
 ```python
 from claude_agents.hooks import PostToolUseHook
 
@@ -769,6 +809,7 @@ class MyPostHook(PostToolUseHook):
 ```
 
 **3. PreSubagentStartHook** - Before subagent creation
+
 ```python
 from claude_agents.hooks import PreSubagentStartHook
 
@@ -785,6 +826,7 @@ class MyPreSubagentHook(PreSubagentStartHook):
 ```
 
 **4. PostSubagentStopHook** - After subagent completes
+
 ```python
 from claude_agents.hooks import PostSubagentStopHook
 
@@ -802,6 +844,7 @@ class MyPostSubagentHook(PostSubagentStopHook):
 ### Hook Patterns
 
 **Logging Hook:**
+
 ```python
 import logging
 
@@ -818,6 +861,7 @@ class LoggingHook(PreToolUseHook, PostToolUseHook):
 ```
 
 **Validation Hook:**
+
 ```python
 class ValidationHook(PreToolUseHook):
     async def execute(self, context):
@@ -838,6 +882,7 @@ class ValidationHook(PreToolUseHook):
 ```
 
 **Rate Limiting Hook:**
+
 ```python
 import time
 from collections import defaultdict
@@ -863,6 +908,7 @@ class RateLimitHook(PreToolUseHook):
 ```
 
 **Cost Tracking Hook:**
+
 ```python
 class CostTrackingHook(PostToolUseHook):
     def __init__(self):
@@ -896,6 +942,7 @@ class CostTrackingHook(PostToolUseHook):
 Skills are modular knowledge packages that enhance Claude's capabilities in specific domains. They're automatically discovered from the filesystem and injected into the system prompt when relevant.
 
 **Key Characteristics:**
+
 - Filesystem-based (`.claude/skills/` directory)
 - YAML frontmatter with metadata
 - Markdown content with domain knowledge
@@ -905,6 +952,7 @@ Skills are modular knowledge packages that enhance Claude's capabilities in spec
 ### Skill File Format
 
 **Structure:**
+
 ```markdown
 ---
 name: skill-name
@@ -937,6 +985,7 @@ Domain-specific knowledge, patterns, and examples...
 ### Filesystem Discovery
 
 **Default Skills Directory:**
+
 ```
 .claude/skills/
 ├── python-expert/
@@ -952,6 +1001,7 @@ Domain-specific knowledge, patterns, and examples...
 ```
 
 **Discovery Process:**
+
 1. SDK scans `.claude/skills/` recursively
 2. Finds all `SKILL.md` files (case-insensitive)
 3. Parses YAML frontmatter
@@ -961,6 +1011,7 @@ Domain-specific knowledge, patterns, and examples...
 ### Activation Logic
 
 **Automatic Activation:**
+
 ```python
 # User message contains activation keyword
 result = agent.run("How do I use agent sdk tools?")
@@ -968,6 +1019,7 @@ result = agent.run("How do I use agent sdk tools?")
 ```
 
 **Manual Activation:**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -976,6 +1028,7 @@ agent = Agent(
 ```
 
 **Conditional Activation:**
+
 ```python
 # Skills can check context and conditionally activate
 from claude_agents.skills import Skill
@@ -1003,6 +1056,7 @@ setting_sources:
 ```
 
 **Supported Source Types:**
+
 - `markdown`: Fetch and parse markdown content
 - `github`: Fetch from GitHub (respects auth)
 - `url`: Generic URL fetch
@@ -1010,6 +1064,7 @@ setting_sources:
 
 **Token Budget Management:**
 If total content exceeds `token_budget`, SDK:
+
 1. Prioritizes core skill content
 2. Truncates or summarizes setting_sources
 3. Warns in logs about truncation
@@ -1029,6 +1084,7 @@ Skills can span multiple files for organization:
 ```
 
 **Main Skill File (SKILL.md):**
+
 ```markdown
 ---
 name: agent-sdk
@@ -1046,6 +1102,7 @@ For examples, see [examples.md](./examples.md).
 
 **Navigation:**
 Claude can reference supplementary files:
+
 - "Read reference.md for complete API details"
 - "See examples.md for working code"
 - "Check patterns.md for production best practices"

@@ -824,11 +824,12 @@ Document your decisions and reasoning in comments/logs."""
         # Safety: Transform prompt if using temp staging (safety feature)
         if self.using_temp_staging and self.original_cwd_from_env:
             from amplihack.safety import PromptTransformer
+
             transformer = PromptTransformer()
             self.prompt = transformer.transform_prompt(
                 original_prompt=self.prompt,
                 target_directory=self.original_cwd_from_env,
-                used_temp=True
+                used_temp=True,
             )
             self.log(f"Transformed prompt for temp staging (target: {self.original_cwd_from_env})")
 
@@ -1005,11 +1006,12 @@ Current Turn: {turn}/{self.max_turns}"""
         # Safety: Transform prompt if using temp staging (safety feature)
         if self.using_temp_staging and self.original_cwd_from_env:
             from amplihack.safety import PromptTransformer
+
             transformer = PromptTransformer()
             self.prompt = transformer.transform_prompt(
                 original_prompt=self.prompt,
                 target_directory=self.original_cwd_from_env,
-                used_temp=True
+                used_temp=True,
             )
             self.log(f"Transformed prompt for temp staging (target: {self.original_cwd_from_env})")
 

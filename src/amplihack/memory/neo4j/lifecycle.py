@@ -351,6 +351,7 @@ class Neo4jContainerManager:
         try:
             # Find project root by walking up to find .claude directory
             from pathlib import Path
+
             project_root = Path.cwd()
             while project_root != project_root.parent:
                 if (project_root / ".claude").exists():
@@ -429,7 +430,9 @@ class Neo4jContainerManager:
 
                     # Check for port binding errors (race condition)
                     if "bind" in error_msg and "address already in use" in error_msg:
-                        logger.warning("Port binding race condition detected on attempt %d", attempt)
+                        logger.warning(
+                            "Port binding race condition detected on attempt %d", attempt
+                        )
 
                         if attempt < max_attempts:
                             # Try to find new ports and retry
@@ -461,7 +464,11 @@ class Neo4jContainerManager:
                     return False
 
                 # Success!
-                logger.info("Container created successfully on ports %d/%d", actual_bolt_port, actual_http_port)
+                logger.info(
+                    "Container created successfully on ports %d/%d",
+                    actual_bolt_port,
+                    actual_http_port,
+                )
 
                 if wait_for_ready:
                     return self.wait_for_healthy()

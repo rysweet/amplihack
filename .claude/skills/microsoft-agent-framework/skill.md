@@ -10,6 +10,7 @@ Microsoft Agent Framework is an open-source platform for building production AI 
 **Core Capabilities**: AI Agents (stateful conversations, tool integration) | Workflows (graph-based orchestration, parallel processing) | Enterprise features (telemetry, middleware, MCP support)
 
 **Installation**:
+
 - Python: `pip install agent-framework --pre`
 - C#: `dotnet add package Microsoft.Agents.AI --prerelease`
 
@@ -38,6 +39,7 @@ Use Microsoft Agent Framework when you need:
 Stateful conversational entities that process messages, call tools, and maintain context.
 
 **Python Example**:
+
 ```python
 from agents_framework import Agent, ModelClient
 
@@ -60,6 +62,7 @@ response = await agent.run(thread=thread, message="Double that")
 ```
 
 **C# Example**:
+
 ```csharp
 using Microsoft.Agents.AI;
 
@@ -78,6 +81,7 @@ Console.WriteLine(response.Content);
 Extend agent capabilities by providing callable functions.
 
 **Python Example**:
+
 ```python
 from agents_framework import function_tool
 
@@ -97,6 +101,7 @@ response = await agent.run(message="What's the weather in Seattle?")
 ```
 
 **C# Example**:
+
 ```csharp
 [FunctionTool]
 public static string GetWeather(string location)
@@ -116,6 +121,7 @@ var agent = new Agent(
 Graph-based orchestration for multi-agent systems with conditional routing and parallel execution.
 
 **Python Example**:
+
 ```python
 from agents_framework import Workflow, GraphWorkflow
 
@@ -146,6 +152,7 @@ result = await workflow.run(initial_message="Research AI trends")
 ```
 
 **C# Example**:
+
 ```csharp
 var workflow = new GraphWorkflow();
 
@@ -164,6 +171,7 @@ var result = await workflow.RunAsync("Research AI trends");
 Maintain conversation history and shared state across agents.
 
 **Python**:
+
 ```python
 from agents_framework import Thread, ContextProvider
 
@@ -188,6 +196,7 @@ agent = Agent(model=model, context_provider=DatabaseContext())
 Add cross-cutting concerns like logging, auth, and monitoring.
 
 **Python**:
+
 ```python
 from agents_framework import Middleware
 from opentelemetry import trace
@@ -207,6 +216,7 @@ with tracer.start_as_current_span("agent-run"):
 ```
 
 **C#**:
+
 ```csharp
 public class LoggingMiddleware : IMiddleware
 {
@@ -308,6 +318,7 @@ except Exception as e:
 ### Decision Framework
 
 **Use Microsoft Agent Framework when**:
+
 - Building stateful conversational agents (multi-turn dialogue)
 - Need enterprise features (telemetry, middleware, auth)
 - Complex multi-agent orchestration with conditional routing
@@ -315,6 +326,7 @@ except Exception as e:
 - Integration with Microsoft ecosystem (Azure, M365)
 
 **Use amplihack native agents when**:
+
 - Stateless task delegation (code review, analysis)
 - Simple sequential/parallel orchestration
 - File-based operations and local tooling
@@ -322,6 +334,7 @@ except Exception as e:
 - Token-efficient skill-based architecture
 
 **Hybrid Approach**:
+
 ```python
 # Use amplihack for orchestration
 from claude import Agent as ClaudeAgent
@@ -353,6 +366,7 @@ See `@integration/amplihack-integration.md` for complete patterns.
 1. **Install**: `pip install agent-framework --pre` (Python) or `dotnet add package Microsoft.Agents.AI --prerelease` (C#)
 
 2. **Create Basic Agent**:
+
    ```python
    from agents_framework import Agent, ModelClient
 
@@ -366,6 +380,7 @@ See `@integration/amplihack-integration.md` for complete patterns.
    ```
 
 3. **Add Tools**:
+
    ```python
    @function_tool
    def calculate(expr: str) -> float:
@@ -375,6 +390,7 @@ See `@integration/amplihack-integration.md` for complete patterns.
    ```
 
 4. **Build Workflow**:
+
    ```python
    workflow = GraphWorkflow()
    workflow.add_node("agent1", agent1)

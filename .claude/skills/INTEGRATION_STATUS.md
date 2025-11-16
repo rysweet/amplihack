@@ -2,13 +2,14 @@
 
 ## Integration Progress
 
-| Skill | Status | Dependencies | Tests | PR | Notes |
-|-------|--------|--------------|-------|----|----|
-| pdf   | ✓ Integrated | ✓ Documented | ✓ Passing | #1259 | Merged to main |
-| xlsx  | ✓ Integrated | ✓ Documented | ✓ Passing | #1260 | Merged to main |
-| docx  | ✓ Integrated | ✓ Documented | ✓ Passing | #1261 | Ready for use |
-| pptx  | ✗ Not Started | - | - | - | Planned PR #1262 |
->>>>>>> ed0e803 (Add Word (DOCX) Skill from Anthropic)
+| Skill | Status        | Dependencies | Tests     | PR    | Notes            |
+| ----- | ------------- | ------------ | --------- | ----- | ---------------- |
+| pdf   | ✓ Integrated  | ✓ Documented | ✓ Passing | #1259 | Merged to main   |
+| xlsx  | ✓ Integrated  | ✓ Documented | ✓ Passing | #1260 | Merged to main   |
+| docx  | ✓ Integrated  | ✓ Documented | ✓ Passing | #1261 | Ready for use    |
+| pptx  | ✗ Not Started | -            | -         | -     | Planned PR #1262 |
+
+> > > > > > > ed0e803 (Add Word (DOCX) Skill from Anthropic)
 
 ## Status Legend
 
@@ -51,6 +52,7 @@ Following the architecture specification, skills are integrated from simplest to
 **Status**: ✓ Integrated (MERGED to main)
 
 **Files Created**:
+
 - ✓ `.claude/skills/pdf/SKILL.md` - Official skill from Anthropic
 - ✓ `.claude/skills/pdf/README.md` - Integration notes
 - ✓ `.claude/skills/pdf/DEPENDENCIES.md` - Complete dependency documentation
@@ -58,12 +60,14 @@ Following the architecture specification, skills are integrated from simplest to
 - ✓ `.claude/skills/pdf/tests/test_pdf_skill.py` - Comprehensive test suite
 
 **Infrastructure**:
+
 - ✓ `.claude/skills/README.md` - Root overview
 - ✓ `.claude/skills/INTEGRATION_STATUS.md` - This file
 - ✓ `.claude/skills/common/verification/verify_skill.py` - Dependency verification
 - ✓ `.claude/skills/common/dependencies.txt` - Shared dependencies
 
 **Dependencies**:
+
 - Required: pypdf, pdfplumber, reportlab, pandas
 - Optional: pytesseract, pdf2image, poppler-utils, qpdf, pdftk, tesseract-ocr
 
@@ -76,6 +80,7 @@ Following the architecture specification, skills are integrated from simplest to
 **Status**: ✓ Integrated (Ready for merge)
 
 **Completed Items**:
+
 - ✓ Skill directory structure created
 - ✓ SKILL.md copied from Anthropic repository
 - ✓ README.md with amplihack-specific integration notes
@@ -85,6 +90,7 @@ Following the architecture specification, skills are integrated from simplest to
 - ✓ examples/example_usage.md with 10 comprehensive examples
 
 **Key Features**:
+
 - Excel file creation and editing with openpyxl
 - Data analysis with pandas
 - Formula recalculation using LibreOffice
@@ -94,11 +100,13 @@ Following the architecture specification, skills are integrated from simplest to
 - Comprehensive test suite (4 levels)
 
 **Dependencies**:
+
 - Python: pandas >= 1.5.0, openpyxl >= 3.0.0
 - System: LibreOffice >= 6.0
 - Optional: gtimeout (macOS) for timeout support
 
 **Test Coverage**:
+
 - Level 1: Skill Load Test (SKILL.md exists and valid)
 - Level 2: Dependency Test (verify installations)
 - Level 3: Basic Functionality Test (create/read/modify Excel files)
@@ -111,6 +119,7 @@ Following the architecture specification, skills are integrated from simplest to
 **Status**: In Progress
 
 **Planned Work**:
+
 - Copy SKILL.md from Anthropic
 - Create README.md, DEPENDENCIES.md
 - Set up common OOXML infrastructure
@@ -119,6 +128,7 @@ Following the architecture specification, skills are integrated from simplest to
 - Create tests and examples
 
 **Dependencies** (Estimated):
+
 - Required: defusedxml
 - Optional: pandoc, LibreOffice, poppler-utils
 - Node: docx package
@@ -130,6 +140,7 @@ Following the architecture specification, skills are integrated from simplest to
 **Status**: In Progress
 
 **Planned Work**:
+
 - Copy SKILL.md from Anthropic
 - Create README.md, DEPENDENCIES.md
 - Add additional OOXML scripts (rearrange.py, inventory.py, replace.py)
@@ -137,6 +148,7 @@ Following the architecture specification, skills are integrated from simplest to
 - Create tests and examples
 
 **Dependencies** (Estimated):
+
 - Required: markitdown, defusedxml
 - Optional: LibreOffice
 - Node: pptxgenjs, playwright, sharp
@@ -197,13 +209,13 @@ All systems operational. PDF merged, XLSX ready for merge.
 
 ### Technical Risks
 
-| Risk | Probability | Impact | Status | Mitigation |
-|------|-------------|--------|--------|------------|
-| Dependency installation fails | High | Medium | Mitigated | Clear documentation, graceful test skipping |
-| OOXML scripts need modification | Medium | Medium | Being assessed | Testing in PR #1261 |
-| Skills don't integrate with Claude Code | Low | High | Mitigated | Following Anthropic patterns exactly |
-| Symlinks break on Windows | Medium | Low | Accepted | Document Windows setup |
-| LibreOffice unavailable in CI | High | Low | Mitigated | Tests skip gracefully |
+| Risk                                    | Probability | Impact | Status         | Mitigation                                  |
+| --------------------------------------- | ----------- | ------ | -------------- | ------------------------------------------- |
+| Dependency installation fails           | High        | Medium | Mitigated      | Clear documentation, graceful test skipping |
+| OOXML scripts need modification         | Medium      | Medium | Being assessed | Testing in PR #1261                         |
+| Skills don't integrate with Claude Code | Low         | High   | Mitigated      | Following Anthropic patterns exactly        |
+| Symlinks break on Windows               | Medium      | Low    | Accepted       | Document Windows setup                      |
+| LibreOffice unavailable in CI           | High        | Low    | Mitigated      | Tests skip gracefully                       |
 
 ## Definition of Done
 
@@ -212,7 +224,7 @@ All systems operational. PDF merged, XLSX ready for merge.
 - [x] PDF: SKILL.md present and valid
 - [x] PDF: README.md with integration notes
 - [x] PDF: DEPENDENCIES.md complete
-- [x] PDF: tests/test_*_skill.py comprehensive
+- [x] PDF: tests/test\_\*\_skill.py comprehensive
 - [x] PDF: examples/example_usage.md with 10+ examples
 - [x] PDF: All tests passing or skipping appropriately
 - [x] XLSX: All of the above (complete)

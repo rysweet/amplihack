@@ -12,12 +12,12 @@ Usage:
     python check_drift.py --metadata PATH    # Custom metadata location
 """
 
-import json
 import hashlib
+import json
 import sys
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Dict, Optional
 
 # Check for requests library
 try:
@@ -36,7 +36,7 @@ def load_metadata(metadata_path: Path) -> dict:
             "last_updated": datetime.now().isoformat(),
             "sources": [],
             "token_counts": {},
-            "notes": []
+            "notes": [],
         }
 
     try:
@@ -60,9 +60,7 @@ def fetch_content(url: str, timeout: int = 30) -> Optional[str]:
         Content as string if successful, None if error
     """
     try:
-        headers = {
-            'User-Agent': 'Claude-Agent-SDK-Skill-Drift-Checker/1.0'
-        }
+        headers = {"User-Agent": "Claude-Agent-SDK-Skill-Drift-Checker/1.0"}
         response = requests.get(url, timeout=timeout, headers=headers)
         response.raise_for_status()
         return response.text
@@ -79,7 +77,7 @@ def fetch_content(url: str, timeout: int = 30) -> Optional[str]:
 
 def generate_hash(content: str) -> str:
     """Generate SHA-256 hash of content."""
-    return hashlib.sha256(content.encode('utf-8')).hexdigest()
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
 def check_source_drift(source: dict) -> dict:
@@ -104,7 +102,7 @@ def check_source_drift(source: dict) -> dict:
             "status": "error",
             "message": "Failed to fetch content",
             "drift_detected": False,
-            "error": True
+            "error": True,
         }
 
     current_hash = generate_hash(content)
@@ -126,7 +124,7 @@ def check_source_drift(source: dict) -> dict:
         "current_hash": current_hash,
         "drift_detected": has_drifted,
         "last_checked": datetime.now().isoformat(),
-        "error": False
+        "error": False,
     }
 
 
@@ -148,7 +146,7 @@ def check_all_drift(metadata_path: Path) -> Dict[str, any]:
             "error_count": 0,
             "total_sources": 0,
             "results": [],
-            "checked_at": datetime.now().isoformat()
+            "checked_at": datetime.now().isoformat(),
         }
 
     results = []
@@ -185,7 +183,7 @@ def check_all_drift(metadata_path: Path) -> Dict[str, any]:
         "error_count": error_count,
         "total_sources": len(sources),
         "results": results,
-        "checked_at": datetime.now().isoformat()
+        "checked_at": datetime.now().isoformat(),
     }
 
 
@@ -221,9 +219,9 @@ def update_metadata_hashes(metadata_path: Path, drift_results: dict):
 
 def format_output_text(results: dict):
     """Format results as human-readable text."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Drift Detection Report - {results['checked_at']}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
     for result in results["results"]:
         if result.get("error"):
@@ -242,22 +240,22 @@ def format_output_text(results: dict):
             print(f"  Error: {result.get('message', 'Unknown error')}")
         elif result["drift_detected"]:
             print(f"  {result['message']}")
-            stored = result.get('stored_hash', 'N/A')
-            current = result.get('current_hash', 'N/A')
+            stored = result.get("stored_hash", "N/A")
+            current = result.get("current_hash", "N/A")
             if not stored.startswith("placeholder"):
                 print(f"  Old hash: {stored[:16]}...")
             print(f"  New hash: {current[:16]}...")
 
         print()
 
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     print(f"Summary: {results['message']}")
-    if results['drift_count'] > 0:
-        print(f"Action Required: Update skill content to reflect source changes")
-        print(f"Run with --update to save new hashes after updating skill files")
-    if results['error_count'] > 0:
+    if results["drift_count"] > 0:
+        print("Action Required: Update skill content to reflect source changes")
+        print("Run with --update to save new hashes after updating skill files")
+    if results["error_count"] > 0:
         print(f"Warning: {results['error_count']} sources could not be fetched")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
 
 def main():
@@ -273,26 +271,22 @@ Examples:
   python check_drift.py --update           Update hashes after fixing skill
   python check_drift.py --json             Output as JSON
   python check_drift.py --metadata custom.json  Use custom metadata file
-        """
+        """,
     )
 
     parser.add_argument(
         "--metadata",
         type=Path,
         default=Path(__file__).parent.parent / ".metadata" / "versions.json",
-        help="Path to versions.json metadata file (default: ../.metadata/versions.json)"
+        help="Path to versions.json metadata file (default: ../.metadata/versions.json)",
     )
 
     parser.add_argument(
-        "--update",
-        action="store_true",
-        help="Update metadata with new hashes after checking"
+        "--update", action="store_true", help="Update metadata with new hashes after checking"
     )
 
     parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results as JSON (for automation)"
+        "--json", action="store_true", help="Output results as JSON (for automation)"
     )
 
     args = parser.parse_args()
@@ -314,7 +308,7 @@ Examples:
 
     # Update metadata if requested
     if args.update:
-        if results['error_count'] == results['total_sources']:
+        if results["error_count"] == results["total_sources"]:
             print("Error: Cannot update hashes - all sources failed to fetch", file=sys.stderr)
             sys.exit(1)
 
@@ -326,9 +320,9 @@ Examples:
     # 0 = no drift, all ok
     # 1 = drift detected or errors
     # 2 = all sources failed
-    if results['error_count'] == results['total_sources']:
+    if results["error_count"] == results["total_sources"]:
         sys.exit(2)
-    elif results['drift_count'] > 0 or results['error_count'] > 0:
+    elif results["drift_count"] > 0 or results["error_count"] > 0:
         sys.exit(1)
     else:
         sys.exit(0)

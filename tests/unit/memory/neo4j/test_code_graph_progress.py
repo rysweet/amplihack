@@ -8,10 +8,8 @@ Tests the progress indicator added to run_blarify function to ensure:
 - No interference with subprocess execution
 """
 
-import subprocess
-import sys
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -22,7 +20,6 @@ class TestBlarifyProgressIndicator:
     def test_WHEN_run_blarify_with_rich_THEN_progress_indicator_used(self):
         """Test that progress indicator is used when rich is available."""
         # Import the module directly to avoid test directory conflict
-        from amplihack.memory.neo4j.code_graph import run_blarify, RICH_AVAILABLE, _run_with_progress_indicator
         import amplihack.memory.neo4j.code_graph as code_graph
 
         with patch.object(code_graph, "RICH_AVAILABLE", True):
@@ -47,7 +44,6 @@ class TestBlarifyProgressIndicator:
 
     def test_WHEN_run_blarify_without_rich_THEN_fallback_used(self):
         """Test that fallback execution is used when rich is not available."""
-        from amplihack.memory.neo4j.code_graph import run_blarify
         import amplihack.memory.neo4j.code_graph as code_graph
 
         with patch.object(code_graph, "RICH_AVAILABLE", False):
@@ -70,7 +66,6 @@ class TestBlarifyProgressIndicator:
 
     def test_WHEN_progress_indicator_runs_THEN_json_output_captured(self):
         """Test that JSON output is still captured with progress indicator."""
-        from amplihack.memory.neo4j.code_graph import _run_with_progress_indicator
         import amplihack.memory.neo4j.code_graph as code_graph
 
         # Mock the subprocess and threading components
@@ -109,7 +104,6 @@ class TestBlarifyProgressIndicator:
 
     def test_WHEN_blarify_fails_THEN_error_handled_correctly(self):
         """Test that errors are properly handled with progress indicator."""
-        from amplihack.memory.neo4j.code_graph import _run_with_progress_indicator
         import amplihack.memory.neo4j.code_graph as code_graph
 
         with patch("subprocess.run") as mock_run:
@@ -144,7 +138,6 @@ class TestBlarifyProgressIndicator:
 
     def test_WHEN_progress_runs_THEN_elapsed_time_updated(self):
         """Test that elapsed time is displayed during progress."""
-        from amplihack.memory.neo4j.code_graph import _run_with_progress_indicator
         import amplihack.memory.neo4j.code_graph as code_graph
 
         with patch("subprocess.run") as mock_subprocess_run:
@@ -185,7 +178,11 @@ class TestBlarifyProgressIntegration:
     def test_WHEN_progress_indicator_available_THEN_no_import_errors(self):
         """Test that imports work correctly when rich is available."""
         try:
-            from amplihack.memory.neo4j.code_graph import RICH_AVAILABLE, _run_with_progress_indicator
+            from amplihack.memory.neo4j.code_graph import (
+                RICH_AVAILABLE,
+                _run_with_progress_indicator,
+            )
+
             # Should import successfully
             assert True
         except ImportError as e:
@@ -200,7 +197,6 @@ class TestBlarifyProgressIntegration:
 
     def test_WHEN_blarify_not_found_THEN_graceful_error(self):
         """Test that missing blarify command is handled gracefully."""
-        from amplihack.memory.neo4j.code_graph import run_blarify
         import amplihack.memory.neo4j.code_graph as code_graph
 
         with patch("subprocess.run") as mock_run:

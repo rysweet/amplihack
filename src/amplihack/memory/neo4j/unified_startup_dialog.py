@@ -34,6 +34,7 @@ class ContainerOption:
         env_sync_status: Status of .env sync ("match", "different", "missing", "no_container_creds")
         is_running: Whether container is currently running
     """
+
     name: str
     status: str
     ports: List[str]
@@ -84,15 +85,17 @@ def detect_container_options(default_name: str) -> List[ContainerOption]:
 
         is_running = "Up" in container.status
 
-        options.append(ContainerOption(
-            name=container.name,
-            status=container.status,
-            ports=container.ports,
-            username=username,
-            password=password,
-            env_sync_status=env_sync_status,
-            is_running=is_running,
-        ))
+        options.append(
+            ContainerOption(
+                name=container.name,
+                status=container.status,
+                ports=container.ports,
+                username=username,
+                password=password,
+                env_sync_status=env_sync_status,
+                is_running=is_running,
+            )
+        )
 
     return options
 
@@ -151,7 +154,9 @@ def _format_ports(ports: List[str]) -> str:
     return ", ".join(ports)
 
 
-def display_unified_dialog(options: List[ContainerOption], default_name: str) -> Optional[ContainerOption]:
+def display_unified_dialog(
+    options: List[ContainerOption], default_name: str
+) -> Optional[ContainerOption]:
     """Display unified container selection and credential dialog.
 
     Args:
@@ -190,7 +195,10 @@ def display_unified_dialog(options: List[ContainerOption], default_name: str) ->
 
         if option.username:
             print(f"     Credentials: {option.username} / [detected]", file=sys.stderr)
-            print(f"     .env status: {_format_env_sync_status(option.env_sync_status)}", file=sys.stderr)
+            print(
+                f"     .env status: {_format_env_sync_status(option.env_sync_status)}",
+                file=sys.stderr,
+            )
         else:
             print("     Credentials: Could not detect", file=sys.stderr)
         print(file=sys.stderr)
@@ -260,12 +268,17 @@ def handle_credential_sync(selected: ContainerOption) -> bool:
 
     # If no container credentials detected, user must handle manually
     if selected.env_sync_status == "no_container_creds":
-        print("\n⚠  Could not detect container credentials. Please configure .env manually.", file=sys.stderr)
+        print(
+            "\n⚠  Could not detect container credentials. Please configure .env manually.",
+            file=sys.stderr,
+        )
         return False
 
     # Credentials differ or missing - offer to sync
     if selected.env_sync_status in ["different", "missing"]:
-        print(f"\n.env status: {_format_env_sync_status(selected.env_sync_status)}", file=sys.stderr)
+        print(
+            f"\n.env status: {_format_env_sync_status(selected.env_sync_status)}", file=sys.stderr
+        )
         print(f"Container credentials: {selected.username} / [password detected]", file=sys.stderr)
 
         response = input("\nSync container credentials to .env? (y/n): ").strip().lower()

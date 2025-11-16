@@ -43,14 +43,12 @@ class FreshnessChecker:
             self.warnings.append("No last_updated date in metadata")
             return False
 
-        update_date = datetime.fromisoformat(last_updated.replace('Z', '+00:00'))
+        update_date = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
         age = datetime.now(update_date.tzinfo) - update_date
         age_days = age.days
 
         if age_days > 30:
-            self.warnings.append(
-                f"Documentation is {age_days} days old (threshold: 30 days)"
-            )
+            self.warnings.append(f"Documentation is {age_days} days old (threshold: 30 days)")
             return False
 
         print(f"✓ Documentation age: {age_days} days (current)")
@@ -60,9 +58,7 @@ class FreshnessChecker:
         """Check if a URL is accessible with retry logic."""
         import time
 
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (compatible; SkillFreshnessChecker/1.0)'
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (compatible; SkillFreshnessChecker/1.0)"}
 
         # Retry up to 3 times for transient failures
         for attempt in range(3):
@@ -114,9 +110,7 @@ class FreshnessChecker:
         """Check for reported breaking changes."""
         breaking_changes = metadata.get("breaking_changes", [])
         if breaking_changes:
-            self.warnings.append(
-                f"Breaking changes reported: {len(breaking_changes)} changes"
-            )
+            self.warnings.append(f"Breaking changes reported: {len(breaking_changes)} changes")
             for change in breaking_changes:
                 print(f"  - {change}")
             return False
@@ -136,9 +130,7 @@ class FreshnessChecker:
 
         if now > due_date:
             days_overdue = (now - due_date).days
-            self.warnings.append(
-                f"Verification overdue by {days_overdue} days"
-            )
+            self.warnings.append(f"Verification overdue by {days_overdue} days")
             return False
 
         days_until = (due_date - now).days

@@ -22,6 +22,7 @@ amplihack launch --use-graph-mem
 ```
 
 Example menu:
+
 ```
 ======================================================================
 Neo4j Container Selection
@@ -101,6 +102,7 @@ amplihack-<sanitized-directory-name>
 ```
 
 Examples:
+
 - `/home/user/my-project` → `amplihack-my-project`
 - `/home/user/my_app.v2` → `amplihack-my-app-v2`
 - `/home/user/very-long-project-name-that-exceeds-limit` → `amplihack-very-long-project-name-that-exceed` (40 chars)
@@ -201,6 +203,7 @@ amplihack launch --use-graph-mem
 Previously, all projects shared the same container: `amplihack-neo4j`.
 
 **No action required** - the system automatically:
+
 1. Detects the old container if it exists
 2. Shows it in the interactive menu
 3. Allows you to continue using it or create new ones

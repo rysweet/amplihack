@@ -30,7 +30,9 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     if use_graph_mem or enable_neo4j:
         os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
         if use_graph_mem:
-            print("WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead.")
+            print(
+                "WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead."
+            )
             print("Neo4j graph memory enabled via --use-graph-mem flag (deprecated)")
         else:
             print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
@@ -459,7 +461,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         copy_strategy = strategy_manager.determine_target(
             original_target=os.path.join(original_cwd, ".claude"),
             has_conflicts=conflict_result.has_conflicts,
-            conflicting_files=conflict_result.conflicting_files
+            conflicting_files=conflict_result.conflicting_files,
         )
 
         temp_claude_dir = str(copy_strategy.target_dir)
@@ -492,7 +494,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
+                        print(
+                            f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
+                        )
             except Exception as e:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")
