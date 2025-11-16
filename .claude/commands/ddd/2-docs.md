@@ -256,10 +256,10 @@ Task concept-extractor: "Extract key concepts from [source] to include
 in [target doc]"
 ```
 
-**ambiguity-guardian** - If docs have tensions/contradictions:
+**ambiguity** (amplihack/specialized) - If docs have tensions/contradictions:
 
 ```
-Task ambiguity-guardian: "Analyze apparent contradiction between
+Task ambiguity: "Analyze apparent contradiction between
 [doc1] and [doc2], determine if both views are valid"
 ```
 

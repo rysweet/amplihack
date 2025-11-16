@@ -198,7 +198,7 @@ ai_working/ddd/
 - modular-builder for implementation
 - bug-hunter for debugging
 - test-coverage for tests
-- post-task-cleanup for cleanup
+- cleanup (amplihack/specialized) for cleanup
 
 ---
 
