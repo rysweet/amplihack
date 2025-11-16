@@ -31,6 +31,9 @@ from typing import Any, Dict, List, Literal, Optional
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Security: Maximum transcript size to prevent memory exhaustion
+MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
+
 
 @dataclass
 class CheckerResult:
@@ -341,25 +344,43 @@ class PowerSteeringChecker:
             pass  # Fail-open: Continue even if semaphore creation fails
 
     def _load_transcript(self, transcript_path: Path) -> List[Dict]:
-        """Load transcript from JSONL file.
+        """Load transcript from JSONL file with size limits.
 
         Args:
             transcript_path: Path to transcript file
 
         Returns:
-            List of message dictionaries
+            List of message dictionaries (truncated if exceeds MAX_TRANSCRIPT_LINES)
 
         Raises:
             OSError: If file cannot be read
             json.JSONDecodeError: If JSONL is malformed
+
+        Note:
+            Transcripts exceeding MAX_TRANSCRIPT_LINES are truncated to prevent
+            memory exhaustion. A warning is logged when truncation occurs.
         """
         messages = []
+        truncated = False
+
         with open(transcript_path) as f:
-            for line in f:
+            for line_num, line in enumerate(f, 1):
+                # Security: Enforce maximum transcript size
+                if line_num > MAX_TRANSCRIPT_LINES:
+                    truncated = True
+                    break
+
                 line = line.strip()
                 if not line:
                     continue
                 messages.append(json.loads(line))
+
+        if truncated:
+            self._log(
+                f"Transcript truncated at {MAX_TRANSCRIPT_LINES} lines (original: {line_num})",
+                "WARNING"
+            )
+
         return messages
 
     def _is_qa_session(self, transcript: List[Dict]) -> bool:
