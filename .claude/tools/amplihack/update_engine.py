@@ -23,8 +23,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from .file_classifier import FileCategory, classify_file
-from .version_checker import get_package_version
+try:
+    from .file_classifier import FileCategory, classify_file
+    from .version_checker import get_package_version
+except ImportError:
+    # Fallback for standalone execution
+    from file_classifier import FileCategory, classify_file
+    from version_checker import get_package_version
 
 __all__ = [
     "UpdateResult",

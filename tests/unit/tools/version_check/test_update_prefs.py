@@ -10,13 +10,17 @@ Tests user preference management for automatic updates:
 """
 
 import json
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
 
-from .claude.tools.amplihack.update_prefs import (
+# Add .claude/tools/amplihack to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
+
+from update_prefs import (
     _get_preference_file_path,
     get_last_prompted,
     load_update_preference,

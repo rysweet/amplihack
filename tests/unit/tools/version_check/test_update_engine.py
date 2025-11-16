@@ -12,13 +12,17 @@ Tests the complete update orchestration:
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from .claude.tools.amplihack.file_classifier import FileCategory
-from .claude.tools.amplihack.update_engine import (
+# Add .claude/tools/amplihack to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
+
+from file_classifier import FileCategory
+from update_engine import (
     UpdateResult,
     _copy_file_safe,
     _is_file_modified,

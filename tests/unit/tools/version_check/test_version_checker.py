@@ -9,12 +9,16 @@ Tests version checking functionality including:
 """
 
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from .claude.tools.amplihack.version_checker import (
+# Add .claude/tools/amplihack to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
+
+from version_checker import (
     VersionInfo,
     check_version_mismatch,
     get_package_version,

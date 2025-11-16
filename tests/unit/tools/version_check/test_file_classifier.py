@@ -8,11 +8,15 @@ Tests file classification into update strategies:
 - Path normalization and edge cases
 """
 
+import sys
 from pathlib import Path
 
 import pytest
 
-from .claude.tools.amplihack.file_classifier import (
+# Add .claude/tools/amplihack to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
+
+from file_classifier import (
     FileCategory,
     classify_file,
     get_category_description,
