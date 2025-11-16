@@ -340,7 +340,9 @@ def resolve_container_name(
     if cleanup_mode:
         # During cleanup, silently use default without any prompts
         default_name = get_default_container_name(context.current_dir)
-        logger.info("Cleanup mode detected: Using default container without prompt: %s", default_name)
+        logger.info(
+            "Cleanup mode detected: Using default container without prompt: %s", default_name
+        )
         return default_name
 
     # Priority 3: Auto mode or Interactive selection
@@ -354,6 +356,7 @@ def resolve_container_name(
     # Interactive mode: Use unified dialog (combines container selection + credential sync)
     try:
         from .unified_startup_dialog import unified_container_and_credential_dialog
+
         container_name = unified_container_and_credential_dialog(default_name, auto_mode=False)
         if container_name:
             return container_name
