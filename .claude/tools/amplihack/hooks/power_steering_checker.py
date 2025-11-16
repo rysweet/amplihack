@@ -19,6 +19,7 @@ Phase 1 (MVP) Implementation:
 - Fail-open error handling
 """
 
+import asyncio
 import json
 import os
 import re
@@ -34,6 +35,14 @@ import yaml
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Try to import Claude SDK integration
+try:
+    from claude_power_steering import analyze_consideration_sync
+
+    SDK_AVAILABLE = True
+except ImportError:
+    SDK_AVAILABLE = False
 
 # Security: Maximum transcript size to prevent memory exhaustion
 MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
@@ -623,6 +632,9 @@ class PowerSteeringChecker:
     ) -> ConsiderationAnalysis:
         """Analyze transcript against all enabled considerations.
 
+        Phase 2: Uses Claude SDK for intelligent analysis when available,
+        falls back to heuristic checkers if SDK unavailable.
+
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
@@ -641,27 +653,42 @@ class PowerSteeringChecker:
             if not self.config.get("checkers_enabled", {}).get(consideration["id"], True):
                 continue
 
-            # Get checker method
-            checker_name = consideration["checker"]
-
-            # Handle generic checker
-            if checker_name == "generic":
-                checker_func = self._generic_analyzer
-            else:
-                checker_func = getattr(self, checker_name, None)
-
-            if checker_func is None:
-                # Log warning and use generic analyzer as fallback
-                self._log(f"Checker not found: {checker_name}, using generic", "WARNING")
-                checker_func = self._generic_analyzer
-
             # Run checker with timeout and error handling
             try:
                 with _timeout(CHECKER_TIMEOUT):
-                    if checker_name == "generic" or checker_func == self._generic_analyzer:
-                        satisfied = checker_func(transcript, session_id, consideration)
+                    # Determine if we should use SDK analysis
+                    checker_name = consideration["checker"]
+                    use_sdk = (
+                        SDK_AVAILABLE
+                        and checker_name != "generic"  # Skip SDK for generic checkers
+                        and checker_name.startswith("_check_")  # Only use SDK for specific checkers
+                    )
+
+                    if use_sdk:
+                        try:
+                            satisfied = analyze_consideration_sync(
+                                conversation=transcript,
+                                consideration=consideration,
+                                project_root=self.project_root,
+                            )
+                            self._log(
+                                f"SDK analysis for '{consideration['id']}': {'satisfied' if satisfied else 'not satisfied'}",
+                                "DEBUG",
+                            )
+                        except Exception as e:
+                            # SDK failed, fall back to heuristic checker
+                            self._log(
+                                f"SDK analysis failed for '{consideration['id']}': {e}, using heuristic",
+                                "WARNING",
+                            )
+                            satisfied = self._run_heuristic_checker(
+                                consideration, transcript, session_id
+                            )
                     else:
-                        satisfied = checker_func(transcript, session_id)
+                        # SDK not available or not applicable, use heuristic checker
+                        satisfied = self._run_heuristic_checker(
+                            consideration, transcript, session_id
+                        )
 
                 result = CheckerResult(
                     consideration_id=consideration["id"],
@@ -672,7 +699,7 @@ class PowerSteeringChecker:
                 analysis.add_result(result)
             except TimeoutError:
                 # Fail-open: Treat as satisfied on timeout
-                self._log(f"Checker {checker_name} timed out ({CHECKER_TIMEOUT}s)", "WARNING")
+                self._log(f"Checker timed out ({CHECKER_TIMEOUT}s)", "WARNING")
                 result = CheckerResult(
                     consideration_id=consideration["id"],
                     satisfied=True,  # Fail-open
@@ -682,7 +709,7 @@ class PowerSteeringChecker:
                 analysis.add_result(result)
             except Exception as e:
                 # Fail-open: Treat as satisfied on error
-                self._log(f"Checker {checker_name} failed: {e}", "ERROR")
+                self._log(f"Checker failed: {e}", "ERROR")
                 result = CheckerResult(
                     consideration_id=consideration["id"],
                     satisfied=True,  # Fail-open
@@ -692,6 +719,40 @@ class PowerSteeringChecker:
                 analysis.add_result(result)
 
         return analysis
+
+    def _run_heuristic_checker(
+        self, consideration: Dict[str, Any], transcript: List[Dict], session_id: str
+    ) -> bool:
+        """Run heuristic checker for a consideration.
+
+        Fallback mechanism when Claude SDK is unavailable or fails.
+
+        Args:
+            consideration: Consideration dictionary
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if satisfied, False otherwise
+        """
+        checker_name = consideration["checker"]
+
+        # Handle generic checker
+        if checker_name == "generic":
+            checker_func = self._generic_analyzer
+        else:
+            checker_func = getattr(self, checker_name, None)
+
+        if checker_func is None:
+            # Log warning and use generic analyzer as fallback
+            self._log(f"Checker not found: {checker_name}, using generic", "WARNING")
+            checker_func = self._generic_analyzer
+
+        # Run checker
+        if checker_name == "generic" or checker_func == self._generic_analyzer:
+            return checker_func(transcript, session_id, consideration)
+        else:
+            return checker_func(transcript, session_id)
 
     # ========================================================================
     # Phase 1: Top 5 Critical Checkers
