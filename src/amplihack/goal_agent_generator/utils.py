@@ -5,7 +5,6 @@ Provides helper functions for name sanitization, validation, and other common ta
 """
 
 import re
-from typing import Optional
 
 
 def sanitize_bundle_name(

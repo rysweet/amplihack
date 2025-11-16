@@ -1,17 +1,16 @@
 """Tests for goal agent generator models."""
 
 import uuid
-from datetime import datetime
 
 import pytest
 
 from ..models import (
+    ExecutionPlan,
+    GenerationMetrics,
+    GoalAgentBundle,
     GoalDefinition,
     PlanPhase,
-    ExecutionPlan,
     SkillDefinition,
-    GoalAgentBundle,
-    GenerationMetrics,
 )
 
 

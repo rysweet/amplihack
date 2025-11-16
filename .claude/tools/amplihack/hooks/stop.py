@@ -300,40 +300,31 @@ class StopHook(HookProcessor):
         Returns:
             True if power-steering should run, False otherwise
         """
-        # Check environment variable skip flag
-        if os.environ.get("AMPLIHACK_SKIP_POWER_STEERING"):
-            self.log("AMPLIHACK_SKIP_POWER_STEERING is set - skipping power-steering", "DEBUG")
-            return False
-
-        # Load power-steering config
-        config_path = (
-            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
-        )
-        if not config_path.exists():
-            self.log("Power-steering config not found - skipping", "DEBUG")
-            return False
-
         try:
-            with open(config_path) as f:
-                config = json.load(f)
-        except (OSError, json.JSONDecodeError) as e:
-            self.log(f"Cannot read power-steering config: {e}", "WARNING")
+            # Reuse PowerSteeringChecker's logic instead of duplicating
+            from power_steering_checker import PowerSteeringChecker
+
+            checker = PowerSteeringChecker(self.project_root)
+            is_disabled = checker._is_disabled()
+
+            if is_disabled:
+                self.log("Power-steering is disabled - skipping", "DEBUG")
+                return False
+
+            # Check for power-steering lock to prevent concurrent runs
+            ps_dir = self.project_root / ".claude" / "runtime" / "power-steering"
+            ps_lock = ps_dir / ".power_steering_lock"
+
+            if ps_lock.exists():
+                self.log("Power-steering already running - skipping", "DEBUG")
+                return False
+
+            return True
+
+        except Exception as e:
+            # Fail-open: On any error, skip power-steering
+            self.log(f"Error checking power-steering status: {e} - skipping", "WARNING")
             return False
-
-        # Check if enabled
-        if not config.get("enabled", False):
-            self.log("Power-steering is disabled - skipping", "DEBUG")
-            return False
-
-        # Check for power-steering lock to prevent concurrent runs
-        ps_dir = self.project_root / ".claude" / "runtime" / "power-steering"
-        ps_lock = ps_dir / ".power_steering_lock"
-
-        if ps_lock.exists():
-            self.log("Power-steering already running - skipping", "DEBUG")
-            return False
-
-        return True
 
     def _should_run_reflection(self) -> bool:
         """Check if reflection should run based on config and environment.

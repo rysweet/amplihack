@@ -110,7 +110,7 @@ class FixIdentifier(ast.NodeVisitor):
 def analyze_file(file_path: Path) -> List[Dict[str, Any]]:
     """Analyze a single Python file for issues."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
 
         tree = ast.parse(content, filename=str(file_path))
@@ -125,7 +125,7 @@ def find_missing_logging(file_path: Path) -> List[Dict[str, Any]]:
     """Find functions that should have logging but don't."""
     issues = []
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
 
         # Check if file imports logging
@@ -156,7 +156,7 @@ def find_missing_validation(file_path: Path) -> List[Dict[str, Any]]:
     """Find functions that accept parameters without validation."""
     issues = []
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
 
         tree = ast.parse(content, filename=str(file_path))

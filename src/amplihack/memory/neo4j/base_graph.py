@@ -55,7 +55,6 @@ class BaseGraphManager(ABC):
                 '''
             ]
         """
-        pass
 
     @abstractmethod
     def _get_indexes(self) -> List[str]:
@@ -72,7 +71,6 @@ class BaseGraphManager(ABC):
                 '''
             ]
         """
-        pass
 
     @abstractmethod
     def _get_schema_name(self) -> str:
@@ -81,7 +79,6 @@ class BaseGraphManager(ABC):
         Returns:
             Schema name (e.g., "code graph", "documentation graph")
         """
-        pass
 
     def initialize_schema(self) -> bool:
         """Initialize schema for this graph type (idempotent).

@@ -43,7 +43,7 @@ def filter_main_codebase_issues(issues: List[Dict[str, Any]]) -> List[Dict[str, 
 def apply_bare_except_fix(file_path: Path, line_num: int, function_name: str) -> bool:
     """Fix bare except clause by replacing with Exception."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             lines = f.readlines()
 
         # Find the bare except line
@@ -65,7 +65,7 @@ def apply_bare_except_fix(file_path: Path, line_num: int, function_name: str) ->
 def apply_error_logging_fix(file_path: Path, line_num: int, function_name: str) -> bool:
     """Add logging to exception handler."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             lines = f.readlines()
 
         # Check if file has logging import
@@ -110,7 +110,7 @@ def apply_error_logging_fix(file_path: Path, line_num: int, function_name: str) 
 def apply_input_validation_fix(file_path: Path, line_num: int, function_name: str, parameter: str) -> bool:
     """Add input validation for parameter."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             lines = f.readlines()
 
         # Find function definition
@@ -159,7 +159,7 @@ def apply_input_validation_fix(file_path: Path, line_num: int, function_name: st
 def apply_silent_exception_fix(file_path: Path, line_num: int, function_name: str) -> bool:
     """Fix silent exception (pass in except block)."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             lines = f.readlines()
 
         # Find the except block with pass

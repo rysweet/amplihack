@@ -22,7 +22,9 @@ Phase 1 (MVP) Implementation:
 import json
 import os
 import re
+import signal
 import sys
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -35,6 +37,34 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Security: Maximum transcript size to prevent memory exhaustion
 MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
+
+# Timeout for individual checker execution (seconds)
+CHECKER_TIMEOUT = 10
+
+
+@contextmanager
+def _timeout(seconds: int):
+    """Context manager for operation timeout.
+
+    Args:
+        seconds: Timeout in seconds
+
+    Raises:
+        TimeoutError: If operation exceeds timeout
+    """
+
+    def handler(signum, frame):
+        raise TimeoutError("Operation timed out")
+
+    # Set alarm
+    old_handler = signal.signal(signal.SIGALRM, handler)
+    signal.alarm(seconds)
+
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 @dataclass
@@ -60,7 +90,7 @@ class ConsiderationAnalysis:
         """True if any blocker consideration failed."""
         return len(self.failed_blockers) > 0
 
-    def add_result(self, result: CheckerResult):
+    def add_result(self, result: CheckerResult) -> None:
         """Add result for a consideration."""
         self.results[result.consideration_id] = result
         if not result.satisfied:
@@ -199,6 +229,37 @@ class PowerSteeringChecker:
 
         raise ValueError("Could not find project root with .claude marker")
 
+    def _validate_config_integrity(self, config: Dict) -> bool:
+        """Validate configuration integrity (security check).
+
+        Args:
+            config: Loaded configuration
+
+        Returns:
+            True if config is valid, False otherwise
+        """
+        # Check required keys
+        if "enabled" not in config:
+            return False
+
+        # Validate enabled is boolean
+        if not isinstance(config["enabled"], bool):
+            return False
+
+        # Validate phase if present
+        if "phase" in config and not isinstance(config["phase"], int):
+            return False
+
+        # Validate checkers_enabled if present
+        if "checkers_enabled" in config:
+            if not isinstance(config["checkers_enabled"], dict):
+                return False
+            # All values should be booleans
+            if not all(isinstance(v, bool) for v in config["checkers_enabled"].values()):
+                return False
+
+        return True
+
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from file with defaults.
 
@@ -223,10 +284,17 @@ class PowerSteeringChecker:
             if self.config_path.exists():
                 with open(self.config_path) as f:
                     user_config = json.load(f)
+
+                    # Validate config integrity before using
+                    if not self._validate_config_integrity(user_config):
+                        self._log("Config integrity check failed, using defaults", "WARNING")
+                        return defaults
+
                     # Merge with defaults
                     defaults.update(user_config)
-        except (OSError, json.JSONDecodeError):
-            pass  # Fail-open: Use defaults on any error
+        except (OSError, json.JSONDecodeError) as e:
+            self._log(f"Config load error ({e}), using defaults", "WARNING")
+            # Fail-open: Use defaults on any error
 
         return defaults
 
@@ -397,6 +465,30 @@ class PowerSteeringChecker:
 
         return False
 
+    def _validate_path(self, path: Path, allowed_parent: Path) -> bool:
+        """Validate path is within allowed directory (security check).
+
+        Args:
+            path: Path to validate
+            allowed_parent: Parent directory path must be under
+
+        Returns:
+            True if path is safe, False otherwise
+        """
+        try:
+            # Resolve to absolute paths
+            path_resolved = path.resolve()
+            parent_resolved = allowed_parent.resolve()
+
+            # Check if path is relative to allowed parent
+            try:
+                path_resolved.relative_to(parent_resolved)
+                return True
+            except ValueError:
+                return False
+        except (OSError, RuntimeError):
+            return False
+
     def _already_ran(self, session_id: str) -> bool:
         """Check if power-steering already ran for this session.
 
@@ -409,7 +501,7 @@ class PowerSteeringChecker:
         semaphore = self.runtime_dir / f".{session_id}_completed"
         return semaphore.exists()
 
-    def _mark_complete(self, session_id: str):
+    def _mark_complete(self, session_id: str) -> None:
         """Create semaphore to prevent re-running.
 
         Args:
@@ -419,6 +511,7 @@ class PowerSteeringChecker:
             semaphore = self.runtime_dir / f".{session_id}_completed"
             semaphore.parent.mkdir(parents=True, exist_ok=True)
             semaphore.touch()
+            semaphore.chmod(0o600)  # Owner read/write only for security
         except OSError:
             pass  # Fail-open: Continue even if semaphore creation fails
 
@@ -434,11 +527,18 @@ class PowerSteeringChecker:
         Raises:
             OSError: If file cannot be read
             json.JSONDecodeError: If JSONL is malformed
+            ValueError: If transcript path is outside project root (security check)
 
         Note:
             Transcripts exceeding MAX_TRANSCRIPT_LINES are truncated to prevent
             memory exhaustion. A warning is logged when truncation occurs.
         """
+        # Security: Validate transcript path is within project root
+        if not self._validate_path(transcript_path, self.project_root):
+            raise ValueError(
+                f"Transcript path {transcript_path} is outside project root {self.project_root}"
+            )
+
         messages = []
         truncated = False
 
@@ -557,15 +657,26 @@ class PowerSteeringChecker:
 
             # Run checker with timeout and error handling
             try:
-                if checker_name == "generic" or checker_func == self._generic_analyzer:
-                    satisfied = checker_func(transcript, session_id, consideration)
-                else:
-                    satisfied = checker_func(transcript, session_id)
+                with _timeout(CHECKER_TIMEOUT):
+                    if checker_name == "generic" or checker_func == self._generic_analyzer:
+                        satisfied = checker_func(transcript, session_id, consideration)
+                    else:
+                        satisfied = checker_func(transcript, session_id)
 
                 result = CheckerResult(
                     consideration_id=consideration["id"],
                     satisfied=satisfied,
                     reason=consideration["question"],
+                    severity=consideration["severity"],
+                )
+                analysis.add_result(result)
+            except TimeoutError:
+                # Fail-open: Treat as satisfied on timeout
+                self._log(f"Checker {checker_name} timed out ({CHECKER_TIMEOUT}s)", "WARNING")
+                result = CheckerResult(
+                    consideration_id=consideration["id"],
+                    satisfied=True,  # Fail-open
+                    reason=f"Timeout after {CHECKER_TIMEOUT}s",
                     severity=consideration["severity"],
                 )
                 analysis.add_result(result)
@@ -1604,7 +1715,7 @@ class PowerSteeringChecker:
 
         return "\n".join(summary_parts)
 
-    def _write_summary(self, session_id: str, summary: str):
+    def _write_summary(self, session_id: str, summary: str) -> None:
         """Write summary to file.
 
         Args:
@@ -1616,10 +1727,11 @@ class PowerSteeringChecker:
             summary_dir.mkdir(parents=True, exist_ok=True)
             summary_path = summary_dir / "summary.md"
             summary_path.write_text(summary)
+            summary_path.chmod(0o644)  # Owner read/write, others read
         except OSError:
             pass  # Fail-open: Continue even if summary writing fails
 
-    def _log(self, message: str, level: str = "INFO"):
+    def _log(self, message: str, level: str = "INFO") -> None:
         """Log message to power-steering log file.
 
         Args:
@@ -1629,8 +1741,16 @@ class PowerSteeringChecker:
         try:
             log_file = self.runtime_dir / "power_steering.log"
             timestamp = datetime.now().isoformat()
+
+            # Create with restrictive permissions if it doesn't exist
+            is_new = not log_file.exists()
+
             with open(log_file, "a") as f:
                 f.write(f"[{timestamp}] {level}: {message}\n")
+
+            # Set permissions on new files
+            if is_new:
+                log_file.chmod(0o600)  # Owner read/write only for security
         except OSError:
             pass  # Fail silently on logging errors
 

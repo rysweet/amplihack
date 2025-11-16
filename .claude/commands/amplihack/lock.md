@@ -6,7 +6,7 @@
 **Usage**: `amplihack:lock [optional lock message]`
 
 When locked, Claude will:
-- use the Bash tool to run the amplihack lock tool:, 
+- use the Bash tool to run the amplihack lock tool:,
 
 **Basic usage (default continuation prompt):**
 
@@ -28,7 +28,7 @@ Use this mode when you want Claude to work autonomously through a complex task w
 
 ## Custom Continuation Messages
 
-The optional message a user can supply on the /amplihack:lock command will be passed to the lock tool with the `--message` flag and allows you to provide a custom instruction that Claude sees when attempting to stop. 
+The optional message a user can supply on the /amplihack:lock command will be passed to the lock tool with the `--message` flag and allows you to provide a custom instruction that Claude sees when attempting to stop.
 This enables:
 
 - Task-specific guidance

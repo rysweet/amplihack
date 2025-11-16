@@ -147,6 +147,6 @@ Convert HTML slides to PowerPoint presentations.
 
 ---
 
-**Last Updated**: 2025-11-08  
-**Maintained By**: amplihack project  
+**Last Updated**: 2025-11-08
+**Maintained By**: amplihack project
 **Users**: DOCX skill, PPTX skill

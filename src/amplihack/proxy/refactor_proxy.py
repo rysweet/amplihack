@@ -14,7 +14,7 @@ def refactor_integrated_proxy():
     """Refactor integrated_proxy.py to use modular imports."""
 
     # Read the original file
-    with open('integrated_proxy.py', 'r') as f:
+    with open('integrated_proxy.py') as f:
         lines = f.readlines()
 
     # New import section to add after azure_unified_integration import (line 30)

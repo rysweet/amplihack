@@ -265,7 +265,7 @@ class TestResolvePortConflictsWithContainer:
              patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env:
 
             mock_get_ports.return_value = (8888, 9999)
-            mock_update_env.side_effect = IOError("Permission denied")
+            mock_update_env.side_effect = OSError("Permission denied")
 
             bolt, http, messages = resolve_port_conflicts(
                 bolt_port=7787,
