@@ -57,16 +57,26 @@ class FreshnessChecker:
         return True
 
     def check_url_accessibility(self, url: str, timeout: int = 10) -> bool:
-        """Check if a URL is accessible."""
-        try:
-            req = Request(
-                url,
-                headers={'User-Agent': 'Mozilla/5.0 (Amplihack Freshness Checker)'}
-            )
-            with urlopen(req, timeout=timeout) as response:
-                return response.status == 200
-        except (URLError, HTTPError):
-            return False
+        """Check if a URL is accessible with retry logic."""
+        import time
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; SkillFreshnessChecker/1.0)'
+        }
+
+        # Retry up to 3 times for transient failures
+        for attempt in range(3):
+            try:
+                req = Request(url, headers=headers)
+                with urlopen(req, timeout=timeout) as response:
+                    if response.status == 200:
+                        return True
+            except (URLError, HTTPError):
+                if attempt == 2:  # Last attempt
+                    return False
+                time.sleep(1)  # Wait before retry
+
+        return False
 
     def check_source_urls(self, metadata: Dict) -> bool:
         """Validate all source URLs are accessible."""

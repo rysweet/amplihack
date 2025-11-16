@@ -31,6 +31,11 @@ namespace AgentFrameworkExamples
         {
             // Simple eval - real implementation would be more sophisticated
             var dataTable = new System.Data.DataTable();
+
+            // SECURITY WARNING: DataTable.Compute() can execute arbitrary expressions.
+            // In production code with untrusted input, use a safer calculation method
+            // or validate/sanitize the expression thoroughly. This example uses a
+            // hardcoded expression for demonstration purposes only.
             var result = dataTable.Compute(expression, string.Empty);
             return Convert.ToDouble(result);
         }

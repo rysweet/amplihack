@@ -45,7 +45,10 @@ def calculate(expression: str) -> float:
         Result of the calculation
     """
     try:
-        # Safe eval - only allow basic math
+        # SECURITY WARNING: eval() executes arbitrary Python code and should NEVER
+        # be used with untrusted input. This example uses a hardcoded expression for
+        # demonstration purposes only. In production, use ast.literal_eval() for safe
+        # evaluation of literals, or a proper expression parser for calculations.
         result = eval(expression, {"__builtins__": {}})
         return float(result)
     except Exception as e:
