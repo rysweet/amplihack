@@ -7,7 +7,7 @@ Serena MCP server configuration.
 import argparse
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from .configurator import SerenaConfigurator
 from .detector import SerenaDetector
@@ -36,7 +36,7 @@ class SerenaCLI:
         self.detector = detector or SerenaDetector()
         self.configurator = configurator or SerenaConfigurator(self.detector)
 
-    def setup_parser(self, subparsers: argparse._SubParsersAction) -> None:
+    def setup_parser(self, subparsers: Any) -> None:
         """Set up argument parser for serena subcommand.
 
         Args:
@@ -303,7 +303,7 @@ class SerenaCLI:
                     print(f"  Env: {current_config.env}")
                 else:
                     print("  Serena not configured in mcpServers")
-            except Exception as e:
+            except ConfigurationError as e:
                 print(f"  Error reading configuration: {e}")
         else:
             print("Configuration file does not exist yet.")

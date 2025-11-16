@@ -374,6 +374,63 @@ uvx --from git+https://github.com/oraios/serena serena --help
 
 **Solution**: This module supports Linux, macOS, Windows, and WSL. Other platforms are not currently supported.
 
+## Security Considerations
+
+### Trust Model
+
+This integration executes code from GitHub (https://github.com/oraios/serena) via uvx without signature verification. This design decision follows the same trust model as:
+
+1. **npm/pip direct installs**: `npm install package` or `pip install package`
+2. **uvx itself**: Designed to run tools from PyPI/GitHub directly
+3. **Claude Desktop MCP servers**: All MCP servers execute arbitrary code
+
+**Trust Chain:**
+- You trust uvx (installed by you)
+- You trust the Serena repository owner (oraios/serena)
+- You trust GitHub's infrastructure
+- You trust the Git HTTPS transport layer
+
+**Risk Mitigation:**
+- Uses HTTPS for all network operations (Git over HTTPS)
+- Repository URL is hardcoded, cannot be manipulated at runtime
+- No execution of arbitrary user input
+- Configuration file is JSON only, no code execution
+
+**For Paranoid Users:**
+
+If you want additional verification before enabling Serena:
+
+1. **Manual Review**: Clone and review the Serena repository before setup
+   ```bash
+   git clone https://github.com/oraios/serena
+   # Review the code manually
+   ```
+
+2. **Pinned Commits**: Modify `configurator.py` to use a specific commit hash:
+   ```python
+   # Instead of:
+   args = ["--from", "git+https://github.com/oraios/serena", "serena"]
+
+   # Use:
+   args = ["--from", "git+https://github.com/oraios/serena@COMMIT_HASH", "serena"]
+   ```
+
+3. **Local Installation**: Install Serena locally and modify the configuration:
+   ```bash
+   uv tool install git+https://github.com/oraios/serena
+   # Then modify configurator.py to use 'serena' directly instead of uvx
+   ```
+
+**Alternative Considered:**
+
+We considered adding hash verification (GPG signatures, SHA checksums) but rejected it because:
+- uvx doesn't support signature verification for git+ URLs
+- Would add complexity without significantly improving security
+- Users who need this level of verification should use option 3 above (local installation)
+- MCP server model inherently requires code execution trust
+
+**Bottom Line:** If you don't trust the Serena repository, don't use this integration. The same principle applies to all MCP servers and development tools.
+
 ## Philosophy Alignment
 
 This module follows amplihack's core principles:

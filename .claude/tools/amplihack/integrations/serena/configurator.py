@@ -97,7 +97,7 @@ class SerenaConfigurator:
             config = self._read_config(config_path)
             mcp_servers = config.get("mcpServers", {})
             return "serena" in mcp_servers
-        except Exception as e:
+        except (json.JSONDecodeError, OSError, PermissionError) as e:
             raise ConfigurationError(
                 f"Failed to read configuration file: {e}",
                 "Ensure the file is valid JSON and you have read permissions.",
@@ -123,7 +123,7 @@ class SerenaConfigurator:
         if config_path.exists():
             try:
                 config = self._read_config(config_path)
-            except Exception as e:
+            except (json.JSONDecodeError, OSError, PermissionError) as e:
                 raise ConfigurationError(
                     f"Failed to read existing configuration: {e}",
                     "Check that the file is valid JSON.",
@@ -144,7 +144,7 @@ class SerenaConfigurator:
         try:
             self._write_config(config_path, config)
             return True
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             raise ConfigurationError(
                 f"Failed to write configuration: {e}",
                 "Ensure you have write permissions and Claude Desktop is not running.",
@@ -165,7 +165,7 @@ class SerenaConfigurator:
 
         try:
             config = self._read_config(config_path)
-        except Exception as e:
+        except (json.JSONDecodeError, OSError, PermissionError) as e:
             raise ConfigurationError(
                 f"Failed to read configuration: {e}",
                 "Check that the file is valid JSON.",
@@ -182,7 +182,7 @@ class SerenaConfigurator:
         try:
             self._write_config(config_path, config)
             return True
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             raise ConfigurationError(
                 f"Failed to write configuration: {e}",
                 "Ensure you have write permissions and Claude Desktop is not running.",
@@ -208,7 +208,7 @@ class SerenaConfigurator:
             if serena_data:
                 return SerenaConfig.from_dict(serena_data)
             return None
-        except Exception as e:
+        except (json.JSONDecodeError, OSError, PermissionError) as e:
             raise ConfigurationError(
                 f"Failed to read configuration: {e}",
                 "Ensure the file is valid JSON and you have read permissions.",
@@ -236,7 +236,7 @@ class SerenaConfigurator:
         try:
             self._write_config(output_path, export_data)
             return True
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             raise ConfigurationError(
                 f"Failed to export configuration: {e}",
                 "Ensure you have write permissions to the target directory.",

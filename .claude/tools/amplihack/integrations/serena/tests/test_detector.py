@@ -1,7 +1,6 @@
 """Unit tests for Serena detector."""
 
 import os
-import platform
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
@@ -127,9 +126,7 @@ class TestSerenaDetector:
     def test_detect_serena_timeout(self):
         """Test detect_serena handles timeout gracefully."""
         detector = SerenaDetector()
-        with patch(
-            "subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 30)
-        ):
+        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 30)):
             available, path = detector.detect_serena()
             assert available is False
             assert path is None
@@ -188,9 +185,7 @@ class TestSerenaDetector:
                 return_value=MagicMock(
                     __enter__=MagicMock(
                         return_value=MagicMock(
-                            read=MagicMock(
-                                return_value="Linux version 5.10.0-microsoft-standard"
-                            )
+                            read=MagicMock(return_value="Linux version 5.10.0-microsoft-standard")
                         )
                     ),
                     __exit__=MagicMock(),
@@ -235,7 +230,14 @@ class TestSerenaDetector:
         detector = SerenaDetector()
         with patch.object(detector, "detect_platform", return_value="macos"):
             config_path = detector.get_mcp_config_path()
-            assert config_path == Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+            assert (
+                config_path
+                == Path.home()
+                / "Library"
+                / "Application Support"
+                / "Claude"
+                / "claude_desktop_config.json"
+            )
 
     def test_get_mcp_config_path_windows(self):
         """Test get_mcp_config_path returns correct path for Windows."""
@@ -243,7 +245,12 @@ class TestSerenaDetector:
         with patch.object(detector, "detect_platform", return_value="windows"):
             with patch.dict(os.environ, {"APPDATA": "C:\\Users\\Test\\AppData\\Roaming"}):
                 config_path = detector.get_mcp_config_path()
-                assert config_path == Path("C:\\Users\\Test\\AppData\\Roaming") / "Claude" / "claude_desktop_config.json"
+                assert (
+                    config_path
+                    == Path("C:\\Users\\Test\\AppData\\Roaming")
+                    / "Claude"
+                    / "claude_desktop_config.json"
+                )
 
     def test_get_mcp_config_path_wsl(self):
         """Test get_mcp_config_path uses Linux path for WSL."""

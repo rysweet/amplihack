@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
@@ -96,18 +96,14 @@ class TestSerenaConfigurator:
         """Test is_configured returns True when Serena is present."""
         config_data = {"mcpServers": {"serena": {"command": "uvx"}}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=config_data
-            ):
+            with patch.object(configurator, "_read_config", return_value=config_data):
                 assert configurator.is_configured() is True
 
     def test_is_configured_false_missing_serena(self, configurator, mock_detector):
         """Test is_configured returns False when Serena is not present."""
         config_data = {"mcpServers": {"other": {"command": "other-cmd"}}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=config_data
-            ):
+            with patch.object(configurator, "_read_config", return_value=config_data):
                 assert configurator.is_configured() is False
 
     def test_is_configured_false_no_config_file(self, configurator, mock_detector):
@@ -123,7 +119,9 @@ class TestSerenaConfigurator:
         """Test is_configured raises ConfigurationError on read failure."""
         with patch("pathlib.Path.exists", return_value=True):
             with patch.object(
-                configurator, "_read_config", side_effect=Exception("Read failed")
+                configurator,
+                "_read_config",
+                side_effect=json.JSONDecodeError("Invalid JSON", "", 0),
             ):
                 with pytest.raises(ConfigurationError):
                     configurator.is_configured()
@@ -140,15 +138,11 @@ class TestSerenaConfigurator:
                 assert "mcpServers" in written_config
                 assert "serena" in written_config["mcpServers"]
 
-    def test_add_to_mcp_servers_success_existing_file(
-        self, configurator, mock_detector
-    ):
+    def test_add_to_mcp_servers_success_existing_file(self, configurator, mock_detector):
         """Test add_to_mcp_servers adds to existing config."""
         existing_config = {"mcpServers": {"other": {"command": "other-cmd"}}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=existing_config
-            ):
+            with patch.object(configurator, "_read_config", return_value=existing_config):
                 with patch.object(configurator, "_write_config") as mock_write:
                     result = configurator.add_to_mcp_servers()
                     assert result is True
@@ -157,9 +151,7 @@ class TestSerenaConfigurator:
                     assert "other" in written_config["mcpServers"]
                     assert "serena" in written_config["mcpServers"]
 
-    def test_add_to_mcp_servers_already_configured(
-        self, configurator, mock_detector
-    ):
+    def test_add_to_mcp_servers_already_configured(self, configurator, mock_detector):
         """Test add_to_mcp_servers returns False when already configured."""
         existing_config = {
             "mcpServers": {
@@ -167,9 +159,7 @@ class TestSerenaConfigurator:
             }
         }
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=existing_config
-            ):
+            with patch.object(configurator, "_read_config", return_value=existing_config):
                 result = configurator.add_to_mcp_servers()
                 assert result is False
 
@@ -183,7 +173,7 @@ class TestSerenaConfigurator:
         """Test add_to_mcp_servers raises error on read failure."""
         with patch("pathlib.Path.exists", return_value=True):
             with patch.object(
-                configurator, "_read_config", side_effect=Exception("Read failed")
+                configurator, "_read_config", side_effect=PermissionError("Permission denied")
             ):
                 with pytest.raises(ConfigurationError):
                     configurator.add_to_mcp_servers()
@@ -191,9 +181,7 @@ class TestSerenaConfigurator:
     def test_add_to_mcp_servers_write_error(self, configurator, mock_detector):
         """Test add_to_mcp_servers raises error on write failure."""
         with patch("pathlib.Path.exists", return_value=False):
-            with patch.object(
-                configurator, "_write_config", side_effect=Exception("Write failed")
-            ):
+            with patch.object(configurator, "_write_config", side_effect=OSError("Write failed")):
                 with pytest.raises(ConfigurationError):
                     configurator.add_to_mcp_servers()
 
@@ -206,9 +194,7 @@ class TestSerenaConfigurator:
             }
         }
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=existing_config
-            ):
+            with patch.object(configurator, "_read_config", return_value=existing_config):
                 with patch.object(configurator, "_write_config") as mock_write:
                     result = configurator.remove_from_mcp_servers()
                     assert result is True
@@ -217,30 +203,22 @@ class TestSerenaConfigurator:
                     assert "serena" not in written_config["mcpServers"]
                     assert "other" in written_config["mcpServers"]
 
-    def test_remove_from_mcp_servers_not_configured(
-        self, configurator, mock_detector
-    ):
+    def test_remove_from_mcp_servers_not_configured(self, configurator, mock_detector):
         """Test remove_from_mcp_servers returns False when not configured."""
         existing_config = {"mcpServers": {"other": {"command": "other-cmd"}}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=existing_config
-            ):
+            with patch.object(configurator, "_read_config", return_value=existing_config):
                 result = configurator.remove_from_mcp_servers()
                 assert result is False
 
-    def test_remove_from_mcp_servers_no_config_file(
-        self, configurator, mock_detector
-    ):
+    def test_remove_from_mcp_servers_no_config_file(self, configurator, mock_detector):
         """Test remove_from_mcp_servers returns False when config doesn't exist."""
         assert configurator.remove_from_mcp_servers() is False
 
     def test_remove_from_mcp_servers_read_error(self, configurator, mock_detector):
         """Test remove_from_mcp_servers raises error on read failure."""
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", side_effect=Exception("Read failed")
-            ):
+            with patch.object(configurator, "_read_config", side_effect=OSError("Read failed")):
                 with pytest.raises(ConfigurationError):
                     configurator.remove_from_mcp_servers()
 
@@ -248,11 +226,9 @@ class TestSerenaConfigurator:
         """Test remove_from_mcp_servers raises error on write failure."""
         existing_config = {"mcpServers": {"serena": {"command": "uvx"}}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=existing_config
-            ):
+            with patch.object(configurator, "_read_config", return_value=existing_config):
                 with patch.object(
-                    configurator, "_write_config", side_effect=Exception("Write failed")
+                    configurator, "_write_config", side_effect=PermissionError("Write failed")
                 ):
                     with pytest.raises(ConfigurationError):
                         configurator.remove_from_mcp_servers()
@@ -269,9 +245,7 @@ class TestSerenaConfigurator:
             }
         }
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=config_data
-            ):
+            with patch.object(configurator, "_read_config", return_value=config_data):
                 config = configurator.get_current_config()
                 assert config is not None
                 assert config.command == "uvx"
@@ -281,9 +255,7 @@ class TestSerenaConfigurator:
         """Test get_current_config returns None when Serena not configured."""
         config_data = {"mcpServers": {"other": {"command": "other-cmd"}}}
         with patch("pathlib.Path.exists", return_value=True):
-            with patch.object(
-                configurator, "_read_config", return_value=config_data
-            ):
+            with patch.object(configurator, "_read_config", return_value=config_data):
                 config = configurator.get_current_config()
                 assert config is None
 
@@ -305,9 +277,7 @@ class TestSerenaConfigurator:
     def test_export_to_claude_desktop_write_error(self, configurator, mock_detector):
         """Test export_to_claude_desktop raises error on write failure."""
         output_path = Path("/tmp/serena_config.json")
-        with patch.object(
-            configurator, "_write_config", side_effect=Exception("Write failed")
-        ):
+        with patch.object(configurator, "_write_config", side_effect=OSError("Write failed")):
             with pytest.raises(ConfigurationError):
                 configurator.export_to_claude_desktop(output_path)
 

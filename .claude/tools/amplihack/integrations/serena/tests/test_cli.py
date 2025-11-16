@@ -255,9 +255,7 @@ class TestSerenaCLI:
         with patch("builtins.print") as mock_print:
             exit_code = cli.cmd_export(args)
             assert exit_code == 0
-            mock_configurator.export_to_claude_desktop.assert_called_once_with(
-                output_path
-            )
+            mock_configurator.export_to_claude_desktop.assert_called_once_with(output_path)
             calls = [str(call) for call in mock_print.call_args_list]
             output = " ".join(calls)
             assert "Success" in output
@@ -266,9 +264,7 @@ class TestSerenaCLI:
         """Test cmd_export raises error on export failure."""
         output_path = Path("serena_config.json")
         mock_detector.detect_all.return_value = Mock()
-        mock_configurator.export_to_claude_desktop.side_effect = ConfigurationError(
-            "Export failed"
-        )
+        mock_configurator.export_to_claude_desktop.side_effect = ConfigurationError("Export failed")
 
         args = argparse.Namespace(output=output_path)
         with pytest.raises(ConfigurationError):
