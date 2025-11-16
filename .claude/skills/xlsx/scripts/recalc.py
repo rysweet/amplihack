@@ -24,7 +24,7 @@ def setup_libreoffice_macro():
     macro_file = os.path.join(macro_dir, 'Module1.xba')
 
     if os.path.exists(macro_file):
-        with open(macro_file, 'r') as f:
+        with open(macro_file) as f:
             if 'RecalculateAndSave' in f.read():
                 return True
 
@@ -96,8 +96,7 @@ def recalc(filename, timeout=30):
         error_msg = result.stderr or 'Unknown error during recalculation'
         if 'Module1' in error_msg or 'RecalculateAndSave' not in error_msg:
             return {'error': 'LibreOffice macro not configured properly'}
-        else:
-            return {'error': error_msg}
+        return {'error': error_msg}
 
     # Check for Excel errors in the recalculated file - scan ALL cells
     try:

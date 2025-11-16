@@ -1,13 +1,14 @@
 """Tests for smart PROJECT.md initializer."""
 
 import pytest
+
 from amplihack.utils.project_initializer import (
-    ProjectState,
-    InitMode,
-    GenerationMethod,
     ActionTaken,
-    detect_project_md_state,
+    GenerationMethod,
+    InitMode,
+    ProjectState,
     analyze_project_structure,
+    detect_project_md_state,
     generate_from_template,
     initialize_project_md,
 )

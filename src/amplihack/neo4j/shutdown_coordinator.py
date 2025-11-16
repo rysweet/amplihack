@@ -114,13 +114,12 @@ class Neo4jShutdownCoordinator:
                     logger.info("Loaded neo4j_auto_shutdown preference: %s (from %s)", value, prefs_file.name)
                     logger.debug("Preference file path: %s", prefs_file)
                     return value
-                else:
-                    logger.warning(
-                        "Invalid neo4j_auto_shutdown value '%s' in %s. "
-                        "Must be 'always', 'never', or 'ask'. Using default: ask",
-                        value,
-                        prefs_file
-                    )
+                logger.warning(
+                    "Invalid neo4j_auto_shutdown value '%s' in %s. "
+                    "Must be 'always', 'never', or 'ask'. Using default: ask",
+                    value,
+                    prefs_file
+                )
             else:
                 logger.debug(
                     "neo4j_auto_shutdown preference not found in %s. Using default: ask",
@@ -296,17 +295,16 @@ class Neo4jShutdownCoordinator:
             logger.info("User selected 'always' - saving preference for future sessions and proceeding with shutdown")
             self._save_preference('always')
             return True
-        elif response in ('v', 'never'):
+        if response in ('v', 'never'):
             logger.info("User selected 'never' - saving preference for future sessions and skipping shutdown")
             self._save_preference('never')
             return False
-        elif response in ("y", "yes"):
+        if response in ("y", "yes"):
             logger.info("User accepted shutdown (one-time, preference not saved)")
             return True
-        else:
-            logger.info("User declined shutdown (response: %s)", response)
-            logger.debug("Treating response as 'no' - skipping shutdown")
-            return False
+        logger.info("User declined shutdown (response: %s)", response)
+        logger.debug("Treating response as 'no' - skipping shutdown")
+        return False
 
     def execute_shutdown(self) -> bool:
         """Execute Neo4j container shutdown.

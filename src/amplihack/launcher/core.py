@@ -403,7 +403,17 @@ class ClaudeLauncher:
 
             # Add Azure model when using proxy
             if self.proxy_manager:
-                claude_args.extend(["--model", "azure/gpt-5-codex"])
+                # Get model from proxy config (which loaded the .env file)
+                azure_model = next(
+                    (
+                        model for model in [
+                            self.proxy_manager.proxy_config.get("BIG_MODEL"),
+                            self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
+                        ] if model and model.strip()
+                    ),
+                    "gpt-5-codex"  # Fallback default
+                )
+                claude_args.extend(["--model", f"azure/{azure_model}"])
             # Add default model if not using proxy and user hasn't specified one
             elif not self._has_model_arg():
                 default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
@@ -436,7 +446,13 @@ class ClaudeLauncher:
 
         # Add Azure model when using proxy
         if self.proxy_manager:
-            cmd.extend(["--model", "azure/gpt-5-codex"])
+            # Get model from proxy config (which loaded the .env file)
+            azure_model = (
+                self.proxy_manager.proxy_config.get("BIG_MODEL") or
+                self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME") or
+                "gpt-5-codex"  # Fallback default
+            )
+            cmd.extend(["--model", f"azure/{azure_model}"])
         # Add default model if not using proxy and user hasn't specified one
         elif not self._has_model_arg():
             default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
@@ -722,6 +738,7 @@ class ClaudeLauncher:
         """Interactive Neo4j startup with user feedback.
 
         BLOCKS until Neo4j ready or user decides to continue without it.
+        Neo4j is disabled by default unless AMPLIHACK_ENABLE_NEO4J_MEMORY=1 is set.
 
         Returns:
             True to continue, False to exit
@@ -730,6 +747,18 @@ class ClaudeLauncher:
 
         method_logger = logging.getLogger(__name__)
 
+        # Check if Neo4j is enabled via environment variable (default: disabled)
+        neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
+
+        if not neo4j_enabled:
+            print("ℹ️  Neo4j graph memory is disabled by default.")
+            print("   To enable: amplihack launch --enable-neo4j-memory")
+            print("   Continuing with basic memory system...\n")
+            return True
+
+        # Neo4j is enabled - proceed with interactive startup
+        print("✓ Neo4j graph memory enabled")
+
         try:
             from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
 
@@ -737,6 +766,7 @@ class ClaudeLauncher:
         except ImportError:
             # Neo4j modules not available - continue without
             method_logger.debug("Neo4j modules not found")
+            print("⚠️  Neo4j modules not available, continuing without graph memory\n")
             return True
         except Exception as e:
             method_logger.error("Neo4j startup failed: %s", e)

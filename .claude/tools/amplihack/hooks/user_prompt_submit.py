@@ -109,7 +109,7 @@ class UserPromptSubmitHook(HookProcessor):
         if not preferences:
             return ""
 
-        lines = ["🎯 ACTIVE USER PREFERENCES (MANDATORY):"]
+        lines = ["🎯 ACTIVE USER PREFERENCES (MANDATORY - Apply to all responses):"]
 
         # Priority order for displaying preferences (most impactful first)
         priority_order = [
@@ -146,7 +146,9 @@ class UserPromptSubmitHook(HookProcessor):
                     lines.append(f"• {pref_name}: {value}")
 
         lines.append("")
-        lines.append("These preferences MUST be applied to this response.")
+        lines.append(
+            "Apply these preferences to this response. These preferences are READ-ONLY except when using /amplihack:customize command."
+        )
 
         return "\n".join(lines)
 

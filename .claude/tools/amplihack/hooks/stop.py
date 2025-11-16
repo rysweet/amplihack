@@ -84,6 +84,44 @@ class StopHook(HookProcessor):
         # before any potentially long-running reflection analysis that might timeout the user)
         self._handle_neo4j_cleanup()
 
+        # Power-steering check (before reflection)
+        if not lock_exists and self._should_run_power_steering():
+            try:
+                from power_steering_checker import PowerSteeringChecker
+
+                ps_checker = PowerSteeringChecker(self.project_root)
+                transcript_path_str = input_data.get("transcript_path")
+
+                if transcript_path_str:
+                    from pathlib import Path
+
+                    transcript_path = Path(transcript_path_str)
+                    session_id = self._get_current_session_id()
+
+                    self.log("Running power-steering analysis...")
+                    ps_result = ps_checker.check(transcript_path, session_id)
+
+                    if ps_result.decision == "block":
+                        self.log("Power-steering blocking stop - work incomplete")
+                        self.save_metric("power_steering_blocks", 1)
+                        self.log("=== STOP HOOK ENDED (decision: block - power-steering) ===")
+                        return {
+                            "decision": "block",
+                            "reason": ps_result.continuation_prompt or "Session appears incomplete",
+                        }
+                    self.log(f"Power-steering approved stop: {ps_result.reasons}")
+                    self.save_metric("power_steering_approves", 1)
+
+                    # Display summary if available
+                    if ps_result.summary:
+                        self.log("Power-steering summary generated")
+                        # Summary is saved to file by checker
+
+            except Exception as e:
+                # Fail-open: Continue to normal flow on any error
+                self.log(f"Power-steering error (fail-open): {e}", "WARNING")
+                self.save_metric("power_steering_errors", 1)
+
         # Check if reflection should run
         if not self._should_run_reflection():
             self.log("Reflection not enabled or skipped - allowing stop")
@@ -190,7 +228,11 @@ class StopHook(HookProcessor):
             self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
 
             # Initialize components with credentials from environment
+<<<<<<< HEAD
             # Note: Connection tracker will raise ValueError if password not set and
+=======
+            # Note: Connection tracker will raise ValueError if password not set and  # pragma: allowlist secret
+>>>>>>> origin/main
             # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.  # pragma: allowlist secret
             tracker = Neo4jConnectionTracker(
                 username=os.getenv("NEO4J_USERNAME"), password=os.getenv("NEO4J_PASSWORD")
@@ -255,6 +297,38 @@ class StopHook(HookProcessor):
         except (PermissionError, OSError, UnicodeDecodeError) as e:
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
+
+    def _should_run_power_steering(self) -> bool:
+        """Check if power-steering should run based on config and environment.
+
+        Returns:
+            True if power-steering should run, False otherwise
+        """
+        try:
+            # Reuse PowerSteeringChecker's logic instead of duplicating
+            from power_steering_checker import PowerSteeringChecker
+
+            checker = PowerSteeringChecker(self.project_root)
+            is_disabled = checker._is_disabled()
+
+            if is_disabled:
+                self.log("Power-steering is disabled - skipping", "DEBUG")
+                return False
+
+            # Check for power-steering lock to prevent concurrent runs
+            ps_dir = self.project_root / ".claude" / "runtime" / "power-steering"
+            ps_lock = ps_dir / ".power_steering_lock"
+
+            if ps_lock.exists():
+                self.log("Power-steering already running - skipping", "DEBUG")
+                return False
+
+            return True
+
+        except Exception as e:
+            # Fail-open: On any error, skip power-steering
+            self.log(f"Error checking power-steering status: {e} - skipping", "WARNING")
+            return False
 
     def _should_run_reflection(self) -> bool:
         """Check if reflection should run based on config and environment.

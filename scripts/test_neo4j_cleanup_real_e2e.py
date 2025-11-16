@@ -64,22 +64,19 @@ def check_neo4j_running() -> bool:
             if count is not None:
                 print(f"✓ Neo4j accessible - {count} connection(s)")
                 return True
-            else:
-                print("⚠ Neo4j container running but not accessible - may still be starting up")
-                print("   Waiting 5 seconds...")
-                time.sleep(5)
-                # Try once more
-                count = tracker.get_active_connection_count()
-                if count is not None:
-                    print(f"✓ Neo4j now accessible - {count} connection(s)")
-                    return True
-                else:
-                    print("✗ Neo4j not accessible after retry")
-                    return False
-        else:
-            print("✗ No Neo4j containers running")
-            print("   Start Neo4j first with: amplihack (it will auto-start Neo4j)")
+            print("⚠ Neo4j container running but not accessible - may still be starting up")
+            print("   Waiting 5 seconds...")
+            time.sleep(5)
+            # Try once more
+            count = tracker.get_active_connection_count()
+            if count is not None:
+                print(f"✓ Neo4j now accessible - {count} connection(s)")
+                return True
+            print("✗ Neo4j not accessible after retry")
             return False
+        print("✗ No Neo4j containers running")
+        print("   Start Neo4j first with: amplihack (it will auto-start Neo4j)")
+        return False
 
     except Exception as e:
         print(f"✗ Failed to check Neo4j: {e}")
@@ -133,12 +130,11 @@ def test_stop_hook_cleanup_prompt():
         if count == 1 and should_prompt:
             print("✓ TEST PASSED: Correctly prompts when last connection")
             return True
-        elif count > 1 and not should_prompt:
+        if count > 1 and not should_prompt:
             print("✓ TEST PASSED: Correctly skips prompt with multiple connections")
             return True
-        else:
-            print(f"✓ TEST PASSED: System working correctly (count={count}, prompt={should_prompt})")
-            return True
+        print(f"✓ TEST PASSED: System working correctly (count={count}, prompt={should_prompt})")
+        return True
 
     except Exception as e:
         print(f"✗ TEST FAILED: {e}")
@@ -186,9 +182,8 @@ def test_preference_loading_real():
         if loaded_pref in ['always', 'never', 'ask']:
             print(f"✓ TEST PASSED: Valid preference loaded: {loaded_pref}")
             return True
-        else:
-            print(f"✗ TEST FAILED: Invalid preference: {loaded_pref}")
-            return False
+        print(f"✗ TEST FAILED: Invalid preference: {loaded_pref}")
+        return False
 
     except Exception as e:
         print(f"✗ TEST FAILED: {e}")
@@ -307,9 +302,8 @@ except Exception as e:
             if exit_code == 0:
                 print("✓ TEST PASSED: Process exited cleanly after SIGINT")
                 return True
-            else:
-                print(f"⚠ TEST PASSED (with note): Exit code {exit_code} but no hang/crash")
-                return True
+            print(f"⚠ TEST PASSED (with note): Exit code {exit_code} but no hang/crash")
+            return True
 
         except subprocess.TimeoutExpired:
             print("✗ TEST FAILED: Process didn't exit within 15 seconds")
@@ -407,9 +401,8 @@ def cleanup_neo4j():
         if result.returncode == 0 or "No such container" in result.stderr:
             print("✓ Neo4j container stopped")
             return True
-        else:
-            print(f"⚠ Could not stop container: {result.stderr}")
-            return False
+        print(f"⚠ Could not stop container: {result.stderr}")
+        return False
 
     except Exception as e:
         print(f"⚠ Cleanup error: {e}")
@@ -469,9 +462,8 @@ def main():
         print("- Real signal handlers")
         print("- Real preferences")
         return 0
-    else:
-        print("\n❌ SOME TESTS FAILED")
-        return 1
+    print("\n❌ SOME TESTS FAILED")
+    return 1
 
 
 if __name__ == "__main__":

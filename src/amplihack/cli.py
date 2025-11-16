@@ -22,10 +22,18 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
-    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
-    if getattr(args, "use_graph_mem", False):
-        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
-        print("Neo4j graph memory enabled")
+    # Handle backwards compatibility: Check for deprecated --use-graph-mem flag
+    use_graph_mem = getattr(args, "use_graph_mem", False)
+    enable_neo4j = getattr(args, "enable_neo4j_memory", False)
+
+    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks and launcher)
+    if use_graph_mem or enable_neo4j:
+        os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
+        if use_graph_mem:
+            print("WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead.")
+            print("Neo4j graph memory enabled via --use-graph-mem flag (deprecated)")
+        else:
+            print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
 
         # Set container name if provided
         if getattr(args, "use_memory_db", None):
@@ -479,7 +487,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Smart PROJECT.md initialization for UVX mode
         if copied:
             try:
-                from .utils.project_initializer import initialize_project_md, InitMode
+                from .utils.project_initializer import InitMode, initialize_project_md
 
                 result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:
@@ -707,8 +715,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "new":
-        from .goal_agent_generator.cli import new_goal_agent
         from pathlib import Path
+
+        from .goal_agent_generator.cli import new_goal_agent
 
         # Convert string paths to Path objects
         file_path = Path(args.file)

@@ -169,7 +169,13 @@ def log_request_lifecycle(request_id: str, event: str, details: Optional[Dict[st
 
 
 # Configure LiteLLM for Azure if Azure endpoint is present
-AZURE_BASE_URL = os.environ.get("OPENAI_BASE_URL", "")
+# Check Azure-specific variables first, then fall back to generic OPENAI_BASE_URL
+AZURE_BASE_URL = (
+    os.environ.get("AZURE_OPENAI_ENDPOINT")
+    or os.environ.get("AZURE_ENDPOINT")
+    or os.environ.get("AZURE_OPENAI_BASE_URL")
+    or os.environ.get("OPENAI_BASE_URL", "")
+)
 if AZURE_BASE_URL:
     # For Azure Responses API with openai/ prefix:
     # LiteLLM DOES read AZURE_API_BASE environment variable (not OPENAI_BASE_URL)
@@ -883,13 +889,15 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
                 messages.append({"role": msg.role, "content": processed_content})
 
-    # Cap max_tokens for OpenAI models to their limit of 16384
-    if anthropic_request.model.startswith("openai/") or anthropic_request.model.startswith(
-        "gemini/"
+    # Cap max_tokens for OpenAI and Azure models to their limit of 16384
+    if (
+        anthropic_request.model.startswith("openai/")
+        or anthropic_request.model.startswith("azure/")
+        or anthropic_request.model.startswith("gemini/")
     ):
         litellm_request["max_tokens"] = min(anthropic_request.max_tokens, 16384)
         logger.debug(
-            f"Capping max_tokens to 16384 for OpenAI/Gemini model (original value: {anthropic_request.max_tokens})"
+            f"Capping max_tokens to 16384 for OpenAI/Azure/Gemini model (original value: {anthropic_request.max_tokens})"
         )
 
     # Set default value for thinking and only include it for Anthropic models
@@ -937,24 +945,16 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                 logger.debug(f"Cleaning schema for Gemini tool: {tool_dict.get('name')}")
                 input_schema = clean_gemini_schema(input_schema)
 
-            # Azure Responses API uses a flat tool format with type at top level
-            if use_responses_api:
-                openai_tool = {
-                    "type": "function",
+            # Always use standard OpenAI Chat Completions format
+            # LiteLLM will automatically transform to Responses API format when needed
+            openai_tool = {
+                "type": "function",
+                "function": {
                     "name": tool_dict["name"],
                     "description": tool_dict.get("description", ""),
-                    "parameters": input_schema,
-                }
-            else:
-                # Standard OpenAI Chat Completions format
-                openai_tool = {
-                    "type": "function",
-                    "function": {
-                        "name": tool_dict["name"],
-                        "description": tool_dict.get("description", ""),
-                        "parameters": input_schema,  # Use potentially cleaned schema
-                    },
-                }
+                    "parameters": input_schema,  # Use potentially cleaned schema
+                },
+            }
             openai_tools.append(openai_tool)
 
         litellm_request["tools"] = openai_tools
@@ -1757,9 +1757,9 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             litellm_request["api_key"] = ANTHROPIC_API_KEY
             logger.debug(f"Using Anthropic API key for model: {request.model}")
 
-        # For OpenAI models - modify request format to work with limitations
-        if "openai" in litellm_request["model"] and "messages" in litellm_request:
-            logger.debug(f"Processing OpenAI model request: {litellm_request['model']}")
+        # For OpenAI and Azure models - modify request format to work with limitations
+        if ("openai" in litellm_request["model"] or "azure" in litellm_request["model"]) and "messages" in litellm_request:
+            logger.debug(f"Processing OpenAI/Azure model request: {litellm_request['model']}")
 
             # For OpenAI models, we need to convert content blocks to simple strings
             # and handle other requirements

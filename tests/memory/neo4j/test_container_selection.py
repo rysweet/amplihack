@@ -180,9 +180,9 @@ class TestDiscovery:
             cmd = args[0]
             if "{{.Names}}" in cmd:
                 return Mock(returncode=0, stdout="amplihack-project1\namplihack-project2\n")
-            elif "{{.Status}}" in cmd:
+            if "{{.Status}}" in cmd:
                 return Mock(returncode=0, stdout="Up 2 hours")
-            elif "inspect" in cmd:
+            if "inspect" in cmd:
                 return Mock(returncode=0, stdout='{"7687/tcp":[{"HostPort":"7787"}]}')
             return Mock(returncode=1, stdout="")
 
