@@ -105,6 +105,39 @@ dependencies require sequential order.
   architectural claims (see `.claude/context/DISCOVERIES.md` and
   `.claude/runtime/logs/20251018_socratic_questioning/`)
 
+#### Architect Selection Guide
+
+Use the right architect for your task:
+
+**Decision Tree**:
+```
+Need architecture help?
+├─ General design/problem analysis? → architect (core)
+├─ CLI application architecture? → amplifier-cli-architect
+│  └─ Features: CONTEXTUALIZE/GUIDE/VALIDATE modes, ccsdk_toolkit integration
+├─ Philosophy compliance review? → zen-architect
+│  └─ Features: Simplicity scoring (A-F grades), regenerability assessment
+└─ Visual documentation needed? → visualization-architect
+   └─ Features: ASCII diagrams, Mermaid charts, system visualization
+```
+
+**Quick Reference**:
+
+| Task | Agent | When to Use |
+|------|-------|-------------|
+| Problem decomposition, specs | `architect` | Default for all architecture tasks |
+| CLI design, hybrid systems | `amplifier-cli-architect` | Building command-line tools or hybrid code/AI systems |
+| Philosophy validation | `zen-architect` | Reviewing if design follows ruthless simplicity |
+| Architecture diagrams | `visualization-architect` | Creating visual documentation or system diagrams |
+
+**Example Usage**:
+```
+General: "Design authentication system" → architect
+CLI: "Design CLI for data processing" → amplifier-cli-architect
+Review: "Validate this architecture for simplicity" → zen-architect
+Visualize: "Create system diagram" → visualization-architect
+```
+
 ### Development Workflow Agents
 
 **Two-Stage Diagnostic Workflow:**
@@ -455,6 +488,88 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
+
+### Command Selection Guide
+
+Choose the right command for your workflow:
+
+**Decision Tree**:
+```
+What do you need to do?
+├─ DEVELOPMENT WORKFLOWS
+│  ├─ Quick fix (< 5 min)? → /fix
+│  ├─ Build new module? → /modular-build
+│  ├─ Full feature development? → /ultrathink
+│  └─ Autonomous external loop? → /auto
+│     └─ Note: /auto runs in subprocess, /ultrathink in current session
+│
+├─ DECISION MAKING
+│  ├─ Need discussion/debate? → /debate
+│  │  └─ Interactive facilitated discussion converging to consensus
+│  └─ Need expert voting? → /expert-panel
+│     └─ Independent reviews with weighted voting
+│
+├─ FAULT TOLERANCE
+│  ├─ Need reliability/fallbacks? → /cascade
+│  ├─ Need critical correctness? → /n-version
+│  └─ Need decision consensus? → /debate
+│
+└─ INVESTIGATION & IMPROVEMENT
+   ├─ Understand codebase? → /investigate
+   ├─ Session reflection? → /reflect
+   └─ Philosophy compliance? → /analyze
+```
+
+**Quick Reference Table**:
+
+| Task Type | Command | When to Use |
+|-----------|---------|-------------|
+| Quick fixes | `/fix [pattern] [scope]` | Error blocking you, need rapid resolution |
+| Module building | `/modular-build` | Creating new self-contained module (brick) |
+| Feature development | `/ultrathink` | Multi-step feature with workflow orchestration |
+| Autonomous work | `/auto` | Long-running task in external subprocess |
+| Debate decision | `/debate <question>` | Need facilitated discussion to consensus |
+| Expert consensus | `/expert-panel <topic>` | Need independent expert votes |
+| Fallback resilience | `/cascade <task>` | Need graceful degradation (API calls, etc.) |
+| Critical correctness | `/n-version <task>` | Security code, core algorithms (3-4x cost) |
+| Code understanding | `/investigate <path>` | Deep dive into codebase structure |
+| Session analysis | `/reflect` | Review session and create improvement issues |
+| Philosophy check | `/analyze <path>` | Validate code against amplihack principles |
+
+**Key Distinctions**:
+
+**`/ultrathink` vs `/auto`**:
+- `/ultrathink`: Runs in current Claude Code session (internal orchestration)
+- `/auto`: Spawns external subprocess with autonomous loop
+- Use `/ultrathink` for interactive development, `/auto` for hands-off background work
+
+**`/debate` vs `/expert-panel`**:
+- `/debate`: Interactive discussion with back-and-forth, facilitated convergence
+- `/expert-panel`: Independent reviews without cross-talk, then voting
+- Use `/debate` for exploring trade-offs, `/expert-panel` for clear decision
+
+**`/ultrathink` vs `/modular-build`**:
+- `/ultrathink`: General-purpose development workflow (15 steps)
+- `/modular-build`: Specialized for module creation (progressive pipeline)
+- Use `/ultrathink` for features, `/modular-build` specifically for creating bricks
+
+**Integration Examples**:
+
+```bash
+# Quick workflow: Fix → Build → Review
+/fix import                    # Fix import errors
+/modular-build auth-module     # Build new module
+/analyze .                     # Check philosophy compliance
+
+# Complex decision workflow: Debate → N-Version → Reflect
+/debate "Should we use REST or GraphQL?"
+/n-version "Implement chosen API approach"
+/reflect                       # Analyze decisions made
+
+# Investigation workflow: Investigate → Ultrathink
+/investigate ./src/core        # Understand existing code
+/ultrathink "Add new feature to core"  # Build on understanding
+```
 
 ### Fault Tolerance Patterns
 
