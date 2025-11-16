@@ -38,10 +38,14 @@ class TestPowerSteeringChecker(unittest.TestCase):
 
         # Create directory structure
         (self.project_root / ".claude" / "tools" / "amplihack").mkdir(parents=True, exist_ok=True)
-        (self.project_root / ".claude" / "runtime" / "power-steering").mkdir(parents=True, exist_ok=True)
+        (self.project_root / ".claude" / "runtime" / "power-steering").mkdir(
+            parents=True, exist_ok=True
+        )
 
         # Create default config
-        config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        config_path = (
+            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
         config = {
             "enabled": True,
             "version": "1.0.0",
@@ -74,7 +78,9 @@ class TestPowerSteeringChecker(unittest.TestCase):
     def test_config_loading_with_defaults(self):
         """Test config loading with missing file uses defaults."""
         # Remove config file
-        config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        config_path = (
+            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
         config_path.unlink()
 
         checker = PowerSteeringChecker(self.project_root)
@@ -86,7 +92,9 @@ class TestPowerSteeringChecker(unittest.TestCase):
     def test_is_disabled_by_config(self):
         """Test _is_disabled checks config file."""
         # Set enabled to false
-        config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        config_path = (
+            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
         config = json.loads(config_path.read_text())
         config["enabled"] = False
         config_path.write_text(json.dumps(config))
@@ -136,7 +144,10 @@ class TestPowerSteeringChecker(unittest.TestCase):
 
         transcript = [
             {"type": "user", "message": {"content": "What is Python?"}},
-            {"type": "assistant", "message": {"content": [{"type": "text", "text": "Python is..."}]}},
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "Python is..."}]},
+            },
             {"type": "user", "message": {"content": "How do I use it?"}},
             {"type": "assistant", "message": {"content": [{"type": "text", "text": "You can..."}]}},
         ]
@@ -154,8 +165,16 @@ class TestPowerSteeringChecker(unittest.TestCase):
                 "type": "assistant",
                 "message": {
                     "content": [
-                        {"type": "tool_use", "name": "Write", "input": {"file_path": "/test1.py", "content": "..."}},
-                        {"type": "tool_use", "name": "Write", "input": {"file_path": "/test2.py", "content": "..."}},
+                        {
+                            "type": "tool_use",
+                            "name": "Write",
+                            "input": {"file_path": "/test1.py", "content": "..."},
+                        },
+                        {
+                            "type": "tool_use",
+                            "name": "Write",
+                            "input": {"file_path": "/test2.py", "content": "..."},
+                        },
                     ]
                 },
             },
@@ -224,8 +243,16 @@ class TestPowerSteeringChecker(unittest.TestCase):
                             "name": "TodoWrite",
                             "input": {
                                 "todos": [
-                                    {"content": "Task 1", "status": "completed", "activeForm": "Completing task 1"},
-                                    {"content": "Task 2", "status": "pending", "activeForm": "Working on task 2"},
+                                    {
+                                        "content": "Task 1",
+                                        "status": "completed",
+                                        "activeForm": "Completing task 1",
+                                    },
+                                    {
+                                        "content": "Task 2",
+                                        "status": "pending",
+                                        "activeForm": "Working on task 2",
+                                    },
                                 ]
                             },
                         }
@@ -249,7 +276,10 @@ class TestPowerSteeringChecker(unittest.TestCase):
                         {
                             "type": "tool_use",
                             "name": "Write",
-                            "input": {"file_path": "/test.py", "content": 'def hello():\n    return "world"'},
+                            "input": {
+                                "file_path": "/test.py",
+                                "content": 'def hello():\n    return "world"',
+                            },
                         }
                     ]
                 },
@@ -331,7 +361,9 @@ class TestPowerSteeringChecker(unittest.TestCase):
     def test_check_with_disabled(self):
         """Test check() when power-steering is disabled."""
         # Disable power-steering
-        config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        config_path = (
+            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
         config = json.loads(config_path.read_text())
         config["enabled"] = False
         config_path.write_text(json.dumps(config))
@@ -400,7 +432,9 @@ class TestConsiderationAnalysis(unittest.TestCase):
     def test_has_blockers_warning_only(self):
         """Test has_blockers with only warnings."""
         analysis = ConsiderationAnalysis()
-        result = CheckerResult(consideration_id="test", satisfied=False, reason="Test warning", severity="warning")
+        result = CheckerResult(
+            consideration_id="test", satisfied=False, reason="Test warning", severity="warning"
+        )
         analysis.add_result(result)
 
         self.assertFalse(analysis.has_blockers)
@@ -411,7 +445,10 @@ class TestConsiderationAnalysis(unittest.TestCase):
         analysis = ConsiderationAnalysis()
 
         result1 = CheckerResult(
-            consideration_id="todos_complete", satisfied=False, reason="Todos incomplete", severity="blocker"
+            consideration_id="todos_complete",
+            satisfied=False,
+            reason="Todos incomplete",
+            severity="blocker",
         )
         result2 = CheckerResult(
             consideration_id="local_testing", satisfied=False, reason="No tests", severity="blocker"
