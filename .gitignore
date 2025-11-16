@@ -136,3 +136,4 @@ worktrees/*
 wave16-dedup/
 wave17-dedup/
 wave*-dedup/
+tests/mcp_evaluation/results/
