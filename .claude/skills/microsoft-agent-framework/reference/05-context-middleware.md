@@ -3,6 +3,7 @@
 ## Context Providers
 
 Context providers inject additional information into agent conversations. They enable agents to access:
+
 - Conversation history from databases
 - User profiles and preferences
 - Relevant documents (RAG)
@@ -107,6 +108,7 @@ class UserProfileProvider(ContextProvider):
 ## Middleware
 
 Middleware intercepts and processes messages before/after agent execution. Use cases:
+
 - Logging and monitoring
 - Authentication and authorization
 - Rate limiting

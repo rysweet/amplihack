@@ -22,11 +22,8 @@ async def single_turn_example():
     # Create agent
     agent = Agent(
         name="assistant",
-        model=ModelClient(
-            model="gpt-4",
-            temperature=0.7
-        ),
-        instructions="You are a helpful assistant. Be concise and friendly."
+        model=ModelClient(model="gpt-4", temperature=0.7),
+        instructions="You are a helpful assistant. Be concise and friendly.",
     )
 
     # Send message
@@ -46,35 +43,26 @@ async def multi_turn_example():
     agent = Agent(
         name="assistant",
         model=ModelClient(model="gpt-4"),
-        instructions="You are a helpful assistant with good memory."
+        instructions="You are a helpful assistant with good memory.",
     )
 
     # Create thread to maintain conversation history
     thread = Thread()
 
     # Turn 1
-    response1 = await agent.run(
-        thread=thread,
-        message="My name is Alice and I'm learning Python."
-    )
+    response1 = await agent.run(thread=thread, message="My name is Alice and I'm learning Python.")
     print("User: My name is Alice and I'm learning Python.")
     print(f"Agent: {response1.content}")
     print()
 
     # Turn 2 - agent remembers context
-    response2 = await agent.run(
-        thread=thread,
-        message="What's my name?"
-    )
+    response2 = await agent.run(thread=thread, message="What's my name?")
     print("User: What's my name?")
     print(f"Agent: {response2.content}")
     print()
 
     # Turn 3 - agent remembers context
-    response3 = await agent.run(
-        thread=thread,
-        message="What am I learning?"
-    )
+    response3 = await agent.run(thread=thread, message="What am I learning?")
     print("User: What am I learning?")
     print(f"Agent: {response3.content}")
     print()
@@ -84,10 +72,7 @@ async def response_metadata_example():
     """Inspect response metadata."""
     print("=== Response Metadata ===")
 
-    agent = Agent(
-        name="assistant",
-        model=ModelClient(model="gpt-4")
-    )
+    agent = Agent(name="assistant", model=ModelClient(model="gpt-4"))
 
     response = await agent.run(message="Explain quantum computing in one sentence.")
 

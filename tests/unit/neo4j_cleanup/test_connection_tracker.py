@@ -86,7 +86,9 @@ class TestNeo4jConnectionTracker:
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "results": [],
-            "errors": [{"code": "Neo.ClientError.Statement.SyntaxError", "message": "Invalid query"}],
+            "errors": [
+                {"code": "Neo.ClientError.Statement.SyntaxError", "message": "Invalid query"}
+            ],
         }
 
         with patch("requests.post", return_value=mock_response):

@@ -7,6 +7,7 @@ Microsoft Agent Framework and amplihack are complementary systems that can work 
 ## Architecture Comparison
 
 ### amplihack
+
 - **Purpose**: Orchestration and task delegation
 - **Agent Model**: Stateless, file-based agents
 - **Execution**: Sequential or parallel via TodoWrite
@@ -15,6 +16,7 @@ Microsoft Agent Framework and amplihack are complementary systems that can work 
 - **Use Cases**: Code review, analysis, file operations, development workflows
 
 ### Microsoft Agent Framework
+
 - **Purpose**: Stateful conversational agents and workflows
 - **Agent Model**: Stateful with persistent threads
 - **Execution**: Graph-based workflows with conditional routing
@@ -57,6 +59,7 @@ for step in plan.steps:
 ```
 
 **When to use**:
+
 - Need amplihack's orchestration capabilities
 - Require stateful conversations
 - Want to leverage both systems' strengths
@@ -93,6 +96,7 @@ result = await workflow.run(initial_state={"code_path": "./src"})
 ```
 
 **When to use**:
+
 - Agent Framework manages the workflow
 - Need amplihack's specialized agents
 - Want to use amplihack's file operations
@@ -131,6 +135,7 @@ async def parallel_processing(task):
 ```
 
 **When to use**:
+
 - Independent operations can run concurrently
 - Maximize throughput
 - Different systems handle different aspects
@@ -160,6 +165,7 @@ async def sequential_handoff(user_query):
 ```
 
 **When to use**:
+
 - Clear handoff points
 - Each system handles distinct phases
 - Sequential dependencies
@@ -290,16 +296,16 @@ See `decision-framework.md` for detailed decision criteria.
 
 **Quick Reference**:
 
-| Requirement | Use amplihack | Use Agent Framework | Use Both |
-|-------------|---------------|---------------------|----------|
-| Stateful conversation | ❌ | ✅ | ✅ |
-| File operations | ✅ | ❌ | ✅ |
-| Complex orchestration | Limited | ✅ | ✅ |
-| Rapid prototyping | ✅ | ❌ | ❌ |
-| Enterprise features | ❌ | ✅ | ✅ |
-| Token efficiency | ✅ | ❌ | Balance |
-| Multi-turn dialogue | ❌ | ✅ | ✅ |
-| Local tools | ✅ | Limited | ✅ |
+| Requirement           | Use amplihack | Use Agent Framework | Use Both |
+| --------------------- | ------------- | ------------------- | -------- |
+| Stateful conversation | ❌            | ✅                  | ✅       |
+| File operations       | ✅            | ❌                  | ✅       |
+| Complex orchestration | Limited       | ✅                  | ✅       |
+| Rapid prototyping     | ✅            | ❌                  | ❌       |
+| Enterprise features   | ❌            | ✅                  | ✅       |
+| Token efficiency      | ✅            | ❌                  | Balance  |
+| Multi-turn dialogue   | ❌            | ✅                  | ✅       |
+| Local tools           | ✅            | Limited             | ✅       |
 
 ## Best Practices
 
@@ -314,15 +320,19 @@ See `decision-framework.md` for detailed decision criteria.
 ## Troubleshooting
 
 ### Issue: Context loss between systems
+
 **Solution**: Serialize thread state and pass to amplihack, or maintain shared state store
 
 ### Issue: Duplicate functionality
+
 **Solution**: Use decision framework to clearly allocate responsibilities
 
 ### Issue: Performance overhead
+
 **Solution**: Use parallel execution pattern when possible
 
 ### Issue: Complex debugging
+
 **Solution**: Add logging at integration boundaries, use telemetry for both systems
 
 ## Future Integration Opportunities

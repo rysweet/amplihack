@@ -3,6 +3,7 @@
 ## What are Workflows?
 
 Workflows in Microsoft Agent Framework are graph-based orchestration systems that coordinate multiple agents and operations. They provide structured control flow with:
+
 - **Nodes**: Agents, functions, or operations
 - **Edges**: Directed connections defining execution order
 - **Conditional routing**: Dynamic paths based on state
@@ -42,6 +43,7 @@ print(result.final_output)
 Nodes are execution units in the workflow graph.
 
 **Types of Nodes**:
+
 1. **Agent nodes**: Execute agents
 2. **Function nodes**: Run Python/C# functions
 3. **Decision nodes**: Route based on conditions
@@ -66,6 +68,7 @@ workflow.add_node("filter", lambda state: {"filtered": [x for x in state["items"
 Edges define execution flow between nodes.
 
 **Types of Edges**:
+
 1. **Sequential**: Node A → Node B
 2. **Conditional**: Node A → (condition) → Node B or C
 3. **Parallel**: Node A → [Node B, Node C] (both execute)
@@ -102,6 +105,7 @@ workflow.add_conditional_edge(
 ```
 
 **String-based routing**:
+
 ```python
 def route_by_category(state):
     """Return string matching edge key"""

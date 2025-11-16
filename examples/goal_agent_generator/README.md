@@ -7,11 +7,13 @@ This directory contains real-world examples demonstrating how to create autonomo
 ## Featured Examples
 
 ### 1. Azure Kubernetes SRE Agent
+
 **Directory:** `aks_sre_example/`
 **Domain:** Monitoring (Complex)
 **Purpose:** Autonomous AKS cluster monitoring and remediation
 
 **What It Does:**
+
 - Monitors pod and node health
 - Detects failures and resource issues
 - Performs automated remediation
@@ -22,11 +24,13 @@ This directory contains real-world examples demonstrating how to create autonomo
 ---
 
 ### 2. GitHub PR Manager
+
 **Directory:** `github_pr_manager/`
 **Domain:** Testing/Automation (Moderate)
 **Purpose:** Automated PR review, labeling, and merging
 
 **What It Does:**
+
 - Reviews PRs for quality
 - Applies labels automatically
 - Checks CI before merging
@@ -37,11 +41,13 @@ This directory contains real-world examples demonstrating how to create autonomo
 ---
 
 ### 3. Security Vulnerability Scanner
+
 **Directory:** `security_scanner/`
 **Domain:** Security (Moderate)
 **Purpose:** Scan Python code for OWASP vulnerabilities
 
 **What It Does:**
+
 - Detects SQL injection
 - Finds hardcoded secrets
 - Checks dependency CVEs
@@ -52,11 +58,13 @@ This directory contains real-world examples demonstrating how to create autonomo
 ---
 
 ### 4. Test Coverage Analyzer
+
 **Directory:** `test_coverage_analyzer/`
 **Domain:** Data Processing/Testing (Moderate)
 **Purpose:** Analyze and improve test coverage
 
 **What It Does:**
+
 - Identifies untested code
 - Suggests test cases
 - Follows testing pyramid
@@ -67,11 +75,13 @@ This directory contains real-world examples demonstrating how to create autonomo
 ---
 
 ### 5. API Documentation Generator
+
 **Directory:** `api_documentation_generator/`
 **Domain:** Data Processing (Moderate)
 **Purpose:** Generate OpenAPI docs from code
 
 **What It Does:**
+
 - Analyzes API routes
 - Generates OpenAPI spec
 - Creates code examples
@@ -82,11 +92,13 @@ This directory contains real-world examples demonstrating how to create autonomo
 ---
 
 ### 6. Dependency Auditor
+
 **Directory:** `dependency_auditor/`
 **Domain:** Security (Moderate)
 **Purpose:** Audit dependencies for vulnerabilities and licenses
 
 **What It Does:**
+
 - Scans all dependencies
 - Identifies CVEs
 - Checks licenses
@@ -124,14 +136,14 @@ python main.py
 
 ## Example Comparison
 
-| Example | Domain | Complexity | Phases | Duration | Skills |
-|---------|--------|------------|--------|----------|--------|
-| AKS SRE | Monitoring | Complex | 4 | 2h 36m | 2 |
-| PR Manager | Testing | Moderate | 4 | 1h 12m | 2 |
-| Security Scanner | Security | Moderate | 4 | 1h 12m | 2 |
-| Test Coverage | Data | Moderate | 4 | 1h 12m | 2 |
-| API Docs | Data | Moderate | 4 | 1h 12m | 2 |
-| Dependency Audit | Security | Moderate | 4 | 1h 12m | 2 |
+| Example          | Domain     | Complexity | Phases | Duration | Skills |
+| ---------------- | ---------- | ---------- | ------ | -------- | ------ |
+| AKS SRE          | Monitoring | Complex    | 4      | 2h 36m   | 2      |
+| PR Manager       | Testing    | Moderate   | 4      | 1h 12m   | 2      |
+| Security Scanner | Security   | Moderate   | 4      | 1h 12m   | 2      |
+| Test Coverage    | Data       | Moderate   | 4      | 1h 12m   | 2      |
+| API Docs         | Data       | Moderate   | 4      | 1h 12m   | 2      |
+| Dependency Audit | Security   | Moderate   | 4      | 1h 12m   | 2      |
 
 **Insight:** All examples use 4-phase structure, but complexity affects duration and max turns.
 
@@ -142,23 +154,27 @@ python main.py
 ### From These Examples:
 
 **Goal Prompt Writing:**
+
 - How to structure prompts
 - What level of detail works best
 - How to define constraints
 - How to write success criteria
 
 **Domain Classification:**
+
 - Security vs Testing vs Data vs Monitoring
 - How domain affects skill matching
 - Complexity levels (simple/moderate/complex)
 
 **Agent Generation:**
+
 - What gets generated automatically
 - How skills are matched
 - How phases are planned
 - How configuration is determined
 
 **Execution:**
+
 - How AutoMode works
 - What agents can accomplish
 - How to monitor progress

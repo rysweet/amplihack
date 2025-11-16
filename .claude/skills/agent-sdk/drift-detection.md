@@ -7,11 +7,13 @@ The Agent SDK skill maintains accuracy by detecting when source documentation ch
 ### Core Concept
 
 **Drift** occurs when:
+
 1. Source documentation is updated (new features, API changes, deprecated methods)
 2. Skill content becomes stale
 3. Claude may provide outdated guidance
 
 **Detection Mechanism:**
+
 - Content hashing (SHA-256) of source URLs
 - Version tracking in `.metadata/versions.json`
 - Automated checking via `scripts/check_drift.py`
@@ -20,6 +22,7 @@ The Agent SDK skill maintains accuracy by detecting when source documentation ch
 ### Update Frequency
 
 **Recommended Schedule:**
+
 - **Weekly**: Automated drift detection checks
 - **Monthly**: Manual review even if no drift detected
 - **On-demand**: When SDK releases new versions
@@ -39,6 +42,7 @@ Each source URL has a content hash that changes when source content changes:
 ```
 
 **Hash Generation:**
+
 ```python
 import hashlib
 import requests
@@ -54,11 +58,13 @@ def generate_content_hash(url: str) -> str:
 ### Change Detection
 
 **Drift is detected when:**
+
 - Current content hash != stored content hash
 - Source URL returns 404 (moved or deleted)
 - Fetch fails repeatedly (source unavailable)
 
 **Response Actions:**
+
 1. **Minor drift** (small doc updates): Update affected sections
 2. **Major drift** (API changes): Full skill regeneration
 3. **Source unavailable**: Mark source as deprecated, seek alternatives
@@ -70,6 +76,7 @@ def generate_content_hash(url: str) -> str:
 Location: `.claude/skills/agent-sdk/scripts/check_drift.py`
 
 **Core Functionality:**
+
 ```python
 #!/usr/bin/env python3
 """
@@ -265,21 +272,25 @@ if __name__ == "__main__":
 ### Usage Examples
 
 **Check for drift:**
+
 ```bash
 python scripts/check_drift.py
 ```
 
 **Check and update metadata:**
+
 ```bash
 python scripts/check_drift.py --update
 ```
 
 **JSON output for automation:**
+
 ```bash
 python scripts/check_drift.py --json
 ```
 
 **Custom metadata location:**
+
 ```bash
 python scripts/check_drift.py --metadata /path/to/versions.json
 ```
@@ -291,6 +302,7 @@ python scripts/check_drift.py --metadata /path/to/versions.json
 When drift is detected, follow this systematic workflow:
 
 **Step 1: Verify Drift**
+
 ```bash
 cd .claude/skills/agent-sdk
 python scripts/check_drift.py
@@ -299,24 +311,28 @@ python scripts/check_drift.py
 Review which sources have changed and assess impact.
 
 **Step 2: Fetch Updated Content**
+
 ```bash
 # For each drifted source, fetch new content
 curl https://docs.claude.com/en/docs/agent-sdk/overview > /tmp/new_content.html
 ```
 
 Or use WebFetch in Claude Code:
+
 ```
 Use WebFetch to fetch the updated content from each drifted URL
 ```
 
 **Step 3: Analyze Changes**
 Compare old and new content to understand:
+
 - What changed? (new features, deprecated APIs, examples)
 - Impact level? (minor docs update vs major API change)
 - Which skill files need updates? (SKILL.md, reference.md, examples.md, patterns.md)
 
 **Step 4: Update Skill Files**
 Update affected files with new information:
+
 - SKILL.md: Update overview, quick start if API changed
 - reference.md: Update API reference, add new features
 - examples.md: Update examples, add new patterns
@@ -324,6 +340,7 @@ Update affected files with new information:
 
 **Step 5: Validate Updates**
 Run self-validation checks:
+
 ```bash
 # Check token counts
 wc -w *.md
@@ -336,6 +353,7 @@ python -m doctest examples.md
 ```
 
 **Step 6: Update Metadata**
+
 ```bash
 # Update metadata with new hashes
 python scripts/check_drift.py --update
@@ -364,6 +382,7 @@ After updates, verify:
 ### Completeness Checks
 
 **Source Coverage:**
+
 ```python
 def validate_source_coverage(skill_content: str, sources: List[str]) -> bool:
     """Verify all sources are referenced in skill."""
@@ -376,6 +395,7 @@ def validate_source_coverage(skill_content: str, sources: List[str]) -> bool:
 ```
 
 **Required Sections:**
+
 ```python
 REQUIRED_SECTIONS = {
     "SKILL.md": [
@@ -422,6 +442,7 @@ def validate_sections(file_path: Path, required: List[str]) -> bool:
 ### Token Validation
 
 **Token Budget Enforcement:**
+
 ```python
 def count_tokens_approximate(text: str) -> int:
     """Approximate token count (words * 1.3)."""
@@ -452,6 +473,7 @@ BUDGETS = {
 ### Link Verification
 
 **Internal Links:**
+
 ```python
 def validate_internal_links(skill_dir: Path) -> bool:
     """Verify all internal markdown links exist."""
@@ -474,7 +496,8 @@ def validate_internal_links(skill_dir: Path) -> bool:
 ### Example Validation
 
 **Code Syntax:**
-```python
+
+````python
 def validate_code_examples(file_path: Path) -> bool:
     """Extract and validate Python code blocks."""
     import ast
@@ -491,19 +514,21 @@ def validate_code_examples(file_path: Path) -> bool:
             return False
 
     return True
-```
+````
 
 ## Continuous Improvement
 
 ### Feedback Loop
 
 **User Feedback Integration:**
+
 1. Monitor usage patterns (which files accessed most)
 2. Track questions about Agent SDK (skill gaps)
 3. Collect error reports (inaccurate info)
 4. Update skill based on feedback
 
 **Metrics to Track:**
+
 - Skill activation frequency
 - Which supporting files accessed
 - User satisfaction (implicit from continued use)
@@ -517,16 +542,19 @@ Maintain changelog of skill updates:
 ## Version History
 
 ### 1.0.0 (2025-11-15)
+
 - Initial skill creation
 - Comprehensive coverage of 5 source URLs
 - Drift detection mechanism implemented
 
 ### 1.0.1 (Future)
+
 - Minor doc updates
 - Bug fixes in examples
 - Performance improvements
 
 ### 1.1.0 (Future)
+
 - New Agent SDK features added
 - Additional patterns
 - Extended examples
@@ -535,6 +563,7 @@ Maintain changelog of skill updates:
 ### Future Enhancements
 
 **Planned Improvements:**
+
 1. Automated weekly drift detection via CI/CD
 2. Smart diff analysis (show exactly what changed)
 3. Automated partial updates for minor drifts

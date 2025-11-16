@@ -7,11 +7,13 @@
 The Gather pattern enables agents to iteratively collect information from multiple sources before proceeding.
 
 **When to Use:**
+
 - Research tasks requiring multiple data points
 - Analysis needing diverse perspectives
 - Decision-making requiring comprehensive context
 
 **Implementation:**
+
 ```python
 from claude_agents import Agent
 
@@ -33,12 +35,14 @@ result = gather_agent.run(
 ```
 
 **Key Characteristics:**
+
 - Agent makes multiple tool calls across several turns
 - Each iteration builds on previous findings
 - Natural termination when sufficient information gathered
 - Claude determines when gathering is complete
 
 **Optimization:**
+
 ```python
 # Provide structure to guide gathering
 system_prompt = """Gather information systematically:
@@ -58,11 +62,13 @@ Stop when all categories have reliable data."""
 The Act pattern focuses on choosing and executing the right tools for a task.
 
 **When to Use:**
+
 - Clear action required with known tools
 - Sequential operations on data
 - Workflow automation
 
 **Implementation:**
+
 ```python
 action_agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -85,6 +91,7 @@ result = action_agent.run(
 ```
 
 **Best Practices:**
+
 - Provide clear action sequence in system prompt
 - Use descriptive tool names and descriptions
 - Include error handling in tool implementations
@@ -95,11 +102,13 @@ result = action_agent.run(
 The Verify pattern enables agents to check their own work for accuracy.
 
 **When to Use:**
+
 - Critical calculations or decisions
 - Data transformations requiring accuracy
 - Code generation needing validation
 
 **Implementation:**
+
 ```python
 verify_agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -120,6 +129,7 @@ result = verify_agent.run(
 ```
 
 **Verification Strategies:**
+
 1. **Dual Calculation**: Compute same result two different ways
 2. **Round-Trip**: Convert data forth and back, check consistency
 3. **Constraint Checking**: Verify results meet known constraints
@@ -130,11 +140,13 @@ result = verify_agent.run(
 The Iterate pattern enables progressive refinement of outputs.
 
 **When to Use:**
+
 - Creative tasks needing refinement
 - Optimization problems
 - Quality improvement workflows
 
 **Implementation:**
+
 ```python
 iterate_agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -157,6 +169,7 @@ result = iterate_agent.run(
 ```
 
 **Convergence Control:**
+
 ```python
 # Set clear stopping criteria
 system_prompt = """Iterate until meeting criteria:
@@ -175,6 +188,7 @@ Maximum 10 iterations."""
 **Use subagents for:**
 
 1. **Task Isolation**: Specialized subtasks with different tool requirements
+
 ```python
 with main_agent.subagent(
     system="Security expert focused on vulnerabilities",
@@ -184,6 +198,7 @@ with main_agent.subagent(
 ```
 
 2. **Context Partitioning**: Prevent context pollution from unrelated information
+
 ```python
 # Main agent context stays clean
 with main_agent.subagent(inherit_system=False) as research_agent:
@@ -193,6 +208,7 @@ with main_agent.subagent(inherit_system=False) as research_agent:
 ```
 
 3. **Parallel Workflows**: Multiple independent processes
+
 ```python
 # Note: Subagents are sequential, but pattern supports parallel conceptually
 security_task = main_agent.subagent(system="Security audit")
@@ -203,6 +219,7 @@ perf_result = performance_task.run(code)
 ```
 
 4. **Permission Boundaries**: Different security contexts
+
 ```python
 with main_agent.subagent(
     allowed_tools=["read_file"],  # Restricted permissions
@@ -212,6 +229,7 @@ with main_agent.subagent(
 ```
 
 **Don't use subagents for:**
+
 - Simple tool calls (use tools directly)
 - When context sharing is important
 - Very short tasks (overhead not worth it)
@@ -219,6 +237,7 @@ with main_agent.subagent(
 ### Compaction Strategies
 
 **Strategy 1: Token Threshold**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -227,6 +246,7 @@ agent = Agent(
 ```
 
 **Strategy 2: Turn-Based Summarization**
+
 ```python
 # Every N turns, summarize earlier conversation
 if agent.current_turn % 10 == 0:
@@ -234,6 +254,7 @@ if agent.current_turn % 10 == 0:
 ```
 
 **Strategy 3: Smart Retention**
+
 ```python
 # Keep important information, summarize rest
 agent.compact_context(
@@ -244,6 +265,7 @@ agent.compact_context(
 ```
 
 **Strategy 4: External Memory**
+
 ```python
 # Store context externally, summarize references
 context_store = {}
@@ -260,6 +282,7 @@ class MemoryHook(PostToolUseHook):
 ### State Management
 
 **Pattern 1: Agent State Dictionary**
+
 ```python
 agent = Agent(model="claude-sonnet-4-5-20250929")
 agent.state = {
@@ -276,6 +299,7 @@ def process_file_tool(filename: str) -> dict:
 ```
 
 **Pattern 2: Persistent State**
+
 ```python
 import json
 from pathlib import Path
@@ -304,6 +328,7 @@ class StatefulAgent:
 ### Memory Optimization
 
 **Pattern 1: Lazy Loading**
+
 ```python
 # Don't load all tools upfront
 def get_tool_when_needed(tool_name: str):
@@ -325,6 +350,7 @@ if "analyze large dataset" in user_task:
 ```
 
 **Pattern 2: Result Streaming**
+
 ```python
 # Stream large results instead of holding in memory
 def streaming_analysis_tool(data_path: str):
@@ -344,6 +370,7 @@ agent = Agent(
 ### Single Responsibility Principle
 
 **Good: Focused tools**
+
 ```python
 def read_file(path: str) -> str:
     """Read file contents. Does one thing well."""
@@ -356,6 +383,7 @@ def write_file(path: str, content: str) -> bool:
 ```
 
 **Bad: Multi-purpose tools**
+
 ```python
 def file_operations(
     operation: str,
@@ -392,6 +420,7 @@ def create_directory(path: str) -> dict:
 ```
 
 **Non-idempotent tools need safeguards:**
+
 ```python
 def send_notification(message: str, recipient: str) -> dict:
     """Send notification. Not idempotent - implement deduplication."""
@@ -410,6 +439,7 @@ def send_notification(message: str, recipient: str) -> dict:
 ### Error Handling
 
 **Pattern 1: Structured Error Returns**
+
 ```python
 def api_call(endpoint: str) -> dict:
     """Return structured results with error info."""
@@ -439,6 +469,7 @@ def api_call(endpoint: str) -> dict:
 ```
 
 **Pattern 2: Graceful Degradation**
+
 ```python
 def get_data_with_fallback(source: str) -> dict:
     """Try primary source, fall back to cache."""
@@ -455,6 +486,7 @@ def get_data_with_fallback(source: str) -> dict:
 ### Tool Composition
 
 **Pattern: Composite Tools**
+
 ```python
 def analyze_codebase(path: str) -> dict:
     """High-level tool that composes lower-level tools."""
@@ -480,6 +512,7 @@ def analyze_codebase(path: str) -> dict:
 ```
 
 **Pattern: Tool Pipelines**
+
 ```python
 # Define pipeline of tools
 pipeline = [
@@ -509,6 +542,7 @@ def execute_pipeline(data_path: str) -> dict:
 ### Hook-Based Validation
 
 **Pattern: Input Sanitization**
+
 ```python
 from claude_agents.hooks import PreToolUseHook
 import re
@@ -535,6 +569,7 @@ class InputSanitizationHook(PreToolUseHook):
 ### Permission Restrictions
 
 **Pattern: Role-Based Access**
+
 ```python
 class RoleBasedPermissionHook(PreToolUseHook):
     def __init__(self, user_role: str):
@@ -567,6 +602,7 @@ agent = Agent(
 ### Sensitive Data Handling
 
 **Pattern: Data Redaction**
+
 ```python
 class DataRedactionHook(PostToolUseHook):
     def __init__(self):
@@ -597,6 +633,7 @@ class DataRedactionHook(PostToolUseHook):
 ### Audit Logging
 
 **Pattern: Comprehensive Audit Trail**
+
 ```python
 class AuditLogHook(PreToolUseHook, PostToolUseHook):
     def __init__(self, audit_db_path: str):
@@ -654,6 +691,7 @@ class AuditLogHook(PreToolUseHook, PostToolUseHook):
 ### Token Budget Management
 
 **Pattern: Dynamic Tool Loading**
+
 ```python
 # Start with minimal tools
 essential_tools = ["read_file", "write_file"]
@@ -676,6 +714,7 @@ if "analyze" in user_task:
 ### Parallel Execution
 
 **Pattern: Batch Processing**
+
 ```python
 import asyncio
 
@@ -700,6 +739,7 @@ async def process_batch(items: list, agent: Agent) -> list:
 ### Caching
 
 **Pattern: Result Caching**
+
 ```python
 from functools import lru_cache
 import hashlib
@@ -751,6 +791,7 @@ class CachePreHook(PreToolUseHook):
 ### Anti-Pattern 1: God Agent
 
 **Problem:**
+
 ```python
 # Don't: Single agent trying to do everything
 god_agent = Agent(
@@ -761,6 +802,7 @@ god_agent = Agent(
 ```
 
 **Solution:**
+
 ```python
 # Do: Specialized agents with focused capabilities
 code_agent = Agent(tools=[code_tools], system="Code specialist")
@@ -771,6 +813,7 @@ api_agent = Agent(tools=[api_tools], system="API specialist")
 ### Anti-Pattern 2: Context Pollution
 
 **Problem:**
+
 ```python
 # Don't: Let irrelevant context accumulate
 agent = Agent(model="claude-sonnet-4-5-20250929")
@@ -779,6 +822,7 @@ for task in many_unrelated_tasks:
 ```
 
 **Solution:**
+
 ```python
 # Do: Use fresh context or subagents for unrelated tasks
 for task in many_unrelated_tasks:
@@ -789,6 +833,7 @@ for task in many_unrelated_tasks:
 ### Anti-Pattern 3: Brittle Verification
 
 **Problem:**
+
 ```python
 # Don't: Rely on exact string matching
 def verify_result(result: str) -> bool:
@@ -796,6 +841,7 @@ def verify_result(result: str) -> bool:
 ```
 
 **Solution:**
+
 ```python
 # Do: Semantic or constraint-based verification
 def verify_result(result: dict) -> bool:
@@ -809,6 +855,7 @@ def verify_result(result: dict) -> bool:
 ### Anti-Pattern 4: Over-Engineering
 
 **Problem:**
+
 ```python
 # Don't: Complex abstractions when simple suffices
 from abc import ABC, abstractmethod
@@ -827,6 +874,7 @@ class ConcreteToolFactoryImpl(AbstractToolFactory):
 ```
 
 **Solution:**
+
 ```python
 # Do: Simple, direct tool creation
 def create_my_tool() -> Tool:

@@ -30,6 +30,7 @@ Every technical work has a narrative hidden within it. The synthesizer extracts 
 **Problem → Solution → Impact → Hook**
 
 This mirrors the **Hero's Journey** pattern adapted for technical work:
+
 - **Problem**: The challenge that motivated the work (conflict)
 - **Solution**: How the technical work addresses it (resolution)
 - **Impact**: What changes because of this work (outcome)
@@ -44,6 +45,7 @@ Every technical narrative follows one of these proven story structures:
 **Purpose**: 5-10 minute engaging presentation for live audience
 
 **Structure**:
+
 ```
 Opening Hook (30 seconds)
 ├─ Grab attention with surprising stat or problem statement
@@ -79,6 +81,7 @@ Closing (30 seconds)
 **Purpose**: 1,500-3,000 word technical narrative for written audience
 
 **Structure**:
+
 ```
 Title & Hook
 ├─ Compelling headline with intrigue
@@ -135,6 +138,7 @@ Conclusion (100-200 words)
 **Purpose**: Structured narrative for 20-45 minute talk or internal presentation
 
 **Structure**:
+
 ```
 Slide 1: Title & Hook
 ├─ Provocative title with intrigue
@@ -188,6 +192,7 @@ Slide 16: Closing
 **Purpose**: Customer-focused description emphasizing business value
 
 **Structure**:
+
 ```
 Headline
 ├─ Outcome-focused: "Reduce Processing Time by 75%"
@@ -243,6 +248,7 @@ Analyze the technical work to identify:
 ### Step 2: Identify the "Why" and Impact
 
 For each achievement:
+
 - **Technical why**: What gap did this fill? What was broken?
 - **User why**: How does this improve the user's life or work?
 - **Business why**: What value does this create? For whom?
@@ -261,6 +267,7 @@ Different narratives for different audiences:
 ### Step 4: Structure the Narrative
 
 Choose the appropriate template based on medium:
+
 - **Demo**: 5-10 minute engaging presentation
 - **Blog post**: 1,500+ word detailed article
 - **Presentation**: 20-45 minute structured talk
@@ -271,18 +278,21 @@ Choose the appropriate template based on medium:
 Every narrative needs attention-grabbing elements:
 
 **Opening Hooks** (grab attention in first 30 seconds):
+
 - Surprising statistic: "95% of developers waste 10+ hours per week on..."
 - Provocative question: "What if you could cut deployment time by 80%?"
 - Relatable problem: "We've all experienced the frustration of..."
 - Bold claim: "This technique can improve performance by 10x"
 
 **Transitions** (maintain engagement between sections):
+
 - "But here's the problem..."
 - "That's where our approach differs..."
 - "The results speak for themselves..."
 - "This insight led us to..."
 
 **Closing Hooks** (memorable final thought):
+
 - "This changes everything about how we..."
 - "The real power isn't in the code—it's in..."
 - "What starts as a technical optimization becomes..."
@@ -290,6 +300,7 @@ Every narrative needs attention-grabbing elements:
 ### Step 6: Include Concrete Examples
 
 Make narratives tangible with:
+
 - **Before/After screenshots or metrics**: Visual comparison of impact
 - **Code snippets**: Show implementation elegance or simplicity
 - **Real-world scenarios**: Specific, relatable use cases
@@ -299,6 +310,7 @@ Make narratives tangible with:
 ### Step 7: Review for Storytelling Quality
 
 Verify the narrative:
+
 - Starts with a hook that captures attention
 - Problem is clearly articulated and relatable
 - Solution is presented as novel or elegant
@@ -315,6 +327,7 @@ Verify the narrative:
 **Input**: PR description for caching optimization feature
 
 **Output**: 7-minute demo script
+
 ```
 Hook: "Imagine if every user interaction was 5x faster. That's what we just built."
 
@@ -339,6 +352,7 @@ infrastructure.
 **Input**: 15 commits implementing authentication feature
 
 **Output**: 2,000-word blog post outline
+
 ```
 Title: "Building a Zero-Overhead Authentication System: How We Reduced Auth
 Latency by 80%"
@@ -367,6 +381,7 @@ Future: Event-driven invalidation, federated auth support, multi-tenant isolatio
 **Input**: Technical specs for simplified API design
 
 **Output**: Customer-focused value proposition
+
 ```
 Headline: "Integrate Faster, Break Less: Our New Simplified API"
 
@@ -390,6 +405,7 @@ CTA: "Try it free for 30 days. No credit card required."
 **Input**: New microservices architecture technical design
 
 **Output**: 30-minute presentation outline
+
 - Slides 1-2: The problem with our monolithic system (scaling limits, deployment friction)
 - Slides 3-4: System architecture overview (visual diagram, service boundaries)
 - Slides 5-7: Key innovations (async messaging, service discovery, circuit breakers)
@@ -397,6 +413,7 @@ CTA: "Try it free for 30 days. No credit card required."
 - Slides 11-12: Results (10x scaling capacity, 60% faster deployments, zero incidents)
 - Slides 13-14: Roadmap (service mesh, tracing, multi-region)
 - Slide 15: Closing (technical excellence enables business velocity)
+
 ```
 
 ## Narrative Patterns
@@ -598,3 +615,4 @@ This skill should improve based on feedback:
 - What pacing variations work best?
 
 Document learnings and share with the community.
+```

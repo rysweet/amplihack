@@ -7,23 +7,28 @@ The XLSX skill requires Python packages for spreadsheet manipulation and LibreOf
 ## Python Packages
 
 ### pandas >= 1.5.0
+
 **Purpose**: Data analysis, manipulation, and basic Excel I/O
 
 **Features Used**:
+
 - Reading Excel files: `pd.read_excel()`
 - Writing Excel files: `df.to_excel()`
 - Data analysis and statistics
 - CSV/TSV file handling
 
 **Installation**:
+
 ```bash
 pip install pandas
 ```
 
 ### openpyxl >= 3.0.0
+
 **Purpose**: Advanced Excel file manipulation with formula and formatting support
 
 **Features Used**:
+
 - Creating and loading workbooks
 - Cell-level formula insertion
 - Font, fill, and alignment styling
@@ -32,6 +37,7 @@ pip install pandas
 - Preserving existing formulas when editing
 
 **Installation**:
+
 ```bash
 pip install openpyxl
 ```
@@ -41,17 +47,20 @@ pip install openpyxl
 ## System Packages
 
 ### LibreOffice (Version 6.0+)
+
 **Purpose**: Formula recalculation engine for the recalc.py script
 
 **Why Required**: Excel formulas inserted by openpyxl are stored as strings. LibreOffice's calculation engine evaluates these formulas and saves the computed values back to the file.
 
 **Commands Used**:
+
 - `soffice` - LibreOffice headless mode for automation
 - StarBasic macro execution for `calculateAll()` and `store()`
 
 **Installation**:
 
 #### macOS
+
 ```bash
 # Via Homebrew
 brew install --cask libreoffice
@@ -62,17 +71,20 @@ brew install --cask libreoffice
 ```
 
 #### Linux (Ubuntu/Debian)
+
 ```bash
 sudo apt-get update
 sudo apt-get install libreoffice
 ```
 
 #### Linux (Fedora/RHEL)
+
 ```bash
 sudo dnf install libreoffice
 ```
 
 #### Windows
+
 ```bash
 # Via Chocolatey
 choco install libreoffice
@@ -87,9 +99,11 @@ choco install libreoffice
 ## Optional Dependencies
 
 ### gtimeout (macOS only)
+
 **Purpose**: Timeout support for macOS (Linux has timeout built-in)
 
 **Installation**:
+
 ```bash
 brew install coreutils
 ```
@@ -143,6 +157,7 @@ python -c "import openpyxl; print(f'openpyxl {openpyxl.__version__}')"
 ```
 
 Expected output:
+
 ```
 pandas 2.0.0
 openpyxl 3.1.2
@@ -159,6 +174,7 @@ soffice --headless --terminate_after_init
 ```
 
 Expected output:
+
 ```
 LibreOffice 7.5.3.2 10(Build:2)
 ```
@@ -173,6 +189,7 @@ python common/verification/verify_skill.py xlsx
 ```
 
 Expected output if all dependencies installed:
+
 ```
 Verifying xlsx skill dependencies...
 
@@ -193,6 +210,7 @@ System commands:
 **Symptom**: `soffice: command not found`
 
 **Solution (macOS)**:
+
 ```bash
 # Add LibreOffice to PATH
 echo 'export PATH="/Applications/LibreOffice.app/Contents/MacOS:$PATH"' >> ~/.zshrc
@@ -203,6 +221,7 @@ sudo ln -s /Applications/LibreOffice.app/Contents/MacOS/soffice /usr/local/bin/s
 ```
 
 **Solution (Linux)**:
+
 ```bash
 # LibreOffice should install to /usr/bin/soffice
 # If not, reinstall
@@ -214,6 +233,7 @@ sudo apt-get install --reinstall libreoffice
 **Symptom**: `ImportError: No module named 'pandas'`
 
 **Solution**:
+
 ```bash
 # Ensure pip is up to date
 pip install --upgrade pip
@@ -231,6 +251,7 @@ venv\Scripts\activate  # Windows
 **Symptom**: `ImportError: No module named 'openpyxl'`
 
 **Solution**:
+
 ```bash
 pip install openpyxl
 
@@ -260,6 +281,7 @@ rm test.xlsx
 **Symptom**: `Permission denied: recalc.py`
 
 **Solution**:
+
 ```bash
 chmod +x .claude/skills/xlsx/scripts/recalc.py
 ```
@@ -267,16 +289,19 @@ chmod +x .claude/skills/xlsx/scripts/recalc.py
 ## Platform-Specific Notes
 
 ### macOS
+
 - LibreOffice installs to `/Applications/LibreOffice.app`
 - May need to add soffice to PATH (see troubleshooting)
 - gtimeout via coreutils recommended but optional
 
 ### Linux
+
 - LibreOffice typically pre-installed on many distributions
 - timeout command built-in
 - Headless mode works without display server
 
 ### Windows
+
 - recalc.py has limited timeout support on Windows
 - Formula recalculation still works without timeout
 - Consider WSL for full Unix-like experience
@@ -305,15 +330,15 @@ WORKDIR /app
 
 ## Dependency Matrix
 
-| Feature | pandas | openpyxl | LibreOffice |
-|---------|--------|----------|-------------|
-| Read Excel data | ✓ | ✓ | - |
-| Write Excel data | ✓ | ✓ | - |
-| Data analysis | ✓ | - | - |
-| Insert formulas | - | ✓ | - |
-| Cell formatting | - | ✓ | - |
-| Recalculate formulas | - | - | ✓ |
-| Verify zero errors | - | ✓ | ✓ |
+| Feature              | pandas | openpyxl | LibreOffice |
+| -------------------- | ------ | -------- | ----------- |
+| Read Excel data      | ✓      | ✓        | -           |
+| Write Excel data     | ✓      | ✓        | -           |
+| Data analysis        | ✓      | -        | -           |
+| Insert formulas      | -      | ✓        | -           |
+| Cell formatting      | -      | ✓        | -           |
+| Recalculate formulas | -      | -        | ✓           |
+| Verify zero errors   | -      | ✓        | ✓           |
 
 ## Minimum Requirements
 
@@ -340,12 +365,12 @@ For automated testing in CI environments:
 
 ## Version Compatibility
 
-| Package | Minimum | Recommended | Tested |
-|---------|---------|-------------|--------|
-| Python | 3.8 | 3.11 | 3.11 |
-| pandas | 1.5.0 | 2.0.0+ | 2.2.0 |
-| openpyxl | 3.0.0 | 3.1.0+ | 3.1.2 |
-| LibreOffice | 6.0 | 7.5+ | 7.5.3 |
+| Package     | Minimum | Recommended | Tested |
+| ----------- | ------- | ----------- | ------ |
+| Python      | 3.8     | 3.11        | 3.11   |
+| pandas      | 1.5.0   | 2.0.0+      | 2.2.0  |
+| openpyxl    | 3.0.0   | 3.1.0+      | 3.1.2  |
+| LibreOffice | 6.0     | 7.5+        | 7.5.3  |
 
 ## Security Considerations
 

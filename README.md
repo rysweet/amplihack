@@ -68,7 +68,8 @@ additional configuration needed.
 
 ### Azure OpenAI
 
-To use Azure OpenAI models, create an `azure.env` file with the following minimum configuration:
+To use Azure OpenAI models, create an `azure.env` file with the following
+minimum configuration:
 
 ```env
 # Required: Your Azure OpenAI API key
@@ -90,7 +91,9 @@ Launch with Azure configuration:
 amplihack launch --with-proxy-config ./azure.env
 ```
 
-**Note:** The endpoint should be just the base URL (e.g., `https://your-resource.openai.azure.com`) without `/openai` or other path suffixes. The proxy will automatically construct the correct API paths.
+**Note:** The endpoint should be just the base URL (e.g.,
+`https://your-resource.openai.azure.com`) without `/openai` or other path
+suffixes. The proxy will automatically construct the correct API paths.
 
 ### GitHub Copilot CLI
 
@@ -120,6 +123,7 @@ python main.py
 ```
 
 **Features:**
+
 - Generate agents in < 0.1 seconds
 - Automatic skill matching
 - Multi-phase execution planning

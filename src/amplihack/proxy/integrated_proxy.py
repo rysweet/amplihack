@@ -580,7 +580,9 @@ class AzureErrorLogger:
         self.error_patterns = {}
         self.last_health_check = None
 
-    def log_azure_error(self, azure_error: AzureAPIError, request_context: Optional[dict] = None) -> None:
+    def log_azure_error(
+        self, azure_error: AzureAPIError, request_context: Optional[dict] = None
+    ) -> None:
         """Log Azure error with context and update metrics."""
         error_entry = {
             "timestamp": asyncio.get_event_loop().time(),
@@ -3715,7 +3717,9 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                             handle_streaming(response_generator, request),
                             media_type="text/event-stream",
                         )
-                    raise HTTPException(status_code=500, detail=f"Tool streaming failed: {e}") from e
+                    raise HTTPException(
+                        status_code=500, detail=f"Tool streaming failed: {e}"
+                    ) from e
             else:
                 # Regular streaming for non-tool requests
                 response_generator = await litellm.acompletion(**litellm_request)
@@ -3747,7 +3751,9 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                         logger.info("🔄 Falling back to regular completion")
                         litellm_response = litellm.completion(**litellm_request)
                     else:
-                        raise HTTPException(status_code=500, detail=f"Tool completion failed: {e}") from e
+                        raise HTTPException(
+                            status_code=500, detail=f"Tool completion failed: {e}"
+                        ) from e
             else:
                 # Regular completion for non-tool requests
                 litellm_response = litellm.completion(**litellm_request)

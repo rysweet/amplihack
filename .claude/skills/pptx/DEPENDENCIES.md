@@ -11,6 +11,7 @@ The PPTX skill requires Python packages for PowerPoint manipulation, Node.js pac
 These packages are required for basic PPTX skill functionality:
 
 **Python Packages:**
+
 - `markitdown>=0.1.0` - Text extraction from presentations to markdown
 - `python-pptx>=0.6.21` - PowerPoint file manipulation and reading
 - `defusedxml>=0.7.1` - Safe XML parsing for OOXML operations
@@ -20,6 +21,7 @@ These packages are required for basic PPTX skill functionality:
 These packages are required for creating presentations from scratch:
 
 **Node.js Packages:**
+
 - `pptxgenjs` - PowerPoint generation from HTML (html2pptx workflow)
 - `playwright` - HTML rendering for accurate slide conversion
 - `sharp` - SVG rasterization and image processing
@@ -32,6 +34,7 @@ These packages are required for creating presentations from scratch:
 These system packages are required for conversion and analysis:
 
 **System Packages:**
+
 - `LibreOffice` - PDF conversion (soffice command)
 - `poppler-utils` - PDF to image conversion (pdftoppm command)
 
@@ -188,6 +191,7 @@ python common/verification/verify_skill.py pptx
 ```
 
 Expected output:
+
 ```
 Verifying pptx skill dependencies...
 
@@ -215,6 +219,7 @@ System commands:
 **Purpose**: Text extraction from PowerPoint presentations to markdown format
 
 **Capabilities**:
+
 - Convert .pptx to markdown
 - Preserve slide structure
 - Extract text content
@@ -231,6 +236,7 @@ System commands:
 **Purpose**: PowerPoint file manipulation and reading in Python
 
 **Capabilities**:
+
 - Read existing .pptx files
 - Access slide content and structure
 - Extract text and shapes
@@ -246,6 +252,7 @@ System commands:
 **Purpose**: Secure XML parsing for OOXML operations
 
 **Capabilities**:
+
 - Safe XML parsing (prevents XML bombs and vulnerabilities)
 - Drop-in replacement for standard XML libraries
 - Used by OOXML manipulation scripts
@@ -259,6 +266,7 @@ System commands:
 **Purpose**: PowerPoint generation from HTML (html2pptx workflow)
 
 **Capabilities**:
+
 - Convert HTML slides to PowerPoint
 - Accurate positioning and styling
 - Chart and table support
@@ -276,6 +284,7 @@ System commands:
 **Purpose**: HTML rendering for accurate slide conversion
 
 **Capabilities**:
+
 - Headless browser automation
 - HTML to image rendering
 - Screenshot capture
@@ -292,6 +301,7 @@ System commands:
 **Purpose**: SVG rasterization and image processing
 
 **Capabilities**:
+
 - Convert SVG to PNG
 - Image resizing and optimization
 - Format conversion
@@ -306,6 +316,7 @@ System commands:
 **Purpose**: Icon library for presentations
 
 **Capabilities**:
+
 - Access to popular icon sets
 - SVG icon rendering
 - Integration with React
@@ -321,6 +332,7 @@ System commands:
 **Purpose**: PDF conversion from PowerPoint
 
 **Capabilities**:
+
 - Convert .pptx to .pdf headlessly
 - Command-line batch processing
 - Cross-platform support
@@ -339,6 +351,7 @@ System commands:
 **Purpose**: PDF to image conversion for thumbnails
 
 **Capabilities**:
+
 - Convert PDF pages to images (pdftoppm)
 - Extract PDF metadata (pdfinfo)
 - Various PDF utility commands
@@ -355,6 +368,7 @@ System commands:
 ### ImportError: No module named 'markitdown'
 
 **Solution**: Install markitdown with PPTX support
+
 ```bash
 pip install "markitdown[pptx]"
 ```
@@ -362,6 +376,7 @@ pip install "markitdown[pptx]"
 ### ModuleNotFoundError: No module named 'pptx'
 
 **Solution**: Install python-pptx
+
 ```bash
 pip install python-pptx
 ```
@@ -369,6 +384,7 @@ pip install python-pptx
 ### Error: Cannot find module 'pptxgenjs'
 
 **Solution**: Install pptxgenjs globally
+
 ```bash
 npm install -g pptxgenjs
 ```
@@ -376,6 +392,7 @@ npm install -g pptxgenjs
 ### playwright: command not found
 
 **Solution**: Install playwright and browser binaries
+
 ```bash
 npm install -g playwright
 playwright install
@@ -384,6 +401,7 @@ playwright install
 ### sharp: Error loading shared library
 
 **Solution**: Rebuild sharp or install system dependencies
+
 ```bash
 npm uninstall -g sharp
 npm install -g sharp
@@ -395,6 +413,7 @@ sudo apt-get install -y libvips-dev
 ### Command not found: soffice
 
 **Solution**: Install LibreOffice
+
 ```bash
 # macOS
 brew install libreoffice
@@ -409,6 +428,7 @@ choco install libreoffice
 ### Command not found: pdftoppm
 
 **Solution**: Install poppler-utils
+
 ```bash
 # macOS
 brew install poppler
@@ -423,6 +443,7 @@ choco install poppler
 ### playwright install fails
 
 **Solution**: Check Node.js version and install browsers manually
+
 ```bash
 # Verify Node.js version (requires Node 14+)
 node --version
@@ -434,6 +455,7 @@ npx playwright install chromium
 ### Permission denied errors
 
 **Solution**: Use npm with --unsafe-perm flag or install in user directory
+
 ```bash
 npm install -g --unsafe-perm pptxgenjs playwright sharp
 
@@ -536,19 +558,19 @@ playwright install
 
 ## Dependency Licenses Summary
 
-| Package | License | Commercial Use |
-|---------|---------|----------------|
-| markitdown | MIT | Yes |
-| python-pptx | MIT | Yes |
-| defusedxml | PSFL | Yes |
-| pptxgenjs | MIT | Yes |
-| playwright | Apache-2.0 | Yes |
-| sharp | Apache-2.0 | Yes |
-| react-icons | MIT | Yes |
-| react | MIT | Yes |
-| react-dom | MIT | Yes |
-| LibreOffice | MPL-2.0 | Yes |
-| poppler-utils | GPL | Yes (linking allowed) |
+| Package       | License    | Commercial Use        |
+| ------------- | ---------- | --------------------- |
+| markitdown    | MIT        | Yes                   |
+| python-pptx   | MIT        | Yes                   |
+| defusedxml    | PSFL       | Yes                   |
+| pptxgenjs     | MIT        | Yes                   |
+| playwright    | Apache-2.0 | Yes                   |
+| sharp         | Apache-2.0 | Yes                   |
+| react-icons   | MIT        | Yes                   |
+| react         | MIT        | Yes                   |
+| react-dom     | MIT        | Yes                   |
+| LibreOffice   | MPL-2.0    | Yes                   |
+| poppler-utils | GPL        | Yes (linking allowed) |
 
 All dependencies are permissive licenses compatible with commercial use.
 
@@ -558,11 +580,13 @@ All dependencies are permissive licenses compatible with commercial use.
 **Recommended**: 18.x LTS or higher
 
 Check your Node.js version:
+
 ```bash
 node --version
 ```
 
 If needed, upgrade Node.js:
+
 ```bash
 # Using nvm (recommended)
 nvm install 18

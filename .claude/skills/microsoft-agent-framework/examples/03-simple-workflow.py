@@ -24,19 +24,19 @@ async def sequential_workflow():
     researcher = Agent(
         name="researcher",
         model=ModelClient(model="gpt-4"),
-        instructions="Research topics and gather key facts. Be thorough."
+        instructions="Research topics and gather key facts. Be thorough.",
     )
 
     writer = Agent(
         name="writer",
         model=ModelClient(model="gpt-4"),
-        instructions="Write clear, concise content based on research."
+        instructions="Write clear, concise content based on research.",
     )
 
     reviewer = Agent(
         name="reviewer",
         model=ModelClient(model="gpt-4"),
-        instructions="Review content for accuracy and clarity."
+        instructions="Review content for accuracy and clarity.",
     )
 
     # Build workflow
@@ -53,9 +53,7 @@ async def sequential_workflow():
     workflow.set_entry_point("research")
 
     # Execute workflow
-    result = await workflow.run(
-        initial_message="Research and write about quantum computing"
-    )
+    result = await workflow.run(initial_message="Research and write about quantum computing")
 
     print(f"Final output: {result.final_output}")
     print()
@@ -69,25 +67,25 @@ async def parallel_workflow():
     security_analyst = Agent(
         name="security",
         model=ModelClient(model="gpt-4"),
-        instructions="Analyze from security perspective."
+        instructions="Analyze from security perspective.",
     )
 
     performance_analyst = Agent(
         name="performance",
         model=ModelClient(model="gpt-4"),
-        instructions="Analyze from performance perspective."
+        instructions="Analyze from performance perspective.",
     )
 
     ux_analyst = Agent(
         name="ux",
         model=ModelClient(model="gpt-4"),
-        instructions="Analyze from user experience perspective."
+        instructions="Analyze from user experience perspective.",
     )
 
     synthesizer = Agent(
         name="synthesizer",
         model=ModelClient(model="gpt-4"),
-        instructions="Synthesize all analyses into comprehensive report."
+        instructions="Synthesize all analyses into comprehensive report.",
     )
 
     # Build workflow
@@ -105,9 +103,7 @@ async def parallel_workflow():
     workflow.add_edge(["security", "performance", "ux"], "synthesize")
 
     # Execute workflow
-    result = await workflow.run(
-        initial_state={"topic": "new authentication system"}
-    )
+    result = await workflow.run(initial_state={"topic": "new authentication system"})
 
     print(f"Synthesis: {result.final_output}")
     print()
@@ -121,19 +117,19 @@ async def conditional_workflow():
     classifier = Agent(
         name="classifier",
         model=ModelClient(model="gpt-4"),
-        instructions="Classify queries as 'simple' or 'complex'."
+        instructions="Classify queries as 'simple' or 'complex'.",
     )
 
     simple_handler = Agent(
         name="simple_handler",
         model=ModelClient(model="gpt-4"),
-        instructions="Handle simple queries quickly."
+        instructions="Handle simple queries quickly.",
     )
 
     complex_handler = Agent(
         name="complex_handler",
         model=ModelClient(model="gpt-4"),
-        instructions="Handle complex queries with detailed analysis."
+        instructions="Handle complex queries with detailed analysis.",
     )
 
     # Build workflow
@@ -160,9 +156,7 @@ async def conditional_workflow():
     print(f"Simple query result: {result1.final_output}")
 
     # Test complex query
-    result2 = await workflow.run(
-        initial_message="Explain the implications of quantum entanglement"
-    )
+    result2 = await workflow.run(initial_message="Explain the implications of quantum entanglement")
     print(f"Complex query result: {result2.final_output}")
     print()
 
@@ -172,15 +166,13 @@ async def iterative_workflow():
     print("=== Iterative Workflow ===")
 
     generator = Agent(
-        name="generator",
-        model=ModelClient(model="gpt-4"),
-        instructions="Generate content."
+        name="generator", model=ModelClient(model="gpt-4"), instructions="Generate content."
     )
 
     reviewer = Agent(
         name="reviewer",
         model=ModelClient(model="gpt-4"),
-        instructions="Review content. Approve if good, otherwise suggest improvements."
+        instructions="Review content. Approve if good, otherwise suggest improvements.",
     )
 
     # Build workflow
@@ -210,10 +202,7 @@ async def iterative_workflow():
 
     # Execute workflow
     result = await workflow.run(
-        initial_state={
-            "task": "Write a haiku about coding",
-            "iterations": 0
-        }
+        initial_state={"task": "Write a haiku about coding", "iterations": 0}
     )
 
     print(f"Final output: {result.final_output}")
@@ -228,23 +217,20 @@ async def stateful_workflow():
     # Node functions that update state
     def step1(state: dict) -> dict:
         """First processing step."""
-        return {
-            "step1_result": "Gathered data",
-            "count": state.get("count", 0) + 1
-        }
+        return {"step1_result": "Gathered data", "count": state.get("count", 0) + 1}
 
     def step2(state: dict) -> dict:
         """Second processing step."""
         return {
             "step2_result": f"Processed {state.get('step1_result', 'nothing')}",
-            "count": state.get("count", 0) + 1
+            "count": state.get("count", 0) + 1,
         }
 
     def step3(state: dict) -> dict:
         """Final processing step."""
         return {
             "final_result": f"Completed {state.get('step2_result', 'nothing')}",
-            "count": state.get("count", 0) + 1
+            "count": state.get("count", 0) + 1,
         }
 
     # Build workflow

@@ -11,6 +11,7 @@ This Claude Code skill provides comprehensive Microsoft Agent Framework knowledg
 Microsoft Agent Framework is an open-source SDK that combines the best of AutoGen (agent collaboration) and Semantic Kernel (enterprise readiness) into a unified platform for building production-grade multi-agent systems.
 
 **Key Features**:
+
 - Graph-based workflow orchestration with parallel execution
 - Type-safe tool integration with Pydantic models
 - Built-in observability via OpenTelemetry
@@ -23,26 +24,34 @@ Microsoft Agent Framework is an open-source SDK that combines the best of AutoGe
 This skill uses a tiered approach to balance comprehensive knowledge with token efficiency:
 
 ### Tier 1: Metadata (<100 tokens)
+
 **Always loaded** - Skill identity, capabilities summary, common use cases
+
 - Auto-discovery for Claude Code
 - Quick routing to appropriate content
 
 ### Tier 2: Core Instructions (~4,800 tokens)
+
 **Default load** - Framework overview and quick reference
+
 - Architecture components (agents, workflows, tools, middleware)
 - Quick start patterns for Python and C#
 - Decision framework (Agent Framework vs amplihack)
 - Integration patterns with amplihack workflows
 
 ### Tier 3: Detailed Documentation (~18,000 tokens)
+
 **On-demand** - Deep technical content
+
 - Component deep dives
 - Tutorial walkthroughs
 - Sample code patterns
 - Workflow orchestration patterns
 
 ### Tier 4: Advanced Topics (~12,000 tokens)
+
 **Explicit request** - Specialized scenarios
+
 - RAG integration patterns
 - Async multi-agent coordination
 - Function interception and middleware
@@ -87,6 +96,7 @@ This skill uses a tiered approach to balance comprehensive knowledge with token 
 ## Usage Examples
 
 ### Quick Start Query
+
 ```
 User: "How do I create a basic agent with tools?"
 Claude loads: skill.md (Tier 1+2) = ~4,800 tokens
@@ -94,6 +104,7 @@ Response: Quick start example with code
 ```
 
 ### Detailed Tutorial
+
 ```
 User: "Show me how to build a workflow with conditional branching"
 Claude loads: skill.md + reference/03-workflows.md + examples
@@ -101,6 +112,7 @@ Response: Full workflow tutorial with examples
 ```
 
 ### Advanced Scenario
+
 ```
 User: "Build a RAG agent with async multi-agent coordination"
 Claude loads: skill.md + reference/ (RAG + async) + examples
@@ -108,6 +120,7 @@ Response: Complete implementation with patterns
 ```
 
 ### Decision Support
+
 ```
 User: "Should I use Agent Framework or amplihack for this feature?"
 Claude loads: skill.md + integration/decision-framework.md
@@ -119,6 +132,7 @@ Response: Decision framework with recommendation
 ### Decision Framework
 
 **Use Microsoft Agent Framework when**:
+
 - Building production .NET or Python agent applications
 - Need graph-based workflow orchestration
 - Require type-safe tool integration
@@ -127,6 +141,7 @@ Response: Decision framework with recommendation
 - Need conversation persistence across disconnected sessions
 
 **Use amplihack when**:
+
 - Orchestrating Claude Code operations
 - Need Claude-specific optimizations
 - Building development workflow automation
@@ -134,6 +149,7 @@ Response: Decision framework with recommendation
 - Require git workflow integration
 
 **Hybrid Approach**:
+
 - Use amplihack for orchestration and planning
 - Use Agent Framework for implementation and execution
 - Amplihack agents generate Agent Framework code
@@ -142,6 +158,7 @@ Response: Decision framework with recommendation
 ### Integration Patterns
 
 See `@integration/amplihack-integration.md` for detailed patterns including:
+
 - Calling Agent Framework from amplihack agents
 - Workflow integration strategies
 - State management between systems
@@ -159,6 +176,7 @@ python scripts/check-freshness.py
 ```
 
 **Current Versions**:
+
 - Skill Version: 1.0.0
 - Framework Version: 0.1.0-preview
 - Last Updated: 2025-11-15
@@ -194,18 +212,19 @@ See `@metadata/sources.json` for complete URL mappings and priorities.
 
 ## Token Budget Allocation
 
-| Tier | Content | Token Limit | Load Strategy |
-|------|---------|-------------|---------------|
-| 1 | Metadata | 100 | Always |
-| 2 | Core Instructions | 4,700 | Default |
-| 3 | Detailed Docs | 18,000 | On-demand |
-| 4 | Advanced Topics | 12,000 | Explicit |
+| Tier | Content           | Token Limit | Load Strategy |
+| ---- | ----------------- | ----------- | ------------- |
+| 1    | Metadata          | 100         | Always        |
+| 2    | Core Instructions | 4,700       | Default       |
+| 3    | Detailed Docs     | 18,000      | On-demand     |
+| 4    | Advanced Topics   | 12,000      | Explicit      |
 
 **Design Goal**: 80% of queries answered with <10,000 tokens
 
 ## Quick Reference: Key Concepts
 
 ### Agents
+
 Stateful conversational entities that process messages, call tools, and maintain context.
 
 ```python
@@ -221,6 +240,7 @@ response = await agent.run(message="Hello!")
 ```
 
 ### Workflows
+
 Graph-based orchestration for multi-agent systems with conditional routing.
 
 ```python
@@ -235,6 +255,7 @@ result = await workflow.run(initial_message="Research AI trends")
 ```
 
 ### Tools
+
 Extend agent capabilities by providing callable functions.
 
 ```python
@@ -249,6 +270,7 @@ agent = Agent(model=model, tools=[get_weather])
 ```
 
 ### Middleware
+
 Intercept and process messages before/after agent execution.
 
 ```python
@@ -267,23 +289,27 @@ agent = Agent(model=model, middleware=[LoggingMiddleware()])
 This skill follows amplihack philosophy:
 
 ### Ruthless Simplicity
+
 - Progressive disclosure: Load only what's needed
 - Clear contracts: Tier structure explicit and predictable
 - Minimal abstraction: Direct documentation access
 
 ### Modular Brick Design
+
 - Single responsibility: One skill = Agent Framework knowledge
 - Clear studs: Tier-based API for content access
 - Regeneratable: All content from source URLs + distillation rules
 - Self-contained: No external runtime dependencies
 
 ### Zero-BS Implementation
+
 - No placeholders or stubs
 - All code examples are valid and runnable
 - Working defaults for all patterns
 - Every function works or doesn't exist
 
 ### Token Efficiency
+
 - Default load: 4,800 tokens (Tier 1+2)
 - Lazy loading: Tier 3+4 on-demand only
 - Content distillation: 10 URLs → 35K tokens (not 100K+ raw)
@@ -291,15 +317,18 @@ This skill follows amplihack philosophy:
 ## Resources
 
 ### Official Documentation
+
 - Microsoft Learn: https://learn.microsoft.com/en-us/microsoft-agent-framework/
 - GitHub Repository: https://github.com/microsoft/agent-framework
 - DevBlog: https://devblogs.microsoft.com/dotnet/introducing-agent-framework/
 
 ### Community
+
 - GitHub Discussions: https://github.com/microsoft/agent-framework/discussions
 - GitHub Issues: https://github.com/microsoft/agent-framework/issues
 
 ### Amplihack Integration
+
 - Skills Catalog: `.claude/skills/README.md`
 - Decision Framework: `@integration/decision-framework.md`
 - Integration Patterns: `@integration/amplihack-integration.md`

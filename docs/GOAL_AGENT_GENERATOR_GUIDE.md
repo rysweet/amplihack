@@ -38,6 +38,7 @@ amplihack new --file my_goal.md --verbose
 ```
 
 **Output:**
+
 ```
 Generating goal agent from: my_goal.md
 
@@ -96,6 +97,7 @@ Your Goal Prompt
 ### What Gets Analyzed
 
 **From Your Prompt:**
+
 - **Primary Goal**: What you want to accomplish
 - **Domain**: Type of work (security, automation, data, etc.)
 - **Constraints**: Time limits, technical requirements
@@ -103,6 +105,7 @@ Your Goal Prompt
 - **Complexity**: Simple, moderate, or complex
 
 **Generates:**
+
 - **Execution Plan**: 3-5 phases with dependencies
 - **Skill Set**: Matched capabilities from skill library
 - **Configuration**: Auto-mode settings based on complexity
@@ -164,22 +167,26 @@ amplihack new \
 [Detailed description of what you want to accomplish]
 
 ## Constraints
+
 - Technical limitations
 - Time requirements
 - Resource constraints
 
 ## Success Criteria
+
 - How to measure success
 - Expected outputs
 - Quality standards
 
 ## Context
+
 Additional background information
 ```
 
 ### Best Practices
 
 **DO:**
+
 - ✅ Be specific about the goal
 - ✅ Include concrete success criteria
 - ✅ Mention time constraints
@@ -187,6 +194,7 @@ Additional background information
 - ✅ List technical requirements
 
 **DON'T:**
+
 - ❌ Be too vague ("make things better")
 - ❌ Combine multiple unrelated goals
 - ❌ Omit success criteria
@@ -195,6 +203,7 @@ Additional background information
 ### Example: Good vs Bad
 
 **❌ Bad Prompt:**
+
 ```markdown
 # Goal: Help with code
 
@@ -202,28 +211,33 @@ Make the code better.
 ```
 
 **✅ Good Prompt:**
+
 ```markdown
 # Goal: Refactor Authentication Module
 
 Improve the authentication module by:
+
 - Adding type hints
 - Extracting duplicate logic
 - Improving error messages
 
 ## Constraints
+
 - Must maintain backward compatibility
 - Should complete in 30 minutes
 - No external dependencies
 
 ## Success Criteria
+
 - All functions have type hints
 - Code duplication < 5%
 - Error messages include context
 - All existing tests pass
 
 ## Context
+
 Current auth module has grown organically and needs cleanup.
-Files: src/auth/*.py
+Files: src/auth/\*.py
 ```
 
 ---
@@ -244,6 +258,7 @@ Agents are automatically classified into domains:
 8. **reporting**: Dashboards, summaries, visualizations
 
 **Domain determines:**
+
 - Which skills get matched
 - Execution plan structure
 - Estimated duration
@@ -274,21 +289,27 @@ my-agent/
 ### Key Files
 
 #### main.py
+
 Executable Python script that:
+
 - Loads goal and execution plan
 - Initializes AutoMode with Claude SDK
 - Executes phases autonomously
 - Reports progress and results
 
 #### README.md
+
 Generated documentation explaining:
+
 - What the agent does
 - How to run it
 - Expected duration
 - Success criteria
 
 #### agent_config.json
+
 Complete metadata:
+
 - Bundle ID and version
 - Domain and complexity
 - Phase count and skill list
@@ -383,6 +404,7 @@ done
 **Problem:** No skills found for your goal's capabilities
 
 **Solutions:**
+
 - Check that `.claude/agents/amplihack/` exists
 - Provide custom `--skills-dir` if using different location
 - Simplify goal to match available skills
@@ -392,6 +414,7 @@ done
 **Problem:** Agent validation failed
 
 **Solutions:**
+
 - Verify prompt file has clear goal and domain
 - Check that all required fields are present
 - Review verbose output for validation errors
@@ -401,6 +424,7 @@ done
 **Problem:** AutoMode import or execution error
 
 **Solutions:**
+
 - Ensure amplihack is installed: `pip install amplihack`
 - Verify Claude API access: `echo $ANTHROPIC_API_KEY`
 - Check main.py has executable permissions: `chmod +x main.py`
@@ -410,6 +434,7 @@ done
 **Problem:** Execution completes but goal not achieved
 
 **Solutions:**
+
 - Check logs/ directory for execution trace
 - Review prompt - may be too vague or complex
 - Adjust success criteria to be more specific
@@ -422,17 +447,20 @@ done
 ### Example 1: Code Review Agent
 
 **Goal:** `code_review.md`
+
 ```markdown
 # Goal: Automated Python Code Review
 
 Review Python files for common issues and suggest improvements.
 
 ## Constraints
+
 - Must complete within 5 minutes
 - Should check: type hints, error handling, complexity
 - Must provide line-specific feedback
 
 ## Success Criteria
+
 - Identifies at least 3 issue categories
 - Provides specific line numbers
 - Suggests concrete fixes
@@ -440,11 +468,13 @@ Review Python files for common issues and suggest improvements.
 ```
 
 **Command:**
+
 ```bash
 amplihack new --file code_review.md --name code-reviewer
 ```
 
 **Usage:**
+
 ```bash
 cd goal_agents/code-reviewer
 python main.py
@@ -456,17 +486,20 @@ python main.py
 ### Example 2: Documentation Researcher
 
 **Goal:** `doc_research.md`
+
 ```markdown
 # Goal: Technical Documentation Researcher
 
 Research and summarize documentation on specific technologies.
 
 ## Constraints
+
 - Must search multiple sources (official docs, GitHub, tutorials)
 - Should complete within 15 minutes
 - Must include code examples
 
 ## Success Criteria
+
 - Finds at least 5 relevant sources
 - Creates organized summary
 - Includes practical examples
@@ -474,6 +507,7 @@ Research and summarize documentation on specific technologies.
 ```
 
 **Command:**
+
 ```bash
 amplihack new --file doc_research.md --output ~/research-agents --verbose
 ```
@@ -483,17 +517,20 @@ amplihack new --file doc_research.md --output ~/research-agents --verbose
 ### Example 3: Project Organizer
 
 **Goal:** `organize.md`
+
 ```markdown
 # Goal: Project Directory Organizer
 
 Analyze project structure and suggest improvements.
 
 ## Constraints
+
 - Must preserve all existing files
 - Should follow common conventions
 - Must complete within 10 minutes
 
 ## Success Criteria
+
 - Identifies misplaced files
 - Suggests logical structure
 - Proposes naming improvements
@@ -501,6 +538,7 @@ Analyze project structure and suggest improvements.
 ```
 
 **Command:**
+
 ```bash
 amplihack new --file organize.md
 ```
@@ -535,16 +573,19 @@ amplihack new --file organize.md
 ## Performance
 
 ### Generation Time
+
 - **Simple goals**: < 0.1 seconds
 - **Complex goals**: < 0.2 seconds
 - **Bottleneck**: None (instant)
 
 ### Agent Size
+
 - **Typical agent**: 5-15 KB
 - **With many skills**: Up to 50 KB
 - **Minimal overhead**: Lightweight
 
 ### Execution Time
+
 - **Simple tasks**: 5-15 minutes
 - **Moderate tasks**: 15-45 minutes
 - **Complex tasks**: 45-120 minutes
@@ -593,6 +634,7 @@ A: Regenerate from prompt. Update commands are deferred pending evidence of need
 **Current:** Phase 1 MVP (validated, production-ready)
 
 **Future Phases** (pending evidence of need):
+
 - **Phase 2**: AI-generated custom skills (if skill gaps emerge)
 - **Phase 3**: Multi-agent coordination (if complex goals require it)
 - **Phase 4**: Learning from execution history (after 100+ runs)

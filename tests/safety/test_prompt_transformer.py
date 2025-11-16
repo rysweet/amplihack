@@ -31,9 +31,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "Fix the bug in the authentication module"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=False
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=False
         )
 
         self.assertEqual(result, original_prompt)
@@ -48,9 +46,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "Fix the bug in the authentication module"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Verify structure instead of exact path (path resolution varies by OS)
@@ -68,9 +64,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "/amplihack:ultrathink Fix the bug"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Verify structure
@@ -89,9 +83,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "/analyze /improve Fix stuff"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Verify structure
@@ -109,9 +101,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "/amplihack:ddd:1-plan Feature X"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Verify structure
@@ -124,9 +114,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "/amplihack:status"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Verify structure
@@ -138,9 +126,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "  /amplihack:ultrathink   Fix the bug  "
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Should strip whitespace appropriately
@@ -153,9 +139,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "/amplihack:ci-diagnostic-workflow Check PR #123"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Verify structure
@@ -168,9 +152,7 @@ class TestPromptTransformer(unittest.TestCase):
         relative_path = "./some/relative/path"
 
         result = self.transformer.transform_prompt(
-            original_prompt="Fix bug",
-            target_directory=relative_path,
-            used_temp=True
+            original_prompt="Fix bug", target_directory=relative_path, used_temp=True
         )
 
         # Should contain absolute path
@@ -181,9 +163,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "/analyze /improve /test Run comprehensive checks"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Verify structure
@@ -196,9 +176,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "/analyze Check the src/test.py file"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # src/test.py should be in remaining text, not treated as command
@@ -211,9 +189,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = ""
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Should just add directory change
@@ -224,9 +200,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "   \n  \t  "
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Should just add directory change
@@ -237,9 +211,7 @@ class TestPromptTransformer(unittest.TestCase):
         original_prompt = "/amplihack:n_version Implement JWT validation"
 
         result = self.transformer.transform_prompt(
-            original_prompt=original_prompt,
-            target_directory=self.target_directory,
-            used_temp=True
+            original_prompt=original_prompt, target_directory=self.target_directory, used_temp=True
         )
 
         # Verify structure
@@ -252,9 +224,7 @@ class TestPromptTransformer(unittest.TestCase):
         dir_with_spaces = Path("/home/user/My Documents/project")
 
         result = self.transformer.transform_prompt(
-            original_prompt="Fix bug",
-            target_directory=dir_with_spaces,
-            used_temp=True
+            original_prompt="Fix bug", target_directory=dir_with_spaces, used_temp=True
         )
 
         # Should include full path with spaces
@@ -274,9 +244,8 @@ class TestPromptTransformer(unittest.TestCase):
 
         for prompt, expected in test_cases:
             slash_commands, remaining = self.transformer._extract_slash_commands(prompt)
-            self.assertEqual((slash_commands, remaining), expected,
-                           f"Failed for input: {prompt}")
+            self.assertEqual((slash_commands, remaining), expected, f"Failed for input: {prompt}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

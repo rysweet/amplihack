@@ -29,7 +29,7 @@ def extract_magic_number_constants(file_path: Path, dry_run: bool = False) -> in
         content = file_path.read_text()
 
         # Pattern: timeout=<number> without a comment
-        timeout_pattern = r'timeout\s*=\s*(\d+)(?!\s*#)'
+        timeout_pattern = r"timeout\s*=\s*(\d+)(?!\s*#)"
 
         matches = list(re.finditer(timeout_pattern, content))
 
@@ -60,14 +60,14 @@ def improve_variable_names(file_path: Path, dry_run: bool = False) -> int:
 
     try:
         content = file_path.read_text()
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         for i, line in enumerate(lines):
             # Look for single-letter loop variables in non-trivial contexts
             # Pattern: for x in something: (but not for i, j, k in mathematical contexts)
-            if 'for ' in line and ' in ' in line:
+            if "for " in line and " in " in line:
                 # Check for single-letter vars that aren't i, j, k, _
-                match = re.search(r'for\s+([a-hln-z])\s+in\s+', line)
+                match = re.search(r"for\s+([a-hln-z])\s+in\s+", line)
                 if match:
                     match.group(1)
                     # This is a candidate for improvement
@@ -95,10 +95,10 @@ def add_error_context(file_path: Path, dry_run: bool = False) -> int:
         content = file_path.read_text()
 
         # Pattern: raise Exception() without message
-        bare_raises = len(re.findall(r'raise\s+\w+Exception\(\s*\)', content))
+        bare_raises = len(re.findall(r"raise\s+\w+Exception\(\s*\)", content))
 
         # Pattern: logger.error("...") without exc_info
-        error_without_exc = len(re.findall(r'logger\.error\([^)]+\)\s*$', content, re.MULTILINE))
+        error_without_exc = len(re.findall(r"logger\.error\([^)]+\)\s*$", content, re.MULTILINE))
 
         fixes_applied = bare_raises + (error_without_exc // 3)  # Conservative estimate
 
@@ -124,10 +124,10 @@ def improve_comprehension_clarity(file_path: Path, dry_run: bool = False) -> int
         content = file_path.read_text()
 
         # Pattern: nested comprehensions (candidates for breaking apart)
-        nested_comp = len(re.findall(r'\[.*\[.*for.*\].*for.*\]', content))
+        nested_comp = len(re.findall(r"\[.*\[.*for.*\].*for.*\]", content))
 
         # Pattern: comprehensions longer than 100 chars
-        long_comp = len(re.findall(r'\[.{100,}for.*\]', content))
+        long_comp = len(re.findall(r"\[.{100,}for.*\]", content))
 
         fixes_applied = nested_comp + long_comp
 
@@ -174,28 +174,28 @@ def main():
         return
 
     total_fixes = {
-        'magic_numbers': 0,
-        'variable_names': 0,
-        'error_context': 0,
-        'comprehensions': 0,
-        'defensive_checks': 0,
+        "magic_numbers": 0,
+        "variable_names": 0,
+        "error_context": 0,
+        "comprehensions": 0,
+        "defensive_checks": 0,
     }
 
     files_processed = 0
 
     # Process all Python files
     for py_file in src_dir.rglob("*.py"):
-        if '__pycache__' in str(py_file):
+        if "__pycache__" in str(py_file):
             continue
 
         files_processed += 1
 
         # Apply fixes (dry run to just count)
-        total_fixes['magic_numbers'] += extract_magic_number_constants(py_file, dry_run=True)
-        total_fixes['variable_names'] += improve_variable_names(py_file, dry_run=True)
-        total_fixes['error_context'] += add_error_context(py_file, dry_run=True)
-        total_fixes['comprehensions'] += improve_comprehension_clarity(py_file, dry_run=True)
-        total_fixes['defensive_checks'] += add_defensive_checks(py_file, dry_run=True)
+        total_fixes["magic_numbers"] += extract_magic_number_constants(py_file, dry_run=True)
+        total_fixes["variable_names"] += improve_variable_names(py_file, dry_run=True)
+        total_fixes["error_context"] += add_error_context(py_file, dry_run=True)
+        total_fixes["comprehensions"] += improve_comprehension_clarity(py_file, dry_run=True)
+        total_fixes["defensive_checks"] += add_defensive_checks(py_file, dry_run=True)
 
     # Print summary
     print("\n" + "=" * 60)

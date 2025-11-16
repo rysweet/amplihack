@@ -7,7 +7,9 @@ This guide covers migration scenarios between amplihack and Microsoft Agent Fram
 ## Migration Scenarios
 
 ### 1. amplihack → Agent Framework (Scale Up)
+
 ### 2. Agent Framework → amplihack (Simplify)
+
 ### 3. Gradual Integration (Hybrid Approach)
 
 ---
@@ -19,6 +21,7 @@ This guide covers migration scenarios between amplihack and Microsoft Agent Fram
 ### Step 1: Assess Current Implementation
 
 **Inventory your amplihack agents**:
+
 ```bash
 ls .claude/agents/amplihack/
 # Example output:
@@ -28,6 +31,7 @@ ls .claude/agents/amplihack/
 ```
 
 **Identify components**:
+
 - Which agents are stateless? (Keep in amplihack)
 - Which need conversation context? (Migrate to Agent Framework)
 - Which need orchestration? (Convert to workflows)
@@ -47,10 +51,12 @@ mkdir -p src/tools
 ### Step 3: Convert Agents
 
 **amplihack agent** (`.claude/agents/amplihack/reviewer.md`):
+
 ```markdown
 # Code Reviewer Agent
 
 You are a code reviewer. Analyze code for:
+
 - Bugs and correctness
 - Performance issues
 - Security vulnerabilities
@@ -60,6 +66,7 @@ Return structured feedback.
 ```
 
 **Convert to Agent Framework**:
+
 ```python
 # src/agents/reviewer.py
 from agents_framework import Agent, ModelClient
@@ -88,6 +95,7 @@ reviewer_agent = Agent(
 ### Step 4: Add Statefulness
 
 **amplihack** (stateless):
+
 ```python
 # Each call is independent
 result1 = reviewer.process({"file": "module1.py"})
@@ -96,6 +104,7 @@ result2 = reviewer.process({"file": "module2.py"})
 ```
 
 **Agent Framework** (stateful):
+
 ```python
 from agents_framework import Thread
 
@@ -117,6 +126,7 @@ result2 = await reviewer_agent.run(
 ### Step 5: Convert to Workflow
 
 **amplihack orchestration** (manual):
+
 ```python
 # Manual sequential execution
 analysis = analyzer.process({"code": code})
@@ -128,6 +138,7 @@ report = synthesize(analysis, review, tests)
 ```
 
 **Agent Framework workflow**:
+
 ```python
 from agents_framework import GraphWorkflow
 
@@ -222,6 +233,7 @@ workflow.add_node("files", file_agent)
 ### Step 1: Identify Simplification Opportunities
 
 **Audit Agent Framework usage**:
+
 - Are conversations truly multi-turn? (Or single-shot?)
 - Is workflow complexity justified? (Or simple sequential?)
 - Are enterprise features used? (Or just overhead?)
@@ -230,6 +242,7 @@ workflow.add_node("files", file_agent)
 ### Step 2: Extract Stateless Components
 
 **Agent Framework** (stateful):
+
 ```python
 # Over-engineered for one-shot review
 reviewer = Agent(model=model, instructions="Review code")
@@ -238,8 +251,10 @@ response = await reviewer.run(thread=thread, message="Review: [code]")
 ```
 
 **amplihack** (stateless):
+
 ```markdown
 # .claude/agents/amplihack/reviewer.md
+
 You are a code reviewer. Analyze the provided code and return feedback.
 ```
 
@@ -253,6 +268,7 @@ result = reviewer.process({"code": code})
 ### Step 3: Simplify Workflows
 
 **Agent Framework** (complex):
+
 ```python
 workflow = GraphWorkflow()
 workflow.add_node("step1", agent1)
@@ -262,6 +278,7 @@ result = await workflow.run(initial_state=state)
 ```
 
 **amplihack** (simple):
+
 ```python
 # Direct sequential execution
 result1 = agent1.process({"input": data})
@@ -271,12 +288,14 @@ result2 = agent2.process({"input": result1})
 ### Step 4: Remove Infrastructure Overhead
 
 **Remove**:
+
 - OpenTelemetry setup (if not needed)
 - Middleware chains (if unused)
 - Context providers (if unnecessary)
 - Checkpointing (if not used)
 
 **Keep**:
+
 - Basic logging
 - Error handling
 - Core functionality
@@ -284,6 +303,7 @@ result2 = agent2.process({"input": result1})
 ### Step 5: Convert to File-Based Operations
 
 **Agent Framework** (API-centric):
+
 ```python
 @function_tool
 def read_file(path: str) -> str:
@@ -294,6 +314,7 @@ agent = Agent(tools=[read_file])
 ```
 
 **amplihack** (native file ops):
+
 ```python
 # Direct file operations in agent context
 reviewer = Agent(".claude/agents/amplihack/reviewer.md")
@@ -337,12 +358,14 @@ amplihack (Orchestrator)
 #### 1. Define Boundaries
 
 **amplihack responsibilities**:
+
 - Orchestration layer
 - File operations
 - CI/CD integration
 - Development workflows
 
 **Agent Framework responsibilities**:
+
 - User-facing conversations
 - Multi-step research
 - Tool-heavy operations
@@ -417,6 +440,7 @@ response = await af_agent.run(
 #### 4. Gradual Feature Addition
 
 **Phase 1**: Keep amplihack, add Agent Framework for conversations
+
 ```python
 # amplihack handles core logic
 result = amplihack_agent.process(task)
@@ -427,6 +451,7 @@ await af_agent.run(thread=thread, message=f"Result: {result}")
 ```
 
 **Phase 2**: Migrate complex workflows to Agent Framework
+
 ```python
 # Agent Framework workflow
 workflow = GraphWorkflow()
@@ -442,6 +467,7 @@ workflow.add_node("files", agent)
 ```
 
 **Phase 3**: Full hybrid with clear boundaries
+
 ```python
 # Clear separation of concerns
 orchestrator = HybridOrchestrator()
@@ -465,6 +491,7 @@ result = await orchestrator.process(task)
 ### Test Examples
 
 **Test functional equivalence**:
+
 ```python
 # Test both implementations produce same result
 amplihack_result = amplihack_agent.process({"input": test_input})
@@ -473,6 +500,7 @@ assert normalize(amplihack_result) == normalize(af_result.content)
 ```
 
 **Test performance**:
+
 ```python
 import time
 
@@ -502,6 +530,7 @@ If migration fails:
 4. **Adjust decision criteria**
 
 **Rollback steps**:
+
 - [ ] Stop new features in target system
 - [ ] Route traffic back to original system
 - [ ] Analyze what went wrong
@@ -524,6 +553,7 @@ Track these metrics during migration:
 ## Conclusion
 
 Migration between amplihack and Agent Framework should be:
+
 1. **Gradual** (not big bang)
 2. **Reversible** (with rollback plan)
 3. **Tested** (thoroughly)

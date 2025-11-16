@@ -406,12 +406,14 @@ class ClaudeLauncher:
                 # Get model from proxy config (which loaded the .env file)
                 azure_model = next(
                     (
-                        model for model in [
+                        model
+                        for model in [
                             self.proxy_manager.proxy_config.get("BIG_MODEL"),
-                            self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
-                        ] if model and model.strip()
+                            self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
+                        ]
+                        if model and model.strip()
                     ),
-                    "gpt-5-codex"  # Fallback default
+                    "gpt-5-codex",  # Fallback default
                 )
                 claude_args.extend(["--model", f"azure/{azure_model}"])
             # Add default model if not using proxy and user hasn't specified one
@@ -448,9 +450,9 @@ class ClaudeLauncher:
         if self.proxy_manager:
             # Get model from proxy config (which loaded the .env file)
             azure_model = (
-                self.proxy_manager.proxy_config.get("BIG_MODEL") or
-                self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME") or
-                "gpt-5-codex"  # Fallback default
+                self.proxy_manager.proxy_config.get("BIG_MODEL")
+                or self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
+                or "gpt-5-codex"  # Fallback default
             )
             cmd.extend(["--model", f"azure/{azure_model}"])
         # Add default model if not using proxy and user hasn't specified one

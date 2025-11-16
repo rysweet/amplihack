@@ -11,10 +11,12 @@ The DOCX skill requires Python packages for OOXML manipulation, Node.js packages
 These packages are required for basic DOCX skill functionality:
 
 **Python Packages:**
+
 - `defusedxml>=0.7.0` - Secure XML parsing for OOXML operations
 - `pytest>=7.0.0` - Testing framework for skill verification
 
 **System Packages:**
+
 - `pandoc` - Document conversion and text extraction
 - `LibreOffice (soffice)` - Document validation and PDF conversion
 
@@ -23,9 +25,11 @@ These packages are required for basic DOCX skill functionality:
 These packages enable additional features but the skill works without them:
 
 **Node Packages:**
+
 - `docx` - Creating new Word documents from JavaScript/TypeScript
 
 **System Packages:**
+
 - `poppler-utils` - PDF to image conversion (pdftoppm)
 
 ## Installation Instructions
@@ -185,6 +189,7 @@ This will run comprehensive dependency checks and display a detailed report show
 **Purpose**: Testing framework for verifying skill functionality
 
 **Capabilities**:
+
 - Unit testing for DOCX skill components
 - Integration testing for workflows
 - Dependency verification tests
@@ -192,6 +197,7 @@ This will run comprehensive dependency checks and display a detailed report show
 - Flexible test fixtures and parametrization
 
 **Use in DOCX skill**:
+
 - Verify skill dependencies are installed
 - Test OOXML manipulation functions
 - Validate tracked changes workflows
@@ -208,6 +214,7 @@ This will run comprehensive dependency checks and display a detailed report show
 **Purpose**: Secure XML parsing for OOXML operations
 
 **Capabilities**:
+
 - Safe XML parsing that prevents XML bombs and entity expansion attacks
 - Drop-in replacement for standard xml.dom.minidom
 - Required for OOXML unpack/pack scripts
@@ -224,6 +231,7 @@ This will run comprehensive dependency checks and display a detailed report show
 **Purpose**: Universal document converter and text extraction tool
 
 **Capabilities**:
+
 - Convert DOCX to markdown with structure preservation
 - Support for tracked changes (--track-changes flag)
 - Extract text while maintaining formatting information
@@ -231,6 +239,7 @@ This will run comprehensive dependency checks and display a detailed report show
 - Preserve document structure (headings, lists, tables)
 
 **Use in DOCX skill**:
+
 - Text extraction: `pandoc document.docx -o output.md`
 - Tracked changes: `pandoc --track-changes=all document.docx -o output.md`
 - Document analysis and verification
@@ -244,12 +253,14 @@ This will run comprehensive dependency checks and display a detailed report show
 **Purpose**: Office suite for document validation and conversion
 
 **Capabilities**:
+
 - Validate DOCX files (detect corruption)
 - Convert DOCX to PDF for image export
 - Headless mode for automated processing
 - Support for all Office formats
 
 **Use in DOCX skill**:
+
 - Pack script validation: Verifies document integrity after OOXML edits
 - PDF conversion: `soffice --headless --convert-to pdf document.docx`
 - Ensures edited documents open correctly in Word
@@ -263,6 +274,7 @@ This will run comprehensive dependency checks and display a detailed report show
 **Purpose**: Create Word documents programmatically using JavaScript/TypeScript
 
 **Capabilities**:
+
 - Create new DOCX files from scratch
 - Rich formatting (bold, italic, colors, fonts)
 - Tables, sections, headers, footers
@@ -270,6 +282,7 @@ This will run comprehensive dependency checks and display a detailed report show
 - Paragraph and document styling
 
 **Use in DOCX skill**:
+
 - Creating new documents from scratch
 - JavaScript/TypeScript-based document generation
 - Alternative to Python-based OOXML manipulation
@@ -283,11 +296,13 @@ This will run comprehensive dependency checks and display a detailed report show
 **Purpose**: PDF manipulation and conversion tools
 
 **Capabilities**:
+
 - `pdftoppm`: Convert PDF pages to images (JPEG, PNG)
 - `pdftotext`: Extract text from PDFs
 - `pdfinfo`: Display PDF metadata
 
 **Use in DOCX skill**:
+
 - Visual analysis: Convert DOCX → PDF → Images for review
 - Two-step workflow: soffice (DOCX→PDF) + pdftoppm (PDF→images)
 
@@ -300,6 +315,7 @@ This will run comprehensive dependency checks and display a detailed report show
 ### ImportError: No module named 'defusedxml'
 
 **Solution**: Install defusedxml
+
 ```bash
 pip install defusedxml
 ```
@@ -307,6 +323,7 @@ pip install defusedxml
 ### ImportError: No module named 'pytest'
 
 **Solution**: Install pytest
+
 ```bash
 pip install pytest
 ```
@@ -314,6 +331,7 @@ pip install pytest
 ### Command not found: pandoc
 
 **Solution**: Install pandoc
+
 ```bash
 # macOS
 brew install pandoc
@@ -328,6 +346,7 @@ choco install pandoc
 ### Command not found: soffice
 
 **Solution**: Install LibreOffice
+
 ```bash
 # macOS
 brew install --cask libreoffice
@@ -342,6 +361,7 @@ choco install libreoffice
 ### Pack script validation fails
 
 **Solution**: Either install LibreOffice or use --force flag
+
 ```bash
 # Install LibreOffice (recommended)
 brew install libreoffice  # macOS
@@ -354,6 +374,7 @@ python ooxml/scripts/pack.py unpacked/ output.docx --force
 ### docx package not found (npm)
 
 **Solution**: Install Node.js and docx package
+
 ```bash
 # Install Node.js first
 curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
@@ -366,6 +387,7 @@ npm install -g docx
 ### pdftoppm not found
 
 **Solution**: Install poppler-utils
+
 ```bash
 # macOS
 brew install poppler
@@ -380,6 +402,7 @@ choco install poppler
 ### Permission denied errors
 
 **Solution**: Use pip with --user flag or virtual environment
+
 ```bash
 pip install --user defusedxml
 ```
@@ -387,6 +410,7 @@ pip install --user defusedxml
 ### Version conflicts
 
 **Solution**: Use virtual environment for isolation
+
 ```bash
 python -m venv docx_skill_env
 source docx_skill_env/bin/activate  # Linux/macOS
@@ -468,14 +492,14 @@ npm update -g docx
 
 ## Dependency Licenses Summary
 
-| Package | License | Commercial Use |
-|---------|---------|----------------|
-| pytest | MIT | Yes |
-| defusedxml | PSF | Yes |
-| pandoc | GPL | Yes (linking allowed) |
-| LibreOffice | MPL 2.0 | Yes |
-| docx (npm) | MIT | Yes |
-| poppler-utils | GPL | Yes (linking allowed) |
+| Package       | License | Commercial Use        |
+| ------------- | ------- | --------------------- |
+| pytest        | MIT     | Yes                   |
+| defusedxml    | PSF     | Yes                   |
+| pandoc        | GPL     | Yes (linking allowed) |
+| LibreOffice   | MPL 2.0 | Yes                   |
+| docx (npm)    | MIT     | Yes                   |
+| poppler-utils | GPL     | Yes (linking allowed) |
 
 All dependencies are permissive licenses compatible with commercial use.
 
@@ -484,10 +508,12 @@ All dependencies are permissive licenses compatible with commercial use.
 The DOCX skill shares some dependencies with other Office skills:
 
 **Shared with PPTX:**
+
 - defusedxml (OOXML parsing)
 - LibreOffice (validation)
 
 **Shared with PDF:**
+
 - poppler-utils (PDF processing)
 
 See `.claude/skills/common/dependencies.txt` for complete shared dependency information.

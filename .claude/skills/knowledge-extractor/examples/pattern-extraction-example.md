@@ -8,7 +8,7 @@ After successfully implementing module regeneration strategy that has proven eff
 
 - **Problem**: Modules becoming tightly coupled, hard to regenerate without breaking connections
 - **Attempts**: Tried various approaches over multiple implementations
-- **Solution**: Brick & studs design with explicit __all__ public API
+- **Solution**: Brick & studs design with explicit **all** public API
 - **Success**: Applied to 5+ modules, each successfully regeneratable
 - **Recognition**: Pattern emerged as reusable solution
 
@@ -17,27 +17,30 @@ After successfully implementing module regeneration strategy that has proven eff
 ### Step 1: Session Analysis
 
 **What worked**:
-- Defining clear public interface via __all__
+
+- Defining clear public interface via **all**
 - Single responsibility per module
 - Comprehensive test coverage
 - Working examples included
 - Type hints on all exports
 
 **What didn't work**:
+
 - Implicit public APIs (hard to regenerate)
 - Complex interdependencies
 - Missing documentation
 - Scattered examples
 
 **What was learned**:
+
 - Explicitness is critical for regeneration
-- __all__ is "studs" that others connect to
+- **all** is "studs" that others connect to
 - Tests define contract behavior
 - Single responsibility enables independence
 
 ### Step 2: Create Pattern Entry
 
-```markdown
+````markdown
 ## Pattern: Bricks & Studs Module Design with Clear Public API
 
 ### Challenge
@@ -55,7 +58,7 @@ Design modules as self-contained "bricks" with explicit "studs" (public API):
 
 Key elements:
 
-1. **Explicit __all__** - Defines exact public interface
+1. **Explicit **all**** - Defines exact public interface
 2. **Single Responsibility** - Module does ONE thing well
 3. **Type Hints** - All exported functions fully typed
 4. **Comprehensive Tests** - Tests verify public contract, not implementation
@@ -75,6 +78,7 @@ __all__ = [
     'OutputModel',
 ]
 ```
+````
 
 Example public function:
 
@@ -98,7 +102,7 @@ def primary_function(input_model: InputModel) -> OutputModel:
 
 ### Key Points
 
-- **Explicit __all__**: Others know exact connection points
+- **Explicit **all****: Others know exact connection points
 - **Single responsibility**: Easy to understand and rebuild
 - **Type hints throughout**: Clear contracts prevent mistakes
 - **Test public interface**: Tests verify "studs", not implementation
@@ -161,7 +165,7 @@ Successfully applied pattern to 5+ modules:
 
 - More verbose than implicit APIs
 - Upfront work defining interfaces
-- Must maintain __all__ as requirements change
+- Must maintain **all** as requirements change
 
 ### Integration
 
@@ -171,9 +175,11 @@ Update CLAUDE.md builder agent instructions to reference this pattern.
 ### Examples
 
 See real implementations:
+
 - `.claude/tools/amplihack/prerequisites.py` (428 lines)
 - `.claude/tools/amplihack/session/` (multi-file module)
 - `.claude/tools/amplihack/caching/` (advanced caching)
+
 ```
 
 ### Step 3: Quality Checklist
@@ -230,3 +236,4 @@ See real implementations:
 ## Key Principle
 
 When a solution proves successful across multiple applications, extract it as a pattern. Patterns codify knowledge that improves consistency, reduces mistakes, and accelerates future work.
+```

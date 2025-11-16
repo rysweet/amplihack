@@ -3,6 +3,7 @@
 ## Overview
 
 Tools allow agents to perform actions beyond text generation. They enable agents to:
+
 - Call external APIs
 - Query databases
 - Perform calculations
@@ -39,6 +40,7 @@ agent = Agent(model=model, tools=[get_weather])
 ```
 
 **Key Requirements**:
+
 - **Type hints**: Required for all parameters and return values
 - **Docstring**: Describes the function's purpose (agent uses this to decide when to call)
 - **Clear naming**: Function name should describe the action
@@ -214,6 +216,7 @@ response = await agent.run(message="Delete old logs")
 ```
 
 **C# Example**:
+
 ```csharp
 var deleteWithApproval = new HumanApproval(
     tool: deleteFile,

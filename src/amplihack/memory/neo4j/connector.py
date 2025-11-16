@@ -17,6 +17,7 @@ try:
     # Import NotificationDisabledCategory for suppressing warnings
     try:
         from neo4j import NotificationDisabledCategory
+
         NOTIFICATION_CATEGORIES_AVAILABLE = True
     except ImportError:
         # Older versions of neo4j driver may not have this

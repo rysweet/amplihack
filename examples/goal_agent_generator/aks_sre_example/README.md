@@ -9,6 +9,7 @@ This example demonstrates how to create an autonomous Site Reliability Engineeri
 **Purpose:** Autonomous AKS cluster monitoring and remediation
 
 **Capabilities:**
+
 - Monitors pod and node health
 - Detects common failure patterns
 - Performs automated remediation
@@ -26,6 +27,7 @@ This example demonstrates how to create an autonomous Site Reliability Engineeri
 ### Step 1: Review the Goal Prompt
 
 See `goal_prompt.md` - A comprehensive SRE agent specification including:
+
 - Clear objective (AKS cluster monitoring)
 - Technical constraints (Azure CLI, kubectl, least-privilege)
 - Operational constraints (no disruption, detailed reports)
@@ -33,6 +35,7 @@ See `goal_prompt.md` - A comprehensive SRE agent specification including:
 - Context (SRE principles, example scenarios, integration points)
 
 **Key Elements:**
+
 - **Specific:** Exactly what the agent should do
 - **Measurable:** Clear success criteria
 - **Realistic:** 5-minute health checks, 10-minute remediation
@@ -45,6 +48,7 @@ amplihack new --file examples/goal_agent_generator/aks_sre_example/goal_prompt.m
 ```
 
 **Output:**
+
 ```
 [1/4] Analyzing goal prompt...
   Goal: Azure Kubernetes Service SRE Agent
@@ -82,6 +86,7 @@ ls -la
 ```
 
 **Structure:**
+
 ```
 monitoring-azure-kubernetes-service-agent/
 ├── main.py                    # Executable entry point
@@ -105,6 +110,7 @@ cat agent_config.json | jq .
 ```
 
 **Key Config:**
+
 - **Bundle ID:** Unique identifier
 - **Domain:** monitoring
 - **Complexity:** complex
@@ -120,6 +126,7 @@ python main.py
 ```
 
 **Expected Execution:**
+
 ```
 Starting monitoring-azure-kubernetes-service-agent...
 Goal: Azure Kubernetes Service SRE Agent
@@ -164,6 +171,7 @@ Turn 12: Generating SRE report...
 ### Main Script (main.py)
 
 Executable Python script that:
+
 1. Loads the goal prompt
 2. Initializes AutoMode with Claude SDK
 3. Executes with 18 turns (complex goal = more turns)
@@ -172,6 +180,7 @@ Executable Python script that:
 ### Documentation (README.md)
 
 Generated README includes:
+
 - Goal description
 - Domain and complexity
 - 4-phase execution plan with estimates
@@ -182,6 +191,7 @@ Generated README includes:
 ### Configuration (agent_config.json)
 
 Complete metadata:
+
 - Unique bundle ID
 - Domain: monitoring
 - Complexity: complex
@@ -200,6 +210,7 @@ Your original goal preserved for reference and regeneration
 ### Comprehensive Goal Definition
 
 The prompt includes:
+
 - ✅ Clear objective (AKS SRE monitoring)
 - ✅ Specific constraints (technical, operational, performance)
 - ✅ Measurable success criteria (monitoring, detection, remediation, reporting)
@@ -208,6 +219,7 @@ The prompt includes:
 ### Appropriate Complexity
 
 **Classified as "complex"** because:
+
 - Multiple integration points (Azure CLI, kubectl, Monitor, GitHub, PagerDuty)
 - Continuous operation (not one-shot task)
 - Multiple phases with dependencies
@@ -218,11 +230,13 @@ The prompt includes:
 ### Good Skill Matching
 
 **data-processor (100% match):**
+
 - Handles metric collection and aggregation
 - Processes pod/node status data
 - Structures incident reports
 
 **monitor (80% match):**
+
 - Security monitoring capabilities
 - Anomaly detection
 - Alert generation
@@ -230,21 +244,25 @@ The prompt includes:
 ### Clear Phase Plan
 
 **Phase 1: Setup Monitors** (30 min)
+
 - Configure Azure CLI
 - Set up kubectl context
 - Establish monitoring baselines
 
 **Phase 2: Data Collection** (30 min)
+
 - Query pod statuses
 - Check node health
 - Gather metrics
 
 **Phase 3: Analysis** (30 min)
+
 - Detect anomalies
 - Identify failures
 - Classify severity
 
 **Phase 4: Alerting** (30 min)
+
 - Create incidents
 - Send notifications
 - Generate reports
@@ -285,8 +303,10 @@ The prompt includes:
 ### Modify the Prompt
 
 **Add specific checks:**
+
 ```markdown
 ## Additional Success Criteria
+
 - Validates PodDisruptionBudgets exist
 - Checks HorizontalPodAutoscaler configs
 - Monitors certificate expiry (<30 days)
@@ -296,14 +316,16 @@ The prompt includes:
 
 ```markdown
 ## Constraints
-- Health check cycle: < 2 minutes  (faster)
-- Issue detection: < 30 seconds    (more responsive)
+
+- Health check cycle: < 2 minutes (faster)
+- Issue detection: < 30 seconds (more responsive)
 ```
 
 ### Add Integration Points
 
 ```markdown
 **Integration Points:**
+
 - Datadog (custom metrics)
 - Splunk (log aggregation)
 - ServiceNow (ticketing)
@@ -354,6 +376,7 @@ Focus on security instead of SRE...
    - Modify integration points
 
 3. **Generate your agent**:
+
    ```bash
    amplihack new --file my_custom_aks_goal.md
    ```

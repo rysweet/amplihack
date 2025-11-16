@@ -14,6 +14,7 @@ Claude, convert this PR into a 7-minute demo script:
 ```
 
 Claude will:
+
 1. Extract the core problem and solution
 2. Identify key metrics and impact
 3. Create an engaging narrative with hooks and transitions
@@ -27,6 +28,7 @@ Claude, create a technical blog post outline from these commits:
 ```
 
 Claude will:
+
 1. Identify the technical journey and progression
 2. Extract the "why" behind the decisions
 3. Create a 1,500-word structured outline
@@ -41,6 +43,7 @@ Claude, turn this feature into customer-focused marketing copy:
 ```
 
 Claude will:
+
 1. Translate technical features into user benefits
 2. Create a compelling value proposition
 3. Show before/after customer scenarios
@@ -55,6 +58,7 @@ Claude, create a 30-minute presentation outline for:
 ```
 
 Claude will:
+
 1. Design 15-16 slides with logical flow
 2. Create speaker notes for each section
 3. Plan timing and pacing
@@ -78,31 +82,32 @@ Every technical achievement tells this story:
 
 The same achievement gets different narratives:
 
-| Audience | Focus | Example Hook |
-|----------|-------|--------------|
-| Engineers | Innovation, tradeoffs | "We reduced latency by 100x with a novel caching strategy" |
-| PMs | User impact, metrics | "This feature cut user frustration by 60%" |
-| Executives | Business value, ROI | "Saves 40 engineering hours per week" |
-| Users | Simplicity, benefits | "Now 5x faster—no configuration needed" |
-| Marketing | Differentiation | "The only solution that handles this at scale" |
+| Audience   | Focus                 | Example Hook                                               |
+| ---------- | --------------------- | ---------------------------------------------------------- |
+| Engineers  | Innovation, tradeoffs | "We reduced latency by 100x with a novel caching strategy" |
+| PMs        | User impact, metrics  | "This feature cut user frustration by 60%"                 |
+| Executives | Business value, ROI   | "Saves 40 engineering hours per week"                      |
+| Users      | Simplicity, benefits  | "Now 5x faster—no configuration needed"                    |
+| Marketing  | Differentiation       | "The only solution that handles this at scale"             |
 
 ### Medium Determines Format
 
 Choose the right narrative structure for your medium:
 
-| Medium | Duration | Focus | Structure |
-|--------|----------|-------|-----------|
-| Demo Script | 5-10 min | Engagement, live showing | Hook → Problem → Demo → Metrics → Close |
-| Blog Post | 1,500-3,000 words | Deep explanation, learning | Problem → Context → Solution → Code → Results |
-| Presentation | 20-45 min | Education, inspiration | Architecture → Demo → Results → Roadmap |
-| Marketing | Varied | Benefit, conversion | Value prop → Before/After → Social proof → CTA |
-| Release Notes | Varied | User adoption | What → Why → How → Try it |
+| Medium        | Duration          | Focus                      | Structure                                      |
+| ------------- | ----------------- | -------------------------- | ---------------------------------------------- |
+| Demo Script   | 5-10 min          | Engagement, live showing   | Hook → Problem → Demo → Metrics → Close        |
+| Blog Post     | 1,500-3,000 words | Deep explanation, learning | Problem → Context → Solution → Code → Results  |
+| Presentation  | 20-45 min         | Education, inspiration     | Architecture → Demo → Results → Roadmap        |
+| Marketing     | Varied            | Benefit, conversion        | Value prop → Before/After → Social proof → CTA |
+| Release Notes | Varied            | User adoption              | What → Why → How → Try it                      |
 
 ## Usage Examples
 
 ### Example 1: PR to Demo Script
 
 **Input:**
+
 ```
 PR: "Implement distributed caching layer for user data"
 
@@ -120,6 +125,7 @@ Results:
 ```
 
 **Output:**
+
 ```
 DEMO SCRIPT - 7 MINUTES
 
@@ -161,6 +167,7 @@ can build. Questions?"
 ### Example 2: Commits to Blog Post Outline
 
 **Input:**
+
 ```
 Commits:
 - "Add JWT token caching with in-process store"
@@ -172,7 +179,8 @@ Commits:
 ```
 
 **Output:**
-```
+
+````
 BLOG POST OUTLINE - 2,000 WORDS
 
 Title: "Zero-Overhead Authentication: How We Reduced Auth Latency by 80%"
@@ -221,9 +229,10 @@ class TokenCache:
     def invalidate_user(self, user_id):
         # Clear all tokens for this user immediately
         self._cache.clear_user(user_id)
-```
+````
 
 SECTION 5: RESULTS (400 words)
+
 - Auth latency: 200ms → 40ms (5x improvement, 80% reduction)
 - Cache hit rate: 94% on typical workloads
 - Scalability: 10k req/sec → 100k req/sec
@@ -231,29 +240,36 @@ SECTION 5: RESULTS (400 words)
 - Production stability: 99.99% uptime, no auth-related outages
 
 SECTION 6: DEPLOYMENT & LESSONS (300 words)
+
 - Gradual rollout reduced risk
 - Monitoring revealed unexpected token patterns
 - Customer feedback showed 2x perceived speed improvement
 - Inspired similar optimization opportunities
 
 SECTION 7: WHAT'S NEXT (300 words)
+
 - Multi-region token coordination
 - Token prefetching for predictable patterns
 - Extended caching for service-to-service calls
+
 ```
 
 ### Example 3: Feature to Marketing Copy
 
 **Input:**
 ```
+
 Feature: Simplified API design with sensible defaults
+
 - Reduced parameters from 200 to 10 for 90% of use cases
 - Smart defaults that work for typical scenarios
 - Progressive complexity for advanced use cases
+
 ```
 
 **Output:**
 ```
+
 MARKETING COPY
 
 HEADLINE:
@@ -294,20 +310,24 @@ surprised everything just worked." - Sarah Chen, CTO
 CALL TO ACTION:
 Try it free for 30 days. No credit card. No sales call.
 [Start Free Trial]
+
 ```
 
 ### Example 4: Architecture to Presentation
 
 **Input:**
 ```
+
 Topic: Microservices Architecture Redesign
 Audience: Engineering team + leadership
 Duration: 30 minutes
 Goal: Get buy-in for new architecture
+
 ```
 
 **Output:**
 ```
+
 PRESENTATION OUTLINE - 30 MINUTES
 
 SLIDE 1: OPENING (1 min)
@@ -317,18 +337,21 @@ becoming a bottleneck. Here's how we're rearchitecting for 1B."
 
 SLIDES 2-3: THE PROBLEM (3 min)
 Problem narrative:
+
 - Monolithic architecture limited deployment velocity
 - Large blast radius: one bug affects entire system
 - Scaling required scaling everything (wasteful)
 - Teams stepping on each other
 
 Metrics:
+
 - Deployments: 1 per week (long cycles, high risk)
 - Time-to-fix: 4 hours average (cascading failures)
 - Scaling cost: 10x resource multiplier (overkill for most services)
 
 SLIDES 4-5: SYSTEM OVERVIEW (4 min)
 Architecture diagram showing:
+
 - Service boundaries and responsibilities
 - Message queue as communication backbone
 - Service discovery and load balancing
@@ -338,20 +361,24 @@ Speaker notes: Explain why each component matters
 
 SLIDES 6-8: KEY INNOVATIONS (5 min)
 Innovation #1: Event-driven communication
+
 - Decouples services
 - Enables independent scaling
 
 Innovation #2: Service mesh for reliability
+
 - Automatic retries, circuit breakers
 - Graceful degradation
 
 Innovation #3: Distributed tracing
+
 - Understand system behavior at scale
 - Debug across service boundaries
 
 SLIDES 9-11: LIVE DEMO (8 min)
 Demo scenario: Deploy new service
 Show:
+
 1. Service detection and registration
 2. Traffic routing and load balancing
 3. Failure scenario: kill a service, watch automatic recovery
@@ -362,6 +389,7 @@ here. And it's safe—if something breaks, only one service is affected."
 
 SLIDES 12-13: IMPACT & METRICS (4 min)
 Results from pilot:
+
 - Deployment frequency: 1/week → 10/day
 - Mean time to fix: 4 hours → 15 minutes
 - Scaling efficiency: 10x → 2x (target needed)
@@ -369,6 +397,7 @@ Results from pilot:
 
 SLIDES 14-15: ROADMAP (3 min)
 Next 6 months:
+
 - Migrate remaining services (80% done by Q2)
 - Implement service mesh (traffic management)
 - Multi-region deployment (Q3)
@@ -379,6 +408,7 @@ SLIDE 16: CLOSING (1 min)
 Key takeaway: Microservices enable engineering velocity at scale
 Invitation: We're hiring platform engineers to work on this
 Questions?
+
 ```
 
 ## Narrative Patterns That Work
@@ -530,3 +560,4 @@ Share learnings with the team.
 **Ready to transform your technical work into compelling narratives?**
 
 Start with a problem statement, PR description, or feature specification. Let me help you find the story within your technical achievements.
+```

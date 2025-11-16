@@ -5,6 +5,7 @@
 Microsoft Agent Framework is an open-source platform for building production-ready AI agents and multi-agent workflows. It unifies the simplicity of AutoGen with the enterprise features of Semantic Kernel into a single, cohesive framework.
 
 **Key Characteristics**:
+
 - **Open-source**: MIT license, community-driven development
 - **Multi-language**: Full support for Python 3.10+ and C# (.NET 8.0+)
 - **Enterprise-ready**: Built-in telemetry, middleware, security, and monitoring
@@ -54,7 +55,9 @@ Microsoft Agent Framework is an open-source platform for building production-rea
 ## Use Cases
 
 ### Customer Support
+
 Build conversational agents that:
+
 - Maintain context across interactions
 - Access knowledge bases and CRM systems
 - Escalate to human agents when needed
@@ -63,7 +66,9 @@ Build conversational agents that:
 **Example**: Multi-tier support bot with intent classification → FAQ agent → technical support agent → human escalation workflow.
 
 ### Education & Tutoring
+
 Create adaptive learning systems that:
+
 - Tailor explanations to student level
 - Track learning progress over sessions
 - Provide interactive exercises with feedback
@@ -72,7 +77,9 @@ Create adaptive learning systems that:
 **Example**: Math tutor that remembers student's weak areas, adapts problem difficulty, and provides step-by-step explanations.
 
 ### Code Generation & Review
+
 Develop coding assistants that:
+
 - Generate code from natural language descriptions
 - Review and suggest improvements to existing code
 - Maintain coding style and best practices
@@ -81,7 +88,9 @@ Develop coding assistants that:
 **Example**: Multi-agent workflow with requirements agent → architect → coder → reviewer → tester.
 
 ### Research & Analysis
+
 Build research tools that:
+
 - Gather information from multiple sources
 - Synthesize findings into coherent reports
 - Track citations and sources
@@ -90,7 +99,9 @@ Build research tools that:
 **Example**: Research workflow with source gathering agent → fact checker → synthesizer → citation formatter.
 
 ### Data Processing Pipelines
+
 Create data workflows that:
+
 - Process data through multiple stages
 - Apply transformations and validations
 - Handle errors and retries gracefully
@@ -125,18 +136,22 @@ Create data workflows that:
 ## Comparison with Other Frameworks
 
 ### vs. LangChain
+
 - **Agent Framework**: Stronger typing, better enterprise features, graph-based workflows
 - **LangChain**: Broader ecosystem, more integrations, mature documentation
 
 ### vs. AutoGen
+
 - **Agent Framework**: Superset of AutoGen with enterprise features and workflows
 - **AutoGen**: Simpler, research-focused, fewer dependencies
 
 ### vs. Semantic Kernel
+
 - **Agent Framework**: Unified API combining SK's enterprise features with AutoGen's simplicity
 - **Semantic Kernel**: More Azure-centric, stronger .NET support historically
 
 ### vs. amplihack
+
 - **Agent Framework**: Stateful conversational agents, complex orchestration, enterprise features
 - **amplihack**: Stateless task delegation, file-based operations, token-efficient skills
 - **Best together**: Use Agent Framework for stateful agents, amplihack for orchestration

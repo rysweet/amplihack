@@ -11,6 +11,7 @@ Comprehensive skill providing Claude with deep knowledge of the Claude Agent SDK
 ## What This Skill Provides
 
 This skill enables Claude to:
+
 - Guide users in building agents with the Claude Agent SDK
 - Design tool architectures and implement custom tools
 - Implement hooks for observability and validation
@@ -44,6 +45,7 @@ agent-sdk/
 ## Activation
 
 **Auto-activates** when user message contains:
+
 - agent sdk
 - claude agent
 - sdk tools
@@ -55,6 +57,7 @@ agent-sdk/
 - agent skill
 
 **Manual activation**:
+
 ```python
 # In Claude Code conversations
 @.claude/skills/agent-sdk/SKILL.md
@@ -63,7 +66,9 @@ agent-sdk/
 ## Usage Patterns
 
 ### Quick Reference
+
 Start with `SKILL.md` for:
+
 - Overview and when to use Agent SDK
 - Quick start guide
 - Core concepts summary
@@ -71,14 +76,18 @@ Start with `SKILL.md` for:
 - Navigation to other files
 
 ### Deep Dive
+
 Refer to supporting files for:
+
 - `reference.md` - Complete API documentation
 - `examples.md` - Working code examples
 - `patterns.md` - Production best practices
 - `drift-detection.md` - How to keep skill current
 
 ### Progressive Disclosure
+
 The skill follows a progressive disclosure pattern:
+
 1. SKILL.md provides complete working knowledge
 2. Supporting files available when deeper knowledge needed
 3. Claude references appropriate file based on user needs
@@ -116,6 +125,7 @@ Drift occurs when source documentation changes but skill content remains stale, 
 ### Detection Mechanism
 
 The skill includes automated drift detection:
+
 - Content hashing (SHA-256) of all source URLs
 - Version tracking in `.metadata/versions.json`
 - Automated checking via `scripts/check_drift.py`
@@ -144,14 +154,14 @@ python scripts/check_drift.py --json
 
 ## Token Budget Compliance
 
-| File | Words | Est. Tokens | Budget | Status |
-|------|-------|-------------|--------|--------|
-| SKILL.md | 1,616 | 2,100 | 4,500 | ✓ 47% |
-| reference.md | 3,006 | 3,900 | 6,000 | ✓ 65% |
-| examples.md | 2,452 | 3,200 | 4,000 | ✓ 80% |
-| patterns.md | 2,268 | 2,950 | 3,500 | ✓ 84% |
-| drift-detection.md | 1,541 | 2,000 | 2,000 | ✓ 100% |
-| **Total** | **10,883** | **14,150** | **20,000** | ✓ 71% |
+| File               | Words      | Est. Tokens | Budget     | Status |
+| ------------------ | ---------- | ----------- | ---------- | ------ |
+| SKILL.md           | 1,616      | 2,100       | 4,500      | ✓ 47%  |
+| reference.md       | 3,006      | 3,900       | 6,000      | ✓ 65%  |
+| examples.md        | 2,452      | 3,200       | 4,000      | ✓ 80%  |
+| patterns.md        | 2,268      | 2,950       | 3,500      | ✓ 84%  |
+| drift-detection.md | 1,541      | 2,000       | 2,000      | ✓ 100% |
+| **Total**          | **10,883** | **14,150**  | **20,000** | ✓ 71%  |
 
 Token calculation: words × 1.3 (conservative estimate)
 
@@ -171,6 +181,7 @@ Token calculation: words × 1.3 (conservative estimate)
 ### Content Coverage
 
 **SKILL.md**:
+
 - ✓ Overview and when to use
 - ✓ Quick start (Python & TypeScript)
 - ✓ Core concepts (agent loop, context, tools, permissions, hooks)
@@ -179,6 +190,7 @@ Token calculation: words × 1.3 (conservative estimate)
 - ✓ Integration with Amplihack
 
 **reference.md**:
+
 - ✓ Architecture (agent loop internals)
 - ✓ Setup & configuration (Python & TypeScript)
 - ✓ Tools system (built-in catalog, custom creation)
@@ -188,6 +200,7 @@ Token calculation: words × 1.3 (conservative estimate)
 - ✓ MCP integration
 
 **examples.md**:
+
 - ✓ Basic agent examples
 - ✓ Tool implementations (file ops, code exec, web search, DB, MCP)
 - ✓ Hook implementations (logging, validation, rate limiting, cost tracking)
@@ -195,6 +208,7 @@ Token calculation: words × 1.3 (conservative estimate)
 - ✓ Integration examples
 
 **patterns.md**:
+
 - ✓ Agent loop patterns (Gather, Act, Verify, Iterate)
 - ✓ Context management (subagents, compaction, state, memory)
 - ✓ Tool design (SRP, idempotency, error handling, composition)
@@ -203,6 +217,7 @@ Token calculation: words × 1.3 (conservative estimate)
 - ✓ Anti-patterns (god agent, context pollution, brittleness, over-engineering)
 
 **drift-detection.md**:
+
 - ✓ Drift detection strategy
 - ✓ Detection implementation
 - ✓ Update workflow (6 steps)
@@ -254,7 +269,7 @@ name: Agent SDK Skill Drift Check
 
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday
+    - cron: "0 0 * * 0" # Weekly on Sunday
   workflow_dispatch:
 
 jobs:
@@ -301,6 +316,7 @@ When drift is detected:
 ### Contributing
 
 To improve this skill:
+
 1. Identify gaps or inaccuracies
 2. Reference authoritative sources
 3. Update relevant files
@@ -313,6 +329,7 @@ To improve this skill:
 This skill integrates with the Amplihack framework:
 
 **Agent Creation**:
+
 ```python
 # Use Agent SDK patterns in Amplihack specialized agents
 from claude_agents import Agent
@@ -327,6 +344,7 @@ def create_specialized_agent():
 ```
 
 **MCP in Amplihack**:
+
 ```python
 # Integrate MCP servers into Amplihack workflows
 from claude_agents.mcp import MCPClient
@@ -336,6 +354,7 @@ agent = Agent(mcp_clients=[mcp])
 ```
 
 **Observability**:
+
 ```python
 # Log agent actions to Amplihack runtime logs
 class AmplihackLoggingHook(PreToolUseHook):
@@ -347,6 +366,7 @@ class AmplihackLoggingHook(PreToolUseHook):
 ## Future Enhancements
 
 Planned improvements:
+
 - [ ] Automated weekly drift detection via CI/CD
 - [ ] Smart diff analysis showing exact changes
 - [ ] Automated partial updates for minor drifts
@@ -359,6 +379,7 @@ Planned improvements:
 ## Support
 
 For questions or issues:
+
 1. Check `SKILL.md` for quick reference
 2. Review appropriate supporting file
 3. Check `drift-detection.md` if information seems outdated

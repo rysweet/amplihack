@@ -57,6 +57,7 @@ async def process_workflow():
 ### Automatic Instrumentation
 
 The framework automatically traces:
+
 - Agent initialization
 - Message processing
 - Tool calls
