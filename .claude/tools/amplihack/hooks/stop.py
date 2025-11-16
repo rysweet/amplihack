@@ -168,9 +168,15 @@ class StopHook(HookProcessor):
 
         Executes Neo4j shutdown coordination if appropriate.
         Fail-safe: Never raises exceptions.
+
+        Environment Variables Set:
+            AMPLIHACK_CLEANUP_MODE: Set to "1" to signal cleanup context.
+                Prevents interactive prompts during session exit.
+                Checked by container_selection.py to skip container selection dialog.
         """
         try:
             # Set cleanup mode to prevent interactive prompts during session exit
+            # This is checked by container_selection.resolve_container_name()
             os.environ["AMPLIHACK_CLEANUP_MODE"] = "1"
 
             # Import components
