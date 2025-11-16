@@ -4,7 +4,6 @@ Unit tests for utility functions.
 Tests name sanitization, validation, and other utility functions.
 """
 
-import pytest
 from ..utils import sanitize_bundle_name, validate_bundle_name
 
 

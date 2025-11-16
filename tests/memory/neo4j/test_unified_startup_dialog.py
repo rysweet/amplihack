@@ -4,7 +4,6 @@ Note: This file contains test fixtures with example passwords like "testpass".
 These are NOT real credentials and should be ignored by security scanners.
 """
 
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest

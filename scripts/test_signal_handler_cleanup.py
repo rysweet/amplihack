@@ -133,9 +133,8 @@ def test_sigint_cleanup() -> bool:
             if exit_code == 0:
                 print("✓ Process exited cleanly (code 0)")
                 return True
-            else:
-                print(f"✗ Process exited with non-zero code: {exit_code}")
-                return False
+            print(f"✗ Process exited with non-zero code: {exit_code}")
+            return False
 
         except subprocess.TimeoutExpired:
             print("✗ FAILED: Process didn't exit within timeout")
@@ -222,9 +221,8 @@ def test_sigterm_cleanup() -> bool:
             if exit_code == 0:
                 print("✓ Process exited cleanly (code 0)")
                 return True
-            else:
-                print(f"✗ Process exited with non-zero code: {exit_code}")
-                return False
+            print(f"✗ Process exited with non-zero code: {exit_code}")
+            return False
 
         except subprocess.TimeoutExpired:
             print("✗ FAILED: Process didn't exit within timeout")
@@ -362,9 +360,8 @@ def main():
     if all_passed:
         print("\n✅ ALL TESTS PASSED")
         return 0
-    else:
-        print("\n❌ SOME TESTS FAILED")
-        return 1
+    print("\n❌ SOME TESTS FAILED")
+    return 1
 
 
 if __name__ == "__main__":

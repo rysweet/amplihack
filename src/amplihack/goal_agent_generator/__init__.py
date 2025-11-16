@@ -5,18 +5,18 @@ This module generates autonomous goal-seeking agents that can execute complex
 objectives by assembling skills, plans, and execution strategies.
 """
 
-from .models import (
-    GoalDefinition,
-    ExecutionPlan,
-    SkillDefinition,
-    GoalAgentBundle,
-    PlanPhase,
-)
-from .prompt_analyzer import PromptAnalyzer
-from .objective_planner import ObjectivePlanner
-from .skill_synthesizer import SkillSynthesizer
 from .agent_assembler import AgentAssembler
+from .models import (
+    ExecutionPlan,
+    GoalAgentBundle,
+    GoalDefinition,
+    PlanPhase,
+    SkillDefinition,
+)
+from .objective_planner import ObjectivePlanner
 from .packager import GoalAgentPackager
+from .prompt_analyzer import PromptAnalyzer
+from .skill_synthesizer import SkillSynthesizer
 
 __version__ = "1.0.0"
 

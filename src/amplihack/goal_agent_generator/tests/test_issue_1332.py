@@ -5,9 +5,8 @@ This test verifies that the Multi-Container Application scenario and similar
 edge cases now work correctly with the sanitized bundle name generation.
 """
 
-import pytest
-from ..models import GoalDefinition
 from ..agent_assembler import AgentAssembler
+from ..models import GoalDefinition
 from ..utils import sanitize_bundle_name
 
 

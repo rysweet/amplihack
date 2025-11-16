@@ -380,21 +380,18 @@ def test_tracked_changes_xml_structure():
 def test_skill_invocation():
     """Test that skill can be invoked in Claude Code."""
     # Future: Test skill invocation through Claude Code API
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_full_unpack_pack_cycle():
     """Test complete unpack/modify/pack workflow."""
     # Future: Test with actual DOCX file in fixtures
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_tracked_changes_workflow():
     """Test complete tracked changes workflow."""
     # Future: Test redlining workflow end-to-end
-    pass
 
 
 # Utility function for manual testing

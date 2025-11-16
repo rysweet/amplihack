@@ -487,7 +487,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Smart PROJECT.md initialization for UVX mode
         if copied:
             try:
-                from .utils.project_initializer import initialize_project_md, InitMode
+                from .utils.project_initializer import InitMode, initialize_project_md
 
                 result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:
@@ -715,8 +715,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "new":
-        from .goal_agent_generator.cli import new_goal_agent
         from pathlib import Path
+
+        from .goal_agent_generator.cli import new_goal_agent
 
         # Convert string paths to Path objects
         file_path = Path(args.file)

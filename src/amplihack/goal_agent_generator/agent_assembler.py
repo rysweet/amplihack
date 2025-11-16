@@ -7,7 +7,7 @@ Combines goal definition, execution plan, and skills into a runnable agent.
 import uuid
 from typing import Optional
 
-from .models import GoalDefinition, ExecutionPlan, SkillDefinition, GoalAgentBundle
+from .models import ExecutionPlan, GoalAgentBundle, GoalDefinition, SkillDefinition
 from .utils import sanitize_bundle_name
 
 

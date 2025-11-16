@@ -11,9 +11,8 @@ Usage:
 import argparse
 import os
 import sys
-from pathlib import Path
 from datetime import datetime
-
+from pathlib import Path
 
 # Lock files in runtime directory
 LOCK_DIR = Path(".claude/runtime/locks")
@@ -83,7 +82,7 @@ def check_lock() -> int:
     try:
         if LOCK_FILE.exists():
             lock_info = LOCK_FILE.read_text().strip()
-            print(f"✓ Lock is ACTIVE")
+            print("✓ Lock is ACTIVE")
             print(f"  {lock_info}")
 
             if MESSAGE_FILE.exists():
@@ -119,9 +118,9 @@ def main():
     # Execute command
     if args.command == "lock":
         return create_lock(message=args.message)
-    elif args.command == "unlock":
+    if args.command == "unlock":
         return remove_lock()
-    elif args.command == "check":
+    if args.command == "check":
         return check_lock()
 
 

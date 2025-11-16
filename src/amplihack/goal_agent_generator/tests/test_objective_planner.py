@@ -2,8 +2,8 @@
 
 import pytest
 
+from ..models import ExecutionPlan, GoalDefinition
 from ..objective_planner import ObjectivePlanner
-from ..models import GoalDefinition, ExecutionPlan
 
 
 class TestObjectivePlanner:

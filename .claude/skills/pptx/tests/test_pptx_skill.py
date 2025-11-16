@@ -385,21 +385,18 @@ def test_pptx_specific_scripts_executable():
 def test_skill_invocation():
     """Test that skill can be invoked in Claude Code."""
     # Future: Test skill invocation through Claude Code API
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_skill_with_real_pptx():
     """Test skill with a real PPTX file."""
     # Future: Test with actual PPTX files in fixtures
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_template_workflow():
     """Test complete template-based workflow."""
     # Future: Test rearrange → inventory → replace workflow
-    pass
 
 
 # Utility function for manual testing

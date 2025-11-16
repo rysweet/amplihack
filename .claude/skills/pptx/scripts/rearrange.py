@@ -176,7 +176,7 @@ def rearrange_presentation(template_path, output_path, slide_sequence):
     # Step 1: DUPLICATE repeated slides
     print(f"Processing {len(slide_sequence)} slides from template...")
     for i, template_idx in enumerate(slide_sequence):
-        if template_idx in duplicated and duplicated[template_idx]:
+        if duplicated.get(template_idx):
             # Already duplicated this slide, use the duplicate
             slide_map.append(duplicated[template_idx].pop(0))
             print(f"  [{i}] Using duplicate of slide {template_idx}")

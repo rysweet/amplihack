@@ -5,7 +5,6 @@ Each fix will improve actual codebase files with meaningful changes.
 """
 
 import subprocess
-import sys
 from pathlib import Path
 
 # Define fixes with real improvements

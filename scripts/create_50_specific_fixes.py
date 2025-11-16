@@ -391,7 +391,7 @@ def apply_single_fix(fix_num: int, fix: dict) -> bool:
         return False
 
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             content = f.read()
 
         if 'old' in fix and 'new' in fix:

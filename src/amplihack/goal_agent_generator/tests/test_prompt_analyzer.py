@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from ..prompt_analyzer import PromptAnalyzer
 from ..models import GoalDefinition
+from ..prompt_analyzer import PromptAnalyzer
 
 
 class TestPromptAnalyzer:
