@@ -333,6 +333,18 @@ def resolve_container_name(
         logger.info("Using container from ENV: %s", context.env_var)
         return context.env_var
 
+    # Priority 2.5: Cleanup mode check (NEVER prompt during session cleanup)
+    # AMPLIHACK_CLEANUP_MODE is set by stop.py hook during session exit
+    # to prevent any user interaction during cleanup operations
+    cleanup_mode = os.getenv("AMPLIHACK_CLEANUP_MODE", "0") == "1"
+    if cleanup_mode:
+        # During cleanup, silently use default without any prompts
+        default_name = get_default_container_name(context.current_dir)
+        logger.info(
+            "Cleanup mode detected: Using default container without prompt: %s", default_name
+        )
+        return default_name
+
     # Priority 3: Auto mode or Interactive selection
     default_name = get_default_container_name(context.current_dir)
 
@@ -344,6 +356,7 @@ def resolve_container_name(
     # Interactive mode: Use unified dialog (combines container selection + credential sync)
     try:
         from .unified_startup_dialog import unified_container_and_credential_dialog
+
         container_name = unified_container_and_credential_dialog(default_name, auto_mode=False)
         if container_name:
             return container_name
