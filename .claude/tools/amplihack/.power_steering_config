@@ -1,12 +1,6 @@
 {
   "enabled": true,
-  "version": "1.0.0",
-  "phase": 1,
-  "checkers_enabled": {
-    "todos_complete": true,
-    "dev_workflow_complete": true,
-    "philosophy_compliance": true,
-    "local_testing": true,
-    "ci_status": true
-  }
+  "version": "2.0.0",
+  "phase": 2,
+  "note": "All 21 considerations now loaded from considerations.yaml. Individual checkers can be enabled/disabled by editing that file."
 }
