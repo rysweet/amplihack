@@ -17,7 +17,6 @@ When starting a session, import these files for context:
 @.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
 @.claude/context/DISCOVERIES.md
-@.claude/context/AGENT_SELECTION_GUIDE.md
 @docs/document_driven_development/overview.md
 ```
 
@@ -106,11 +105,9 @@ dependencies require sequential order.
   architectural claims (see `.claude/context/DISCOVERIES.md` and
   `.claude/runtime/logs/20251018_socratic_questioning/`)
 
-#### Architect Selection Guide
+#### Architect Variants
 
-**Multiple architect variants exist** for specialized tasks. See `.claude/context/AGENT_SELECTION_GUIDE.md` for complete agent selection guidance (imported at session start).
-
-**Quick Reference**:
+**Multiple specialized architects** exist for different tasks (see agent frontmatter descriptions for when to use each):
 - `architect` (core) - General design, problem decomposition, module specs
 - `amplifier-cli-architect` - CLI applications, hybrid code/AI systems
 - `zen-architect` - Philosophy compliance reviews, simplicity validation
