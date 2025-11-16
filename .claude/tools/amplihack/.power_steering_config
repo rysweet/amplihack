@@ -1,0 +1,12 @@
+{
+  "enabled": false,
+  "version": "1.0.0",
+  "phase": 1,
+  "checkers_enabled": {
+    "todos_complete": true,
+    "dev_workflow_complete": true,
+    "philosophy_compliance": true,
+    "local_testing": true,
+    "ci_status": true
+  }
+}
