@@ -538,10 +538,17 @@ This skill follows Amplihack principles:
 
 - Skills auto-activate when description matches user intent
 - Description MUST include trigger keywords users would say
-- Keep core instructions under 5,000 tokens
-- Use progressive disclosure for details (reference.md, examples.md)
+- **TARGET: Keep SKILL.md at 1,000-2,000 tokens** (not 5,000!)
+- **MANDATORY**: Use progressive disclosure with supporting files (reference.md, examples.md, patterns.md)
+- **MANDATORY**: Include navigation guide when using supporting documents (see template below)
 - Can include scripts/ directory for executable code
 - Skills are token-efficient (load only when needed)
+
+**Progressive Disclosure Philosophy:**
+- SKILL.md = Quick start and core workflows only
+- Supporting files = Deep dives, API details, advanced patterns
+- Split based on CONTENT (beginner vs expert), not just token count
+- Reference example: agent-sdk skill (514-line SKILL.md with comprehensive supporting docs)
 
 **YAML Frontmatter Requirements:**
 
@@ -549,6 +556,11 @@ This skill follows Amplihack principles:
 ---
 name: skill-name
 description: Keyword-rich description for auto-discovery (optimized for trigger words)
+version: 1.0.0
+token_budget: 2000  # Target for SKILL.md only (1,000-2,000 recommended)
+source_urls:  # MANDATORY if skill is based on external documentation
+  - https://docs.example.com/main-source
+  - https://github.com/org/repo/reference
 ---
 ```
 
@@ -560,15 +572,53 @@ description: Keyword-rich description for auto-discovery (optimized for trigger 
 - Specify use cases: "Use when analyzing test coverage", "Use for data transformation"
 - Length: 50-200 characters (not too short, not too long)
 
+**Source URLs:**
+- MUST include if skill is based on external documentation (official docs, GitHub repos, blog posts)
+- Provides drift detection capability and attribution
+- Helps users find authoritative sources for deeper information
+- Good example: agent-sdk skill includes 4 official Anthropic documentation URLs
+- Bad example: Omitting source URLs for skills derived from external knowledge bases
+
 **Directory Structure:**
 
 ```
 .claude/skills/{skill-name}/
-├── SKILL.md           # Required: Main skill with YAML frontmatter
-├── reference.md       # Optional: Detailed documentation
-├── examples.md        # Optional: Usage examples
+├── SKILL.md           # Required: Main skill with YAML frontmatter (1,000-2,000 tokens)
+├── reference.md       # Recommended: Complete API reference, detailed specs
+├── examples.md        # Recommended: Working code examples, patterns
+├── patterns.md        # Optional: Best practices, anti-patterns, production tips
 └── scripts/           # Optional: Executable utilities
 ```
+
+**Navigation Guide Template (MANDATORY for multi-file skills):**
+
+When your skill includes supporting documents (reference.md, examples.md, patterns.md), you MUST include a navigation guide section in SKILL.md. This tells Claude when to read each file:
+
+```markdown
+## Navigation Guide
+
+### When to Read Supporting Files
+
+**reference.md** - Read when you need:
+- Complete API reference with all methods and parameters
+- Detailed configuration options and environment setup
+- Comprehensive tool schema specifications
+- In-depth architecture and internals documentation
+
+**examples.md** - Read when you need:
+- Working code examples for specific patterns
+- Step-by-step implementation guides
+- Advanced use case demonstrations
+- Integration examples with existing systems
+
+**patterns.md** - Read when you need:
+- Production-ready architectural patterns
+- Performance optimization techniques
+- Security best practices and anti-patterns
+- Common pitfalls and how to avoid them
+```
+
+**Reference Example:** See `.claude/skills/agent-sdk/SKILL.md` lines 376-408 for an excellent navigation guide implementation.
 
 ### For Agent Skills (`agent`)
 
