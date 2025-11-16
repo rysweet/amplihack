@@ -167,7 +167,10 @@ class SessionStartHook(HookProcessor):
                 # Inject FULL preferences content with MANDATORY enforcement
                 context_parts.append("\n## 🎯 USER PREFERENCES (MANDATORY - MUST FOLLOW)")
                 context_parts.append(
-                    "\nThe following preferences are REQUIRED and CANNOT be ignored:\n"
+                    "\nApply these preferences to all responses. These preferences are READ-ONLY except when using /amplihack:customize command.\n"
+                )
+                context_parts.append(
+                    "\n💡 **Preference Management**: Use /amplihack:customize to view or modify preferences.\n"
                 )
                 context_parts.append(full_prefs_content)
 
