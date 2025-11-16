@@ -44,7 +44,18 @@ SETTINGS_TEMPLATE = {
         "additionalDirectories": [".claude", "Specs"],
     },
     "enableAllProjectMcpServers": False,
-    "enabledMcpjsonServers": [],
+    "enabledMcpjsonServers": [
+        {
+            "name": "serena",
+            "command": "uvx",
+            "args": [
+                "--from",
+                "git+https://github.com/oraios/serena",
+                "serena"
+            ],
+            "env": {}
+        }
+    ],
     "hooks": {
         "SessionStart": [
             {

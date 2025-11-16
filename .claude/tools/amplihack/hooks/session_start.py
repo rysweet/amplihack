@@ -5,6 +5,7 @@ Uses unified HookProcessor for common functionality.
 """
 
 # Import the base processor
+import shutil
 import sys
 from pathlib import Path
 from typing import Any, Dict
@@ -44,6 +45,14 @@ class SessionStartHook(HookProcessor):
         """
         # Check for version mismatch FIRST (before any heavy operations)
         self._check_version_mismatch()
+
+        # Check for uv (required for Serena MCP)
+        if not shutil.which("uv"):
+            print("", file=sys.stderr)
+            print("⚠️  Serena MCP requires 'uv' package manager", file=sys.stderr)
+            print("   Install: curl -LsSf https://astral.sh/uv/install.sh | sh", file=sys.stderr)
+            print("", file=sys.stderr)
+            self.log("uv not found - Serena MCP will not be available", "WARNING")
 
         # Extract prompt
         prompt = input_data.get("prompt", "")
