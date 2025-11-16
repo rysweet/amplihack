@@ -1,3 +1,9 @@
+---
+name: worktree-manager
+description: Git worktree management specialist. Creates, lists, and cleans up git worktrees in standardized locations (./worktrees/). Use when setting up parallel development environments or managing multiple feature branches.
+model: inherit
+---
+
 # Worktree Manager Agent
 
 ## Role

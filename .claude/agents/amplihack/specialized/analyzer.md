@@ -1,6 +1,6 @@
 ---
 name: analyzer
-description: Multi-mode analysis engine. Automatically selects TRIAGE (rapid filtering), DEEP (thorough analysis), or SYNTHESIS (combining sources) based on context. Use for any analysis task.
+description: Code and system analysis specialist. Automatically selects TRIAGE (rapid scanning), DEEP (thorough investigation), or SYNTHESIS (multi-source integration) based on task. Use for understanding existing code, mapping dependencies, analyzing system behavior, or investigating architectural decisions.
 model: inherit
 ---
 

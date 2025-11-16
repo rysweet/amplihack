@@ -206,7 +206,7 @@ python main.py
 | **security**                | Security analysis and vulnerability detection |
 | **visualization-architect** | Data visualization design                     |
 | **xpia-defense**            | Advanced threat detection                     |
-| **zen-architect**           | Minimalist architecture design                |
+| **philosophy-guardian**     | Philosophy compliance and simplicity validation |
 
 ## Core Concepts
 

@@ -1,6 +1,6 @@
 ---
 name: ci-diagnostic-workflow
-description: CI workflow orchestrator. Manages the full CI diagnostic and fix cycle after code is pushed. Uses check_ci_status tool to monitor, diagnoses failures, fixes issues, pushes updates, and iterates until CI passes. Stops at mergeable state without auto-merging.
+description: CI failure resolution workflow. Monitors CI status after push, diagnoses failures, fixes issues, and iterates until PR is mergeable (never auto-merges). Use when CI checks fail after pushing code.
 model: inherit
 ---
 

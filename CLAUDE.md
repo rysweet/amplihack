@@ -110,7 +110,7 @@ dependencies require sequential order.
 **Multiple specialized architects** exist for different tasks (see agent frontmatter descriptions for when to use each):
 - `architect` (core) - General design, problem decomposition, module specs
 - `amplifier-cli-architect` - CLI applications, hybrid code/AI systems
-- `zen-architect` - Philosophy compliance reviews, simplicity validation
+- `philosophy-guardian` - Philosophy compliance reviews, simplicity validation
 - `visualization-architect` - Architecture diagrams, visual documentation
 
 ### Development Workflow Agents

@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Primary architecture and design agent. Use for analysis, system design, and code review. Embodies ruthless simplicity and creates specifications for implementation.
+description: General architecture and design agent. Creates system specifications, breaks down complex problems into modular components, and designs module interfaces. Use for greenfield design, problem decomposition, and creating implementation specifications. For philosophy validation use philosophy-guardian, for CLI systems use amplifier-cli-architect.
 model: inherit
 ---
 
