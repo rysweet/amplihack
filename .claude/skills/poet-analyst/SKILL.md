@@ -1027,9 +1027,23 @@ We say now.
 - **Work**: Accessible nature poetry, attention to detail
 - **Contribution**: Renewed popular interest in poetry
 
-#### George Lakoff
-- **Work**: *Metaphors We Live By* (1980)
-- **Contribution**: Conceptual metaphor theory
+#### George Lakoff & Mark Johnson
+- **Key Work**: *Metaphors We Live By* (1980)
+- **Contribution**: Conceptual metaphor theory - "Our ordinary conceptual system, in terms of which we both think and act, is fundamentally metaphorical in nature"
+- **Follow-up Work**: *More Than Cool Reason: A Field Guide to Poetic Metaphor* (1989, with Turner)
+- **Sources**:
+  - [The Contemporary Theory of Metaphor - Lakoff PDF](https://terpconnect.umd.edu/~israel/lakoff-ConTheorMetaphor.pdf)
+  - [Metaphors We Live By - Wikipedia](https://en.wikipedia.org/wiki/Metaphors_We_Live_By)
+  - [Conceptual Metaphor - Wikipedia](https://en.wikipedia.org/wiki/Conceptual_metaphor)
+  - [Conceptual Metaphor Theory - ResearchGate](https://www.researchgate.net/publication/311403391_Conceptual_metaphor_theory)
+  - [Conceptual Metaphors - Cambridge](https://www.cambridge.org/core/books/abs/metaphor/conceptual-metaphors/2EB6E4BBB9E616C0343DEB77E31A2153)
+
+### Academic Resources
+
+#### Poetics and Literary Theory
+- [Poetics Study Guide - StudySmarter](https://www.studysmarter.co.uk/explanations/english-literature/literary-criticism-and-theory/narratology/) - Narratology overview
+- [SBL Handbook: Conceptual Metaphor Theory](https://sblhs2.com/2016/11/24/conceptual-metaphor-theory/) - Application to textual analysis
+- [Mapping Brain's Metaphor Circuitry - Frontiers](https://www.frontiersin.org/articles/10.3389/fnhum.2014.00958/full) - Neuroscience of metaphor
 
 ### Professional Organizations
 

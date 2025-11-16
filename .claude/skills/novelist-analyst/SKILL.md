@@ -1097,6 +1097,28 @@ Narrative analysis rests on fundamental principles:
 - **Field**: Fiction, narrative theory
 - **Contribution**: Story shapes on graph (man in hole, boy meets girl, etc.)
 
+#### Vladimir Propp (1895-1970)
+- **Field**: Narratology, folklore studies
+- **Key Work**: *Morphology of the Folktale* (1928)
+- **Contribution**: Identified 31 narrative functions and 7 character archetypes in Russian fairy tales, revealing underlying story patterns
+- **Impact**: "Reshaped the study of narrative almost completely"
+- **Sources**: [Vladimir Propp - Fiveable](https://fiveable.me/literary-theory-criticism/unit-2/vladimir-propp/study-guide/5YLLqKWkXDIvbxtl), [Propp's Functions - ResearchGate](https://www.researchgate.net/publication/319293980_The_Thirty-One_Functions_in_Vladimir_Propp's_Morphology_of_the_Folktale_An_Outline_and_Recent_Trends_in_the_Applicability_of_the_Proppian_Taxonomic_Model)
+
+### Narratology and Literary Theory
+
+#### Narratology Resources
+- [Structuralist Narratology - Literary Theory and Criticism](https://literariness.org/2016/03/21/structuralist-narratology/) - Overview of narratological approaches
+- [Narratology - Wikipedia](https://en.wikipedia.org/wiki/Narratology) - Comprehensive introduction
+- [Narratology (literary theory) - EBSCO](https://www.ebsco.com/research-starters/literature-and-writing/narratology-literary-theory) - Academic resource
+- [Narratology - Cambridge History of Literary Criticism](https://www.cambridge.org/core/books/abs/cambridge-history-of-literary-criticism/narratology/12AFBE5690B2157FB1CF0E8D32E288A8) - Scholarly overview
+- [Narrative Theory - Literariness.org](https://literariness.org/2017/04/25/narrative-theory/) - Theory foundations
+
+#### Story Structure Resources
+- [Story Structure: 7 Types - Reedsy](https://blog.reedsy.com/guide/story-structure/) - Contemporary guide
+- [Narrative Structure - Bookish Bay](https://bookishbay.com/understanding-narrative-structure/) - Key components explained
+- [How to Structure a Story - MasterClass (2025)](https://www.masterclass.com/articles/how-to-structure-a-story) - Modern teaching resource
+- [Beyond the Hero's Journey - Medium](https://medium.com/@steveseager/beyond-the-hero-s-journey-four-innovative-narrative-models-for-digital-story-design-f7458983bc16) - Alternative narrative models
+
 ### Professional Organizations
 
 #### Writers Guild of America
