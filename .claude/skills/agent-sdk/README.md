@@ -208,6 +208,77 @@ Token calculation: words × 1.3 (conservative estimate)
 - ✓ Update workflow (6 steps)
 - ✓ Self-validation mechanisms
 
+## Post-Deployment Setup
+
+**IMPORTANT**: After deploying this skill, complete these setup steps:
+
+### 1. Initialize Content Hashes (Required)
+
+The skill ships with placeholder content hashes. Generate real hashes:
+
+```bash
+cd .claude/skills/agent-sdk
+python scripts/check_drift.py --update
+```
+
+This updates `.metadata/versions.json` with actual SHA-256 hashes from source URLs.
+
+### 2. Verify Dependencies
+
+The drift detection script requires the `requests` library:
+
+```bash
+pip install requests
+```
+
+Or handle gracefully - the script provides clear error messages if missing.
+
+### 3. Test Skill Activation
+
+Verify the skill activates correctly:
+
+```bash
+# Query Claude with SDK keywords
+echo "How do I use agent sdk tools?" | claude
+```
+
+The skill should auto-load and provide guidance from SKILL.md.
+
+### 4. Weekly Drift Detection (Optional)
+
+Set up automated drift detection in CI/CD:
+
+```yaml
+# .github/workflows/drift-check.yml
+name: Agent SDK Skill Drift Check
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  check-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for drift
+        run: |
+          cd .claude/skills/agent-sdk
+          python scripts/check_drift.py
+```
+
+### Troubleshooting
+
+**Issue**: "requests module not found"
+**Solution**: `pip install requests` or install via requirements.txt
+
+**Issue**: "Permission denied" when running check_drift.py
+**Solution**: Script should be executable (chmod +x). Already set to 755.
+
+**Issue**: Skill doesn't auto-activate
+**Solution**: Verify YAML frontmatter in SKILL.md is valid and `auto_activate: true`
+
 ## Maintenance
 
 ### Update Workflow

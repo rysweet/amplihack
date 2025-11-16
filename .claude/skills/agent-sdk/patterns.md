@@ -370,7 +370,9 @@ def file_operations(
     elif operation == "write":
         return Path(path).write_text(content)
     elif operation == "append":
-        # ... complex logic
+        pass  # Anti-pattern: Too many responsibilities (example truncated)
+    # Multiple other operations...
+    return None  # Anti-pattern: Unclear return type
 ```
 
 ### Idempotency
@@ -809,13 +811,19 @@ def verify_result(result: dict) -> bool:
 **Problem:**
 ```python
 # Don't: Complex abstractions when simple suffices
+from abc import ABC, abstractmethod
+
 class AbstractToolFactory(ABC):
     @abstractmethod
-    def create_tool(self) -> AbstractTool:
-        pass
+    def create_tool(self) -> 'AbstractTool':
+        pass  # Anti-pattern: Unnecessary abstraction layer
+
+class AbstractTool(ABC):
+    pass  # Anti-pattern: Empty abstraction
 
 class ConcreteToolFactoryImpl(AbstractToolFactory):
-    # 100 lines of unnecessary abstraction
+    def create_tool(self) -> 'AbstractTool':
+        pass  # Anti-pattern: 100+ lines of unnecessary complexity
 ```
 
 **Solution:**
