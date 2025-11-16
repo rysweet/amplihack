@@ -13,8 +13,9 @@ import time
 from enum import Enum
 from typing import Optional
 
-from .config import get_config
+from .config import get_config, update_password
 from .connector import Neo4jConnector
+from .credential_detector import detect_container_password
 from .port_manager import resolve_port_conflicts
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,87 @@ class Neo4jContainerManager:
         """Initialize container manager with configuration."""
         self.config = get_config()
 
+    def _check_container_exists(self) -> bool:
+        """Check if container exists (any status).
+
+        Returns:
+            True if container exists, False otherwise
+        """
+        try:
+            cmd = [
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                f"name=^{self.config.container_name}$",
+                "--format",
+                "{{.Names}}",
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+
+            if result.returncode != 0:
+                return False
+
+            # Check for exact name match
+            names = result.stdout.strip().split("\n")
+            return self.config.container_name in names
+
+        except Exception as e:
+            logger.debug("Error checking container existence: %s", e)
+            return False
+
+    def _update_password(self, password: str) -> None:
+        """Update config password dynamically.
+
+        Args:
+            password: New password to use
+
+        Note:
+            This updates the singleton config instance to use detected credentials.
+        """
+        # Update the config singleton with detected password
+        update_password(password)
+        # Reload config to pick up the new password
+        self.config = get_config()
+
+    def _handle_unhealthy_container(self) -> bool:
+        """Handle unhealthy container by restarting.
+
+        Returns:
+            True if container is now healthy, False otherwise
+        """
+        logger.warning("Container is unhealthy, attempting restart...")
+
+        try:
+            # Stop container
+            cmd = ["docker", "stop", self.config.container_name]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+            if result.returncode != 0:
+                logger.error("Failed to stop unhealthy container: %s", result.stderr)
+                return False
+
+            # Wait a moment
+            time.sleep(2)
+
+            # Start container
+            cmd = ["docker", "start", self.config.container_name]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+
+            if result.returncode != 0:
+                logger.error("Failed to restart container: %s", result.stderr)
+                return False
+
+            logger.info("Container restarted, waiting for healthy status...")
+            return self.wait_for_healthy()
+
+        except subprocess.TimeoutExpired:
+            logger.error("Timeout handling unhealthy container")
+            return False
+        except Exception as e:
+            logger.error("Error handling unhealthy container: %s", e)
+            return False
+
     def start(self, wait_for_ready: bool = False) -> bool:
         """Start Neo4j container (idempotent).
 
@@ -50,27 +132,50 @@ class Neo4jContainerManager:
             True if started successfully, False otherwise
 
         Behavior:
-            - If already running: Do nothing, return True
-            - If stopped: Start existing container
-            - If not found: Create and start new container
+            - Checks if container exists first
+            - If exists: detect credentials → update config → check status → connect/start
+            - If not exists: create new container with environment password
         """
         logger.info("Starting Neo4j container: %s", self.config.container_name)
 
-        # Check current status
-        status = self.get_status()
+        # Step 1: Check if container exists (any status)
+        container_exists = self._check_container_exists()
 
-        if status == ContainerStatus.RUNNING:
-            logger.info("Container already running")
-            if wait_for_ready:
-                return self.wait_for_healthy()
-            return True
+        if container_exists:
+            logger.info("Container exists, detecting credentials...")
 
-        if status == ContainerStatus.STOPPED:
-            logger.info("Restarting stopped container")
-            return self._restart_container(wait_for_ready)
+            # Step 2: Try to detect password from existing container
+            detected_password = detect_container_password(self.config.container_name)
+
+            # Step 3: Update config if password detected
+            if detected_password:
+                logger.info("🔑 Detected credentials from existing container")
+                self._update_password(detected_password)
+            else:
+                logger.info("No credentials detected, using environment password")
+
+            # Step 4: Check container status
+            status = self.get_status()
+
+            if status == ContainerStatus.RUNNING:
+                logger.info("✓ Container %s already running", self.config.container_name)
+                if wait_for_ready:
+                    return self.wait_for_healthy()
+                return True
+
+            if status == ContainerStatus.STOPPED:
+                logger.info("○ Container %s is stopped, restarting...", self.config.container_name)
+                return self._restart_container(wait_for_ready)
+
+            if status == ContainerStatus.UNHEALTHY:
+                logger.warning("⚠ Container %s is unhealthy", self.config.container_name)
+                return self._handle_unhealthy_container()
+
+            logger.error("Unexpected container status: %s", status)
+            return False
 
         # Container doesn't exist - create it
-        logger.info("Creating new container")
+        logger.info("✨ Creating new container: %s", self.config.container_name)
         return self._create_container(wait_for_ready)
 
     def stop(self, timeout: int = 30) -> bool:

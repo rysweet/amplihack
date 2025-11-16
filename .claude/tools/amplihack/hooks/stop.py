@@ -168,24 +168,32 @@ class StopHook(HookProcessor):
 
         Executes Neo4j shutdown coordination if appropriate.
         Fail-safe: Never raises exceptions.
+
+        Environment Variables Set:
+            AMPLIHACK_CLEANUP_MODE: Set to "1" to signal cleanup context.
+                Prevents interactive prompts during session exit.
+                Checked by container_selection.py to skip container selection dialog.
         """
         try:
+            # Set cleanup mode to prevent interactive prompts during session exit
+            # This is checked by container_selection.resolve_container_name()
+            os.environ["AMPLIHACK_CLEANUP_MODE"] = "1"
+
             # Import components
             from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
             from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
             from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
 
-            # Detect auto mode
-            auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "false").lower() == "true"
+            # Detect auto mode (standardized format)
+            auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "0") == "1"
 
             self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
 
             # Initialize components with credentials from environment
             # Note: Connection tracker will raise ValueError if password not set and
-            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.
+            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.  # pragma: allowlist secret
             tracker = Neo4jConnectionTracker(
-                username=os.getenv("NEO4J_USERNAME"),
-                password=os.getenv("NEO4J_PASSWORD")
+                username=os.getenv("NEO4J_USERNAME"), password=os.getenv("NEO4J_PASSWORD")
             )
             manager = Neo4jContainerManager()
             coordinator = Neo4jShutdownCoordinator(
