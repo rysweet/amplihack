@@ -321,7 +321,11 @@ class TestNewCheckers(unittest.TestCase):
         transcript = [
             {
                 "type": "assistant",
-                "message": {"content": [{"type": "text", "text": "Question 1? Question 2? Question 3? Question 4?"}]},
+                "message": {
+                    "content": [
+                        {"type": "text", "text": "Question 1? Question 2? Question 3? Question 4?"}
+                    ]
+                },
             }
         ]
 
@@ -353,7 +357,10 @@ class TestNewCheckers(unittest.TestCase):
         # Transcript without completion
         transcript_incomplete = [
             {"type": "user", "message": {"content": "Implement feature X"}},
-            {"type": "assistant", "message": {"content": [{"type": "text", "text": "Working on it"}]}},
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "Working on it"}]},
+            },
         ]
 
         result = self.checker._check_objective_completion(transcript_incomplete, "test_session")
@@ -459,7 +466,9 @@ class TestNewCheckers(unittest.TestCase):
         transcript = [
             {
                 "type": "assistant",
-                "message": {"content": [{"type": "text", "text": "Next steps: implement feature Y"}]},
+                "message": {
+                    "content": [{"type": "text", "text": "Next steps: implement feature Y"}]
+                },
             }
         ]
 
@@ -545,7 +554,10 @@ class TestNewCheckers(unittest.TestCase):
         # Investigation without documentation
         transcript_no_docs = [
             {"type": "user", "message": {"content": "Investigation into bug X"}},
-            {"type": "assistant", "message": {"content": [{"type": "text", "text": "Found issues"}]}},
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "Found issues"}]},
+            },
         ]
 
         result = self.checker._check_investigation_docs(transcript_no_docs, "test_session")
@@ -584,7 +596,10 @@ class TestNewCheckers(unittest.TestCase):
                         {
                             "type": "tool_use",
                             "name": "Write",
-                            "input": {"file_path": "/test.py", "content": "def foo():\n    return 42"},
+                            "input": {
+                                "file_path": "/test.py",
+                                "content": "def foo():\n    return 42",
+                            },
                         }
                     ]
                 },
@@ -763,7 +778,10 @@ class TestNewCheckers(unittest.TestCase):
         # Review feedback not addressed
         transcript_not_addressed = [
             {"type": "user", "message": {"content": "Please address the review comments"}},
-            {"type": "assistant", "message": {"content": [{"type": "text", "text": "Working on it"}]}},
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "Working on it"}]},
+            },
         ]
 
         result = self.checker._check_review_responses(transcript_not_addressed, "test_session")
@@ -781,7 +799,10 @@ class TestNewCheckers(unittest.TestCase):
 
         # Branch behind
         transcript_behind = [
-            {"type": "tool_result", "message": {"content": "Your branch is behind main by 5 commits"}}
+            {
+                "type": "tool_result",
+                "message": {"content": "Your branch is behind main by 5 commits"},
+            }
         ]
 
         result = self.checker._check_branch_rebase(transcript_behind, "test_session")

@@ -23,11 +23,12 @@ import json
 import os
 import re
 import sys
-import yaml
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
+
+import yaml
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -256,7 +257,9 @@ class PowerSteeringChecker:
                 if self._validate_consideration_schema(item):
                     valid_considerations.append(item)
                 else:
-                    self._log(f"Invalid consideration schema: {item.get('id', 'unknown')}", "WARNING")
+                    self._log(
+                        f"Invalid consideration schema: {item.get('id', 'unknown')}", "WARNING"
+                    )
 
             if not valid_considerations:
                 self._log("No valid considerations in YAML, using Phase 1 fallback", "ERROR")
@@ -283,9 +286,8 @@ class PowerSteeringChecker:
             return False
 
         required_fields = ["id", "category", "question", "severity", "checker", "enabled"]
-        for field in required_fields:
-            if field not in consideration:
-                return False
+        if not all(field in consideration for field in required_fields):
+            return False
 
         # Validate severity
         if consideration["severity"] not in ["blocker", "warning"]:
@@ -455,7 +457,7 @@ class PowerSteeringChecker:
         if truncated:
             self._log(
                 f"Transcript truncated at {MAX_TRANSCRIPT_LINES} lines (original: {line_num})",
-                "WARNING"
+                "WARNING",
             )
 
         return messages
@@ -903,9 +905,7 @@ class PowerSteeringChecker:
 
         return True  # Phase 2: Always satisfied (fail-open)
 
-    def _check_agent_unnecessary_questions(
-        self, transcript: List[Dict], session_id: str
-    ) -> bool:
+    def _check_agent_unnecessary_questions(self, transcript: List[Dict], session_id: str) -> bool:
         """Check if agent asked unnecessary questions instead of proceeding.
 
         Detects questions that could have been inferred from context.
@@ -1325,11 +1325,6 @@ class PowerSteeringChecker:
         if not first_user_msg:
             return True
 
-        # Extract key terms from objective
-        objective_terms = set(
-            word for word in re.findall(r"\b\w+\b", first_user_msg) if len(word) > 4
-        )
-
         # Check files modified
         files_modified = []
         for msg in transcript:
@@ -1385,7 +1380,10 @@ class PowerSteeringChecker:
                                         "requirements.txt",
                                     ]
 
-                                    if not any(acceptable in filename for acceptable in acceptable_root_files):
+                                    if not any(
+                                        acceptable in filename
+                                        for acceptable in acceptable_root_files
+                                    ):
                                         return False
 
         return True

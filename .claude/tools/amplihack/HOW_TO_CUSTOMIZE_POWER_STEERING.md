@@ -20,6 +20,7 @@ Power-steering mode uses a YAML configuration file to define the 21 consideratio
 - **Use generic or specific checkers**: Simple keyword matching or dedicated analysis functions
 
 **Configuration File Location:**
+
 ```
 .claude/tools/amplihack/considerations.yaml
 ```
@@ -31,13 +32,13 @@ Each consideration checks a specific aspect of your work:
 ### Consideration Structure
 
 ```yaml
-- id: unique_identifier           # Unique ID for this consideration
-  category: Category Name          # One of 6 categories
-  question: Human-readable question?  # Natural language prompt
-  description: What this checks    # Detailed explanation
-  severity: blocker                # "blocker" or "warning"
-  checker: method_name             # Checker method or "generic"
-  enabled: true                    # true/false to enable/disable
+- id: unique_identifier # Unique ID for this consideration
+  category: Category Name # One of 6 categories
+  question: Human-readable question? # Natural language prompt
+  description: What this checks # Detailed explanation
+  severity: blocker # "blocker" or "warning"
+  checker: method_name # Checker method or "generic"
+  enabled: true # true/false to enable/disable
 ```
 
 ### Categories
@@ -124,7 +125,7 @@ To skip a check you don't need:
   description: Detects high-impact work for stakeholders
   severity: warning
   checker: _check_presentation_needed
-  enabled: false  # Changed from true to false
+  enabled: false # Changed from true to false
 ```
 
 ### Example 2: Change Severity
@@ -136,7 +137,7 @@ Make a warning into a blocker (or vice versa):
   category: Session Completion & Progress
   question: Were relevant documentation files updated?
   description: Verifies README, docs reflect changes
-  severity: blocker  # Changed from "warning" to "blocker"
+  severity: blocker # Changed from "warning" to "blocker"
   checker: _check_documentation_updates
   enabled: true
 ```
@@ -148,7 +149,7 @@ Customize the prompt text:
 ```yaml
 - id: local_testing
   category: Testing & Local Validation
-  question: Did you run and verify all tests locally?  # Customized
+  question: Did you run and verify all tests locally? # Customized
   description: Verifies tests were executed and passed locally
   severity: blocker
   checker: _check_local_testing
@@ -167,7 +168,7 @@ Add a custom consideration with generic checker:
   question: Was security scanning performed?
   description: Ensures security tools were run on code changes
   severity: blocker
-  checker: generic  # Uses simple keyword matching
+  checker: generic # Uses simple keyword matching
   enabled: true
 ```
 
@@ -207,6 +208,7 @@ Add a custom consideration with generic checker:
 ### Step 1: Identify the Requirement
 
 Ask yourself:
+
 - What should be checked before ending this session?
 - Is this a blocker or a warning?
 - Can I use the generic checker, or do I need custom logic?
@@ -278,12 +280,14 @@ question: Were security scans performed?
 ### When to Use Generic
 
 ✅ **Good for:**
+
 - Team-specific requirements
 - Workflow reminders
 - Documentation checks
 - Simple presence/absence checks
 
 ❌ **Not good for:**
+
 - Complex logic (multiple conditions)
 - Code analysis (AST parsing)
 - Statistical analysis (coverage, performance)
@@ -294,26 +298,31 @@ question: Were security scans performed?
 These checkers have sophisticated logic built-in:
 
 ### Session Completion
+
 - `_check_todos_complete` - All TodoWrite items completed
 - `_check_objective_completion` - Original user goal achieved
 - `_check_documentation_updates` - Docs updated with code changes
 - `_check_next_steps` - Follow-up tasks documented
 
 ### Workflow & Process
+
 - `_check_dev_workflow_complete` - DEFAULT_WORKFLOW followed
 - `_check_investigation_docs` - Investigation findings captured
 - `_check_docs_organization` - Docs in correct directories
 
 ### Code Quality
+
 - `_check_philosophy_compliance` - Zero-BS (no TODOs, stubs)
 - `_check_shortcuts` - No quality compromises
 - `_check_root_pollution` - No inappropriate root files
 
 ### Testing
+
 - `_check_local_testing` - Tests executed and passed
 - `_check_interactive_testing` - Manual verification done
 
 ### PR & CI/CD
+
 - `_check_ci_status` - CI checks passing
 - `_check_pr_description` - PR has summary and test plan
 - `_check_review_responses` - Review feedback addressed
@@ -322,6 +331,7 @@ These checkers have sophisticated logic built-in:
 - `_check_unrelated_changes` - No scope creep
 
 ### Miscellaneous
+
 - `_check_agent_unnecessary_questions` - Agent not asking obvious questions
 - `_check_tutorial_needed` - New features have examples
 - `_check_presentation_needed` - High-impact work has presentation
@@ -331,10 +341,12 @@ These checkers have sophisticated logic built-in:
 ### Problem: YAML File Not Loading
 
 **Symptoms:**
+
 - Warning in logs: "Considerations YAML not found"
 - Falls back to Phase 1 (5 checkers)
 
 **Solutions:**
+
 1. Verify file exists: `.claude/tools/amplihack/considerations.yaml`
 2. Check file permissions (must be readable)
 3. Look for typos in filename
@@ -342,10 +354,12 @@ These checkers have sophisticated logic built-in:
 ### Problem: YAML Parse Error
 
 **Symptoms:**
+
 - Error in logs: "Invalid YAML structure"
 - Falls back to Phase 1
 
 **Solutions:**
+
 1. Validate YAML syntax (use online validator)
 2. Check indentation (must use spaces, not tabs)
 3. Ensure all strings are properly quoted if needed
@@ -354,9 +368,11 @@ These checkers have sophisticated logic built-in:
 ### Problem: Consideration Not Running
 
 **Symptoms:**
+
 - Consideration defined but not appearing in results
 
 **Solutions:**
+
 1. Check `enabled: true` in YAML
 2. Verify not disabled in config file (`.power_steering_config`)
 3. Confirm consideration meets validation rules
@@ -365,10 +381,12 @@ These checkers have sophisticated logic built-in:
 ### Problem: False Positives
 
 **Symptoms:**
+
 - Consideration fails when it shouldn't
 - Blocks sessions incorrectly
 
 **Solutions:**
+
 1. **For generic checkers:**
    - Refine question keywords
    - Consider changing to specific checker
@@ -382,10 +400,12 @@ These checkers have sophisticated logic built-in:
 ### Problem: False Negatives
 
 **Symptoms:**
+
 - Consideration passes when it should fail
 - Doesn't catch issues
 
 **Solutions:**
+
 1. **For generic checkers:**
    - Generic checkers are fail-open by default
    - Consider implementing a specific checker
@@ -398,10 +418,12 @@ These checkers have sophisticated logic built-in:
 ### Problem: Too Many Blockers
 
 **Symptoms:**
+
 - Can't end session even when work is complete
 - Multiple false positives
 
 **Solutions:**
+
 1. Review severity levels - change blockers to warnings
 2. Disable non-critical considerations
 3. Adjust checker sensitivity
@@ -485,11 +507,13 @@ Before saving your YAML file, verify:
 ### Check Logs
 
 Power-steering logs are in:
+
 ```
 .claude/runtime/power-steering/power_steering.log
 ```
 
 Look for:
+
 - YAML loading messages
 - Validation errors
 - Checker execution details
@@ -513,6 +537,7 @@ echo "enabled: false" > .claude/tools/amplihack/.power_steering_config
 ### Report Issues
 
 If you find bugs in specific checkers or need help:
+
 1. Check existing documentation
 2. Review logs for error messages
 3. Create minimal reproduction case
@@ -525,11 +550,13 @@ If you find bugs in specific checkers or need help:
 For complex requirements, you may want to implement a custom specific checker.
 
 **Requirements:**
+
 - Python programming knowledge
 - Understanding of transcript structure
 - Ability to modify `power_steering_checker.py`
 
 **Steps:**
+
 1. Add method to `PowerSteeringChecker` class
 2. Method signature: `def _check_my_thing(self, transcript: List[Dict], session_id: str) -> bool`
 3. Return `True` if satisfied, `False` if failed
@@ -587,11 +614,13 @@ Team members will automatically use the shared configuration.
 ## Appendix: Complete Default Configuration
 
 The full default `considerations.yaml` with all 21 considerations is located at:
+
 ```
 .claude/tools/amplihack/considerations.yaml
 ```
 
 To restore defaults:
+
 ```bash
 # Backup your customizations
 cp .claude/tools/amplihack/considerations.yaml considerations.yaml.backup
