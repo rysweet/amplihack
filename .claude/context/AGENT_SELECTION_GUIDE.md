@@ -1,4 +1,45 @@
-# Agent Usage Guide
+# Agent Selection Guide
+
+**AI Context**: This guide helps Claude Code's orchestrator select the correct agent when multiple agents have overlapping capabilities.
+
+**Import**: This file should be imported at session start for AI behavioral guidance.
+
+## Architect Selection
+
+**Multiple architect variants exist** - Choose the right one for your task:
+
+### architect (core)
+**Use when**: General design, problem decomposition, module specifications
+**Capabilities**: Problem analysis, system design, module specs, pre-commit validation
+**Example**: "Design authentication system" → architect
+
+### amplifier-cli-architect
+**Use when**: CLI applications, hybrid code/AI systems
+**Capabilities**: CONTEXTUALIZE/GUIDE/VALIDATE modes, ccsdk_toolkit integration
+**Example**: "Design CLI for data processing" → amplifier-cli-architect
+
+### zen-architect
+**Use when**: Philosophy compliance reviews, simplicity validation
+**Capabilities**: A-F grading, regenerability assessment, philosophy violation detection
+**Example**: "Validate this architecture for simplicity" → zen-architect
+
+### visualization-architect
+**Use when**: Architecture diagrams, visual documentation
+**Capabilities**: ASCII diagrams, Mermaid charts, system visualization
+**Example**: "Create system diagram" → visualization-architect
+
+**Decision Matrix**:
+```
+Need architecture help?
+├─ General design/problem analysis? → architect (core)
+├─ CLI application architecture? → amplifier-cli-architect
+├─ Philosophy compliance review? → zen-architect
+└─ Visual documentation needed? → visualization-architect
+```
+
+---
+
+## Overlapping Agent Pairs
 
 This guide clarifies when to use overlapping agents that serve different but related purposes.
 
