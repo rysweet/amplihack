@@ -353,6 +353,23 @@ def perform_update(
         source_file = package_path / file_path
         dest_file = project_path / file_path
 
+        # SECURITY: Validate paths to prevent traversal attacks
+        try:
+            source_resolved = source_file.resolve()
+            dest_resolved = dest_file.resolve()
+
+            # Ensure paths stay within expected directories
+            if not source_resolved.is_relative_to(package_path.resolve()):
+                skipped_files.append(file_path)
+                continue
+            if not dest_resolved.is_relative_to(project_path.resolve()):
+                skipped_files.append(file_path)
+                continue
+        except (ValueError, OSError):
+            # Path resolution failed - skip for safety
+            skipped_files.append(file_path)
+            continue
+
         # Skip if source file doesn't exist
         if not source_file.exists():
             skipped_files.append(file_path)
