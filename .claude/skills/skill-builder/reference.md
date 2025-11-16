@@ -1,6 +1,45 @@
 # Skill Builder Reference Documentation
 
-This file contains comprehensive documentation about Claude Code skills, built from official sources and research. Updated: 2025-11-15
+This file contains comprehensive documentation about Claude Code skills, built from official sources and research. Updated: 2025-11-16
+
+---
+
+## Key Updates (2025-11-16)
+
+**CRITICAL CHANGES - Progressive Disclosure Emphasis:**
+
+1. **Lower Token Threshold for SKILL.md:**
+   - OLD: "Keep under 5,000 tokens"
+   - NEW: "Target 1,000-2,000 tokens"
+   - Warning at 2,000+, not 5,000+
+
+2. **MANDATORY Navigation Guide:**
+   - Required for ALL multi-file skills
+   - Must explicitly state when to read each supporting file
+   - Template provided in "Progressive Disclosure Pattern" section
+   - Reference example: agent-sdk skill lines 376-408
+
+3. **Source URLs Now Required:**
+   - MANDATORY in YAML frontmatter for skills based on external docs
+   - Enables drift detection and attribution
+   - Format: `source_urls: [list of URLs]`
+
+4. **Content-Based Splitting:**
+   - Split based on CONTENT (beginner vs expert), not just token count
+   - SKILL.md = Quick start covering 80% of use cases
+   - Supporting files = Deep dives, complete API reference, advanced patterns
+   - Reference example: agent-sdk (514-line SKILL.md with 4 supporting files)
+
+5. **Supporting File Templates:**
+   - reference.md: Complete API reference, architecture, configuration
+   - examples.md: Working copy-paste code examples
+   - patterns.md: Production patterns, anti-patterns, optimization
+   - All templates included in this document
+
+**What This Means:**
+- Progressive disclosure is now the DEFAULT approach, not an exception
+- Skills should use supporting files even if SKILL.md is under 2,000 tokens
+- Better organization = better user experience (quick start vs deep dive)
 
 ---
 
@@ -210,44 +249,73 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 - Token efficiency (skills don't compete)
 - Scalable (can have many skills)
 - Flexible (unbounded resources via filesystem)
+- Better user experience (quick start vs deep dive)
 
 ### Implementation Strategy
 
-**SKILL.md** (Core - <5K tokens):
-- YAML frontmatter
-- Purpose statement (2-3 sentences)
-- When to use (trigger scenarios)
-- Basic workflow (5-10 steps)
-- High-level instructions
-- Reference to supporting files
+**SKILL.md** (Core - 1,000-2,000 tokens TARGET):
+- YAML frontmatter with source_urls
+- Overview and purpose (2-3 sentences)
+- Quick start examples
+- Core concepts reference (NOT exhaustive details)
+- Common patterns (3-5 most frequent use cases)
+- **MANDATORY: Navigation guide** ("When to Read Supporting Files")
+- High-level workflow instructions
 
-**reference.md** (Details - <3K tokens each):
-- API references
-- Configuration options
-- Error handling
-- Advanced usage
-- Internals/architecture
-- Troubleshooting
+**Split based on CONTENT, not just token count:**
+- SKILL.md = Beginner-friendly, covers 80% of use cases
+- Supporting files = Expert deep-dives, edge cases, internals
 
-**examples.md** (Usage - <3K tokens):
-- Basic examples
-- Common patterns
-- Advanced scenarios
-- Edge cases
-- Real-world usage
+**reference.md** (Deep Technical Details):
+- Complete API reference with all methods and parameters
+- Detailed configuration options and environment setup
+- Architecture and internals documentation
+- Comprehensive tool/schema specifications
+- Advanced configuration patterns
+- Security considerations
 
-**scripts/** (Executable):
+**examples.md** (Practical Implementation):
+- Working code examples (copy-paste ready)
+- Step-by-step implementation guides
+- Common integration patterns
+- Edge cases and error handling
+- Real-world usage scenarios
+- Advanced use case demonstrations
+
+**patterns.md** (Production Expertise - Optional):
+- Production-ready architectural patterns
+- Performance optimization techniques
+- Security best practices and anti-patterns
+- Scaling strategies
+- Common pitfalls and solutions
+- Testing and debugging approaches
+
+**scripts/** (Executable Utilities):
 - Deterministic operations
 - Mathematical calculations
 - Data parsing/validation
 - API integrations
 - Offload computation from LLM
 
+### Token Budget Guidelines
+
+**Recommended Sizes:**
+- SKILL.md: 1,000-2,000 tokens (strict target, not "up to 5,000")
+- reference.md: 2,000-5,000 tokens (comprehensive but focused)
+- examples.md: 1,500-3,000 tokens (practical, copy-paste ready)
+- patterns.md: 1,500-3,000 tokens (production wisdom)
+
+**When to Split:**
+- **Always split** skills with supporting documentation (even if SKILL.md < 2,000 tokens)
+- Progressive disclosure is about CONTENT organization, not just token count
+- Better to have 1,500-token SKILL.md + reference.md than 4,000-token monolithic SKILL.md
+- Reference example: agent-sdk (514-line SKILL.md with 4 supporting files)
+
 ### Loading Behavior
 
 **All .md files in root load together** when skill activates:
 - SKILL.md (always)
-- reference.md, examples.md, etc.
+- reference.md, examples.md, patterns.md (if present)
 - Enables modular documentation
 - Each file focused on specific aspect
 
@@ -255,6 +323,45 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 - Scripts execute when referenced
 - Templates read when needed
 - Resources accessed during processing
+
+### Navigation Guide Requirements
+
+**MANDATORY for multi-file skills:**
+
+Every skill with supporting documents MUST include a "Navigation Guide" section in SKILL.md that explicitly tells Claude when to read each file.
+
+**Template:**
+```markdown
+## Navigation Guide
+
+### When to Read Supporting Files
+
+**reference.md** - Read when you need:
+- [Specific use cases requiring this file]
+- [Technical details not in SKILL.md]
+- [Complete API or configuration reference]
+
+**examples.md** - Read when you need:
+- [Working code for specific patterns]
+- [Step-by-step implementation guides]
+- [Integration examples]
+
+**patterns.md** - Read when you need:
+- [Production best practices]
+- [Performance optimization]
+- [Security patterns]
+```
+
+**Good Example:** `.claude/skills/agent-sdk/SKILL.md` lines 376-408
+- Lists each supporting file
+- Clearly states WHEN to read it
+- Specific enough to guide Claude's decision
+- Prevents unnecessary file reads
+
+**Bad Example:** Omitting navigation guide entirely
+- Claude doesn't know when to load supporting files
+- May load everything (token waste) or nothing (missing details)
+- User experience degrades
 
 ---
 
@@ -311,10 +418,199 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 - **Versioning**: Track changes to specific aspects
 
 **When to Split**:
-- SKILL.md > 5,000 tokens → Move details to reference.md
+- Target SKILL.md at 1,000-2,000 tokens (use supporting files for rest)
 - Many examples → Separate examples.md
 - Complex logic → Scripts in scripts/
 - Reusable patterns → Templates in templates/
+- Production patterns → patterns.md
+- Complete API reference → reference.md
+
+### Source URL Requirements
+
+**When to Include source_urls in YAML frontmatter:**
+
+MANDATORY for skills based on external documentation:
+- Official product documentation
+- GitHub repositories
+- Technical blog posts
+- API references
+- Tutorial series
+
+**Format:**
+```yaml
+---
+name: skill-name
+description: Brief description
+source_urls:
+  - https://primary-documentation-source.com
+  - https://github.com/org/repo/docs
+  - https://blog.example.com/technical-guide
+---
+```
+
+**Benefits:**
+- **Attribution**: Gives credit to original sources
+- **Drift Detection**: Enables automated checks for documentation updates
+- **User Reference**: Users can consult authoritative sources directly
+- **Maintenance**: Maintainers know where to check for updates
+
+**Good Examples:**
+- agent-sdk skill: Lists 4 official Anthropic documentation URLs
+- Skills derived from open-source projects: Include GitHub repo URL
+- Skills based on API docs: Include API documentation URL
+
+**Bad Examples:**
+- Omitting source_urls when skill is clearly based on external docs
+- Generic URLs (e.g., just "https://github.com") instead of specific documentation links
+- Broken or outdated URLs
+
+### Reference Document Structure
+
+**reference.md should follow this template:**
+
+```markdown
+# [Skill Name] - Complete API Reference
+
+## Architecture
+[Deep dive into how the system works internally]
+
+### Component 1
+[Detailed explanation]
+
+### Component 2
+[Detailed explanation]
+
+## Setup & Configuration
+[Complete configuration options]
+
+### Environment Setup
+[Detailed steps]
+
+### Advanced Configuration
+[Expert-level options]
+
+## API Reference
+[Complete method/function/tool reference]
+
+### Method/Tool 1
+**Description:** [What it does]
+**Parameters:** [Complete parameter list with types]
+**Returns:** [Return values]
+**Examples:** [Code examples]
+**Errors:** [Error conditions]
+
+### Method/Tool 2
+[Same structure]
+
+## Advanced Topics
+[Expert-level concepts]
+
+## Troubleshooting
+[Common issues and solutions]
+```
+
+**Key Principles:**
+- Comprehensive but organized
+- Every parameter documented
+- Code examples for complex features
+- Cross-references to examples.md for working code
+- Table of contents for navigation
+
+**examples.md should follow this template:**
+
+```markdown
+# [Skill Name] - Working Examples
+
+## Basic Examples
+
+### Example 1: [Simple Use Case]
+[Description of what this demonstrates]
+
+```[language]
+[Complete, copy-paste ready code]
+```
+
+**Expected Output:**
+```
+[What user should see]
+```
+
+**Explanation:**
+[Key points about the example]
+
+### Example 2: [Another Common Use Case]
+[Same structure]
+
+## Intermediate Examples
+
+### Example 3: [More Complex Scenario]
+[Complete working code with explanation]
+
+## Advanced Examples
+
+### Example 4: [Production Pattern]
+[Real-world implementation]
+
+## Integration Examples
+
+### Example 5: [Integrating with System X]
+[How to use with other tools/systems]
+```
+
+**Key Principles:**
+- Every example is complete and runnable
+- Clear expected outputs
+- Explains WHY, not just HOW
+- Progresses from simple to complex
+- Covers common integration scenarios
+
+**patterns.md should follow this template:**
+
+```markdown
+# [Skill Name] - Production Patterns
+
+## Architectural Patterns
+
+### Pattern 1: [Pattern Name]
+**Use Case:** [When to use this]
+**Implementation:** [How to implement]
+**Benefits:** [Why this works]
+**Tradeoffs:** [What you give up]
+
+### Pattern 2: [Another Pattern]
+[Same structure]
+
+## Performance Optimization
+
+### Optimization 1: [Technique]
+[Details and examples]
+
+## Security Best Practices
+
+### Practice 1: [Security Pattern]
+**Risk:** [What this protects against]
+**Implementation:** [How to do it]
+
+## Anti-Patterns
+
+### Anti-Pattern 1: [What NOT to do]
+**Problem:** [Why this is bad]
+**Better Approach:** [What to do instead]
+
+## Common Pitfalls
+
+### Pitfall 1: [Common Mistake]
+**Symptom:** [How it manifests]
+**Cause:** [Why it happens]
+**Solution:** [How to fix]
+```
+
+**Key Principles:**
+- Focus on production lessons learned
+- Include anti-patterns (what NOT to do)
+- Explain tradeoffs honestly
+- Real-world war stories
+- Performance and security emphasis
 
 ---
 
@@ -460,11 +756,21 @@ def validate_token_budget(skill_path):
     tokens = len(encoding.encode(skill_md))
 
     if tokens > 20000:
-        return False, f"Exceeds maximum ({tokens} tokens > 20,000)"
+        return False, f"Exceeds absolute maximum ({tokens} tokens > 20,000)"
     if tokens > 5000:
-        return True, f"Warning: High token count ({tokens} tokens > 5,000)"
-    return True, f"Token budget appropriate ({tokens} tokens)"
+        return True, f"Warning: Very high token count ({tokens} tokens > 5,000). Consider splitting."
+    if tokens > 2000:
+        return True, f"Warning: Above target ({tokens} tokens > 2,000). Should use supporting files."
+    if tokens < 500:
+        return True, f"Notice: Very small skill ({tokens} tokens). Consider if this is too minimal."
+    return True, f"Token budget optimal ({tokens} tokens, target: 1,000-2,000)"
 ```
+
+**Token Budget Philosophy:**
+- **Target: 1,000-2,000 tokens** for SKILL.md
+- **Warning at 2,000+**: Should move content to supporting files
+- **Error at 20,000+**: Absolute maximum, must split
+- **Progressive disclosure is about content organization, not just staying under 5,000 tokens**
 
 ### Structure Validation
 
