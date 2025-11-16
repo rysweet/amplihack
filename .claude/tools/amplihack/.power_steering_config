@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "version": "1.0.0",
   "phase": 1,
   "checkers_enabled": {

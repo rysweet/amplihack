@@ -13,12 +13,10 @@ Tests Phase 1 (MVP) functionality:
 """
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -26,7 +24,6 @@ from power_steering_checker import (
     CheckerResult,
     ConsiderationAnalysis,
     PowerSteeringChecker,
-    PowerSteeringResult,
 )
 
 
@@ -82,8 +79,8 @@ class TestPowerSteeringChecker(unittest.TestCase):
 
         checker = PowerSteeringChecker(self.project_root)
 
-        # Should use defaults
-        self.assertFalse(checker.config.get("enabled"))  # Default is disabled
+        # Should use defaults (enabled by default per user requirement)
+        self.assertTrue(checker.config.get("enabled"))  # Default is enabled
         self.assertEqual(checker.config.get("phase"), 1)
 
     def test_is_disabled_by_config(self):
@@ -147,16 +144,18 @@ class TestPowerSteeringChecker(unittest.TestCase):
         self.assertTrue(checker._is_qa_session(transcript))
 
     def test_qa_session_detection_with_tools(self):
-        """Test Q&A session detection with tool uses."""
+        """Test Q&A session detection with multiple tool uses."""
         checker = PowerSteeringChecker(self.project_root)
 
+        # Session with 2 tool uses should NOT be Q&A
         transcript = [
-            {"type": "user", "message": {"content": "Create a file"}},
+            {"type": "user", "message": {"content": "Create files"}},
             {
                 "type": "assistant",
                 "message": {
                     "content": [
-                        {"type": "tool_use", "name": "Write", "input": {"file_path": "/test.py", "content": "..."}}
+                        {"type": "tool_use", "name": "Write", "input": {"file_path": "/test1.py", "content": "..."}},
+                        {"type": "tool_use", "name": "Write", "input": {"file_path": "/test2.py", "content": "..."}},
                     ]
                 },
             },

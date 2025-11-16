@@ -66,15 +66,16 @@ class ConsiderationAnalysis:
 
     def group_by_category(self) -> Dict[str, List[CheckerResult]]:
         """Group failed considerations by category."""
-        # For Phase 1, we use simple categories
-        grouped = {}
+        # For Phase 1, use simplified categories based on consideration ID prefix
+        grouped: Dict[str, List[CheckerResult]] = {}
         for result in self.failed_blockers + self.failed_warnings:
-            # Extract category from consideration metadata
-            category = "Completion Checks"
-            if result.consideration_id in ["dev_workflow_complete", "philosophy_compliance"]:
+            # Simple category derivation from ID
+            if "workflow" in result.consideration_id or "philosophy" in result.consideration_id:
                 category = "Workflow & Philosophy"
-            elif result.consideration_id in ["local_testing", "ci_status"]:
+            elif "testing" in result.consideration_id or "ci" in result.consideration_id:
                 category = "Testing & CI/CD"
+            else:
+                category = "Completion Checks"
 
             if category not in grouped:
                 grouped[category] = []
@@ -153,7 +154,9 @@ class PowerSteeringChecker:
 
         self.project_root = project_root
         self.runtime_dir = project_root / ".claude" / "runtime" / "power-steering"
-        self.config_path = project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        self.config_path = (
+            project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
 
         # Ensure runtime directory exists
         try:
@@ -190,7 +193,7 @@ class PowerSteeringChecker:
             Configuration dictionary with defaults applied
         """
         defaults = {
-            "enabled": False,  # Disabled by default for Phase 1
+            "enabled": True,  # Enabled by default per user requirement
             "version": "1.0.0",
             "phase": 1,
             "checkers_enabled": {
@@ -264,24 +267,26 @@ class PowerSteeringChecker:
                     continuation_prompt=prompt,
                     summary=None,
                 )
-            else:
-                # 7. Generate summary and mark complete
-                summary = self._generate_summary(transcript, analysis, session_id)
-                self._mark_complete(session_id)
-                self._write_summary(session_id, summary)
+            # 7. Generate summary and mark complete
+            summary = self._generate_summary(transcript, analysis, session_id)
+            self._mark_complete(session_id)
+            self._write_summary(session_id, summary)
 
-                return PowerSteeringResult(
-                    decision="approve",
-                    reasons=["all_considerations_satisfied"],
-                    continuation_prompt=None,
-                    summary=summary,
-                )
+            return PowerSteeringResult(
+                decision="approve",
+                reasons=["all_considerations_satisfied"],
+                continuation_prompt=None,
+                summary=summary,
+            )
 
         except Exception as e:
             # Fail-open: On any error, approve and log
             self._log(f"Power-steering error (fail-open): {e}", "ERROR")
             return PowerSteeringResult(
-                decision="approve", reasons=["error_failopen"], continuation_prompt=None, summary=None
+                decision="approve",
+                reasons=["error_failopen"],
+                continuation_prompt=None,
+                summary=None,
             )
 
     def _is_disabled(self) -> bool:
@@ -371,26 +376,21 @@ class PowerSteeringChecker:
         Returns:
             True if Q&A session, False otherwise
         """
-        # Count tool uses in both formats
+        # Count tool uses - check for tool_use blocks in assistant messages
+        # Note: We check both 'type' field and 'name' field because transcript
+        # format can vary between direct tool_use blocks and nested formats
         tool_uses = 0
         for msg in transcript:
-            # Check direct content format
             if msg.get("type") == "assistant" and "message" in msg:
                 content = msg["message"].get("content", [])
-                if isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict) and block.get("type") == "tool_use":
-                            tool_uses += 1
-
-            # Also check if this is an assistant message with tool_use blocks directly
-            if msg.get("type") == "assistant" and "message" in msg:
-                msg_content = msg.get("message", {}).get("content", [])
-                if not isinstance(msg_content, list):
-                    msg_content = [msg_content]
-                for item in msg_content:
-                    if isinstance(item, dict):
-                        # Check for tool_use type or name field
-                        if item.get("type") == "tool_use" or "name" in item:
+                if not isinstance(content, list):
+                    content = [content]
+                for block in content:
+                    if isinstance(block, dict):
+                        # Check for tool_use type OR presence of name field (tool indicator)
+                        if block.get("type") == "tool_use" or (
+                            "name" in block and block.get("name")
+                        ):
                             tool_uses += 1
 
         # If we have substantial tool usage, not Q&A
@@ -404,7 +404,9 @@ class PowerSteeringChecker:
             if len(user_messages) == 0:
                 return True  # No user messages = skip
 
-            questions = sum(1 for m in user_messages if "?" in str(m.get("message", {}).get("content", "")))
+            questions = sum(
+                1 for m in user_messages if "?" in str(m.get("message", {}).get("content", ""))
+            )
 
             # If >50% of user messages are questions, likely Q&A
             if questions / len(user_messages) > 0.5:
@@ -416,7 +418,9 @@ class PowerSteeringChecker:
 
         return False
 
-    def _analyze_considerations(self, transcript: List[Dict], session_id: str) -> ConsiderationAnalysis:
+    def _analyze_considerations(
+        self, transcript: List[Dict], session_id: str
+    ) -> ConsiderationAnalysis:
         """Analyze transcript against all enabled considerations.
 
         Args:
@@ -537,7 +541,6 @@ class PowerSteeringChecker:
 
         # Check for signs of workflow completion
         has_tests = "Bash" in tools_used  # Tests typically run via Bash
-        has_git = "Bash" in tools_used  # Git operations via Bash
         has_file_ops = any(t in tools_used for t in ["Edit", "Write", "Read"])
 
         # If no file operations, likely not a development task
@@ -592,7 +595,11 @@ class PowerSteeringChecker:
                                     return False
 
                                 # Look for stub patterns (function with only pass)
-                                if re.search(r"def\s+\w+\([^)]*\):\s*pass\s*$", content_to_check, re.MULTILINE):
+                                if re.search(
+                                    r"def\s+\w+\([^)]*\):\s*pass\s*$",
+                                    content_to_check,
+                                    re.MULTILINE,
+                                ):
                                     return False
 
         return True
@@ -624,10 +631,9 @@ class PowerSteeringChecker:
                             if isinstance(content, list):
                                 for block in content:
                                     if isinstance(block, dict):
-                                        if (
-                                            block.get("type") == "tool_use"
-                                            and block.get("id") == msg_data.get("tool_use_id")
-                                        ):
+                                        if block.get("type") == "tool_use" and block.get(
+                                            "id"
+                                        ) == msg_data.get("tool_use_id"):
                                             # Check if this was a test command
                                             tool_name = block.get("name", "")
                                             if tool_name == "Bash":
@@ -642,18 +648,33 @@ class PowerSteeringChecker:
                                                     "python -m pytest",
                                                     "python -m unittest",
                                                 ]
-                                                if any(pattern in command for pattern in test_patterns):
+                                                if any(
+                                                    pattern in command for pattern in test_patterns
+                                                ):
                                                     # Check result
                                                     result_content = msg_data.get("content", [])
                                                     if isinstance(result_content, list):
                                                         for result_block in result_content:
                                                             if isinstance(result_block, dict):
-                                                                if result_block.get("type") == "tool_result":
+                                                                if (
+                                                                    result_block.get("type")
+                                                                    == "tool_result"
+                                                                ):
                                                                     # Check if tests passed
-                                                                    output = str(result_block.get("content", ""))
-                                                                    if "PASSED" in output or "passed" in output:
+                                                                    output = str(
+                                                                        result_block.get(
+                                                                            "content", ""
+                                                                        )
+                                                                    )
+                                                                    if (
+                                                                        "PASSED" in output
+                                                                        or "passed" in output
+                                                                    ):
                                                                         return True
-                                                                    if "OK" in output and "FAILED" not in output:
+                                                                    if (
+                                                                        "OK" in output
+                                                                        and "FAILED" not in output
+                                                                    ):
                                                                         return True
 
         # No tests found or tests failed
@@ -689,15 +710,23 @@ class PowerSteeringChecker:
                                 text = str(block.get("text", ""))
                                 if any(
                                     keyword in text.lower()
-                                    for keyword in ["ci", "github actions", "continuous integration"]
+                                    for keyword in [
+                                        "ci",
+                                        "github actions",
+                                        "continuous integration",
+                                    ]
                                 ):
                                     ci_mentioned = True
                                     # Check for passing/failing
                                     if any(
-                                        keyword in text.lower() for keyword in ["passing", "success", "mergeable"]
+                                        keyword in text.lower()
+                                        for keyword in ["passing", "success", "mergeable"]
                                     ):
                                         ci_passing = True
-                                    if any(keyword in text.lower() for keyword in ["failing", "failed", "error"]):
+                                    if any(
+                                        keyword in text.lower()
+                                        for keyword in ["failing", "failed", "error"]
+                                    ):
                                         return False
 
         # If CI not mentioned, consider satisfied (not applicable)
@@ -742,7 +771,9 @@ class PowerSteeringChecker:
 
         return "\n".join(prompt_parts)
 
-    def _generate_summary(self, transcript: List[Dict], analysis: ConsiderationAnalysis, session_id: str) -> str:
+    def _generate_summary(
+        self, transcript: List[Dict], analysis: ConsiderationAnalysis, session_id: str
+    ) -> str:
         """Generate session summary for successful completion.
 
         Args:
@@ -813,7 +844,9 @@ class PowerSteeringChecker:
 # ============================================================================
 
 
-def check_session(transcript_path: Path, session_id: str, project_root: Optional[Path] = None) -> PowerSteeringResult:
+def check_session(
+    transcript_path: Path, session_id: str, project_root: Optional[Path] = None
+) -> PowerSteeringResult:
     """Convenience function to check session completeness.
 
     Args:

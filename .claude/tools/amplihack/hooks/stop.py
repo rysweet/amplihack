@@ -94,6 +94,7 @@ class StopHook(HookProcessor):
 
                 if transcript_path_str:
                     from pathlib import Path
+
                     transcript_path = Path(transcript_path_str)
                     session_id = self._get_current_session_id()
 
@@ -106,16 +107,15 @@ class StopHook(HookProcessor):
                         self.log("=== STOP HOOK ENDED (decision: block - power-steering) ===")
                         return {
                             "decision": "block",
-                            "reason": ps_result.continuation_prompt or "Session appears incomplete"
+                            "reason": ps_result.continuation_prompt or "Session appears incomplete",
                         }
-                    else:
-                        self.log(f"Power-steering approved stop: {ps_result.reasons}")
-                        self.save_metric("power_steering_approves", 1)
+                    self.log(f"Power-steering approved stop: {ps_result.reasons}")
+                    self.save_metric("power_steering_approves", 1)
 
-                        # Display summary if available
-                        if ps_result.summary:
-                            self.log("Power-steering summary generated")
-                            # Summary is saved to file by checker
+                    # Display summary if available
+                    if ps_result.summary:
+                        self.log("Power-steering summary generated")
+                        # Summary is saved to file by checker
 
             except Exception as e:
                 # Fail-open: Continue to normal flow on any error
@@ -228,8 +228,8 @@ class StopHook(HookProcessor):
             self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
 
             # Initialize components with credentials from environment
-            # Note: Connection tracker will raise ValueError if password not set and
-            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.  # pragma: allowlist secret
+            # Note: Connection tracker will raise ValueError if password not set and  # pragma: allowlist secret
+            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.
             tracker = Neo4jConnectionTracker(
                 username=os.getenv("NEO4J_USERNAME"), password=os.getenv("NEO4J_PASSWORD")
             )
@@ -306,7 +306,9 @@ class StopHook(HookProcessor):
             return False
 
         # Load power-steering config
-        config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        config_path = (
+            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
         if not config_path.exists():
             self.log("Power-steering config not found - skipping", "DEBUG")
             return False
