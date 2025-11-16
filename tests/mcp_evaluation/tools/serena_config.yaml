@@ -1,0 +1,215 @@
+# Serena MCP Server Tool Configuration
+# Version: 1.0.0
+# Purpose: Configuration for evaluating Serena MCP server integration with amplihack
+
+# Tool Identity
+tool_id: serena
+tool_name: "Serena MCP Server"
+version: "1.0.0"
+description: "LSP-powered code intelligence for Python, TypeScript, and Go with symbol navigation, hover documentation, and semantic search"
+
+# Tool Capabilities
+capabilities:
+  - id: symbol_navigation
+    name: "Symbol Navigation"
+    description: "Jump to definitions, find references, locate symbols across files using LSP"
+    relevant_scenarios:
+      - NAVIGATION
+      - ANALYSIS
+    expected_improvement: both
+    mcp_commands:
+      - "serena/find_symbol"
+      - "serena/goto_definition"
+      - "serena/find_references"
+      - "serena/list_symbols"
+
+  - id: hover_documentation
+    name: "Hover Documentation"
+    description: "Get inline documentation, type information, and function signatures"
+    relevant_scenarios:
+      - ANALYSIS
+    expected_improvement: more_accurate
+    mcp_commands:
+      - "serena/hover"
+      - "serena/get_signature"
+      - "serena/get_documentation"
+
+  - id: semantic_search
+    name: "Semantic Search"
+    description: "Find code by meaning and intent, not just text matching"
+    relevant_scenarios:
+      - NAVIGATION
+      - ANALYSIS
+    expected_improvement: both
+    mcp_commands:
+      - "serena/semantic_search"
+      - "serena/find_similar"
+
+  - id: code_completion
+    name: "Code Completion"
+    description: "Context-aware code completion suggestions based on LSP"
+    relevant_scenarios:
+      - MODIFICATION
+    expected_improvement: faster
+    mcp_commands:
+      - "serena/complete"
+      - "serena/suggest"
+
+  - id: diagnostics
+    name: "Real-time Diagnostics"
+    description: "Syntax errors, type errors, and linting issues from LSP"
+    relevant_scenarios:
+      - ANALYSIS
+      - MODIFICATION
+    expected_improvement: more_accurate
+    mcp_commands:
+      - "serena/diagnostics"
+      - "serena/get_errors"
+      - "serena/get_warnings"
+
+# Integration Details
+adapter_class: "SerenaToolAdapter"
+setup_required: true
+setup_instructions: |
+  1. Install Serena MCP server (if not already installed):
+     npm install -g serena-mcp
+
+  2. Start Serena server:
+     serena-mcp start --port 8080
+
+  3. Verify server is running:
+     curl http://localhost:8080/health
+
+  4. Optional: Configure language servers (done automatically for Python/TypeScript/Go)
+
+health_check_url: "http://localhost:8080/health"
+
+environment_variables:
+  SERENA_MCP_URL: "http://localhost:8080"
+  SERENA_MCP_ENABLED: "1"
+  SERENA_TIMEOUT_MS: "30000"
+
+# Expected Advantages by Scenario Category
+expected_advantages:
+  NAVIGATION:
+    - "Find symbols across files without text-based false positives"
+    - "Jump to definitions instantly without grep or manual file traversal"
+    - "Locate all references to functions/classes/variables across codebase"
+    - "Semantic search finds code by intent, not just keyword matching"
+    - "List all symbols in a file or workspace for quick navigation"
+
+  ANALYSIS:
+    - "Accurate type information directly from LSP, not inference"
+    - "Complete dependency graphs including transitive dependencies"
+    - "Inline documentation without reading source files"
+    - "Real-time diagnostics catch errors before execution"
+    - "Hover info provides context without file reads"
+    - "Function signatures show parameter types and return values"
+
+  MODIFICATION:
+    - "Context-aware edit suggestions based on actual types"
+    - "Code completion reduces boilerplate writing time"
+    - "Error detection prevents invalid edits before committing"
+    - "Type-aware suggestions prevent type errors"
+    - "LSP-based validation ensures modifications compile"
+
+# Evaluation Configuration
+baseline_comparison_mode: "with_vs_without"
+
+# Optional Constraints
+max_concurrent_calls: 10
+timeout_seconds: 30
+fallback_behavior: baseline
+
+# Tool-Specific Notes
+notes: |
+  - Serena requires workspace indexing on first use (10-30 seconds for typical projects)
+  - LSP features work best with compiled languages (TypeScript, Go) vs dynamic (Python)
+  - Semantic search requires code embeddings (generated on first use)
+  - Tool gracefully degrades to baseline grep/read if LSP unavailable
+
+# Known Limitations
+limitations:
+  - "Initial indexing time for large codebases (>10k files)"
+  - "Memory usage scales with codebase size"
+  - "Python type hints required for accurate type information"
+  - "Requires language server installation for each language"
+
+# Expected Performance Characteristics
+performance:
+  symbol_navigation:
+    expected_speedup: "60-80%"
+    expected_accuracy: "+15-25%"
+    rationale: "Direct LSP symbol lookup vs text search"
+
+  hover_documentation:
+    expected_speedup: "40-60%"
+    expected_accuracy: "+20-30%"
+    rationale: "LSP provides authoritative docs vs parsing files"
+
+  semantic_search:
+    expected_speedup: "50-70%"
+    expected_accuracy: "+30-40%"
+    rationale: "Meaning-based search vs keyword matching"
+
+  diagnostics:
+    expected_speedup: "N/A"
+    expected_accuracy: "+40-50%"
+    rationale: "Catches errors baseline approach misses"
+
+# Supported Languages
+supported_languages:
+  - language: python
+    lsp_server: "pyright"
+    features: ["all"]
+    quality: "high"
+
+  - language: typescript
+    lsp_server: "tsserver"
+    features: ["all"]
+    quality: "high"
+
+  - language: javascript
+    lsp_server: "tsserver"
+    features: ["all"]
+    quality: "high"
+
+  - language: go
+    lsp_server: "gopls"
+    features: ["all"]
+    quality: "high"
+
+# Test Codebase Requirements
+test_codebase_requirements:
+  min_files: 20
+  min_lines: 1000
+  languages: ["python"]  # Start with Python for initial evaluation
+  must_have:
+    - "Multiple modules with imports"
+    - "Class definitions with methods"
+    - "Function definitions with parameters"
+    - "Interface/abstract base class implementations"
+  nice_to_have:
+    - "Type hints (Python)"
+    - "Documentation strings"
+    - "Test files"
+
+# Evaluation Success Criteria
+success_criteria:
+  integrate_threshold:
+    symbol_navigation_speedup: ">50%"
+    hover_accuracy_improvement: ">15%"
+    overall_time_savings: ">40%"
+    false_positive_reduction: ">80%"
+
+  must_demonstrate:
+    - "Faster symbol location than grep"
+    - "Zero false positives in symbol search"
+    - "Accurate type information from LSP"
+    - "Graceful degradation when LSP unavailable"
+
+  dealbreakers:
+    - "Setup time >5 minutes"
+    - "Server crashes during evaluation"
+    - "Memory usage >2GB for test codebase"
+    - "Slower than baseline in any scenario"
