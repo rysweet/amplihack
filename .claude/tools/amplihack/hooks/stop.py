@@ -169,7 +169,7 @@ class StopHook(HookProcessor):
         Executes Neo4j shutdown coordination if appropriate.
         Fail-safe: Never raises exceptions.
 
-        Note: Sets AMPLIHACK_AUTO_MODE=true to prevent interactive prompts during exit.
+        Note: Sets AMPLIHACK_AUTO_MODE=1 to prevent interactive prompts during exit.
         This prevents the Neo4j container selection dialog from appearing after /exit.
         See: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1353
         """
@@ -177,7 +177,7 @@ class StopHook(HookProcessor):
             # CRITICAL: Set auto mode to prevent interactive prompts during session exit
             # Save original value to restore later (for nested contexts)
             original_auto_mode = os.getenv("AMPLIHACK_AUTO_MODE")
-            os.environ["AMPLIHACK_AUTO_MODE"] = "true"
+            os.environ["AMPLIHACK_AUTO_MODE"] = "1"
 
             try:
                 # Import components
@@ -185,8 +185,8 @@ class StopHook(HookProcessor):
                 from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
                 from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
 
-                # Detect auto mode (should always be true now)
-                auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "false").lower() == "true"
+                # Detect auto mode (should always be 1 now)
+                auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "0").lower() == "1"
 
                 self.log(
                     f"Neo4j cleanup handler started (auto_mode={auto_mode}, exit_context=true)"
