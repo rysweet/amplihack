@@ -12,6 +12,7 @@ Use this checklist when reviewing code for philosophy alignment.
 ## Ruthless Simplicity
 
 ### Code Complexity
+
 - [ ] Each function has single, clear purpose
 - [ ] Functions are easy to understand in one read
 - [ ] No excessive nesting or branching
@@ -19,6 +20,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] No unnecessary helper functions
 
 ### Abstractions
+
 - [ ] No unnecessary base classes or inheritance
 - [ ] No factory patterns for single implementation
 - [ ] No generic frameworks built for hypothetical needs
@@ -26,12 +28,14 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Interfaces justified by actual use
 
 ### Parameters and Configuration
+
 - [ ] Functions aren't over-parameterized (< 5 params)
 - [ ] No configuration objects when simple args work
 - [ ] Default values provided where sensible
 - [ ] No boolean flags creating code paths
 
 ### Names and Clarity
+
 - [ ] Variable names are self-documenting
 - [ ] Function names describe what they do
 - [ ] Class names describe responsibility
@@ -39,6 +43,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Comments explain WHY, not WHAT
 
 ### Future-Proofing
+
 - [ ] No "we might need this someday" code
 - [ ] Features aren't speculative
 - [ ] Current needs met, not hypothetical ones
@@ -47,6 +52,7 @@ Use this checklist when reviewing code for philosophy alignment.
 ## Modular Architecture (Brick & Studs)
 
 ### Module Responsibility
+
 - [ ] Module has ONE clear responsibility
 - [ ] Module name describes what it does
 - [ ] Responsibilities are explicit
@@ -54,6 +60,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Clear why this module exists
 
 ### Public Interface
+
 - [ ] Exports are clear and minimal
 - [ ] `__all__` defined or obvious
 - [ ] Public functions documented
@@ -61,6 +68,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] No private functions in public interface
 
 ### Internal Organization
+
 - [ ] Internal utilities isolated
 - [ ] Internal modules prefixed with underscore
 - [ ] Clear separation of concerns
@@ -68,6 +76,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] No internal details leaked outside
 
 ### Dependencies
+
 - [ ] All external dependencies listed
 - [ ] All internal dependencies explicit
 - [ ] No circular dependencies
@@ -75,6 +84,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Version constraints specified
 
 ### Module Structure
+
 - [ ] Files organized logically
 - [ ] Tests co-located with module
 - [ ] Examples provided
@@ -84,6 +94,7 @@ Use this checklist when reviewing code for philosophy alignment.
 ## Zero-BS Implementation
 
 ### Code Completeness
+
 - [ ] No TODO comments in code
 - [ ] No FIXME or HACK comments (except in issues)
 - [ ] No NotImplementedError (except abstract classes)
@@ -91,6 +102,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] All functions fully implemented
 
 ### Production Readiness
+
 - [ ] No mock or test data in production code
 - [ ] No commented-out code blocks
 - [ ] No dead code or unused imports
@@ -98,6 +110,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] No logging from every function
 
 ### Error Handling
+
 - [ ] Errors explicitly handled
 - [ ] No swallowed exceptions
 - [ ] No silent failures
@@ -105,6 +118,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Exception type is specific (not just Exception)
 
 ### Visibility
+
 - [ ] Errors are visible during development
 - [ ] Problems don't hide until production
 - [ ] Debugging information available
@@ -114,6 +128,7 @@ Use this checklist when reviewing code for philosophy alignment.
 ## Test Coverage
 
 ### Public Interface Testing
+
 - [ ] Public functions have tests
 - [ ] Test happy path (expected behavior)
 - [ ] Test error cases (raises correct exceptions)
@@ -121,6 +136,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Test empty/null inputs
 
 ### Edge Cases
+
 - [ ] Empty lists/strings tested
 - [ ] None/null values tested
 - [ ] Max/min values tested
@@ -128,18 +144,21 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Invalid input tested
 
 ### Error Paths
+
 - [ ] Each raised exception tested
 - [ ] Error messages verified
 - [ ] Exception type verified
 - [ ] Context preserved (not just Exception)
 
 ### Contract Verification
+
 - [ ] Return types match documentation
 - [ ] Raised exceptions match documentation
 - [ ] Accepted types match documentation
 - [ ] Documentation matches actual behavior
 
 ### Coverage and Quality
+
 - [ ] Coverage adequate (85%+)
 - [ ] Critical paths fully tested
 - [ ] Tests are independent
@@ -147,6 +166,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Tests document behavior
 
 ### Integration Testing
+
 - [ ] Module connections verified
 - [ ] Dependencies called correctly
 - [ ] Data flows through layers
@@ -155,6 +175,7 @@ Use this checklist when reviewing code for philosophy alignment.
 ## Documentation
 
 ### Docstrings
+
 - [ ] All public functions documented
 - [ ] Clear one-line summary
 - [ ] Args section complete with types
@@ -163,6 +184,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Examples provided for complex functions
 
 ### Type Hints
+
 - [ ] Type hints present
 - [ ] Types are accurate
 - [ ] Return types specified
@@ -170,12 +192,14 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Avoid `Any` unless necessary
 
 ### Comments
+
 - [ ] Comments explain WHY, not WHAT
 - [ ] Complex logic is explained
 - [ ] Non-obvious decisions noted
 - [ ] Links to related issues/docs
 
 ### Module Documentation
+
 - [ ] Module purpose clear
 - [ ] Public interface documented
 - [ ] Dependencies listed
@@ -183,6 +207,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] For new modules: spec created in Specs/
 
 ### README Updates
+
 - [ ] Module README updated if needed
 - [ ] New features documented
 - [ ] Breaking changes noted
@@ -192,6 +217,7 @@ Use this checklist when reviewing code for philosophy alignment.
 ## New Modules (Additional Checks)
 
 ### Module Specification
+
 - [ ] Specs/module-name.md created
 - [ ] Purpose section complete
 - [ ] Public interface documented
@@ -200,6 +226,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Example usage included
 
 ### Brick Design
+
 - [ ] Module is regeneratable from spec
 - [ ] Public contracts (studs) defined
 - [ ] Module boundaries clear
@@ -207,8 +234,9 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Can be rebuilt independently
 
 ### Structure
+
 - [ ] Consistent with existing modules
-- [ ] __init__.py exports clear
+- [ ] **init**.py exports clear
 - [ ] core.py has main logic
 - [ ] models.py for data structures
 - [ ] utils.py for internal utilities
@@ -217,6 +245,7 @@ Use this checklist when reviewing code for philosophy alignment.
 ## Refactoring Changes (Additional Checks)
 
 ### No Regressions
+
 - [ ] Tests still pass
 - [ ] No public interface changes
 - [ ] Behavior unchanged
@@ -224,6 +253,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Error handling preserved
 
 ### Simplification
+
 - [ ] Complexity reduced
 - [ ] Clarity improved
 - [ ] Lines of code decreased
@@ -231,6 +261,7 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] Maintenance easier
 
 ### Cleanup
+
 - [ ] Dead code removed
 - [ ] Unused imports removed
 - [ ] No new technical debt
@@ -247,6 +278,7 @@ Use this checklist when reviewing code for philosophy alignment.
 ## Review Decision
 
 ### Ready to Merge
+
 - [ ] Ruthless Simplicity: ✓ PASS
 - [ ] Modular Architecture: ✓ PASS
 - [ ] Zero-BS Implementation: ✓ PASS
@@ -255,12 +287,15 @@ Use this checklist when reviewing code for philosophy alignment.
 - [ ] No blocking issues remaining
 
 ### Needs Improvements
+
 List specific issues to address:
+
 1. [ ] Issue 1
 2. [ ] Issue 2
 3. [ ] Issue 3
 
 ### Conditional Approval
+
 - [ ] Approve with changes needed (non-blocking)
 - [ ] Changes needed before merge (blocking)
 - [ ] Specific items required
@@ -277,6 +312,7 @@ List specific issues to address:
 ## Learning Points
 
 After this review, document:
+
 - [ ] What pattern did we see?
 - [ ] What principle was violated?
 - [ ] How do we prevent this?
@@ -296,6 +332,7 @@ Space for specific findings and observations:
 ## Quick Reference: Common Issues
 
 ### Over-Engineering
+
 - [ ] Unnecessary abstraction layers
 - [ ] Premature optimization
 - [ ] Configuration complexity
@@ -303,12 +340,14 @@ Space for specific findings and observations:
 - [ ] Feature flags for non-existent features
 
 ### Missing Tests
+
 - [ ] New public functions untested
 - [ ] Edge cases uncovered
 - [ ] Error paths not tested
 - [ ] Coverage below 85%
 
 ### Zero-BS Violations
+
 - [ ] TODO comments
 - [ ] Swallowed exceptions
 - [ ] Silent failures (None returns)
@@ -316,6 +355,7 @@ Space for specific findings and observations:
 - [ ] Dead code
 
 ### Module Issues
+
 - [ ] No specification document
 - [ ] Unclear public interface
 - [ ] Circular dependencies
@@ -323,6 +363,7 @@ Space for specific findings and observations:
 - [ ] Unclear what's public vs private
 
 ### Documentation Gaps
+
 - [ ] Missing docstrings
 - [ ] No type hints
 - [ ] Examples missing

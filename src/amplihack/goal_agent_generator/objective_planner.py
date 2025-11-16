@@ -7,7 +7,7 @@ Creates structured 3-5 phase plans with dependencies and parallel opportunities.
 import uuid
 from typing import List, Tuple
 
-from .models import GoalDefinition, ExecutionPlan, PlanPhase
+from .models import ExecutionPlan, GoalDefinition, PlanPhase
 
 
 class ObjectivePlanner:

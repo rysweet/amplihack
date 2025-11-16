@@ -389,5 +389,5 @@ class RepositoryCreator:
             return result.returncode == 0
 
         except Exception as e:
-            logger.debug(f"Git verification failed for {directory}: {e}")
+            logger.debug(f"Git verification failed for {repository}: {e}")
             return False

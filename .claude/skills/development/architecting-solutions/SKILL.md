@@ -17,6 +17,7 @@ You are activating the architectural design capability. Your role is to analyze 
 ## When to Activate
 
 This skill activates when:
+
 - User asks "how should I..." or "what's the best way to..."
 - Design discussions about system architecture
 - Breaking down complex features into components
@@ -31,6 +32,7 @@ This skill activates when:
 Start with: "Let me analyze this problem and design the solution."
 
 Provide:
+
 - **Problem Decomposition**: Break into manageable pieces
 - **Core Requirements**: What must the solution accomplish?
 - **Constraints**: Technical, performance, maintainability limits
@@ -39,6 +41,7 @@ Provide:
 ### 2. Solution Options
 
 Present 2-3 approaches with:
+
 - **Description**: Clear explanation of approach
 - **Pros**: Advantages and strengths
 - **Cons**: Limitations and tradeoffs
@@ -48,6 +51,7 @@ Present 2-3 approaches with:
 ### 3. Recommendation
 
 Provide clear choice with:
+
 - **Selected Approach**: Which option and why
 - **Justification**: Reasoning based on requirements/constraints
 - **Risk Assessment**: Potential issues and mitigation
@@ -61,23 +65,28 @@ For each component, create specifications following this template:
 ## Module: [Name]
 
 ### Purpose
+
 [Single clear responsibility - one sentence]
 
 ### Contract
+
 - **Inputs**: [Types, constraints, validation]
 - **Outputs**: [Types, guarantees, error cases]
 - **Side Effects**: [External interactions, state changes]
 
 ### Dependencies
+
 - [Required modules/libraries with versions]
 - [External services/APIs]
 
 ### Implementation Notes
+
 - [Key design decisions]
 - [Important patterns to follow]
 - [Things to avoid]
 
 ### Test Requirements
+
 - [Critical behaviors to verify]
 - [Edge cases to cover]
 - [Integration points to test]
@@ -115,23 +124,27 @@ Ask these questions in order:
 ## Module Design Principles
 
 ### Single Responsibility
+
 - One clear purpose per module
 - Easy to describe in one sentence
 - Changes for one reason only
 
 ### Clear Contracts
+
 - Explicit inputs and outputs
 - Document side effects
 - Define error conditions
 - Specify performance characteristics
 
 ### Self-Contained
+
 - All module code in one directory
 - Internal implementation details hidden
 - Minimal dependencies
 - Can be understood in isolation
 
 ### Regeneratable
+
 - Specification is source of truth
 - Can be rebuilt from scratch
 - No hidden tribal knowledge
@@ -140,16 +153,19 @@ Ask these questions in order:
 ## Integration Points
 
 ### Invokes
+
 - **Architect Agent**: Core architectural reasoning from `.claude/agents/architect.md`
 - **Module Templates**: Reference `Templates/ModuleSpec.md` for detailed specifications
 - **Design Patterns**: Reference `Specs/DesignPatterns.md` for common solutions
 
 ### Escalates To
+
 - **/ultrathink**: For extremely complex architectural decisions requiring deep analysis
 - **/consensus**: When multiple valid approaches exist and team input is needed
 - **Builder Agent**: Once design is complete, hand off specifications for implementation
 
 ### References
+
 - **Architecture Documentation**: `Specs/Architecture.md`
 - **Brick Philosophy**: `Specs/BrickPhilosophy.md`
 - **Module Examples**: `Examples/WellDesignedModules/`
@@ -170,6 +186,7 @@ Before finalizing design, verify:
 ## Common Patterns
 
 ### When to Use
+
 - **Layered Architecture**: Clear separation of concerns (UI, business logic, data)
 - **Pipeline Pattern**: Sequential data transformation steps
 - **Plugin Architecture**: Extensible systems with unknown future requirements
@@ -177,6 +194,7 @@ Before finalizing design, verify:
 - **Repository Pattern**: Abstract data access from business logic
 
 ### When NOT to Use
+
 - **Microservices**: Unless you have team/scaling issues (start monolith)
 - **Event Sourcing**: Unless audit trail is core requirement
 - **Complex Abstractions**: Unless pattern repeats 3+ times
@@ -261,6 +279,7 @@ Always structure your architectural analysis as:
 ## Success Criteria
 
 Good architectural design:
+
 - Can be explained in simple terms
 - Makes tradeoffs explicit
 - Provides clear implementation path

@@ -451,7 +451,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         copy_strategy = strategy_manager.determine_target(
             original_target=os.path.join(original_cwd, ".claude"),
             has_conflicts=conflict_result.has_conflicts,
-            conflicting_files=conflict_result.conflicting_files
+            conflicting_files=conflict_result.conflicting_files,
         )
 
         temp_claude_dir = str(copy_strategy.target_dir)
@@ -479,12 +479,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Smart PROJECT.md initialization for UVX mode
         if copied:
             try:
-                from .utils.project_initializer import initialize_project_md, InitMode
+                from pathlib import Path as PathLib
 
-                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
+                from .utils.project_initializer import InitMode, initialize_project_md
+
+                result = initialize_project_md(PathLib(original_cwd), mode=InitMode.FORCE)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
+                        print(
+                            f"PROJECT.md {result.action_taken.value} for {PathLib(original_cwd).name}"
+                        )
             except Exception as e:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")
@@ -707,8 +711,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "new":
-        from .goal_agent_generator.cli import new_goal_agent
         from pathlib import Path
+
+        from .goal_agent_generator.cli import new_goal_agent
 
         # Convert string paths to Path objects
         file_path = Path(args.file)

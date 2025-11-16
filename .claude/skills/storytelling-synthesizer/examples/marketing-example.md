@@ -5,6 +5,7 @@
 **Technical Achievement**: Redesigned API with intelligent defaults, reducing complexity from 200+ parameters to 10 for 90% of use cases
 
 **Metrics**:
+
 - Integration time: 3 days → 3 hours (20x faster)
 - Support tickets: -60%
 - Customer onboarding: 2 weeks → 1 day
@@ -21,6 +22,7 @@
 **Sub-headline**: "The API that doesn't punish you for being smart"
 
 **Why this works**:
+
 - Leads with outcome (time saved)
 - Customer-focused (what matters to them)
 - Slightly provocative (doesn't punish you = your current API does)
@@ -36,6 +38,7 @@ Every minute your team spends understanding the API is a minute not spent buildi
 This wasn't intentional. Power requires flexibility. But we asked ourselves: what if flexibility could be simple? What if smart defaults meant you never needed those 200 parameters?"
 
 **Why this works**:
+
 - Acknowledges existing product strength (powerful)
 - Articulates the real cost (40% of time wasted)
 - Frames the problem as frustration (cryptic errors)
@@ -68,6 +71,7 @@ Day 2 arrives. You finally have something working. But you push to production an
 A 2-day integration project became a week. Your deployment is complicated. Every parameter change feels risky."
 
 **Why this works**:
+
 - Relatable story (most developers have lived this)
 - Specific details (200 parameters, cryptic errors)
 - Emotional resonance (2am page, frustration)
@@ -101,6 +105,7 @@ By Tuesday morning, you're deploying to production. Everything works. No midnigh
 If you ever need advanced features, they're there. But you don't need them for 90% of use cases. The API grows with you—simple when you need simple, powerful when you need power."
 
 **Why this works**:
+
 - Direct contrast with before (same project, different outcome)
 - Shows simplicity in action (10 lines of code)
 - Removes pain points (no errors, no 2am pages)
@@ -133,6 +138,7 @@ If you ever need advanced features, they're there. But you don't need them for 9
 — Lisa Park, CMO at TechWorks
 
 **Why this works**:
+
 - Specific numbers (not vague "much better")
 - Multiple perspectives (CTO, engineers, business)
 - Different value propositions (speed, happiness, cost, retention, growth)
@@ -159,15 +165,18 @@ Our approach: "By default, you get what you need. Advanced options are there if 
 **Company Logos**: [Customers using new API]
 
 **Media Mentions**:
+
 - "Easiest API to integrate with" - DevTools Weekly
 - "Finally, an API that respects developers' time" - Hacker News (847 upvotes)
 
 **Developer Community Stats**:
+
 - 25,000+ developers
 - 4.6/5 avg rating (up from 3.2/5)
 - Recommended by 87% of users (vs 61% before)
 
 **Testimonials by Role**:
+
 - **CTOs**: "Reduced our onboarding time and cost"
 - **Developers**: "Actually pleasant to use"
 - **DevOps**: "Simple integrations mean fewer support tickets"
@@ -177,12 +186,14 @@ Our approach: "By default, you get what you need. Advanced options are there if 
 ### GETTING STARTED: CLEAR CTA
 
 **Primary CTA**: "Try It Free for 30 Days"
+
 - No credit card required
 - No sales call required
 - Full feature access
 - Take 6 hours to integrate, see for yourself
 
 **Secondary CTAs**:
+
 - Read the 10-minute quick-start
 - See code examples
 - Watch 5-minute demo
@@ -193,17 +204,20 @@ Our approach: "By default, you get what you need. Advanced options are there if 
 ### TIERED MESSAGING FOR DIFFERENT AUDIENCES
 
 #### For Developers
+
 **Message**: "An API you'll actually enjoy using"
 **Proof**: Code examples, quick-start, honest docs
 **CTA**: "Try free for 30 days"
 
 #### For Engineering Managers
+
 **Message**: "Reduce integration time by 90%"
 **Proof**: "75% faster than competitors, 60% fewer support tickets"
 **Proof**: ROI calculation (engineering hours saved × hourly cost)
 **CTA**: "See ROI calculator"
 
 #### For Procurement/Finance
+
 **Message**: "Lower TCO through faster onboarding"
 **Proof**: "6 hours to integrate vs 40 hours competitor average"
 **Proof**: "Saves $15k in engineer time per customer"
@@ -211,6 +225,7 @@ Our approach: "By default, you get what you need. Advanced options are there if 
 **CTA**: "Get pricing"
 
 #### For Product Leads
+
 **Message**: "Your customers will thank you"
 **Proof**: "Customer satisfaction: 2.8/5 → 4.6/5"
 **Proof**: "Recommendations: 61% → 87%"
@@ -248,6 +263,7 @@ If your current API integration is taking days or weeks, that's not normal. It s
 Most developers can go from "hello world" to fully integrated in about 6 hours with our simplified API. Seriously.
 
 Here's what changed:
+
 - 90% of use cases need just 10 parameters (not 200)
 - Smart defaults mean less thinking
 - Clear error messages mean less debugging
@@ -313,6 +329,7 @@ Us vs. Competitors (not names, just features)
 ### SUCCESS METRICS FOR THIS MESSAGING
 
 If this messaging is working:
+
 - ✅ 40% of landing page visitors complete free trial
 - ✅ 85% of trial users integrate successfully (vs 60% with old API)
 - ✅ 65% of trial users convert to paid (vs 35% before)
@@ -340,6 +357,7 @@ If this messaging is working:
 ## BOTTOM LINE
 
 This messaging transforms a technical achievement (API simplification) into customer value:
+
 - **Speed**: 20x faster integration
 - **Simplicity**: 90% of cases with 10 parameters instead of 200
 - **Reliability**: Works out of the box, no cryptic errors

@@ -74,7 +74,9 @@ class TestIngestionTracker:
         for i in range(1, 5):
             assert results[i].is_update()
             assert results[i].ingestion_metadata.ingestion_counter == i + 1
-            assert results[i].previous_ingestion_id == results[i - 1].ingestion_metadata.ingestion_id
+            assert (
+                results[i].previous_ingestion_id == results[i - 1].ingestion_metadata.ingestion_id
+            )
 
     def test_track_ingestion_invalid_path(self, neo4j_driver: Driver):
         """Test error handling for invalid path."""
@@ -106,7 +108,9 @@ class TestIngestionTracker:
         assert result.status == IngestionStatus.NEW
         assert result.ingestion_metadata.metadata == custom_metadata
 
-    def test_track_manual_ingestion_new(self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity):
+    def test_track_manual_ingestion_new(
+        self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity
+    ):
         """Test tracking manual ingestion for new codebase."""
         tracker = IngestionTracker(neo4j_driver)
 
@@ -116,7 +120,9 @@ class TestIngestionTracker:
         assert result.is_new()
         assert result.ingestion_metadata.ingestion_counter == 1
 
-    def test_track_manual_ingestion_update(self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity):
+    def test_track_manual_ingestion_update(
+        self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity
+    ):
         """Test tracking manual ingestion for existing codebase."""
         tracker = IngestionTracker(neo4j_driver)
 
@@ -153,7 +159,9 @@ class TestIngestionTracker:
         assert result.status == IngestionStatus.ERROR
         assert result.is_error()
 
-    def test_get_ingestion_history(self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity):
+    def test_get_ingestion_history(
+        self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity
+    ):
         """Test getting ingestion history."""
         tracker = IngestionTracker(neo4j_driver)
 
@@ -185,7 +193,9 @@ class TestIngestionTracker:
 
         assert history == []
 
-    def test_get_codebase_info(self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity):
+    def test_get_codebase_info(
+        self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity
+    ):
         """Test getting codebase information."""
         tracker = IngestionTracker(neo4j_driver)
 
@@ -209,7 +219,9 @@ class TestIngestionTracker:
 
         assert info is None
 
-    def test_get_codebase_info_after_update(self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity):
+    def test_get_codebase_info_after_update(
+        self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity
+    ):
         """Test that codebase info reflects updates."""
         tracker = IngestionTracker(neo4j_driver)
 
@@ -300,10 +312,12 @@ class TestIngestionTracker:
         tracker.close()
 
         # After close, operations should fail
-        with pytest.raises(Exception):
+        with pytest.raises((RuntimeError, ValueError)):
             tracker.get_codebase_info("test-key")
 
-    def test_ingestion_timestamps_are_different(self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity):
+    def test_ingestion_timestamps_are_different(
+        self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity
+    ):
         """Test that multiple ingestions have different timestamps."""
         tracker = IngestionTracker(neo4j_driver)
 
@@ -324,7 +338,9 @@ class TestIngestionTracker:
 
         assert result1.ingestion_metadata.timestamp < result2.ingestion_metadata.timestamp
 
-    def test_ingestion_creates_audit_trail(self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity):
+    def test_ingestion_creates_audit_trail(
+        self, neo4j_driver: Driver, sample_codebase_identity: CodebaseIdentity
+    ):
         """Test that ingestions create a proper audit trail with SUPERSEDED_BY links."""
         tracker = IngestionTracker(neo4j_driver)
 

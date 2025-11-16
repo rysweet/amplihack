@@ -50,6 +50,7 @@ The skill identifies gaps in these areas:
 ### Step 1: Codebase Scanning
 
 The analyzer:
+
 1. Discovers all source code files in specified directory
 2. Identifies all functions, methods, and classes
 3. Maps code structure and dependencies
@@ -58,6 +59,7 @@ The analyzer:
 ### Step 2: Coverage Analysis
 
 For each function/method:
+
 1. Check if tests exist
 2. Calculate line coverage if coverage data available
 3. Identify untested branches and paths
@@ -66,6 +68,7 @@ For each function/method:
 ### Step 3: Gap Identification
 
 Classify gaps by:
+
 1. **Risk Level**: High/Medium/Low based on function complexity and criticality
 2. **Type**: Untested, partial coverage, missing edge cases
 3. **Effort**: Estimate time to write adequate tests
@@ -74,6 +77,7 @@ Classify gaps by:
 ### Step 4: Test Suggestion Generation
 
 For each gap, generate:
+
 1. Specific test case descriptions
 2. Test templates with example code
 3. Edge cases to cover
@@ -83,6 +87,7 @@ For each gap, generate:
 ### Step 5: Prioritization
 
 Organize suggestions by:
+
 1. Risk impact (critical functions first)
 2. Test pyramid distribution
 3. Effort required
@@ -130,6 +135,7 @@ Organize suggestions by:
 ### Test Template Generation
 
 Provides ready-to-use test templates for:
+
 - Unit tests (mocked dependencies)
 - Integration tests (real components)
 - E2E tests (full workflows)
@@ -233,6 +239,7 @@ Recommended order:
 ## Analysis Checklist
 
 ### Coverage Inspection
+
 - [ ] Identify all source files in target directory
 - [ ] Determine current coverage percentage
 - [ ] Find all untested functions
@@ -240,6 +247,7 @@ Recommended order:
 - [ ] Map branch coverage gaps
 
 ### Gap Classification
+
 - [ ] Categorize by risk level (high/med/low)
 - [ ] Estimate effort for each gap
 - [ ] Identify critical path functions
@@ -247,6 +255,7 @@ Recommended order:
 - [ ] Prioritize by impact
 
 ### Test Suggestion Generation
+
 - [ ] Generate unit test templates
 - [ ] Generate integration test templates
 - [ ] Suggest edge cases
@@ -254,6 +263,7 @@ Recommended order:
 - [ ] Include parametrized test examples
 
 ### Report Generation
+
 - [ ] Summary statistics
 - [ ] Gap listing by priority
 - [ ] Test templates for each gap
@@ -268,31 +278,39 @@ Recommended order:
 # Test Gap Analysis Report
 
 ## Summary
+
 - Total functions: N
 - Untested functions: N (X%)
 - Functions < 85%: N (X%)
 - Average coverage: X%
 
 ## Critical Gaps (Must Test)
+
 1. Function name | Type | Priority | Effort
    Suggested tests: [list]
 
 ## Medium Priority Gaps
+
 [Similar structure]
 
 ## Low Priority Gaps
+
 [Similar structure]
 
 ## Testing Pyramid Distribution
+
 Current:
+
 - Unit: X% | Target: 60%
 - Integration: X% | Target: 30%
 - E2E: X% | Target: 10%
 
 ## Test Templates
+
 [Ready-to-use test code]
 
 ## Effort Estimate
+
 - Quick wins: N hours
 - Medium tasks: N hours
 - Complex work: N hours
@@ -302,6 +320,7 @@ Current:
 ## Test Template Examples
 
 ### Unit Test Template
+
 ```python
 def test_function_name_happy_path():
     """Test function with valid inputs."""
@@ -317,6 +336,7 @@ def test_function_name_happy_path():
 ```
 
 ### Error Case Template
+
 ```python
 def test_function_name_invalid_input():
     """Test function raises ValueError on invalid input."""
@@ -325,6 +345,7 @@ def test_function_name_invalid_input():
 ```
 
 ### Edge Case Template
+
 ```python
 def test_function_name_edge_case():
     """Test function handles edge case correctly."""
@@ -334,6 +355,7 @@ def test_function_name_edge_case():
 ```
 
 ### Integration Test Template
+
 ```python
 def test_user_service_with_database(test_db):
     """Test user service with real database."""
@@ -345,18 +367,21 @@ def test_user_service_with_database(test_db):
 ## Philosophy Alignment
 
 ### Ruthless Simplicity
+
 - Focus on essential tests, not comprehensive coverage
 - 85% coverage is sufficient (diminishing returns beyond)
 - Avoid testing implementation details
 - Test behavior, not code structure
 
 ### Zero-BS Implementation
+
 - All test templates work out of the box
 - No placeholder tests or TODO comments
 - Tests provide real value
 - Edge cases are specific, not generic
 
 ### Testing Pyramid
+
 - Prioritize unit tests (fast, isolated)
 - Add integration tests (verify contracts)
 - Minimal E2E tests (verify user flows)
@@ -365,12 +390,14 @@ def test_user_service_with_database(test_db):
 ## Integration with Other Skills
 
 ### Works With
+
 - **code-quality-analyzer**: Identifies complexity
 - **module-spec-generator**: Aligns tests with specs
 - **refactor-advisor**: Plans test changes
 - **type-safety-checker**: Tests type contracts
 
 ### Feeds Into
+
 - **CI Validation**: Ensures tests pass before merge
 - **Documentation**: Demonstrates module usage
 - **Regression Prevention**: Protects against regressions
@@ -378,6 +405,7 @@ def test_user_service_with_database(test_db):
 ## Common Patterns
 
 ### Pattern 1: Fast Gap Discovery
+
 ```
 User: Quick test coverage review of api/
 
@@ -389,6 +417,7 @@ Claude:
 ```
 
 ### Pattern 2: Systematic Coverage Improvement
+
 ```
 User: Plan test coverage improvement from 60% to 85%
 
@@ -401,6 +430,7 @@ Claude:
 ```
 
 ### Pattern 3: New Module Test Planning
+
 ```
 User: Generate complete test plan for new auth module
 
@@ -428,23 +458,29 @@ After analysis, verify:
 ## Common Pitfalls to Avoid
 
 ### ❌ Over-Testing Implementation
+
 Test behavior, not how the code works. Details can change.
 
 ### ❌ Generic Edge Cases
+
 Be specific: "Test empty string" not "Test edge cases"
 
 ### ❌ Ignoring Integration
+
 Don't just test functions in isolation. Test how they work together.
 
 ### ❌ Missing Error Paths
+
 Every error condition should have at least one test.
 
 ### ❌ Untested Dependencies
+
 Mock external systems, but test the integration points.
 
 ## Success Criteria
 
 A good test gap analysis:
+
 - [ ] Identifies all untested functions
 - [ ] Prioritizes by risk and impact
 - [ ] Provides ready-to-use test templates
@@ -491,6 +527,7 @@ Claude: Analyze test gaps in my TypeScript project
 ## Real-World Example
 
 ### Before Analysis
+
 ```
 Project Stats:
 - 156 functions
@@ -500,6 +537,7 @@ Project Stats:
 ```
 
 ### After Analysis
+
 ```
 Gap Report:
 - 24 untested functions (15%)
@@ -535,6 +573,7 @@ After gap analysis:
 ## Success Metrics
 
 Effective test gap analysis results in:
+
 - Clear picture of coverage status
 - Actionable improvement plan
 - 85%+ test coverage achieved

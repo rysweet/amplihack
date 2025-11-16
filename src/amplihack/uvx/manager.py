@@ -118,8 +118,7 @@ class UVXManager:
             return False
 
         logger.debug(
-            f"UVX --add-dir enabled: framework_path='{framework_path}' "
-            f"(validated and safe to use)"
+            f"UVX --add-dir enabled: framework_path='{framework_path}' (validated and safe to use)"
         )
         return True
 

@@ -31,11 +31,7 @@ class TestGetContainerPorts:
 7687/tcp -> 0.0.0.0:7787
 """
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=mock_output,
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -54,11 +50,7 @@ class TestGetContainerPorts:
 7687/tcp -> [::]:7787
 """
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=mock_output,
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -72,11 +64,7 @@ class TestGetContainerPorts:
 7687/tcp -> [::]:7787
 """
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=mock_output,
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -89,11 +77,7 @@ class TestGetContainerPorts:
 7687/tcp -> 0.0.0.0:9999
 """
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=mock_output,
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -103,9 +87,7 @@ class TestGetContainerPorts:
         """Test container not found (non-zero exit code)."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(
-                returncode=1,
-                stdout="",
-                stderr="Error: No such container: amplihack-neo4j"
+                returncode=1, stdout="", stderr="Error: No such container: amplihack-neo4j"
             )
 
             result = get_container_ports("amplihack-neo4j")
@@ -117,11 +99,7 @@ class TestGetContainerPorts:
         mock_output = """7687/tcp -> 0.0.0.0:7787
 """
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=mock_output,
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -134,11 +112,7 @@ class TestGetContainerPorts:
 no port mappings here
 """
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=mock_output,
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -150,11 +124,7 @@ no port mappings here
 7687/tcp -> 0.0.0.0:notaport
 """
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=mock_output,
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -164,8 +134,7 @@ no port mappings here
         """Test timeout handling."""
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(
-                cmd=["docker", "port", "amplihack-neo4j"],
-                timeout=5
+                cmd=["docker", "port", "amplihack-neo4j"], timeout=5
             )
 
             result = get_container_ports("amplihack-neo4j")
@@ -184,11 +153,7 @@ no port mappings here
     def test_WHEN_empty_output_THEN_returns_none(self):
         """Test handling of empty output."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout="",
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -200,11 +165,7 @@ no port mappings here
   7687/tcp -> 0.0.0.0:7787
 """
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=mock_output,
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=mock_output, stderr="")
 
             result = get_container_ports("amplihack-neo4j")
 
@@ -220,10 +181,7 @@ class TestResolvePortConflictsWithContainer:
             mock_get_ports.return_value = (7787, 7774)  # Matches bolt/http args
 
             bolt, http, messages = resolve_port_conflicts(
-                bolt_port=7787,
-                http_port=7774,
-                password="test_pass",
-                project_root=None
+                bolt_port=7787, http_port=7774, password="test_pass", project_root=None
             )
 
             assert bolt == 7787
@@ -234,9 +192,11 @@ class TestResolvePortConflictsWithContainer:
     def test_WHEN_container_ports_mismatch_env_THEN_env_updated(self):
         """Test mismatched ports - .env should be updated to match container."""
         # Container is running on 8888/9999 but .env says 7787/7774
-        with patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports, \
-             patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env:
-
+        with patch(
+            "amplihack.memory.neo4j.port_manager.get_container_ports"
+        ) as mock_get_ports, patch(
+            "amplihack.memory.neo4j.port_manager._update_env_ports"
+        ) as mock_update_env:
             mock_get_ports.return_value = (8888, 9999)  # Container actual ports
 
             project_root = Path("/fake/project")
@@ -244,7 +204,7 @@ class TestResolvePortConflictsWithContainer:
                 bolt_port=7787,  # What .env thinks
                 http_port=7774,
                 password="test_pass",
-                project_root=project_root
+                project_root=project_root,
             )
 
             # Should return container's actual ports
@@ -261,17 +221,19 @@ class TestResolvePortConflictsWithContainer:
 
     def test_WHEN_container_ports_mismatch_and_env_update_fails_THEN_warning_shown(self):
         """Test graceful handling when .env update fails."""
-        with patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports, \
-             patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env:
-
+        with patch(
+            "amplihack.memory.neo4j.port_manager.get_container_ports"
+        ) as mock_get_ports, patch(
+            "amplihack.memory.neo4j.port_manager._update_env_ports"
+        ) as mock_update_env:
             mock_get_ports.return_value = (8888, 9999)
-            mock_update_env.side_effect = IOError("Permission denied")
+            mock_update_env.side_effect = OSError("Permission denied")
 
             bolt, http, messages = resolve_port_conflicts(
                 bolt_port=7787,
                 http_port=7774,
                 password="test_pass",
-                project_root=Path("/fake/project")
+                project_root=Path("/fake/project"),
             )
 
             # Should still return correct ports
@@ -284,17 +246,16 @@ class TestResolvePortConflictsWithContainer:
 
     def test_WHEN_no_container_running_THEN_falls_through_to_existing_logic(self):
         """Test that when no container is found, existing port conflict logic runs."""
-        with patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports, \
-             patch("amplihack.memory.neo4j.port_manager.is_port_in_use") as mock_port_in_use:
-
+        with patch(
+            "amplihack.memory.neo4j.port_manager.get_container_ports"
+        ) as mock_get_ports, patch(
+            "amplihack.memory.neo4j.port_manager.is_port_in_use"
+        ) as mock_port_in_use:
             mock_get_ports.return_value = None  # No container
             mock_port_in_use.return_value = False  # Ports available
 
             bolt, http, messages = resolve_port_conflicts(
-                bolt_port=7787,
-                http_port=7774,
-                password="test_pass",
-                project_root=None
+                bolt_port=7787, http_port=7774, password="test_pass", project_root=None
             )
 
             # Should use requested ports
@@ -307,21 +268,22 @@ class TestResolvePortConflictsWithContainer:
 
     def test_WHEN_no_container_and_ports_in_use_THEN_finds_alternatives(self):
         """Test fallback to finding alternative ports when no container and ports busy."""
-        with patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports, \
-             patch("amplihack.memory.neo4j.port_manager.is_port_in_use") as mock_port_in_use, \
-             patch("amplihack.memory.neo4j.port_manager.find_available_port") as mock_find_port, \
-             patch("amplihack.memory.neo4j.port_manager.detect_neo4j_on_port") as mock_detect:
-
+        with patch(
+            "amplihack.memory.neo4j.port_manager.get_container_ports"
+        ) as mock_get_ports, patch(
+            "amplihack.memory.neo4j.port_manager.is_port_in_use"
+        ) as mock_port_in_use, patch(
+            "amplihack.memory.neo4j.port_manager.find_available_port"
+        ) as mock_find_port, patch(
+            "amplihack.memory.neo4j.port_manager.detect_neo4j_on_port"
+        ) as mock_detect:
             mock_get_ports.return_value = None  # No container
             mock_port_in_use.return_value = True  # Ports busy
             mock_detect.return_value = (False, False)  # Not Neo4j
             mock_find_port.side_effect = [7888, 7874]  # Alternative ports
 
             bolt, http, messages = resolve_port_conflicts(
-                bolt_port=7787,
-                http_port=7774,
-                password="test_pass",
-                project_root=None
+                bolt_port=7787, http_port=7774, password="test_pass", project_root=None
             )
 
             # Should find alternatives
@@ -413,16 +375,18 @@ class TestEdgeCases:
 
     def test_WHEN_project_root_is_none_THEN_no_env_update_attempted(self):
         """Test that .env update is skipped when project_root is None."""
-        with patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports, \
-             patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env:
-
+        with patch(
+            "amplihack.memory.neo4j.port_manager.get_container_ports"
+        ) as mock_get_ports, patch(
+            "amplihack.memory.neo4j.port_manager._update_env_ports"
+        ) as mock_update_env:
             mock_get_ports.return_value = (8888, 9999)
 
             bolt, http, messages = resolve_port_conflicts(
                 bolt_port=7787,
                 http_port=7774,
                 password="test_pass",
-                project_root=None  # No project root
+                project_root=None,  # No project root
             )
 
             # Should not attempt .env update
@@ -436,9 +400,7 @@ class TestEdgeCases:
         """Test edge case of port 0 - should be treated as invalid."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(
-                returncode=0,
-                stdout="7474/tcp -> 0.0.0.0:0\n7687/tcp -> 0.0.0.0:0",
-                stderr=""
+                returncode=0, stdout="7474/tcp -> 0.0.0.0:0\n7687/tcp -> 0.0.0.0:0", stderr=""
             )
 
             result = get_container_ports()
@@ -468,9 +430,11 @@ class TestIntegrationScenarios:
         Scenario: Container was restarted by Docker on different ports.
         .env still has old ports. Should detect and update.
         """
-        with patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports, \
-             patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env:
-
+        with patch(
+            "amplihack.memory.neo4j.port_manager.get_container_ports"
+        ) as mock_get_ports, patch(
+            "amplihack.memory.neo4j.port_manager._update_env_ports"
+        ) as mock_update_env:
             # Container now on 7888/7874 instead of 7787/7774
             mock_get_ports.return_value = (7888, 7874)
 
@@ -479,7 +443,7 @@ class TestIntegrationScenarios:
                 bolt_port=7787,  # Old port from .env
                 http_port=7774,
                 password="test_pass",
-                project_root=project_root
+                project_root=project_root,
             )
 
             # Should update to container's actual ports
@@ -492,17 +456,16 @@ class TestIntegrationScenarios:
         Scenario: First time starting - no container exists yet.
         Should fall through to normal port selection.
         """
-        with patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports, \
-             patch("amplihack.memory.neo4j.port_manager.is_port_in_use") as mock_port_in_use:
-
+        with patch(
+            "amplihack.memory.neo4j.port_manager.get_container_ports"
+        ) as mock_get_ports, patch(
+            "amplihack.memory.neo4j.port_manager.is_port_in_use"
+        ) as mock_port_in_use:
             mock_get_ports.return_value = None  # No container
             mock_port_in_use.return_value = False  # Ports free
 
             bolt, http, messages = resolve_port_conflicts(
-                bolt_port=7787,
-                http_port=7774,
-                password="test_pass",
-                project_root=None
+                bolt_port=7787, http_port=7774, password="test_pass", project_root=None
             )
 
             assert bolt == 7787
@@ -518,10 +481,7 @@ class TestIntegrationScenarios:
             mock_get_ports.return_value = (7787, 7774)
 
             bolt, http, messages = resolve_port_conflicts(
-                bolt_port=7787,
-                http_port=7774,
-                password="test_pass",
-                project_root=None
+                bolt_port=7787, http_port=7774, password="test_pass", project_root=None
             )
 
             assert bolt == 7787

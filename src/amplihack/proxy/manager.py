@@ -1,6 +1,7 @@
 """Proxy lifecycle management."""
 
 import atexit
+import logging
 import os
 import re
 import signal
@@ -8,10 +9,13 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from types import TracebackType
 from typing import Any, Dict, List, Optional
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
+
+logger = logging.getLogger(__name__)
 
 
 class ProxyManager:
@@ -246,7 +250,7 @@ class ProxyManager:
         self,
         exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
-        exc_tb: Optional[object],
+        exc_tb: Optional[TracebackType],
     ) -> None:
         """Context manager exit - stops proxy.
 

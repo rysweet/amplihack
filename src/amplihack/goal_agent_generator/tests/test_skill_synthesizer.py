@@ -1,13 +1,13 @@
 """Tests for skill synthesizer."""
 
 import tempfile
+import uuid
 from pathlib import Path
 
 import pytest
 
-from ..skill_synthesizer import SkillSynthesizer
 from ..models import ExecutionPlan, PlanPhase, SkillDefinition
-import uuid
+from ..skill_synthesizer import SkillSynthesizer
 
 
 class TestSkillSynthesizer:

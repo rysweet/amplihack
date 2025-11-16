@@ -67,7 +67,9 @@ def detect_container_password(container_name: str) -> Optional[str]:
                     logger.info("Detected credentials from container (user: %s)", username)
                     return password
 
-                logger.warning("Unexpected NEO4J_AUTH format (contains %d characters)", len(auth_value))
+                logger.warning(
+                    "Unexpected NEO4J_AUTH format (contains %d characters)", len(auth_value)
+                )
                 return None
 
         # NEO4J_AUTH not found in environment

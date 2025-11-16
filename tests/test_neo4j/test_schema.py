@@ -167,7 +167,9 @@ class TestNeo4jSchema:
             )
 
             # Try to create duplicate - should fail
-            with pytest.raises(Exception):  # Neo4j constraint violation
+            from neo4j.exceptions import ConstraintError
+
+            with pytest.raises(ConstraintError):  # Neo4j constraint violation
                 session.run(
                     """
                     CREATE (c:Codebase {
@@ -203,7 +205,9 @@ class TestNeo4jSchema:
             )
 
             # Try to create duplicate - should fail
-            with pytest.raises(Exception):  # Neo4j constraint violation
+            from neo4j.exceptions import ConstraintError
+
+            with pytest.raises(ConstraintError):  # Neo4j constraint violation
                 session.run(
                     """
                     CREATE (i:Ingestion {

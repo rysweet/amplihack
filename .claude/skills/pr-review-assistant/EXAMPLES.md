@@ -3,9 +3,11 @@
 ## Example 1: Over-Engineering with Unnecessary Abstraction
 
 ### The PR
+
 A PR adds a new feature to handle user notifications across multiple channels (email, SMS, push).
 
 ### Original Code (Over-Engineered)
+
 ```python
 # notification/channel.py
 from abc import ABC, abstractmethod
@@ -66,7 +68,8 @@ for channel in channels.values():
 ```
 
 ### Review Comment
-```markdown
+
+````markdown
 **FILE**: notification/channel.py
 
 **ISSUE**: Over-engineering with unnecessary abstraction layers
@@ -74,7 +77,7 @@ for channel in channels.values():
 **WHAT**:
 Multiple notification channels implemented using abstract base class
 pattern with template method. Each channel must implement validate(),
-_send_internal(), log_result().
+\_send_internal(), log_result().
 
 **WHY IT'S PROBLEMATIC**:
 
@@ -123,8 +126,10 @@ def send_sms(phone: str, message: str) -> bool:
 send_email("user@example.com", "Hello!")
 send_sms("+1234567890", "Hello!")
 ```
+````
 
 **BENEFITS**:
+
 - 60% fewer lines of code
 - Clear what each function does
 - No inheritance to understand
@@ -132,6 +137,7 @@ send_sms("+1234567890", "Hello!")
 - Still extensible if needed later
 
 **REFERENCE**: Ruthless Simplicity principle - minimize abstractions
+
 ```
 
 ### Learning Points
@@ -149,13 +155,15 @@ A PR adds a new authentication module for JWT token handling.
 
 ### Structure
 ```
+
 .claude/tools/auth/
-├── __init__.py
+├── **init**.py
 ├── jwt_handler.py
 ├── tokens.py
 └── tests/
-    └── test_jwt.py
-```
+└── test_jwt.py
+
+````
 
 ### Review Comment
 ```markdown
@@ -233,14 +241,17 @@ token = create_token("user_123")
 # Later: validate token
 payload = validate_token(token)
 print(f"User: {payload['user_id']}")
-```
+````
 
 ## Regeneration Notes
+
 Module can be rebuilt from this spec while preserving:
+
 - ✅ Public interface (all studs preserved)
 - ✅ Dependencies (PyJWT, no internal deps)
 - ✅ Error behavior (exceptions documented)
 - ✅ Module structure (single responsibility)
+
 ```
 
 **REFERENCE**: Brick philosophy - modules must be regeneratable
@@ -248,6 +259,7 @@ Module can be rebuilt from this spec while preserving:
 ```
 
 ### Benefits of Spec
+
 1. Next developer knows what this module does without reading code
 2. If requirements change, we update spec first
 3. Builder agent can regenerate if issues found
@@ -255,6 +267,7 @@ Module can be rebuilt from this spec while preserving:
 5. Tests can verify spec is implemented correctly
 
 ### Learning Points
+
 - Every new module needs a specification in Specs/
 - Specs enable regeneration of modules
 - Public interface must be clear ("studs")
@@ -265,9 +278,11 @@ Module can be rebuilt from this spec while preserving:
 ## Example 3: Zero-BS Issues - TODOs and Error Handling
 
 ### The PR
+
 A PR adds data validation pipeline for user input.
 
 ### Original Code
+
 ```python
 # validation/pipeline.py
 
@@ -303,7 +318,8 @@ def transform_data(data: dict) -> dict:
 ```
 
 ### Review Comment
-```markdown
+
+````markdown
 **FILE**: validation/pipeline.py
 
 **ISSUE**: Zero-BS violations - TODOs, swallowed errors, unimplemented code
@@ -325,16 +341,19 @@ TODOs, and error handling that swallows exceptions.
    - Caller doesn't know validation failed
 
    CURRENT:
+
    ```python
    if field not in data:
        pass  # Silent - bad!
    ```
+````
 
-   SHOULD BE:
-   ```python
-   if field not in data:
-       raise ValueError(f"Required field missing: {field}")
-   ```
+SHOULD BE:
+
+```python
+if field not in data:
+    raise ValueError(f"Required field missing: {field}")
+```
 
 3. **LINE 19-21: Caught exception with no context**
    - Exception is caught but result is None
@@ -342,6 +361,7 @@ TODOs, and error handling that swallows exceptions.
    - Impossible to debug
 
    CURRENT:
+
    ```python
    try:
        result = transform_data(data)
@@ -350,6 +370,7 @@ TODOs, and error handling that swallows exceptions.
    ```
 
    SHOULD BE:
+
    ```python
    try:
        result = transform_data(data)
@@ -407,6 +428,7 @@ def transform_data(data: dict) -> dict:
 ```
 
 **KEY CHANGES**:
+
 - ✅ No TODOs - either implement or don't include
 - ✅ Errors are explicit and visible
 - ✅ Clear error messages for debugging
@@ -414,7 +436,8 @@ def transform_data(data: dict) -> dict:
 - ✅ Caller knows what succeeded/failed
 
 **REFERENCE**: Zero-BS Implementation principle
-```
+
+````
 
 ### Learning Points
 - TODO comments in code = incomplete work - don't merge
@@ -461,10 +484,11 @@ class QueryCache:
     def clear(self) -> None:
         """Clear all cache."""
         self.cache.clear()
-```
+````
 
 ### Review Comment
-```markdown
+
+````markdown
 **FILE**: caching/cache.py
 
 **ISSUE**: No test coverage for public interface
@@ -479,6 +503,7 @@ New QueryCache class with get/set/clear interface. No tests in PR.
 Tests should verify public contract:
 
 ### Basic Functionality (MISSING)
+
 - [ ] get() returns None for unknown keys
 - [ ] set() stores values
 - [ ] get() retrieves stored values
@@ -486,6 +511,7 @@ Tests should verify public contract:
 - [ ] clear() removes all cached items
 
 ### Edge Cases (MISSING)
+
 - [ ] get() with empty string key
 - [ ] set() with None value
 - [ ] get() called immediately after set()
@@ -493,11 +519,13 @@ Tests should verify public contract:
 - [ ] clear() on empty cache
 
 ### Contract Verification (MISSING)
+
 - [ ] set() returns None (as documented)
 - [ ] get() always returns value or None
 - [ ] TTL works correctly (test with actual time)
 
 ### Concurrent Access (MISSING)
+
 - [ ] Multiple threads accessing cache simultaneously
 - [ ] Race condition if item expires during get()
 
@@ -564,11 +592,13 @@ class TestQueryCache:
         result = self.cache.clear()
         assert result is None
 ```
+````
 
 **COVERAGE TARGET**: 85%+
 
 **EDGE CASE ISSUE FOUND**:
 The current implementation can't distinguish between:
+
 - "Value not in cache" → get() returns None
 - "Value cached as None" → get() returns None
 
@@ -589,7 +619,8 @@ def get(self, key: str, default=_NOT_FOUND):
 This makes the contract clearer.
 
 **REFERENCE**: Test coverage of public interface
-```
+
+````
 
 ### Learning Points
 - Every public function needs tests
@@ -643,9 +674,10 @@ def merge_configs(base: dict, override: dict) -> dict:
     result = base.copy()
     result.update(override)
     return result
-```
+````
 
 ### Test Code
+
 ```python
 # tests/test_config.py
 
@@ -701,41 +733,48 @@ class TestMergeConfigs:
 ```
 
 ### Review Comment
+
 ```markdown
 **FILE**: config/loader.py
 
 **ASSESSMENT**: Excellent example of ruthless simplicity
 
 ✅ **Ruthless Simplicity**
+
 - Single responsibility: load YAML, merge configs
 - Direct implementation, no unnecessary abstractions
 - No over-parameterization
 - Clear what each function does
 
 ✅ **Zero-BS Implementation**
+
 - No TODOs or stubs
 - Error handling is explicit (FileNotFoundError, ValueError)
 - Clear error messages for debugging
 - Production-ready code
 
 ✅ **Clear Contracts**
+
 - Documented args, returns, and exceptions
 - Type hints present
 - Users know exactly what to expect
 
 ✅ **Test Coverage**
+
 - Public interface fully tested
 - Edge cases covered (missing file, invalid YAML)
 - Original data not modified verified
 - 90%+ coverage
 
 ✅ **Module Structure**
+
 - Single responsibility
 - No unnecessary configuration classes
 - Easy to use and extend
 - Could be regenerated from specification
 
 **LEARNING POINTS**:
+
 - This is the simplicity we aim for
 - Sometimes the best code is the straightforward code
 - Clear documentation + good tests = maintainable
@@ -745,6 +784,7 @@ class TestMergeConfigs:
 ```
 
 ### Why This is Good Design
+
 1. **Minimal code**: Does exactly what's needed, nothing more
 2. **Clear errors**: You know what failed and why
 3. **Testable**: Easy to verify behavior
@@ -776,6 +816,7 @@ class TestMergeConfigs:
 ### Philosophy Alignment
 
 Every review should anchor in:
+
 - **Ruthless Simplicity**: Question every line
 - **Modular Design**: Clear boundaries and contracts
 - **Zero-BS Implementation**: Production-ready, no shortcuts

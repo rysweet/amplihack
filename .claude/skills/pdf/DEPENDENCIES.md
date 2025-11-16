@@ -11,6 +11,7 @@ The PDF skill requires Python packages for PDF manipulation and optionally syste
 These packages are required for basic PDF skill functionality:
 
 **Python Packages:**
+
 - `pypdf>=4.0.0` - PDF manipulation (merge, split, rotate, metadata)
 - `pdfplumber>=0.10.0` - Text and table extraction with layout preservation
 - `reportlab>=4.0.0` - PDF generation and creation
@@ -21,11 +22,13 @@ These packages are required for basic PDF skill functionality:
 These packages enable additional features but the skill works without them:
 
 **Python Packages:**
+
 - `pytesseract>=0.3.10` - OCR for scanned PDFs (requires tesseract engine)
 - `pdf2image>=1.16.0` - PDF to image conversion for OCR (requires poppler)
 - `pillow>=10.0.0` - Image processing support
 
 **System Packages:**
+
 - `poppler-utils` - Command-line PDF tools (pdftotext, pdfimages, pdftoppm)
 - `qpdf` - Advanced PDF manipulation and repair
 - `pdftk` - PDF toolkit for complex operations
@@ -168,6 +171,7 @@ python common/verification/verify_skill.py pdf
 ```
 
 Expected output:
+
 ```
 Verifying pdf skill dependencies...
 
@@ -195,6 +199,7 @@ System commands:
 **Purpose**: Core PDF manipulation library for Python
 
 **Capabilities**:
+
 - Merge multiple PDFs
 - Split PDFs into individual pages
 - Rotate, crop, and scale pages
@@ -211,6 +216,7 @@ System commands:
 **Purpose**: Advanced text and table extraction from PDFs
 
 **Capabilities**:
+
 - Extract text with layout preservation
 - Extract tables with cell boundaries
 - Access detailed page information (lines, curves, rectangles)
@@ -226,6 +232,7 @@ System commands:
 **Purpose**: PDF generation from Python code
 
 **Capabilities**:
+
 - Create PDFs from scratch
 - Draw text, shapes, images
 - Support for forms and interactive elements
@@ -241,6 +248,7 @@ System commands:
 **Purpose**: Data manipulation for extracted tables
 
 **Capabilities**:
+
 - Convert extracted tables to DataFrames
 - Export to Excel, CSV, JSON
 - Data cleaning and transformation
@@ -255,6 +263,7 @@ System commands:
 **Purpose**: OCR (Optical Character Recognition) for scanned PDFs
 
 **Capabilities**:
+
 - Extract text from image-based PDFs
 - Multi-language support
 - Confidence scores for recognized text
@@ -270,6 +279,7 @@ System commands:
 **Purpose**: Convert PDF pages to images for OCR processing
 
 **Capabilities**:
+
 - Convert PDF to PIL Image objects
 - Specify DPI for quality control
 - Page range selection
@@ -285,6 +295,7 @@ System commands:
 **Purpose**: Command-line PDF processing tools
 
 **Tools Included**:
+
 - `pdftotext`: Extract text from PDFs
 - `pdfimages`: Extract images from PDFs
 - `pdftoppm`: Convert PDF to PPM/PNG images
@@ -301,6 +312,7 @@ System commands:
 **Purpose**: Command-line PDF transformation and inspection
 
 **Capabilities**:
+
 - Merge and split PDFs
 - Rotate pages
 - Encrypt and decrypt
@@ -316,6 +328,7 @@ System commands:
 **Purpose**: PDF toolkit for complex operations
 
 **Capabilities**:
+
 - Merge, split, rotate PDFs
 - Apply watermarks
 - Fill PDF forms
@@ -333,6 +346,7 @@ System commands:
 **Purpose**: OCR engine for extracting text from images
 
 **Capabilities**:
+
 - Text recognition from images
 - 100+ language support
 - Configurable recognition modes
@@ -347,6 +361,7 @@ System commands:
 ### ImportError: No module named 'pypdf'
 
 **Solution**: Install pypdf
+
 ```bash
 pip install pypdf
 ```
@@ -354,6 +369,7 @@ pip install pypdf
 ### ModuleNotFoundError: No module named 'pdfplumber'
 
 **Solution**: Install pdfplumber
+
 ```bash
 pip install pdfplumber
 ```
@@ -361,6 +377,7 @@ pip install pdfplumber
 ### pytesseract.pytesseract.TesseractNotFoundError
 
 **Solution**: Install tesseract-ocr system package
+
 ```bash
 # macOS
 brew install tesseract
@@ -375,6 +392,7 @@ choco install tesseract
 ### pdf2image requires poppler
 
 **Solution**: Install poppler-utils
+
 ```bash
 # macOS
 brew install poppler
@@ -389,6 +407,7 @@ choco install poppler
 ### Command not found: qpdf
 
 **Solution**: Install qpdf
+
 ```bash
 # macOS
 brew install qpdf
@@ -403,6 +422,7 @@ choco install qpdf
 ### Command not found: pdftk
 
 **Solution**: pdftk may not be available on your platform. Use alternatives:
+
 - Use pypdf for merge/split operations
 - Use qpdf for advanced operations
 - Use pypdf for form filling
@@ -410,6 +430,7 @@ choco install qpdf
 ### Permission denied errors
 
 **Solution**: Use pip with --user flag or virtual environment
+
 ```bash
 pip install --user pypdf pdfplumber reportlab pandas
 ```
@@ -417,6 +438,7 @@ pip install --user pypdf pdfplumber reportlab pandas
 ### Version conflicts
 
 **Solution**: Use virtual environment for isolation
+
 ```bash
 python -m venv pdf_skill_env
 source pdf_skill_env/bin/activate  # Linux/macOS
@@ -493,18 +515,18 @@ pip install --upgrade pdfplumber
 
 ## Dependency Licenses Summary
 
-| Package | License | Commercial Use |
-|---------|---------|----------------|
-| pypdf | BSD-3-Clause | Yes |
-| pdfplumber | MIT | Yes |
-| reportlab | BSD-3-Clause | Yes |
-| pandas | BSD-3-Clause | Yes |
-| pytesseract | Apache-2.0 | Yes |
-| pdf2image | MIT | Yes |
-| poppler-utils | GPL | Yes (linking allowed) |
-| qpdf | Apache-2.0 | Yes |
-| pdftk | GPL | Yes (linking allowed) |
-| tesseract-ocr | Apache-2.0 | Yes |
+| Package       | License      | Commercial Use        |
+| ------------- | ------------ | --------------------- |
+| pypdf         | BSD-3-Clause | Yes                   |
+| pdfplumber    | MIT          | Yes                   |
+| reportlab     | BSD-3-Clause | Yes                   |
+| pandas        | BSD-3-Clause | Yes                   |
+| pytesseract   | Apache-2.0   | Yes                   |
+| pdf2image     | MIT          | Yes                   |
+| poppler-utils | GPL          | Yes (linking allowed) |
+| qpdf          | Apache-2.0   | Yes                   |
+| pdftk         | GPL          | Yes (linking allowed) |
+| tesseract-ocr | Apache-2.0   | Yes                   |
 
 All dependencies are permissive licenses compatible with commercial use.
 

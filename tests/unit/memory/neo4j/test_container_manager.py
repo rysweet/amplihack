@@ -53,6 +53,7 @@ class TestContainerManagerStartup:
     def test_WHEN_docker_not_available_THEN_appropriate_error_raised(self):
         """Test error handling when Docker daemon is not available."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.exceptions import DockerNotAvailableError
 
         manager = ContainerManager()
@@ -67,6 +68,7 @@ class TestContainerManagerStartup:
     def test_WHEN_docker_compose_file_missing_THEN_config_error_raised(self):
         """Test error when docker-compose configuration file is missing."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.exceptions import ConfigurationError
 
         # Point to non-existent compose file
@@ -172,6 +174,7 @@ class TestContainerStatus:
     def test_WHEN_container_running_THEN_status_returns_running(self):
         """Test status check for running container."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
@@ -185,6 +188,7 @@ class TestContainerStatus:
     def test_WHEN_container_stopped_THEN_status_returns_stopped(self):
         """Test status check for stopped container."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
@@ -198,6 +202,7 @@ class TestContainerStatus:
     def test_WHEN_container_not_found_THEN_status_returns_not_found(self):
         """Test status check when container doesn't exist."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
@@ -211,6 +216,7 @@ class TestContainerStatus:
     def test_WHEN_container_starting_THEN_status_returns_starting(self):
         """Test status check for container in starting state."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()

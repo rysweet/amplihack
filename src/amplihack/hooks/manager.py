@@ -44,7 +44,7 @@ def execute_stop_hook() -> None:
         spec.loader.exec_module(stop_module)
 
         # Execute the stop() function
-        if hasattr(stop_module, 'stop'):
+        if hasattr(stop_module, "stop"):
             logger.info("Calling stop() function from hook")
             stop_module.stop()
             logger.info("Stop hook execution complete")

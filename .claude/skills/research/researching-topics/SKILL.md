@@ -11,6 +11,7 @@ You are activating quick research capabilities. Your role is to rapidly gather, 
 ## When to Activate
 
 This skill activates when:
+
 - User asks "how does X work?" or "what is Y?"
 - Encountering unfamiliar technologies, libraries, or concepts
 - Need for current information (recent releases, trends, best practices)
@@ -23,6 +24,7 @@ This skill activates when:
 ### 1. Clarify Scope (if needed)
 
 If the request is ambiguous:
+
 - Ask targeted clarifying questions
 - Determine depth needed (overview vs details)
 - Identify specific aspects of interest
@@ -32,17 +34,20 @@ If the request is ambiguous:
 Choose appropriate approach:
 
 **Quick Overview** (2-5 minutes):
+
 - Web search for authoritative sources
 - Synthesize key concepts
 - Provide actionable summary
 
 **Technical Deep-Dive** (5-10 minutes):
+
 - Official documentation
 - Technical articles and blog posts
 - Code examples and patterns
 - Best practices and gotchas
 
 **Current State** (3-7 minutes):
+
 - Recent releases and changelogs
 - Community discussions (Reddit, HN, etc.)
 - Trending approaches
@@ -54,34 +59,42 @@ Structure findings as:
 
 ```markdown
 ## Overview
+
 [2-3 sentence summary of the topic]
 
 ## Key Concepts
+
 - **Concept 1**: Brief explanation
 - **Concept 2**: Brief explanation
 - **Concept 3**: Brief explanation
 
 ## How It Works
+
 [Step-by-step explanation or mental model]
 
 ## Common Use Cases
+
 1. Use case 1
 2. Use case 2
 3. Use case 3
 
 ## Best Practices
+
 - Practice 1 (and why)
 - Practice 2 (and why)
 - Practice 3 (and why)
 
 ## Gotchas / Common Pitfalls
+
 - Pitfall 1 (and how to avoid)
 - Pitfall 2 (and how to avoid)
 
 ## Getting Started
+
 [Quick start guide or next steps]
 
 ## Further Reading
+
 - [Link 1]: Description
 - [Link 2]: Description
 ```
@@ -89,6 +102,7 @@ Structure findings as:
 ### 4. Actionable Insights
 
 Always provide:
+
 - **Relevance**: How this applies to user's context
 - **Next Steps**: What to do with this information
 - **Depth Options**: When to dig deeper
@@ -98,18 +112,21 @@ Always provide:
 ### Prioritize Sources
 
 **Tier 1 (Highest Authority)**:
+
 - Official documentation
 - Academic papers
 - Core maintainer blogs
 - Authoritative books
 
 **Tier 2 (Reliable)**:
+
 - Established tech blogs (Martin Fowler, Netflix Tech Blog, etc.)
 - Well-maintained tutorials
 - Stack Overflow accepted answers
 - Conference talks
 
 **Tier 3 (Use with Caution)**:
+
 - Medium articles (check author credentials)
 - Reddit/HN discussions (validate claims)
 - Personal blogs (verify expertise)
@@ -139,6 +156,7 @@ Always provide:
 - Learning complex domain with many interconnections
 
 **Escalation Message**:
+
 ```
 I've provided a quick overview, but this topic has significant depth.
 For comprehensive understanding with Socratic method exploration,
@@ -160,17 +178,20 @@ The knowledge-builder will:
 ## Integration Points
 
 ### Invokes
+
 - **WebSearch**: Find current information
 - **WebFetch**: Extract content from URLs
 - **Read**: Reference local documentation
 - **Write**: Save research findings (if requested)
 
 ### Escalates To
+
 - **/knowledge-builder**: Deep comprehensive research
 - **/ultrathink**: Complex decision making with research
 - **Architecting Solutions Skill**: Apply research to design decisions
 
 ### Saves To
+
 - `Research/[Topic].md` (if user requests documentation)
 - Can integrate with project context files
 
@@ -289,21 +310,25 @@ This is a complex architectural decision. Would you like me to:
 ## Output Guidelines
 
 ### Keep It Actionable
+
 - Focus on what user needs to know
 - Provide clear next steps
 - Avoid information overload
 
 ### Structure for Scanning
+
 - Use headers and bullets
 - Highlight key points in bold
 - Keep paragraphs short (2-3 sentences)
 
 ### Context Matters
+
 - Relate to user's project/situation
 - Note when general advice doesn't apply
 - Highlight relevant specific details
 
 ### Be Honest About Limits
+
 - Flag when information is unclear
 - Note when sources conflict
 - Admit when deeper research is needed
@@ -311,6 +336,7 @@ This is a complex architectural decision. Would you like me to:
 ## Common Research Patterns
 
 ### New Technology
+
 1. What problem does it solve?
 2. How does it compare to alternatives?
 3. Is it mature/production-ready?
@@ -318,6 +344,7 @@ This is a complex architectural decision. Would you like me to:
 5. Community and ecosystem health?
 
 ### Library/Framework Choice
+
 1. Feature comparison
 2. Performance characteristics
 3. Community size and activity
@@ -325,6 +352,7 @@ This is a complex architectural decision. Would you like me to:
 5. Breaking change history
 
 ### Best Practices
+
 1. Official recommendations
 2. Community consensus
 3. Anti-patterns to avoid
@@ -332,6 +360,7 @@ This is a complex architectural decision. Would you like me to:
 5. Evolution over time
 
 ### Debugging/Troubleshooting
+
 1. What does error mean?
 2. Common causes
 3. Diagnostic steps
@@ -341,6 +370,7 @@ This is a complex architectural decision. Would you like me to:
 ## Quality Checklist
 
 Before presenting research:
+
 - [ ] Information is current (check dates)
 - [ ] Multiple sources consulted
 - [ ] Conflicting views noted
@@ -362,6 +392,7 @@ Before presenting research:
 ## Success Criteria
 
 Good research provides:
+
 - Quick understanding of core concepts
 - Actionable insights for user's situation
 - Clear next steps

@@ -11,12 +11,14 @@ Provide common string manipulation utilities with consistent behavior and clear 
 ## Scope
 
 **Handles**:
+
 - Text truncation with length constraints
 - Whitespace normalization
 - URL-safe slug conversion
 - Clear, simple operations
 
 **Does NOT handle**:
+
 - Internationalization (i18n) or complex Unicode handling
 - Regular expression validation
 - HTML/XML parsing or encoding
@@ -108,12 +110,15 @@ This module exports only functions. It does not define custom classes or data mo
 ## Dependencies
 
 ### External
+
 None - pure Python standard library only.
 
 ### Internal
+
 None - completely standalone module.
 
 ### Standard Library Used
+
 - `string` module for character classifications
 - `re` module for pattern matching (optional, only if needed)
 
@@ -136,7 +141,7 @@ string_utils/
 
 ## Module Boundaries
 
-### __init__.py
+### **init**.py
 
 ```python
 from .core import truncate, normalize, slugify
@@ -155,6 +160,7 @@ Four separate test files, one per function, plus shared fixtures.
 ## Test Requirements
 
 ### truncate() Tests
+
 - ✅ Truncate longer string with default suffix
 - ✅ Truncate with custom suffix
 - ✅ Don't truncate if already short enough
@@ -164,6 +170,7 @@ Four separate test files, one per function, plus shared fixtures.
 - ✅ Raise TypeError if text is not string
 
 ### normalize() Tests
+
 - ✅ Remove leading whitespace
 - ✅ Remove trailing whitespace
 - ✅ Collapse multiple spaces to single space
@@ -174,6 +181,7 @@ Four separate test files, one per function, plus shared fixtures.
 - ✅ Raise TypeError if text is not string
 
 ### slugify() Tests
+
 - ✅ Convert to lowercase
 - ✅ Replace spaces with hyphens
 - ✅ Remove special characters
@@ -184,6 +192,7 @@ Four separate test files, one per function, plus shared fixtures.
 - ✅ Raise TypeError if text is not string
 
 ### Coverage
+
 85%+ line coverage across all functions.
 
 ## Example Usage
@@ -242,6 +251,7 @@ def truncate(text: str, max_length: int, suffix: str = "...") -> str:
 ### Error Clarity
 
 When raising errors:
+
 - Include the problematic value
 - Explain what was wrong
 - Suggest how to fix it
@@ -255,6 +265,7 @@ raise ValueError(
 ## Regeneration Notes
 
 This module can be rebuilt from this specification while maintaining:
+
 - ✅ Public contract (truncate, normalize, slugify always available)
 - ✅ Function signatures (same types, same behavior)
 - ✅ Error handling (same exceptions, same conditions)
@@ -262,6 +273,7 @@ This module can be rebuilt from this specification while maintaining:
 - ✅ Module structure (same files and organization)
 
 Any new implementation can be verified by:
+
 1. Checking all three functions exist with correct signatures
 2. Running the test suite
 3. Checking that all examples work correctly

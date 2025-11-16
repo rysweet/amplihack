@@ -88,6 +88,7 @@ class Neo4jManager:
             # Graceful degradation - never crash launcher
             # Log the exception for debugging but continue
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning("Neo4j credential sync failed: %s", str(e), exc_info=True)
             return True
@@ -163,9 +164,7 @@ class Neo4jManager:
             return True
 
         # Auto-sync with container credentials in non-interactive scenarios
-        success = self.credential_sync.sync_credentials(
-            container, SyncChoice.USE_CONTAINER
-        )
+        success = self.credential_sync.sync_credentials(container, SyncChoice.USE_CONTAINER)
 
         return success
 

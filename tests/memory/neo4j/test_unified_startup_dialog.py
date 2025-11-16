@@ -4,7 +4,6 @@ Note: This file contains test fixtures with example passwords like "testpass".
 These are NOT real credentials and should be ignored by security scanners.
 """
 
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -138,7 +137,9 @@ class TestDetectContainerOptions:
     @patch("amplihack.memory.neo4j.container_selection.discover_amplihack_containers")
     @patch("amplihack.neo4j.detector.Neo4jContainerDetector")
     @patch("amplihack.neo4j.credential_sync.CredentialSync")
-    def test_detect_with_running_container(self, mock_cred_sync_class, mock_detector_class, mock_discover):
+    def test_detect_with_running_container(
+        self, mock_cred_sync_class, mock_detector_class, mock_discover
+    ):
         """Detect returns options for running container."""
         # Mock container info
         mock_container = Mock()
@@ -454,8 +455,7 @@ class TestUnifiedDialog:
     def test_uses_provided_default_name(self, mock_get_default):
         """Uses provided default name instead of auto-detected."""
         result = unified_container_and_credential_dialog(
-            default_name="amplihack-custom",
-            auto_mode=True
+            default_name="amplihack-custom", auto_mode=True
         )
         assert result == "amplihack-custom"
         mock_get_default.assert_not_called()
@@ -463,9 +463,7 @@ class TestUnifiedDialog:
     @patch("amplihack.memory.neo4j.unified_startup_dialog.detect_container_options")
     @patch("amplihack.memory.neo4j.unified_startup_dialog.display_unified_dialog")
     @patch("amplihack.memory.neo4j.unified_startup_dialog.handle_credential_sync")
-    def test_interactive_mode_full_flow(
-        self, mock_handle_sync, mock_display, mock_detect
-    ):
+    def test_interactive_mode_full_flow(self, mock_handle_sync, mock_display, mock_detect):
         """Interactive mode executes full dialog flow."""
         # Mock detection
         option = ContainerOption(
@@ -486,8 +484,7 @@ class TestUnifiedDialog:
         mock_handle_sync.return_value = True
 
         result = unified_container_and_credential_dialog(
-            default_name="amplihack-test",
-            auto_mode=False
+            default_name="amplihack-test", auto_mode=False
         )
 
         assert result == "amplihack-test"
@@ -503,10 +500,7 @@ class TestUnifiedDialog:
         mock_display.side_effect = KeyboardInterrupt()
 
         with pytest.raises(KeyboardInterrupt):
-            unified_container_and_credential_dialog(
-                default_name="amplihack-test",
-                auto_mode=False
-            )
+            unified_container_and_credential_dialog(default_name="amplihack-test", auto_mode=False)
 
     @patch("amplihack.memory.neo4j.unified_startup_dialog.detect_container_options")
     def test_handles_exception_gracefully(self, mock_detect):
@@ -514,8 +508,7 @@ class TestUnifiedDialog:
         mock_detect.side_effect = Exception("Unexpected error")
 
         result = unified_container_and_credential_dialog(
-            default_name="amplihack-fallback",
-            auto_mode=False
+            default_name="amplihack-fallback", auto_mode=False
         )
 
         assert result == "amplihack-fallback"
@@ -528,8 +521,7 @@ class TestUnifiedDialog:
         mock_display.return_value = None
 
         result = unified_container_and_credential_dialog(
-            default_name="amplihack-test",
-            auto_mode=False
+            default_name="amplihack-test", auto_mode=False
         )
 
         assert result is None

@@ -16,7 +16,6 @@ Design Philosophy:
 import logging
 import sys
 from dataclasses import dataclass
-from pathlib import Path
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
@@ -35,6 +34,7 @@ class ContainerOption:
         env_sync_status: Status of .env sync ("match", "different", "missing", "no_container_creds")
         is_running: Whether container is currently running
     """
+
     name: str
     status: str
     ports: List[str]
@@ -53,9 +53,9 @@ def detect_container_options(default_name: str) -> List[ContainerOption]:
     Returns:
         List of ContainerOption objects (existing + create new option)
     """
-    from .container_selection import discover_amplihack_containers
-    from ...neo4j.detector import Neo4jContainerDetector
     from ...neo4j.credential_sync import CredentialSync
+    from ...neo4j.detector import Neo4jContainerDetector
+    from .container_selection import discover_amplihack_containers
 
     options = []
 
@@ -85,15 +85,17 @@ def detect_container_options(default_name: str) -> List[ContainerOption]:
 
         is_running = "Up" in container.status
 
-        options.append(ContainerOption(
-            name=container.name,
-            status=container.status,
-            ports=container.ports,
-            username=username,
-            password=password,
-            env_sync_status=env_sync_status,
-            is_running=is_running,
-        ))
+        options.append(
+            ContainerOption(
+                name=container.name,
+                status=container.status,
+                ports=container.ports,
+                username=username,
+                password=password,
+                env_sync_status=env_sync_status,
+                is_running=is_running,
+            )
+        )
 
     return options
 
@@ -152,7 +154,9 @@ def _format_ports(ports: List[str]) -> str:
     return ", ".join(ports)
 
 
-def display_unified_dialog(options: List[ContainerOption], default_name: str) -> Optional[ContainerOption]:
+def display_unified_dialog(
+    options: List[ContainerOption], default_name: str
+) -> Optional[ContainerOption]:
     """Display unified container selection and credential dialog.
 
     Args:
@@ -170,7 +174,7 @@ def display_unified_dialog(options: List[ContainerOption], default_name: str) ->
     print("=" * 70, file=sys.stderr)
 
     if not options:
-        print(f"\nNo existing containers found.", file=sys.stderr)
+        print("\nNo existing containers found.", file=sys.stderr)
         print(f"Creating new container: {default_name}", file=sys.stderr)
         # Return a "create new" option
         return ContainerOption(
@@ -191,9 +195,12 @@ def display_unified_dialog(options: List[ContainerOption], default_name: str) ->
 
         if option.username:
             print(f"     Credentials: {option.username} / [detected]", file=sys.stderr)
-            print(f"     .env status: {_format_env_sync_status(option.env_sync_status)}", file=sys.stderr)
+            print(
+                f"     .env status: {_format_env_sync_status(option.env_sync_status)}",
+                file=sys.stderr,
+            )
         else:
-            print(f"     Credentials: Could not detect", file=sys.stderr)
+            print("     Credentials: Could not detect", file=sys.stderr)
         print(file=sys.stderr)
 
     # Add "create new" option
@@ -213,7 +220,7 @@ def display_unified_dialog(options: List[ContainerOption], default_name: str) ->
                     selected = options[choice_num - 1]
                     print(f"\n✓ Selected: {selected.name}", file=sys.stderr)
                     return selected
-                elif choice_num == len(options) + 1:
+                if choice_num == len(options) + 1:
                     print(f"\n✓ Creating new: {default_name}", file=sys.stderr)
                     # Return a "create new" option
                     return ContainerOption(
@@ -225,8 +232,7 @@ def display_unified_dialog(options: List[ContainerOption], default_name: str) ->
                         env_sync_status="missing",
                         is_running=False,
                     )
-                else:
-                    print(f"Please enter a number between 1 and {len(options) + 1}", file=sys.stderr)
+                print(f"Please enter a number between 1 and {len(options) + 1}", file=sys.stderr)
             except ValueError:
                 print("Please enter a valid number", file=sys.stderr)
 
@@ -262,12 +268,17 @@ def handle_credential_sync(selected: ContainerOption) -> bool:
 
     # If no container credentials detected, user must handle manually
     if selected.env_sync_status == "no_container_creds":
-        print("\n⚠  Could not detect container credentials. Please configure .env manually.", file=sys.stderr)
+        print(
+            "\n⚠  Could not detect container credentials. Please configure .env manually.",
+            file=sys.stderr,
+        )
         return False
 
     # Credentials differ or missing - offer to sync
     if selected.env_sync_status in ["different", "missing"]:
-        print(f"\n.env status: {_format_env_sync_status(selected.env_sync_status)}", file=sys.stderr)
+        print(
+            f"\n.env status: {_format_env_sync_status(selected.env_sync_status)}", file=sys.stderr
+        )
         print(f"Container credentials: {selected.username} / [password detected]", file=sys.stderr)
 
         response = input("\nSync container credentials to .env? (y/n): ").strip().lower()
@@ -289,12 +300,10 @@ def handle_credential_sync(selected: ContainerOption) -> bool:
             if success:
                 print("✓ Credentials synchronized to .env", file=sys.stderr)
                 return True
-            else:
-                print("✗ Failed to sync credentials. Please configure .env manually.", file=sys.stderr)
-                return False
-        else:
-            print("\nℹ Using existing .env credentials (if any)", file=sys.stderr)
-            return True
+            print("✗ Failed to sync credentials. Please configure .env manually.", file=sys.stderr)
+            return False
+        print("\nℹ Using existing .env credentials (if any)", file=sys.stderr)
+        return True
 
     return True
 

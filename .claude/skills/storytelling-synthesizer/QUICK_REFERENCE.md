@@ -3,6 +3,7 @@
 ## One-Minute Overview
 
 Transform any technical work (PRs, commits, features) into narratives for:
+
 - Demo scripts (5-10 minutes)
 - Blog posts (1,500+ words)
 - Presentations (20-45 minutes)
@@ -51,6 +52,7 @@ Result: 15-slide outline with speaker notes and timing
 ## Four Core Narrative Templates
 
 ### 1. Demo Script (5-10 minutes)
+
 ```
 [Hook - 30 sec] "Imagine if..."
 [Problem - 1-2 min] "Here's what's broken..."
@@ -60,6 +62,7 @@ Result: 15-slide outline with speaker notes and timing
 ```
 
 ### 2. Blog Post (1,500-3,000 words)
+
 ```
 [Problem] What's broken and why it matters
 [Context] Why existing solutions fail
@@ -69,6 +72,7 @@ Result: 15-slide outline with speaker notes and timing
 ```
 
 ### 3. Presentation (20-45 minutes)
+
 ```
 [Problem] What's broken (3 min)
 [Architecture] How we fixed it (5 min)
@@ -79,6 +83,7 @@ Result: 15-slide outline with speaker notes and timing
 ```
 
 ### 4. Marketing Copy
+
 ```
 [Headline] Outcome-focused promise
 [Problem] What customer struggles with
@@ -90,50 +95,55 @@ Result: 15-slide outline with speaker notes and timing
 
 ## Key Principles
 
-| Principle | Example |
-|-----------|---------|
-| Start with problem | 40% of time on why it matters |
-| Be specific | "95% faster" not "much faster" |
-| Show, don't tell | Demo, metrics, examples > words |
-| Audience matters | Engineers care about code, execs care about ROI |
-| Medium matters | 7-minute demo ≠ 30-minute talk |
-| Use hooks | Open with something surprising or provocative |
-| Vary pacing | Mix explanation with excitement |
-| End strong | Close with implication, not just summary |
+| Principle          | Example                                         |
+| ------------------ | ----------------------------------------------- |
+| Start with problem | 40% of time on why it matters                   |
+| Be specific        | "95% faster" not "much faster"                  |
+| Show, don't tell   | Demo, metrics, examples > words                 |
+| Audience matters   | Engineers care about code, execs care about ROI |
+| Medium matters     | 7-minute demo ≠ 30-minute talk                  |
+| Use hooks          | Open with something surprising or provocative   |
+| Vary pacing        | Mix explanation with excitement                 |
+| End strong         | Close with implication, not just summary        |
 
 ## Hooks That Work
 
-| Hook Type | Example |
-|-----------|---------|
-| Surprising stat | "95% of developers waste 10 hours/week on X" |
-| Question | "What if you could cut time by 80%?" |
-| Problem | "We've all experienced the frustration of..." |
-| Bold claim | "This changes how we think about..." |
-| Contradiction | "The simplest solution was also the fastest" |
+| Hook Type       | Example                                       |
+| --------------- | --------------------------------------------- |
+| Surprising stat | "95% of developers waste 10 hours/week on X"  |
+| Question        | "What if you could cut time by 80%?"          |
+| Problem         | "We've all experienced the frustration of..." |
+| Bold claim      | "This changes how we think about..."          |
+| Contradiction   | "The simplest solution was also the fastest"  |
 
 ## Audience Adaptations
 
 ### For Engineers
+
 Focus: Technical novelty, elegant solutions, architecture
 Include: Code samples, algorithm details, tradeoffs
 Tone: Precise, technical, honest
 
 ### For Product Managers
+
 Focus: User impact, business metrics, adoption
 Include: Before/after, customer quotes, timelines
 Tone: Outcome-focused, data-driven
 
 ### For Executives
+
 Focus: Business value, ROI, strategic fit
 Include: Revenue impact, cost savings, risk reduction
 Tone: High-level, strategic, quantified
 
 ### For Users/Customers
+
 Focus: Simplicity, benefits, how-to
 Include: Specific examples, relatable scenarios
 Tone: Non-technical, benefit-focused, friendly
 
 ### For Marketing
+
 Focus: Differentiation, emotional resonance
 Include: Customer stories, competitive advantage
 Tone: Engaging, compelling, memorable
@@ -143,6 +153,7 @@ Tone: Engaging, compelling, memorable
 ### Example 1: PR → Demo (Quick)
 
 **INPUT**:
+
 ```
 PR: "Caching layer improves auth latency by 80%"
 Before: 200ms per check
@@ -150,6 +161,7 @@ After: 40ms per check
 ```
 
 **OUTPUT**:
+
 ```
 Hook: "Imagine every user interaction was 5x faster."
 Problem: "Our auth became a bottleneck at scale."
@@ -212,18 +224,19 @@ CTA: "Try free for 30 days, no credit card"
 
 ## Common Mistakes (Avoid These)
 
-| Mistake | Problem | Solution |
-|---------|---------|----------|
-| Too technical | Audience loses interest | Lead with impact, dive deep only if needed |
-| No problem | Why should anyone care? | Spend 40% on problem statement |
-| Vague metrics | Sounds impressive but unproven | Always quantify: "5x faster" not "much faster" |
-| Wrong audience | Bores the people listening | Analyze audience first, adapt accordingly |
-| Weak closing | Fizzles out | Close with implication, not summary |
-| Bad pacing | Drags or rushes | Plan timing, vary speed |
+| Mistake        | Problem                        | Solution                                       |
+| -------------- | ------------------------------ | ---------------------------------------------- |
+| Too technical  | Audience loses interest        | Lead with impact, dive deep only if needed     |
+| No problem     | Why should anyone care?        | Spend 40% on problem statement                 |
+| Vague metrics  | Sounds impressive but unproven | Always quantify: "5x faster" not "much faster" |
+| Wrong audience | Bores the people listening     | Analyze audience first, adapt accordingly      |
+| Weak closing   | Fizzles out                    | Close with implication, not summary            |
+| Bad pacing     | Drags or rushes                | Plan timing, vary speed                        |
 
 ## Output Templates
 
 ### Demo Script Format
+
 ```markdown
 # [Feature Name] Demo Script (7 minutes)
 
@@ -237,6 +250,7 @@ CTA: "Try free for 30 days, no credit card"
 [Live walkthrough with commentary]
 
 **METRICS (5:30-6:30)**
+
 - Metric 1: [specific number]
 - Metric 2: [specific number]
 
@@ -251,75 +265,92 @@ CTA: "Try free for 30 days, no credit card"
 ```
 
 ### Blog Outline Format
+
 ```markdown
 # [Article Title]
 
 ## Introduction
+
 [Hook + problem statement]
 
 ## The Problem
+
 [Detailed explanation - 400-500 words]
 
 ## The Solution
+
 [High-level overview before diving in - 300-400 words]
 
 ## Technical Deep Dive
+
 [Implementation details with code - 600-800 words]
 
 ## Results & Validation
+
 [Metrics and proof - 300-400 words]
 
 ## Implications
+
 [What this enables - 200-300 words]
 
 ## Code Example
+
 [Complete, runnable example]
 
 ## Conclusion
+
 [Takeaway and next steps]
 ```
 
 ### Presentation Outline Format
+
 ```markdown
 # [Presentation Title] - [Duration]
 
 ## Slide 1-2: Problem (3 min)
+
 - Slide 1: Problem statement
 - Slide 2: Why it matters
 
 ## Slide 3-5: Solution (5 min)
+
 - Slide 3: Architecture overview
 - Slide 4: Key innovation
 - Slide 5: How it works
 
 ## Slide 6-8: Demo (8 min)
+
 - Live demonstration
 - Before/after comparison
 
 ## Slide 9-10: Impact (3 min)
+
 - Metrics and results
 - Customer impact
 
 ## Slide 11: Roadmap (2 min)
+
 - What's next
 
 ## Slide 12: Closing (1 min)
+
 - Key takeaway
 ```
 
 ## When to Use Each Format
 
-| Goal | Medium | Time | Audience |
-|------|--------|------|----------|
-| Quick demo | Demo script | 5-10 min | Everyone |
-| Deep learning | Blog post | 1,500+ words | Technical |
-| Get buy-in | Presentation | 20-45 min | Stakeholders |
-| Drive adoption | Marketing | Varied | Prospects |
-| Share wins | Release notes | Varied | Users |
+| Goal           | Medium        | Time         | Audience     |
+| -------------- | ------------- | ------------ | ------------ |
+| Quick demo     | Demo script   | 5-10 min     | Everyone     |
+| Deep learning  | Blog post     | 1,500+ words | Technical    |
+| Get buy-in     | Presentation  | 20-45 min    | Stakeholders |
+| Drive adoption | Marketing     | Varied       | Prospects    |
+| Share wins     | Release notes | Varied       | Users        |
 
 ## Real-World Example: Full Cycle
 
 **Technical Achievement**:
+
 - Built distributed caching layer
 - 200ms → 40ms latency (5x improvement)
 - Handles 100k concurrent users
