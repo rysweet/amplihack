@@ -18,6 +18,7 @@ After a 45-minute debugging session to fix pre-commit hooks failing silently.
 ### Step 1: Session Analysis
 
 **What happened**:
+
 - Started with cryptic error ("hooks ran but nothing changed")
 - Checked merge conflicts (false lead)
 - Checked tool versions (false lead)
@@ -25,6 +26,7 @@ After a 45-minute debugging session to fix pre-commit hooks failing silently.
 - Solution: Add retry logic with exponential backoff
 
 **What was learned**:
+
 - Cloud sync file locks cause silent I/O failures
 - Need defensive file I/O with retries
 - Error messages should be more diagnostic
@@ -32,19 +34,22 @@ After a 45-minute debugging session to fix pre-commit hooks failing silently.
 
 ### Step 2: Create Discovery Entry
 
-```markdown
+````markdown
 ## Pre-commit Hooks Cloud Sync Issue (2025-11-08)
 
 ### Issue
+
 Pre-commit hooks appeared to run but didn't modify files. No error messages,
 just silent failure.
 
 ### Root Cause
+
 OneDrive (cloud sync) was holding file locks on hook-modified files. The
 subprocess.run() call would complete "successfully" without actually writing
 changes because of the lock.
 
 ### Solution
+
 Implemented exponential backoff retry logic for file I/O:
 
 ```python
@@ -62,6 +67,7 @@ def write_with_retry(filepath, data, max_retries=3):
             else:
                 raise
 ```
+````
 
 ### Key Learnings
 
@@ -73,11 +79,13 @@ def write_with_retry(filepath, data, max_retries=3):
 ### Prevention
 
 For any file I/O operation:
+
 1. Use write_with_retry() for all file modifications
 2. Add explicit error logging if retries occur
 3. Test with cloud storage enabled
 4. Document that system expects possible brief I/O delays
 5. Consider adding diagnostic flag: `--verbose-io` to show retry attempts
+
 ```
 
 ### Step 3: Quality Checklist
@@ -122,3 +130,4 @@ For any file I/O operation:
 ## Key Principle
 
 Good discoveries transform individual debugging work into organizational knowledge that prevents future mistakes and accelerates solutions.
+```

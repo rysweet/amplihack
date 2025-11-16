@@ -30,7 +30,9 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     if use_graph_mem or enable_neo4j:
         os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
         if use_graph_mem:
-            print("WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead.")
+            print(
+                "WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead."
+            )
             print("Neo4j graph memory enabled via --use-graph-mem flag (deprecated)")
         else:
             print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
@@ -399,6 +401,25 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
     uvx_parser.add_argument("--info", action="store_true", help="Show UVX staging information")
 
+    # Serena MCP integration command
+    # Import and register the serena subcommand
+    try:
+        # Import from worktree location first, then fall back to package location
+        import sys
+
+        worktree_path = (
+            Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "integrations"
+        )
+        if worktree_path.exists():
+            sys.path.insert(0, str(worktree_path.parent))
+        from serena import SerenaCLI
+
+        serena_cli = SerenaCLI()
+        serena_cli.setup_parser(subparsers)
+    except ImportError:
+        # Serena integration not available - skip silently
+        pass
+
     # Goal Agent Generator command
     new_parser = subparsers.add_parser(
         "new", help="Generate a new goal-seeking agent from a prompt file"
@@ -459,7 +480,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         copy_strategy = strategy_manager.determine_target(
             original_target=os.path.join(original_cwd, ".claude"),
             has_conflicts=conflict_result.has_conflicts,
-            conflicting_files=conflict_result.conflicting_files
+            conflicting_files=conflict_result.conflicting_files,
         )
 
         temp_claude_dir = str(copy_strategy.target_dir)
@@ -492,7 +513,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
+                        print(
+                            f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
+                        )
             except Exception as e:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")
@@ -732,6 +755,27 @@ def main(argv: Optional[List[str]] = None) -> int:
             skills_dir=skills_path,
             verbose=args.verbose,
         )
+
+    elif args.command == "serena":
+        # Handle serena MCP integration commands
+        try:
+            # Import from worktree location first, then fall back to package location
+            worktree_path = (
+                Path(__file__).parent.parent.parent
+                / ".claude"
+                / "tools"
+                / "amplihack"
+                / "integrations"
+            )
+            if worktree_path.exists():
+                sys.path.insert(0, str(worktree_path.parent))
+            from serena import SerenaCLI
+
+            serena_cli = SerenaCLI()
+            return serena_cli.execute(args)
+        except ImportError as e:
+            print(f"Error: Serena integration not available: {e}", file=sys.stderr)
+            return 1
 
     else:
         create_parser().print_help()

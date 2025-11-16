@@ -7,6 +7,7 @@ This document provides practical examples of using the DOCX skill in Claude Code
 ## Example 1: Create a Business Proposal Document
 
 ### Scenario
+
 Create a professional business proposal with title page, executive summary, sections, and a pricing table.
 
 ### Conversation
@@ -16,134 +17,172 @@ Create a professional business proposal with title page, executive summary, sect
 **Claude**: I'll create a structured business proposal using docx-js.
 
 ```javascript
-import { Document, Paragraph, TextRun, Table, TableCell, TableRow, Packer, AlignmentType, BorderStyle } from "docx";
+import {
+  Document,
+  Paragraph,
+  TextRun,
+  Table,
+  TableCell,
+  TableRow,
+  Packer,
+  AlignmentType,
+  BorderStyle,
+} from "docx";
 import * as fs from "fs";
 
 const doc = new Document({
-  sections: [{
-    properties: {},
-    children: [
-      // Title Page
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: "SOFTWARE DEVELOPMENT PROPOSAL",
-            bold: true,
-            size: 32,
-          })
-        ],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 400 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "Client: Acme Corporation", size: 24 })],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 200 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "Date: November 8, 2025", size: 20 })],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 800 }
-      }),
+  sections: [
+    {
+      properties: {},
+      children: [
+        // Title Page
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: "SOFTWARE DEVELOPMENT PROPOSAL",
+              bold: true,
+              size: 32,
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "Client: Acme Corporation", size: 24 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 200 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "Date: November 8, 2025", size: 20 })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 800 },
+        }),
 
-      // Executive Summary
-      new Paragraph({
-        children: [new TextRun({ text: "Executive Summary", bold: true, size: 28 })],
-        spacing: { before: 400, after: 200 }
-      }),
-      new Paragraph({
-        children: [new TextRun({
-          text: "This proposal outlines a comprehensive software development project to build a modern web application. The project will deliver a scalable, secure platform within 12 weeks."
-        })],
-        spacing: { after: 200 }
-      }),
+        // Executive Summary
+        new Paragraph({
+          children: [new TextRun({ text: "Executive Summary", bold: true, size: 28 })],
+          spacing: { before: 400, after: 200 },
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: "This proposal outlines a comprehensive software development project to build a modern web application. The project will deliver a scalable, secure platform within 12 weeks.",
+            }),
+          ],
+          spacing: { after: 200 },
+        }),
 
-      // Project Scope
-      new Paragraph({
-        children: [new TextRun({ text: "Project Scope", bold: true, size: 28 })],
-        spacing: { before: 400, after: 200 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "1. User Authentication System", bold: true })],
-        spacing: { after: 100 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "   - OAuth 2.0 integration" })],
-        spacing: { after: 100 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "   - Role-based access control" })],
-        spacing: { after: 100 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "2. Database Architecture", bold: true })],
-        spacing: { after: 100 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "   - PostgreSQL backend" })],
-        spacing: { after: 100 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "   - Optimized queries and indexing" })],
-        spacing: { after: 200 }
-      }),
+        // Project Scope
+        new Paragraph({
+          children: [new TextRun({ text: "Project Scope", bold: true, size: 28 })],
+          spacing: { before: 400, after: 200 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "1. User Authentication System", bold: true })],
+          spacing: { after: 100 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "   - OAuth 2.0 integration" })],
+          spacing: { after: 100 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "   - Role-based access control" })],
+          spacing: { after: 100 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "2. Database Architecture", bold: true })],
+          spacing: { after: 100 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "   - PostgreSQL backend" })],
+          spacing: { after: 100 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "   - Optimized queries and indexing" })],
+          spacing: { after: 200 },
+        }),
 
-      // Timeline
-      new Paragraph({
-        children: [new TextRun({ text: "Project Timeline", bold: true, size: 28 })],
-        spacing: { before: 400, after: 200 }
-      }),
-      new Paragraph({
-        children: [new TextRun({ text: "Total Duration: 12 weeks" })],
-        spacing: { after: 200 }
-      }),
+        // Timeline
+        new Paragraph({
+          children: [new TextRun({ text: "Project Timeline", bold: true, size: 28 })],
+          spacing: { before: 400, after: 200 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: "Total Duration: 12 weeks" })],
+          spacing: { after: 200 },
+        }),
 
-      // Pricing Table
-      new Paragraph({
-        children: [new TextRun({ text: "Pricing Breakdown", bold: true, size: 28 })],
-        spacing: { before: 400, after: 200 }
-      }),
-      new Table({
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Phase", bold: true })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Duration", bold: true })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Cost", bold: true })] })] })
-            ]
-          }),
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph("Discovery & Planning")] }),
-              new TableCell({ children: [new Paragraph("2 weeks")] }),
-              new TableCell({ children: [new Paragraph("$15,000")] })
-            ]
-          }),
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph("Development")] }),
-              new TableCell({ children: [new Paragraph("8 weeks")] }),
-              new TableCell({ children: [new Paragraph("$60,000")] })
-            ]
-          }),
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph("Testing & Deployment")] }),
-              new TableCell({ children: [new Paragraph("2 weeks")] }),
-              new TableCell({ children: [new Paragraph("$15,000")] })
-            ]
-          }),
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Total", bold: true })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "12 weeks", bold: true })] })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "$90,000", bold: true })] })] })
-            ]
-          })
-        ]
-      })
-    ]
-  }]
+        // Pricing Table
+        new Paragraph({
+          children: [new TextRun({ text: "Pricing Breakdown", bold: true, size: 28 })],
+          spacing: { before: 400, after: 200 },
+        }),
+        new Table({
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  children: [
+                    new Paragraph({ children: [new TextRun({ text: "Phase", bold: true })] }),
+                  ],
+                }),
+                new TableCell({
+                  children: [
+                    new Paragraph({ children: [new TextRun({ text: "Duration", bold: true })] }),
+                  ],
+                }),
+                new TableCell({
+                  children: [
+                    new Paragraph({ children: [new TextRun({ text: "Cost", bold: true })] }),
+                  ],
+                }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph("Discovery & Planning")] }),
+                new TableCell({ children: [new Paragraph("2 weeks")] }),
+                new TableCell({ children: [new Paragraph("$15,000")] }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph("Development")] }),
+                new TableCell({ children: [new Paragraph("8 weeks")] }),
+                new TableCell({ children: [new Paragraph("$60,000")] }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({ children: [new Paragraph("Testing & Deployment")] }),
+                new TableCell({ children: [new Paragraph("2 weeks")] }),
+                new TableCell({ children: [new Paragraph("$15,000")] }),
+              ],
+            }),
+            new TableRow({
+              children: [
+                new TableCell({
+                  children: [
+                    new Paragraph({ children: [new TextRun({ text: "Total", bold: true })] }),
+                  ],
+                }),
+                new TableCell({
+                  children: [
+                    new Paragraph({ children: [new TextRun({ text: "12 weeks", bold: true })] }),
+                  ],
+                }),
+                new TableCell({
+                  children: [
+                    new Paragraph({ children: [new TextRun({ text: "$90,000", bold: true })] }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    },
+  ],
 });
 
 const buffer = await Packer.toBuffer(doc);
@@ -152,6 +191,7 @@ console.log("Created business_proposal.docx");
 ```
 
 ### Expected Output
+
 - Professional `business_proposal.docx` file
 - Formatted title page with proper alignment
 - Structured sections with headings
@@ -163,6 +203,7 @@ console.log("Created business_proposal.docx");
 ## Example 2: Extract Text with Tracked Changes
 
 ### Scenario
+
 Review a contract that has tracked changes and extract all text including insertions and deletions.
 
 ### Conversation
@@ -193,6 +234,7 @@ pandoc contract.docx -o contract.txt
 ```
 
 ### Expected Output
+
 - Markdown file with tracked changes formatted as strikethrough and underline
 - Insertions shown as additions
 - Deletions shown as strikethrough
@@ -203,6 +245,7 @@ pandoc contract.docx -o contract.txt
 ## Example 3: Implement Contract Redlines (Tracked Changes)
 
 ### Scenario
+
 Legal document needs systematic review with tracked changes. Change "30 days" to "60 days" throughout, update party names, and modify payment terms.
 
 ### Conversation
@@ -221,15 +264,18 @@ cat current.md
 **Step 2: Identify changes and create batches**
 
 Batch 1: Timeline changes (30 → 60 days)
+
 - Section 2.1: "delivered within 30 days"
 - Section 5.3: "terminate with 30 days notice"
 - Section 7.2: "respond within 30 days"
 
 Batch 2: Party name updates
+
 - Preamble: "Vendor Corp"
 - Throughout document: "Vendor Corp" → "Supplier LLC"
 
 Batch 3: Payment terms
+
 - Section 4.1: "net-30" → "net-60"
 - Section 4.2: "30 days from invoice" → "60 days from invoice"
 
@@ -343,6 +389,7 @@ grep "net-60" final_verification.md
 ```
 
 ### Expected Output
+
 - `contract_reviewed.docx` with systematic tracked changes
 - All changes batched logically for easier debugging
 - Minimal edits (only changed text marked)
@@ -354,6 +401,7 @@ grep "net-60" final_verification.md
 ## Example 4: Extract Document Comments
 
 ### Scenario
+
 A reviewed document has comments that need to be extracted and analyzed.
 
 ### Conversation
@@ -405,6 +453,7 @@ for c in comments:
 ```
 
 ### Expected Output
+
 - List of all comments with metadata
 - Comment ID, author, date, and text content
 - Structured format for analysis
@@ -414,6 +463,7 @@ for c in comments:
 ## Example 5: Convert Document to Images for Visual Review
 
 ### Scenario
+
 Need to visually review a document as images for presentation or markup.
 
 ### Conversation
@@ -447,6 +497,7 @@ pdftoppm -png -r 150 contract.pdf page
 ```
 
 ### Expected Output
+
 - `page-1.jpg`, `page-2.jpg`, etc. for each document page
 - JPEG images suitable for visual review and annotation
 - Adjustable quality based on DPI setting
@@ -456,6 +507,7 @@ pdftoppm -png -r 150 contract.pdf page
 ## Example 6: Batch Process Multiple Documents
 
 ### Scenario
+
 Extract text from all Word documents in a directory for analysis.
 
 ### Conversation
@@ -491,6 +543,7 @@ done
 ```
 
 ### Expected Output
+
 - Text files for each Word document
 - Organized in `extracted_text/` directory
 - Index file listing all extracted documents
@@ -501,6 +554,7 @@ done
 ## Example 7: Add Header and Footer to Document
 
 ### Scenario
+
 Need to add page numbers and company logo to document headers/footers.
 
 ### Conversation
@@ -510,47 +564,58 @@ Need to add page numbers and company logo to document headers/footers.
 **Claude**: I'll create a document with headers and footers using docx-js.
 
 ```javascript
-import { Document, Paragraph, TextRun, Header, Footer, PageNumber, AlignmentType, Packer } from "docx";
+import {
+  Document,
+  Paragraph,
+  TextRun,
+  Header,
+  Footer,
+  PageNumber,
+  AlignmentType,
+  Packer,
+} from "docx";
 import * as fs from "fs";
 
 const doc = new Document({
-  sections: [{
-    headers: {
-      default: new Header({
-        children: [
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "Acme Corporation - Confidential",
-                bold: true
-              })
-            ],
-            alignment: AlignmentType.CENTER
-          })
-        ]
-      })
+  sections: [
+    {
+      headers: {
+        default: new Header({
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: "Acme Corporation - Confidential",
+                  bold: true,
+                }),
+              ],
+              alignment: AlignmentType.CENTER,
+            }),
+          ],
+        }),
+      },
+      footers: {
+        default: new Footer({
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: "Page " }),
+                PageNumber.CURRENT,
+                new TextRun({ text: " of " }),
+                PageNumber.TOTAL_PAGES,
+              ],
+              alignment: AlignmentType.CENTER,
+            }),
+          ],
+        }),
+      },
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text: "Document content here...", size: 24 })],
+        }),
+      ],
     },
-    footers: {
-      default: new Footer({
-        children: [
-          new Paragraph({
-            children: [
-              new TextRun({ text: "Page " }),
-              PageNumber.CURRENT,
-              new TextRun({ text: " of " }),
-              PageNumber.TOTAL_PAGES
-            ],
-            alignment: AlignmentType.CENTER
-          })
-        ]
-      })
-    },
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text: "Document content here...", size: 24 })]
-      })
-    ]
-  }]
+  ],
 });
 
 const buffer = await Packer.toBuffer(doc);
@@ -558,6 +623,7 @@ fs.writeFileSync("report_with_header_footer.docx", buffer);
 ```
 
 ### Expected Output
+
 - Document with header showing company name
 - Footer with page numbers (Page X of Y)
 - Headers/footers appear on all pages
@@ -567,6 +633,7 @@ fs.writeFileSync("report_with_header_footer.docx", buffer);
 ## Example 8: Extract and Analyze Document Structure
 
 ### Scenario
+
 Need to understand document structure (sections, headings, lists) for reorganization.
 
 ### Conversation
@@ -613,6 +680,7 @@ for h in headings:
 ```
 
 ### Expected Output
+
 - Document outline with heading levels
 - Hierarchical structure visualization
 - Easy to identify sections for reorganization
@@ -622,6 +690,7 @@ for h in headings:
 ## Example 9: Merge Multiple Documents
 
 ### Scenario
+
 Combine several Word documents into a single consolidated document.
 
 ### Conversation
@@ -648,6 +717,7 @@ pandoc combined.md -o combined.docx
 ```
 
 ### Expected Output
+
 - Single `merged_document.docx` file
 - All content from source documents preserved
 - Optional page breaks between sections
@@ -658,6 +728,7 @@ pandoc combined.md -o combined.docx
 ## Example 10: Create Document from Template with Data
 
 ### Scenario
+
 Generate multiple contract documents from a template by replacing placeholder variables.
 
 ### Conversation
@@ -669,9 +740,9 @@ Generate multiple contract documents from a template by replacing placeholder va
 ```json
 // data.json
 [
-  {"client": "Acme Corp", "date": "2025-11-08", "amount": "$50,000"},
-  {"client": "Beta Inc", "date": "2025-11-10", "amount": "$75,000"},
-  {"client": "Gamma LLC", "date": "2025-11-12", "amount": "$100,000"}
+  { "client": "Acme Corp", "date": "2025-11-08", "amount": "$50,000" },
+  { "client": "Beta Inc", "date": "2025-11-10", "amount": "$75,000" },
+  { "client": "Gamma LLC", "date": "2025-11-12", "amount": "$100,000" }
 ]
 ```
 
@@ -725,6 +796,7 @@ for i, client in enumerate(clients, 1):
 ```
 
 ### Expected Output
+
 - Three contract documents:
   - `contract_Acme_Corp.docx`
   - `contract_Beta_Inc.docx`

@@ -58,7 +58,7 @@ except KeyboardInterrupt:
     sys.exit(0)
 """
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
         f.write(test_script)
         temp_path = Path(f.name)
 
@@ -68,9 +68,9 @@ except KeyboardInterrupt:
 
 def test_sigint_cleanup() -> bool:
     """Test that SIGINT (Ctrl-C) triggers Neo4j cleanup."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST: SIGINT (Ctrl-C) Cleanup")
-    print("="*70)
+    print("=" * 70)
 
     test_script = None
     process = None
@@ -86,7 +86,7 @@ def test_sigint_cleanup() -> bool:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            bufsize=1
+            bufsize=1,
         )
         print(f"✓ Started test process (PID: {process.pid})")
 
@@ -144,6 +144,7 @@ def test_sigint_cleanup() -> bool:
     except Exception as e:
         print(f"✗ FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -157,9 +158,9 @@ def test_sigint_cleanup() -> bool:
 
 def test_sigterm_cleanup() -> bool:
     """Test that SIGTERM triggers Neo4j cleanup."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST: SIGTERM Cleanup")
-    print("="*70)
+    print("=" * 70)
 
     test_script = None
     process = None
@@ -175,7 +176,7 @@ def test_sigterm_cleanup() -> bool:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            bufsize=1
+            bufsize=1,
         )
         print(f"✓ Started test process (PID: {process.pid})")
 
@@ -232,6 +233,7 @@ def test_sigterm_cleanup() -> bool:
     except Exception as e:
         print(f"✗ FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -245,9 +247,9 @@ def test_sigterm_cleanup() -> bool:
 
 def test_signal_handler_fail_safe() -> bool:
     """Test that signal handlers never block indefinitely."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST: Signal Handler Fail-Safe Behavior")
-    print("="*70)
+    print("=" * 70)
 
     # This test verifies that even if cleanup fails, the process still exits
     test_script_content = """#!/usr/bin/env python3
@@ -283,7 +285,7 @@ except KeyboardInterrupt:
 
     try:
         # Create test script
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(test_script_content)
             test_script = Path(f.name)
 
@@ -295,7 +297,7 @@ except KeyboardInterrupt:
             [sys.executable, str(test_script)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         print(f"✓ Started test process (PID: {process.pid})")
 
@@ -329,9 +331,9 @@ except KeyboardInterrupt:
 
 def main():
     """Run all signal handler tests."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("AGENTIC TEST: Signal Handler Neo4j Cleanup Integration")
-    print("="*70)
+    print("=" * 70)
     print("\nThis test verifies that signal handlers properly trigger Neo4j cleanup")
     print("and that the process exits gracefully without blocking indefinitely.")
     print()
@@ -339,14 +341,14 @@ def main():
     results = {}
 
     # Run tests
-    results['SIGINT'] = test_sigint_cleanup()
-    results['SIGTERM'] = test_sigterm_cleanup()
-    results['Fail-Safe'] = test_signal_handler_fail_safe()
+    results["SIGINT"] = test_sigint_cleanup()
+    results["SIGTERM"] = test_sigterm_cleanup()
+    results["Fail-Safe"] = test_signal_handler_fail_safe()
 
     # Print summary
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST SUMMARY")
-    print("="*70)
+    print("=" * 70)
 
     all_passed = True
     for test_name, passed in results.items():
@@ -355,7 +357,7 @@ def main():
         if not passed:
             all_passed = False
 
-    print("="*70)
+    print("=" * 70)
 
     if all_passed:
         print("\n✅ ALL TESTS PASSED")

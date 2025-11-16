@@ -14,12 +14,12 @@ secret:
       match: amplihack
     # Specific incidents from PR #1211
     - name: incident-22286993-username-password-test
-      match: "224876143"  # Occurrence ID from test_connection_tracker.py
+      match: "224876143" # Occurrence ID from test_connection_tracker.py
     - name: incident-22286686-auth-tuple-prod
-      match: "224874751"  # Occurrence ID from connection_tracker.py
+      match: "224874751" # Occurrence ID from connection_tracker.py
     # Test fixtures from PR #1301
     - name: test-fixture-fake-password
-      match: 548fa7beca64b45b06c7b975a7b34c866bc6a84650e9237e2075648bac2719be  # SHA256 of FAKE_PASSWORD_FOR_TESTS
+      match: 548fa7beca64b45b06c7b975a7b34c866bc6a84650e9237e2075648bac2719be # SHA256 of FAKE_PASSWORD_FOR_TESTS
     - name: test-fixture-fake-password-literal
       match: FAKE_PASSWORD_FOR_TESTS
 
@@ -56,8 +56,8 @@ secret:
     # Password generation code (not actual secrets - these generate passwords dynamically)
     # All Neo4j infrastructure code - these contain password GENERATION, not secrets
     - "src/amplihack/memory/**/*"
-    - "src/amplihack/neo4j/*"  # Neo4j connection tracking files (direct children)
-    - "src/amplihack/neo4j/**/*"  # Neo4j connection tracking subdirectories
+    - "src/amplihack/neo4j/*" # Neo4j connection tracking files (direct children)
+    - "src/amplihack/neo4j/**/*" # Neo4j connection tracking subdirectories
     - "docker/**/*neo4j*"
     - "scripts/*neo4j*"
     - "scripts/*memory*"

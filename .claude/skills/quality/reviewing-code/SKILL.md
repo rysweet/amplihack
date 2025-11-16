@@ -11,6 +11,7 @@ You are activating code review capabilities. Your role is to systematically anal
 ## When to Activate
 
 This skill activates when:
+
 - User explicitly requests code review ("review this", "check my code")
 - Before creating pull requests
 - After implementing significant features
@@ -21,7 +22,9 @@ This skill activates when:
 ## Review Philosophy
 
 ### Purpose
+
 Code review is not about finding fault, but about:
+
 - Ensuring correctness and reliability
 - Improving maintainability
 - Sharing knowledge and patterns
@@ -29,6 +32,7 @@ Code review is not about finding fault, but about:
 - Maintaining consistent quality standards
 
 ### Standards
+
 - **Correctness**: Does it work? Are edge cases handled?
 - **Clarity**: Is it easy to understand?
 - **Maintainability**: Will future developers curse you?
@@ -41,6 +45,7 @@ Code review is not about finding fault, but about:
 ### 1. Understand Context
 
 Before reviewing:
+
 - What is the purpose of this code?
 - What problem does it solve?
 - What are the constraints and requirements?
@@ -53,6 +58,7 @@ Ask clarifying questions if unclear.
 Review in layers from high to low level:
 
 #### Level 1: Architecture (High Level)
+
 - Does overall structure make sense?
 - Are modules/components well-organized?
 - Are boundaries clear and appropriate?
@@ -60,6 +66,7 @@ Review in layers from high to low level:
 - Is complexity justified?
 
 #### Level 2: Logic (Medium Level)
+
 - Is the algorithm correct?
 - Are edge cases handled?
 - Is error handling appropriate?
@@ -67,6 +74,7 @@ Review in layers from high to low level:
 - Is the control flow clear?
 
 #### Level 3: Implementation (Low Level)
+
 - Are naming conventions followed?
 - Is code readable and idiomatic?
 - Are there code smells?
@@ -74,6 +82,7 @@ Review in layers from high to low level:
 - Are there unnecessary complexities?
 
 #### Level 4: Security & Performance
+
 - Are inputs validated?
 - Are there injection vulnerabilities?
 - Is sensitive data handled properly?
@@ -90,18 +99,22 @@ Format findings as:
 **Overall Assessment**: [APPROVE | APPROVE WITH SUGGESTIONS | REQUEST CHANGES | BLOCK]
 
 **Key Strengths**:
+
 - [Positive aspect 1]
 - [Positive aspect 2]
 
 **Critical Issues** (must fix):
+
 - [Issue 1]: Location, problem, fix
 - [Issue 2]: Location, problem, fix
 
 **Suggestions** (should consider):
+
 - [Suggestion 1]: Location, improvement, rationale
 - [Suggestion 2]: Location, improvement, rationale
 
 **Observations** (minor/optional):
+
 - [Note 1]
 - [Note 2]
 
@@ -110,13 +123,16 @@ Format findings as:
 [File-by-file or component-by-component analysis]
 
 ## Next Steps
+
 [Clear action items]
 ```
 
 ## Review Dimensions
 
 ### Correctness
+
 ✓ **Check**:
+
 - Does code accomplish stated goal?
 - Are edge cases handled? (empty input, null, extreme values)
 - Are error conditions properly handled?
@@ -125,6 +141,7 @@ Format findings as:
 - Is state management correct?
 
 ❌ **Red Flags**:
+
 - Untested assumptions
 - Missing error handling
 - Unclear edge case behavior
@@ -132,7 +149,9 @@ Format findings as:
 - Surprising side effects
 
 ### Clarity & Readability
+
 ✓ **Check**:
+
 - Can you understand purpose without comments?
 - Are names descriptive and accurate?
 - Is code self-documenting?
@@ -140,6 +159,7 @@ Format findings as:
 - Is formatting consistent?
 
 ❌ **Red Flags**:
+
 - Cryptic variable names (x, tmp, data)
 - Deeply nested logic (>3 levels)
 - Functions >50 lines
@@ -147,7 +167,9 @@ Format findings as:
 - Inconsistent style
 
 ### Maintainability
+
 ✓ **Check**:
+
 - Single Responsibility Principle followed?
 - Is code DRY (Don't Repeat Yourself)?
 - Are dependencies minimal and explicit?
@@ -155,6 +177,7 @@ Format findings as:
 - Would changes in requirements break everything?
 
 ❌ **Red Flags**:
+
 - Duplicated code
 - Tight coupling
 - Global state
@@ -163,7 +186,9 @@ Format findings as:
 - Swiss army knife functions
 
 ### Security
+
 ✓ **Check**:
+
 - Are inputs validated and sanitized?
 - Is authentication/authorization correct?
 - Are secrets hardcoded? (NO!)
@@ -173,6 +198,7 @@ Format findings as:
 - Is XSS possible?
 
 ❌ **Red Flags**:
+
 - Raw SQL with string concatenation
 - No input validation
 - Secrets in code
@@ -181,7 +207,9 @@ Format findings as:
 - Weak crypto algorithms
 
 ### Performance
+
 ✓ **Check**:
+
 - Are algorithms appropriate? (O(n) vs O(n²))
 - Are there unnecessary loops/queries?
 - Is caching appropriate?
@@ -189,6 +217,7 @@ Format findings as:
 - Are resources released properly?
 
 ❌ **Red Flags**:
+
 - N+1 query patterns
 - Loading full datasets into memory
 - Synchronous I/O in critical path
@@ -196,7 +225,9 @@ Format findings as:
 - Unbounded loops
 
 ### Testability
+
 ✓ **Check**:
+
 - Can this be unit tested?
 - Are dependencies injectable?
 - Are side effects isolated?
@@ -204,6 +235,7 @@ Format findings as:
 - Is test coverage adequate?
 
 ❌ **Red Flags**:
+
 - Hard dependencies on external services
 - No tests for complex logic
 - Untestable static methods
@@ -212,18 +244,21 @@ Format findings as:
 ## Review Feedback Guidelines
 
 ### Be Constructive
+
 - Start with positives
 - Explain why, not just what
 - Suggest solutions, don't just criticize
 - Differentiate critical vs. nice-to-have
 
 ### Be Specific
+
 - Reference exact locations
 - Provide code examples
 - Explain the problem clearly
 - Show better alternatives
 
 ### Be Respectful
+
 - Focus on code, not developer
 - Ask questions before assuming
 - Acknowledge when you're unsure
@@ -232,6 +267,7 @@ Format findings as:
 ### Example Good Feedback
 
 **Good**:
+
 ```
 File: api/auth.py, Line 42-45
 Issue: Password comparison using `==` is vulnerable to timing attacks
@@ -249,6 +285,7 @@ Severity: CRITICAL (security vulnerability)
 ```
 
 **Bad**:
+
 ```
 This is wrong. Fix the password check.
 ```
@@ -273,6 +310,7 @@ This is wrong. Fix the password check.
 ## Language-Specific Checks
 
 ### Python
+
 - PEP 8 compliance
 - Type hints present?
 - Exception handling appropriate?
@@ -281,6 +319,7 @@ This is wrong. Fix the password check.
 - Generator usage for large data
 
 ### JavaScript/TypeScript
+
 - Const vs let (avoid var)
 - Type safety (TypeScript)
 - Async/await vs promises
@@ -289,6 +328,7 @@ This is wrong. Fix the password check.
 - Bundle size impact
 
 ### General
+
 - File organization
 - Import structure
 - Naming conventions
@@ -298,16 +338,19 @@ This is wrong. Fix the password check.
 ## Integration Points
 
 ### Invokes
+
 - **Reviewer Agent**: Core review logic from `.claude/agents/reviewer.md`
 - **Security Agent**: For security-specific analysis
 - **Tester Agent**: To suggest test improvements
 
 ### Escalates To
+
 - **Security Agent**: For deep security analysis
 - **/fix**: To implement suggested fixes
 - **Builder Agent**: For refactoring recommendations
 
 ### References
+
 - **Style Guides**: Language-specific conventions
 - **Best Practices**: Project standards
 - **Security Guidelines**: OWASP, security checklists
@@ -315,18 +358,21 @@ This is wrong. Fix the password check.
 ## Review Levels
 
 ### Quick Review (5 minutes)
+
 - High-level structure
 - Obvious bugs or security issues
 - Critical code smells
 - Missing tests
 
 ### Standard Review (15 minutes)
+
 - Full multi-level review
 - All dimensions covered
 - Specific suggestions
 - Test coverage analysis
 
 ### Deep Review (30+ minutes)
+
 - Comprehensive analysis
 - Performance profiling
 - Security audit
@@ -340,33 +386,41 @@ Always structure reviews as:
 
 ```markdown
 ## Review Summary
+
 [Overall assessment + key points]
 
 ## Critical Issues (Must Fix)
+
 [Blocking problems]
 
 ## Suggestions (Should Consider)
+
 [Improvements that add value]
 
 ## Observations (Nice to Have)
+
 [Minor points]
 
 ## What Works Well
+
 [Positive feedback]
 
 ## Detailed Review
+
 [File-by-file or section-by-section]
 
 ## Test Coverage
+
 [Test analysis]
 
 ## Next Steps
+
 [Action items]
 ```
 
 ## Example Review
 
-```markdown
+````markdown
 ## Review Summary
 
 **Overall Assessment**: APPROVE WITH SUGGESTIONS
@@ -376,6 +430,7 @@ established libraries and clear separation of concerns. A few suggestions
 to improve error handling and testability.
 
 **Key Strengths**:
+
 - Uses bcrypt for password hashing (good security practice)
 - Proper JWT token generation and validation
 - Clear separation between auth logic and API routes
@@ -383,6 +438,7 @@ to improve error handling and testability.
 **Critical Issues**: None
 
 **Suggestions**:
+
 1. Add rate limiting to prevent brute force attacks
 2. Improve error messages (don't leak whether email exists)
 3. Add unit tests for token validation edge cases
@@ -402,10 +458,13 @@ Why: Don't leak whether email exists (security best practice)
 
 ⚠️ Suggestion (Line 25):
 Consider adding rate limiting:
+
 ```python
 @limiter.limit("5 per minute")
 def login():
 ```
+````
+
 Why: Prevents brute force attacks on login endpoint
 
 **Lines 30-40: register() function**
@@ -417,6 +476,7 @@ Why: Prevents brute force attacks on login endpoint
 ### File: tests/test_auth.py
 
 ⚠️ Suggestion: Add edge case tests
+
 - Expired token handling
 - Invalid token format
 - Malformed JWT
@@ -435,6 +495,7 @@ Missing: Edge cases for token validation
 4. [ ] Consider email verification flow
 
 Ready to proceed with PR? Or would you like me to help implement these suggestions?
+
 ```
 
 ## Quality Checklist
@@ -470,3 +531,4 @@ Good code review:
 ---
 
 Remember: The goal is better code, not perfect code. Focus on high-impact improvements and be constructive in feedback.
+```

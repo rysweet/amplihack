@@ -19,6 +19,7 @@ Create an auto-discoverable skill that loads when Claude detects relevance:
 ```
 
 **Expected Workflow:**
+
 1. Validates arguments (name, type, description)
 2. Creates todo list with 8 steps
 3. Invokes prompt-writer to clarify requirements
@@ -29,6 +30,7 @@ Create an auto-discoverable skill that loads when Claude detects relevance:
 8. Creates directory and file at: `.claude/skills/json-validator/SKILL.md`
 
 **Expected Output:**
+
 - Auto-discoverable skill with keyword-rich description
 - Progressive disclosure structure (SKILL.md core <5K tokens)
 - Optional supporting files (reference.md, examples.md, scripts/)
@@ -36,6 +38,7 @@ Create an auto-discoverable skill that loads when Claude detects relevance:
 - Philosophy compliance score >85%
 
 **How It Works After Creation:**
+
 ```
 User: "Can you validate this JSON for me?"
 Claude: *json-validator skill loads automatically*
@@ -51,6 +54,7 @@ Create a specialized agent for data transformation:
 ```
 
 **Expected Workflow:**
+
 1. Validates arguments (name, type, description)
 2. Creates todo list with 8 steps
 3. Invokes prompt-writer to clarify requirements
@@ -61,6 +65,7 @@ Create a specialized agent for data transformation:
 8. Creates file at: `.claude/agents/amplihack/specialized/data-transformer.md`
 
 **Expected Output:**
+
 - Complete agent skill file with YAML frontmatter
 - Clear responsibilities and execution instructions
 - 2-3 usage examples
@@ -77,6 +82,7 @@ Create a slash command for dependency analysis:
 ```
 
 **Expected Workflow:**
+
 1. Validates arguments
 2. Clarifies requirements (what to analyze, report format)
 3. Designs command structure (arguments, options, output)
@@ -86,6 +92,7 @@ Create a slash command for dependency analysis:
 7. Creates file at: `.claude/commands/amplihack/analyze-dependencies.md`
 
 **Key Features:**
+
 - `argument-hint` in YAML frontmatter
 - Clear usage instructions with examples
 - Argument parsing and validation
@@ -101,6 +108,7 @@ Create a production-ready tool for code review:
 ```
 
 **Expected Workflow:**
+
 1. Validates arguments
 2. Clarifies requirements (what to review, criteria)
 3. Designs comprehensive scenario structure
@@ -115,6 +123,7 @@ Create a production-ready tool for code review:
    - `examples/` - Usage examples
 
 **Maturity Path:**
+
 - Starts as `experimental`
 - Graduates to `beta` after 2-3 successful uses
 - Reaches `stable` after 1+ week of stability
@@ -128,11 +137,13 @@ Create a simple formatter agent:
 ```
 
 **Complexity Assessment:**
+
 - Scope: Simple (single purpose)
 - Implementation: Straightforward
 - Token Budget: ~3,000 (recommended for simple skills)
 
 **Generated Structure:**
+
 - Basic YAML frontmatter
 - Clear purpose statement
 - Simple usage instructions
@@ -148,11 +159,13 @@ Create a comprehensive system analysis tool:
 ```
 
 **Complexity Assessment:**
+
 - Scope: Complex (multi-system analysis)
 - Implementation: Advanced (multiple integrations)
 - Token Budget: ~8,000 (recommended for complex skills)
 
 **Generated Structure:**
+
 - Comprehensive YAML frontmatter with dependencies
 - Detailed purpose and responsibilities
 - Multiple usage modes (quick, standard, deep)
@@ -164,6 +177,7 @@ Create a comprehensive system analysis tool:
 ## Validation Examples
 
 ### Valid Skill Names ✅
+
 - `data-transformer`
 - `code-reviewer`
 - `api-client`
@@ -171,6 +185,7 @@ Create a comprehensive system analysis tool:
 - `system-analyzer`
 
 ### Invalid Skill Names ❌
+
 - `DataTransformer` (camelCase not allowed)
 - `data_transformer` (underscores not allowed)
 - `data transformer` (spaces not allowed)
@@ -178,6 +193,7 @@ Create a comprehensive system analysis tool:
 - `DataTransformerWithVeryLongNameThatExceedsMaxLength` (too long, max 50 chars)
 
 ### Valid Skill Types ✅
+
 - `agent`
 - `command`
 - `scenario`
@@ -185,16 +201,19 @@ Create a comprehensive system analysis tool:
 - `Command` (normalized to lowercase)
 
 ### Invalid Skill Types ❌
+
 - `tool` (not a recognized type)
 - `utility` (not a recognized type)
 - `helper` (not a recognized type)
 
 ### Valid Descriptions ✅
+
 - "Transforms data between formats" (clear and concise)
 - "Analyzes code for security vulnerabilities and generates report" (specific and detailed)
 - "Formats JSON with customizable options" (simple and direct)
 
 ### Invalid Descriptions ❌
+
 - "Does stuff" (too vague, length < 10)
 - "Transform" (too short, not descriptive)
 - "A comprehensive multi-system integrated super-advanced tool that does everything you could possibly imagine with extensive features and capabilities beyond imagination..." (too long, length > 200)
@@ -211,6 +230,7 @@ Test by invoking the agent from another command or agent:
 {Provide test input matching the agent's contract}
 
 Expected:
+
 - {Expected output 1}
 - {Expected output 2}
 ```
@@ -224,6 +244,7 @@ Test by invoking the slash command:
 ```
 
 Verify:
+
 - Arguments are parsed correctly
 - Validation works as expected
 - Output is formatted properly
@@ -238,6 +259,7 @@ make {skill-name} TARGET={test-target}
 ```
 
 Verify:
+
 - Tool executes successfully
 - Output meets expectations
 - Tests pass (if test suite created)
@@ -246,22 +268,27 @@ Verify:
 ## Common Issues and Solutions
 
 ### Issue: "Invalid skill name"
+
 **Cause**: Name doesn't follow kebab-case convention
 **Solution**: Use lowercase letters, numbers, and hyphens only
 
 ### Issue: "Missing required field in YAML"
+
 **Cause**: Generated skill missing name, description, or version
 **Solution**: Builder agent should always include these; review and regenerate
 
 ### Issue: "Token budget too high"
+
 **Cause**: Skill is too complex or has excessive documentation
 **Solution**: Simplify scope, break into multiple skills, or optimize documentation
 
 ### Issue: "Philosophy compliance failed"
+
 **Cause**: Generated skill contains stubs, TODOs, or placeholders
 **Solution**: Reviewer catches these; builder regenerates with complete implementation
 
 ### Issue: "File already exists"
+
 **Cause**: Skill with same name already exists
 **Solution**: Choose different name or remove existing file first
 
@@ -311,29 +338,34 @@ Use generated skills in your workflow:
 ## Best Practices
 
 ### Naming Skills
+
 1. Use clear, descriptive names
 2. Follow single responsibility principle
 3. Keep names under 30 characters when possible
 4. Use consistent naming patterns (e.g., `{domain}-{action}`)
 
 ### Writing Descriptions
+
 1. Be specific about WHAT the skill does
 2. Mention key features or capabilities
 3. Keep under 150 characters for clarity
 4. Avoid implementation details (HOW)
 
 ### Choosing Skill Type
+
 - **Agent**: Internal automation, invoked by other agents
 - **Command**: User-facing, slash command interface
 - **Scenario**: Production tool, may have UI/CLI
 
 ### Token Budget Management
+
 - Simple skills: 2,000-4,000 tokens
 - Medium skills: 4,000-6,000 tokens
 - Complex skills: 6,000-10,000 tokens
 - Avoid exceeding 10,000 unless absolutely necessary
 
 ### Philosophy Alignment
+
 - Always prioritize simplicity
 - Include working examples, no stubs
 - Make skills self-contained

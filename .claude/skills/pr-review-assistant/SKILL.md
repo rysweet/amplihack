@@ -74,6 +74,7 @@ Start by understanding what the PR changes:
 Review each change against amplihack principles:
 
 #### Ruthless Simplicity Check
+
 - Is every line necessary?
 - Are there unnecessary abstractions?
 - Could this be implemented more simply?
@@ -82,6 +83,7 @@ Review each change against amplihack principles:
 - Could conditional logic be simplified?
 
 #### Module Structure Check
+
 - Does the change respect module boundaries?
 - Are public contracts clear and documented?
 - Are internal utilities isolated?
@@ -89,6 +91,7 @@ Review each change against amplihack principles:
 - Are there circular dependencies?
 
 #### Zero-BS Check
+
 - Are there TODOs or NotImplementedError calls?
 - Are mock or test data exposed in production code?
 - Is error handling explicit and visible?
@@ -142,6 +145,7 @@ When suggesting changes:
 ## Concrete Review Checklist
 
 ### Ruthless Simplicity
+
 - [ ] Every function has single clear purpose
 - [ ] No unnecessary abstraction layers
 - [ ] No future-proofing or speculation
@@ -151,6 +155,7 @@ When suggesting changes:
 - [ ] Function signatures aren't over-parameterized
 
 ### Modular Architecture
+
 - [ ] Module has ONE clear responsibility
 - [ ] Public interface is minimal and clear
 - [ ] Internal utilities properly isolated
@@ -160,6 +165,7 @@ When suggesting changes:
 - [ ] Module can be understood independently
 
 ### Zero-BS Implementation
+
 - [ ] No TODOs, NotImplementedError, or stubs
 - [ ] No mock/test data in production code
 - [ ] No dead code or unused imports
@@ -169,6 +175,7 @@ When suggesting changes:
 - [ ] Clear logging/error messages for debugging
 
 ### Test Coverage
+
 - [ ] Public interface is tested
 - [ ] Edge cases covered
 - [ ] Error conditions tested
@@ -177,6 +184,7 @@ When suggesting changes:
 - [ ] Tests verify contract, not implementation
 
 ### Documentation
+
 - [ ] Docstrings are clear and complete
 - [ ] Public interface documented
 - [ ] Examples provided for new features
@@ -190,6 +198,7 @@ When suggesting changes:
 **PR**: Add user permission checking to API
 
 **Code Changed**:
+
 ```python
 class PermissionValidator:
     def __init__(self):
@@ -209,7 +218,8 @@ class PermissionValidator:
 ```
 
 **Review Comment**:
-```
+
+````
 FILE: permissions.py (lines 10-25)
 
 This over-engineers the permission checking with caching that may not be needed.
@@ -226,11 +236,12 @@ def check_permission(user, resource):
     """Check if user can access resource."""
     # Direct implementation
     return user.has_access_to(resource)
-```
+````
 
 If caching is needed later, add it when profiling shows it helps.
 
 This aligns with ruthless simplicity: don't add complexity until proven necessary.
+
 ```
 
 ### Example 2: Identifying Lack of Regeneration Documentation
@@ -241,6 +252,7 @@ This aligns with ruthless simplicity: don't add complexity until proven necessar
 
 **Review Comment**:
 ```
+
 FILE: .claude/tools/auth/ (new module)
 
 Good: Module has clear responsibilities (JWT validation, token refresh).
@@ -249,6 +261,7 @@ Issue: Missing specification documentation for module regeneration.
 Brick Philosophy Requirement: Modules should be regeneratable from spec.
 
 ACTION NEEDED:
+
 1. Create Specs/authentication.md with:
    - Clear purpose and scope
    - Public interface (exported functions)
@@ -259,7 +272,8 @@ ACTION NEEDED:
 This enables future rebuilding if requirements change.
 
 See .claude/skills/pr-review-assistant/ for specification template.
-```
+
+````
 
 ### Example 3: Identifying Zero-BS Issues
 
@@ -276,10 +290,11 @@ def process_data(data):
 
     # TODO: Implement caching
     return transform(result)
-```
+````
 
 **Review Comment**:
-```
+
+````
 FILE: pipeline.py (lines 5-15)
 
 Zero-BS Issues Found:
@@ -307,9 +322,10 @@ def process_data(data):
     """
     result = validate(data)  # Raises if invalid
     return transform(result)
-```
+````
 
 All code is production-ready, no TODOs.
+
 ```
 
 ### Example 4: Identifying Missing Tests
@@ -320,28 +336,33 @@ All code is production-ready, no TODOs.
 
 **Review Comment**:
 ```
+
 FILE: user.py (lines 50-100)
 
 New functionality added without adequate tests.
 
 ISSUE: RoleManager public interface not tested
+
 - add_role(user, role) - add success case
 - remove_role(user, role) - add success case
 - get_roles(user) - test empty, single, multiple
 - is_admin(user) - test true/false cases
 
 EDGE CASES MISSING:
+
 - [ ] duplicate role assignment (should be idempotent)
 - [ ] removing non-existent role (should not error)
 - [ ] get_roles on user with no roles (should return empty)
 
 CONTRACT VERIFICATION:
+
 - [ ] Functions accept documented types
 - [ ] Return types match documentation
 - [ ] Exceptions raised as documented
 
 ADD: tests/test_role_manager.py with 85%+ coverage
-```
+
+````
 
 ### Example 5: Recognizing Good Design
 
@@ -367,9 +388,10 @@ def load_config(path):
             return yaml.safe_load(f)
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML: {e}") from e
-```
+````
 
 **Review Comment**:
+
 ```
 EXCELLENT - This is exactly the simplicity we want:
 
@@ -425,6 +447,7 @@ gh pr diff <PR-NUMBER> | grep "^---" | head -1
 ## Common Over-Engineering Patterns to Catch
 
 ### Pattern 1: Configuration Complexity
+
 ```python
 # OVER-ENGINEERED: 50-line config class
 class ConfigManager:
@@ -439,6 +462,7 @@ config = yaml.safe_load(open('.env.yaml'))
 ```
 
 ### Pattern 2: Factory Pattern When Not Needed
+
 ```python
 # OVER-ENGINEERED: Factory for single implementation
 class ValidationFactory:
@@ -453,6 +477,7 @@ def validate_email(email):
 ```
 
 ### Pattern 3: Generic Base Classes for One Use
+
 ```python
 # OVER-ENGINEERED: Base class never subclassed
 class BaseRepository(ABC):
@@ -471,6 +496,7 @@ class UserRepository:
 ```
 
 ### Pattern 4: Premature Optimization
+
 ```python
 # OVER-ENGINEERED: Complex caching for cache that's not needed
 cache = LRUCache(maxsize=1000)

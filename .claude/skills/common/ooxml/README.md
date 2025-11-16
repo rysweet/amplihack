@@ -20,6 +20,7 @@ OOXML is the XML-based file format used by Microsoft Office (Word, PowerPoint, E
 The DOCX skill uses these scripts via symlink (`docx/ooxml → ../common/ooxml`)
 
 **Use cases**:
+
 - Track changes (insertions/deletions)
 - Content modification
 - Style management
@@ -30,6 +31,7 @@ The DOCX skill uses these scripts via symlink (`docx/ooxml → ../common/ooxml`)
 The PPTX skill uses these scripts via symlink (`pptx/ooxml → ../common/ooxml`) plus additional PPTX-specific scripts in `pptx/scripts/`
 
 **Use cases**:
+
 - Template-based presentation creation
 - Slide rearrangement and duplication
 - Text inventory and replacement
@@ -64,7 +66,7 @@ Generate visual thumbnail grids for quick presentation analysis.
 
 **Features**: Creates grids (3-6 columns), multiple grids for large decks, 0-indexed slides
 
-###  rearrange.py
+### rearrange.py
 
 Rearrange, duplicate, and delete slides in templates.
 
@@ -119,12 +121,15 @@ Convert HTML slides to PowerPoint presentations.
 ## Dependencies
 
 **Python Packages**:
+
 - defusedxml (required) - Safe XML parsing
 
 **System Packages**:
+
 - LibreOffice (optional) - Document validation via `soffice`
 
 **For PPTX Scripts**:
+
 - markitdown, python-pptx (Python)
 - pptxgenjs, playwright, sharp (Node.js)
 - poppler-utils (system) - PDF conversion for thumbnails

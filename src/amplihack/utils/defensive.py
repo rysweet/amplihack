@@ -22,16 +22,12 @@ class DefensiveError(Exception):
     """Base exception for defensive utility errors."""
 
 
-
 class JSONExtractionError(DefensiveError):
     """Failed to extract valid JSON from LLM response."""
 
 
-
 class RetryExhaustedError(DefensiveError):
     """Retry attempts exhausted without success."""
-
-
 
 class FileOperationError(DefensiveError):
     """File operation failed after retries."""

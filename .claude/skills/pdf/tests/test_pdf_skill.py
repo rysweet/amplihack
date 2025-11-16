@@ -16,9 +16,7 @@ import pytest
 import yaml
 
 # Add common verification utilities to path
-sys.path.insert(
-    0, str(Path(__file__).parent.parent.parent / "common" / "verification")
-)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "common" / "verification"))
 
 # Define skill dependencies
 PYTHON_PACKAGES_REQUIRED = ["pypdf", "pdfplumber", "reportlab", "pandas"]

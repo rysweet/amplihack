@@ -175,6 +175,7 @@ class TestDiscovery:
     @patch("subprocess.run")
     def test_discover_with_containers(self, mock_run):
         """Discovery returns container list."""
+
         # Mock docker ps returning container names
         def run_side_effect(*args, **kwargs):
             cmd = args[0]

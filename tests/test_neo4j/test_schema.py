@@ -167,7 +167,7 @@ class TestNeo4jSchema:
             )
 
             # Try to create duplicate - should fail
-            with pytest.raises(Exception):  # Neo4j constraint violation
+            with pytest.raises(Exception):  # noqa: B017 - Neo4j constraint violation
                 session.run(
                     """
                     CREATE (c:Codebase {
@@ -203,7 +203,7 @@ class TestNeo4jSchema:
             )
 
             # Try to create duplicate - should fail
-            with pytest.raises(Exception):  # Neo4j constraint violation
+            with pytest.raises(Exception):  # noqa: B017 - Neo4j constraint violation
                 session.run(
                     """
                     CREATE (i:Ingestion {

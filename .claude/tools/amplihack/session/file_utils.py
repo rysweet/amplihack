@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 JSONType = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
 
 # TypeVar for preserving default parameter type in safe_read_json
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class FileOperationError(Exception):
@@ -274,7 +274,7 @@ def safe_write_file(
 def safe_read_json(
     file_path: Union[str, Path],
     default: Optional[T] = None,
-    validate_schema: Optional[Callable[[JSONType], None]] = None
+    validate_schema: Optional[Callable[[JSONType], None]] = None,
 ) -> Union[JSONType, T]:
     """Safely read JSON file with validation.
 

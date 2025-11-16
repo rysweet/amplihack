@@ -19,24 +19,28 @@ The XLSX skill follows amplihack's brick philosophy: it is a self-contained, ind
 ## Key Capabilities
 
 ### Spreadsheet Creation
+
 - Build Excel files from scratch using pandas or openpyxl
 - Apply professional formatting (colors, fonts, alignment)
 - Create dynamic formulas that recalculate automatically
 - Support for multiple sheets and workbook organization
 
 ### Data Analysis
+
 - Load and analyze data with pandas
 - Generate statistics and summaries
 - Create visualizations and charts
 - Export results to Excel format
 
 ### Formula Management
+
 - Insert Excel formulas (not hardcoded values)
 - Recalculate formulas using LibreOffice engine
 - Zero-error verification (#REF!, #DIV/0!, #VALUE!, etc.)
 - Comprehensive error reporting with cell locations
 
 ### Financial Modeling Standards
+
 - Industry-standard color coding (blue inputs, black formulas, green links)
 - Professional number formatting (currency, percentages, zeros as dashes)
 - Assumption cell documentation
@@ -77,6 +81,7 @@ python .claude/skills/xlsx/scripts/recalc.py model.xlsx
 ```
 
 Returns JSON with error details:
+
 ```json
 {
   "status": "success",
@@ -109,13 +114,17 @@ Tests will skip gracefully if dependencies are not installed.
 ## Known Issues and Limitations
 
 ### LibreOffice Required for Formula Recalculation
+
 The recalc.py script requires LibreOffice to calculate formula values. Without LibreOffice:
+
 - Formulas will be inserted correctly
 - Formula values will not be calculated
 - Excel will recalculate when opened
 
 ### File Size Considerations
+
 Very large Excel files (>100MB) may take longer to recalculate. Consider:
+
 - Using write-only mode for large exports
 - Breaking large models into multiple workbooks
 - Using the timeout parameter: `python recalc.py file.xlsx 60`
@@ -145,6 +154,7 @@ If errors are found, the script reports their locations and counts for correctio
 ## Best Practices
 
 ### Always Use Formulas
+
 Never hardcode calculated values. Use Excel formulas so spreadsheets remain dynamic:
 
 ```python
@@ -156,6 +166,7 @@ sheet['B10'] = '=SUM(B2:B9)'  # Formula
 ```
 
 ### Follow Color Coding Standards
+
 Unless the user specifies otherwise or an existing template has established conventions:
 
 - **Blue text**: User inputs and scenario assumptions
@@ -165,6 +176,7 @@ Unless the user specifies otherwise or an existing template has established conv
 - **Yellow background**: Key assumptions requiring attention
 
 ### Document Hardcoded Values
+
 If you must hardcode a value, document the source:
 
 ```python
@@ -173,6 +185,7 @@ sheet['C5'] = 'Source: Company 10-K, FY2024, Page 45, Revenue Note'
 ```
 
 ### Verify Before Delivery
+
 Always run recalc.py before considering the Excel file complete:
 
 ```bash

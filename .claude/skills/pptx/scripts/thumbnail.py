@@ -3,7 +3,7 @@
 Create thumbnail grids from PowerPoint presentation slides.
 
 Creates a grid layout of slide thumbnails with configurable columns (max 6).
-Each grid contains up to colsx(cols+1) images. For presentations with more
+Each grid contains up to cols*(cols+1) images. For presentations with more
 slides, multiple numbered grid files are created automatically.
 
 The program outputs the names of all files created.
@@ -13,10 +13,10 @@ Output:
 - Multiple grids: {prefix}-1.jpg, {prefix}-2.jpg, etc.
 
 Grid limits by column count:
-- 3 cols: max 12 slides per grid (3x4)
-- 4 cols: max 20 slides per grid (4x5)
-- 5 cols: max 30 slides per grid (5x6) [default]
-- 6 cols: max 42 slides per grid (6x7)
+- 3 cols: max 12 slides per grid (3*4)
+- 4 cols: max 20 slides per grid (4*5)
+- 5 cols: max 30 slides per grid (5*6) [default]
+- 6 cols: max 42 slides per grid (6*7)
 
 Usage:
     python thumbnail.py input.pptx [output_prefix] [--cols N] [--outline-placeholders]
@@ -122,7 +122,7 @@ def main():
 
             print(f"Found {len(slide_images)} slides")
 
-            # Create grids (max colsx(cols+1) images per grid)
+            # Create grids (max cols*(cols+1) images per grid)
             grid_files = create_grids(
                 slide_images,
                 cols,
@@ -273,8 +273,8 @@ def create_grids(
     placeholder_regions=None,
     slide_dimensions=None,
 ):
-    """Create multiple thumbnail grids from slide images, max colsx(cols+1) images per grid."""
-    # Maximum images per grid is cols x (cols + 1) for better proportions
+    """Create multiple thumbnail grids from slide images, max cols*(cols+1) images per grid."""
+    # Maximum images per grid is cols * (cols + 1) for better proportions
     max_images_per_grid = cols * (cols + 1)
     grid_files = []
 

@@ -5,18 +5,21 @@ Fast lookup for all amplihack Skills, their triggers, and what they do.
 ## Development Workflow
 
 ### Architecting Solutions
+
 **Triggers**: "how should I", "what's the best way", design questions, architecture discussions
 **Does**: Analyzes problems, creates design specs, provides solution options with tradeoffs
 **Invokes**: Architect agent
 **Status**: ✅ Implemented
 
 ### Setting Up Projects
+
 **Triggers**: New project, missing configs, "setup project", pre-commit gaps
 **Does**: Creates project structure, configs, pre-commit hooks, quality tooling
 **Invokes**: Builder agent + templates
 **Status**: ✅ Implemented
 
 ### Debugging Issues
+
 **Triggers**: Errors, "why doesn't", "not working", troubleshooting
 **Does**: Systematic diagnostic approach, identifies likely causes, suggests fixes
 **Invokes**: Debugging workflow
@@ -27,18 +30,21 @@ Fast lookup for all amplihack Skills, their triggers, and what they do.
 ## Code Quality
 
 ### Reviewing Code
+
 **Triggers**: "review this", "check my code", before PR, quality checks
 **Does**: Multi-level code review (correctness, security, maintainability)
 **Invokes**: Reviewer agent, Security agent
 **Status**: ✅ Implemented
 
 ### Testing Code
+
 **Triggers**: New features, "add tests", missing coverage, test gaps
 **Does**: Generates comprehensive tests (unit, integration, edge cases)
 **Invokes**: Tester agent
 **Status**: ✅ Implemented
 
 ### Securing Code
+
 **Triggers**: Auth code, secrets, validation, "security check"
 **Does**: Security analysis, vulnerability detection, OWASP compliance
 **Invokes**: Security agent
@@ -49,6 +55,7 @@ Fast lookup for all amplihack Skills, their triggers, and what they do.
 ## Research & Learning
 
 ### Researching Topics
+
 **Triggers**: "how does X work", "what is Y", unfamiliar terms, need info
 **Does**: Quick web research, synthesis, key concepts, actionable summary
 **Invokes**: WebSearch + synthesis
@@ -56,12 +63,14 @@ Fast lookup for all amplihack Skills, their triggers, and what they do.
 **Status**: ✅ Implemented
 
 ### Explaining Concepts
+
 **Triggers**: "explain", "what is", "how does", learning requests
 **Does**: Progressive explanations, ELI5 to deep dive, builds mental models
 **Invokes**: Teaching methodology
 **Status**: ⏳ Planned (Phase 3)
 
 ### Building Knowledge
+
 **Triggers**: Documentation tasks, "document this", knowledge gaps
 **Does**: Quick documentation generation (lighter than /knowledge-builder)
 **Invokes**: Simplified knowledge-builder workflow
@@ -73,12 +82,14 @@ Fast lookup for all amplihack Skills, their triggers, and what they do.
 ## Meta-Cognitive
 
 ### Analyzing Problems Deeply
+
 **Triggers**: "I'm not sure", "help me think", ambiguity, complex problems
 **Does**: Structured deep analysis, surfaces assumptions, explores options
 **Invokes**: Ultrathink methodology
 **Status**: ✅ Implemented
 
 ### Evaluating Tradeoffs
+
 **Triggers**: "should I use X or Y", "which approach", decision points
 **Does**: Multi-perspective tradeoff analysis, systematic comparison
 **Invokes**: Consensus/debate workflow
@@ -89,12 +100,14 @@ Fast lookup for all amplihack Skills, their triggers, and what they do.
 ## Collaboration
 
 ### Creating Pull Requests
+
 **Triggers**: "create PR", "ready to merge", "make pull request"
 **Does**: Analyzes commits, generates comprehensive PR description, creates PR
 **Invokes**: Git analysis + gh CLI
 **Status**: ✅ Implemented
 
 ### Writing RFCs
+
 **Triggers**: "design doc", "RFC", major architectural changes
 **Does**: Structured RFC creation with template, architecture documentation
 **Invokes**: RFC template + Architect agent
@@ -104,18 +117,19 @@ Fast lookup for all amplihack Skills, their triggers, and what they do.
 
 ## Quick Comparison: Skills vs Slash Commands
 
-| Situation | Use Skill (Auto) | Use Command (Explicit) |
-|-----------|------------------|------------------------|
-| Design question | Architecting Solutions | /ultrathink (deeper) |
-| Quick research | Researching Topics | /knowledge-builder (comprehensive) |
-| Code review | Reviewing Code | /review --custom-rules |
-| Need tests | Testing Code | Manual test writing |
-| Create PR | Creating Pull Requests | Manual PR creation |
-| Complex decision | Analyzing Deeply | /consensus (multi-stakeholder) |
+| Situation        | Use Skill (Auto)       | Use Command (Explicit)             |
+| ---------------- | ---------------------- | ---------------------------------- |
+| Design question  | Architecting Solutions | /ultrathink (deeper)               |
+| Quick research   | Researching Topics     | /knowledge-builder (comprehensive) |
+| Code review      | Reviewing Code         | /review --custom-rules             |
+| Need tests       | Testing Code           | Manual test writing                |
+| Create PR        | Creating Pull Requests | Manual PR creation                 |
+| Complex decision | Analyzing Deeply       | /consensus (multi-stakeholder)     |
 
 ## Activation Examples
 
 ### Example 1: Architecture
+
 ```
 You: "I'm building a chat app. Should I use WebSockets or polling?"
 
@@ -125,6 +139,7 @@ Provides: Problem analysis, solution options (WebSockets, long-polling, SSE),
 ```
 
 ### Example 2: Research
+
 ```
 You: "What's the difference between JWT and session tokens?"
 
@@ -135,6 +150,7 @@ Suggests: /knowledge-builder for deep dive
 ```
 
 ### Example 3: Code Review
+
 ```
 You: "Review this authentication code before I commit."
 
@@ -144,6 +160,7 @@ Provides: Security analysis, finds timing attack vulnerability,
 ```
 
 ### Example 4: Deep Analysis
+
 ```
 You: "I'm not sure whether to use PostgreSQL or MongoDB."
 
@@ -179,18 +196,21 @@ If you prefer manual control:
 ## Implementation Timeline
 
 **Phase 1** (Weeks 1-2): Foundation
+
 - ✅ Architecting Solutions
 - ✅ Reviewing Code
 - ✅ Researching Topics
 - ✅ Setting Up Projects
 
 **Phase 2** (Weeks 3-4): Quality & Depth
+
 - ✅ Testing Code
 - ✅ Analyzing Problems Deeply
 - ⏳ Securing Code
 - ⏳ Debugging Issues
 
 **Phase 3** (Weeks 5-6): Collaboration
+
 - ✅ Creating Pull Requests
 - ⏳ Explaining Concepts
 - ⏳ Evaluating Tradeoffs

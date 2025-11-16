@@ -7,6 +7,7 @@ This document provides practical examples of using the PDF skill in Claude Code 
 ## Example 1: Extract Text from a Research Paper
 
 ### Scenario
+
 You have a research paper PDF and need to extract all text for analysis.
 
 ### Conversation
@@ -31,6 +32,7 @@ print(f"Extracted text from {len(pdf.pages)} pages")
 ```
 
 ### Expected Output
+
 - `research_paper_text.txt` file created with all extracted text
 - Text preserves paragraph structure and layout
 - Page breaks clearly marked
@@ -40,6 +42,7 @@ print(f"Extracted text from {len(pdf.pages)} pages")
 ## Example 2: Convert Tables to Excel
 
 ### Scenario
+
 You have a financial report PDF with multiple tables that need to be extracted and analyzed in Excel.
 
 ### Conversation
@@ -80,6 +83,7 @@ else:
 ```
 
 ### Expected Output
+
 - `financial_tables.xlsx` file with multiple sheets
 - Each sheet contains one extracted table
 - Sheet names indicate source page
@@ -90,6 +94,7 @@ else:
 ## Example 3: Create a Report PDF
 
 ### Scenario
+
 Generate a multi-page report PDF with title, sections, and formatted text.
 
 ### Conversation
@@ -175,6 +180,7 @@ print("Created Q4_2024_Sales_Report.pdf")
 ```
 
 ### Expected Output
+
 - Professional multi-page PDF report
 - Formatted title, sections, and body text
 - Table with styling and borders
@@ -185,6 +191,7 @@ print("Created Q4_2024_Sales_Report.pdf")
 ## Example 4: Merge Multiple Invoices
 
 ### Scenario
+
 Combine multiple invoice PDFs into a single document for archiving.
 
 ### Conversation
@@ -226,6 +233,7 @@ else:
 ```
 
 ### Expected Output
+
 - Single `invoices_archive_2024.pdf` file
 - All invoices combined in order
 - Metadata indicating source count
@@ -236,6 +244,7 @@ else:
 ## Example 5: Extract Images from Catalog
 
 ### Scenario
+
 Extract all product images from a catalog PDF for use in a website.
 
 ### Conversation
@@ -277,6 +286,7 @@ print(f"Extracted {len(images)} page images to {output_dir}/")
 ```
 
 ### Expected Output
+
 - `extracted_images/` directory created
 - Individual image files (product-000.jpg, product-001.jpg, etc.)
 - High-quality JPEG images suitable for web use
@@ -286,6 +296,7 @@ print(f"Extracted {len(images)} page images to {output_dir}/")
 ## Example 6: OCR Scanned Document
 
 ### Scenario
+
 A scanned invoice PDF needs text extraction for accounting software.
 
 ### Conversation
@@ -320,6 +331,7 @@ print("Saved to scanned_invoice_text.txt")
 ```
 
 ### Expected Output
+
 - `scanned_invoice_text.txt` with recognized text
 - Processing messages for each page
 - Text accuracy depends on scan quality
@@ -329,6 +341,7 @@ print("Saved to scanned_invoice_text.txt")
 ## Example 7: Split PDF by Pages
 
 ### Scenario
+
 Break a large document into individual page files for review.
 
 ### Conversation
@@ -357,6 +370,7 @@ print(f"Split {len(reader.pages)} pages into {output_dir}/")
 ```
 
 ### Expected Output
+
 - `split_pages/` directory with individual PDFs
 - Files named page_001.pdf, page_002.pdf, etc.
 - Each file contains exactly one page
@@ -366,6 +380,7 @@ print(f"Split {len(reader.pages)} pages into {output_dir}/")
 ## Example 8: Add Password Protection
 
 ### Scenario
+
 Protect a confidential document with a password before sharing.
 
 ### Conversation
@@ -405,6 +420,7 @@ print("Permissions: Print only")
 ```
 
 ### Expected Output
+
 - `confidential_report_protected.pdf` created
 - Password required to open
 - Limited permissions (print only)
@@ -415,6 +431,7 @@ print("Permissions: Print only")
 ## Example 9: Rotate Pages
 
 ### Scenario
+
 Some pages in a scanned document are oriented incorrectly.
 
 ### Conversation
@@ -443,6 +460,7 @@ print(f"Total pages: {len(writer.pages)}")
 ```
 
 ### Expected Output
+
 - `document_rotated.pdf` with corrected orientation
 - Pages 2 and 3 rotated 90 degrees clockwise
 - Other pages unchanged
@@ -452,6 +470,7 @@ print(f"Total pages: {len(writer.pages)}")
 ## Example 10: Extract Metadata
 
 ### Scenario
+
 Review PDF properties and metadata for document management.
 
 ### Conversation
@@ -492,6 +511,7 @@ print(f"Page size: {width} x {height} points")
 ```
 
 ### Expected Output
+
 ```
 PDF Metadata:
 ==================================================

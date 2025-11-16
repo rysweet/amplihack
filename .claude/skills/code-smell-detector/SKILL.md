@@ -25,6 +25,7 @@ This skill identifies anti-patterns that violate amplihack's development philoso
 ## Core Philosophy Reference
 
 **Amplihack Development Philosophy focuses on:**
+
 - **Ruthless Simplicity**: Every abstraction must justify its existence
 - **Modular Design (Bricks & Studs)**: Self-contained modules with clear connection points
 - **Zero-BS Implementation**: No stubs, no placeholders, only working code
@@ -39,6 +40,7 @@ This skill identifies anti-patterns that violate amplihack's development philoso
 **Why It's Bad**: Violates "ruthless simplicity" - adds complexity without proportional benefit. Makes code harder to understand and maintain.
 
 **Red Flags**:
+
 - Abstract base classes with only one implementation
 - Generic helper classes that do very little
 - Deep inheritance hierarchies (3+ levels)
@@ -46,6 +48,7 @@ This skill identifies anti-patterns that violate amplihack's development philoso
 - Over-parameterized functions
 
 **Example - SMELL**:
+
 ```python
 # BAD: Over-abstracted
 class DataProcessor(ABC):
@@ -59,6 +62,7 @@ class SimpleDataProcessor(DataProcessor):
 ```
 
 **Example - FIXED**:
+
 ```python
 # GOOD: Direct implementation
 def process_data(data):
@@ -67,12 +71,14 @@ def process_data(data):
 ```
 
 **Detection Checklist**:
+
 - [ ] Abstract classes with only 1-2 concrete implementations
 - [ ] Generic utility classes that don't encapsulate state
 - [ ] Type hierarchies deeper than 2 levels
 - [ ] Mixins solving single problems
 
 **Fix Strategy**:
+
 1. Identify what the abstraction solves
 2. Check if you really need multiple implementations now
 3. Delete the abstraction - use direct implementation
@@ -88,6 +94,7 @@ def process_data(data):
 **Why It's Bad**: Makes code hard to follow, creates tight coupling, violates simplicity principle. Who does what becomes unclear.
 
 **Red Flags**:
+
 - 3+ levels of inheritance (GrandparentClass -> ParentClass -> ChildClass)
 - Multiple inheritance from non-interface classes
 - Inheritance used for code reuse instead of composition
@@ -95,6 +102,7 @@ def process_data(data):
 - "Mixin" classes for cross-cutting concerns
 
 **Example - SMELL**:
+
 ```python
 # BAD: Complex inheritance
 class Entity:
@@ -112,6 +120,7 @@ class User(AuditableEntity):
 ```
 
 **Example - FIXED**:
+
 ```python
 # GOOD: Composition over inheritance
 class User:
@@ -127,12 +136,14 @@ class User:
 ```
 
 **Detection Checklist**:
+
 - [ ] Inheritance depth > 2 levels
 - [ ] Multiple inheritance from concrete classes
 - [ ] Methods overridden at multiple inheritance levels
 - [ ] Inheritance hierarchy with no code reuse
 
 **Fix Strategy**:
+
 1. Use composition instead of inheritance
 2. Pass services as constructor arguments
 3. Each class handles its own responsibility
@@ -147,6 +158,7 @@ class User:
 **Why It's Bad**: Violates single responsibility, makes testing harder, increases bug surface area, reduces code reusability.
 
 **Red Flags**:
+
 - Functions with >50 lines of code
 - Multiple indentation levels (3+ nested if/for)
 - Functions with 5+ parameters
@@ -154,6 +166,7 @@ class User:
 - Complex logic that's hard to name
 
 **Example - SMELL**:
+
 ```python
 # BAD: Large function doing multiple things
 def process_user_data(user_dict, validate=True, save=True, notify=True, log=True):
@@ -183,6 +196,7 @@ def process_user_data(user_dict, validate=True, save=True, notify=True, log=True
 ```
 
 **Example - FIXED**:
+
 ```python
 # GOOD: Separated concerns
 def validate_user_data(user_dict):
@@ -211,6 +225,7 @@ def process_user_data(user_dict):
 ```
 
 **Detection Checklist**:
+
 - [ ] Function body >50 lines
 - [ ] 3+ levels of nesting
 - [ ] Multiple unrelated operations
@@ -218,6 +233,7 @@ def process_user_data(user_dict):
 - [ ] 5+ parameters
 
 **Fix Strategy**:
+
 1. Extract helper functions for each concern
 2. Give each function a clear, single purpose
 3. Compose small functions into larger workflows
@@ -233,6 +249,7 @@ def process_user_data(user_dict):
 **Why It's Bad**: Changes in one module break others. Hard to test in isolation. Violates modularity principle.
 
 **Red Flags**:
+
 - Direct instantiation of classes inside functions (`db = Database()`)
 - Deep attribute access (`obj.service.repository.data`)
 - Hardcoded class names in conditionals
@@ -240,6 +257,7 @@ def process_user_data(user_dict):
 - Circular dependencies between modules
 
 **Example - SMELL**:
+
 ```python
 # BAD: Tight coupling
 class UserService:
@@ -258,6 +276,7 @@ class UserService:
 ```
 
 **Example - FIXED**:
+
 ```python
 # GOOD: Loose coupling via dependency injection
 class UserService:
@@ -278,6 +297,7 @@ user_service = UserService(db=PostgresDB(), email_service=SMTPService())
 ```
 
 **Detection Checklist**:
+
 - [ ] Class instantiation inside methods (`Service()`)
 - [ ] Deep attribute chaining (3+ dots)
 - [ ] Hardcoded class references
@@ -285,6 +305,7 @@ user_service = UserService(db=PostgresDB(), email_service=SMTPService())
 - [ ] Module can't be tested without other modules
 
 **Fix Strategy**:
+
 1. Accept dependencies as constructor parameters
 2. Use dependency injection
 3. Create test doubles (mocks) easily
@@ -300,6 +321,7 @@ user_service = UserService(db=PostgresDB(), email_service=SMTPService())
 **Why It's Bad**: Unclear what's public vs internal. Users import private implementation details. Violates the "stud" concept - unclear connection points.
 
 **Red Flags**:
+
 - No `__all__` in `__init__.py`
 - Modules expose internal functions/classes
 - Users uncertain what to import
@@ -307,6 +329,7 @@ user_service = UserService(db=PostgresDB(), email_service=SMTPService())
 - Documentation doesn't match exports
 
 **Example - SMELL**:
+
 ```python
 # BAD: No __all__ - unclear public interface
 # module/__init__.py
@@ -317,6 +340,7 @@ from .utils import validate_input, LOG_LEVEL
 ```
 
 **Example - FIXED**:
+
 ```python
 # GOOD: Clear public interface via __all__
 # module/__init__.py
@@ -329,12 +353,14 @@ __all__ = ['process_data', 'validate_input']
 ```
 
 **Detection Checklist**:
+
 - [ ] Missing `__all__` in `__init__.py`
 - [ ] Internal functions (prefixed with `_`) exposed
 - [ ] Unclear what's "public API"
 - [ ] All imports at module level
 
 **Fix Strategy**:
+
 1. Add `__all__` to every `__init__.py`
 2. List ONLY the public functions/classes
 3. Prefix internal implementation with `_`
@@ -346,6 +372,7 @@ __all__ = ['process_data', 'validate_input']
 ## Analysis Process
 
 ### Step 1: Scan Code Structure
+
 1. Review file organization and module boundaries
 2. Identify inheritance hierarchies
 3. Scan for large functions (count lines)
@@ -353,14 +380,18 @@ __all__ = ['process_data', 'validate_input']
 5. Check for tight coupling patterns
 
 ### Step 2: Analyze Each Smell
+
 For each potential issue:
+
 1. Confirm it violates philosophy
 2. Measure severity (critical/major/minor)
 3. Find specific line numbers
 4. Note impact on system
 
 ### Step 3: Generate Fixes
+
 For each smell found:
+
 1. Provide clear explanation of WHY it's bad
 2. Show BEFORE code
 3. Show AFTER code with detailed comments
@@ -368,6 +399,7 @@ For each smell found:
 5. Give concrete refactoring steps
 
 ### Step 4: Create Report
+
 1. List all smells found
 2. Prioritize by severity/impact
 3. Include specific examples
@@ -379,7 +411,9 @@ For each smell found:
 ## Detection Rules
 
 ### Rule 1: Abstract Base Classes
+
 **Check**: `class X(ABC)` with exactly 1 concrete implementation
+
 ```python
 # BAD pattern detection
 - Count implementations of abstract class
@@ -389,7 +423,9 @@ For each smell found:
 **Fix**: Remove abstraction, use direct implementation
 
 ### Rule 2: Inheritance Depth
+
 **Check**: Class hierarchy depth
+
 ```python
 # BAD pattern detection
 - Follow inheritance chain: class -> parent -> grandparent...
@@ -399,7 +435,9 @@ For each smell found:
 **Fix**: Use composition instead
 
 ### Rule 3: Function Line Count
+
 **Check**: All function bodies
+
 ```python
 # BAD pattern detection
 - Count lines in function (excluding docstring)
@@ -410,7 +448,9 @@ For each smell found:
 **Fix**: Extract helper functions
 
 ### Rule 4: Dependency Instantiation
+
 **Check**: Class instantiation inside methods/functions
+
 ```python
 # BAD pattern detection
 - Search for "= ServiceName()" inside methods
@@ -419,8 +459,10 @@ For each smell found:
 
 **Fix**: Pass as constructor argument
 
-### Rule 5: Missing __all__
+### Rule 5: Missing **all**
+
 **Check**: Python modules
+
 ```python
 # BAD pattern detection
 - Look for __all__ definition
@@ -435,6 +477,7 @@ For each smell found:
 ## Common Code Smells & Quick Fixes
 
 ### Smell: "Utility Class" Holder
+
 ```python
 # BAD
 class StringUtils:
@@ -444,6 +487,7 @@ class StringUtils:
 ```
 
 **Fix**: Use direct function
+
 ```python
 # GOOD
 def clean_string(s):
@@ -453,6 +497,7 @@ def clean_string(s):
 ---
 
 ### Smell: "Manager" Class
+
 ```python
 # BAD
 class UserManager:
@@ -464,6 +509,7 @@ class UserManager:
 ```
 
 **Fix**: Split into focused services
+
 ```python
 # GOOD
 class UserService:
@@ -481,6 +527,7 @@ def validate_user(user): pass
 ---
 
 ### Smell: God Function
+
 ```python
 # BAD - 200 line function doing everything
 def process_order(order_data, validate, save, notify, etc...):
@@ -488,6 +535,7 @@ def process_order(order_data, validate, save, notify, etc...):
 ```
 
 **Fix**: Compose small functions
+
 ```python
 # GOOD
 def process_order(order_data):
@@ -501,6 +549,7 @@ def process_order(order_data):
 ---
 
 ### Smell: Brittle Inheritance
+
 ```python
 # BAD
 class Base:
@@ -514,6 +563,7 @@ class Derived(Middle):
 ```
 
 **Fix**: Use clear, testable composition
+
 ```python
 # GOOD
 class Worker:
@@ -529,6 +579,7 @@ class Worker:
 ---
 
 ### Smell: Hidden Dependencies
+
 ```python
 # BAD
 def fetch_data(user_id):
@@ -537,6 +588,7 @@ def fetch_data(user_id):
 ```
 
 **Fix**: Inject dependencies explicitly
+
 ```python
 # GOOD
 def fetch_data(user_id, db):
@@ -556,6 +608,7 @@ class UserRepository:
 ## Usage Examples
 
 ### Example 1: Review New Module
+
 ```
 User: Review this new authentication module for code smells.
 
@@ -571,6 +624,7 @@ Claude:
 ```
 
 ### Example 2: Identify Tight Coupling
+
 ```
 User: Find tight coupling in this user service.
 
@@ -583,6 +637,7 @@ Claude:
 ```
 
 ### Example 3: Simplify Inheritance
+
 ```
 User: This class hierarchy is too complex.
 
@@ -599,6 +654,7 @@ Claude:
 ## Analysis Checklist
 
 ### Philosophy Compliance
+
 - [ ] No unnecessary abstractions
 - [ ] Single responsibility per class/function
 - [ ] Clear public interface (`__all__`)
@@ -608,6 +664,7 @@ Claude:
 - [ ] No dead code or stubs
 
 ### Code Quality
+
 - [ ] Each function has one clear job
 - [ ] Easy to understand at a glance
 - [ ] Easy to test in isolation
@@ -615,6 +672,7 @@ Claude:
 - [ ] Clear naming reflects responsibility
 
 ### Modularity
+
 - [ ] Modules are independently testable
 - [ ] Clear connection points ("studs")
 - [ ] Loose coupling between modules
@@ -625,6 +683,7 @@ Claude:
 ## Success Criteria for Review
 
 A code review using this skill should:
+
 - [ ] Identify all violations of philosophy
 - [ ] Provide specific line numbers
 - [ ] Show before/after examples
@@ -641,6 +700,7 @@ A code review using this skill should:
 ## Integration with Code Quality Tools
 
 **When to Use This Skill**:
+
 - During code review (before merge)
 - In pull request comments
 - Before creating new modules
@@ -649,6 +709,7 @@ A code review using this skill should:
 - In design review meetings
 
 **Works Well With**:
+
 - Code review process
 - Module spec generation
 - Refactoring workflows
@@ -669,6 +730,7 @@ A code review using this skill should:
 ## Remember
 
 This skill helps maintain code quality by:
+
 1. Catching issues before they become technical debt
 2. Educating developers on philosophy
 3. Keeping code simple and maintainable

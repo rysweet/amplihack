@@ -12,6 +12,7 @@ Helps users create production-ready Claude Code skills that follow best practice
 ## When I Activate
 
 I automatically load when you mention:
+
 - "build a skill" or "create a skill"
 - "generate a skill" or "make a skill"
 - "design a skill" or "develop a skill"
@@ -62,6 +63,7 @@ See [examples.md](./examples.md) for detailed examples of each type.
 ## Command Interface
 
 For explicit invocation:
+
 ```bash
 /amplihack:skill-builder <skill-name> <skill-type> <description>
 ```
@@ -71,6 +73,7 @@ Examples in [examples.md](./examples.md).
 ## Documentation
 
 **Supporting Files** (progressive disclosure):
+
 - [reference.md](./reference.md): Architecture, patterns, YAML spec, best practices
 - [examples.md](./examples.md): Real-world usage, testing, troubleshooting
 

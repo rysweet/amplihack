@@ -75,7 +75,11 @@ class CodebaseIdentity:
         Returns:
             CodebaseIdentity instance
         """
-        metadata = {k: v for k, v in data.items() if k not in ("remote_url", "branch", "commit_sha", "unique_key")}
+        metadata = {
+            k: v
+            for k, v in data.items()
+            if k not in ("remote_url", "branch", "commit_sha", "unique_key")
+        }
         return cls(
             remote_url=data["remote_url"],
             branch=data["branch"],
@@ -140,7 +144,9 @@ class IngestionMetadata:
             IngestionMetadata instance
         """
         metadata = {
-            k: v for k, v in data.items() if k not in ("ingestion_id", "timestamp", "commit_sha", "ingestion_counter")
+            k: v
+            for k, v in data.items()
+            if k not in ("ingestion_id", "timestamp", "commit_sha", "ingestion_counter")
         }
         return cls(
             ingestion_id=data["ingestion_id"],

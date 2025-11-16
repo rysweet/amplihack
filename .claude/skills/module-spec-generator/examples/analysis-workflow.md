@@ -25,12 +25,13 @@ Output:
 ```
 
 **What we learned**:
+
 - Main code in `core.py` and `utils.py`
 - Tests in `tests/` directory
 - Examples provided
 - Appears to be well-organized
 
-### Step 2: Read the Public Interface (__init__.py)
+### Step 2: Read the Public Interface (**init**.py)
 
 ```python
 # .claude/tools/amplihack/string_utils/__init__.py
@@ -41,6 +42,7 @@ __all__ = ["truncate", "normalize", "slugify", "TextMetrics", "COMMON_STOPWORDS"
 ```
 
 **What we learned**:
+
 - Exports: three functions and one class
 - Primary exports from `core.py`
 - Utility exports from `utils.py`
@@ -116,6 +118,7 @@ def slugify(text: str, max_length: int = None) -> str:
 ```
 
 **What we learned**:
+
 - Three focused functions
 - Good docstrings with Args, Returns, Raises
 - Type hints present
@@ -155,6 +158,7 @@ COMMON_STOPWORDS = {
 ```
 
 **What we learned**:
+
 - TextMetrics class for analysis
 - Three simple methods
 - COMMON_STOPWORDS constant (pre-defined set)
@@ -201,6 +205,7 @@ class TestSlugify:
 ```
 
 **What we learned**:
+
 - Good test coverage
 - Tests normal cases, edge cases, and errors
 - Uses pytest
@@ -233,6 +238,7 @@ print(f"Avg len: {metrics.avg_word_length()}")  # 5.5
 ```
 
 **What we learned**:
+
 - Clear usage examples
 - All functions demonstrated
 - TextMetrics usage shown
@@ -247,6 +253,7 @@ print(f"Avg len: {metrics.avg_word_length()}")  # 5.5
 ```
 
 **What we learned**:
+
 - Pure Python, no external dependencies
 - Standard library only
 - Even tests don't need external libraries (except pytest)
@@ -259,26 +266,32 @@ Based on the analysis above, we can now draft the specification:
 # String Utils Specification
 
 ## Purpose
+
 Provide common string manipulation utilities with consistent behavior and clear error handling.
 
 ## Public Interface
 
 ### Functions
+
 - `truncate(text: str, max_length: int, suffix: str = "...") -> str`
 - `normalize(text: str) -> str`
 - `slugify(text: str, max_length: int = None) -> str`
 
 ### Classes
+
 - `TextMetrics`: Analyze text with word_count(), char_count(), avg_word_length()
 
 ### Constants
+
 - `COMMON_STOPWORDS`: Set of 18 common English words
 
 ## Dependencies
+
 - External: None
 - Internal: None
 
 ## Test Requirements
+
 ✅ Truncate: 5+ tests (normal, edge, error cases)
 ✅ Normalize: 4+ tests (spaces, newlines, empty, whitespace-only)
 ✅ Slugify: 4+ tests (basic, special chars, empty result, max_length)
@@ -286,15 +299,18 @@ Provide common string manipulation utilities with consistent behavior and clear 
 ✅ Coverage: 85%+
 
 ## Module Structure
+
 (as observed above)
 
 ## Example Usage
+
 (from usage.py above)
 ```
 
 ### Step 9: Validate Specification
 
 Check that the spec:
+
 - [ ] Accurately reflects the code
 - [ ] Documents all exported items
 - [ ] Lists all dependencies correctly
@@ -313,6 +329,7 @@ Create `/Specs/string-utils.md` with complete specification incorporating all ab
 When analyzing a module to generate its spec:
 
 ### Code Files
+
 - [ ] Read all `*.py` files in module
 - [ ] Identify `__init__.py` exports
 - [ ] Extract all function signatures
@@ -321,6 +338,7 @@ When analyzing a module to generate its spec:
 - [ ] Check for data models (dataclass, NamedTuple, etc.)
 
 ### Dependencies
+
 - [ ] List all imports in each file
 - [ ] Categorize: standard library, external, internal
 - [ ] Note version requirements if specified
@@ -328,6 +346,7 @@ When analyzing a module to generate its spec:
 - [ ] Check for optional dependencies
 
 ### Tests
+
 - [ ] Count test files and test functions
 - [ ] Identify test coverage areas
 - [ ] Note edge cases being tested
@@ -335,18 +354,21 @@ When analyzing a module to generate its spec:
 - [ ] Look for integration tests
 
 ### Documentation
+
 - [ ] Read existing docstrings
 - [ ] Review any READMEs
 - [ ] Check for inline comments
 - [ ] Look at examples
 
 ### Module Structure
+
 - [ ] Map directory organization
 - [ ] Note what files handle what
 - [ ] Identify test organization
 - [ ] Check for example files
 
 ### Philosophy Alignment
+
 - [ ] Single responsibility: Does module do ONE thing?
 - [ ] Simplicity: Are implementations straightforward?
 - [ ] Dependencies: Are they justified?
@@ -356,6 +378,7 @@ When analyzing a module to generate its spec:
 ## Common Patterns to Document
 
 ### Pattern 1: Simple Function Module
+
 ```
 ✅ Functions only, no classes
 ✅ Single responsibility
@@ -364,6 +387,7 @@ Example: string_utils
 ```
 
 ### Pattern 2: Class-Based Module
+
 ```
 ✅ One main class (or small set)
 ✅ Related helper functions
@@ -372,6 +396,7 @@ Example: session_management
 ```
 
 ### Pattern 3: Integration Module
+
 ```
 ✅ Wraps external service (API, database)
 ✅ Clear error handling
@@ -380,6 +405,7 @@ Example: github_client
 ```
 
 ### Pattern 4: Data Structures Module
+
 ```
 ✅ Primarily classes/dataclasses
 ✅ Minimal methods

@@ -14,11 +14,13 @@ argument-hint: <skill-name> <skill-type> <description>
 `/amplihack:skill-builder <skill-name> <skill-type> <description>`
 
 **Arguments:**
+
 - `skill-name`: Name of the skill (kebab-case, e.g., "data-transformer")
 - `skill-type`: Type of skill - one of: `agent`, `command`, `scenario`, `skill`
 - `description`: Brief description of what the skill does (1-2 sentences)
 
 **Examples:**
+
 ```bash
 /amplihack:skill-builder data-transformer skill "Transforms data between different formats with validation"
 /amplihack:skill-builder analyze-dependencies command "Analyzes project dependencies and generates report"
@@ -29,6 +31,7 @@ argument-hint: <skill-name> <skill-type> <description>
 ## Purpose
 
 Creates new Claude Code skills following the Amplihack framework patterns. Orchestrates multiple agents to ensure skills are:
+
 - Properly structured with YAML frontmatter
 - Philosophy-compliant (ruthless simplicity, zero-BS)
 - Self-contained and regeneratable
@@ -38,6 +41,7 @@ Creates new Claude Code skills following the Amplihack framework patterns. Orche
 ## Reference Documentation
 
 This command implements patterns from:
+
 - **Official Claude Code Skills**: https://code.claude.com/docs/en/skills
 - **Anthropic Agent SDK Skills**: https://docs.claude.com/en/docs/agent-sdk/skills
 - **Agent Skills Blog Post**: https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills
@@ -83,6 +87,7 @@ description = args[2] # e.g., "Transforms data between formats"
    - Should describe WHAT the skill does, not HOW
 
 **If validation fails:**
+
 - Display error message explaining the issue
 - Show correct usage examples
 - Exit without creating files
@@ -118,6 +123,7 @@ Analyze this skill request and generate a structured specification:
 - **Description**: {description}
 
 Please provide:
+
 1. Refined description (1-2 sentences, clear and specific)
 2. Core responsibilities (3-5 bullet points)
 3. Input/output specifications
@@ -147,6 +153,7 @@ Design the architecture for this skill based on the specification:
 **Skill Type**: {skill_type}
 
 Please provide:
+
 1. Skill structure (sections and organization)
 2. YAML frontmatter fields (name, description, version, tags, etc.)
 3. Required sections (Purpose, Usage, Instructions, Examples, etc.)
@@ -173,6 +180,7 @@ Implement the skill file based on this architecture:
 {architecture_from_architect}
 
 **Requirements:**
+
 - Generate complete, working skill (no stubs or placeholders)
 - Include proper YAML frontmatter
 - Follow the skill template structure (embedded below)
@@ -202,6 +210,7 @@ Review this skill for philosophy compliance:
 {skill_content_from_builder}
 
 **Check for:**
+
 1. Ruthless simplicity (no unnecessary complexity)
 2. Zero-BS implementation (no stubs, placeholders, TODOs)
 3. Clear contracts (inputs, outputs, side effects)
@@ -212,6 +221,7 @@ Review this skill for philosophy compliance:
 8. Token budget appropriateness
 
 Provide:
+
 - Compliance score (0-100%)
 - Issues found (if any)
 - Recommendations for improvement
@@ -254,6 +264,7 @@ optional:
 **If validation passes:**
 
 1. Determine output path:
+
    ```python
    output_paths = {
        "skill": ".claude/skills/{skill_name}/SKILL.md",
@@ -271,6 +282,7 @@ optional:
 4. Confirm creation with absolute path
 
 **If validation fails:**
+
 - Display specific errors
 - Request builder to revise
 - Re-run validation
@@ -313,6 +325,7 @@ For {skill_type} skills:
 ---
 
 **Reference Documentation:**
+
 - Claude Code Skills: https://code.claude.com/docs/en/skills
 - Agent SDK: https://docs.claude.com/en/docs/agent-sdk/skills
 - Skill Builder: https://github.com/metaskills/skill-builder
@@ -324,11 +337,11 @@ Use this template as the foundation for all generated skills:
 
 ```markdown
 ---
-name: {skill-name}
-description: {clear-description}
+name: { skill-name }
+description: { clear-description }
 version: 1.0.0
-tags: [{relevant-tags}]
-token_budget: {recommended-budget}
+tags: [{ relevant-tags }]
+token_budget: { recommended-budget }
 maturity: experimental
 ---
 
@@ -373,6 +386,7 @@ This skill provides {core-capability} for {target-use-case}.
 ### When to Use This Skill
 
 Use this skill when:
+
 - {Use case 1}
 - {Use case 2}
 - {Use case 3}
@@ -396,19 +410,23 @@ When this skill is invoked:
 ### Input Specifications
 
 **Required Inputs:**
+
 - `{input1}`: {type} - {description}
 - `{input2}`: {type} - {description}
 
 **Optional Inputs:**
+
 - `{input3}`: {type} - {description} (default: {value})
 
 ### Output Specifications
 
 **Returns:**
+
 - `{output1}`: {type} - {description}
 - `{output2}`: {type} - {description}
 
 **Side Effects:**
+
 - {Side effect 1 if any}
 - {Side effect 2 if any}
 
@@ -450,6 +468,7 @@ When this skill is invoked:
 ## Integration Points
 
 This skill integrates with:
+
 - **{System/Tool 1}**: {How it integrates}
 - **{System/Tool 2}**: {How it integrates}
 - **{System/Tool 3}**: {How it integrates}
@@ -469,6 +488,7 @@ Common errors and solutions:
 ## Validation Rules
 
 This skill validates:
+
 1. {Validation rule 1}
 2. {Validation rule 2}
 3. {Validation rule 3}
@@ -476,6 +496,7 @@ This skill validates:
 ## Philosophy Compliance
 
 This skill follows Amplihack principles:
+
 - **Ruthless Simplicity**: {How this skill stays simple}
 - **Zero-BS**: {How this skill avoids placeholders and stubs}
 - **Self-Contained**: {How this skill is complete and self-sufficient}
@@ -491,13 +512,16 @@ This skill follows Amplihack principles:
 ## Maintenance
 
 **Version History:**
+
 - v1.0.0 (Initial): {Brief description of initial implementation}
 
 **Future Enhancements:**
+
 - {Potential future improvement 1}
 - {Potential future improvement 2}
 
 **Known Limitations:**
+
 - {Limitation 1}
 - {Limitation 2}
 ```
@@ -511,6 +535,7 @@ This skill follows Amplihack principles:
 **Purpose**: Auto-discoverable skills that Claude loads based on description matching
 
 **Additional Considerations:**
+
 - Skills auto-activate when description matches user intent
 - Description MUST include trigger keywords users would say
 - Keep core instructions under 5,000 tokens
@@ -519,6 +544,7 @@ This skill follows Amplihack principles:
 - Skills are token-efficient (load only when needed)
 
 **YAML Frontmatter Requirements:**
+
 ```yaml
 ---
 name: skill-name
@@ -527,6 +553,7 @@ description: Keyword-rich description for auto-discovery (optimized for trigger 
 ```
 
 **Description Best Practices:**
+
 - Include action verbs: "analyze", "generate", "transform", "validate"
 - Mention file types: ".xlsx", ".pdf", "JSON", "YAML"
 - Add domain keywords: "financial", "testing", "documentation"
@@ -534,6 +561,7 @@ description: Keyword-rich description for auto-discovery (optimized for trigger 
 - Length: 50-200 characters (not too short, not too long)
 
 **Directory Structure:**
+
 ```
 .claude/skills/{skill-name}/
 ├── SKILL.md           # Required: Main skill with YAML frontmatter
@@ -547,6 +575,7 @@ description: Keyword-rich description for auto-discovery (optimized for trigger 
 **Location**: `.claude/agents/amplihack/specialized/{skill-name}.md`
 
 **Additional Considerations:**
+
 - Agents are invoked by other agents or commands
 - Should have clear entry points and exit conditions
 - Must define what they analyze, what they output
@@ -554,8 +583,9 @@ description: Keyword-rich description for auto-discovery (optimized for trigger 
 - Specify when to delegate to other agents
 
 **YAML Additions:**
+
 ```yaml
-model: inherit  # or specific model like "claude-sonnet-4-5"
+model: inherit # or specific model like "claude-sonnet-4-5"
 ```
 
 ### For Command Skills (`command`)
@@ -563,6 +593,7 @@ model: inherit  # or specific model like "claude-sonnet-4-5"
 **Location**: `.claude/commands/amplihack/{skill-name}.md`
 
 **Additional Considerations:**
+
 - Commands are user-facing slash commands
 - Should provide immediate value
 - Must have clear usage examples
@@ -570,6 +601,7 @@ model: inherit  # or specific model like "claude-sonnet-4-5"
 - Specify command syntax in frontmatter
 
 **YAML Additions:**
+
 ```yaml
 argument-hint: <required-arg> [optional-arg]
 ```
@@ -579,6 +611,7 @@ argument-hint: <required-arg> [optional-arg]
 **Location**: `.claude/scenarios/{skill-name}/SKILL.md`
 
 **Additional Considerations:**
+
 - Scenarios are production-ready tools
 - Should have comprehensive documentation
 - Must include test coverage plan
@@ -586,12 +619,14 @@ argument-hint: <required-arg> [optional-arg]
 - Consider graduation from experimental
 
 **YAML Additions:**
+
 ```yaml
-maturity: experimental  # or beta, stable
+maturity: experimental # or beta, stable
 dependencies: [list-of-dependencies]
 ```
 
 **Directory Structure:**
+
 ```
 .claude/scenarios/{skill-name}/
 ├── SKILL.md          # Main skill definition
@@ -600,7 +635,6 @@ dependencies: [list-of-dependencies]
 ├── tests/            # Test suite
 └── examples/         # Usage examples
 ```
-
 
 ---
 

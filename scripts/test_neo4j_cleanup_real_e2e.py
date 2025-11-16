@@ -39,9 +39,9 @@ def check_neo4j_running() -> bool:
 
     Real test - we test the system AS IT EXISTS, not by setting up special test environment.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("SETUP: Checking for Running Neo4j Container")
-    print("="*70)
+    print("=" * 70)
 
     try:
         # Just check if container is running, don't try to start it
@@ -49,15 +49,16 @@ def check_neo4j_running() -> bool:
             ["docker", "ps", "--filter", "name=neo4j", "--format", "{{.Names}}"],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
 
         if "neo4j" in result.stdout:
-            containers = [c for c in result.stdout.strip().split('\n') if c]
+            containers = [c for c in result.stdout.strip().split("\n") if c]
             print(f"✓ Found {len(containers)} Neo4j container(s): {', '.join(containers)}")
 
             # Try to connect to verify it's accessible
             from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
+
             tracker = Neo4jConnectionTracker()  # Use config system
             count = tracker.get_active_connection_count()
 
@@ -81,6 +82,7 @@ def check_neo4j_running() -> bool:
     except Exception as e:
         print(f"✗ Failed to check Neo4j: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -90,9 +92,9 @@ def test_stop_hook_cleanup_prompt():
 
     Real scenario: Session ends with Neo4j running, last connection, should prompt.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 1: Stop Hook Cleanup Prompt (Real Execution)")
-    print("="*70)
+    print("=" * 70)
 
     try:
         from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
@@ -118,9 +120,7 @@ def test_stop_hook_cleanup_prompt():
         print("→ Creating real shutdown coordinator...")
         manager = Neo4jContainerManager()
         coordinator = Neo4jShutdownCoordinator(
-            connection_tracker=tracker,
-            container_manager=manager,
-            auto_mode=False
+            connection_tracker=tracker, container_manager=manager, auto_mode=False
         )
 
         # Test decision logic with REAL data
@@ -139,6 +139,7 @@ def test_stop_hook_cleanup_prompt():
     except Exception as e:
         print(f"✗ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -148,9 +149,9 @@ def test_preference_loading_real():
 
     Real scenario: USER_PREFERENCES.md exists with neo4j_auto_shutdown setting.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 2: Real Preference Loading")
-    print("="*70)
+    print("=" * 70)
 
     try:
         from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
@@ -179,7 +180,7 @@ def test_preference_loading_real():
         loaded_pref = coordinator._preference
         print(f"✓ Loaded preference: {loaded_pref}")
 
-        if loaded_pref in ['always', 'never', 'ask']:
+        if loaded_pref in ["always", "never", "ask"]:
             print(f"✓ TEST PASSED: Valid preference loaded: {loaded_pref}")
             return True
         print(f"✗ TEST FAILED: Invalid preference: {loaded_pref}")
@@ -188,6 +189,7 @@ def test_preference_loading_real():
     except Exception as e:
         print(f"✗ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -197,9 +199,9 @@ def test_signal_handler_real_process():
 
     Real scenario: Start real Python process, send real SIGINT, verify cleanup.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 3: Real Signal Handler (SIGINT)")
-    print("="*70)
+    print("=" * 70)
 
     test_script = """
 import os
@@ -233,12 +235,13 @@ except Exception as e:
 """
 
     import tempfile
+
     test_script_file = None
     process = None
 
     try:
         # Write test script
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(test_script)
             test_script_file = Path(f.name)
 
@@ -251,7 +254,7 @@ except Exception as e:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            cwd=Path.cwd()
+            cwd=Path.cwd(),
         )
         print(f"✓ Started test process (PID: {process.pid})")
 
@@ -313,6 +316,7 @@ except Exception as e:
     except Exception as e:
         print(f"✗ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -330,9 +334,9 @@ def test_multiple_connections_no_prompt():
 
     Real scenario: Start 2 real connections, verify tracker detects them.
     """
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 4: Multiple Connections (Real)")
-    print("="*70)
+    print("=" * 70)
 
     try:
         from amplihack.memory.neo4j.connector import Neo4jConnector
@@ -380,22 +384,20 @@ def test_multiple_connections_no_prompt():
     except Exception as e:
         print(f"✗ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 def cleanup_neo4j():
     """Stop Neo4j container after tests."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("CLEANUP: Stopping Neo4j Container")
-    print("="*70)
+    print("=" * 70)
 
     try:
         result = subprocess.run(
-            ["docker", "stop", "amplihack-neo4j-memory"],
-            capture_output=True,
-            text=True,
-            timeout=30
+            ["docker", "stop", "amplihack-neo4j-memory"], capture_output=True, text=True, timeout=30
         )
 
         if result.returncode == 0 or "No such container" in result.stderr:
@@ -411,9 +413,9 @@ def cleanup_neo4j():
 
 def main():
     """Run all real outside-in agentic tests."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("REAL OUTSIDE-IN AGENTIC TESTS: Neo4j Session Cleanup")
-    print("="*70)
+    print("=" * 70)
     print("\nThese tests use REAL components (no mocks):")
     print("- Real Neo4j container")
     print("- Real database connections")
@@ -430,20 +432,20 @@ def main():
         return 0  # Not a failure, just skipped
 
     # Run tests
-    results['Stop Hook Prompt'] = test_stop_hook_cleanup_prompt()
-    results['Preference Loading'] = test_preference_loading_real()
-    results['Signal Handler'] = test_signal_handler_real_process()
-    results['Multiple Connections'] = test_multiple_connections_no_prompt()
+    results["Stop Hook Prompt"] = test_stop_hook_cleanup_prompt()
+    results["Preference Loading"] = test_preference_loading_real()
+    results["Signal Handler"] = test_signal_handler_real_process()
+    results["Multiple Connections"] = test_multiple_connections_no_prompt()
 
     # Note: Don't stop Neo4j in cleanup - leave it running for user
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("Note: Neo4j container left running (as user expects)")
-    print("="*70)
+    print("=" * 70)
 
     # Print summary
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST SUMMARY")
-    print("="*70)
+    print("=" * 70)
 
     all_passed = True
     for test_name, passed in results.items():
@@ -452,7 +454,7 @@ def main():
         if not passed:
             all_passed = False
 
-    print("="*70)
+    print("=" * 70)
 
     if all_passed:
         print("\n✅ ALL REAL AGENTIC TESTS PASSED")

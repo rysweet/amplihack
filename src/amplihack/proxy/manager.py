@@ -246,7 +246,7 @@ class ProxyManager:
         self,
         exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
-        exc_tb: Optional[object],
+        exc_tb: object,
     ) -> None:
         """Context manager exit - stops proxy.
 
@@ -552,7 +552,7 @@ class ProxyManager:
 
             # Reject -c flag (inline code execution) for security
             if arg == "-c":
-                logger.error("Inline code execution (-c) not allowed for security")
+                print("ERROR: Inline code execution (-c) not allowed for security", file=sys.stderr)
                 return None
 
             # Validate module names for -m flag

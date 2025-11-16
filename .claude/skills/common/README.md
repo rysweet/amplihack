@@ -15,12 +15,14 @@ This directory contains shared infrastructure used by multiple Office skills. Th
 **Description**: Office documents (.docx, .pptx, .xlsx) are ZIP archives containing XML files. These scripts provide core operations for unpacking, modifying, and repacking Office documents.
 
 **Key Scripts**:
+
 - `unpack.py`: Extract Office file to directory with formatted XML
 - `pack.py`: Repackage directory into Office file with validation
 
 **Documentation**: [ooxml/README.md](ooxml/README.md)
 
 **Access Pattern**: Skills reference via symlink
+
 ```bash
 docx/ooxml -> ../common/ooxml
 pptx/ooxml -> ../common/ooxml  # Future
@@ -35,9 +37,11 @@ pptx/ooxml -> ../common/ooxml  # Future
 **Description**: Scripts to check if required Python packages and system commands are installed. Provides consistent dependency checking across all skills.
 
 **Key Script**:
+
 - `verify_skill.py`: Check dependencies for a specific skill
 
 **Usage**:
+
 ```bash
 python common/verification/verify_skill.py pdf
 python common/verification/verify_skill.py docx
@@ -52,6 +56,7 @@ python common/verification/verify_skill.py docx
 **Format**: Plain text listing of shared dependencies with usage notes
 
 **Contents**:
+
 - Python packages (e.g., defusedxml)
 - System packages (e.g., LibreOffice, poppler-utils)
 - Notes on which skills use each dependency
@@ -61,6 +66,7 @@ python common/verification/verify_skill.py docx
 ### Single Source of Truth
 
 Shared code lives in one place:
+
 - OOXML scripts: `common/ooxml/`
 - Verification utilities: `common/verification/`
 
@@ -69,6 +75,7 @@ Skills reference via symlinks, not copies.
 ### Explicit Dependencies
 
 Each skill declares its dependencies explicitly:
+
 - Skill-specific: In skill's DEPENDENCIES.md
 - Shared: Noted in common/dependencies.txt
 
@@ -77,6 +84,7 @@ No implicit assumptions about what's installed.
 ### Graceful Degradation
 
 Common utilities handle missing dependencies gracefully:
+
 - Verification script reports status without failing
 - Tests skip appropriately if dependencies unavailable
 - Clear error messages with installation instructions
@@ -84,6 +92,7 @@ Common utilities handle missing dependencies gracefully:
 ### Minimal Coupling
 
 Common components have minimal interdependencies:
+
 - OOXML scripts standalone (only need defusedxml)
 - Verification utilities standalone (only need Python stdlib)
 - No circular dependencies between components
@@ -141,6 +150,7 @@ grep "LibreOffice" common/dependencies.txt
 ### Python Packages
 
 **defusedxml** (Used by: DOCX, PPTX)
+
 - Purpose: Secure XML parsing for OOXML operations
 - Why shared: Both DOCX and PPTX manipulate Office XML
 - Installation: `pip install defusedxml`
@@ -148,6 +158,7 @@ grep "LibreOffice" common/dependencies.txt
 ### System Packages
 
 **LibreOffice (soffice)** (Used by: XLSX, DOCX, PPTX)
+
 - Purpose: Document validation and conversion
 - Why shared: All Office formats need validation
 - Installation:
@@ -155,6 +166,7 @@ grep "LibreOffice" common/dependencies.txt
   - Ubuntu: `sudo apt-get install libreoffice`
 
 **poppler-utils** (Used by: DOCX, PDF)
+
 - Purpose: PDF processing (pdftoppm, pdftotext)
 - Why shared: Both skills work with PDF conversion
 - Installation:
@@ -168,6 +180,7 @@ grep "LibreOffice" common/dependencies.txt
 **Decision**: Use symlinks for OOXML scripts rather than copies or imports
 
 **Rationale**:
+
 - Single source of truth (update in one place)
 - Clear dependency (visible in directory structure)
 - Simple (no complex import paths or packaging)
@@ -182,6 +195,7 @@ grep "LibreOffice" common/dependencies.txt
 **Decision**: Create common/ directory rather than top-level shared modules
 
 **Rationale**:
+
 - Keeps all skills infrastructure in .claude/skills/
 - Clear namespace (common/ signals shared code)
 - Easy to find and maintain
@@ -192,6 +206,7 @@ grep "LibreOffice" common/dependencies.txt
 **Decision**: Don't create Python packages for shared code
 
 **Rationale**:
+
 - Overkill for small utilities
 - Would complicate installation
 - Skills should be independently usable
@@ -265,6 +280,7 @@ test -f repacked.docx && echo "Pack OK"
 **Problem**: `ls: docx/ooxml: No such file or directory`
 
 **Solution**:
+
 ```bash
 cd .claude/skills/docx
 ln -s ../common/ooxml ooxml
@@ -276,6 +292,7 @@ ls -la ooxml  # Verify
 **Problem**: `Permission denied` when running scripts
 
 **Solution**:
+
 ```bash
 chmod +x common/ooxml/scripts/*.py
 chmod +x common/verification/*.py
@@ -286,6 +303,7 @@ chmod +x common/verification/*.py
 **Problem**: `ModuleNotFoundError: No module named 'defusedxml'`
 
 **Solution**:
+
 ```bash
 pip install defusedxml
 python -c "import defusedxml; print('OK')"
@@ -296,6 +314,7 @@ python -c "import defusedxml; print('OK')"
 **Problem**: Verification script itself fails to run
 
 **Solution**:
+
 ```bash
 # Check Python version (needs 3.x)
 python --version

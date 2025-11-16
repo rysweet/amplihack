@@ -122,6 +122,7 @@ def main():
         return remove_lock()
     if args.command == "check":
         return check_lock()
+    return 1  # Unknown command
 
 
 if __name__ == "__main__":

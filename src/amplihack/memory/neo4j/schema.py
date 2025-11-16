@@ -277,7 +277,13 @@ class SchemaManager:
 
     def _verify_indexes(self) -> bool:
         """Verify indexes exist."""
-        expected = ["memory_type", "memory_created_at", "agent_type_name", "project_path", "code_index_updated"]
+        expected = [
+            "memory_type",
+            "memory_created_at",
+            "agent_type_name",
+            "project_path",
+            "code_index_updated",
+        ]
 
         result = self.conn.execute_query("SHOW INDEXES")
         existing = [r.get("name") for r in result]

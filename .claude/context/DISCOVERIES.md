@@ -9,6 +9,7 @@ project.
 ### Problem Discovered
 
 **Step 8 of DEFAULT_WORKFLOW.md was not followed rigorously enough**. Code was committed after:
+
 - Unit test structure validation
 - Code syntax verification
 - Agent reviews (cleanup, reviewer)
@@ -18,6 +19,7 @@ BUT missing the most critical test: **Real user experience validation with `uvx 
 ### Why This Matters
 
 **The Workflow Explicitly Requires**:
+
 ```
 Step 8: Mandatory Local Testing (NOT in CI)
 - Test simple use cases - Basic functionality verification
@@ -31,6 +33,7 @@ Step 8: Mandatory Local Testing (NOT in CI)
 ### Critical Learning
 
 **ALWAYS test with `uvx --from <branch>` before committing**. This is THE definitive test that:
+
 - Package installs correctly from the branch
 - All dependencies resolve properly
 - The actual user workflow works end-to-end
@@ -38,6 +41,7 @@ Step 8: Mandatory Local Testing (NOT in CI)
 - Configuration files get updated correctly
 
 **Testing hierarchy** (all required):
+
 1. ✅ Unit tests (fast, isolated)
 2. ✅ Integration tests (components together)
 3. ✅ Code reviews (agents verify quality)
@@ -62,6 +66,7 @@ uvx --from git+https://github.com/org/repo@your-branch package-name command
 ### Example - Neo4j Port Allocation Fix (Issue #1283)
 
 **What we tested**:
+
 ```python
 # Verified port conflict resolution works:
 ✅ Detected occupied ports: 7774/7787
@@ -81,6 +86,7 @@ uvx --from git+https://github.com/org/repo@your-branch package-name command
 ### Success Criteria for "Mandatory Local Testing"
 
 For Step 8 to be marked complete, you MUST:
+
 - [ ] Install with `uvx --from <your-branch>` or equivalent
 - [ ] Run the EXACT command/workflow that was broken
 - [ ] Verify the fix solves the user's problem
@@ -1545,6 +1551,7 @@ if is_our_neo4j_container():  # Only checks name, doesn't get ports!
 ```
 
 **Error Sequence**:
+
 1. Container exists on ports 7787/7774 (actual)
 2. `.env` in new directory has port 7688 (wrong)
 3. Code detects container exists by name ✅
@@ -1610,11 +1617,13 @@ if container_ports:
 ### Prevention
 
 **Before this fix:**
+
 - Starting amplihack in multiple directories would fail with container conflicts
 - Users had to manually sync `.env` files across projects
 - No automatic detection of port mismatches
 
 **After this fix:**
+
 - Amplihack automatically detects actual container ports
 - `.env` files auto-update to match reality
 - Can start amplihack in any directory, will reuse existing container
@@ -1623,6 +1632,7 @@ if container_ports:
 ### Testing
 
 **Comprehensive test coverage (29 tests, all passing)**:
+
 - Docker port output parsing (12 tests)
 - Port conflict resolution (5 tests)
 - Port availability detection (4 tests)
@@ -1646,12 +1656,14 @@ if container_ports:
 ### Pattern Recognition
 
 **Trigger Signs of Port Mismatch Issues**:
+
 - "Container found" but connection fails
 - "Conflict" errors when creating containers
 - Port numbers in error messages don't match expected ports
 - Working in different directories with shared container
 
 **Debugging Approach**:
+
 1. Check if container actually exists (`docker ps`)
 2. Check what ports container is actually using (`docker port <name>`)
 3. Check what ports configuration expects (`.env`, config files)
