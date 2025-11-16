@@ -8,6 +8,7 @@ import uuid
 from typing import Optional
 
 from .models import ExecutionPlan, GoalAgentBundle, GoalDefinition, SkillDefinition
+from .utils import sanitize_bundle_name
 
 
 class AgentAssembler:
@@ -58,7 +59,14 @@ class AgentAssembler:
         return bundle
 
     def _generate_bundle_name(self, goal_definition: GoalDefinition) -> str:
-        """Generate a bundle name from goal definition."""
+        """
+        Generate a bundle name from goal definition.
+
+        The name is automatically sanitized to meet validation requirements:
+        - 3-50 characters
+        - Valid characters only (alphanumeric, hyphens)
+        - Meaningful prefix preserved when truncating
+        """
         # Extract key words from goal
         goal_words = goal_definition.goal.lower().split()
 
@@ -89,12 +97,12 @@ class AgentAssembler:
         if domain_prefix not in name_words:
             name_words.insert(0, domain_prefix)
 
-        # Join with hyphens, limit length
-        bundle_name = "-".join(name_words)[:47]  # Leave room for "-agent"
-        bundle_name = f"{bundle_name}-agent"
+        # Join with hyphens
+        raw_name = "-".join(name_words) if name_words else goal_definition.domain
 
-        # Clean up
-        bundle_name = bundle_name.replace("_", "-")
+        # Sanitize the name to ensure it meets all requirements
+        # This handles truncation, character validation, and length constraints
+        bundle_name = sanitize_bundle_name(raw_name, suffix="-agent")
 
         return bundle_name
 

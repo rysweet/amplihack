@@ -1,0 +1,212 @@
+# Level 3: Electron IPC Testing
+# This advanced test verifies Inter-Process Communication between the main process
+# and renderer processes in an Electron application.
+
+scenario:
+  name: "Electron IPC - Inter-Process Communication Testing"
+  description: |
+    Verifies IPC communication between main and renderer processes, including
+    request/response patterns, event broadcasting, and data serialization.
+  type: electron
+
+  level: 3
+
+  tags: [electron, ipc, advanced, main-process, renderer-process]
+
+  prerequisites:
+    - "./dist/advanced-app executable exists"
+    - "Application implements IPC channels for testing"
+
+  steps:
+    - action: launch
+      target: "./dist/advanced-app"
+      wait_for_window: true
+      timeout: 10s
+
+    # Test Case 1: Simple Request-Response IPC
+    - action: ipc_send
+      channel: "get-system-info"
+      description: "Request system information from main process"
+
+    - action: ipc_expect
+      channel: "system-info-reply"
+      timeout: 3s
+      description: "Wait for main process response"
+
+    - action: verify_ipc_payload
+      contains:
+        platform: "darwin"
+        arch: "x64"
+      description: "Verify system info structure"
+
+    # Test Case 2: IPC with Data Payload
+    - action: ipc_send
+      channel: "calculate"
+      data:
+        operation: "multiply"
+        values: [5, 7]
+
+    - action: ipc_expect
+      channel: "calculate-result"
+      timeout: 2s
+
+    - action: verify_ipc_payload
+      equals:
+        result: 35
+        operation: "multiply"
+
+    # Test Case 3: File System Operations via IPC
+    - action: ipc_send
+      channel: "read-file"
+      data:
+        path: "./test-data.json"
+
+    - action: ipc_expect
+      channel: "file-content"
+      timeout: 5s
+
+    - action: verify_ipc_payload
+      contains:
+        success: true
+        data: "{}"  # Some JSON content
+
+    # Test Case 4: Event Broadcasting (Main → Renderer)
+    - action: wait_for_element
+      selector: ".status-indicator"
+      timeout: 3s
+
+    # Trigger background task in main process
+    - action: click
+      selector: "button.start-background-task"
+
+    - action: ipc_expect
+      channel: "task-progress"
+      timeout: 10s
+      description: "Wait for progress updates from main process"
+
+    - action: verify_ipc_payload
+      matches:
+        progress: "\\d+"
+        status: "(running|completed)"
+
+    - action: wait_for_element
+      selector: ".task-complete"
+      timeout: 15s
+
+    # Test Case 5: Error Handling in IPC
+    - action: ipc_send
+      channel: "invalid-operation"
+      data:
+        action: "nonexistent"
+
+    - action: ipc_expect
+      channel: "error"
+      timeout: 3s
+
+    - action: verify_ipc_payload
+      contains:
+        error: true
+        message: "Unknown operation"
+
+    # Test Case 6: Multi-Window IPC
+    - action: menu_click
+      path: ["Window", "New Window"]
+
+    - action: wait_for_window
+      count: 2
+      timeout: 5s
+
+    # Send IPC from first window
+    - action: window_action
+      window: 1
+      action: focus
+
+    - action: ipc_send
+      channel: "broadcast-message"
+      data:
+        message: "Hello from window 1"
+
+    # Verify received in second window
+    - action: window_action
+      window: 2
+      action: focus
+
+    - action: wait_for_element
+      selector: ".broadcast-message"
+      contains: "Hello from window 1"
+      timeout: 5s
+
+    # Test Case 7: Native Dialog via IPC
+    - action: ipc_send
+      channel: "show-open-dialog"
+      data:
+        title: "Select File"
+        filters: [{name: "Text Files", extensions: ["txt"]}]
+
+    # Simulate dialog interaction (in test mode)
+    - action: dialog_action
+      type: open_file
+      select: "./test-file.txt"
+
+    - action: ipc_expect
+      channel: "dialog-result"
+      timeout: 5s
+
+    - action: verify_ipc_payload
+      contains:
+        filePaths: ["./test-file.txt"]
+
+    # Cleanup
+    - action: menu_click
+      path: ["File", "Quit"]
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: stop_application
+      force: false
+
+# IPC Communication Patterns:
+
+# Main Process                    Renderer Process
+# ┌──────────────────┐           ┌──────────────────┐
+# │                  │           │                  │
+# │  ipcMain.on()   │<──req────  │  ipcRenderer    │
+# │                  │           │  .send()        │
+# │  do work...      │           │                  │
+# │                  │           │  ipcRenderer    │
+# │  win.webContents│───resp───> │  .on()          │
+# │  .send()        │           │                  │
+# └──────────────────┘           └──────────────────┘
+
+# Run Command:
+# gadugi-agentic-test run examples/electron/electron-ipc-testing.yaml --verbose
+
+# Key Learning Points (Level 3):
+# 1. ipc_send triggers IPC from renderer
+# 2. ipc_expect waits for IPC events
+# 3. verify_ipc_payload validates message content
+# 4. IPC can be request-response or broadcast
+# 5. Error handling in IPC channels
+# 6. Cross-window IPC communication
+# 7. Native dialog integration via IPC
+
+# Common IPC Channels to Test:
+# - get-app-version: Application metadata
+# - file-operations: Read, write, delete files
+# - system-info: OS, platform, architecture
+# - database-query: Database operations
+# - background-tasks: Long-running operations
+# - window-control: Manage windows
+# - native-dialogs: Open, save, message dialogs
+# - notifications: System notifications
+
+# IPC Testing Best Practices:
+# - Test both directions (renderer → main, main → renderer)
+# - Verify payload structure and types
+# - Test error conditions
+# - Test timeout handling
+# - Verify cross-window broadcasting
+# - Test serialization of complex data
+# - Verify async operation completion

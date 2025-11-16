@@ -1,0 +1,294 @@
+# Level 2: Electron Multi-Window Coordination
+# This test verifies coordination between multiple windows, data sharing,
+# and window management in a multi-window Electron application.
+
+scenario:
+  name: "Electron Multi-Window - Window Coordination"
+  description: |
+    Verifies Electron application can manage multiple windows, coordinate data
+    between them, and handle window lifecycle correctly.
+  type: electron
+
+  level: 2
+
+  tags: [electron, multi-window, coordination, intermediate]
+
+  prerequisites:
+    - "./dist/chat-app executable exists"
+    - "Application supports multiple chat windows"
+
+  variables:
+    chat_room_1: "General"
+    chat_room_2: "Development"
+    message_1: "Hello from window 1"
+    message_2: "Reply from window 2"
+
+  steps:
+    # Launch main application window
+    - action: launch
+      target: "./dist/chat-app"
+      wait_for_window: true
+      timeout: 10s
+      description: "Launch main chat application"
+
+    - action: verify_window
+      title: "Chat Application"
+      count: 1
+
+    - action: screenshot
+      save_as: "01-main-window.png"
+
+    # Test Case 1: Open Second Chat Window
+    - action: menu_click
+      path: ["Window", "New Chat"]
+      description: "Open new chat window via menu"
+
+    - action: wait_for_window
+      count: 2
+      timeout: 5s
+      description: "Wait for second window to appear"
+
+    - action: verify_window
+      count: 2
+      description: "Should now have 2 windows"
+
+    # Test Case 2: Focus on First Window
+    - action: window_action
+      window: 1
+      action: focus
+      description: "Focus on first window (0-indexed)"
+
+    - action: verify_window
+      window: 1
+      focused: true
+      description: "First window should be focused"
+
+    - action: wait_for_element
+      selector: ".chat-room-list"
+      timeout: 3s
+
+    # Join first chat room in window 1
+    - action: click
+      text: "${chat_room_1}"
+      description: "Join ${chat_room_1} room"
+
+    - action: wait_for_element
+      selector: ".chat-active"
+      contains: "${chat_room_1}"
+      timeout: 3s
+
+    - action: type
+      selector: ".message-input"
+      value: "${message_1}"
+      description: "Type message in window 1"
+
+    - action: click
+      selector: "button.send-message"
+      description: "Send message"
+
+    - action: verify_element
+      selector: ".message-item:last-child"
+      contains: "${message_1}"
+      description: "Message should appear in chat"
+
+    - action: screenshot
+      save_as: "02-window1-message-sent.png"
+
+    # Test Case 3: Switch to Second Window
+    - action: window_action
+      window: 2
+      action: focus
+      description: "Focus on second window"
+
+    - action: verify_window
+      window: 2
+      focused: true
+
+    - action: wait_for_element
+      selector: ".chat-room-list"
+      timeout: 3s
+
+    # Join SAME chat room in window 2
+    - action: click
+      text: "${chat_room_1}"
+      description: "Join ${chat_room_1} room in window 2"
+
+    - action: wait_for_element
+      selector: ".chat-active"
+      contains: "${chat_room_1}"
+      timeout: 3s
+
+    # Test Case 4: Verify Message Sync Between Windows
+    - action: wait_for_element
+      selector: ".message-item"
+      contains: "${message_1}"
+      timeout: 5s
+      description: "Message from window 1 should appear in window 2"
+
+    - action: screenshot
+      save_as: "03-window2-message-synced.png"
+
+    # Test Case 5: Send Message from Window 2
+    - action: type
+      selector: ".message-input"
+      value: "${message_2}"
+
+    - action: click
+      selector: "button.send-message"
+
+    - action: wait_for_element
+      selector: ".message-item:last-child"
+      contains: "${message_2}"
+      timeout: 3s
+
+    - action: screenshot
+      save_as: "04-window2-message-sent.png"
+
+    # Test Case 6: Verify Sync Back to Window 1
+    - action: window_action
+      window: 1
+      action: focus
+      description: "Switch back to window 1"
+
+    - action: wait_for_element
+      selector: ".message-item"
+      contains: "${message_2}"
+      timeout: 5s
+      description: "Message from window 2 should sync to window 1"
+
+    - action: screenshot
+      save_as: "05-window1-received-reply.png"
+
+    # Test Case 7: Open Third Window (Different Chat Room)
+    - action: menu_click
+      path: ["Window", "New Chat"]
+
+    - action: wait_for_window
+      count: 3
+      timeout: 5s
+
+    - action: window_action
+      window: 3
+      action: focus
+
+    - action: click
+      text: "${chat_room_2}"
+      description: "Join different chat room in window 3"
+
+    - action: wait_for_element
+      selector: ".chat-active"
+      contains: "${chat_room_2}"
+      timeout: 3s
+
+    # Verify independent chat state
+    - action: verify_element
+      selector: ".message-item"
+      contains: "${message_1}"
+      exists: false
+      description: "Messages from other room shouldn't appear here"
+
+    # Test Case 8: Cascade Windows Arrangement
+    - action: menu_click
+      path: ["Window", "Cascade"]
+      description: "Arrange windows in cascade layout"
+
+    - action: wait_for_screen
+      timeout: 1s
+      description: "Wait for window rearrangement"
+
+    # Verify all windows still exist
+    - action: verify_window
+      count: 3
+      description: "All 3 windows should still exist"
+
+    # Test Case 9: Close One Window
+    - action: window_action
+      window: 3
+      action: close
+      description: "Close third window"
+
+    - action: wait_for_window
+      count: 2
+      timeout: 3s
+      description: "Should have 2 windows remaining"
+
+    # Test Case 10: Verify Other Windows Unaffected
+    - action: window_action
+      window: 1
+      action: focus
+
+    - action: verify_element
+      selector: ".chat-active"
+      contains: "${chat_room_1}"
+      description: "Window 1 should still be in ${chat_room_1}"
+
+    - action: verify_element
+      selector: ".message-item"
+      contains: "${message_1}"
+      description: "Messages should still be present"
+
+    # Test Case 11: Close All Windows Via Menu
+    - action: menu_click
+      path: ["Window", "Close All"]
+      description: "Close all chat windows"
+
+    - action: wait_for_window
+      count: 0
+      timeout: 5s
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: stop_application
+      force: false
+
+# Multi-Window Coordination Patterns:
+
+# Window 1 (General)          Window 2 (General)          Window 3 (Development)
+# ┌────────────────┐          ┌────────────────┐          ┌────────────────┐
+# │ General     ✓  │          │ General     ✓  │          │ Development ✓  │
+# ├────────────────┤          ├────────────────┤          ├────────────────┤
+# │ User1: Hello   │  sync    │ User1: Hello   │          │ (different     │
+# │ User2: Reply   │ <───────>│ User2: Reply   │          │  chat room)    │
+# │ [________] [>] │          │ [________] [>] │          │ [________] [>] │
+# └────────────────┘          └────────────────┘          └────────────────┘
+
+# Run Command:
+# gadugi-agentic-test run examples/electron/multi-window-coordination.yaml --verbose
+
+# Key Learning Points (Level 2):
+# 1. window_action with window parameter targets specific windows
+# 2. wait_for_window with count waits for window creation/closure
+# 3. Data synchronization between windows can be tested
+# 4. Independent window states (different chat rooms)
+# 5. Window arrangement commands (cascade, tile)
+# 6. Closing individual windows vs. close all
+# 7. Focus management between multiple windows
+
+# Multi-Window Testing Strategy:
+# - Open multiple windows
+# - Verify independent operation
+# - Test data synchronization (if applicable)
+# - Test window focus switching
+# - Test window arrangement
+# - Verify closing one doesn't affect others
+# - Test close all functionality
+
+# Common Multi-Window Patterns:
+# - Chat applications (multiple conversations)
+# - Code editors (multiple files)
+# - Image editors (multiple documents)
+# - Browser-like apps (multiple tabs/windows)
+# - Dashboard apps (multiple views)
+
+# Window Indexing:
+# - Windows are 0-indexed: 1, 2, 3, etc.
+# - Index is creation order, not Z-order
+# - Closing a window doesn't renumber others
+
+# Synchronization Testing:
+# - Verify data appears in all relevant windows
+# - Test real-time updates between windows
+# - Verify isolation (unrelated windows don't get updates)
+# - Test conflict resolution if applicable

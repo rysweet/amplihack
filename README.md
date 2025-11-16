@@ -68,13 +68,20 @@ additional configuration needed.
 
 ### Azure OpenAI
 
-To use Azure OpenAI models, create an `azure.env` file:
+To use Azure OpenAI models, create an `azure.env` file with the following minimum configuration:
 
 ```env
+# Required: Your Azure OpenAI API key
 AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
+
+# Required: Azure OpenAI endpoint (base URL without path)
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+
+# Required: Model deployment name (use either BIG_MODEL or AZURE_OPENAI_DEPLOYMENT_NAME)
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
+
+# Optional: API version (defaults to 2025-04-01-preview)
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
 ```
 
 Launch with Azure configuration:
@@ -82,6 +89,8 @@ Launch with Azure configuration:
 ```sh
 amplihack launch --with-proxy-config ./azure.env
 ```
+
+**Note:** The endpoint should be just the base URL (e.g., `https://your-resource.openai.azure.com`) without `/openai` or other path suffixes. The proxy will automatically construct the correct API paths.
 
 ### GitHub Copilot CLI
 

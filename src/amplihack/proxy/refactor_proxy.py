@@ -14,11 +14,11 @@ def refactor_integrated_proxy():
     """Refactor integrated_proxy.py to use modular imports."""
 
     # Read the original file
-    with open("integrated_proxy.py") as f:
+    with open('integrated_proxy.py') as f:
         lines = f.readlines()
 
     # New import section to add after azure_unified_integration import (line 30)
-    new_imports = """
+    new_imports = '''
 # Import modular components
 from .modules import (
     # Error handling
@@ -66,7 +66,7 @@ from .modules import (
     parse_tool_result_content,
 )
 
-"""
+'''
 
     # Build new file content
     new_lines = []
@@ -78,11 +78,9 @@ from .modules import (
     new_lines.append(new_imports)
 
     # Add USE_LITELLM_ROUTER config (originally at line 32-33)
-    new_lines.append("# Check if we should use LiteLLM router for Azure\n")
-    new_lines.append(
-        'USE_LITELLM_ROUTER = os.environ.get("AMPLIHACK_USE_LITELLM", "true").lower() == "true"\n'
-    )
-    new_lines.append("\n")
+    new_lines.append('# Check if we should use LiteLLM router for Azure\n')
+    new_lines.append('USE_LITELLM_ROUTER = os.environ.get("AMPLIHACK_USE_LITELLM", "true").lower() == "true"\n')
+    new_lines.append('\n')
 
     # Skip lines 37-715 (error handling - now in module)
     # Keep lines 716+ (logging setup and rest of file)
@@ -93,7 +91,7 @@ from .modules import (
     # But we need to find them by content, not line numbers
 
     # Write refactored file
-    with open("integrated_proxy_refactored.py", "w") as f:
+    with open('integrated_proxy_refactored.py', 'w') as f:
         f.writelines(new_lines)
 
     print("✅ Created integrated_proxy_refactored.py")
@@ -101,6 +99,5 @@ from .modules import (
     print(f"New lines: {len(new_lines)}")
     print(f"Removed: {len(lines) - len(new_lines)} lines")
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     refactor_integrated_proxy()
