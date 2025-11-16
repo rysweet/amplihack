@@ -170,13 +170,16 @@ class StopHook(HookProcessor):
         Fail-safe: Never raises exceptions.
         """
         try:
+            # Set cleanup mode to prevent interactive prompts during session exit
+            os.environ["AMPLIHACK_CLEANUP_MODE"] = "1"
+
             # Import components
             from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
             from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
             from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
 
-            # Detect auto mode
-            auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "false").lower() == "true"
+            # Detect auto mode (standardized format)
+            auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "0") == "1"
 
             self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
 

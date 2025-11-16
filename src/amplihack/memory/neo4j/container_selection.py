@@ -333,6 +333,14 @@ def resolve_container_name(
         logger.info("Using container from ENV: %s", context.env_var)
         return context.env_var
 
+    # Priority 2.5: Cleanup mode check (NEVER prompt during session cleanup)
+    cleanup_mode = os.getenv("AMPLIHACK_CLEANUP_MODE", "0") == "1"
+    if cleanup_mode:
+        # During cleanup, silently use default without any prompts
+        default_name = get_default_container_name(context.current_dir)
+        logger.info("Cleanup mode: Using default container without prompt: %s", default_name)
+        return default_name
+
     # Priority 3: Auto mode or Interactive selection
     default_name = get_default_container_name(context.current_dir)
 
