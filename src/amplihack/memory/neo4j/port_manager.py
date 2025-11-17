@@ -260,7 +260,9 @@ def resolve_port_conflicts(
 
         # If container ports match what we expect, we're good
         if actual_bolt == bolt_port and actual_http == http_port:
-            messages.append(f"✅ Container '{container_name}' found on ports {bolt_port}/{http_port}")
+            messages.append(
+                f"✅ Container '{container_name}' found on ports {bolt_port}/{http_port}"
+            )
             return bolt_port, http_port, messages
 
         # Container is running but on different ports than .env
@@ -275,7 +277,9 @@ def resolve_port_conflicts(
         if project_root:
             try:
                 _update_env_ports(project_root, actual_bolt, actual_http)
-                messages.append(f"✅ Updated .env with actual container ports {actual_bolt}/{actual_http}")
+                messages.append(
+                    f"✅ Updated .env with actual container ports {actual_bolt}/{actual_http}"
+                )
             except Exception as e:
                 messages.append(f"⚠️  Could not update .env: {e}")
 

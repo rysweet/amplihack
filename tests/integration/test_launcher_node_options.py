@@ -7,7 +7,6 @@ when preparing the subprocess environment.
 import os
 from unittest.mock import Mock, patch
 
-
 from amplihack.launcher.core import ClaudeLauncher
 
 

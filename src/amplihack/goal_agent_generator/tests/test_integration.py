@@ -1,16 +1,15 @@
 """Integration tests for goal agent generator."""
 
 import tempfile
-import uuid
 from pathlib import Path
 
 import pytest
 
-from ..prompt_analyzer import PromptAnalyzer
-from ..objective_planner import ObjectivePlanner
-from ..skill_synthesizer import SkillSynthesizer
 from ..agent_assembler import AgentAssembler
+from ..objective_planner import ObjectivePlanner
 from ..packager import GoalAgentPackager
+from ..prompt_analyzer import PromptAnalyzer
+from ..skill_synthesizer import SkillSynthesizer
 
 
 class TestIntegration:

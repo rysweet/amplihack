@@ -22,11 +22,13 @@ python verify_skill.py all
 ### What It Checks
 
 **Python Packages**:
+
 - Uses `importlib` to attempt import
 - Reports version if available
 - Distinguishes required vs optional packages
 
 **System Commands**:
+
 - Runs `command --version` to check availability
 - Handles timeouts and errors gracefully
 - All system commands treated as optional
@@ -103,19 +105,23 @@ def test_basic_functionality():
 Current skill definitions:
 
 ### pdf
+
 - **Required Python**: pypdf, pdfplumber, reportlab, pandas
 - **Optional Python**: pytesseract, pdf2image, pillow
 - **Optional System**: pdftotext, qpdf, pdftk, tesseract
 
 ### xlsx
+
 - **Required Python**: pandas, openpyxl
 - **Optional System**: soffice (LibreOffice)
 
 ### docx
+
 - **Required Python**: defusedxml
 - **Optional System**: pandoc, soffice, pdftoppm
 
 ### pptx
+
 - **Required Python**: markitdown, defusedxml
 - **Optional System**: node, soffice
 
@@ -126,10 +132,12 @@ Current skill definitions:
 Attempts to import a Python package using `importlib`.
 
 **Returns**:
+
 - `(True, "Installed (v{version})")` if package found
 - `(False, "Not installed")` if import fails
 
 **Handles**:
+
 - Missing `__version__` attribute
 - Import errors
 - Package aliases
@@ -139,10 +147,12 @@ Attempts to import a Python package using `importlib`.
 Runs `command --version` to check if command is available.
 
 **Returns**:
+
 - `(True, "Available ({version})")` if command works
 - `(False, "{error}")` for various error conditions
 
 **Handles**:
+
 - Command not found
 - Command errors
 - Timeouts (5 second limit)
@@ -153,10 +163,12 @@ Runs `command --version` to check if command is available.
 Main verification function that checks all dependencies for a skill.
 
 **Returns**:
+
 - `True` if all required dependencies met
 - `False` if any required dependency missing
 
 **Side Effects**:
+
 - Prints detailed status report to stdout
 - Provides installation hints for missing packages
 
@@ -174,6 +186,7 @@ The script handles various error conditions:
 To add a new skill:
 
 1. Add skill definition to `SKILLS` dict:
+
    ```python
    SKILLS = {
        "newskill": {
@@ -208,11 +221,13 @@ python verify_skill.py all
 ## Platform Compatibility
 
 The script works on:
+
 - macOS
 - Linux (all distributions)
 - Windows (with minor differences in command availability)
 
 Platform-specific behaviors:
+
 - Windows: Some commands (pdftk) may not be available
 - macOS: Some commands need Homebrew installation
 - Linux: Most commands available in package managers
@@ -220,6 +235,7 @@ Platform-specific behaviors:
 ## Performance
 
 Verification is fast:
+
 - Python checks: ~10ms per package
 - System checks: ~100ms per command (with 5s timeout)
 - Total time: Usually < 2 seconds for all skills
@@ -227,6 +243,7 @@ Verification is fast:
 ## Maintenance
 
 Update this script when:
+
 - New skills are added
 - Dependency requirements change
 - New dependency types needed (e.g., Rust packages)

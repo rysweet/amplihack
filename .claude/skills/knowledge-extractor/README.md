@@ -15,24 +15,28 @@ Converts ephemeral session context into persistent knowledge that improves futur
 ## When to Use
 
 ### Extract Discoveries (After solving complex problems)
+
 ```
 Claude, extract what we learned from this debugging session.
 Update DISCOVERIES.md with root causes and solutions.
 ```
 
 ### Extract Patterns (After implementing proven solutions)
+
 ```
 What patterns should we capture from this implementation?
 Update PATTERNS.md with reusable approaches.
 ```
 
 ### Identify New Agents (After repeating same workflow 2+ times)
+
 ```
 We've debugged CI failures multiple times with the same process.
 Should we create a new agent to automate this?
 ```
 
 ### Full Knowledge Extraction
+
 ```
 Perform complete knowledge extraction on this session.
 Extract discoveries, patterns, and agent recommendations.
@@ -93,18 +97,21 @@ Claude:
 ## Knowledge Types
 
 ### Type 1: Discoveries
+
 **What**: Problems encountered, root causes, solutions
 **Where**: DISCOVERIES.md
 **When to extract**: After solving any complex bug or issue
 **Format**: Issue → Root Cause → Solution → Learning → Prevention
 
 ### Type 2: Patterns
+
 **What**: Proven solutions applicable to multiple situations
 **Where**: PATTERNS.md
 **When to extract**: When solution applies to 2+ different problems
 **Format**: Challenge → Solution → Key Points → When to Use
 
 ### Type 3: Agents
+
 **What**: Automated workflows for repeated tasks
 **Where**: .claude/agents/amplihack/specialized/
 **When to extract**: Workflow repeated 2+ times, saves 30+ minutes
@@ -113,6 +120,7 @@ Claude:
 ## Quality Standards
 
 ### Discoveries Must Have
+
 - ✅ Specific problem (not generic)
 - ✅ Root cause identified (why, not just what)
 - ✅ Working solution with code examples
@@ -120,6 +128,7 @@ Claude:
 - ✅ Actionable prevention strategy
 
 ### Patterns Must Have
+
 - ✅ Clear problem statement
 - ✅ Proven track record (used successfully 2+ times)
 - ✅ Working code examples
@@ -127,6 +136,7 @@ Claude:
 - ✅ Cross-references to related patterns
 
 ### Agents Must Justify
+
 - ✅ Repeated 2+ times (not just once)
 - ✅ Takes 30+ minutes per execution
 - ✅ Well-defined scope and boundaries
@@ -136,24 +146,28 @@ Claude:
 ## Integration with System
 
 ### With DISCOVERIES.md
+
 - Prevents repeating same mistakes
 - Immediate availability to all agents
 - Acts as searchable knowledge base
 - Updated continuously as patterns emerge
 
 ### With PATTERNS.md
+
 - Catalog of proven solutions
 - Referenced in agent instructions
 - Used for documentation and teaching
 - Improved over time with usage data
 
 ### With Agent System
+
 - New agents fill automation gaps
 - Reduce manual effort for common workflows
 - Extend orchestration capabilities
 - Improve system efficiency
 
 ### With Session Reflection
+
 - Automatic extraction at session end
 - Preserves learnings before context loss
 - Builds organizational memory
@@ -162,39 +176,46 @@ Claude:
 ## Workflow Integration
 
 ### Step 1: Session Analysis
+
 Review conversation for learnings, patterns, repeated actions
 
 ### Step 2: Pattern Recognition
+
 Identify which knowledge type(s) apply
 
 ### Step 3: Knowledge Extraction
+
 Create structured entries in appropriate locations
 
 ### Step 4: Quality Verification
+
 Ensure entries meet quality standards
 
 ### Step 5: Integration
+
 Make knowledge available to agents/systems
 
 ## Common Extraction Scenarios
 
-| Scenario | Extract To | Example |
-|----------|-----------|---------|
-| Fixed complex bug | DISCOVERIES.md | "Pre-commit cloud sync issue" |
-| Repeated workflow 2x | PATTERNS.md | "Resilient file I/O" |
-| Debugging same issue 3x | New Agent | "ci-diagnostic-workflow" |
-| New implementation success | PATTERNS.md | "Module regeneration structure" |
-| Failed approach learned from | DISCOVERIES.md | "Why PBZFT was wrong pattern" |
-| Environment-specific fix | PATTERNS.md | "Graceful environment adaptation" |
+| Scenario                     | Extract To     | Example                           |
+| ---------------------------- | -------------- | --------------------------------- |
+| Fixed complex bug            | DISCOVERIES.md | "Pre-commit cloud sync issue"     |
+| Repeated workflow 2x         | PATTERNS.md    | "Resilient file I/O"              |
+| Debugging same issue 3x      | New Agent      | "ci-diagnostic-workflow"          |
+| New implementation success   | PATTERNS.md    | "Module regeneration structure"   |
+| Failed approach learned from | DISCOVERIES.md | "Why PBZFT was wrong pattern"     |
+| Environment-specific fix     | PATTERNS.md    | "Graceful environment adaptation" |
 
 ## Time Savings
 
 ### Without Knowledge Extraction
+
 - Debug same issue multiple times: 45 min × N
 - Rediscover solutions: 30 min per solution
 - Manual workflows: 40 min each
 
 ### With Knowledge Extraction
+
 - Reference DISCOVERIES.md: 10 min
 - Apply PATTERNS.md solution: 15 min
 - Use automated agent: 5 min
@@ -204,6 +225,7 @@ Make knowledge available to agents/systems
 ## Getting Started
 
 ### Quick Extraction
+
 ```
 "Extract what we learned from solving this problem."
 → Claude automatically identifies discoveries, patterns, agents
@@ -211,6 +233,7 @@ Make knowledge available to agents/systems
 ```
 
 ### Targeted Extraction
+
 ```
 "Extract a pattern for [specific solution]"
 → Claude analyzes and documents pattern
@@ -218,6 +241,7 @@ Make knowledge available to agents/systems
 ```
 
 ### Full System Extraction
+
 ```
 "Perform complete knowledge extraction"
 → Claude extracts all discoveries, patterns, agent opportunities

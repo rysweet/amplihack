@@ -28,6 +28,7 @@ This skill automatically converts text descriptions of system architectures, mod
 ## Supported Diagram Types
 
 ### 1. Flowcharts (Default)
+
 Best for: workflow sequences, decision trees, process flows, module relationships
 
 ```mermaid
@@ -40,6 +41,7 @@ flowchart TD
 ```
 
 ### 2. Sequence Diagrams
+
 Best for: agent interactions, API calls, multi-step processes, request/response patterns
 
 ```mermaid
@@ -54,6 +56,7 @@ sequenceDiagram
 ```
 
 ### 3. Class Diagrams
+
 Best for: module structure, inheritance hierarchies, data models, component relationships
 
 ```mermaid
@@ -70,6 +73,7 @@ classDiagram
 ```
 
 ### 4. State Diagrams
+
 Best for: workflow states, state machines, workflow phases, condition-based transitions
 
 ```mermaid
@@ -82,6 +86,7 @@ stateDiagram-v2
 ```
 
 ### 5. Entity Relationship Diagrams
+
 Best for: data models, database schemas, entity relationships
 
 ```mermaid
@@ -92,6 +97,7 @@ erDiagram
 ```
 
 ### 6. Gantt Charts
+
 Best for: project timelines, workflow phases, milestone planning
 
 ```mermaid
@@ -108,30 +114,34 @@ gantt
 ## Step-by-Step Generation Process
 
 ### Step 1: Understand the Source Material
+
 1. Read the architecture description, spec, or workflow document
 2. Identify the main entities or nodes
 3. Determine how they relate or flow
 4. Choose the appropriate diagram type
 
 ### Step 2: Identify Diagram Type
-| Source Material | Best Diagram Type |
-|---|---|
-| Workflow steps, process flow | Flowchart |
+
+| Source Material                         | Best Diagram Type          |
+| --------------------------------------- | -------------------------- |
+| Workflow steps, process flow            | Flowchart                  |
 | Module relationships, brick connections | Flowchart or Class Diagram |
-| Agent interactions, call sequences | Sequence Diagram |
-| States and transitions | State Diagram |
-| Data models, entities | Class Diagram or ERD |
-| Database schema | ERD |
-| Project timeline | Gantt Chart |
-| Complex hierarchies | Class Diagram |
+| Agent interactions, call sequences      | Sequence Diagram           |
+| States and transitions                  | State Diagram              |
+| Data models, entities                   | Class Diagram or ERD       |
+| Database schema                         | ERD                        |
+| Project timeline                        | Gantt Chart                |
+| Complex hierarchies                     | Class Diagram              |
 
 ### Step 3: Extract Entities and Relationships
+
 1. List all nodes/entities from the source
 2. Identify connections between them
 3. Determine connection types (data flow, inheritance, calling, etc.)
 4. Note any decision points or conditions
 
 ### Step 4: Generate Mermaid Syntax
+
 1. Use appropriate Mermaid diagram declaration
 2. Create nodes with descriptive labels
 3. Draw connections with proper syntax
@@ -139,6 +149,7 @@ gantt
 5. Ensure valid Mermaid syntax
 
 ### Step 5: Validate and Enhance
+
 1. Ensure all entities are included
 2. Verify connections are accurate
 3. Add styling for important elements
@@ -146,6 +157,7 @@ gantt
 5. Test syntax for validity
 
 ### Step 6: Document and Embed
+
 1. Add title and description
 2. Include explanation of diagram
 3. Provide legend if needed
@@ -156,6 +168,7 @@ gantt
 ### Example 1: Architecture Description to Flowchart
 
 **Input:**
+
 ```
 The authentication module handles JWT token validation. When a request arrives,
 it first checks if a token exists. If not, it returns unauthorized. If it does,
@@ -165,6 +178,7 @@ module for role-based access control.
 ```
 
 **Output:**
+
 ```mermaid
 flowchart TD
     A[Request Arrives] --> B{Token Exists?}
@@ -185,6 +199,7 @@ flowchart TD
 ### Example 2: Module Spec to Class Diagram
 
 **Input:**
+
 ```
 Module: authentication
 - Exports: validate_token, TokenPayload, AuthError
@@ -194,6 +209,7 @@ Module: authentication
 ```
 
 **Output:**
+
 ```mermaid
 classDiagram
     class AuthenticationModule {
@@ -219,6 +235,7 @@ classDiagram
 ### Example 3: Workflow to State Diagram
 
 **Input:**
+
 ```
 DDD Workflow: Phase 0 (Planning) -> Phase 1 (Documentation) ->
 Approval Gate -> Phase 2 (Code Planning) -> Phase 3 (Implementation) ->
@@ -226,6 +243,7 @@ Phase 4 (Testing & Cleanup) -> Complete
 ```
 
 **Output:**
+
 ```mermaid
 stateDiagram-v2
     [*] --> Planning
@@ -240,6 +258,7 @@ stateDiagram-v2
 ### Example 4: Agent Interaction to Sequence Diagram
 
 **Input:**
+
 ```
 The prompt-writer agent clarifies requirements from the user. It then sends
 the clarified requirements to the architect agent. The architect creates a
@@ -249,6 +268,7 @@ back to the builder if issues are found, or to the user if complete.
 ```
 
 **Output:**
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -269,6 +289,7 @@ sequenceDiagram
 ### Example 5: System Architecture to Flowchart
 
 **Input:**
+
 ```
 Client requests flow through API Gateway to Services. Services can be
 Authentication Service, User Service, or Data Service. All services
@@ -277,6 +298,7 @@ through the API Gateway back to Client.
 ```
 
 **Output:**
+
 ```mermaid
 flowchart LR
     Client[Client]
@@ -302,6 +324,7 @@ flowchart LR
 ## Mermaid Syntax Reference
 
 ### Flowchart Nodes
+
 ```
 A[Rectangle]
 B(Rounded Rectangle)
@@ -314,6 +337,7 @@ H((Circle))
 ```
 
 ### Flowchart Connections
+
 ```
 A --> B          # Arrow
 A -- Text --> B  # Arrow with label
@@ -324,6 +348,7 @@ A ==> B          # Bold arrow
 ```
 
 ### Styling
+
 ```
 classDef className fill:#f9f,stroke:#333,stroke-width:2px,color:#000
 class A,B className
@@ -348,6 +373,7 @@ Before presenting a diagram, verify:
 ## Common Patterns
 
 ### Brick Module Visualization
+
 ```mermaid
 flowchart TD
     B1["Brick Module 1<br/>(Responsibility)"]
@@ -362,6 +388,7 @@ flowchart TD
 ```
 
 ### Workflow Decision Tree
+
 ```mermaid
 flowchart TD
     Start[Start] --> Q1{Condition 1?}
@@ -374,6 +401,7 @@ flowchart TD
 ```
 
 ### Error Handling Flow
+
 ```mermaid
 flowchart TD
     A[Execute] --> B{Error?}
@@ -389,18 +417,22 @@ flowchart TD
 ## Integration with Documentation
 
 ### Embedding in Markdown
-```markdown
+
+````markdown
 ## System Architecture
 
 ```mermaid
 flowchart TD
     ...
 ```
+````
 
 **Key Components:**
+
 - Component A handles...
 - Component B processes...
-```
+
+````
 
 ### Using with Document-Driven Development
 - Create diagrams during documentation phase
@@ -469,7 +501,7 @@ Diagrams are generated in Mermaid markdown format, ready to embed:
     ```mermaid
     [Generated Mermaid Syntax]
     ```
-```
+````
 
 Include explanation before or after the diagram.
 

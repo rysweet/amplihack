@@ -22,6 +22,7 @@ Claude, review this PR for philosophy alignment:
 ```
 
 Claude will:
+
 1. Analyze the code
 2. Check against amplihack principles
 3. Identify issues with specific file:line references
@@ -76,6 +77,7 @@ Claude, check this PR (#123) against our development philosophy.
 ### Step 2: Understand the Feedback
 
 Claude provides:
+
 - **Compliance Report** - How code aligns with each principle
 - **Specific Issues** - Problems with file:line references
 - **Concrete Suggestions** - Code examples showing improvements
@@ -84,6 +86,7 @@ Claude provides:
 ### Step 3: Address Feedback
 
 Review the suggestions and:
+
 - Implement improvements suggested
 - Ask questions if clarification needed
 - Explain context if you disagree

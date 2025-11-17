@@ -7,6 +7,7 @@ This directory contains production-ready Claude Code Skills that extend amplihac
 Claude Code Skills are modular, reusable capabilities that extend Claude's functionality. They consist of folders containing a `SKILL.md` file with YAML frontmatter and Markdown instructions, along with optional supporting scripts and resources.
 
 **Key Benefits:**
+
 - **Token Efficient**: Skills load on-demand, consuming minimal tokens until needed
 - **Auto-Detection**: Claude automatically uses skills based on context
 - **Philosophy Aligned**: All skills follow amplihack's ruthless simplicity and modular design
@@ -17,42 +18,96 @@ Claude Code Skills are modular, reusable capabilities that extend Claude's funct
 
 Amplihack has **TWO types of skills** that work together:
 
-### Type 1: Capability Skills (12 skills)
+### Type 1: Capability Skills (13 skills)
 
 **Purpose**: Provide specific new functionality for tasks beyond coding.
 
 These skills add NEW capabilities like decision recording, email drafting, meeting synthesis, etc. They don't wrap existing agents - they provide genuinely new functionality.
 
-| Skill | Score | Description | Issue | PR |
-|-------|-------|-------------|-------|-----|
-| **module-spec-generator** | 50.0 | Generate brick module specifications | [#1219](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1219) | - |
-| **meeting-synthesizer** | 50.0 | Extract action items and decisions from meetings | [#1220](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1220) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
-| **decision-logger** | 49.5 | Structured decision recording (What\|Why\|Alternatives) | [#1221](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1221) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
-| **mermaid-diagram-generator** | 48.0 | Converts descriptions to Mermaid diagrams | [#1222](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1222) | [#1268](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1268) |
-| **email-drafter** | 47.0 | Professional email generation (formal/casual/technical) | [#1223](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1223) | [#1232](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1232) |
-| **philosophy-guardian** | 45.5 | Reviews code against amplihack philosophy | [#1224](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1224) | [#1235](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1235) |
-| **test-gap-analyzer** | 44.5 | Identifies untested functions and coverage gaps | [#1225](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1225) | [#1233](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1233) |
-| **storytelling-synthesizer** | 44.0 | Transforms technical work into compelling narratives | [#1226](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1226) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
-| **learning-path-builder** | 43.5 | Creates personalized technology learning paths | [#1227](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1227) | [#1237](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1237) |
-| **code-smell-detector** | 42.5 | Detects anti-patterns and over-engineering | [#1228](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1228) | [#1234](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1234) |
-| **knowledge-extractor** | 40.5 | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
-| **pr-review-assistant** | 40.0 | Philosophy-aware PR reviews | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | [#1258](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1258) |
+| Skill                         | Score | Description                                                                        | Issue                                                                                | PR                                                                                 |
+| ----------------------------- | ----- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| **module-spec-generator**     | 50.0  | Generate brick module specifications                                               | [#1219](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1219) | -                                                                                  |
+| **meeting-synthesizer**       | 50.0  | Extract action items and decisions from meetings                                   | [#1220](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1220) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+| **decision-logger**           | 49.5  | Structured decision recording (What\|Why\|Alternatives)                            | [#1221](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1221) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+| **mermaid-diagram-generator** | 48.0  | Converts descriptions to Mermaid diagrams                                          | [#1222](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1222) | [#1268](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1268) |
+| **email-drafter**             | 47.0  | Professional email generation (formal/casual/technical)                            | [#1223](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1223) | [#1232](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1232) |
+| **philosophy-guardian**       | 45.5  | Reviews code against amplihack philosophy                                          | [#1224](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1224) | [#1235](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1235) |
+| **test-gap-analyzer**         | 44.5  | Identifies untested functions and coverage gaps                                    | [#1225](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1225) | [#1233](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1233) |
+| **storytelling-synthesizer**  | 44.0  | Transforms technical work into compelling narratives                               | [#1226](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1226) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
+| **learning-path-builder**     | 43.5  | Creates personalized technology learning paths                                     | [#1227](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1227) | [#1237](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1237) |
+| **code-smell-detector**       | 42.5  | Detects anti-patterns and over-engineering                                         | [#1228](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1228) | [#1234](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1234) |
+| **knowledge-extractor**       | 40.5  | Extracts learnings to DISCOVERIES.md and PATTERNS.md                               | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
+| **pr-review-assistant**       | 40.0  | Philosophy-aware PR reviews                                                        | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | [#1258](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1258) |
+| **context-management**        | 48.5  | Proactive context window management via token monitoring and intelligent snapshots | [#1347](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1347) | -                                                                                  |
 
-### Type 2: Agent-Wrapper Skills (7 skills)
+### Type 2: Domain Expert Analyst Skills (23 skills) 🆕
+
+**Purpose**: Analyze events through specialized disciplinary lenses using rigorous academic frameworks.
+
+These skills provide deep domain expertise for multi-perspective analysis of events, policies, and phenomena. Each analyst applies discipline-specific theories, methods, and evidence.
+
+**Social Sciences** (5):
+
+- **economist-analyst** - Markets, incentives, supply/demand, policy analysis
+- **political-scientist-analyst** - Power, institutions, IR theory, comparative politics
+- **historian-analyst** - Causation, continuity/change, historical context, precedents
+- **sociologist-analyst** - Social structures, inequality, collective behavior
+- **anthropologist-analyst** - Cultural analysis, ethnography, cross-cultural comparison
+
+**Humanities & Communication** (4):
+
+- **novelist-analyst** - Narrative structure, character development, dramatic tension
+- **journalist-analyst** - Investigation, verification, 5Ws+H, fact-checking
+- **poet-analyst** - Metaphor, imagery, close reading, emotional truth
+- **futurist-analyst** - Scenario planning, trend analysis, strategic foresight
+
+**Natural Sciences** (5):
+
+- **physicist-analyst** - Physical principles, conservation laws, modeling
+- **chemist-analyst** - Molecular structure, reactions, synthesis planning
+- **psychologist-analyst** - Cognition, behavior, social influence, neuroscience
+- **environmentalist-analyst** - Ecosystems, climate, sustainability, biodiversity
+- **biologist-analyst** - Evolution, genetics, ecology, systems biology
+
+**Applied Fields** (6):
+
+- **computer-scientist-analyst** - Algorithms, complexity, systems design
+- **cybersecurity-analyst** - Threat modeling, defense, incident response
+- **lawyer-analyst** - Legal analysis, IRAC, statutory interpretation
+- **indigenous-leader-analyst** - Traditional knowledge, Seven Generations, Two-Eyed Seeing
+- **engineer-analyst** - Systems analysis, optimization, failure analysis, trade-offs
+- **urban-planner-analyst** - Land use, zoning, transportation, housing, sustainability
+
+**Philosophy & Ethics** (3):
+
+- **ethicist-analyst** - Moral frameworks, value conflicts, normative analysis
+- **philosopher-analyst** - Logic, epistemology, metaphysics, conceptual analysis
+- **epidemiologist-analyst** - Disease patterns, public health, outbreak investigation
+
+**Key Features**:
+
+- All 23 analysts have comprehensive test suites (tests/quiz.md with 5 scenarios each)
+- Domain-specific search capability (see ANALYST_SEARCH_CAPABILITY.md)
+- Progressive disclosure structure (SKILL.md + README.md + QUICK_REFERENCE.md)
+- 100+ scholarly sources preserved across all agents
+- Consistent 16-section template pattern
+- PR: [#1346](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1346)
+
+### Type 3: Agent-Wrapper Skills (7 skills)
 
 **Purpose**: Auto-detect when to invoke existing agents, reducing need to remember command names.
 
 These skills are thin coordination layers that automatically trigger amplihack's existing agents based on conversation context.
 
-| Skill | Auto-Triggers | Invokes | Location |
-|-------|---------------|---------|----------|
-| **Architecting Solutions** | Design questions, "how should I", architecture discussions | Architect agent | [development/architecting-solutions/](development/architecting-solutions/) |
-| **Reviewing Code** | "review this", before PR, quality checks | Reviewer agent | [quality/reviewing-code/](quality/reviewing-code/) |
-| **Testing Code** | New features, "add tests", test gaps | Tester agent | [quality/testing-code/](quality/testing-code/) |
-| **Researching Topics** | "how does X work", unfamiliar terms | Web search + knowledge builder | [research/researching-topics/](research/researching-topics/) |
-| **Analyzing Problems Deeply** | Complex problems, "I'm not sure", ambiguity | Ultrathink workflow | [meta-cognitive/analyzing-deeply/](meta-cognitive/analyzing-deeply/) |
-| **Setting Up Projects** | New projects, missing configs, pre-commit setup | Builder agent + templates | [development/setting-up-projects/](development/setting-up-projects/) |
-| **Creating Pull Requests** | "create PR", ready to merge | Smart PR generation | [collaboration/creating-pull-requests/](collaboration/creating-pull-requests/) |
+| Skill                         | Auto-Triggers                                              | Invokes                        | Location                                                                       |
+| ----------------------------- | ---------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------ |
+| **Architecting Solutions**    | Design questions, "how should I", architecture discussions | Architect agent                | [development/architecting-solutions/](development/architecting-solutions/)     |
+| **Reviewing Code**            | "review this", before PR, quality checks                   | Reviewer agent                 | [quality/reviewing-code/](quality/reviewing-code/)                             |
+| **Testing Code**              | New features, "add tests", test gaps                       | Tester agent                   | [quality/testing-code/](quality/testing-code/)                                 |
+| **Researching Topics**        | "how does X work", unfamiliar terms                        | Web search + knowledge builder | [research/researching-topics/](research/researching-topics/)                   |
+| **Analyzing Problems Deeply** | Complex problems, "I'm not sure", ambiguity                | Ultrathink workflow            | [meta-cognitive/analyzing-deeply/](meta-cognitive/analyzing-deeply/)           |
+| **Setting Up Projects**       | New projects, missing configs, pre-commit setup            | Builder agent + templates      | [development/setting-up-projects/](development/setting-up-projects/)           |
+| **Creating Pull Requests**    | "create PR", ready to merge                                | Smart PR generation            | [collaboration/creating-pull-requests/](collaboration/creating-pull-requests/) |
 
 ## 📖 Research & Documentation
 
@@ -82,6 +137,7 @@ Capability skills were evaluated on:
 6. **User Value** (1-5): Solves frequent pain points, measurable time savings
 
 **Priority Score Formula:**
+
 ```
 Priority = (Simplicity * 2) + (Modular * 2) + (Zero-BS * 1.5) +
            (Reusability * 1.5) + ((6 - Maintenance) * 1) + (User Value * 2.5)
@@ -93,6 +149,7 @@ All 12 capability skills scored 40.0-50.0 (HIGH priority).
 ## 🔍 Using Skills
 
 Skills are automatically discovered from:
+
 - User settings: `~/.config/claude/skills/`
 - Project settings: `.claude/skills/`
 - Plugin-provided skills
@@ -101,6 +158,7 @@ Skills are automatically discovered from:
 ### Invoking Skills
 
 **Capability Skills** (explicit invocation):
+
 ```
 Claude, use the decision-logger skill to record this architectural decision.
 Claude, analyze test coverage using test-gap-analyzer.
@@ -108,6 +166,7 @@ Claude, generate a Mermaid diagram for this workflow.
 ```
 
 **Agent-Wrapper Skills** (automatic detection):
+
 ```
 User: "How should I design the authentication system?"
 → Architecting Solutions skill auto-activates

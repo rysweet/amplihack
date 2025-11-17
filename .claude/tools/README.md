@@ -88,9 +88,11 @@ The hook system integrates with Claude Code's lifecycle events to provide sessio
 ### Available Hooks
 
 #### `session_start.py`
+
 **Purpose**: Initialize session with context and preferences
 
 **What it does**:
+
 - Injects project context (PHILOSOPHY.md, DISCOVERIES.md)
 - Loads and enforces USER_PREFERENCES.md (MANDATORY)
 - Captures original request for context preservation
@@ -100,15 +102,18 @@ The hook system integrates with Claude Code's lifecycle events to provide sessio
 **Returns**: `{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}`
 
 **Example**:
+
 ```python
 # Automatically triggered by Claude Code on session start
 # Injects context visible to Claude in the conversation
 ```
 
 #### `user_prompt_submit.py`
+
 **Purpose**: Inject user preferences on every user message
 
 **What it does**:
+
 - Reads USER_PREFERENCES.md on each user prompt
 - Extracts key preferences (communication style, verbosity, etc.)
 - Caches preferences for performance (invalidates on file change)
@@ -117,15 +122,18 @@ The hook system integrates with Claude Code's lifecycle events to provide sessio
 **Returns**: `{"additionalContext": "🎯 ACTIVE USER PREFERENCES (MANDATORY): ..."}`
 
 **Example**:
+
 ```python
 # Automatically triggered on every user message
 # Ensures preferences persist across conversation turns
 ```
 
 #### `post_tool_use.py`
+
 **Purpose**: Track tool usage and collect metrics
 
 **What it does**:
+
 - Logs every tool invocation
 - Saves structured metrics (tool name, duration)
 - Categorizes tools (bash, file operations, search)
@@ -134,15 +142,18 @@ The hook system integrates with Claude Code's lifecycle events to provide sessio
 **Returns**: `{}` or `{"metadata": {"warning": "..."}}`
 
 **Example**:
+
 ```python
 # Automatically triggered after each tool use
 # Metrics saved to .claude/runtime/metrics/
 ```
 
 #### `pre_compact.py`
+
 **Purpose**: Export conversation before context compaction
 
 **What it does**:
+
 - Receives full conversation history from Claude Code
 - Exports to CONVERSATION_TRANSCRIPT.md
 - Preserves original request if available
@@ -152,25 +163,30 @@ The hook system integrates with Claude Code's lifecycle events to provide sessio
 **Returns**: `{"status": "success", "message": "...", "transcript_path": "..."}`
 
 **Example**:
+
 ```python
 # Automatically triggered before Claude Code compacts context
 # Ensures no conversation history is lost
 ```
 
 #### `stop.py`
+
 **Purpose**: Control stop behavior with lock flag
 
 **What it does**:
+
 - Checks for lock flag (`.claude/runtime/locks/.lock_active`)
 - Blocks stop if lock is active (continuous work mode)
 - Triggers reflection analysis if enabled
 - Creates reflection pending marker
 
 **Returns**:
+
 - `{"decision": "approve"}` - Allow stop
 - `{"decision": "block", "reason": "..."}` - Continue working
 
 **Example**:
+
 ```python
 # Automatically triggered when Claude tries to stop
 # Lock flag enables continuous multi-turn work
@@ -195,6 +211,7 @@ class MyHook(HookProcessor):
 ```
 
 **Features**:
+
 - JSON input/output handling
 - Structured logging to `.claude/runtime/logs/`
 - Metric collection to `.claude/runtime/metrics/`
@@ -213,6 +230,7 @@ Builders create structured documentation and exports from session data.
 **Purpose**: Build comprehensive session transcripts for documentation and knowledge extraction
 
 **Usage**:
+
 ```python
 from amplihack.builders.claude_transcript_builder import ClaudeTranscriptBuilder
 
@@ -237,6 +255,7 @@ codex_path = builder.export_for_codex(messages, metadata)
 ```
 
 **Outputs**:
+
 - `CONVERSATION_TRANSCRIPT.md` - Human-readable markdown transcript
 - `conversation_transcript.json` - Machine-readable JSON format
 - `session_summary.json` - Statistical summary
@@ -249,6 +268,7 @@ codex_path = builder.export_for_codex(messages, metadata)
 **Purpose**: Create codex-optimized exports for knowledge systems
 
 **Features**:
+
 - Pattern detection (tool usage, error-fix cycles)
 - Decision extraction
 - Knowledge artifact identification
@@ -265,6 +285,7 @@ Multi-process orchestration for parallel, sequential, and fault-tolerant executi
 **Purpose**: Execute single Claude Code process with full lifecycle management
 
 **Usage**:
+
 ```python
 from amplihack.orchestration.claude_process import ClaudeProcess
 
@@ -291,6 +312,7 @@ print(f"Output: {result.output}")
 **Available Patterns**:
 
 #### 1. Parallel Execution
+
 ```python
 from amplihack.orchestration.execution import run_parallel
 
@@ -305,6 +327,7 @@ successful = [r for r in results if r.exit_code == 0]
 ```
 
 #### 2. Sequential Execution
+
 ```python
 from amplihack.orchestration.execution import run_sequential
 
@@ -317,6 +340,7 @@ results = run_sequential(
 ```
 
 #### 3. Fallback Execution
+
 ```python
 from amplihack.orchestration.execution import run_with_fallback
 
@@ -331,6 +355,7 @@ result = run_with_fallback(processes, timeout=300)
 ```
 
 #### 4. Batched Execution
+
 ```python
 from amplihack.orchestration.execution import run_batched
 
@@ -347,9 +372,11 @@ results = run_batched(
 **Directory**: `amplihack/orchestration/patterns/`
 
 #### N-Version Programming (`n_version.py`)
+
 Generate N independent solutions and select the best through comparison.
 
 **Usage**:
+
 ```python
 from amplihack.orchestration.patterns.n_version import run_n_version
 
@@ -361,9 +388,11 @@ result = run_n_version(
 ```
 
 #### Multi-Agent Debate (`debate.py`)
+
 Structured debate with multiple perspectives to converge on best decision.
 
 **Usage**:
+
 ```python
 from amplihack.orchestration.patterns.debate import run_debate
 
@@ -375,9 +404,11 @@ result = run_debate(
 ```
 
 #### Fallback Cascade (`cascade.py`)
+
 Graceful degradation: optimal → pragmatic → minimal.
 
 **Usage**:
+
 ```python
 from amplihack.orchestration.patterns.cascade import run_cascade
 
@@ -398,6 +429,7 @@ Persistent memory storage for agents with session management.
 **Purpose**: Simple agent memory API following bricks & studs philosophy
 
 **Usage**:
+
 ```python
 from amplihack.memory.interface import AgentMemory
 
@@ -432,6 +464,7 @@ with AgentMemory("my-agent") as memory:
 ```
 
 **Features**:
+
 - SQLite-based backend (`.claude/runtime/memory.db`)
 - Session-scoped memory
 - Optional activation (enabled by default)
@@ -445,6 +478,7 @@ with AgentMemory("my-agent") as memory:
 **Purpose**: Low-level SQLite-based memory storage
 
 **Schema**:
+
 ```sql
 CREATE TABLE sessions (
     session_id TEXT PRIMARY KEY,
@@ -476,6 +510,7 @@ Unified session lifecycle management for Claude Code workflows.
 **Purpose**: Single interface for all session management capabilities
 
 **Usage**:
+
 ```python
 from amplihack.session.session_toolkit import SessionToolkit
 
@@ -518,6 +553,7 @@ cleanup_results = toolkit.cleanup_old_data(
 ```
 
 **Components**:
+
 - `claude_session.py` - Core session implementation
 - `session_manager.py` - Multi-session coordination
 - `toolkit_logger.py` - Structured logging
@@ -534,6 +570,7 @@ AI-powered session analysis and improvement suggestions.
 **Purpose**: Analyze sessions and create GitHub issues for improvements
 
 **Usage**:
+
 ```python
 from amplihack.reflection.reflection import process_reflection_analysis
 
@@ -551,6 +588,7 @@ if issue_number:
 ```
 
 **Features**:
+
 - Contextual error pattern detection
 - Workflow issue identification
 - Automation opportunity detection
@@ -559,6 +597,7 @@ if issue_number:
 - Content sanitization for security
 
 **Environment Variables**:
+
 - `REFLECTION_ENABLED` - Enable/disable reflection (default: true)
 - `AMPLIHACK_DEBUG` - Show full stack traces in errors
 
@@ -569,6 +608,7 @@ if issue_number:
 **Purpose**: Detect duplicate GitHub issues before creation
 
 **Features**:
+
 - Vector-based similarity analysis
 - Issue caching for performance
 - Configurable similarity threshold
@@ -581,6 +621,7 @@ if issue_number:
 **Purpose**: Analyze error patterns with context awareness
 
 **Features**:
+
 - Pattern library for common errors
 - Context extraction
 - Priority assignment
@@ -593,6 +634,7 @@ if issue_number:
 **File**: `ci_status.py`
 
 **Usage**:
+
 ```python
 from .claude.tools.ci_status import check_ci_status
 
@@ -611,6 +653,7 @@ print(f"URL: {status['url']}")
 **File**: `github_issue.py`
 
 **Usage**:
+
 ```python
 from .claude.tools.github_issue import create_issue
 
@@ -626,6 +669,7 @@ print(f"Issue URL: {result['url']}")
 ### CI/Pre-commit Workflows
 
 **Files**:
+
 - `ci_workflow.py` - CI diagnostic and fix workflow
 - `precommit_workflow.py` - Pre-commit diagnostic workflow
 
@@ -783,6 +827,7 @@ if __name__ == "__main__":
 ## Performance Considerations
 
 ### Hook Performance
+
 - **session_start**: < 500ms (includes file I/O)
 - **user_prompt_submit**: < 50ms (cached preferences)
 - **post_tool_use**: < 10ms (async metrics)
@@ -790,11 +835,13 @@ if __name__ == "__main__":
 - **stop**: < 100ms (simple flag check)
 
 ### Memory Operations
+
 - **store/retrieve**: < 100ms
 - **list_keys**: < 200ms
 - **clear_session**: < 500ms
 
 ### Orchestration
+
 - **Parallel**: Near-linear scaling up to system limits
 - **Sequential**: Additive (sum of process times)
 - **Fallback**: Best case = first process time
@@ -802,15 +849,19 @@ if __name__ == "__main__":
 ## Security
 
 ### Path Validation
+
 All file operations use `validate_path_containment()` to prevent path traversal attacks.
 
 ### Content Sanitization
+
 Reflection system uses `security.py` to sanitize all content before GitHub issue creation.
 
 ### XPIA Defense
+
 `xpia_defense.py` provides Cross-Process Injection Attack protection.
 
 ### Permissions
+
 - Session directories created with `0o700` (owner-only)
 - Log files rotated at 10MB to prevent disk exhaustion
 - Metrics stored in append-only JSONL format
@@ -818,18 +869,21 @@ Reflection system uses `security.py` to sanitize all content before GitHub issue
 ## Troubleshooting
 
 ### Hook Not Running
+
 1. Check `.claude/tools/amplihack/hooks/` exists
 2. Verify hooks are executable
 3. Check logs in `.claude/runtime/logs/<hook_name>.log`
 4. Enable debug mode: `export AMPLIHACK_DEBUG=1`
 
 ### Memory Not Persisting
+
 1. Check `.claude/runtime/memory.db` exists
 2. Verify session_id is consistent
 3. Check file permissions
 4. Confirm `enabled=True` when creating AgentMemory
 
 ### Orchestration Timeouts
+
 1. Increase timeout in ClaudeProcess constructor
 2. Check system resources (CPU, memory)
 3. Review logs in process log directories

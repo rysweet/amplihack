@@ -11,6 +11,7 @@ You are activating pull request creation capabilities. Your role is to create co
 ## When to Activate
 
 This skill activates when:
+
 - User says "create PR", "make pull request"
 - User says "ready to merge" or "ready for review"
 - Feature work is complete and tests pass
@@ -58,6 +59,7 @@ git diff --staged
 ```
 
 **Key Questions**:
+
 - What feature/fix does this implement?
 - What's the scope of changes?
 - Are there related commits?
@@ -79,6 +81,7 @@ npm run build  # if applicable
 ```
 
 **Pre-flight Checklist**:
+
 - [ ] All tests pass
 - [ ] Linting passes
 - [ ] No unintended changes
@@ -170,6 +173,7 @@ Review your own PR first:
 ```
 
 **Types**:
+
 - `feat:` New feature
 - `fix:` Bug fix
 - `docs:` Documentation only
@@ -179,6 +183,7 @@ Review your own PR first:
 - `chore:` Maintenance tasks
 
 **Examples**:
+
 - ✅ `feat: Add user authentication with JWT`
 - ✅ `fix: Resolve race condition in cache invalidation`
 - ✅ `refactor: Extract payment logic into separate module`
@@ -215,17 +220,21 @@ Review your own PR first:
 ## Changes
 
 ### Added
+
 - [New feature 1]
 - [New feature 2]
 
 ### Changed
+
 - [Modified behavior 1]
 - [Modified behavior 2]
 
 ### Removed
+
 - [Deleted code/feature]
 
 ### Fixed
+
 - [Bug fix 1]
 - [Bug fix 2]
 
@@ -287,11 +296,13 @@ Review your own PR first:
 
 **Migration Guide**:
 ```
+
 // Before
 oldMethod();
 
 // After
 newMethod();
+
 ```
 
 ## Deployment Notes
@@ -371,12 +382,14 @@ Generated with Claude Code
 ### When to Split PRs
 
 Split if:
+
 - Multiple unrelated changes
 - Can be deployed independently
 - Large refactor + feature addition
 - Different reviewers needed for different parts
 
 **Example Split**:
+
 ```
 Original: "Rewrite authentication and add OAuth"
 
@@ -390,6 +403,7 @@ Split into:
 ### Make It Easy to Review
 
 **Add Comments to Complex Code**:
+
 ```python
 def complex_algorithm(data):
     # Review note: Using binary search here because data is pre-sorted
@@ -399,6 +413,7 @@ def complex_algorithm(data):
 ```
 
 **Break Into Reviewable Commits**:
+
 ```bash
 # Good commit structure
 git log --oneline
@@ -409,6 +424,7 @@ jkl012 Add authentication middleware
 ```
 
 **Highlight Important Changes**:
+
 ```markdown
 ## Areas Needing Special Attention
 
@@ -421,6 +437,7 @@ jkl012 Add authentication middleware
 ### Respond to Feedback
 
 When reviewer comments:
+
 - Respond to all feedback
 - Thank them for catching issues
 - Explain decisions if they ask
@@ -430,21 +447,24 @@ When reviewer comments:
 ## Integration Points
 
 ### Invokes
+
 - **Git Commands**: Via Bash tool
 - **gh CLI**: For PR creation
 - **Code Analysis**: To understand changes
 
 ### Escalates To
+
 - **Reviewing Code Skill**: For self-review
 - **Testing Code Skill**: To ensure tests exist
 
 ### References
+
 - **PR Examples**: `Examples/GoodPRs/`
 - **Team Guidelines**: Project-specific PR standards
 
 ## Example Workflow
 
-```
+````
 User: "I'm done with the shopping cart feature. Can you create a PR?"
 
 Creating Pull Requests Skill:
@@ -584,17 +604,19 @@ and includes real-time total calculation with quantity limits.
 ---
 
 Generated with Claude Code
-```
+````
 
 ## Next Steps
 
 Ready to create this PR? I'll:
+
 1. Push branch to remote
 2. Create PR with description above
 3. Add appropriate labels
 4. Request reviewers (if specified)
 
 Proceed?
+
 ```
 
 ## Quality Checklist
@@ -657,3 +679,4 @@ Good PR:
 ---
 
 Remember: Your PR is communication. Make it easy for reviewers to say yes.
+```

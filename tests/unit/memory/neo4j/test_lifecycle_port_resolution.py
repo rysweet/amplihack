@@ -21,15 +21,11 @@ class TestCreateContainerWithPortResolution:
 
     def test_WHEN_ports_available_THEN_container_created_successfully(self):
         """Test successful container creation when ports are available."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             # Port resolution succeeds
-            mock_resolve.return_value = (
-                7787,
-                7774,
-                ["✅ Ports 7787/7774 available"]
-            )
+            mock_resolve.return_value = (7787, 7774, ["✅ Ports 7787/7774 available"])
 
             # Docker run succeeds
             mock_run.return_value = Mock(returncode=0, stdout="container_id", stderr="")
@@ -49,9 +45,9 @@ class TestCreateContainerWithPortResolution:
 
     def test_WHEN_port_conflict_detected_THEN_uses_alternative_ports(self):
         """Test container creation with alternative ports when conflicts detected."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             # Port resolution finds alternatives
             mock_resolve.return_value = (
                 7888,  # Alternative bolt port
@@ -59,8 +55,8 @@ class TestCreateContainerWithPortResolution:
                 [
                     "⚠️ Port 7787 in use by another application",
                     "✅ Selected alternative bolt port: 7888",
-                    "✅ Selected alternative HTTP port: 7874"
-                ]
+                    "✅ Selected alternative HTTP port: 7874",
+                ],
             )
 
             # Docker run succeeds with new ports
@@ -78,17 +74,17 @@ class TestCreateContainerWithPortResolution:
 
     def test_WHEN_existing_container_running_THEN_reuses_container_ports(self):
         """Test detection of existing container and port reuse."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             # Resolve detects our container running on different ports
             mock_resolve.return_value = (
                 8888,
                 9999,
                 [
                     "✅ Container 'amplihack-neo4j' found on ports 8888/9999",
-                    "✅ Updated .env with actual container ports 8888/9999"
-                ]
+                    "✅ Updated .env with actual container ports 8888/9999",
+                ],
             )
 
             # Docker run succeeds
@@ -110,23 +106,19 @@ class TestRaceConditionRetryLogic:
 
     def test_WHEN_port_binding_fails_once_THEN_retries_with_new_ports(self):
         """Test single retry on port binding race condition."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             # First resolution
             mock_resolve.side_effect = [
                 (7787, 7774, ["✅ Ports 7787/7774 available"]),
-                (7888, 7874, ["✅ Ports 7888/7874 available"])  # Retry resolution
+                (7888, 7874, ["✅ Ports 7888/7874 available"]),  # Retry resolution
             ]
 
             # First docker run fails with port binding error, second succeeds
             mock_run.side_effect = [
-                Mock(
-                    returncode=1,
-                    stdout="",
-                    stderr="Error: bind: address already in use"
-                ),
-                Mock(returncode=0, stdout="container_id", stderr="")
+                Mock(returncode=1, stdout="", stderr="Error: bind: address already in use"),
+                Mock(returncode=0, stdout="container_id", stderr=""),
             ]
 
             manager = Neo4jContainerManager()
@@ -138,21 +130,21 @@ class TestRaceConditionRetryLogic:
 
     def test_WHEN_port_binding_fails_twice_THEN_retries_twice(self):
         """Test multiple retries on repeated port binding race conditions."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             # Three resolutions (initial + 2 retries)
             mock_resolve.side_effect = [
                 (7787, 7774, ["✅ Ports 7787/7774 available"]),
                 (7888, 7874, ["✅ Ports 7888/7874 available"]),
-                (7989, 7975, ["✅ Ports 7989/7975 available"])
+                (7989, 7975, ["✅ Ports 7989/7975 available"]),
             ]
 
             # First two fail, third succeeds
             mock_run.side_effect = [
                 Mock(returncode=1, stdout="", stderr="bind: address already in use"),
                 Mock(returncode=1, stdout="", stderr="bind: address already in use"),
-                Mock(returncode=0, stdout="container_id", stderr="")
+                Mock(returncode=0, stdout="container_id", stderr=""),
             ]
 
             manager = Neo4jContainerManager()
@@ -164,21 +156,19 @@ class TestRaceConditionRetryLogic:
 
     def test_WHEN_max_retries_exceeded_THEN_creation_fails(self):
         """Test failure after max retries (3 attempts)."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             # Three resolutions
             mock_resolve.side_effect = [
                 (7787, 7774, ["✅ Ports available"]),
                 (7888, 7874, ["✅ Ports available"]),
-                (7989, 7975, ["✅ Ports available"])
+                (7989, 7975, ["✅ Ports available"]),
             ]
 
             # All three attempts fail
             mock_run.return_value = Mock(
-                returncode=1,
-                stdout="",
-                stderr="bind: address already in use"
+                returncode=1, stdout="", stderr="bind: address already in use"
             )
 
             manager = Neo4jContainerManager()
@@ -193,9 +183,9 @@ class TestFallbackBehavior:
 
     def test_WHEN_port_resolution_fails_THEN_uses_config_ports(self):
         """Test fallback to config ports when resolution fails."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             # Port resolution raises exception
             mock_resolve.side_effect = RuntimeError("Port resolution failed")
 
@@ -215,20 +205,18 @@ class TestFallbackBehavior:
 
     def test_WHEN_retry_resolution_fails_THEN_creation_fails(self):
         """Test failure when retry port resolution fails."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             # First resolution succeeds, retry resolution fails
             mock_resolve.side_effect = [
                 (7787, 7774, ["✅ Ports available"]),
-                RuntimeError("Failed to resolve new ports")
+                RuntimeError("Failed to resolve new ports"),
             ]
 
             # First docker run fails with port binding error
             mock_run.return_value = Mock(
-                returncode=1,
-                stdout="",
-                stderr="bind: address already in use"
+                returncode=1, stdout="", stderr="bind: address already in use"
             )
 
             manager = Neo4jContainerManager()
@@ -242,17 +230,15 @@ class TestUserMessaging:
 
     def test_WHEN_port_resolution_succeeds_THEN_messages_logged(self):
         """Test that port resolution messages are logged for user visibility."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run, \
-             patch("amplihack.memory.neo4j.lifecycle.logger") as mock_logger:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run, patch(
+            "amplihack.memory.neo4j.lifecycle.logger"
+        ) as mock_logger:
             mock_resolve.return_value = (
                 7787,
                 7774,
-                [
-                    "✅ Ports 7787/7774 available",
-                    "No conflicts detected"
-                ]
+                ["✅ Ports 7787/7774 available", "No conflicts detected"],
             )
 
             mock_run.return_value = Mock(returncode=0, stdout="container_id", stderr="")
@@ -267,18 +253,19 @@ class TestUserMessaging:
 
     def test_WHEN_alternative_ports_selected_THEN_messages_logged(self):
         """Test that alternative port selection is communicated to user."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run, \
-             patch("amplihack.memory.neo4j.lifecycle.logger") as mock_logger:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run, patch(
+            "amplihack.memory.neo4j.lifecycle.logger"
+        ) as mock_logger:
             mock_resolve.return_value = (
                 7888,
                 7874,
                 [
                     "⚠️ Port 7787 in use by another application",
                     "✅ Selected alternative bolt port: 7888",
-                    "✅ Selected alternative HTTP port: 7874"
-                ]
+                    "✅ Selected alternative HTTP port: 7874",
+                ],
             )
 
             mock_run.return_value = Mock(returncode=0, stdout="container_id", stderr="")
@@ -297,10 +284,11 @@ class TestContainerCreationWithWaitForReady:
 
     def test_WHEN_wait_for_ready_true_THEN_waits_for_healthy(self):
         """Test that wait_for_ready=True triggers health check wait."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run, \
-             patch.object(Neo4jContainerManager, "wait_for_healthy") as mock_wait:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run, patch.object(
+            Neo4jContainerManager, "wait_for_healthy"
+        ) as mock_wait:
             mock_resolve.return_value = (7787, 7774, ["✅ Ports available"])
             mock_run.return_value = Mock(returncode=0, stdout="container_id", stderr="")
             mock_wait.return_value = True
@@ -313,10 +301,11 @@ class TestContainerCreationWithWaitForReady:
 
     def test_WHEN_wait_for_ready_false_THEN_returns_immediately(self):
         """Test that wait_for_ready=False returns without waiting."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run, \
-             patch.object(Neo4jContainerManager, "wait_for_healthy") as mock_wait:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run, patch.object(
+            Neo4jContainerManager, "wait_for_healthy"
+        ) as mock_wait:
             mock_resolve.return_value = (7787, 7774, ["✅ Ports available"])
             mock_run.return_value = Mock(returncode=0, stdout="container_id", stderr="")
 
@@ -332,15 +321,15 @@ class TestTimeoutHandling:
 
     def test_WHEN_docker_run_times_out_THEN_retries(self):
         """Test retry on timeout."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             mock_resolve.return_value = (7787, 7774, ["✅ Ports available"])
 
             # First attempt times out, second succeeds
             mock_run.side_effect = [
                 subprocess.TimeoutExpired(cmd=["docker", "run"], timeout=60),
-                Mock(returncode=0, stdout="container_id", stderr="")
+                Mock(returncode=0, stdout="container_id", stderr=""),
             ]
 
             manager = Neo4jContainerManager()
@@ -351,16 +340,13 @@ class TestTimeoutHandling:
 
     def test_WHEN_all_attempts_timeout_THEN_creation_fails(self):
         """Test failure when all attempts timeout."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             mock_resolve.return_value = (7787, 7774, ["✅ Ports available"])
 
             # All attempts timeout
-            mock_run.side_effect = subprocess.TimeoutExpired(
-                cmd=["docker", "run"],
-                timeout=60
-            )
+            mock_run.side_effect = subprocess.TimeoutExpired(cmd=["docker", "run"], timeout=60)
 
             manager = Neo4jContainerManager()
             result = manager._create_container(wait_for_ready=False)
@@ -374,17 +360,13 @@ class TestNonPortErrors:
 
     def test_WHEN_docker_error_not_port_related_THEN_fails_immediately(self):
         """Test that non-port errors don't trigger retry logic."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             mock_resolve.return_value = (7787, 7774, ["✅ Ports available"])
 
             # Docker fails with non-port error
-            mock_run.return_value = Mock(
-                returncode=1,
-                stdout="",
-                stderr="Error: image not found"
-            )
+            mock_run.return_value = Mock(returncode=1, stdout="", stderr="Error: image not found")
 
             manager = Neo4jContainerManager()
             result = manager._create_container(wait_for_ready=False)
@@ -395,15 +377,15 @@ class TestNonPortErrors:
 
     def test_WHEN_exception_during_docker_run_THEN_retries(self):
         """Test retry on general exception during docker run."""
-        with patch("amplihack.memory.neo4j.lifecycle.resolve_port_conflicts") as mock_resolve, \
-             patch("subprocess.run") as mock_run:
-
+        with patch(
+            "amplihack.memory.neo4j.lifecycle.resolve_port_conflicts"
+        ) as mock_resolve, patch("subprocess.run") as mock_run:
             mock_resolve.return_value = (7787, 7774, ["✅ Ports available"])
 
             # First attempt raises exception, second succeeds
             mock_run.side_effect = [
                 RuntimeError("Unexpected error"),
-                Mock(returncode=0, stdout="container_id", stderr="")
+                Mock(returncode=0, stdout="container_id", stderr=""),
             ]
 
             manager = Neo4jContainerManager()

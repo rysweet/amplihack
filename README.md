@@ -111,6 +111,7 @@ python main.py
 ```
 
 **Features:**
+
 - Generate agents in < 0.1 seconds
 - Automatic skill matching
 - Multi-phase execution planning

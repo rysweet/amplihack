@@ -16,9 +16,7 @@ import pytest
 import yaml
 
 # Add common verification utilities to path
-sys.path.insert(
-    0, str(Path(__file__).parent.parent.parent / "common" / "verification")
-)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "common" / "verification"))
 
 # Define skill dependencies
 PYTHON_PACKAGES_REQUIRED = ["pypdf", "pdfplumber", "reportlab", "pandas"]
@@ -429,14 +427,12 @@ def test_pdf_metadata():
 def test_skill_invocation():
     """Test that skill can be invoked in Claude Code."""
     # Future: Test skill invocation through Claude Code API
-    pass
 
 
 @pytest.mark.skip(reason="Integration tests not yet implemented")
 def test_skill_with_real_pdf():
     """Test skill with a real PDF file."""
     # Future: Test with actual PDF files in fixtures
-    pass
 
 
 # Utility function for manual testing
