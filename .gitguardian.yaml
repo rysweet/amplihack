@@ -22,6 +22,23 @@ secret:
       match: 548fa7beca64b45b06c7b975a7b34c866bc6a84650e9237e2075648bac2719be  # SHA256 of FAKE_PASSWORD_FOR_TESTS
     - name: test-fixture-fake-password-literal
       match: FAKE_PASSWORD_FOR_TESTS
+    # Test fixtures from PR #1386 (benchmarking tests)
+    - name: test-fixture-fake-api-keys
+      match: sk-ant-from-env
+    - name: test-fixture-fake-api-keys-dotenv
+      match: sk-ant-from-dotenv
+    - name: test-fixture-fake-api-keys-custom
+      match: sk-ant-from-custom
+    - name: test-fixture-fake-api-keys-json
+      match: sk-ant-json-test
+    - name: test-fixture-fake-api-keys-test
+      match: sk-ant-test
+    - name: test-fixture-fake-api-keys-api03
+      match: sk-ant-api03-abc123
+    - name: test-fixture-fake-api-keys-secret
+      match: sk-ant-api03-secret123
+    - name: test-fixture-fake-api-keys-simple
+      match: sk-ant-123
 
   # Exclude files and paths by globbing patterns
   ignored_paths:
