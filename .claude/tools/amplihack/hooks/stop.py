@@ -84,6 +84,10 @@ class StopHook(HookProcessor):
         # before any potentially long-running reflection analysis that might timeout the user)
         self._handle_neo4j_cleanup()
 
+        # Neo4j learning capture (after cleanup, before reflection)
+        # Separated from cleanup for single responsibility and optional nature
+        self._handle_neo4j_learning()
+
         # Power-steering check (before reflection)
         if not lock_exists and self._should_run_power_steering():
             try:
@@ -228,11 +232,7 @@ class StopHook(HookProcessor):
             self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
 
             # Initialize components with credentials from environment
-<<<<<<< HEAD
-            # Note: Connection tracker will raise ValueError if password not set and
-=======
             # Note: Connection tracker will raise ValueError if password not set and  # pragma: allowlist secret
->>>>>>> origin/main
             # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.  # pragma: allowlist secret
             tracker = Neo4jConnectionTracker(
                 username=os.getenv("NEO4J_USERNAME"), password=os.getenv("NEO4J_PASSWORD")
@@ -251,6 +251,43 @@ class StopHook(HookProcessor):
 
         except Exception as e:
             self.log(f"Neo4j cleanup failed: {e}", "WARNING")
+
+    def _handle_neo4j_learning(self) -> None:
+        """Handle Neo4j learning capture on session exit.
+
+        Extracts learning insights from Neo4j knowledge graph if available.
+        Fail-safe: Never raises exceptions.
+
+        Design Notes:
+            - Called AFTER Neo4j cleanup coordination
+            - Separated from cleanup for single responsibility
+            - Optional feature: Gracefully skips if not yet implemented
+            - Currently planned but not yet implemented (awaiting schema definition)
+        """
+        try:
+            # Import from sibling neo4j module (relative to hooks directory)
+            from neo4j.learning_capture import capture_neo4j_learnings
+
+            session_id = self._get_current_session_id()
+            self.log(f"Starting Neo4j learning capture for session {session_id}")
+
+            # Attempt learning capture (fail-safe design)
+            success = capture_neo4j_learnings(
+                project_root=self.project_root,
+                session_id=session_id,
+                neo4j_connection=None,  # TODO: Pass active connection when available
+            )
+
+            if success:
+                self.log("Neo4j learning capture completed successfully")
+                self.save_metric("neo4j_learning_captures", 1)
+            else:
+                self.log("Neo4j learning capture skipped (Neo4j not available)")
+
+        except ImportError:
+            self.log("Neo4j learning module not available - skipping", "DEBUG")
+        except Exception as e:
+            self.log(f"Neo4j learning capture failed (non-critical): {e}", "WARNING")
 
     def read_continuation_prompt(self) -> str:
         """Read custom continuation prompt from file or return default.
