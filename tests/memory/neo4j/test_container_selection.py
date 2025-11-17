@@ -225,3 +225,175 @@ class TestEnvironmentVariableIntegration:
                 auto_mode=True,
             )
             assert result == "direct-container"
+
+
+class TestCleanupModeIntegration:
+    """Test cleanup mode prevents interactive prompts."""
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_cleanup_mode_forces_auto_mode(self, mock_dialog):
+        """When AMPLIHACK_CLEANUP_MODE=1, dialog is called with auto_mode=True."""
+        mock_dialog.return_value = "amplihack-myproject"
+
+        with patch.dict(os.environ, {"AMPLIHACK_CLEANUP_MODE": "1"}):
+            context = NameResolutionContext(
+                cli_arg=None,
+                env_var=None,
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=False,  # Even with auto_mode=False, cleanup should force it True
+            )
+            result = resolve_container_name(context=context)
+
+        # Verify dialog was called with auto_mode=True due to cleanup mode
+        mock_dialog.assert_called_once_with("amplihack-myproject", auto_mode=True)
+        assert result == "amplihack-myproject"
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_normal_mode_respects_interactive_setting(self, mock_dialog):
+        """When cleanup_mode=0 and auto_mode=False, dialog is interactive."""
+        mock_dialog.return_value = "amplihack-myproject"
+
+        with patch.dict(os.environ, {"AMPLIHACK_CLEANUP_MODE": "0"}):
+            context = NameResolutionContext(
+                cli_arg=None,
+                env_var=None,
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=False,
+            )
+            result = resolve_container_name(context=context)
+
+        # Verify dialog was called with auto_mode=False (interactive)
+        mock_dialog.assert_called_once_with("amplihack-myproject", auto_mode=False)
+        assert result == "amplihack-myproject"
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_context_auto_mode_true_always_non_interactive(self, mock_dialog):
+        """When context.auto_mode=True, dialog is auto regardless of cleanup mode."""
+        mock_dialog.return_value = "amplihack-myproject"
+
+        # Test with cleanup_mode=0
+        with patch.dict(os.environ, {"AMPLIHACK_CLEANUP_MODE": "0"}):
+            context = NameResolutionContext(
+                cli_arg=None,
+                env_var=None,
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=True,
+            )
+            result = resolve_container_name(context=context)
+
+        # Verify dialog was called with auto_mode=True
+        mock_dialog.assert_called_once_with("amplihack-myproject", auto_mode=True)
+        assert result == "amplihack-myproject"
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_cleanup_mode_unset_defaults_to_interactive(self, mock_dialog):
+        """When AMPLIHACK_CLEANUP_MODE is not set, defaults to interactive mode."""
+        mock_dialog.return_value = "amplihack-myproject"
+
+        # Ensure env var is not set
+        env_copy = os.environ.copy()
+        env_copy.pop("AMPLIHACK_CLEANUP_MODE", None)
+
+        with patch.dict(os.environ, env_copy, clear=True):
+            context = NameResolutionContext(
+                cli_arg=None,
+                env_var=None,
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=False,
+            )
+            result = resolve_container_name(context=context)
+
+        # Verify dialog was called with auto_mode=False (interactive)
+        mock_dialog.assert_called_once_with("amplihack-myproject", auto_mode=False)
+        assert result == "amplihack-myproject"
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_cleanup_mode_and_auto_mode_both_true(self, mock_dialog):
+        """When both cleanup_mode=1 and auto_mode=True, dialog is auto."""
+        mock_dialog.return_value = "amplihack-myproject"
+
+        with patch.dict(os.environ, {"AMPLIHACK_CLEANUP_MODE": "1"}):
+            context = NameResolutionContext(
+                cli_arg=None,
+                env_var=None,
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=True,
+            )
+            result = resolve_container_name(context=context)
+
+        # Verify dialog was called with auto_mode=True
+        mock_dialog.assert_called_once_with("amplihack-myproject", auto_mode=True)
+        assert result == "amplihack-myproject"
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_cleanup_mode_with_cli_arg_skips_dialog(self, mock_dialog):
+        """When CLI arg is provided, dialog is never called even in cleanup mode."""
+        with patch.dict(os.environ, {"AMPLIHACK_CLEANUP_MODE": "1"}):
+            context = NameResolutionContext(
+                cli_arg="custom-container",
+                env_var=None,
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=False,
+            )
+            result = resolve_container_name(context=context)
+
+        # Verify dialog was NOT called (CLI arg takes priority)
+        mock_dialog.assert_not_called()
+        assert result == "custom-container"
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_cleanup_mode_with_env_var_skips_dialog(self, mock_dialog):
+        """When env var is provided, dialog is never called even in cleanup mode."""
+        with patch.dict(os.environ, {"AMPLIHACK_CLEANUP_MODE": "1"}):
+            context = NameResolutionContext(
+                cli_arg=None,
+                env_var="env-container",
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=False,
+            )
+            # Mock discover to return empty list so env_var is used
+            with patch(
+                "amplihack.memory.neo4j.container_selection.discover_amplihack_containers",
+                return_value=[],
+            ):
+                result = resolve_container_name(context=context)
+
+        # Verify dialog was NOT called (env var takes priority)
+        mock_dialog.assert_not_called()
+        assert result == "env-container"
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_cleanup_mode_dialog_fallback_on_error(self, mock_dialog):
+        """When dialog fails in cleanup mode, fallback to default name."""
+        # Simulate dialog raising an exception
+        mock_dialog.side_effect = Exception("Dialog failed")
+
+        with patch.dict(os.environ, {"AMPLIHACK_CLEANUP_MODE": "1"}):
+            context = NameResolutionContext(
+                cli_arg=None,
+                env_var=None,
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=False,
+            )
+            result = resolve_container_name(context=context)
+
+        # Verify fallback to default name
+        assert result == "amplihack-myproject"
+
+    @patch("amplihack.memory.neo4j.container_selection.unified_container_and_credential_dialog")
+    def test_cleanup_mode_dialog_returns_none(self, mock_dialog):
+        """When dialog returns None in cleanup mode, use default name."""
+        mock_dialog.return_value = None
+
+        with patch.dict(os.environ, {"AMPLIHACK_CLEANUP_MODE": "1"}):
+            context = NameResolutionContext(
+                cli_arg=None,
+                env_var=None,
+                current_dir=Path("/home/user/myproject"),
+                auto_mode=False,
+            )
+            result = resolve_container_name(context=context)
+
+        # Verify fallback to default name
+        mock_dialog.assert_called_once_with("amplihack-myproject", auto_mode=True)
+        assert result == "amplihack-myproject"
