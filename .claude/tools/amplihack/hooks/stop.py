@@ -10,6 +10,7 @@ Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
 
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -210,8 +211,62 @@ class StopHook(HookProcessor):
             self.log("=== STOP HOOK ENDED (decision: approve - error occurred) ===")
             return {"decision": "approve"}
 
+    def _is_neo4j_in_use(self) -> bool:
+        """Check if Neo4j service requires cleanup.
+
+        Two-layer detection:
+        1. Environment variables - Are credentials configured?
+        2. Docker container status - Is container actually running?
+
+        Returns:
+            bool: True if Neo4j container is running, False otherwise.
+                  Returns False on any errors (fail-safe).
+        """
+        # Layer 1: Check environment variables (instant)
+        if not os.getenv("NEO4J_USERNAME") or not os.getenv("NEO4J_PASSWORD"):
+            self.log("Neo4j credentials not configured - skipping cleanup", "DEBUG")
+            return False
+
+        # Layer 2: Check Docker container status (authoritative check)
+        try:
+            result = subprocess.run(
+                ["docker", "ps", "--filter", "name=neo4j", "--format", "{{.Names}}"],
+                capture_output=True,
+                text=True,
+                timeout=2.0
+            )
+
+            if result.returncode != 0:
+                return False
+
+            containers = result.stdout.strip().split('\n')
+            neo4j_running = any('neo4j' in name.lower() for name in containers if name)
+
+            if neo4j_running:
+                self.log("Neo4j container detected - proceeding with cleanup", "DEBUG")
+            else:
+                self.log("No Neo4j containers running - skipping cleanup", "DEBUG")
+
+            return neo4j_running
+
+        except FileNotFoundError:
+            self.log("Docker command not found - skipping Neo4j cleanup", "WARNING")
+            return False
+
+        except subprocess.TimeoutExpired:
+            self.log("Docker command timed out - skipping Neo4j cleanup", "WARNING")
+            return False
+
+        except Exception as e:
+            self.log(f"Error checking Docker status: {e} - skipping Neo4j cleanup", "WARNING")
+            return False
+
     def _handle_neo4j_cleanup(self) -> None:
         """Handle Neo4j cleanup on session exit.
+
+        Pre-check gate: Only proceeds if Neo4j is actually in use.
+        Prevents unnecessary initialization of Neo4j components when
+        the service isn't running, avoiding spurious authentication errors.
 
         Executes Neo4j shutdown coordination if appropriate.
         Fail-safe: Never raises exceptions.
@@ -221,6 +276,13 @@ class StopHook(HookProcessor):
                 Prevents interactive prompts during session exit.
                 Checked by container_selection.py to skip container selection dialog.
         """
+        # PRE-CHECK GATE: Skip if Neo4j not in use
+        if not self._is_neo4j_in_use():
+            self.log("Neo4j not in use - skipping cleanup handler", "DEBUG")
+            return
+
+        self.log("Neo4j cleanup handler started - service detected as active", "INFO")
+
         try:
             # Set cleanup mode to prevent interactive prompts during session exit
             # This is checked by container_selection.resolve_container_name()
