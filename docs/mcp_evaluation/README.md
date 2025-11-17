@@ -1,10 +1,10 @@
 # MCP Evaluation Framework
 
-Ahoy, matey! Welcome aboard the MCP Evaluation Framework - yer trusty compass fer navigatin' the treacherous waters of Model Context Protocol tool integrations.
+Welcome to the MCP Evaluation Framework - a comprehensive tool for evaluating Model Context Protocol tool integrations.
 
 ## What is the MCP Evaluation Framework?
 
-The MCP Evaluation Framework be a data-driven, evidence-based system fer evaluatin' how well MCP server tools integrate with yer agentic workflow. Instead of guessin' or estimatin', this framework **actually runs yer tools** through realistic scenarios and measures what matters: quality, efficiency, and capabilities.
+The MCP Evaluation Framework is a data-driven, evidence-based system for evaluating how well MCP server tools integrate with your agentic workflow. Instead of guessing or estimating, this framework **actually runs your tools** through realistic scenarios and measures what matters: quality, efficiency, and capabilities.
 
 **Key Benefits:**
 - **No guesswork**: Real execution metrics from actual tool usage
@@ -14,22 +14,22 @@ The MCP Evaluation Framework be a data-driven, evidence-based system fer evaluat
 
 ## Who Should Use This?
 
-**This framework be perfect fer:**
+**This framework is perfect for:**
 
-- **Teams evaluatin' MCP integrations** - Needin' objective data before committin' resources
-- **Tool vendors benchmarkin' tools** - Wantin' to understand performance and quality metrics
-- **Engineering leaders makin' decisions** - Requirin' evidence-based recommendations fer tool adoption
-- **Developers buildin' agentic systems** - Seekin' to understand tool capabilities and limitations
+- **Teams evaluating MCP integrations** - Needing objective data before committing resources
+- **Tool vendors benchmarking tools** - Wanting to understand performance and quality metrics
+- **Engineering leaders making decisions** - Requiring evidence-based recommendations for tool adoption
+- **Developers building agentic systems** - Seeking to understand tool capabilities and limitations
 
-**Ye should use this framework when:**
-- Evaluatin' whether to integrate a new MCP tool into yer workflow
-- Comparin' multiple tools to choose the best option
-- Benchmarkin' tool improvements after updates
-- Documentin' tool capabilities fer yer team
+**You should use this framework when:**
+- Evaluating whether to integrate a new MCP tool into your workflow
+- Comparing multiple tools to choose the best option
+- Benchmarking tool improvements after updates
+- Documenting tool capabilities for your team
 
 ## Quick Start
 
-Arr! Keen to see it in action? Here be a 5-minute mock evaluation that needs no server setup:
+Ready to see it in action? Here's a 5-minute mock evaluation that needs no server setup:
 
 ```bash
 # Navigate to the evaluation tests
@@ -41,17 +41,17 @@ python run_evaluation.py
 # Results will be saved in results/serena_mock_YYYYMMDD_HHMMSS/
 ```
 
-**What ye'll see:**
-- Console output showin' progress through 3 test scenarios
+**What you'll see:**
+- Console output showing progress through 3 test scenarios
 - A comprehensive report in `results/serena_mock_*/report.md`
-- Metrics tables showin' quality and efficiency measurements
+- Metrics tables showing quality and efficiency measurements
 - An executive summary with a clear recommendation
 
-This mock evaluation demonstrates the complete workflow without needin' any external dependencies. Perfect fer kickin' the tires!
+This mock evaluation demonstrates the complete workflow without needing any external dependencies. Perfect for trying out the framework!
 
 ## Documentation Map
 
-Choose yer adventure based on what ye need:
+Choose your path based on what you need:
 
 ### I Want To...
 
@@ -92,7 +92,7 @@ Each scenario tests multiple capabilities and measures both quality (correctness
 
 ### Tool Adapters
 
-Adapters be the framework's secret weapon - they enable ANY MCP tool to be evaluated without changin' the core framework. An adapter implements three operations:
+Adapters are the framework's secret weapon - they enable ANY MCP tool to be evaluated without changing the core framework. An adapter implements three operations:
 
 ```python
 async def enable(self, shared_context):
@@ -134,32 +134,32 @@ Every evaluation generates a markdown report with:
 2. **Metrics Tables** - Baseline vs Enhanced comparison
 3. **Capability Analysis** - What the tool enables/improves
 4. **Detailed Results** - Per-scenario breakdowns
-5. **Recommendations** - Specific guidance fer yer team
+5. **Recommendations** - Specific guidance for your team
 
 ## Framework Status
 
 **Current Version:** 1.0.0
 
 **Maturity:** Production-ready
-- 6/6 tests passin' (100% test coverage)
+- 6/6 tests passing (100% test coverage)
 - 1 complete tool adapter (Serena filesystem tools)
 - Generic design validated with multiple tool types
 - Used in production evaluations
 
 **Roadmap:**
-- Additional reference adapters fer common tool types
-- Performance benchmarkin' suite
+- Additional reference adapters for common tool types
+- Performance benchmarking suite
 - Multi-tool comparison mode
 - Integration with amplihack workflows
 
 ## Example: Reading a Report
 
-Here be what a typical evaluation report tells ye:
+Here's what a typical evaluation report tells you:
 
 ```markdown
 Executive Summary: INTEGRATE
 The Serena filesystem tools provide significant value with 95% success rate
-and 2.3x efficiency improvement over baseline. Strong recommendation fer
+and 2.3x efficiency improvement over baseline. Strong recommendation for
 navigation and analysis scenarios.
 
 Quality Metrics:
@@ -173,7 +173,7 @@ Efficiency Metrics:
 - Operations: 18 (baseline: 42) - 57% fewer
 ```
 
-This tells ye immediately:
+This tells you immediately:
 1. **Should we integrate?** Yes (INTEGRATE)
 2. **How much better is it?** ~2x efficiency, much higher success rate
 3. **What does it do well?** Navigation and analysis
@@ -181,7 +181,7 @@ This tells ye immediately:
 
 ## Architecture Overview
 
-The framework be built with ruthless simplicity:
+The framework is built with ruthless simplicity:
 
 ```
 EvaluationFramework (coordinator)
@@ -199,11 +199,11 @@ EvaluationFramework (coordinator)
 - **Generic**: Works with any tool via adapters
 - **Evidence-based**: Real execution, not synthetic benchmarks
 - **Composable**: Mix and match scenarios
-- **Extensible**: Add adapters without modifyin' core
+- **Extensible**: Add adapters without modifying core
 
 ## Getting Started
 
-Ready to evaluate yer first tool? Follow this path:
+Ready to evaluate your first tool? Follow this path:
 
 1. **Run the Mock Evaluation** (5 minutes)
    ```bash
@@ -216,30 +216,30 @@ Ready to evaluate yer first tool? Follow this path:
 
 3. **Follow the User Guide** (30 minutes)
    - [USER_GUIDE.md](USER_GUIDE.md) walks through everything
-   - Learn how to evaluate yer own tools
+   - Learn how to evaluate your own tools
    - Understand decision criteria
 
 4. **Create a Custom Adapter** (Optional)
    - See [tests/mcp_evaluation/README.md](../../tests/mcp_evaluation/README.md)
    - Implement the BaseAdapter interface
-   - Run evaluations on yer tool
+   - Run evaluations on your tool
 
 ## Common Questions
 
-**Q: Do I need an MCP server runnin' to try this?**
-A: Nay! The mock evaluation demonstrates everything without external dependencies.
+**Q: Do I need an MCP server running to try this?**
+A: No! The mock evaluation demonstrates everything without external dependencies.
 
 **Q: How long does an evaluation take?**
 A: Mock evaluations: ~30 seconds. Real evaluations: 2-5 minutes depending on tool.
 
 **Q: Can I evaluate multiple tools at once?**
-A: Currently one at a time, but multi-tool comparison mode be on the roadmap.
+A: Currently one at a time, but multi-tool comparison mode is on the roadmap.
 
 **Q: What if my tool isn't a filesystem tool?**
-A: No problem! Create a custom adapter. The framework be generic by design.
+A: No problem! Create a custom adapter. The framework is generic by design.
 
 **Q: How do I interpret the results?**
-A: See the USER_GUIDE.md section "Phase 4: Analyzing Results" fer detailed guidance.
+A: See the USER_GUIDE.md section "Phase 4: Analyzing Results" for detailed guidance.
 
 ## Philosophy Alignment
 
@@ -253,19 +253,19 @@ This framework embodies amplihack's core principles:
 ## Support and Contribution
 
 **Found a bug?** Create a GitHub issue with:
-- Evaluation command ye ran
+- Evaluation command you ran
 - Expected vs actual behavior
 - Generated report (if applicable)
 
-**Want to contribute an adapter?** Beautiful! See:
-- [tests/mcp_evaluation/README.md](../../tests/mcp_evaluation/README.md) fer adapter creation guide
-- Submit a PR with yer adapter and example evaluation
+**Want to contribute an adapter?** Great! See:
+- [tests/mcp_evaluation/README.md](../../tests/mcp_evaluation/README.md) for adapter creation guide
+- Submit a PR with your adapter and example evaluation
 
 **Have questions?** Check the troubleshooting section in [USER_GUIDE.md](USER_GUIDE.md) first.
 
 ## Next Steps
 
-Pick yer path:
+Pick your path:
 
 - **New to the framework?** → [USER_GUIDE.md](USER_GUIDE.md)
 - **Need technical details?** → [Specs/MCP_EVALUATION_FRAMEWORK.md](../../Specs/MCP_EVALUATION_FRAMEWORK.md)
@@ -273,7 +273,5 @@ Pick yer path:
 - **Ready to evaluate?** → `cd tests/mcp_evaluation && python run_evaluation.py`
 
 ---
-
-Fair winds and followin' seas on yer evaluation journey! May yer tools be reliable and yer metrics be favorable.
 
 *Last updated: November 2025 | Framework Version: 1.0.0*

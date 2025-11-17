@@ -1,6 +1,6 @@
 # MCP Evaluation Framework - User Guide
 
-Ahoy, matey! This be yer complete guide to evaluatin' MCP tools with the framework. Follow these steps and ye'll have actionable data to guide yer integration decisions.
+This is your complete guide to evaluating MCP tools with the framework. Follow these steps and you'll have actionable data to guide your integration decisions.
 
 ## Table of Contents
 
@@ -21,12 +21,12 @@ Ahoy, matey! This be yer complete guide to evaluatin' MCP tools with the framewo
 
 ### What This Guide Covers
 
-This guide walks ye through the complete journey of evaluatin' MCP tools:
-- Settin' up the framework
-- Runnin' yer first mock evaluation
-- Understandin' the results
-- Makin' integration decisions
-- Evaluatin' real MCP tools
+This guide walks you through the complete journey of evaluating MCP tools:
+- Setting up the framework
+- Running your first mock evaluation
+- Understanding the results
+- Making integration decisions
+- Evaluating real MCP tools
 
 **Time Investment:**
 - First-time setup: 15 minutes
@@ -36,7 +36,7 @@ This guide walks ye through the complete journey of evaluatin' MCP tools:
 
 ### Prerequisites
 
-Before ye start, ensure ye have:
+Before you start, ensure you have:
 
 **Required:**
 - Python 3.10 or higher
@@ -97,7 +97,7 @@ Phase 5: DECIDING
 └── Plan next steps (integrate/reconsider/reject)
 ```
 
-Each phase builds on the previous one. Ye can pause between phases.
+Each phase builds on the previous one. You can pause between phases.
 
 ## Phase 1: Setup
 
@@ -296,7 +296,7 @@ python run_evaluation.py --output-dir ./my_results
 
 ### Step 3.2: Understanding Console Output
 
-As the evaluation runs, ye'll see:
+As the evaluation runs, you'll see:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -336,7 +336,7 @@ results/serena_mock_20251117_143022/
 └── evaluation_log.txt     # Execution log (for debugging)
 ```
 
-**Tip:** Results are timestamped, so ye can run multiple evaluations without overwritin' previous ones.
+**Tip:** Results are timestamped, so you can run multiple evaluations without overwriting previous ones.
 
 ## Phase 4: Analyzing Results
 
@@ -372,7 +372,7 @@ for integration.
 - Requires MCP server infrastructure
 ```
 
-**What this tells ye:**
+**What this tells you:**
 1. **Recommendation**: INTEGRATE (go ahead), CONSIDER (mixed), or DON'T INTEGRATE (stop)
 2. **Key Strengths**: What the tool does well
 3. **Considerations**: Potential concerns or limitations
@@ -476,7 +476,7 @@ Each scenario section provides granular results:
 - Efficient handling of large directories
 ```
 
-This tells ye:
+This tells you:
 1. **What was tested**: Navigation tasks
 2. **How baseline performed**: Slow and error-prone
 3. **How tool improved things**: Much faster and reliable
@@ -601,7 +601,7 @@ limitations. Tool meets all integration criteria.
 
 ## Real MCP Tool Evaluation
 
-Once ye understand the framework with mock evaluations, ye can evaluate real MCP tools.
+Once you understand the framework with mock evaluations, you can evaluate real MCP tools.
 
 ### When You Need a Real Server
 
@@ -712,7 +712,7 @@ cat results/your_tool_20251117_*/report.md
 
 ### Workflow 1: Evaluating a Single Tool
 
-**Scenario:** Ye have one MCP tool to evaluate.
+**Scenario:** You have one MCP tool to evaluate.
 
 ```bash
 # 1. Run mock evaluation first
@@ -731,7 +731,7 @@ python run_evaluation.py --adapter serena --server http://localhost:3000
 
 ### Workflow 2: Comparing Multiple Tools
 
-**Scenario:** Ye need to choose between Tool A and Tool B.
+**Scenario:** You need to choose between Tool A and Tool B.
 
 ```bash
 # Evaluate Tool A
@@ -749,7 +749,7 @@ python compare_evaluations.py results/tool_a_* results/tool_b_*
 **Decision Factors:**
 - Which has better success rate?
 - Which is more efficient?
-- Which scenarios matter most to yer use case?
+- Which scenarios matter most to your use case?
 - Which has acceptable limitations?
 
 ### Workflow 3: Re-evaluating After Tool Updates
@@ -896,12 +896,12 @@ python run_evaluation.py --server http://localhost:3001
 
 ### Getting Help
 
-If ye can't resolve the issue:
+If you can't resolve the issue:
 
 1. **Check existing issues**: [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
 2. **Review test logs**: `cat results/*/evaluation_log.txt`
 3. **Create a bug report** with:
-   - Command ye ran
+   - Command you ran
    - Error message
    - Environment (Python version, OS)
    - Relevant log excerpts
@@ -929,7 +929,7 @@ If ye can't resolve the issue:
 
 ### Creating Custom Adapters
 
-Want to evaluate yer own tool? See:
+Want to evaluate your own tool? See:
 - [tests/mcp_evaluation/README.md](../../tests/mcp_evaluation/README.md) - Complete adapter creation guide
 - [adapters/base_adapter.py](../../tests/mcp_evaluation/adapters/base_adapter.py) - Interface reference
 - [adapters/serena_adapter.py](../../tests/mcp_evaluation/adapters/serena_adapter.py) - Example implementation
@@ -960,7 +960,7 @@ Found a bug or want to improve the framework?
 
 1. Fork the repository
 2. Create a feature branch
-3. Make yer changes
+3. Make your changes
 4. Add tests
 5. Submit a pull request
 
@@ -968,7 +968,7 @@ See [DEVELOPING_AMPLIHACK.md](../DEVELOPING_AMPLIHACK.md) for contribution guide
 
 ## Summary
 
-Ye've learned how to:
+You've learned how to:
 - ✓ Set up and run the MCP Evaluation Framework
 - ✓ Execute mock evaluations
 - ✓ Interpret results and metrics
@@ -980,16 +980,14 @@ Ye've learned how to:
 1. **Evidence over opinion** - Real metrics guide decisions
 2. **Quality AND efficiency** - Both matter
 3. **Know the limitations** - Every tool has trade-offs
-4. **Document decisions** - Help future ye and yer team
+4. **Document decisions** - Help future you and your team
 
-**Ready to evaluate yer first real tool?**
+**Ready to evaluate your first real tool?**
 
 ```bash
 cd tests/mcp_evaluation
 python run_evaluation.py
 ```
-
-Fair winds, matey! May yer evaluations be swift and yer integrations be successful! 🏴‍☠️
 
 ---
 
