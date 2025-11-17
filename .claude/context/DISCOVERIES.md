@@ -4,6 +4,92 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## Power-Steering Path Validation Bug (2025-11-17)
+
+### Problem Discovered
+
+**Power-steering mode is enabled and runs at session stop, but fails with path validation error**. The security check in `power_steering_checker.py` (_validate_path method) rejects Claude Code's transcript location.
+
+**Error Message**:
+```
+Transcript path /home/azureuser/.claude/projects/.../[session-id].jsonl is outside project root /home/azureuser/src/MicrosoftHackathon2025-AgenticCoding
+```
+
+### Root Cause
+
+**Path validation is too strict**. The `_validate_path()` method only allows:
+1. Paths within project root (e.g., `/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding`)
+2. Common temp directories (`/tmp`, `/var/tmp`, system temp)
+
+But Claude Code stores transcripts in: `/home/azureuser/.claude/projects/-home-azureuser-src-MicrosoftHackathon2025-AgenticCoding/` which is OUTSIDE both allowed locations.
+
+**Code Location**: `.claude/tools/amplihack/hooks/power_steering_checker.py:477-515`
+
+### Impact
+
+- Power-steering loads 21 considerations from YAML successfully
+- But cannot read transcript to analyze session completeness
+- Fails-open (allows session to end without blocking)
+- Effectively disabled due to this error
+- Users don't get session completeness checks
+
+### How to Detect Power-Steering Invocation
+
+**Primary Method**: Check the log file
+```bash
+cat .claude/runtime/power-steering/power_steering.log
+```
+
+**What to Look For**:
+- `"Loaded 21 considerations from YAML"` = Invoked successfully
+- `"Power-steering error (fail-open)"` = Encountered error
+- `"Power-steering blocking stop"` = Blocked session end
+- `"Power-steering approved stop"` = Approved session end
+
+**When It Runs**: Only at Stop Hook (session end), not during session
+
+**Disable Methods**:
+1. Semaphore file: `.claude/runtime/power-steering/.disabled`
+2. Environment: `export AMPLIHACK_SKIP_POWER_STEERING=1`
+3. Config: Set `"enabled": false` in `.claude/tools/amplihack/.power_steering_config`
+
+### Solution
+
+**Option 1**: Whitelist `.claude/projects/` directory in path validation
+```python
+# Add to _validate_path() in power_steering_checker.py
+# Check 3: Path is in Claude Code's project transcript directory
+claude_projects_dir = Path.home() / ".claude" / "projects"
+if str(path_resolved).startswith(str(claude_projects_dir)):
+    return True
+```
+
+**Option 2**: Use relative path check instead of strict parent validation
+**Option 3**: Store transcripts in project root (would require Claude Code changes)
+
+### Key Learnings
+
+1. **Fail-Open Design is Critical** - Path validation errors don't lock users out
+2. **Security vs Usability Trade-off** - Strict validation prevented legitimate use case
+3. **Detection is Easy** - Log file at `.claude/runtime/power-steering/power_steering.log` shows all activity
+4. **Not All "Enabled" Means "Working"** - Config can say enabled but feature fails silently
+
+### Testing/Verification
+
+To verify power-steering is working properly after fix:
+1. Check log file has no errors
+2. Verify `"Power-steering approved stop"` or `"blocking stop"` messages appear
+3. Test with incomplete work (open TODOs) - should block session end
+4. Test with complete work - should approve session end
+
+### References
+
+- **PR**: #1351 "feat: Implement Complete Power-Steering Mode"
+- **Config**: `.claude/tools/amplihack/.power_steering_config`
+- **Considerations**: `.claude/tools/amplihack/considerations.yaml` (21 checks)
+- **Checker**: `.claude/tools/amplihack/hooks/power_steering_checker.py`
+- **Documentation**: `.claude/tools/amplihack/HOW_TO_CUSTOMIZE_POWER_STEERING.md`
+
 ## Mandatory End-to-End Testing Pattern (2025-11-10)
 
 ### Problem Discovered

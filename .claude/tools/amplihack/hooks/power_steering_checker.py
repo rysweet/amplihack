@@ -475,18 +475,23 @@ class PowerSteeringChecker:
         return False
 
     def _validate_path(self, path: Path, allowed_parent: Path) -> bool:
-        """Validate path is within allowed directory (security check).
+        """Validate path is safe to read (permissive for user files).
 
         Args:
             path: Path to validate
-            allowed_parent: Parent directory path must be under
+            allowed_parent: Parent directory path must be under (typically project root)
 
         Returns:
             True if path is safe, False otherwise
 
         Note:
-            Allows paths in project root OR common temp directories (/tmp, /var/tmp, system temp).
-            This enables testing scenarios while maintaining security.
+            Allows paths in:
+            1. Project root (backward compatibility)
+            2. User's home directory (for Claude Code transcripts in ~/.claude/projects/)
+            3. Common temp directories (/tmp, /var/tmp, system temp)
+
+            Security: Power-steering only reads files (read-only operations).
+            Reading user-owned files is safe. No privilege escalation risk.
         """
         import tempfile
 
@@ -498,11 +503,22 @@ class PowerSteeringChecker:
             # Check 1: Path is within allowed parent (project root)
             try:
                 path_resolved.relative_to(parent_resolved)
+                self._log(f"Path validated: within project root", "DEBUG")
                 return True
             except ValueError:
-                pass  # Not in project root, check temp directories
+                pass  # Not in project root, check other allowed locations
 
-            # Check 2: Path is in common temp directories (for testing)
+            # Check 2: Path is within user's home directory
+            # This allows Claude Code transcript paths like ~/.claude/projects/
+            try:
+                home = Path.home().resolve()
+                path_resolved.relative_to(home)
+                self._log(f"Path validated: within user home directory", "DEBUG")
+                return True  # In user's home - safe for read-only operations
+            except ValueError:
+                pass  # Not in home directory, check temp directories
+
+            # Check 3: Path is in common temp directories (for testing)
             temp_dirs = [
                 Path("/tmp"),
                 Path("/var/tmp"),
@@ -512,14 +528,21 @@ class PowerSteeringChecker:
             for temp_dir in temp_dirs:
                 try:
                     path_resolved.relative_to(temp_dir.resolve())
+                    self._log(f"Path validated: within temp directory {temp_dir}", "DEBUG")
                     return True  # In temp directory - allow for testing
                 except ValueError:
                     continue
 
-            # Not in allowed locations
+            # Not in any allowed locations
+            self._log(
+                f"Path validation failed: {path_resolved} not in project root, "
+                f"home directory, or temp directories",
+                "WARNING",
+            )
             return False
 
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError) as e:
+            self._log(f"Path validation error: {e}", "ERROR")
             return False
 
     def _already_ran(self, session_id: str) -> bool:

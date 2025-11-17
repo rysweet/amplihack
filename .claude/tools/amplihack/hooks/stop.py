@@ -122,6 +122,11 @@ class StopHook(HookProcessor):
                 self.log(f"Power-steering error (fail-open): {e}", "WARNING")
                 self.save_metric("power_steering_errors", 1)
 
+                # Surface error to user via stderr for visibility
+                print("\n⚠️  Power-Steering Warning", file=sys.stderr)
+                print(f"Power-steering encountered an error and was skipped: {e}", file=sys.stderr)
+                print("Check .claude/runtime/power-steering/power_steering.log for details", file=sys.stderr)
+
         # Check if reflection should run
         if not self._should_run_reflection():
             self.log("Reflection not enabled or skipped - allowing stop")
@@ -228,11 +233,7 @@ class StopHook(HookProcessor):
             self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
 
             # Initialize components with credentials from environment
-<<<<<<< HEAD
-            # Note: Connection tracker will raise ValueError if password not set and
-=======
             # Note: Connection tracker will raise ValueError if password not set and  # pragma: allowlist secret
->>>>>>> origin/main
             # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.  # pragma: allowlist secret
             tracker = Neo4jConnectionTracker(
                 username=os.getenv("NEO4J_USERNAME"), password=os.getenv("NEO4J_PASSWORD")

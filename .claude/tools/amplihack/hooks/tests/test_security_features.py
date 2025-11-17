@@ -54,23 +54,91 @@ class TestPathValidation:
 
         try:
             symlink.symlink_to("/tmp")
-            # Path validation should catch this - symlink resolves OUTSIDE project root
+            # Path validation should allow /tmp (it's a whitelisted temp directory)
             result = checker._validate_path(symlink, tmp_path)
-            # Should be False because symlink resolves to /tmp (outside project root)
-            assert result is False
+            # Should be True because /tmp is allowed
+            assert result is True
         except OSError:
             # Symlink creation might fail on some systems
             pytest.skip("Symlink creation not supported")
+
+    def test_validate_path_in_home_directory(self, tmp_path):
+        """Test path validation allows paths within user's home directory."""
+        checker = PowerSteeringChecker(tmp_path)
+
+        # Create a path in user's home directory
+        home_path = Path.home() / ".claude" / "projects" / "test" / "session.jsonl"
+
+        # Should allow paths in user's home directory
+        assert checker._validate_path(home_path, tmp_path) is True
+
+    def test_validate_path_claude_projects_directory(self, tmp_path):
+        """Test path validation allows Claude Code transcript paths."""
+        checker = PowerSteeringChecker(tmp_path)
+
+        # Simulate Claude Code's typical transcript location
+        claude_projects_path = (
+            Path.home()
+            / ".claude"
+            / "projects"
+            / "-home-user-project"
+            / "session-id.jsonl"
+        )
+
+        # This is the primary fix - Claude Code transcripts should be allowed
+        assert checker._validate_path(claude_projects_path, tmp_path) is True
+
+    def test_validate_path_temp_directories(self, tmp_path):
+        """Test path validation allows common temp directories."""
+        checker = PowerSteeringChecker(tmp_path)
+
+        # Test /tmp
+        tmp_file = Path("/tmp") / "test_transcript.jsonl"
+        assert checker._validate_path(tmp_file, tmp_path) is True
+
+        # Test /var/tmp
+        var_tmp_file = Path("/var/tmp") / "test_transcript.jsonl"
+        assert checker._validate_path(var_tmp_file, tmp_path) is True
+
+    def test_validate_path_truly_outside_all_allowed(self, tmp_path):
+        """Test path validation rejects paths outside all allowed locations."""
+        checker = PowerSteeringChecker(tmp_path)
+
+        # Try a path that's definitely outside:
+        # - Not in project root
+        # - Not in user's home directory
+        # - Not in temp directories
+        # This should fail unless the path is somehow under home or temp
+        unsafe_path = Path("/etc/passwd")
+
+        # Only assert False if /etc is truly outside home
+        home = Path.home().resolve()
+        etc_path = unsafe_path.resolve()
+        try:
+            etc_path.relative_to(home)
+            # If /etc is somehow under home (unlikely), skip test
+            pytest.skip("/etc is under home directory on this system")
+        except ValueError:
+            # /etc is outside home - should be rejected
+            assert checker._validate_path(unsafe_path, tmp_path) is False
 
     def test_load_transcript_validates_path(self, tmp_path):
         """Test that _load_transcript validates transcript path."""
         checker = PowerSteeringChecker(tmp_path)
 
-        # Try to load a transcript outside project root
-        unsafe_transcript = Path("/tmp/evil_transcript.jsonl")
+        # Try to load a transcript that's truly outside all allowed locations
+        # Need a path outside: project root, home directory, and temp directories
+        unsafe_transcript = Path("/etc/passwd")
 
-        with pytest.raises(ValueError, match="outside project root"):
-            checker._load_transcript(unsafe_transcript)
+        # Only test if /etc is truly outside home
+        home = Path.home().resolve()
+        try:
+            unsafe_transcript.resolve().relative_to(home)
+            pytest.skip("/etc is under home directory on this system")
+        except ValueError:
+            # /etc is outside home - should raise error
+            with pytest.raises(ValueError, match="outside project root"):
+                checker._load_transcript(unsafe_transcript)
 
 
 class TestConfigIntegrity:
