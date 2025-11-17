@@ -168,7 +168,7 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
-        exclude: '^(\.claude/tools/amplihack/hooks/.*\.py$|\.claude/skills/.*/scripts/.*\.py$)'
+        exclude: '^(\.claude/tools/amplihack/.*\.py$|\.claude/skills/.*/scripts/.*\.py$)'
 
       # Dependency validation - ensures optional deps have try/except
       - id: check-dependencies

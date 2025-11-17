@@ -1675,3 +1675,160 @@ if container_ports:
 - **Self-Healing**: System automatically corrects stale configuration
 - **Zero-BS**: No workarounds, addresses root cause directly
 - **Reality Over Configuration**: Trust Docker's actual state, not config files
+
+---
+
+## Power Steering Mode Branch Divergence (2025-11-16)
+
+### Issue
+
+User expected "power steering mode stop hook feature" from recent PR to be on by default, but it wasn't activating during session stop. Feature appeared to be disabled or broken.
+
+### Root Cause
+
+**Not a configuration bug - feature was completely missing from branch**. The branch `chore/skill-builder-progressive-disclosure` diverged from `main` at commit `9b0cac42` **BEFORE** the power steering feature was merged in commit `e103a6ca` (PR #1351).
+
+**Timeline**:
+- Merge base: `9b0cac42` "fix: Update hooks to use current project directory"
+- Branch diverged: `0df062d1` "feat: Update skill builder to emphasize progressive disclosure"
+- Power steering added: `e103a6ca` "feat: Implement Complete Power-Steering Mode" (6 commits ahead on main)
+- Current main: `c72e80c3` (includes power steering + 5 more commits)
+
+**Missing Components**: 11 files (5,243 lines of code):
+- `.claude/tools/amplihack/.power_steering_config` - Main config with `"enabled": true`
+- `.claude/tools/amplihack/considerations.yaml` - All 21 considerations
+- `.claude/tools/amplihack/hooks/power_steering_checker.py` - Core checker (1,875 lines)
+- `.claude/tools/amplihack/hooks/claude_power_steering.py` - Claude SDK integration (301 lines)
+- Plus 7 more files (documentation, tests, templates)
+
+### Solution
+
+**Sync branch with main to obtain power steering feature**:
+
+```bash
+# Recommended: Rebase with stash
+git stash push -m "WIP: skill-builder changes"
+git fetch origin
+git rebase origin/main
+# Resolve conflicts (likely .claude/settings.json)
+git stash pop
+pre-commit run --all-files
+git push origin chore/skill-builder-progressive-disclosure --force-with-lease
+```
+
+**Verification after sync**:
+```bash
+# Confirm config exists with enabled: true
+cat .claude/tools/amplihack/.power_steering_config | grep "enabled"
+
+# Should show: "enabled": true
+```
+
+### Key Learnings
+
+1. **Branch Divergence Creates Feature Gaps** - Feature branches can miss important changes merged to main after divergence
+2. **"Feature Not Working" Can Mean "Feature Not Present"** - Always check if feature exists before debugging configuration
+3. **Git Branch Comparison is Diagnostic Tool** - `git log --oneline --graph HEAD...origin/main` reveals divergence and missing commits
+4. **Power Steering Feature is Comprehensive** - 11 files, 5,243 lines covering:
+   - 21 considerations across 6 categories (session completion, workflow, quality, testing, PR content, CI/CD)
+   - AI-powered transcript analysis using Claude SDK
+   - Fail-open philosophy (never blocks on errors)
+   - Three-layer disable system (semaphore, env var, config)
+   - 75 passing tests
+
+5. **User Expectations Were Correct** - Feature IS enabled by default (`"enabled": true` in config) when present
+
+### Prevention
+
+**Before investigating "feature not working"**:
+1. Verify feature exists on current branch
+2. Check git history for when feature was added
+3. Compare branch to main: `git log HEAD...origin/main`
+4. Look for missing files that should exist
+
+**Signs of Branch Divergence Issues**:
+- Feature exists on main but not current branch
+- Recent PRs mention feature but files don't exist
+- Error messages reference files that aren't present
+- Configuration files are missing entirely
+
+**Debugging Approach**:
+```bash
+# 1. Check if files exist
+ls -la .claude/tools/amplihack/.power_steering_config
+
+# 2. Find when feature was added
+git log --all --oneline --grep="power steering"
+
+# 3. Check which branches have the feature
+git branch --contains <commit-hash>
+
+# 4. Compare current branch to main
+git log --oneline --graph HEAD...origin/main
+
+# 5. Identify merge base
+git merge-base HEAD origin/main
+```
+
+### What Power Steering Does
+
+**Power Steering Mode** is an intelligent session completion verification system:
+
+1. **Analyzes Transcripts** - Reviews conversation history before allowing session end
+2. **Checks 21 Considerations** - Validates work completeness across 6 categories:
+   - Session Completion & Progress (8 checks)
+   - Workflow Process Adherence (2 checks)
+   - Code Quality & Philosophy Compliance (2 checks)
+   - Testing & Local Validation (2 checks)
+   - PR Content & Quality (4 checks)
+   - CI/CD & Mergeability Status (3 checks)
+
+3. **Blocks Incomplete Work** - Prevents session end if critical checks fail
+4. **Provides Continuation Prompts** - Gives actionable guidance for completing work
+5. **Uses Claude SDK** - AI-powered analysis instead of simple pattern matching
+6. **Enabled by Default** - `"enabled": true` in `.power_steering_config`
+
+### Files Involved
+
+**Core Implementation**:
+- `power_steering_checker.py` (1,875 lines) - Main checker with 21 consideration methods
+- `claude_power_steering.py` (301 lines) - Claude SDK integration
+- `stop.py` (modified) - Integration point in session stop hook
+
+**Configuration**:
+- `.power_steering_config` (JSON) - Global enable/disable, version tracking
+- `considerations.yaml` (237 lines) - All 21 considerations with descriptions, severity, enabled flags
+
+**Documentation & Templates**:
+- `HOW_TO_CUSTOMIZE_POWER_STEERING.md` (636 lines) - Complete user guide
+- `power_steering_prompt.txt` (74 lines) - Claude SDK prompt template
+
+**Testing**:
+- 5 test files with 75 passing tests covering all functionality
+
+### Verification
+
+**After syncing branch**:
+- ✅ Power steering config exists with `"enabled": true`
+- ✅ All 21 considerations loaded from `considerations.yaml`
+- ✅ Integration in `stop.py` active
+- ✅ 75 tests passing
+- ✅ Feature functions as user expected
+
+### Related Issues/PRs
+
+- **PR #1351**: "feat: Implement Complete Power-Steering Mode - All 21 Considerations + User Customization"
+- **Commit**: `e103a6ca` (merged to main after branch divergence)
+- **Investigation**: Used INVESTIGATION_WORKFLOW.md (6 phases) for systematic analysis
+
+### Pattern Recognition
+
+**Workflow Used**: INVESTIGATION_WORKFLOW.md proved highly effective:
+- Phase 1: Scope Definition - Clarified what power steering should do
+- Phase 2: Exploration Strategy - Planned agent deployment
+- Phase 3: Parallel Deep Dives - analyzer + integration agents in parallel
+- Phase 4: Verification - Confirmed findings with git commands
+- Phase 5: Synthesis - Comprehensive explanation of root cause
+- Phase 6: Knowledge Capture - This DISCOVERIES.md entry
+
+**Agent Orchestration**: Deployed prompt-writer, analyzer, and integration agents in parallel for efficient investigation. All three agents provided valuable complementary perspectives.

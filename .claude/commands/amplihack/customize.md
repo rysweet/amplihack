@@ -128,6 +128,14 @@ Changes the active workflow in USER_PREFERENCES.md.
 - **interactive**: Regular check-ins and confirmations (default)
 - **guided**: Step-by-step with user approval
 
+### auto_update
+
+Controls automatic updating of .claude/ directory when version mismatch detected:
+
+- **always**: Always auto-update without prompting
+- **never**: Never auto-update (just show warning)
+- **ask**: Prompt user each time (default)
+
 ### preferred_languages
 
 Comma-separated list of preferred programming languages/frameworks
@@ -329,7 +337,7 @@ Use Edit tool on .claude/context/USER_PREFERENCES.md:
 Before making changes, validate:
 
 1. **Preference names** must match exactly (case-insensitive matching is acceptable):
-   - verbosity, communication_style, update_frequency, priority_type, collaboration_style, preferred_languages, coding_standards, workflow_preferences, consensus_depth
+   - verbosity, communication_style, update_frequency, priority_type, collaboration_style, auto_update, preferred_languages, coding_standards, workflow_preferences, consensus_depth
 
 2. **Enumerated values** must match allowed options:
    - verbosity: concise, balanced, detailed
@@ -337,6 +345,7 @@ Before making changes, validate:
    - update_frequency: minimal, regular, frequent
    - priority_type: features, bugs, performance, security, balanced
    - collaboration_style: independent, interactive, guided
+   - auto_update: always, never, ask
    - consensus_depth: quick, balanced, comprehensive
 
 3. **Free-form values** (preferred_languages, coding_standards, workflow_preferences) can be any non-empty string
