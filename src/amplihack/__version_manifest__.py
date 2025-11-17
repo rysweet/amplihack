@@ -15,8 +15,8 @@ VERSION = "0.1.0"  # TODO: Sync with __init__.py in CI
 # This changes whenever files in .claude/ are modified
 CLAUDE_DIR_VERSION = "9b0cac42"  # Current commit
 
-# Last update timestamp (ISO 8601 UTC)
-LAST_UPDATED = datetime.now(timezone.utc).isoformat()
+# Last update timestamp (ISO 8601 UTC) - static constant set during release
+LAST_UPDATED = "2025-11-16T00:00:00+00:00"  # Will be updated by CI/release process
 
 
 def get_version_info() -> dict:
