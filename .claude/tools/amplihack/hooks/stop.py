@@ -265,6 +265,7 @@ class StopHook(HookProcessor):
             - Currently planned but not yet implemented (awaiting schema definition)
         """
         try:
+            # Import from sibling neo4j module (relative to hooks directory)
             from neo4j.learning_capture import capture_neo4j_learnings
 
             session_id = self._get_current_session_id()

@@ -26,7 +26,7 @@ Design Philosophy:
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 def capture_neo4j_learnings(
     project_root: Path,
     session_id: str,
-    neo4j_connection: Optional[object] = None,
+    neo4j_connection: Optional[Any] = None,
 ) -> bool:
     """Capture learning insights from Neo4j during session stop.
 
