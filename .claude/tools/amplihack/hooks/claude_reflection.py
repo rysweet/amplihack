@@ -105,11 +105,12 @@ def format_redirects_context(redirects: Optional[List[Dict]]) -> str:
     if not redirects:
         return ""
 
+    redirect_word = "redirect" if len(redirects) == 1 else "redirects"
     parts = [
         "",
         "## Power-Steering Redirect History",
         "",
-        f"This session had {len(redirects)} power-steering redirect(s) where Claude was blocked from stopping due to incomplete work:",
+        f"This session had {len(redirects)} power-steering {redirect_word} where Claude was blocked from stopping due to incomplete work:",
         "",
     ]
 

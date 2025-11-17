@@ -691,7 +691,7 @@ class PowerSteeringChecker:
 
             # Set permissions on new file
             if redirect_number == 1:
-                redirects_file.chmod(0o644)  # Owner read/write, others read
+                redirects_file.chmod(0o600)  # Owner read/write only for security
 
             self._log(f"Saved redirect #{redirect_number} for session {session_id}", "INFO")
 
