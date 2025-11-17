@@ -5,6 +5,7 @@
 ### Problem Statement
 
 Manual test creation and maintenance is:
+
 - **Time-consuming**: 30-60 minutes to write comprehensive tests for new features
 - **Coverage-incomplete**: Easy to miss edge cases and error paths
 - **Maintenance-heavy**: Tests break when code changes, require manual updates
@@ -16,6 +17,7 @@ Manual test creation and maintenance is:
 Apply the 5-question decision framework:
 
 **Q1: Well-defined objective but flexible path?**
+
 - **YES**: Objective is clear (generate and run comprehensive tests)
 - Multiple paths:
   - Simple functions: Basic unit tests
@@ -25,6 +27,7 @@ Apply the 5-question decision framework:
 - Success criteria: ≥ 80% coverage, all tests pass
 
 **Q2: Multiple phases with dependencies?**
+
 - **YES**: 4 phases with dependencies
   1. Code Analysis (understand what to test)
   2. Test Generation (create tests based on analysis)
@@ -32,6 +35,7 @@ Apply the 5-question decision framework:
   4. Coverage Analysis (verify completeness, suggest improvements)
 
 **Q3: Autonomous recovery valuable?**
+
 - **YES**: Test failures are common and often fixable
   - Flaky tests: Retry with better waits
   - Import errors: Auto-fix imports
@@ -39,6 +43,7 @@ Apply the 5-question decision framework:
   - Mock setup issues: Auto-configure mocks
 
 **Q4: Context affects approach?**
+
 - **YES**: Test strategy varies by:
   - Code complexity (simple vs complex algorithms)
   - Code type (pure functions vs stateful classes vs APIs)
@@ -46,6 +51,7 @@ Apply the 5-question decision framework:
   - Flakiness history (stable vs intermittent failures)
 
 **Q5: Complexity justified?**
+
 - **YES**: High-value automation
   - Frequency: Every feature (50-100 times per year)
   - Manual time: 30-60 minutes per feature
@@ -62,11 +68,13 @@ Apply the 5-question decision framework:
 # Goal: Intelligent Test Generation and Execution
 
 ## Objective
+
 Analyze code to understand functionality, generate comprehensive tests
 covering happy paths and edge cases, execute tests with intelligent retry
 for flaky failures, and verify coverage thresholds are met.
 
 ## Success Criteria
+
 - Code analyzed to identify test requirements
 - Tests generated for all public functions/methods
 - Coverage ≥ 80% (line coverage)
@@ -75,6 +83,7 @@ for flaky failures, and verify coverage thresholds are met.
 - Flaky tests handled with retries or better assertions
 
 ## Constraints
+
 - Must preserve existing tests (don't overwrite)
 - Test framework: pytest (Python)
 - Max 5 test iterations (prevent infinite loops)
@@ -82,6 +91,7 @@ for flaky failures, and verify coverage thresholds are met.
 - No external dependencies (use mocks)
 
 ## Context
+
 - Language: Python
 - Framework: pytest
 - Target: New feature functions or classes
@@ -103,6 +113,7 @@ execution_plan = planner.generate_plan(goal_def)
 ```
 
 **Phase 1: Code Analysis** (5 minutes)
+
 - Parse source code (AST analysis)
 - Identify functions, classes, methods
 - Extract function signatures, docstrings
@@ -111,12 +122,14 @@ execution_plan = planner.generate_plan(goal_def)
 
 Dependencies: None
 Success indicators:
+
 - All public functions identified
 - Signatures extracted
 - Complexity assessed
 - Dependencies mapped
 
 **Phase 2: Test Generation** (10 minutes, depends on Phase 1)
+
 - Generate unit tests for simple functions
 - Generate property-based tests for complex logic
 - Generate integration tests for APIs
@@ -125,12 +138,14 @@ Success indicators:
 
 Dependencies: Phase 1 (needs code analysis)
 Success indicators:
+
 - Tests generated for all functions
 - Edge cases covered
 - Fixtures/mocks created
 - Test files organized properly
 
 **Phase 3: Test Execution** (15 minutes, depends on Phase 2)
+
 - Run pytest on generated tests
 - Capture failures and analyze
 - Apply fixes for common failures
@@ -139,12 +154,14 @@ Success indicators:
 
 Dependencies: Phase 2 (needs generated tests)
 Success indicators:
+
 - All tests executed
 - Failures analyzed and fixed
 - Flaky tests identified and handled
 - Final run: all tests pass
 
 **Phase 4: Coverage Analysis** (5 minutes, depends on Phase 3)
+
 - Run pytest with coverage
 - Analyze coverage report
 - Identify uncovered lines
@@ -153,6 +170,7 @@ Success indicators:
 
 Dependencies: Phase 3 (needs passing tests)
 Success indicators:
+
 - Coverage ≥ 80%
 - Coverage gaps identified
 - Suggestions for improvements
@@ -212,6 +230,7 @@ packager.package(
 The agent adapts based on code characteristics:
 
 **Scenario 1: Simple Pure Function** (basic unit tests)
+
 ```python
 # Code to test
 def calculate_total(items: List[float]) -> float:
@@ -237,6 +256,7 @@ def test_calculate_total_negative_values():
 ```
 
 **Scenario 2: Complex Logic** (property-based tests)
+
 ```python
 # Code to test
 def binary_search(arr: List[int], target: int) -> int:
@@ -281,6 +301,7 @@ def test_binary_search_edge_single():
 ```
 
 **Scenario 3: API Endpoint** (integration tests with mocks)
+
 ```python
 # Code to test
 from flask import Flask, jsonify, request
@@ -338,6 +359,7 @@ def test_create_user_invalid_email(client, mock_database):
 ```
 
 **Scenario 4: Flaky Test** (intelligent retry with better assertions)
+
 ```python
 # Original flaky test (timing-sensitive)
 def test_async_operation():
@@ -379,6 +401,7 @@ async def test_async_operation_asyncio():
 ### Error Recovery and Fix Strategies
 
 **Fix Strategy 1: Import Errors** (auto-fix imports)
+
 ```python
 # Test failure: ModuleNotFoundError: No module named 'calculator'
 # Agent analyzes and fixes:
@@ -405,6 +428,7 @@ def fix_import_errors(test_file: Path, source_file: Path):
 ```
 
 **Fix Strategy 2: Assertion Errors** (improve assertions)
+
 ```python
 # Test failure: AssertionError (no clear message)
 def test_calculate_total():
@@ -423,6 +447,7 @@ def test_calculate_total_improved():
 ```
 
 **Fix Strategy 3: Mock Setup** (auto-configure mocks)
+
 ```python
 # Test failure: AttributeError: 'MagicMock' object has no attribute 'return_value'
 # Agent detects missing mock setup:
@@ -638,6 +663,7 @@ Phase 3: ⚠ PARTIAL SUCCESS (Max iterations reached)
 ## Lessons Learned
 
 **Benefits Realized**:
+
 1. **Time savings**: 18 minutes automated vs 30-60 minutes manual
 2. **Coverage**: 94.4% achieved automatically (better than manual)
 3. **Edge cases**: 8 edge case tests generated (often missed manually)
@@ -645,18 +671,21 @@ Phase 3: ⚠ PARTIAL SUCCESS (Max iterations reached)
 5. **Self-fixing**: Fixed 1 assertion error automatically
 
 **Challenges Encountered**:
+
 1. **Complex mocks**: Multi-level mocking required manual intervention
 2. **Code bugs**: Test revealed algorithm bug (not test issue)
 3. **Async testing**: Required pytest-asyncio (dependency management)
 4. **Property-based tests**: Hypothesis integration added complexity
 
 **Philosophy Compliance**:
+
 - **Ruthless simplicity**: 4 clear phases, straightforward logic
 - **Single responsibility**: Each phase focused (analyze, generate, execute, validate)
 - **Modularity**: Test generators (unit, property-based, integration) are reusable
 - **Regeneratable**: Can rebuild tests from code analysis
 
 **When to Use This Pattern**:
+
 - New features requiring comprehensive tests
 - Legacy code lacking test coverage
 - Refactoring (ensure behavior preserved)
@@ -664,6 +693,7 @@ Phase 3: ⚠ PARTIAL SUCCESS (Max iterations reached)
 - CI failures from missing tests
 
 **When NOT to Use**:
+
 - Simple one-liner functions (manual test faster)
 - UI tests (requires different approach)
 - Performance tests (needs benchmarking framework)

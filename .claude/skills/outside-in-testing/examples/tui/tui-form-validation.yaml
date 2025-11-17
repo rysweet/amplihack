@@ -8,7 +8,6 @@ scenario:
     Verifies TUI form handling including field navigation, input validation,
     error messages, and successful submission with complex multi-field forms.
   type: tui
-
   level: 2
 
   tags: [tui, forms, validation, input, intermediate]
@@ -248,7 +247,6 @@ scenario:
   cleanup:
     - action: stop_application
       force: false
-
 # Expected Form States:
 
 # Initial Form:

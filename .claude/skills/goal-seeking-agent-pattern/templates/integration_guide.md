@@ -139,6 +139,7 @@ class GoalDefinition:
 ```
 
 **Domain Classification**:
+
 - `data-processing`: Data transformation, analysis, ETL
 - `security-analysis`: Vulnerability scanning, audits
 - `automation`: Workflow automation, scheduling
@@ -471,7 +472,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install amplihack
         run: pip install amplihack
@@ -675,20 +676,24 @@ amplihack goal-agent-generator execute \
 ## Getting Help
 
 **Module Issues**:
+
 - Check logs: `.claude/runtime/logs/<session_id>/`
 - Review agent bundle: `<agent-path>/metadata.json`
 
 **Integration Issues**:
+
 - Review this integration guide
 - Check API reference above
 - Study examples in `examples/` directory
 
 **Design Issues**:
+
 - Use decision framework (SKILL.md Section 2)
 - Review architecture pattern (SKILL.md Section 3)
 - Consult design checklist (SKILL.md Section 6)
 
 **Community**:
+
 - Contribute improvements to amplihack repository
 - Share your goal-seeking agent patterns
 - Document reusable skill templates

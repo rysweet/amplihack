@@ -54,6 +54,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 **File**: `.claude/tools/amplihack/hooks/power_steering_checker.py`
 
 **Responsibilities**:
+
 - Analyze session transcript completeness
 - Evaluate 21 considerations across 5 categories
 - Generate continuation prompts for incomplete work
@@ -61,6 +62,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 - Manage semaphores to prevent recursion
 
 **Key Methods**:
+
 - `check(transcript_path, session_id) -> PowerSteeringResult`
 - `_analyze_considerations(transcript, session_id) -> ConsiderationAnalysis`
 - `_generate_continuation_prompt(analysis) -> str`
@@ -71,6 +73,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 **File**: `.claude/tools/amplihack/hooks/stop.py` (MODIFIED)
 
 **Changes**:
+
 - Add `PowerSteeringChecker` import
 - Add `_should_run_power_steering()` method
 - Add power-steering check after reflection
@@ -82,6 +85,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 **File**: `.claude/tools/amplihack/.power_steering_config` (NEW)
 
 **Format**: JSON with defaults
+
 ```json
 {
   "enabled": true,
@@ -95,11 +99,13 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 ### 4. Control Mechanisms
 
 **Three-Layer Disable System** (priority order):
+
 1. Semaphore file: `.claude/runtime/power-steering/.disabled` (highest)
 2. Environment variable: `AMPLIHACK_SKIP_POWER_STEERING` (medium)
 3. Config file: `{"enabled": false}` (lowest)
 
 **Slash Commands**:
+
 - `/amplihack:disable-power-steering` - Create semaphore
 - `/amplihack:enable-power-steering` - Remove semaphore
 - `/amplihack:power-steering-status` - Show status
@@ -108,6 +114,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 ## 21 Considerations Framework
 
 ### Category 1: Session Completion & Progress (8 checks)
+
 1. Autonomous question detection
 2. Objective completion verification
 3. TODO items completion
@@ -118,24 +125,29 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 8. Documentation organization
 
 ### Category 2: Workflow Process Adherence (2 checks)
+
 9. Investigation workflow completion
 10. Development workflow adherence
 
 ### Category 3: Code Quality & Philosophy (2 checks)
+
 11. Philosophy adherence (zero-BS)
 12. No shortcuts (disabled checks)
 
 ### Category 4: Testing & Local Validation (2 checks)
+
 13. Local testing execution
 14. UI interactive testing
 
 ### Category 5: PR Content & Quality (4 checks)
+
 15. No unrelated changes
 16. No root directory files
 17. PR description currency
 18. Review concern resolution
 
 ### Category 6: CI/CD & Mergeability (3 checks)
+
 19. Branch currency (rebase needed?)
 20. Pre-commit/CI alignment
 21. CI status and mergeability
@@ -143,10 +155,12 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 ## Data Flow
 
 ### Input
+
 - **transcript_path**: Path to session JSONL transcript
 - **session_id**: Unique session identifier
 
 ### Output (PowerSteeringResult)
+
 ```python
 @dataclass
 class PowerSteeringResult:
@@ -157,6 +171,7 @@ class PowerSteeringResult:
 ```
 
 ### Transcript Analysis
+
 1. Load JSONL file
 2. Parse messages (role, content, tool_calls)
 3. Extract metadata (files changed, tests run, git operations)
@@ -164,6 +179,7 @@ class PowerSteeringResult:
 5. Aggregate results by severity (blocker vs warning)
 
 ### Decision Logic
+
 ```python
 if any_blocker_failed:
     return block_with_continuation_prompt
@@ -209,6 +225,7 @@ Specs/                                  # Architecture specs
 ## Implementation Phases
 
 ### Phase 1: MVP (2-3 days)
+
 - Core PowerSteeringChecker module
 - Top 5 critical checkers
 - Basic integration with stop.py
@@ -218,6 +235,7 @@ Specs/                                  # Architecture specs
 **Deliverables**: Working power-steering with essential checks
 
 ### Phase 2: Full Implementation (3-4 days)
+
 - All 21 consideration checkers
 - Comprehensive test coverage
 - Enhanced Q&A detection
@@ -226,6 +244,7 @@ Specs/                                  # Architecture specs
 **Deliverables**: Complete consideration set
 
 ### Phase 3: Enhanced UX (2 days)
+
 - Rich session summaries
 - Status command
 - Pretty console output
@@ -234,6 +253,7 @@ Specs/                                  # Architecture specs
 **Deliverables**: Production-quality user experience
 
 ### Phase 4: External Configuration (2 days)
+
 - Config file support with validation
 - External considerations JSON
 - Config management command
@@ -242,6 +262,7 @@ Specs/                                  # Architecture specs
 **Deliverables**: Flexible configuration system
 
 ### Phase 5: Production Hardening (2-3 days)
+
 - Performance optimization (<300ms target)
 - Comprehensive error handling
 - Metrics and monitoring
@@ -250,6 +271,7 @@ Specs/                                  # Architecture specs
 **Deliverables**: Production-ready system
 
 ### Phase 6: Rollout (1 week)
+
 - Gradual enablement (disabled → opt-in → default)
 - User feedback collection
 - Iteration based on metrics
@@ -263,12 +285,14 @@ Specs/                                  # Architecture specs
 ### Core Principle: Fail-Open
 
 Power-steering NEVER blocks users due to bugs. On any error:
+
 1. Log error with full context
 2. Track metric for monitoring
 3. Return `approve` decision
 4. Continue session stop
 
 ### Error Categories
+
 - **Transcript errors**: Missing, malformed, too large → approve
 - **Checker crashes**: Individual checker fails → treat as satisfied
 - **Timeouts**: Analysis too slow → approve
@@ -276,6 +300,7 @@ Power-steering NEVER blocks users due to bugs. On any error:
 - **Configuration errors**: Invalid config → use defaults
 
 ### Timeout Protection
+
 - Per-checker timeout: 5 seconds
 - Total analysis timeout: 30 seconds (configurable)
 - On timeout: approve and log
@@ -283,16 +308,19 @@ Power-steering NEVER blocks users due to bugs. On any error:
 ## Security Considerations
 
 ### Path Safety
+
 - Validate all file paths within project_root
 - Prevent directory traversal attacks
 - Resolve symlinks safely
 
 ### Transcript Privacy
+
 - Transcripts may contain sensitive data
 - Never send to external services
 - All analysis local-only
 
 ### Semaphore Files
+
 - Check age to prevent staleness
 - Handle race conditions gracefully
 - Clean up old semaphores periodically
@@ -300,17 +328,20 @@ Power-steering NEVER blocks users due to bugs. On any error:
 ## Performance Targets
 
 ### Latency
+
 - **P50**: <100ms
 - **P95**: <300ms
 - **P99**: <1000ms
 - **Timeout**: 30 seconds (hard limit)
 
 ### Resource Usage
+
 - **Memory**: <50MB for transcript analysis
 - **Disk**: <1MB per session (summary + semaphores)
 - **CPU**: Minimal (mostly I/O bound)
 
 ### Optimizations
+
 - Stream large transcripts instead of loading all
 - Cache transcript metadata
 - Parallel checker execution (if beneficial)
@@ -319,6 +350,7 @@ Power-steering NEVER blocks users due to bugs. On any error:
 ## Testing Strategy
 
 ### Unit Tests
+
 - Each consideration checker independently
 - Configuration loading with edge cases
 - Semaphore handling (creation, detection, staleness)
@@ -326,12 +358,14 @@ Power-steering NEVER blocks users due to bugs. On any error:
 - Prompt and summary generation
 
 ### Integration Tests
+
 - Full flow with real transcript files
 - stop.py integration
 - Disable mechanisms
 - Error handling paths
 
 ### Edge Case Tests
+
 - Malformed transcripts
 - Missing files
 - Permission errors
@@ -339,6 +373,7 @@ Power-steering NEVER blocks users due to bugs. On any error:
 - Concurrent execution
 
 ### Performance Tests
+
 - Large transcripts (>10MB)
 - Many considerations
 - Timeout scenarios
@@ -347,18 +382,21 @@ Power-steering NEVER blocks users due to bugs. On any error:
 ## Success Metrics
 
 ### Technical
+
 - **Uptime**: >95% (no crashes)
 - **Latency**: P95 <300ms
 - **Error rate**: <1%
 - **False positive rate**: <5%
 
 ### User Experience
+
 - **Correct blocks**: >70% of incomplete sessions identified
 - **False positives**: <5% (blocking complete sessions)
 - **Disable rate**: <15% (users disabling feature)
 - **User satisfaction**: >60% positive feedback
 
 ### Impact
+
 - **Incomplete PRs**: Reduce by >30%
 - **Review cycles**: Reduce by >20%
 - **CI failures**: Reduce by >15%
@@ -366,27 +404,32 @@ Power-steering NEVER blocks users due to bugs. On any error:
 ## Rollback Strategy
 
 ### Immediate (<5 min)
+
 ```bash
 export AMPLIHACK_SKIP_POWER_STEERING=1
 ```
 
 ### Short-term (<1 hour)
+
 ```json
-{"enabled": false}
+{ "enabled": false }
 ```
 
 ### Long-term (<1 day)
+
 Remove power-steering call from stop.py
 
 ## Dependencies
 
 ### Required
+
 - Stop hook system working
 - Transcript files accessible
 - Runtime directory writable
 - Session ID available
 
 ### Optional
+
 - Claude Code CLI access (for --no-power-steering flag)
 - Configuration file (defaults work without)
 - External considerations file (hardcoded fallback)
@@ -394,14 +437,17 @@ Remove power-steering call from stop.py
 ## Integration Points
 
 ### Upstream (What Calls Us)
+
 - `stop.py` hook orchestrator
 
 ### Downstream (What We Call)
+
 - Transcript JSONL parser (built-in)
 - File system operations (stdlib)
 - Logging and metrics (HookProcessor pattern)
 
 ### External Systems (None)
+
 - All analysis is local
 - No network calls
 - No external services
@@ -409,18 +455,21 @@ Remove power-steering call from stop.py
 ## Extensibility
 
 ### Adding New Considerations
+
 1. Add to CONSIDERATIONS list (Phase 1) or JSON file (Phase 2)
 2. Implement `_check_<consideration_id>()` method
 3. Add unit tests
 4. Update documentation
 
 ### Custom Consideration Files
+
 1. Copy `default.json` to `custom.json`
 2. Modify metadata (severity, description)
 3. Update config: `"considerations_file": "custom.json"`
 4. Note: Custom checkers require code changes
 
 ### Plugin Architecture (Future)
+
 - Consider allowing external checker plugins
 - Dynamic loading of checker modules
 - Versioning and compatibility checks
@@ -428,6 +477,7 @@ Remove power-steering call from stop.py
 ## Documentation
 
 ### User-Facing
+
 - Feature overview and benefits
 - How to enable/disable
 - Configuration reference
@@ -435,6 +485,7 @@ Remove power-steering call from stop.py
 - FAQ
 
 ### Developer-Facing
+
 - Architecture (this document)
 - Module specifications
 - Integration guide
@@ -442,6 +493,7 @@ Remove power-steering call from stop.py
 - Contribution guidelines
 
 ### Operational
+
 - Deployment procedures
 - Monitoring and alerting
 - Incident response
@@ -468,6 +520,7 @@ Power-steering mode follows amplihack's philosophy of ruthless simplicity:
 - **Zero-BS**: No stubs, every function works
 
 The architecture is designed for:
+
 - **Reliability**: Comprehensive error handling
 - **Performance**: <300ms P95 latency
 - **Maintainability**: Clear module boundaries

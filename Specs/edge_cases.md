@@ -17,9 +17,11 @@ Document all edge cases and error handling strategies for power-steering.
 ### 1. Transcript-Related Edge Cases
 
 #### 1.1 Missing Transcript File
+
 **Scenario**: `transcript_path` doesn't exist
 
 **Handling**:
+
 ```python
 if not transcript_path.exists():
     self.logger.warning(f"Transcript file not found: {transcript_path}")
@@ -29,9 +31,11 @@ if not transcript_path.exists():
 **Rationale**: Can't analyze what doesn't exist, allow stop
 
 #### 1.2 Empty Transcript
+
 **Scenario**: Transcript file exists but is empty (0 bytes or no messages)
 
 **Handling**:
+
 ```python
 messages = self._load_transcript(transcript_path)
 if not messages:
@@ -42,9 +46,11 @@ if not messages:
 **Rationale**: Nothing to analyze, allow stop
 
 #### 1.3 Malformed JSONL
+
 **Scenario**: Transcript contains invalid JSON lines
 
 **Handling**:
+
 ```python
 def _load_transcript(self, transcript_path: Path) -> List[Dict]:
     messages = []
@@ -73,9 +79,11 @@ def _load_transcript(self, transcript_path: Path) -> List[Dict]:
 **Rationale**: Try to parse what we can, but if too broken, give up
 
 #### 1.4 Very Large Transcript (>10MB)
+
 **Scenario**: Long session with huge transcript file
 
 **Handling**:
+
 ```python
 def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
     # Check file size before loading
@@ -90,9 +98,11 @@ def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
 **Rationale**: Prevent memory issues and timeouts
 
 #### 1.5 Corrupted Transcript (Valid JSON but Wrong Structure)
+
 **Scenario**: Messages don't have expected fields (role, content, etc.)
 
 **Handling**:
+
 ```python
 def _validate_message(self, msg: Dict) -> bool:
     """Check if message has expected structure."""
@@ -115,9 +125,11 @@ def _load_transcript(self, transcript_path: Path) -> List[Dict]:
 ### 2. Session-Related Edge Cases
 
 #### 2.1 Missing Session ID
+
 **Scenario**: `session_id` is None or empty string
 
 **Handling**:
+
 ```python
 if not session_id:
     session_id = self._generate_fallback_session_id()
@@ -127,9 +139,11 @@ if not session_id:
 **Rationale**: Generate fallback ID to continue, but log warning
 
 #### 2.2 Duplicate Session IDs
+
 **Scenario**: Same session_id used multiple times (race condition)
 
 **Handling**:
+
 ```python
 def _mark_complete(self, session_id: str):
     semaphore = self.runtime_dir / f".{session_id}_completed"
@@ -144,9 +158,11 @@ def _mark_complete(self, session_id: str):
 **Rationale**: First write wins, others skip gracefully
 
 #### 2.3 Concurrent Sessions with Same ID
+
 **Scenario**: Multiple sessions running simultaneously with same ID
 
 **Handling**:
+
 ```python
 def _already_ran(self, session_id: str) -> bool:
     semaphore = self.runtime_dir / f".{session_id}_completed"
@@ -169,9 +185,11 @@ def _already_ran(self, session_id: str) -> bool:
 ### 3. Checker-Related Edge Cases
 
 #### 3.1 Checker Method Missing
+
 **Scenario**: Consideration references `_check_foo` but method doesn't exist
 
 **Handling**:
+
 ```python
 def _check_consideration(self, consideration: Dict, transcript: List[Dict], session_id: str) -> bool:
     checker_func = getattr(self, consideration['checker'], None)
@@ -186,9 +204,11 @@ def _check_consideration(self, consideration: Dict, transcript: List[Dict], sess
 **Rationale**: Don't block on implementation gaps
 
 #### 3.2 Checker Crashes
+
 **Scenario**: Individual checker raises exception
 
 **Handling**:
+
 ```python
 def _check_consideration(self, consideration: Dict, transcript: List[Dict], session_id: str) -> bool:
     checker_func = getattr(self, consideration['checker'], None)
@@ -209,9 +229,11 @@ def _check_consideration(self, consideration: Dict, transcript: List[Dict], sess
 **Rationale**: One bad checker shouldn't break entire system
 
 #### 3.3 Checker Times Out
+
 **Scenario**: Checker takes too long (infinite loop, network call, etc.)
 
 **Handling**:
+
 ```python
 import signal
 from contextlib import contextmanager
@@ -249,9 +271,11 @@ def _check_consideration(self, consideration: Dict, transcript: List[Dict], sess
 **Rationale**: Don't let slow checkers hang stop hook
 
 #### 3.4 All Checkers Timeout
+
 **Scenario**: Overall analysis takes too long
 
 **Handling**:
+
 ```python
 def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
     try:
@@ -269,9 +293,11 @@ def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
 ### 4. Configuration Edge Cases
 
 #### 4.1 Config File Missing
+
 **Scenario**: `.power_steering_config` doesn't exist
 
 **Handling**:
+
 ```python
 def _load_config(self) -> Dict:
     config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
@@ -284,9 +310,11 @@ def _load_config(self) -> Dict:
 **Rationale**: Use defaults, don't require config file
 
 #### 4.2 Invalid JSON in Config
+
 **Scenario**: Config file contains malformed JSON
 
 **Handling**:
+
 ```python
 def _load_config(self) -> Dict:
     config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
@@ -306,9 +334,11 @@ def _load_config(self) -> Dict:
 **Rationale**: Bad config shouldn't crash power-steering
 
 #### 4.3 Config with Unknown Keys
+
 **Scenario**: Config contains fields not in schema
 
 **Handling**:
+
 ```python
 def _load_config(self) -> Dict:
     raw_config = self._load_raw_config()
@@ -328,9 +358,11 @@ def _load_config(self) -> Dict:
 **Rationale**: Ignore unknown keys, use what we know
 
 #### 4.4 Invalid Config Values
+
 **Scenario**: Config has wrong type or out-of-range values
 
 **Handling**:
+
 ```python
 def _validate_config(self, config: Dict) -> Dict:
     """Validate and sanitize config values."""
@@ -356,9 +388,11 @@ def _validate_config(self, config: Dict) -> Dict:
 ### 5. File System Edge Cases
 
 #### 5.1 Permission Errors (Can't Write Semaphore)
+
 **Scenario**: No write permission for `.claude/runtime/power-steering/`
 
 **Handling**:
+
 ```python
 def _mark_complete(self, session_id: str):
     semaphore = self.runtime_dir / f".{session_id}_completed"
@@ -376,9 +410,11 @@ def _mark_complete(self, session_id: str):
 **Rationale**: Semaphore is optimization, not critical
 
 #### 5.2 Disk Full
+
 **Scenario**: Can't write summary or semaphore due to disk full
 
 **Handling**:
+
 ```python
 def _write_summary(self, session_id: str, summary: str):
     summary_path = self.runtime_dir / session_id / "summary.md"
@@ -394,9 +430,11 @@ def _write_summary(self, session_id: str, summary: str):
 **Rationale**: Summary is enhancement, not critical
 
 #### 5.3 Symlink Attacks
+
 **Scenario**: Malicious user creates symlinks in runtime directory
 
 **Handling**:
+
 ```python
 def _safe_path(self, path: Path) -> Path:
     """Resolve path and ensure it's within project."""
@@ -416,9 +454,11 @@ def _safe_path(self, path: Path) -> Path:
 ### 6. Consideration-Specific Edge Cases
 
 #### 6.1 No Tool Calls in Transcript
+
 **Scenario**: Session with only text chat, no file operations
 
 **Handling**:
+
 ```python
 def _check_objective_complete(self, transcript: List[Dict], session_id: str) -> bool:
     tool_calls = self._extract_tool_calls(transcript)
@@ -434,9 +474,11 @@ def _check_objective_complete(self, transcript: List[Dict], session_id: str) -> 
 **Rationale**: Handle informational sessions differently
 
 #### 6.2 No First User Message (Can't Extract Objective)
+
 **Scenario**: Transcript doesn't start with user message
 
 **Handling**:
+
 ```python
 def _extract_objective(self, transcript: List[Dict]) -> str:
     user_messages = [m for m in transcript if m.get("role") == "user"]
@@ -450,9 +492,11 @@ def _extract_objective(self, transcript: List[Dict]) -> str:
 **Rationale**: Handle edge case gracefully
 
 #### 6.3 CI Status Check Fails (Network Error)
+
 **Scenario**: Can't reach GitHub API to check CI status
 
 **Handling**:
+
 ```python
 def _check_ci_status(self, transcript: List[Dict], session_id: str) -> bool:
     try:
@@ -471,9 +515,11 @@ def _check_ci_status(self, transcript: List[Dict], session_id: str) -> bool:
 ### 7. Recursive Power-Steering Edge Cases
 
 #### 7.1 Power-Steering Blocks, User Responds, Power-Steering Runs Again
+
 **Scenario**: Normal case, should work
 
 **Handling**:
+
 ```python
 def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
     # Check semaphore first
@@ -490,9 +536,11 @@ def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
 **Rationale**: Only mark complete when approving, allow re-checking after blocks
 
 #### 7.2 Power-Steering Blocks Itself (Infinite Loop)
+
 **Scenario**: Power-steering's continuation prompt is seen as incomplete work
 
 **Handling**:
+
 ```python
 def _is_power_steering_prompt(self, message: Dict) -> bool:
     """Detect if message is power-steering continuation prompt."""
@@ -510,6 +558,7 @@ def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
 **Rationale**: Detect and break infinite loops
 
 #### 7.3 Semaphore Stale (Old Session with Same ID)
+
 **Scenario**: Semaphore from old session prevents new analysis
 
 **Handling**: See section 2.3 above (check semaphore age)
@@ -519,9 +568,11 @@ def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
 ### 8. Prompt Generation Edge Cases
 
 #### 8.1 No Failed Considerations (Shouldn't Block but Logic Error)
+
 **Scenario**: Bug causes block with empty failed_considerations list
 
 **Handling**:
+
 ```python
 def _generate_continuation_prompt(self, analysis: ConsiderationAnalysis) -> str:
     if not analysis.failed_considerations:
@@ -535,9 +586,11 @@ def _generate_continuation_prompt(self, analysis: ConsiderationAnalysis) -> str:
 **Rationale**: Handle logic errors gracefully
 
 #### 8.2 All Considerations Warning-Only
+
 **Scenario**: Only warnings failed, no blockers
 
 **Handling**:
+
 ```python
 @property
 def has_blockers(self) -> bool:
@@ -567,14 +620,17 @@ def check(...) -> PowerSteeringResult:
 ### 9. Summary Generation Edge Cases
 
 #### 9.1 Can't Extract Objective
+
 **Scenario**: No clear objective in transcript
 
 **Handling**: Use placeholder "Unknown objective", continue with summary
 
 #### 9.2 No Files Changed
+
 **Scenario**: Session with no file operations
 
 **Handling**:
+
 ```python
 def _extract_files_changed(self, transcript: List[Dict]) -> str:
     files = self._find_file_operations(transcript)
@@ -588,9 +644,11 @@ def _extract_files_changed(self, transcript: List[Dict]) -> str:
 **Rationale**: Acknowledge informational sessions
 
 #### 9.3 Summary Too Large (>10MB)
+
 **Scenario**: Pathological case with huge summary
 
 **Handling**:
+
 ```python
 def _generate_summary(...) -> str:
     summary = "..."  # generate
@@ -610,6 +668,7 @@ def _generate_summary(...) -> str:
 ## Error Handling Patterns
 
 ### Pattern 1: Try-Except-Log-Continue
+
 ```python
 try:
     result = risky_operation()
@@ -619,6 +678,7 @@ except Exception as e:
 ```
 
 ### Pattern 2: Validate-Before-Use
+
 ```python
 if not self._is_valid(input):
     self.logger.warning(f"Invalid input: {input}")
@@ -626,6 +686,7 @@ if not self._is_valid(input):
 ```
 
 ### Pattern 3: Fail-Open on Critical Path
+
 ```python
 try:
     power_steering_result = check_completeness()
@@ -635,6 +696,7 @@ except Exception as e:
 ```
 
 ### Pattern 4: Timeout on Long Operations
+
 ```python
 with timeout(30):
     result = potentially_slow_operation()
@@ -645,18 +707,21 @@ with timeout(30):
 ## Testing Strategy for Edge Cases
 
 ### Unit Tests
+
 - Mock each edge case scenario
 - Verify correct handling
 - Check logging output
 - Verify fail-open behavior
 
 ### Integration Tests
+
 - Real transcript files with edge cases
 - File system permissions tests
 - Timeout simulation
 - Concurrent execution tests
 
 ### Chaos Testing
+
 - Random transcript corruption
 - Random file system errors
 - Random network failures
@@ -667,17 +732,20 @@ with timeout(30):
 ## Monitoring & Alerting
 
 ### Metrics to Track
+
 - `power_steering_errors`: Total errors
 - `power_steering_timeouts`: Timeout count
 - `power_steering_transcript_errors`: Malformed transcripts
 - `power_steering_checker_crashes`: Individual checker failures
 
 ### Alerts
+
 - Alert if error rate >5% over 1 hour
 - Alert if timeout rate >10% over 1 hour
 - Alert if specific checker crashes repeatedly
 
 ### Investigation
+
 - All errors logged with full context
 - Transcript path saved for debugging
 - Stack traces captured
@@ -690,16 +758,19 @@ with timeout(30):
 ### User Experiencing Issues
 
 **Step 1: Immediate Disable**
+
 ```bash
 export AMPLIHACK_SKIP_POWER_STEERING=1
 ```
 
 **Step 2: Report Issue**
+
 - Include session ID
 - Include error message
 - Include transcript path (if accessible)
 
 **Step 3: Re-enable After Fix**
+
 ```bash
 unset AMPLIHACK_SKIP_POWER_STEERING
 ```
@@ -707,19 +778,23 @@ unset AMPLIHACK_SKIP_POWER_STEERING
 ### Developer Debugging
 
 **Step 1: Reproduce**
+
 - Use exact transcript file
 - Same session ID
 - Same environment
 
 **Step 2: Isolate**
+
 - Test each checker independently
 - Identify failing component
 
 **Step 3: Fix & Test**
+
 - Add test case for edge case
 - Verify fix
 - Deploy patch
 
 **Step 4: Monitor**
+
 - Watch metrics for recurrence
 - Verify fix effectiveness

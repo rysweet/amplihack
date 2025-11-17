@@ -107,7 +107,9 @@ dependencies require sequential order.
 
 #### Architect Variants
 
-**Multiple specialized architects** exist for different tasks (see agent frontmatter descriptions for when to use each):
+**Multiple specialized architects** exist for different tasks (see agent
+frontmatter descriptions for when to use each):
+
 - `architect` (core) - General design, problem decomposition, module specs
 - `amplifier-cli-architect` - CLI applications, hybrid code/AI systems
 - `philosophy-guardian` - Philosophy compliance reviews, simplicity validation
@@ -464,7 +466,9 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
 
-**For command selection guidance**, see `docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash commands).
+**For command selection guidance**, see
+`docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash
+commands).
 
 ### Fault Tolerance Patterns
 

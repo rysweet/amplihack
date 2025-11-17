@@ -362,7 +362,9 @@ def resolve_container_name(
         # This ensures no interactive prompts during session cleanup regardless of code path
         cleanup_mode_check = os.getenv("AMPLIHACK_CLEANUP_MODE", "0") == "1"
         dialog_auto_mode = context.auto_mode or cleanup_mode_check
-        container_name = unified_container_and_credential_dialog(default_name, auto_mode=dialog_auto_mode)
+        container_name = unified_container_and_credential_dialog(
+            default_name, auto_mode=dialog_auto_mode
+        )
         if container_name:
             return container_name
         # User cancelled, fall back to default

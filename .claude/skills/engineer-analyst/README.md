@@ -27,6 +27,7 @@ Unlike general technical analysis, engineer analysis:
 ## Use Cases
 
 ### System Design
+
 - Microservices vs. monolith architecture decisions
 - Database selection and schema design
 - API design and versioning strategies
@@ -34,6 +35,7 @@ Unlike general technical analysis, engineer analysis:
 - Message queue and event-driven architectures
 
 ### Performance Optimization
+
 - Database query optimization and indexing
 - Application profiling and bottleneck identification
 - Load balancing and auto-scaling strategies
@@ -41,6 +43,7 @@ Unlike general technical analysis, engineer analysis:
 - Algorithm optimization and complexity analysis
 
 ### Reliability Engineering
+
 - Failure mode and effects analysis (FMEA)
 - High availability and disaster recovery design
 - Circuit breakers and graceful degradation
@@ -48,6 +51,7 @@ Unlike general technical analysis, engineer analysis:
 - Chaos engineering and resilience testing
 
 ### Capacity Planning
+
 - Resource sizing for expected load
 - Scalability analysis and growth projections
 - Cost optimization for cloud infrastructure
@@ -56,6 +60,7 @@ Unlike general technical analysis, engineer analysis:
 ## Engineering Frameworks Available
 
 ### Core Theoretical Approaches
+
 - **First Principles Analysis**: Breaking problems to fundamental truths
 - **Systems Engineering (V-Model)**: Requirements → Design → Implementation → Testing
 - **Design Optimization**: Pareto frontiers, multi-objective trade-offs
@@ -63,6 +68,7 @@ Unlike general technical analysis, engineer analysis:
 - **Scalability Analysis**: Amdahl's Law, bottleneck shifting, horizontal/vertical scaling
 
 ### Applied Frameworks
+
 - **Requirements Engineering**: MoSCoW prioritization, functional/non-functional requirements
 - **Design Thinking**: Double diamond process, rapid prototyping, user-centered design
 - **Root Cause Analysis**: 5 Whys, Fishbone diagrams, fault tree analysis
@@ -70,6 +76,7 @@ Unlike general technical analysis, engineer analysis:
 - **Cost-Benefit Analysis**: NPV, opportunity cost, trade-off quantification
 
 ### Methodologies
+
 - **Prototyping**: POC, throwaway, evolutionary, horizontal/vertical
 - **Design of Experiments**: Systematic parameter space exploration
 - **Queueing Theory**: Capacity planning, response time modeling
@@ -117,15 +124,18 @@ considering cost, performance, and operational complexity."
 ## Example Analyses
 
 ### Example 1: Microservices vs. Monolith
+
 **Decision**: Stay monolith short-term, prepare for strategic extraction
 **Reasoning**: Small team benefits from monolith simplicity; plan transition as team grows
 
 ### Example 2: Database Index Design
+
 **Problem**: Slow product search queries
 **Solution**: Add composite indexes on (category, price) and (brand, stock)
 **Result**: 45x query performance improvement with minimal write overhead
 
 ### Example 3: Cloud Outage Root Cause
+
 **Cause**: Coupled code deploy and database migration, no rollback plan
 **Mitigations**: Decouple migrations, canary deployments, feature flags, improved monitoring
 
@@ -145,18 +155,22 @@ considering cost, performance, and operational complexity."
 ## Resources
 
 ### Systems Engineering
+
 - **NASA Systems Engineering Handbook**: https://www.nasa.gov/seh/
 - **INCOSE**: https://www.incose.org/
 
 ### Software Architecture
+
 - **System Design Primer**: https://github.com/donnemartin/system-design-primer
 - **AOSA**: https://aosabook.org/ (Architecture of Open Source Applications)
 
 ### Performance
+
 - **Brendan Gregg**: https://www.brendangregg.com/ (Performance engineering)
 - **High Scalability**: http://highscalability.com/ (Case studies)
 
 ### Reliability
+
 - **Google SRE Books**: https://sre.google/books/
 - **Resilience Engineering**: https://www.resilience-engineering-association.org/
 

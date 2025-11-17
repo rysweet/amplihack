@@ -9,6 +9,7 @@ Analyze through legal lenses: contract obligations and risks, intellectual prope
 ## When to Use
 
 **Perfect For:**
+
 - Contract review and negotiation
 - Privacy policy and terms of service drafting
 - Regulatory compliance assessment (GDPR, CCPA, HIPAA)
@@ -20,6 +21,7 @@ Analyze through legal lenses: contract obligations and risks, intellectual prope
 - Content moderation and platform governance
 
 **Skip If:**
+
 - No legal or regulatory dimensions
 - Pure technical or scientific analysis
 - Focused on psychology or user experience
@@ -29,12 +31,14 @@ Analyze through legal lenses: contract obligations and risks, intellectual prope
 ### IRAC Legal Reasoning
 
 Structure legal analysis:
+
 1. **Issue**: What's the legal question?
 2. **Rule**: What law, statute, or precedent applies?
 3. **Application**: How does the rule apply to these facts?
 4. **Conclusion**: What's the legal outcome?
 
 Example:
+
 - **Issue**: Is our AI training on copyrighted works fair use?
 - **Rule**: Fair use considers: purpose, nature, amount, market effect
 - **Application**: Transformative use for training, not substituting original
@@ -43,6 +47,7 @@ Example:
 ### GDPR Core Principles
 
 Eight principles for data protection:
+
 1. **Lawfulness, fairness, transparency** - Clear legal basis and notice
 2. **Purpose limitation** - Use only for stated purposes
 3. **Data minimization** - Collect only what's necessary
@@ -56,6 +61,7 @@ Eight principles for data protection:
 ### Intellectual Property Types
 
 Four main categories:
+
 - **Patents**: Inventions, processes (20 years, must be novel, non-obvious, useful)
 - **Copyrights**: Creative works, software (life + 70 years, automatic upon creation)
 - **Trademarks**: Brands, logos (renewable, must be distinctive and used in commerce)
@@ -64,6 +70,7 @@ Four main categories:
 ### Contract Essentials
 
 Valid contract requires:
+
 1. **Offer** - Clear proposal
 2. **Acceptance** - Agreement to terms
 3. **Consideration** - Value exchanged (money, services, promises)
@@ -82,6 +89,7 @@ Valid contract requires:
 ### Step 2: Contract Risk Spotting (8 min)
 
 If contracts are involved:
+
 - What are the core obligations? (deliverables, timelines, payments)
 - What are liability limitations and caps?
 - What are indemnification requirements?
@@ -93,6 +101,7 @@ If contracts are involved:
 ### Step 3: Privacy and Data Compliance (10 min)
 
 If data is collected/processed:
+
 - What data is collected? (personal, sensitive, children's)
 - What's the legal basis? (consent, contract, legitimate interest)
 - Is data minimized to what's necessary?
@@ -197,6 +206,7 @@ If data is collected/processed:
 ## Red Flags
 
 **Contract Red Flags:**
+
 - Unlimited liability or indemnification
 - One-sided termination rights
 - Auto-renewal without notice
@@ -206,6 +216,7 @@ If data is collected/processed:
 - Class action waivers (may be unenforceable in some jurisdictions)
 
 **Privacy/Data Red Flags:**
+
 - Collecting more data than necessary
 - No legal basis for processing
 - Sharing data with third parties without consent
@@ -215,6 +226,7 @@ If data is collected/processed:
 - Cross-border transfers without safeguards
 
 **IP Red Flags:**
+
 - Unclear IP ownership in contracts
 - Mixing incompatible open source licenses (GPL + proprietary)
 - Using trademarks without permission
@@ -225,6 +237,7 @@ If data is collected/processed:
 ## Integration Tips
 
 Combine with other skills:
+
 - **Cybersecurity**: Legal requirements for data security
 - **Engineer**: Implementation of privacy/security controls
 - **Ethicist**: Ethical vs. legal obligations (law is minimum)
@@ -234,6 +247,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Legal risks are identified early
 - Contracts are reviewed for key terms and risks
 - Privacy compliance is assessed (GDPR, CCPA)
@@ -248,6 +262,7 @@ You've done this well when:
 ## Important Reminder
 
 **This is legal information, not legal advice.** For actual legal matters:
+
 - Consult licensed attorneys in relevant jurisdictions
 - Laws change frequently - verify current law
 - Facts matter enormously - small differences change outcomes

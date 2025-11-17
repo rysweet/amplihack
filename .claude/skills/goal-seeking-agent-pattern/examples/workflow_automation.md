@@ -5,6 +5,7 @@
 ### Problem Statement
 
 Manual release workflows are:
+
 - **Time-consuming**: 2-3 hours per release
 - **Error-prone**: Easy to miss steps (tagging, changelogs, notifications)
 - **Context-dependent**: Different steps for hotfixes vs features
@@ -16,6 +17,7 @@ Manual release workflows are:
 Apply the 5-question decision framework:
 
 **Q1: Well-defined objective but flexible path?**
+
 - **YES**: Objective is clear (release software to production)
 - Multiple paths:
   - Hotfix: Skip QA staging, direct to production
@@ -24,6 +26,7 @@ Apply the 5-question decision framework:
 - Success criteria: Deployed, tested, monitored
 
 **Q2: Multiple phases with dependencies?**
+
 - **YES**: 5 phases with clear dependencies
   1. Pre-release validation (tests, lint, security scan)
   2. Artifact creation (build, tag, changelog)
@@ -32,6 +35,7 @@ Apply the 5-question decision framework:
   5. Post-release (monitoring, notifications, documentation)
 
 **Q3: Autonomous recovery valuable?**
+
 - **YES**: Failures are common and recoverable
   - Build failures: Retry with clean cache
   - Deployment failures: Rollback to previous version
@@ -40,6 +44,7 @@ Apply the 5-question decision framework:
 - Human intervention is slow (especially after-hours)
 
 **Q4: Context affects approach?**
+
 - **YES**: Release strategy varies by:
   - Change type (hotfix/feature/patch)
   - Environment (staging/production)
@@ -47,6 +52,7 @@ Apply the 5-question decision framework:
   - Time of day (business hours/off-hours)
 
 **Q5: Complexity justified?**
+
 - **YES**: Problem is frequent and valuable
   - Frequency: 2-3 releases per week
   - Manual time: 2-3 hours per release
@@ -63,10 +69,12 @@ Apply the 5-question decision framework:
 # Goal: Automate Software Release Workflow
 
 ## Objective
+
 Execute end-to-end release workflow from code freeze to production deployment,
 adapting strategy based on change type (hotfix/feature/patch) and environment health.
 
 ## Success Criteria
+
 - All pre-release validations pass (tests, lint, security)
 - Artifacts created and versioned (Docker image, Git tag, changelog)
 - Staging deployment successful with smoke tests passing
@@ -75,6 +83,7 @@ adapting strategy based on change type (hotfix/feature/patch) and environment he
 - Stakeholders notified of release status
 
 ## Constraints
+
 - Zero downtime for production deployment
 - Rollback capability at any phase
 - Must complete within 60 minutes
@@ -82,6 +91,7 @@ adapting strategy based on change type (hotfix/feature/patch) and environment he
 - Requires human approval for production (no auto-deploy)
 
 ## Context
+
 - Frequency: 2-3 times per week
 - Priority: High (blocking features/fixes)
 - Scale: Medium (10-20 microservices)
@@ -104,6 +114,7 @@ plan = planner.generate_plan(goal_def)
 ```
 
 **Phase 1: Pre-Release Validation** (15 minutes, parallel)
+
 - Run test suite (unit, integration, e2e)
 - Execute linters and formatters
 - Run security vulnerability scan
@@ -113,6 +124,7 @@ plan = planner.generate_plan(goal_def)
 Dependencies: None
 Parallel-safe: Yes (tests/lint/security can run concurrently)
 Success indicators:
+
 - All tests pass (100%)
 - No linting violations
 - No security vulnerabilities (or approved exceptions)
@@ -120,6 +132,7 @@ Success indicators:
 - Migrations validated
 
 **Phase 2: Artifact Creation** (10 minutes, depends on Phase 1)
+
 - Build Docker images
 - Create Git tag (semantic versioning)
 - Generate changelog from commits
@@ -129,12 +142,14 @@ Success indicators:
 Dependencies: Phase 1 (validation must pass)
 Parallel-safe: No (artifacts depend on validation)
 Success indicators:
+
 - Docker images built and pushed
 - Git tag created
 - Changelog generated
 - Artifacts in registry
 
 **Phase 3: Staging Deployment** (15 minutes, depends on Phase 2)
+
 - Deploy to staging environment
 - Run smoke tests
 - Execute integration tests
@@ -144,6 +159,7 @@ Success indicators:
 Dependencies: Phase 2 (artifacts must exist)
 Parallel-safe: No (production waits for staging validation)
 Success indicators:
+
 - Staging deployment successful
 - Smoke tests pass
 - Integration tests pass
@@ -151,6 +167,7 @@ Success indicators:
 - Health checks passing
 
 **Phase 4: Production Deployment** (15 minutes, depends on Phase 3)
+
 - Gradual rollout (10% → 50% → 100%)
 - Monitor metrics at each stage
 - Verify health checks continuously
@@ -160,6 +177,7 @@ Success indicators:
 Dependencies: Phase 3 (staging must pass)
 Parallel-safe: No (production is final critical phase)
 Success indicators:
+
 - Gradual rollout completes
 - No error rate increase
 - Latency within SLA
@@ -167,6 +185,7 @@ Success indicators:
 - Smoke tests pass
 
 **Phase 5: Post-Release** (5 minutes, depends on Phase 4)
+
 - Update documentation
 - Send notifications (Slack, email)
 - Create release announcement
@@ -176,6 +195,7 @@ Success indicators:
 Dependencies: Phase 4 (deployment must succeed)
 Parallel-safe: Yes (documentation/notifications can run concurrently)
 Success indicators:
+
 - Documentation updated
 - Stakeholders notified
 - Release announcement published
@@ -252,6 +272,7 @@ print(f"Estimated duration: {execution_plan.total_estimated_duration}")
 The agent adapts based on context:
 
 **Hotfix Release** (urgent bug fix):
+
 ```python
 # Phase 1: Minimal validation (skip long-running tests)
 if release_type == "hotfix":
@@ -270,6 +291,7 @@ if release_type == "hotfix":
 ```
 
 **Feature Release** (standard):
+
 ```python
 # Phase 1: Full validation
 if release_type == "feature":
@@ -287,6 +309,7 @@ if release_type == "feature":
 ```
 
 **Degraded Environment** (system issues):
+
 ```python
 # If environment is degraded, delay release
 if environment_health < HEALTH_THRESHOLD:
@@ -307,6 +330,7 @@ if user_approves_risky_release:
 The agent implements three recovery strategies:
 
 **Strategy 1: Retry with Backoff** (transient failures)
+
 ```python
 # Build failures (network issues, resource contention)
 @retry(max_attempts=3, backoff=exponential)
@@ -323,6 +347,7 @@ def build_artifacts():
 ```
 
 **Strategy 2: Alternative Strategy** (approach failures)
+
 ```python
 # Deployment strategy failures
 def deploy_to_production():
@@ -343,6 +368,7 @@ def deploy_to_production():
 ```
 
 **Strategy 3: Rollback** (safety mechanism)
+
 ```python
 # Automatic rollback on health check failures
 def monitor_deployment_health():
@@ -510,6 +536,7 @@ Phase 4: ✗ FAILED (5 minutes, automatic rollback completed)
 ## Lessons Learned
 
 **Benefits Realized**:
+
 1. **Time savings**: 55 minutes automated vs 2-3 hours manual
 2. **Consistency**: Same workflow every time, no missed steps
 3. **Autonomous recovery**: Automatic retries and rollbacks
@@ -517,18 +544,21 @@ Phase 4: ✗ FAILED (5 minutes, automatic rollback completed)
 5. **Safety**: Human approval gate for production, automatic rollback on failures
 
 **Challenges Encountered**:
+
 1. **Initial setup**: 4 hours to define goal, phases, and error handling
 2. **Testing**: Needed to test failure scenarios (staging failures, production rollbacks)
 3. **Environment differences**: Staging and production configs diverged
 4. **Monitoring integration**: Required connecting to multiple monitoring systems
 
 **Philosophy Compliance**:
+
 - **Ruthless simplicity**: 5 clear phases, no unnecessary complexity
 - **Single responsibility**: Each phase has one job (validate, build, deploy, monitor, notify)
 - **Modularity**: Skills (validator, builder, deployer, monitor, documenter) are reusable
 - **Regeneratable**: Can rebuild agent from goal definition
 
 **When to Use This Pattern**:
+
 - Repeated frequently (2-3+ times per week)
 - High value from automation (hours saved, reduced errors)
 - Multiple execution paths (hotfix, feature, patch)
@@ -536,6 +566,7 @@ Phase 4: ✗ FAILED (5 minutes, automatic rollback completed)
 - Clear success criteria (tests pass, metrics healthy, stakeholders notified)
 
 **When NOT to Use**:
+
 - One-time releases (simple script suffices)
 - Fully manual process required (compliance, audit)
 - Execution time is negligible (< 10 minutes manual)

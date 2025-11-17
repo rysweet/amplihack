@@ -7,6 +7,7 @@ Analyze systems through security lenses: threat modeling (STRIDE), vulnerability
 ## When to Use
 
 **Perfect For:**
+
 - System and application security design
 - Threat modeling and risk assessment
 - Code review for security vulnerabilities
@@ -18,6 +19,7 @@ Analyze systems through security lenses: threat modeling (STRIDE), vulnerability
 - Access control design
 
 **Skip If:**
+
 - System has no security requirements
 - Working with purely public, non-sensitive data
 - Focused on pure functionality without threat context
@@ -27,6 +29,7 @@ Analyze systems through security lenses: threat modeling (STRIDE), vulnerability
 ### CIA Triad
 
 The foundation of security:
+
 - **Confidentiality** - Prevent unauthorized information disclosure
 - **Integrity** - Prevent unauthorized modification
 - **Availability** - Ensure authorized users can access system
@@ -34,6 +37,7 @@ The foundation of security:
 ### STRIDE Threat Model
 
 Six threat categories:
+
 1. **Spoofing** - Impersonating user/system (authentication)
 2. **Tampering** - Modifying data/code (integrity)
 3. **Repudiation** - Denying actions (logging/audit)
@@ -44,6 +48,7 @@ Six threat categories:
 ### OWASP Top 10 (2021)
 
 Most critical web vulnerabilities:
+
 1. Broken Access Control
 2. Cryptographic Failures
 3. Injection
@@ -58,6 +63,7 @@ Most critical web vulnerabilities:
 ### Defense in Depth
 
 Multiple security layers:
+
 - **Perimeter** - Firewall, VPN
 - **Network** - Segmentation, IDS/IPS
 - **Host** - Endpoint protection, hardening
@@ -77,6 +83,7 @@ Multiple security layers:
 ### Step 2: STRIDE Threat Modeling (10 min)
 
 For each component/interface:
+
 - **S**: Can attacker impersonate? (weak auth, no MFA)
 - **T**: Can data be tampered? (no integrity checks, MITM)
 - **R**: Can actions be denied? (no audit logging)
@@ -87,6 +94,7 @@ For each component/interface:
 ### Step 3: Vulnerability Identification (10 min)
 
 Check for common vulnerabilities:
+
 - **Input validation** - SQL injection, XSS, command injection
 - **Authentication** - Weak passwords, no MFA, session fixation
 - **Authorization** - Broken access control, insecure direct object references
@@ -105,6 +113,7 @@ Check for common vulnerabilities:
 ### Step 5: Security Controls Evaluation (10 min)
 
 Assess existing controls:
+
 - **Prevention** - Input validation, access control, encryption
 - **Detection** - Logging, monitoring, anomaly detection
 - **Response** - Incident response plan, backup/recovery
@@ -123,6 +132,7 @@ Assess existing controls:
 ### Least Privilege
 
 Give minimum necessary permissions:
+
 - Users: Only access they need for their job
 - Services: Run with minimal OS privileges
 - APIs: Scoped tokens, not full access
@@ -131,6 +141,7 @@ Give minimum necessary permissions:
 ### Fail Securely
 
 On error, default to secure state:
+
 - Authentication failure → Deny access (not grant)
 - Authorization error → Deny (not allow)
 - Crypto error → Reject (not continue insecurely)
@@ -138,6 +149,7 @@ On error, default to secure state:
 ### Never Trust Input
 
 All input is malicious until validated:
+
 - Validate on server side (not just client)
 - Whitelist, don't blacklist
 - Encode output to prevent XSS
@@ -152,12 +164,15 @@ Never rely on single security control - layer multiple defenses.
 ### Injection Flaws
 
 **SQL Injection**: Attacker injects SQL into queries
+
 - **Prevention**: Parameterized queries, ORMs, input validation
 
 **Command Injection**: Attacker executes OS commands
+
 - **Prevention**: Avoid system calls, validate/sanitize input, use safe APIs
 
 **XSS (Cross-Site Scripting)**: Attacker injects malicious scripts
+
 - **Prevention**: Output encoding, Content Security Policy, HTTPOnly cookies
 
 ### Broken Authentication
@@ -209,6 +224,7 @@ Never rely on single security control - layer multiple defenses.
 ## Red Flags
 
 **Major Security Issues:**
+
 - Passwords in plain text or weak hashes (MD5, SHA-1)
 - No input validation on user-supplied data
 - Hardcoded secrets (API keys, passwords) in code
@@ -223,6 +239,7 @@ Never rely on single security control - layer multiple defenses.
 ## Integration Tips
 
 Combine with other skills:
+
 - **Computer Scientist** - Cryptography theory, complexity
 - **Lawyer** - Compliance and regulatory requirements
 - **Systems Thinker** - Attack propagation and cascading failures
@@ -232,6 +249,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - All components threat modeled with STRIDE
 - Critical vulnerabilities identified and prioritized
 - Defense in depth applied (multiple layers)

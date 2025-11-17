@@ -5,6 +5,7 @@
 The Outside-In Testing Skill helps you create behavior-driven tests that verify applications from an external user's perspective without requiring knowledge of internal implementation. Using the gadugi-agentic-test framework, you write declarative YAML scenarios that AI agents execute, observe, and validate.
 
 **Key Benefits**:
+
 - Tests survive refactoring (implementation changes don't break tests)
 - Readable by non-developers (declarative YAML format)
 - Platform-agnostic (same structure for CLI, TUI, Web, Electron)
@@ -14,6 +15,7 @@ The Outside-In Testing Skill helps you create behavior-driven tests that verify 
 ## What is Outside-In Testing?
 
 **Traditional Testing** (Inside-Out):
+
 ```python
 # Knows internal implementation
 def test_user_service():
@@ -25,6 +27,7 @@ def test_user_service():
 ```
 
 **Outside-In Testing**:
+
 ```yaml
 # Only knows external behavior
 scenario:
@@ -43,6 +46,7 @@ scenario:
 ```
 
 The outside-in test verifies the same functionality but:
+
 - Doesn't depend on internal classes (`UserService`)
 - Doesn't check internal state (`created_at`, `id`)
 - Tests from user's perspective (what they see and do)
@@ -107,6 +111,7 @@ gadugi-agentic-test run test-hello.yaml
 ### 4. Review Results
 
 The framework generates evidence in `./evidence/`:
+
 - Execution logs
 - Output captures
 - Screenshots (for TUI/Web/Electron)
@@ -132,6 +137,7 @@ scenario:
 ```
 
 **Common Use Cases**:
+
 - Package managers (npm, pip, cargo)
 - Build tools (make, gradle, webpack)
 - DevOps tools (docker, kubectl, terraform)
@@ -156,6 +162,7 @@ scenario:
 ```
 
 **Common Use Cases**:
+
 - System monitors (htop, top)
 - Text editors (vim, nano)
 - File managers (ranger, midnight commander)
@@ -178,6 +185,7 @@ scenario:
 ```
 
 **Common Use Cases**:
+
 - SPAs (React, Vue, Angular apps)
 - Admin panels
 - E-commerce sites
@@ -199,6 +207,7 @@ scenario:
 ```
 
 **Common Use Cases**:
+
 - Code editors (VS Code-like apps)
 - Chat applications (Slack, Discord clones)
 - Productivity tools
@@ -216,6 +225,7 @@ The skill teaches testing in three levels:
 - Smoke tests
 
 **Examples**:
+
 - `examples/cli/calculator-basic.yaml`
 - `examples/tui/file-manager-navigation.yaml`
 - `examples/web/dashboard-smoke-test.yaml`
@@ -229,6 +239,7 @@ The skill teaches testing in three levels:
 - Variables and templating
 
 **Examples**:
+
 - `examples/cli/cli-error-handling.yaml`
 - `examples/tui/tui-form-validation.yaml`
 - `examples/web/web-authentication-flow.yaml`
@@ -242,6 +253,7 @@ The skill teaches testing in three levels:
 - IPC testing (Electron)
 
 **Examples**:
+
 - `examples/tui/tui-performance-monitoring.yaml`
 - `examples/electron/electron-ipc-testing.yaml`
 - `examples/custom-agents/custom-comprehension-agent.yaml`
@@ -252,31 +264,37 @@ The skill teaches testing in three levels:
 This skill includes **15 complete working examples**:
 
 ### CLI (3 examples)
+
 - Basic calculator operations [Level 1]
 - Error handling and recovery [Level 2]
 - Interactive session management [Level 2]
 
 ### TUI (3 examples)
+
 - File manager navigation [Level 1]
 - Form validation [Level 2]
 - Performance monitoring [Level 3]
 
 ### Web (3 examples)
+
 - Dashboard smoke test [Level 1]
 - Authentication flow [Level 2]
 - Visual regression [Level 2]
 
 ### Electron (4 examples)
+
 - Single window basics [Level 1]
 - Multi-window coordination [Level 2]
 - Menu interactions [Level 2]
 - IPC testing [Level 3]
 
 ### Custom Agents (2 examples)
+
 - Domain-specific comprehension [Level 3]
 - Custom reporting [Level 3]
 
 All examples include:
+
 - Complete working YAML
 - Inline documentation
 - Expected output
@@ -308,6 +326,7 @@ Claude, create Electron tests using outside-in-testing for my desktop app.
 **You**: "Create a web test that verifies user can log in with valid credentials and sees their dashboard"
 
 **Claude** (using this skill): Generates a complete Level 2 YAML scenario with:
+
 - Navigation to login page
 - Form filling (email, password)
 - Submit button click
@@ -413,7 +432,7 @@ Don't test every detail. Focus on user-facing behavior:
 - action: click
   selector: ".load-data"
 - action: verify_element
-  selector: ".data-table"  # Might not exist yet!
+  selector: ".data-table" # Might not exist yet!
 ```
 
 ### 5. Clean Up After Tests
@@ -439,7 +458,7 @@ cleanup:
 ```yaml
 - action: wait_for_element
   selector: ".slow-loading-data"
-  timeout: 30s  # Generous timeout
+  timeout: 30s # Generous timeout
 ```
 
 ### Element Not Found
@@ -447,6 +466,7 @@ cleanup:
 **Problem**: Cannot find element to interact with
 
 **Solutions**:
+
 1. Use `wait_for_element` before interaction
 2. Verify selector is correct
 3. Check if element is in iframe
@@ -464,6 +484,7 @@ cleanup:
 **Problem**: Tests pass locally but fail in CI
 
 **Solutions**:
+
 1. Add longer timeouts for CI environments
 2. Set explicit viewport sizes
 3. Wait for application readiness
@@ -478,7 +499,7 @@ scenario:
   steps:
     - action: wait_for_element
       selector: ".app-ready"
-      timeout: 30s  # Generous for CI
+      timeout: 30s # Generous for CI
 ```
 
 ## Framework Version Check
@@ -542,23 +563,27 @@ scenario:
 ### Common Actions
 
 **CLI**:
+
 - `launch` - Start application
 - `send_input` - Send text
 - `verify_output` - Check output
 - `verify_exit_code` - Validate exit code
 
 **TUI**:
+
 - `send_keypress` - Send keys
 - `verify_screen` - Check screen
 - `capture_screenshot` - Save screenshot
 
 **Web**:
+
 - `navigate` - Go to URL
 - `click` - Click element
 - `type` - Type text
 - `verify_element` - Check element
 
 **Electron**:
+
 - `window_action` - Control windows
 - `menu_click` - Click menus
 - `dialog_action` - Handle dialogs

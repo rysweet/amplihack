@@ -7,6 +7,7 @@ Analyze through psychological lenses: cognition (perception, memory, decision-ma
 ## When to Use
 
 **Perfect For:**
+
 - User experience and interface design
 - Behavior change and habit formation
 - Persuasive design and communication
@@ -17,6 +18,7 @@ Analyze through psychological lenses: cognition (perception, memory, decision-ma
 - Motivation and engagement design
 
 **Skip If:**
+
 - No human users or behavior involved
 - Purely technical or mechanical analysis
 - Focused on social structures over individual psychology
@@ -26,6 +28,7 @@ Analyze through psychological lenses: cognition (perception, memory, decision-ma
 ### Dual-Process Theory (Kahneman)
 
 Two systems of thinking:
+
 - **System 1**: Fast, automatic, intuitive, effortless, emotional (95% of decisions)
 - **System 2**: Slow, deliberate, logical, effortful, rational (5% of decisions)
 
@@ -34,6 +37,7 @@ Two systems of thinking:
 ### Cognitive Load Theory
 
 Three types of mental load:
+
 1. **Intrinsic**: Task difficulty itself
 2. **Extraneous**: Unnecessary load from poor design (MINIMIZE THIS)
 3. **Germane**: Beneficial load that aids learning
@@ -43,6 +47,7 @@ Three types of mental load:
 ### Self-Determination Theory (Deci & Ryan)
 
 Three psychological needs for intrinsic motivation:
+
 1. **Autonomy**: Control over choices and actions
 2. **Competence**: Feeling capable and effective
 3. **Relatedness**: Connection with others
@@ -52,6 +57,7 @@ Support these needs → intrinsic motivation. Undermine them → need for extern
 ### Cialdini's Persuasion Principles
 
 Six principles of influence:
+
 1. **Reciprocity**: We return favors
 2. **Commitment/Consistency**: We want to appear consistent
 3. **Social Proof**: We follow what others do
@@ -133,6 +139,7 @@ Six principles of influence:
 ## Behavior Change (COM-B Model)
 
 Three requirements for behavior:
+
 1. **Capability**: Physical/psychological ability
 2. **Opportunity**: Environmental/social enablement
 3. **Motivation**: Reflective (plans, evaluations) and automatic (emotions, habits)
@@ -142,6 +149,7 @@ Three requirements for behavior:
 ## Mental Models
 
 Users have internal representations of how things work (often incorrect):
+
 - **Match mental models**: Design to align with user expectations
 - **Or educate**: If can't match, teach correct model explicitly
 - **Test understanding**: Ask users to explain how it works
@@ -174,30 +182,35 @@ Users have internal representations of how things work (often incorrect):
 ### Pattern: Default Effect
 
 People stick with defaults (status quo bias + decision avoidance):
+
 - **Power of defaults**: Organ donation, retirement savings, privacy settings
 - **Design implication**: Make the right choice the default choice
 
 ### Pattern: Variable Ratio Reinforcement
 
 Unpredictable rewards create strongest habits:
+
 - **Examples**: Slot machines, social media notifications, loot boxes
 - **Ethical consideration**: Highly effective but potentially exploitative
 
 ### Pattern: Cognitive Dissonance
 
 Discomfort from inconsistent beliefs/behaviors leads to rationalization:
+
 - **Post-purchase rationalization**: Justify past decisions
 - **Commitment escalation**: Small commitments lead to larger ones
 
 ### Pattern: Social Proof
 
 People follow others, especially when uncertain:
+
 - **Design use**: Reviews, testimonials, "X people bought this", social norms
 - **Warning**: Can backfire if showing undesirable behavior is common
 
 ## Red Flags
 
 **Psychological Warning Signs:**
+
 - Ignoring cognitive load (overwhelming users)
 - Manipulative persuasion (dark patterns)
 - Addictive design features (variable rewards, infinite scroll, FOMO)
@@ -208,6 +221,7 @@ People follow others, especially when uncertain:
 - Designing for ideal users, not real humans
 
 **Ethical Red Flags:**
+
 - Exploiting cognitive biases for profit
 - Creating anxiety or FOMO deliberately
 - Addictive features targeting vulnerable populations
@@ -216,6 +230,7 @@ People follow others, especially when uncertain:
 ## Integration Tips
 
 Combine with other skills:
+
 - **Anthropologist**: Individual psychology + cultural context
 - **Sociologist**: Individual behavior + social structures
 - **Philosopher**: Ethical implications of psychological design
@@ -225,6 +240,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Cognitive load is minimized (extraneous load eliminated)
 - Mental models align with system design
 - Intrinsic motivation is supported (autonomy, competence, relatedness)

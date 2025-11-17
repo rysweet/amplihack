@@ -50,16 +50,19 @@ Unlike general life sciences knowledge, biologist analysis:
 ## Example Analyses
 
 ### Antibiotic Resistance Evolution
+
 **Question**: How does MRSA resistance evolve?
 **Analysis**: Mutation creates variation, antibiotics select resistant strains, horizontal transfer spreads resistance genes
 **Recommendations**: Reduce selection pressure, combination therapy, antibiotic stewardship
 
 ### CRISPR Gene Therapy
+
 **Question**: Can CRISPR cure sickle cell disease?
 **Analysis**: Molecular mechanism (correct β-globin mutation), safety (off-targets), efficacy (clinical trials positive), ethics (somatic editing acceptable)
 **Conclusion**: Promising curative therapy with remaining safety and access challenges
 
 ### Coral Reef Collapse
+
 **Question**: Why are Caribbean reefs declining?
 **Analysis**: Multiple stressors (climate, overfishing, pollution, disease) cause phase shift to algae dominance
 **Restoration**: Local actions (MPAs, coral gardening) buy time; requires climate mitigation

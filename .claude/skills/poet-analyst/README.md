@@ -27,24 +27,28 @@ Unlike general analysis, poet analysis:
 ## Use Cases
 
 ### Language Analysis
+
 - Speeches and rhetoric
 - Political messaging
 - Communication effectiveness
 - Why some messages resonate
 
 ### Symbolic Meaning
+
 - Cultural symbols and metaphors
 - Brand language and identity
 - Movement slogans and poetry
 - Decoding cultural expressions
 
 ### Emotional Dimensions
+
 - Capturing felt experience
 - Understanding mood and zeitgeist
 - Emotional impact of events
 - Resonance and connection
 
 ### Communication Impact
+
 - Why some language moves people
 - Framing and persuasion
 - Memorable vs. forgettable
@@ -53,6 +57,7 @@ Unlike general analysis, poet analysis:
 ## Poetic Frameworks Available
 
 ### Core Frameworks
+
 - **Close Reading**: Careful attention to text, words, images, structure
 - **Metaphor Analysis (Lakoff & Johnson)**: Conceptual metaphors structure thought
 - **Image and Symbol**: Concrete sensory language, symbolic meaning
@@ -60,12 +65,14 @@ Unlike general analysis, poet analysis:
 - **Form and Structure**: How organization creates meaning
 
 ### Metaphor Analysis
+
 - **Conceptual Metaphors**: Abstract understood through concrete (e.g., "Time is money")
 - **Source and Target Domains**: Mapping between concrete and abstract
 - **What Metaphors Reveal/Hide**: Frame attention, shape understanding
 - **Alternative Metaphors**: Different frames, different implications
 
 ### Language Elements
+
 - **Diction**: Word choice, connotation, precision
 - **Tone**: Emotional attitude toward subject
 - **Voice**: Distinctive personality, authenticity
@@ -73,6 +80,7 @@ Unlike general analysis, poet analysis:
 - **Compression**: Saying more with less, implication
 
 ### Structural Tools
+
 - **The Turn (Volta)**: Moment of change, reversal, insight
 - **Tension and Paradox**: Holding contradictions productively
 - **Concrete and Abstract**: Grounding ideas in particulars
@@ -125,6 +133,7 @@ The poet analyst follows a systematic 10-step process:
 **Text**: "We stand at a crossroads... One road leads into darkness—the path of fear. The other climbs toward the light—the road of hope. We must choose to climb."
 
 **Poetic Analysis**:
+
 - **Conceptual Metaphor**: "Politics is a journey," "Future is a destination"
 - **Source Domain**: Physical journey, roads, climbing
 - **Highlights**: Agency (we choose), moral clarity (light/dark), progress (climbing)
@@ -147,6 +156,7 @@ The poet analyst follows a systematic 10-step process:
 **Text**: "We are the ones we've been waiting for... Our voices, rising like bread..."
 
 **Poetic Analysis**:
+
 - **Brilliant Metaphor**: "Voices rising like bread" - unexpected, organic, inevitable expansion, nourishment
 - **Structure**: Assertion → embodiment → defiance
 - **Tone**: Confident, collective, urgent
@@ -171,16 +181,19 @@ A complete poet analysis includes:
 ## Resources
 
 ### Key Works
-- Lakoff & Johnson: *Metaphors We Live By* (1980)
-- Mary Oliver: *A Poetry Handbook*
-- Cleanth Brooks: *The Well Wrought Urn* (New Criticism)
-- Richard Hugo: *The Triggering Town*
+
+- Lakoff & Johnson: _Metaphors We Live By_ (1980)
+- Mary Oliver: _A Poetry Handbook_
+- Cleanth Brooks: _The Well Wrought Urn_ (New Criticism)
+- Richard Hugo: _The Triggering Town_
 
 ### Organizations
+
 - **Academy of American Poets**: https://poets.org/
 - **Poetry Foundation**: https://www.poetryfoundation.org/
 
 ### Key Poets/Theorists
+
 - **George Lakoff** - Conceptual metaphor theory
 - **Adrienne Rich** - Poetry as transformation
 - **Mary Oliver** - Accessible poetic craft
@@ -191,6 +204,7 @@ A complete poet analysis includes:
 ### When should I use poet-analyst vs. other analysts?
 
 Use **poet-analyst** when focus is:
+
 - Language's emotional and aesthetic dimensions
 - Metaphor, symbol, imagery
 - How things are said (not just what)
@@ -199,6 +213,7 @@ Use **poet-analyst** when focus is:
 - Emotional truth and complexity
 
 Use **other analysts** when focus is:
+
 - Factual verification → Journalist
 - Narrative structure → Novelist
 - Argument logic → Philosopher
@@ -207,6 +222,7 @@ Use **other analysts** when focus is:
 ### Can poet analysis be combined with other perspectives?
 
 Absolutely! Poetic analysis is particularly powerful when combined with:
+
 - **Novelist**: Language craft, narrative voice, emotional arcs
 - **Journalist**: Communication impact, framing analysis
 - **Political Scientist**: Political rhetoric, symbolic politics
@@ -215,6 +231,7 @@ Absolutely! Poetic analysis is particularly powerful when combined with:
 ### Isn't this just about "nice language"?
 
 No! Poetic analysis:
+
 - Reveals how metaphors structure thought and action
 - Shows how language shapes perception and choice
 - Explains why some messages move people
@@ -225,6 +242,7 @@ No! Poetic analysis:
 ## Integration with Other Skills
 
 Poet analysis complements:
+
 - **Storytelling Synthesizer**: Transform analysis into compelling expression
 - **Decision Logger**: Document linguistic insights and framing choices
 - **Philosophy Guardian**: Ensure analysis stays grounded
@@ -233,6 +251,7 @@ Poet analysis complements:
 ## Contributing
 
 This skill improves through use. Share feedback on:
+
 - What metaphor analyses were most revealing
 - What linguistic insights proved valuable
 - What patterns emerged in communication

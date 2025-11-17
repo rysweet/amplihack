@@ -51,16 +51,19 @@ Unlike general critical thinking, philosopher analysis:
 ## Example Analyses
 
 ### Gettier Problem (Epistemology)
+
 **Question**: Is justified true belief sufficient for knowledge?
 **Analysis**: Gettier cases show JTB insufficient (justified true belief without knowledge)
 **Insight**: Knowledge requires more than JTB; exact requirement debated 60+ years
 
 ### Chinese Room (Philosophy of Mind)
+
 **Question**: Can computers understand language?
 **Analysis**: Syntax manipulation insufficient for semantic understanding
 **Insight**: Challenges computational theory of mind; understanding requires more than information processing
 
 ### Ship of Theseus (Metaphysics)
+
 **Question**: What makes something the same over time?
 **Analysis**: Personal identity puzzles reveal commonsense self may lack clear metaphysical basis
 **Insight**: Psychological continuity may matter more than strict identity

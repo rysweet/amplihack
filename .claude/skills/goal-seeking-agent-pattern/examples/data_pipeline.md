@@ -5,6 +5,7 @@
 ### Problem Statement
 
 Manual data pipeline operations are:
+
 - **Labor-intensive**: 2-3 hours to collect, transform, validate, and publish data
 - **Source-dependent**: Different ingestion strategies for S3, databases, APIs
 - **Fragile**: Source unavailability breaks entire pipeline
@@ -16,6 +17,7 @@ Manual data pipeline operations are:
 Apply the 5-question decision framework:
 
 **Q1: Well-defined objective but flexible path?**
+
 - **YES**: Objective is clear (ingest, transform, validate, publish data)
 - Multiple paths:
   - All sources available: Parallel collection
@@ -24,6 +26,7 @@ Apply the 5-question decision framework:
 - Success criteria: Data in warehouse, quality thresholds met
 
 **Q2: Multiple phases with dependencies?**
+
 - **YES**: 4 phases with clear dependencies
   1. Data Collection (parallel: S3, database, API)
   2. Data Transformation (depends on collection)
@@ -31,6 +34,7 @@ Apply the 5-question decision framework:
   4. Data Publishing (depends on validation)
 
 **Q3: Autonomous recovery valuable?**
+
 - **YES**: Failures are common and recoverable
   - Source timeouts: Retry with backoff
   - Transformation errors: Log and skip bad records
@@ -38,6 +42,7 @@ Apply the 5-question decision framework:
   - Publishing errors: Retry with exponential backoff
 
 **Q4: Context affects approach?**
+
 - **YES**: Strategy varies by:
   - Data volume (100K vs 10M records)
   - Source availability (all vs partial)
@@ -45,6 +50,7 @@ Apply the 5-question decision framework:
   - Time constraints (daily batch vs real-time)
 
 **Q5: Complexity justified?**
+
 - **YES**: High-value automation
   - Frequency: Daily (365 times per year)
   - Manual time: 2-3 hours per run
@@ -61,10 +67,12 @@ Apply the 5-question decision framework:
 # Goal: Automate Multi-Source Data Pipeline
 
 ## Objective
+
 Collect data from multiple sources (S3 buckets, PostgreSQL database, REST API),
 transform to common schema, validate quality, and publish to data warehouse.
 
 ## Success Criteria
+
 - All available sources successfully ingested (100% success or logged failures)
 - Data transformed to target schema with < 2% transformation failure rate
 - Quality checks pass: completeness ≥ 95%, accuracy ≥ 98%, consistency = 100%
@@ -72,6 +80,7 @@ transform to common schema, validate quality, and publish to data warehouse.
 - Pipeline completes within 30 minutes
 
 ## Constraints
+
 - Must handle source unavailability gracefully (log and continue)
 - No data loss (failed records logged for manual review)
 - Idempotent (safe to re-run without duplicates)
@@ -79,6 +88,7 @@ transform to common schema, validate quality, and publish to data warehouse.
 - Must preserve data lineage (track source → warehouse)
 
 ## Context
+
 - Frequency: Daily (automated at 2 AM)
 - Priority: High (blocking downstream analytics)
 - Scale: Medium (100K-1M records per source)
@@ -100,6 +110,7 @@ execution_plan = planner.generate_plan(goal_def)
 ```
 
 **Phase 1: Data Collection** (15 minutes, parallel-safe)
+
 - Collect from S3 (100K-500K records, parallel)
 - Collect from PostgreSQL (50K-200K records, parallel)
 - Collect from REST API (10K-100K records, parallel)
@@ -108,12 +119,14 @@ execution_plan = planner.generate_plan(goal_def)
 
 Dependencies: None (all sources collected in parallel)
 Success indicators:
+
 - All sources attempted
 - Successful collections logged
 - Failed collections logged with reason
 - Raw data stored in staging area
 
 **Phase 2: Data Transformation** (15 minutes, depends on Phase 1)
+
 - Parse raw data formats (JSON, CSV, Parquet)
 - Transform to common schema
 - Handle missing fields (apply defaults)
@@ -122,12 +135,14 @@ Success indicators:
 
 Dependencies: Phase 1 (needs collected data)
 Success indicators:
+
 - All records attempted transformation
 - Success rate ≥ 98%
 - Failed records logged
 - Transformed data in staging schema
 
 **Phase 3: Quality Validation** (5 minutes, depends on Phase 2)
+
 - Completeness check (required fields present)
 - Accuracy validation (data types, ranges, formats)
 - Consistency verification (referential integrity)
@@ -136,6 +151,7 @@ Success indicators:
 
 Dependencies: Phase 2 (needs transformed data)
 Success indicators:
+
 - Completeness ≥ 95%
 - Accuracy ≥ 98%
 - Consistency = 100%
@@ -143,6 +159,7 @@ Success indicators:
 - Anomalies flagged
 
 **Phase 4: Data Publishing** (10 minutes, depends on Phase 3)
+
 - Load to data warehouse (bulk insert)
 - Update metadata tables
 - Create data lineage records
@@ -151,6 +168,7 @@ Success indicators:
 
 Dependencies: Phase 3 (only publish validated data)
 Success indicators:
+
 - All validated data in warehouse
 - No duplicates
 - Metadata updated
@@ -214,6 +232,7 @@ packager.package(
 The agent adapts to different conditions:
 
 **Scenario 1: All Sources Available** (optimal path)
+
 ```python
 async def collect_all_sources():
     """Parallel collection when all sources available"""
@@ -235,6 +254,7 @@ async def collect_all_sources():
 ```
 
 **Scenario 2: Source Unavailable** (graceful degradation)
+
 ```python
 async def collect_from_api_with_fallback():
     """Handle API unavailability"""
@@ -256,6 +276,7 @@ async def collect_from_api_with_fallback():
 ```
 
 **Scenario 3: Large Data Volume** (resource optimization)
+
 ```python
 def transform_data_adaptive(data: List[Dict], volume: int):
     """Adapt transformation strategy based on volume"""
@@ -271,6 +292,7 @@ def transform_data_adaptive(data: List[Dict], volume: int):
 ```
 
 **Scenario 4: Quality Issues** (iterative cleansing)
+
 ```python
 def validate_and_cleanse(data: List[Dict]) -> List[Dict]:
     """Iterative quality improvement"""
@@ -299,6 +321,7 @@ def validate_and_cleanse(data: List[Dict]) -> List[Dict]:
 ### Error Recovery Strategies
 
 **Strategy 1: Retry with Exponential Backoff** (transient errors)
+
 ```python
 import time
 from typing import Callable, Any
@@ -329,6 +352,7 @@ s3_data = retry_with_backoff(
 ```
 
 **Strategy 2: Partial Success** (continue with available data)
+
 ```python
 def handle_partial_collection(results: List[Any]) -> Dict[str, Any]:
     """Process partial collection results"""
@@ -351,6 +375,7 @@ def handle_partial_collection(results: List[Any]) -> Dict[str, Any]:
 ```
 
 **Strategy 3: Idempotent Execution** (safe re-runs)
+
 ```python
 def publish_to_warehouse_idempotent(data: List[Dict], run_id: str):
     """Ensure idempotent publishing (no duplicates on re-run)"""
@@ -579,6 +604,7 @@ Summary Report:
 ## Lessons Learned
 
 **Benefits Realized**:
+
 1. **Time savings**: 38 minutes automated vs 2-3 hours manual
 2. **Resilience**: Handles source failures gracefully (partial success)
 3. **Quality**: Automated validation catches 99% of issues
@@ -586,18 +612,21 @@ Summary Report:
 5. **Observability**: Detailed logging and quality reports
 
 **Challenges Encountered**:
+
 1. **Resource tuning**: Initial 8GB RAM insufficient for 1M records, increased to 12GB
 2. **Quality thresholds**: Initial 100% completeness too strict, relaxed to 95%
 3. **API reliability**: Frequent timeouts required fallback endpoint
 4. **Duplicate detection**: Needed to add run_id for proper deduplication
 
 **Philosophy Compliance**:
+
 - **Ruthless simplicity**: 4 clear phases, no unnecessary steps
 - **Single responsibility**: Each phase has one job (collect, transform, validate, publish)
 - **Modularity**: Collectors (S3, PostgreSQL, API) are reusable
 - **Regeneratable**: Can rebuild pipeline from goal definition
 
 **When to Use This Pattern**:
+
 - Multiple data sources with different collection strategies
 - Quality validation is critical
 - Source failures are common (need graceful handling)
@@ -605,6 +634,7 @@ Summary Report:
 - High frequency (daily or more)
 
 **When NOT to Use**:
+
 - Single data source (simple script suffices)
 - Real-time streaming (use streaming framework)
 - No quality requirements (direct load acceptable)

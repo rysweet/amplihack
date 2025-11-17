@@ -101,6 +101,23 @@ amplihack also supports GitHub Copilot CLI integration. See
 [docs/github-copilot-litellm-integration.md](docs/github-copilot-litellm-integration.md)
 for setup instructions.
 
+### MCP Tool Evaluation
+
+Ahoy! Data-driven framework fer evaluatin' MCP (Model Context Protocol) server
+integrations.
+
+**Features**:
+
+- **Evidence-Based**: Real execution metrics, not estimates
+- **Generic Design**: Works with ANY MCP tool via adapters
+- **Comprehensive Metrics**: Quality, efficiency, and tool-specific measurements
+- **Actionable Reports**: Executive summaries with recommendations
+
+**Learn More**: [MCP Evaluation Guide](docs/mcp_evaluation/README.md)
+
+**Status**: Production-ready (v1.0.0) |
+[Architecture](Specs/MCP_EVALUATION_FRAMEWORK.md)
+
 ## Features
 
 ### Goal-Seeking Agent Generator (NEW!)
@@ -182,30 +199,30 @@ python main.py
 
 ### Specialized Agents (23)
 
-| Agent                       | Purpose                                       |
-| --------------------------- | --------------------------------------------- |
-| **ambiguity**               | Clarify ambiguous requirements                |
-| **amplifier-cli-architect** | CLI tool design and architecture              |
-| **analyzer**                | Deep code analysis                            |
-| **azure-kubernetes-expert** | Azure Kubernetes Service expertise            |
-| **ci-diagnostic-workflow**  | CI/CD pipeline diagnostics                    |
-| **cleanup**                 | Remove artifacts and enforce philosophy       |
-| **database**                | Database design and optimization              |
-| **fallback-cascade**        | Resilient fallback strategies                 |
-| **fix-agent**               | Automated error fixing                        |
-| **integration**             | System integration patterns                   |
-| **knowledge-archaeologist** | Extract and preserve knowledge                |
-| **memory-manager**          | Context and state management                  |
-| **multi-agent-debate**      | Facilitate multi-perspective debates          |
-| **n-version-validator**     | Validate N-version implementations            |
-| **patterns**                | Design pattern recommendations                |
-| **pre-commit-diagnostic**   | Pre-commit hook diagnostics                   |
-| **preference-reviewer**     | User preference validation                    |
-| **prompt-writer**           | Effective prompt engineering                  |
-| **rust-programming-expert** | Rust language expertise                       |
-| **security**                | Security analysis and vulnerability detection |
-| **visualization-architect** | Data visualization design                     |
-| **xpia-defense**            | Advanced threat detection                     |
+| Agent                       | Purpose                                         |
+| --------------------------- | ----------------------------------------------- |
+| **ambiguity**               | Clarify ambiguous requirements                  |
+| **amplifier-cli-architect** | CLI tool design and architecture                |
+| **analyzer**                | Deep code analysis                              |
+| **azure-kubernetes-expert** | Azure Kubernetes Service expertise              |
+| **ci-diagnostic-workflow**  | CI/CD pipeline diagnostics                      |
+| **cleanup**                 | Remove artifacts and enforce philosophy         |
+| **database**                | Database design and optimization                |
+| **fallback-cascade**        | Resilient fallback strategies                   |
+| **fix-agent**               | Automated error fixing                          |
+| **integration**             | System integration patterns                     |
+| **knowledge-archaeologist** | Extract and preserve knowledge                  |
+| **memory-manager**          | Context and state management                    |
+| **multi-agent-debate**      | Facilitate multi-perspective debates            |
+| **n-version-validator**     | Validate N-version implementations              |
+| **patterns**                | Design pattern recommendations                  |
+| **pre-commit-diagnostic**   | Pre-commit hook diagnostics                     |
+| **preference-reviewer**     | User preference validation                      |
+| **prompt-writer**           | Effective prompt engineering                    |
+| **rust-programming-expert** | Rust language expertise                         |
+| **security**                | Security analysis and vulnerability detection   |
+| **visualization-architect** | Data visualization design                       |
+| **xpia-defense**            | Advanced threat detection                       |
 | **philosophy-guardian**     | Philosophy compliance and simplicity validation |
 
 ## Core Concepts

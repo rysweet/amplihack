@@ -8,7 +8,6 @@ scenario:
     Verifies TUI dashboard displays real-time system metrics with accurate data,
     proper refresh rates, and responsive interactions under load.
   type: tui
-
   level: 3
 
   tags: [tui, performance, real-time, dashboard, advanced]
@@ -24,7 +23,7 @@ scenario:
       height: 40
     variables:
       TERM: "xterm-256color"
-      REFRESH_RATE: "1000"  # 1 second refresh
+      REFRESH_RATE: "1000" # 1 second refresh
 
   # Performance thresholds
   variables:
@@ -317,7 +316,6 @@ scenario:
 
     - action: stop_application
       force: false
-
 # Expected Dashboard Layout:
 
 # ┌──────────────────────────────────────────────────────────────────────────────┐

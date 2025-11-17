@@ -15,6 +15,7 @@ This skill combines social theory, empirical research methods, institutional ana
 Examines how society is organized through institutions, networks, hierarchies, and relationships. Analyzes how structure shapes individual behavior and opportunities.
 
 **Key Structures:**
+
 - **Institutions** - Family, education, religion, economy, government, healthcare
 - **Organizations** - Bureaucracies, corporations, nonprofits, communities
 - **Networks** - Social connections, weak ties, structural holes, centrality
@@ -26,6 +27,7 @@ Examines how society is organized through institutions, networks, hierarchies, a
 Identifies how power is distributed and maintained through systems, revealing who benefits and who is marginalized. Examines intersecting forms of inequality.
 
 **Dimensions of Inequality:**
+
 - **Economic** - Wealth, income, access to resources
 - **Social** - Status, prestige, social capital
 - **Political** - Representation, voice, decision-making power
@@ -37,6 +39,7 @@ Identifies how power is distributed and maintained through systems, revealing wh
 Analyzes how groups act collectively to create social change. Examines mobilization, framing, tactics, and outcomes of social movements.
 
 **Key Concepts:**
+
 - **Resource mobilization** - How movements gather resources and support
 - **Political opportunity** - When system is receptive to change
 - **Framing** - How movements define problems and solutions
@@ -48,12 +51,14 @@ Analyzes how groups act collectively to create social change. Examines mobilizat
 Examines how individuals learn and internalize social norms, values, and identities through social interaction.
 
 **Socialization Agents:**
+
 - **Primary** - Family, early childhood
 - **Secondary** - Schools, peer groups, media, workplace
 - **Anticipatory** - Preparing for future roles
 - **Resocialization** - Learning new norms (prison, immigration, career change)
 
 **Identity Construction:**
+
 - How identities are formed through social interaction
 - Stigma and deviance
 - Performance of identity (Goffman's dramaturgy)
@@ -64,6 +69,7 @@ Examines how individuals learn and internalize social norms, values, and identit
 Analyzes how and why societies change over time. Examines technology's role in social transformation, globalization, urbanization, and cultural diffusion.
 
 **Drivers of Change:**
+
 - **Technology** - Communication, automation, artificial intelligence
 - **Economic** - Capitalism, industrialization, gig economy
 - **Demographic** - Population growth, aging, migration
@@ -75,6 +81,7 @@ Analyzes how and why societies change over time. Examines technology's role in s
 Applies sociological research methods to gather and analyze data about social phenomena.
 
 **Methods:**
+
 - **Surveys** - Large-scale quantitative data
 - **Interviews** - In-depth qualitative insights
 - **Ethnography** - Participant observation in natural settings
@@ -109,6 +116,7 @@ Design platforms, spaces, and programs that build social capital, strengthen com
 ### Method 1: Structural Analysis
 
 Map social structures to identify patterns:
+
 1. Identify key institutions and organizations
 2. Map formal and informal power structures
 3. Analyze who has access and who is excluded
@@ -118,6 +126,7 @@ Map social structures to identify patterns:
 ### Method 2: Intersectionality Analysis
 
 Examine overlapping systems of privilege and oppression:
+
 1. Identify relevant identity dimensions (race, class, gender, etc.)
 2. Map how multiple identities compound advantage/disadvantage
 3. Avoid single-axis analysis (focusing only on one identity)
@@ -127,6 +136,7 @@ Examine overlapping systems of privilege and oppression:
 ### Method 3: Social Network Analysis
 
 Map relationships and information flows:
+
 1. Identify actors (individuals, organizations, groups)
 2. Map connections and relationships
 3. Measure centrality (who has most connections/influence)
@@ -136,6 +146,7 @@ Map relationships and information flows:
 ### Method 4: Comparative Institutional Analysis
 
 Compare how different societies organize similar functions:
+
 1. Select institutions to compare (healthcare, education, etc.)
 2. Analyze historical development and path dependence
 3. Identify structural variations and their causes
@@ -145,6 +156,7 @@ Compare how different societies organize similar functions:
 ### Method 5: Ethnographic Observation
 
 Understand social life through immersion:
+
 1. Enter social setting and gain access
 2. Observe and participate in natural activities
 3. Take detailed field notes
@@ -196,6 +208,7 @@ Understand social life through immersion:
 ## Best Practices
 
 **Do:**
+
 - Connect individual experiences to social structures ("sociological imagination")
 - Examine both intended and unintended consequences
 - Identify who benefits and who is harmed by systems
@@ -206,6 +219,7 @@ Understand social life through immersion:
 - Center marginalized voices
 
 **Don't:**
+
 - Reduce social phenomena to individual psychology
 - Ignore power dynamics and inequality
 - Assume technology is socially neutral
