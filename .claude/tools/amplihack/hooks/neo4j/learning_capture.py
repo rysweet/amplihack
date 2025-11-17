@@ -2,22 +2,29 @@
 """
 Neo4j Learning Capture Module
 
-Extracts and stores learning insights from Neo4j during session stop.
+Placeholder for future Neo4j learning capture functionality.
 Fail-safe design: Never raises exceptions, always succeeds gracefully.
 
-Purpose:
-    Captures key learning patterns and insights from the Neo4j knowledge graph
+Current Implementation Status:
+    This is a PLANNED feature that is NOT YET IMPLEMENTED.
+    The Neo4j learning schema is not defined yet, so real Cypher queries
+    cannot be written without creating non-functional placeholder code.
+
+    Following Zero-BS principle: "Every function must work or not exist"
+    This module logs that learning capture is planned but not yet available.
+
+Future Purpose:
+    Will capture key learning patterns and insights from the Neo4j knowledge graph
     when a Claude Code session ends, preserving valuable discoveries for future sessions.
 
 Design Philosophy:
     - Fail-safe: All exceptions caught, logged, never propagate
-    - Single responsibility: Only handles learning capture
-    - No external dependencies beyond Neo4j client
+    - Zero-BS: No placeholder functions that don't actually work
+    - Single responsibility: Only handles learning capture when implemented
     - Simple, direct implementation
 """
 
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -31,8 +38,13 @@ def capture_neo4j_learnings(
 ) -> bool:
     """Capture learning insights from Neo4j during session stop.
 
-    Extracts key patterns, discoveries, and insights from the Neo4j knowledge graph
-    and saves them to the session's learning log.
+    CURRENT STATUS: NOT YET IMPLEMENTED
+
+    This is a planned feature that will extract key patterns, discoveries, and insights
+    from the Neo4j knowledge graph when the schema is defined.
+
+    Following Zero-BS principle, this function returns False (feature not available)
+    rather than creating empty log files or using placeholder query functions.
 
     Args:
         project_root: Project root directory
@@ -40,183 +52,26 @@ def capture_neo4j_learnings(
         neo4j_connection: Optional Neo4j connection (if available)
 
     Returns:
-        True if capture succeeded, False if skipped or failed
+        False (feature not yet implemented)
+
+    Future Implementation:
+        When Neo4j learning schema is defined, this will:
+        - Query patterns, discoveries, decisions from knowledge graph
+        - Save insights to session learning log
+        - Return True on successful capture
 
     Design Notes:
         - Fail-safe: Never raises exceptions
-        - Returns immediately if Neo4j unavailable
-        - Logs all operations for debugging
-        - Creates minimal log entry even on failure
+        - Zero-BS compliant: No fake functionality
+        - Logs planned status clearly
     """
     try:
-        # Validate inputs
-        if not project_root or not session_id:
-            logger.warning("Missing project_root or session_id - skipping learning capture")
-            return False
-
-        # Create learning log directory
-        learning_dir = project_root / ".claude" / "runtime" / "learning"
-        learning_dir.mkdir(parents=True, exist_ok=True)
-
-        # Generate learning log path
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        learning_file = learning_dir / f"session_{session_id}_{timestamp}.md"
-
-        # Check if Neo4j connection is available
-        if neo4j_connection is None:
-            logger.info("Neo4j connection not available - creating minimal learning log")
-            _create_minimal_log(learning_file, session_id)
-            return False
-
-        # Query Neo4j for learning insights
-        insights = _query_learning_insights(neo4j_connection, session_id)
-
-        # Write learning log
-        _write_learning_log(learning_file, session_id, insights)
-
-        logger.info(f"Learning capture completed: {learning_file}")
-        return True
-
-    except Exception as e:
-        logger.warning(f"Learning capture failed (non-critical): {e}")
+        logger.info(
+            f"Neo4j learning capture called for session {session_id} - "
+            "feature planned but not yet implemented (awaiting Neo4j schema definition)"
+        )
         return False
 
-
-def _query_learning_insights(neo4j_connection: object, session_id: str) -> dict:
-    """Query Neo4j for learning insights.
-
-    Args:
-        neo4j_connection: Active Neo4j connection
-        session_id: Current session identifier
-
-    Returns:
-        Dictionary of learning insights
-
-    Design Notes:
-        - Fail-safe: Returns empty dict on any error
-        - Queries patterns, discoveries, decisions
-        - Limits results to prevent memory issues
-    """
-    try:
-        insights = {
-            "patterns": [],
-            "discoveries": [],
-            "decisions": [],
-            "key_concepts": [],
-        }
-
-        # Query pattern usage
-        # Note: Actual Cypher queries would go here
-        # For now, return empty structure as placeholder
-        # TODO: Implement actual Neo4j queries when schema is defined
-
-        return insights
-
     except Exception as e:
-        logger.warning(f"Failed to query Neo4j insights: {e}")
-        return {
-            "patterns": [],
-            "discoveries": [],
-            "decisions": [],
-            "key_concepts": [],
-        }
-
-
-def _write_learning_log(learning_file: Path, session_id: str, insights: dict) -> None:
-    """Write learning log to file.
-
-    Args:
-        learning_file: Path to learning log file
-        session_id: Current session identifier
-        insights: Dictionary of learning insights
-
-    Design Notes:
-        - Fail-safe: Catches and logs write errors
-        - Creates markdown format for readability
-        - Includes timestamp and session metadata
-    """
-    try:
-        content = f"""# Neo4j Learning Capture
-
-**Session ID:** {session_id}
-**Timestamp:** {datetime.now().isoformat()}
-
-## Patterns Used
-
-{_format_list(insights.get('patterns', []))}
-
-## Key Discoveries
-
-{_format_list(insights.get('discoveries', []))}
-
-## Decisions Made
-
-{_format_list(insights.get('decisions', []))}
-
-## Key Concepts
-
-{_format_list(insights.get('key_concepts', []))}
-
----
-
-*Generated by Neo4j Learning Capture*
-"""
-        learning_file.write_text(content)
-        logger.info(f"Learning log written: {learning_file}")
-
-    except Exception as e:
-        logger.warning(f"Failed to write learning log: {e}")
-
-
-def _create_minimal_log(learning_file: Path, session_id: str) -> None:
-    """Create minimal learning log when Neo4j unavailable.
-
-    Args:
-        learning_file: Path to learning log file
-        session_id: Current session identifier
-
-    Design Notes:
-        - Fail-safe: Catches all exceptions
-        - Creates placeholder log for consistency
-    """
-    try:
-        content = f"""# Neo4j Learning Capture
-
-**Session ID:** {session_id}
-**Timestamp:** {datetime.now().isoformat()}
-
-**Status:** Neo4j connection not available during session stop
-
-No learning insights captured (Neo4j was not active this session).
-
----
-
-*Generated by Neo4j Learning Capture*
-"""
-        learning_file.write_text(content)
-        logger.info(f"Minimal learning log created: {learning_file}")
-
-    except Exception as e:
-        logger.warning(f"Failed to create minimal log: {e}")
-
-
-def _format_list(items: list) -> str:
-    """Format list of items as markdown.
-
-    Args:
-        items: List of items to format
-
-    Returns:
-        Markdown formatted list or "(none)" if empty
-
-    Design Notes:
-        - Handles empty lists gracefully
-        - Converts all items to strings safely
-    """
-    if not items:
-        return "*(none)*"
-
-    try:
-        return "\n".join(f"- {str(item)}" for item in items)
-    except Exception:
-        return "*(formatting error)*"
+        logger.warning(f"Learning capture check failed (non-critical): {e}")
+        return False

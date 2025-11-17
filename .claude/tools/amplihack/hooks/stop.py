@@ -259,9 +259,10 @@ class StopHook(HookProcessor):
         Fail-safe: Never raises exceptions.
 
         Design Notes:
-            - Called AFTER Neo4j cleanup (database still accessible)
+            - Called AFTER Neo4j cleanup coordination
             - Separated from cleanup for single responsibility
-            - Optional feature: Gracefully skips if Neo4j unavailable
+            - Optional feature: Gracefully skips if not yet implemented
+            - Currently planned but not yet implemented (awaiting schema definition)
         """
         try:
             from neo4j.learning_capture import capture_neo4j_learnings
