@@ -1,6 +1,6 @@
 ---
 name: patterns
-description: Pattern emergence orchestrator. Coordinates diverse perspectives and detects emergent patterns from that diversity. Use when analyzing diverse outputs, identifying unexpected patterns, or managing productive tensions.
+description: Pattern recognition specialist. Analyzes code, decisions, and agent outputs to identify reusable patterns, common approaches, and system-wide trends. Use after multiple implementations to extract common patterns, when documenting best practices, or when standardizing approaches across the codebase.
 model: inherit
 ---
 

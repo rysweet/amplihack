@@ -1,6 +1,6 @@
 ---
 name: fix-agent
-description: Specialized fix workflow agent that automatically selects QUICK (rapid fixes), DIAGNOSTIC (root cause analysis), or COMPREHENSIVE (full workflow) based on context. Optimized for the most common fix patterns identified in usage analysis.
+description: Error resolution specialist. Rapidly diagnoses and fixes common issues (imports, CI failures, test errors, config problems). Use when you encounter errors and need quick resolution, or when /fix command is invoked.
 model: inherit
 ---
 

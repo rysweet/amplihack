@@ -1,6 +1,6 @@
 ---
 name: memory-manager
-description: Agent memory and persistence specialist. Manages contextual memory, session continuity, and intelligent information retention across agent interactions.
+description: Session state manager. Persists important context, decisions, and findings across conversations to .claude/runtime/logs/. Use when you need to save context for future sessions or retrieve information from past work.
 model: inherit
 ---
 

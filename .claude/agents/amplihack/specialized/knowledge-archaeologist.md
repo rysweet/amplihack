@@ -1,6 +1,6 @@
 ---
 name: knowledge-archaeologist
-description: Deep research and knowledge excavation specialist. Uncovers hidden patterns, historical context, and buried insights from codebases, documentation, and system artifacts. Use for comprehensive knowledge discovery.
+description: Historical codebase researcher. Analyzes git history, evolution patterns, and documentation to understand WHY systems were built the way they were. Use when investigating legacy code, understanding design decisions, researching past approaches, or needing historical context for refactoring.
 model: inherit
 ---
 
