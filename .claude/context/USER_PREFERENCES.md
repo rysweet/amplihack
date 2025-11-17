@@ -40,6 +40,10 @@ balanced
 
 autonomous and independent
 
+### Auto Update
+
+ask
+
 ### Preferred Languages
 
 (not set)
@@ -81,11 +85,31 @@ Sycophancy erodes trust. ALWAYS stick to facts and be direct. NEVER use excessiv
 
 Always prefer complete work with high quality over speed of implementation.
 
+### .claude Directory Auto-Update
+
+Controls automatic updating of .claude/ directory when version mismatch detected at session start.
+
+**Current setting:** always
+
+**Options:**
+- `always` - Always auto-update without prompting
+- `never` - Never auto-update (just show warning)
+- `ask` - Prompt user each time (default)
+
+**Usage:**
+```bash
+/amplihack:customize set auto_update always
+/amplihack:customize set auto_update never
+/amplihack:customize set auto_update ask
+```
+
+**Note:** This prevents bugs from running stale hooks/tools when package is upgraded.
+
 ### Neo4j Auto-Shutdown
 
 Controls whether Neo4j database shuts down automatically on session exit.
 
-**Current setting:** ask
+**Current setting:** always
 
 **Options:**
 
