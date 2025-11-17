@@ -25,31 +25,26 @@ JSON file with the following structure:
 ## Fields
 
 ### enabled
-
 - **Type**: boolean
 - **Default**: true
 - **Description**: Master switch for power-steering. If false, never run.
 
 ### skip_qa_sessions
-
 - **Type**: boolean
 - **Default**: true
 - **Description**: Skip power-steering for detected Q&A sessions.
 
 ### considerations_file
-
 - **Type**: string
 - **Default**: "default.json"
 - **Description**: Name of considerations file in `.claude/tools/amplihack/considerations/`
 
 ### summary_enabled
-
 - **Type**: boolean
 - **Default**: true
 - **Description**: Generate and display session summary on approval.
 
 ### timeout_seconds
-
 - **Type**: integer
 - **Default**: 30
 - **Description**: Maximum time for power-steering analysis. After timeout, approve (fail-open).
@@ -59,7 +54,6 @@ JSON file with the following structure:
 Power-steering can be disabled via three methods (checked in order):
 
 ### 1. Configuration File
-
 ```json
 {
   "enabled": false
@@ -67,13 +61,11 @@ Power-steering can be disabled via three methods (checked in order):
 ```
 
 ### 2. Environment Variable
-
 ```bash
 export AMPLIHACK_SKIP_POWER_STEERING=1
 ```
 
 ### 3. Semaphore File
-
 ```bash
 touch .claude/runtime/power-steering/.disabled
 ```
@@ -81,17 +73,14 @@ touch .claude/runtime/power-steering/.disabled
 ## Slash Commands
 
 ### /amplihack:disable-power-steering
-
 Creates semaphore file at `.claude/runtime/power-steering/.disabled`
 
 ### /amplihack:enable-power-steering
-
 Removes semaphore file
 
 ## CLI Flag
 
 Add to Claude Code CLI:
-
 ```bash
 claude --no-power-steering
 ```
@@ -101,7 +90,6 @@ Sets environment variable `AMPLIHACK_SKIP_POWER_STEERING=1`
 ## Default Behavior
 
 If config file doesn't exist, use these defaults:
-
 ```json
 {
   "enabled": true,

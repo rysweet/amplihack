@@ -7,7 +7,6 @@ Add power-steering check to existing stop.py hook orchestrator.
 ## Current stop.py Structure
 
 Based on investigation, stop.py handles:
-
 1. Lock mechanism check
 2. Reflection check (if enabled)
 3. Neo4j cleanup (if enabled)
@@ -19,7 +18,6 @@ Add power-steering as 3rd check, after reflection.
 ## Exact Changes Required
 
 ### Location
-
 `.claude/tools/amplihack/hooks/stop.py`
 
 ### Change 1: Import PowerSteeringChecker
@@ -66,7 +64,7 @@ if self._should_run_power_steering(input_data):
         # Continue to approve
 ```
 
-### Change 3: Add \_should_run_power_steering() helper
+### Change 3: Add _should_run_power_steering() helper
 
 Add as new method in StopHookProcessor class:
 
@@ -117,13 +115,11 @@ With this change, stop.py will execute in this order:
 ## Error Handling Philosophy
 
 **Power-steering uses fail-open approach:**
-
 - If power-steering crashes, log error and approve stop
 - Don't block user due to power-steering bugs
 - Log metric for monitoring
 
 **Rationale:**
-
 - Power-steering is enhancement, not critical path
 - Should never prevent user from stopping session
 - Better to have false negatives (allow bad stops) than false positives (block good stops)
@@ -150,7 +146,6 @@ After implementing changes:
 ## Rollback Plan
 
 If power-steering causes issues:
-
 1. Set `AMPLIHACK_SKIP_POWER_STEERING=1` (immediate)
 2. Or edit config: `{"enabled": false}` (persistent)
 3. Or remove import and method call from stop.py (permanent)
@@ -166,7 +161,6 @@ If power-steering causes issues:
 ## Compatibility
 
 This change is backward compatible:
-
 - stop.py works if power_steering_checker.py missing (import error caught)
 - Power-steering gracefully skips if disabled
 - No changes to lock or reflection behavior

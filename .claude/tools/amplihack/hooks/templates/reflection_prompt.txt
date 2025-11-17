@@ -8,6 +8,7 @@
 #   {{amplihack_repo_uri}}        - Amplihack framework repository URL
 #   {{message_count}}             - Number of messages in session
 #   {{conversation_summary}}      - Formatted conversation excerpt
+#   {{redirects_context}}         - Power-steering redirect history (if any)
 #   {{template}}                  - FEEDBACK_SUMMARY template to fill out
 #
 # Use {{VARIABLE_NAME}} syntax for substitution.
@@ -52,6 +53,8 @@ Problems with the actual application code being developed:
 The session had {message_count} messages. Here are key excerpts:
 
 {conversation_summary}
+
+{redirects_context}
 
 ## Your Task
 

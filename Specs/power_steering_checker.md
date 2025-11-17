@@ -7,7 +7,6 @@ Analyzes session transcript against 21 considerations to determine if work is tr
 ## Contract
 
 ### Input
-
 ```python
 def check(
     transcript_path: Path,
@@ -19,7 +18,6 @@ def check(
 - `session_id`: Unique session identifier
 
 ### Output
-
 ```python
 @dataclass
 class PowerSteeringResult:
@@ -30,7 +28,6 @@ class PowerSteeringResult:
 ```
 
 ### Side Effects
-
 - Reads transcript JSONL file
 - Checks semaphore files in `.claude/runtime/power-steering/`
 - Writes session summary to `.claude/runtime/power-steering/{session_id}/summary.md`
@@ -433,28 +430,24 @@ class ConsiderationAnalysis:
 ## Implementation Notes
 
 ### Phase 1 (MVP)
-
 - Hardcode 21 considerations in `_load_considerations()`
 - Implement top 10 most critical checkers first
 - Simple heuristics for Q&A detection
 - Basic summary generation
 
 ### Phase 2 (Enhancement)
-
 - Move considerations to external JSON file
 - Add more sophisticated transcript analysis
 - ML-based Q&A detection
 - Rich summary with metrics
 
 ### Performance Considerations
-
 - Transcript files can be large (>10MB for long sessions)
 - Load transcript once, pass to all checkers
 - Cache analysis results
 - Timeout after 30 seconds (fail-safe: approve)
 
 ### Error Handling
-
 - Missing transcript file: approve (fail-open)
 - Malformed transcript: log warning, approve
 - Checker exception: log error, treat as satisfied (don't block on bugs)
@@ -463,7 +456,6 @@ class ConsiderationAnalysis:
 ## Test Requirements
 
 ### Unit Tests
-
 - Each consideration checker with mock transcript data
 - Semaphore file handling (creation, detection)
 - Q&A session detection with various transcript patterns
@@ -471,14 +463,12 @@ class ConsiderationAnalysis:
 - Summary generation
 
 ### Integration Tests
-
 - Full flow with real transcript file
 - Disabled state checks (all 3 methods)
 - Recursive prevention
 - Summary file writing
 
 ### Edge Case Tests
-
 - Empty transcript
 - Very large transcript (>10MB)
 - Malformed JSONL
