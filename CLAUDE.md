@@ -105,14 +105,6 @@ dependencies require sequential order.
   architectural claims (see `.claude/context/DISCOVERIES.md` and
   `.claude/runtime/logs/20251018_socratic_questioning/`)
 
-#### Architect Variants
-
-**Multiple specialized architects** exist for different tasks (see agent frontmatter descriptions for when to use each):
-- `architect` (core) - General design, problem decomposition, module specs
-- `amplifier-cli-architect` - CLI applications, hybrid code/AI systems
-- `philosophy-guardian` - Philosophy compliance reviews, simplicity validation
-- `visualization-architect` - Architecture diagrams, visual documentation
-
 ### Development Workflow Agents
 
 **Two-Stage Diagnostic Workflow:**
@@ -463,8 +455,6 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
-
-**For command selection guidance**, see `docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash commands).
 
 ### Fault Tolerance Patterns
 
