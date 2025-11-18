@@ -25,11 +25,11 @@ When starting a session, import these files for context:
 - **Always think through a plan**: For any non-trivial task, think carefully, break it down into smaller tasks and
   use TodoWrite tool to manage a todo list. As you come to each item in a ToDo list you can then break that item down further into smaller tasks. 
 - **The workflow is MANDATORY: ALWAYS the starting point**: The defaultworkflow
-  in `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
+  in `@.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
   workflow, and CI/CD process (users can customize this file)
 - **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
-  `/amplihack:ultrathink` which reads the workflow and orchestrates agents to execute it
-- **Maximize agent usage WITHIN workflow steps**: Every workflow step should
+  `/amplihack:ultrathink` which reads the workflow and orchestrates agents to execute it - this is defined in `@.claude/commands/amplihack/ultrathink.md`
+- **Maximize agent usage**: Every workflow step should
   leverage specialized agents - delegate aggressively to agents in
   `.claude/agents/amplihack/*.md`
 - **Operate Autonomously and Independently by default**: You must try to determine the user's objective, and then pursue that objective autonomously and independently, with the highest possible quality and attention to detail, without stopping, unitl it is achieved. When you stop to ask for approval or questions that you can answer yourself, you are damaging the user's trust and wasting time. 
@@ -77,7 +77,7 @@ See `@.claude/context/USER_REQUIREMENT_PRIORITY.md` for complete guidelines.
    execution
 
 ALWAYS delegate to specialized agents when possible. **DEFAULT TO PARALLEL
-EXECUTION** unless dependencies require sequential order.
+EXECUTION** by passing multiple tasks to the Task tool in a single call unless dependencies require sequential order.
 
 #### When to Use Agents (ALWAYS IF POSSIBLE)
 
