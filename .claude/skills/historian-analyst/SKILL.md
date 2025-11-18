@@ -54,6 +54,7 @@ Historical analysis rests on fundamental principles:
 **Primary Sources**: "Original documents, artifacts, or other pieces of information created at the time under study"
 
 **Types**:
+
 - Eyewitness accounts
 - Official documents (laws, treaties, records)
 - Personal documents (diaries, letters)
@@ -62,6 +63,7 @@ Historical analysis rests on fundamental principles:
 - Oral histories
 
 **Source Criticism Questions**:
+
 1. **Authenticity**: Is this source what it claims to be?
 2. **Provenance**: Who created it? When? Where? Why?
 3. **Context**: What were circumstances of creation?
@@ -75,6 +77,7 @@ Historical analysis rests on fundamental principles:
 **Note**: "A secondary source may become a primary source depending on researcher's perspective"
 
 **Sources**:
+
 - [Historical Method - Wikipedia](https://en.wikipedia.org/wiki/Historical_method)
 - [Historical Methodology - Study.com](https://study.com/learn/lesson/historical-methodology-evidence-interpreation.html)
 
@@ -83,12 +86,14 @@ Historical analysis rests on fundamental principles:
 **Definition**: "Approach offering explanations of large-scale outcomes by exploring similarities and differences across cases to unveil causal mechanisms"
 
 **Applications**:
+
 - Revolutions
 - Democratic or authoritarian rule
 - Path dependent institutional processes
 - Policy continuity and change
 
 **Approaches**:
+
 - Cross-temporal comparison (same place, different times)
 - Cross-spatial comparison (different places, same time)
 - Cross-case comparison (different cases, similar outcomes)
@@ -102,6 +107,7 @@ Historical analysis rests on fundamental principles:
 **Gradual Change**: Incremental transformations that cumulatively produce conspicuous change
 
 **Sources**:
+
 - [Comparative Historical Analysis - Policy Evaluation](https://scienceetbiencommun.pressbooks.pub/pubpolevaluation/chapter/comparative-historical-analysis/)
 - [Comparative Historical Research - Wikipedia](https://en.wikipedia.org/wiki/Comparative_historical_research)
 
@@ -112,6 +118,7 @@ Historical analysis rests on fundamental principles:
 **Purpose**: Organize historical time into meaningful units for analysis
 
 **Common Approaches**:
+
 - Dynastic (Chinese dynasties, European monarchies)
 - Political (Roman Republic vs. Empire, Antebellum vs. Civil War)
 - Economic (Agricultural, Industrial, Post-Industrial)
@@ -119,6 +126,7 @@ Historical analysis rests on fundamental principles:
 - Marxist (feudalism, capitalism, socialism)
 
 **Challenges**:
+
 - Periods often overlap
 - Different aspects change at different rates
 - Eurocentric periodizations don't apply globally
@@ -133,6 +141,7 @@ Historical analysis rests on fundamental principles:
 **Definition**: Situating events within broader historical circumstances
 
 **Multiple Contexts**:
+
 - **Temporal**: When did this occur? What preceded? What followed?
 - **Spatial**: Where? How did geography matter?
 - **Social**: Class, status, demographics
@@ -142,6 +151,7 @@ Historical analysis rests on fundamental principles:
 - **Technological**: Available technologies, constraints
 
 **Process**:
+
 1. Identify relevant contexts
 2. Explain how contexts shaped event
 3. Consider counterfactuals (what if contexts differed?)
@@ -151,6 +161,7 @@ Historical analysis rests on fundamental principles:
 ### Method 5: Causation Analysis
 
 **Types of Causes**:
+
 - **Necessary causes**: Without this, outcome wouldn't occur
 - **Sufficient causes**: This alone produces outcome
 - **Contributory causes**: Increases likelihood of outcome
@@ -158,17 +169,20 @@ Historical analysis rests on fundamental principles:
 - **Proximate causes**: Immediate triggers
 
 **Levels of Causation**:
+
 - **Structural**: Deep, slow-moving factors (geography, demography, technology)
 - **Institutional**: Rules, norms, organizations
 - **Ideational**: Ideas, beliefs, culture
 - **Individual**: Decisions, actions, agency
 
 **Temporal Dimension**:
+
 - **Long-term**: Centuries (Braudel's longue durée)
 - **Medium-term**: Decades to century (conjuncture)
 - **Short-term**: Days to years (événement)
 
 **Challenges**:
+
 - Multiple causation is norm
 - Causes operate at different levels
 - Correlation doesn't imply causation
@@ -183,6 +197,7 @@ Historical analysis rests on fundamental principles:
 **Continuity**: What persists over time despite pressures for change
 
 **Examples**:
+
 - Institutions that survive regime changes
 - Cultural practices transmitted across generations
 - Geographic constraints that persist
@@ -191,6 +206,7 @@ Historical analysis rests on fundamental principles:
 **Change**: Transformations in social, political, economic, or cultural arrangements
 
 **Types**:
+
 - **Gradual**: Slow, incremental (e.g., demographic shifts)
 - **Revolutionary**: Rapid, fundamental (e.g., French Revolution)
 - **Cyclical**: Recurring patterns (e.g., economic cycles)
@@ -201,17 +217,20 @@ Historical analysis rests on fundamental principles:
 ### Concept 2: Historical Causation
 
 **Monocausality vs. Multicausality**:
+
 - Monocausal: Single cause produces outcome (rarely accurate)
 - Multicausal: Multiple causes interact to produce outcome (typical)
 
 **E.H. Carr's Insight**: Historians select which causes to emphasize based on their interpretive frameworks
 
 **Example - WWI Causes**:
+
 - Long-term: Nationalism, imperialism, alliance systems, arms races
 - Medium-term: Balkan tensions, declining Ottoman Empire
 - Short-term: Assassination of Archduke Franz Ferdinand, mobilization dynamics
 
 **Analytical Approach**:
+
 1. Identify multiple causes at different levels
 2. Assess relative importance
 3. Explain how causes interacted
@@ -224,12 +243,14 @@ Historical analysis rests on fundamental principles:
 **Mechanism**: Early choices create self-reinforcing patterns that constrain future options
 
 **Examples**:
+
 - QWERTY keyboard layout (technological lock-in)
 - Common law vs. civil law systems
 - Federal vs. unitary state structures
 - Electoral systems (majoritarian vs. proportional)
 
 **Implications**:
+
 - History matters—timing of choices shapes outcomes
 - Institutions persist even when suboptimal
 - Change requires overcoming high switching costs
@@ -242,12 +263,14 @@ Historical analysis rests on fundamental principles:
 **Purpose**: Draw lessons from past to illuminate present
 
 **Process**:
+
 1. Identify similar historical case
 2. Analyze similarities and differences
 3. Assess applicability of lessons
 4. Acknowledge limitations of analogy
 
 **Cautions**:
+
 - No two historical situations are identical
 - Cherry-picking analogies to support predetermined conclusions
 - Overextending analogies beyond appropriate limits
@@ -258,12 +281,14 @@ Historical analysis rests on fundamental principles:
 ### Concept 5: Historiographical Perspective
 
 **E.H. Carr's Contribution**:
+
 - Rejected view that history is mere "accretion of facts"
 - Argued historians select facts based on their frameworks
 - "Distinguished 'facts of the past' from 'historical facts'"
 - Emphasized historian's role in constructing narratives
 
 **Fernand Braudel's Contribution**:
+
 - "Emphasized role of large-scale socioeconomic factors"
 - Three temporal levels: longue durée (structures), conjuncture (cycles), événement (events)
 - "Galvanized new geographical, quantitative, and long duration study"
@@ -272,6 +297,7 @@ Historical analysis rests on fundamental principles:
 **Implication**: All historical interpretations are constructed. Multiple valid interpretations can coexist.
 
 **Sources**:
+
 - [E.H. Carr - Wikipedia](https://en.wikipedia.org/wiki/E._H._Carr)
 - [Fernand Braudel - Wikipedia](https://en.wikipedia.org/wiki/Fernand_Braudel)
 
@@ -282,12 +308,14 @@ Historical analysis rests on fundamental principles:
 ### What to Examine
 
 **Temporal Sequence**:
+
 - When did this occur?
 - What preceded it?
 - What followed?
 - How does it fit into larger chronology?
 
 **Multiple Contexts**:
+
 - Social structures and relations
 - Economic conditions and constraints
 - Political institutions and power
@@ -296,18 +324,21 @@ Historical analysis rests on fundamental principles:
 - Geographic and environmental factors
 
 **Actors and Agency**:
+
 - Who were key individuals and groups?
 - What choices did they make?
 - What constrained their choices?
 - What alternatives existed?
 
 **Sources and Evidence**:
+
 - What primary sources exist?
 - How reliable are they?
 - What perspectives do they represent?
 - What sources are missing?
 
 **Continuity and Change**:
+
 - What persisted?
 - What transformed?
 - At what pace?
@@ -316,36 +347,42 @@ Historical analysis rests on fundamental principles:
 ### Questions to Ask
 
 **Temporal Questions**:
+
 - How did this unfold over time?
 - What is the chronology of events?
 - What came before? What came after?
 - What patterns exist across time?
 
 **Causal Questions**:
+
 - What caused this?
 - What types of causes (structural, institutional, ideational, individual)?
 - What levels (long-term, medium-term, short-term)?
 - How did causes interact?
 
 **Contextual Questions**:
+
 - What were the circumstances?
 - How did context shape this event?
 - What if contexts had been different?
 - How does this compare to other contexts?
 
 **Comparative Questions**:
+
 - What historical parallels exist?
 - How is this similar to/different from other cases?
 - What patterns emerge from comparison?
 - What explains variation across cases?
 
 **Interpretive Questions**:
+
 - How have historians interpreted this?
 - What debates exist?
 - What evidence supports different interpretations?
 - What is my assessment based on evidence?
 
 **Significance Questions**:
+
 - Why does this matter?
 - What were consequences?
 - How did this shape subsequent events?
@@ -354,6 +391,7 @@ Historical analysis rests on fundamental principles:
 ### Factors to Consider
 
 **Structural Factors** (Long-term):
+
 - Geography and environment
 - Demographics
 - Technology
@@ -361,6 +399,7 @@ Historical analysis rests on fundamental principles:
 - Social organization
 
 **Institutional Factors** (Medium-term):
+
 - Political institutions
 - Legal systems
 - Religious organizations
@@ -368,6 +407,7 @@ Historical analysis rests on fundamental principles:
 - Economic institutions
 
 **Ideational Factors**:
+
 - Beliefs and ideologies
 - Cultural values and norms
 - Religious doctrines
@@ -375,6 +415,7 @@ Historical analysis rests on fundamental principles:
 - Scientific paradigms
 
 **Individual Factors** (Short-term):
+
 - Leader decisions
 - Individual agency
 - Contingent events
@@ -383,18 +424,21 @@ Historical analysis rests on fundamental principles:
 ### Historical Parallels to Consider
 
 **Types of Parallels**:
+
 - Similar events in different times (e.g., financial crises)
 - Similar processes (e.g., democratization, industrialization)
 - Similar structures (e.g., empires, federations)
 - Similar conflicts (e.g., civil wars, revolutions)
 
 **Analytical Value**:
+
 - Identify patterns
 - Test generalizations
 - Generate hypotheses
 - Draw tentative lessons
 
 **Limitations**:
+
 - No exact repetition
 - Context always differs
 - Analogies can mislead
@@ -403,18 +447,21 @@ Historical analysis rests on fundamental principles:
 ### Implications to Explore
 
 **Historical Significance**:
+
 - Impact on contemporaries
 - Long-term consequences
 - Influence on subsequent events
 - Legacy in present
 
 **Historical Understanding**:
+
 - What does this reveal about the period?
 - How does this change our interpretation?
 - What patterns does this exemplify?
 - What makes this historically important?
 
 **Contemporary Relevance**:
+
 - What lessons for present?
 - What parallels to current events?
 - What does history suggest about future?
@@ -427,12 +474,14 @@ Historical analysis rests on fundamental principles:
 ### Step 1: Establish Chronology and Context
 
 **Actions**:
+
 - Create timeline of key events
 - Identify temporal boundaries
 - Situate in multiple contexts (social, economic, political, cultural)
 - Understand what preceded and followed
 
 **Outputs**:
+
 - Chronological framework
 - Contextual understanding
 - Temporal boundaries defined
@@ -440,6 +489,7 @@ Historical analysis rests on fundamental principles:
 ### Step 2: Identify and Evaluate Sources
 
 **Actions**:
+
 - Locate primary sources
 - Assess secondary sources
 - Apply source criticism
@@ -447,6 +497,7 @@ Historical analysis rests on fundamental principles:
 - Evaluate reliability and perspective
 
 **Questions**:
+
 - What sources exist?
 - Who created them? When? Why?
 - What biases or limitations?
@@ -454,6 +505,7 @@ Historical analysis rests on fundamental principles:
 - How reliable?
 
 **Outputs**:
+
 - Source inventory
 - Critical assessment of each source
 - Evidentiary gaps identified
@@ -461,18 +513,21 @@ Historical analysis rests on fundamental principles:
 ### Step 3: Analyze Causation
 
 **Actions**:
+
 - Identify potential causes at multiple levels
 - Distinguish necessary, sufficient, and contributory causes
 - Examine long-term, medium-term, and short-term factors
 - Assess how causes interacted
 
 **Causal Levels**:
+
 - Structural (geography, demography, technology)
 - Institutional (rules, organizations)
 - Ideational (beliefs, culture)
 - Individual (agency, decisions)
 
 **Outputs**:
+
 - Multi-level causal analysis
 - Assessment of relative importance
 - Explanation of causal mechanisms
@@ -480,17 +535,20 @@ Historical analysis rests on fundamental principles:
 ### Step 4: Examine Continuity and Change
 
 **Actions**:
+
 - Identify what persisted
 - Identify what transformed
 - Assess pace and nature of change
 - Explain drivers of change and persistence
 
 **Types of Change**:
+
 - Gradual vs. revolutionary
 - Cyclical vs. directional
 - Intended vs. unintended
 
 **Outputs**:
+
 - Continuity/change analysis
 - Explanation of dynamics
 - Assessment of pace and significance
@@ -498,17 +556,20 @@ Historical analysis rests on fundamental principles:
 ### Step 5: Apply Comparative Perspective
 
 **Actions**:
+
 - Identify comparable historical cases
 - Analyze similarities and differences
 - Assess what comparisons reveal
 - Test generalizations
 
 **Comparative Approaches**:
+
 - Across time (same place, different periods)
 - Across space (different places, same period)
 - Across outcomes (similar vs. different results)
 
 **Outputs**:
+
 - Comparative case selection
 - Similarity/difference analysis
 - Patterns identified
@@ -517,18 +578,21 @@ Historical analysis rests on fundamental principles:
 ### Step 6: Consider Path Dependency and Critical Junctures
 
 **Actions**:
+
 - Identify critical junctures (moments of openness to change)
 - Trace path dependent processes (self-reinforcing patterns)
 - Assess constraints from past choices
 - Evaluate alternative paths not taken
 
 **Questions**:
+
 - What choices created lasting effects?
 - What alternatives existed?
 - Why did particular path get chosen?
 - How has past constrained present?
 
 **Outputs**:
+
 - Critical juncture identification
 - Path dependency analysis
 - Counterfactual assessment
@@ -536,18 +600,21 @@ Historical analysis rests on fundamental principles:
 ### Step 7: Periodize and Contextualize
 
 **Actions**:
+
 - Determine appropriate periodization
 - Identify transitions and continuities
 - Situate within larger historical narratives
 - Avoid anachronism
 
 **Periodization Questions**:
+
 - What era or period?
 - What marks beginning and end?
 - What were defining characteristics?
 - How does this fit larger periodization?
 
 **Outputs**:
+
 - Periodization framework
 - Contextual analysis
 - Temporal framing
@@ -555,6 +622,7 @@ Historical analysis rests on fundamental principles:
 ### Step 8: Construct Historical Interpretation
 
 **Actions**:
+
 - Synthesize evidence and analysis
 - Develop coherent narrative
 - Make argument about significance and causation
@@ -562,6 +630,7 @@ Historical analysis rests on fundamental principles:
 - Address historiographical debates
 
 **Interpretation Elements**:
+
 - Causal argument
 - Significance assessment
 - Narrative structure
@@ -569,6 +638,7 @@ Historical analysis rests on fundamental principles:
 - Acknowledgment of limits
 
 **Outputs**:
+
 - Historical interpretation
 - Supported argument
 - Recognition of debate
@@ -576,18 +646,21 @@ Historical analysis rests on fundamental principles:
 ### Step 9: Draw Lessons and Identify Implications
 
 **Actions**:
+
 - Identify patterns and regularities
 - Draw tentative lessons
 - Note limitations of lessons
 - Assess relevance to present
 
 **Cautions**:
+
 - History doesn't repeat exactly
 - Lessons are suggestive, not determinative
 - Context matters
 - Avoid overextending
 
 **Outputs**:
+
 - Historical lessons
 - Contemporary implications
 - Acknowledged limitations
@@ -603,10 +676,12 @@ Historical analysis rests on fundamental principles:
 **Analysis**:
 
 **Step 1 - Chronology & Context**:
+
 - Timeline: 1919 founding → 1929 Depression → 1930-1933 political crisis → 1933 Hitler appointed Chancellor
 - Context: Post-WWI Germany, Treaty of Versailles, hyperinflation (1923), parliamentary democracy, proportional representation
 
 **Step 2 - Sources**:
+
 - Primary: Weimar constitution, election data, newspaper accounts, memoirs
 - Secondary: Extensive historiography (Bracher, Kershaw, Evans)
 - Perspectives: Conservative, liberal, socialist, Nazi viewpoints
@@ -614,54 +689,64 @@ Historical analysis rests on fundamental principles:
 
 **Step 3 - Causation (Multiple Levels)**:
 
-*Structural (Long-term)*:
+_Structural (Long-term)_:
+
 - Weak democratic traditions in Germany
 - Economic instability and vulnerability
 - Social divisions (class, religion, region)
 
-*Institutional (Medium-term)*:
+_Institutional (Medium-term)_:
+
 - Proportional representation → fragmented parliament
 - Article 48 (emergency powers) → presidential authoritarianism
 - Weak presidential loyalty to democracy (Hindenburg)
 
-*Ideational*:
+_Ideational_:
+
 - Legitimacy crisis (Versailles "diktat")
 - Nationalist resentment
 - Anti-democratic ideologies (left and right)
 
-*Individual/Contingent*:
+_Individual/Contingent_:
+
 - Hindenburg's decision to appoint Hitler
 - Conservative elites' miscalculation ("we can control him")
 - Nazi electoral strategy and propaganda
 
 **Step 4 - Continuity & Change**:
-- *Continuity*: Authoritarian traditions, social hierarchies, bureaucratic state
-- *Change*: Democracy → dictatorship (revolutionary change)
-- *Pace*: Gradual erosion 1930-1932, rapid collapse 1933
+
+- _Continuity_: Authoritarian traditions, social hierarchies, bureaucratic state
+- _Change_: Democracy → dictatorship (revolutionary change)
+- _Pace_: Gradual erosion 1930-1932, rapid collapse 1933
 
 **Step 5 - Comparative Perspective**:
+
 - Contrast: Britain, France maintained democracies despite Depression
 - Similar: Italy's earlier fascist turn (1922)
 - Pattern: Economic crisis + weak institutions + anti-democratic movements = breakdown risk
 - Difference: Germany's specific context (WWI defeat, Versailles, hyperinflation)
 
 **Step 6 - Path Dependency**:
+
 - Critical juncture: 1919 choice of proportional representation
 - Path dependency: PR led to fragmentation, making governance difficult
 - Alternative: Majoritarian system might have produced more stable governments
 - Constraints: By 1930, constitutional amendment very difficult
 
 **Step 7 - Periodization**:
+
 - Period: Interwar period (1919-1939)
 - Weimar era: 1919-1933 (short-lived experiment)
 - Context: Wave of democratization post-WWI, followed by authoritarian reversals 1920s-1930s
 
 **Step 8 - Historical Interpretation**:
+
 - Synthesis: Weimar collapse resulted from combination of structural weaknesses (economic, social), institutional flaws (PR, Article 48), ideational challenges (legitimacy crisis), and contingent decisions
 - Significance: Demonstrated fragility of new democracies under stress; warned against institutional design flaws
 - Debate: How inevitable was collapse? Role of structural vs. contingent factors?
 
 **Step 9 - Lessons & Implications**:
+
 - Lessons:
   - Democratic consolidation requires time and favorable conditions
   - Institutional design matters (electoral systems, executive power)
@@ -677,69 +762,81 @@ Historical analysis rests on fundamental principles:
 **Analysis**:
 
 **Step 1 - Chronology & Context**:
+
 - Period: Late 18th-early 19th century in Britain
 - Preceded by: Agricultural revolution, commercial revolution, Scientific Revolution
 - Context: Britain's coal, capital, colonies, craftsmanship, culture (Mokyr's 5 Cs)
 
 **Step 2 - Sources**:
+
 - Primary: Factory records, government reports, personal accounts, statistical data
 - Secondary: Extensive debate (optimists vs. pessimists on living standards)
 - Limitations: Better data for elites than workers
 
 **Step 3 - Causation (Why Britain First?)**:
 
-*Structural*:
+_Structural_:
+
 - Coal deposits (energy source)
 - Island geography (safe from invasion, maritime trade)
 - Prior capital accumulation
 
-*Institutional*:
+_Institutional_:
+
 - Property rights and rule of law
 - Patent system encouraging invention
 - Limited government interference
 
-*Ideational*:
+_Ideational_:
+
 - Enlightenment values (progress, improvement)
 - "Industrial Enlightenment" (Mokyr): practical knowledge diffusion
 
-*Contingent*:
+_Contingent_:
+
 - Key inventions (steam engine, spinning jenny)
 - Entrepreneurial culture
 
 **Step 4 - Continuity & Change**:
-- *Massive Change*:
+
+- _Massive Change_:
   - Production: Handicraft → factory
   - Energy: Organic (wood, water) → fossil fuels
   - Location: Rural → urban
   - Social structure: Traditional → class-based
-- *Continuities*:
+- _Continuities_:
   - Political institutions (gradual reform)
   - Social hierarchies (nobility persisted)
   - Agricultural sector remained large initially
 
 **Step 5 - Comparative Perspective**:
+
 - Britain first, then Belgium, France, Germany, US, Japan
 - Variation in timing, pace, state role
 - Pattern: "Follower advantage" (learn from Britain, skip stages)
 - Differences: State-led (Germany, Japan) vs. market-led (Britain, US)
 
 **Step 6 - Path Dependency**:
+
 - Critical juncture: Adoption of coal/steam created energy-intensive path
 - Path dependency: Infrastructure investments, skill formation, spatial patterns locked in
 - Long-term: Carbon-based economy persists to present
 - Alternative paths: Different energy sources (not taken until recent)
 
 **Step 7 - Periodization (Braudel's Three Levels)**:
-- *Longue durée*: Shift from agrarian to industrial society (centuries)
-- *Conjuncture*: Economic cycles, boom-bust patterns (decades)
-- *Événement*: Specific inventions, business cycles (years)
+
+- _Longue durée_: Shift from agrarian to industrial society (centuries)
+- _Conjuncture_: Economic cycles, boom-bust patterns (decades)
+- _Événement_: Specific inventions, business cycles (years)
 
 **Step 8 - Historical Interpretation**:
+
 - Synthesis: Industrial Revolution resulted from convergence of factors (resources, institutions, ideas, individuals) in unique British context
 - Significance: Most important transformation since Agricultural Revolution; created modern world
 - Debate: Living standards (improved eventually, but initial suffering?), role of colonialism, environmental costs
 
 **Step 9 - Lessons & Implications**:
+
 - Lessons:
   - Technological change transforms societies fundamentally
   - Institutions and ideas matter alongside material factors
@@ -755,64 +852,74 @@ Historical analysis rests on fundamental principles:
 **Analysis**:
 
 **Step 1 - Chronology & Context**:
+
 - France 1789: Absolutist monarchy, fiscal crisis, Enlightenment ideas, class tensions
 - Russia 1917: Autocratic tsarism, WWI strain, Marxist ideology, peasant discontent
 - Iran 1979: Authoritarian modernizing shah, oil wealth, Islamic ideology, broad opposition
 
 **Step 2 - Sources**:
+
 - Extensive primary sources for all three
 - Rich historiographies with competing interpretations
 - Comparative revolution literature (Skocpol, Goldstone)
 
 **Step 3 - Causation (Theda Skocpol's Framework)**:
 
-*Common Structural Factors*:
+_Common Structural Factors_:
+
 - Fiscal/administrative crisis of state
 - Elite divisions
 - Peasant/popular unrest
 - External pressures (war for France/Russia, international economy for Iran)
 
-*Differences*:
+_Differences_:
+
 - Ideologies (Enlightenment liberalism, Marxism-Leninism, Political Islam)
 - Class structures (feudal remnants, industrial proletariat, bazaar merchants)
 - International contexts (balance of power, WWI, Cold War)
 
 **Step 4 - Continuity & Change**:
-- *Change*: Regime overthrow, social transformation, ideological transformation
-- *Continuity*: State centralization persisted/intensified, authoritarian patterns reemerged, geopolitical positions
-- *Paradox*: Revolutions against authoritarianism often produced new authoritarianisms
+
+- _Change_: Regime overthrow, social transformation, ideological transformation
+- _Continuity_: State centralization persisted/intensified, authoritarian patterns reemerged, geopolitical positions
+- _Paradox_: Revolutions against authoritarianism often produced new authoritarianisms
 
 **Step 5 - Comparative Analysis**:
-- *Similarities*:
+
+- _Similarities_:
   - Old regime crises
   - Broad coalitions against regime
   - Rapid radicalization
   - Terror phases
   - Thermidorian reactions/stabilization
-- *Differences*:
+- _Differences_:
   - Outcomes (liberal democracy failed in France initially, communism in Russia, Islamic theocracy in Iran)
   - Class bases
   - Ideological contents
   - International impacts
 
 **Step 6 - Path Dependency**:
+
 - Prior regime types shaped revolutionary trajectories
 - Centralized states → centralized revolutionary states
 - Weak civil societies → difficulty building democracy
 - Revolutionary ideologies created new path dependencies
 
 **Step 7 - Periodization**:
+
 - All occur in periods of major global transformation
 - France: Age of Revolutions (late 18th-early 19th century)
 - Russia: Era of Total War and ideological conflict
 - Iran: Post-colonial, Cold War, oil age
 
 **Step 8 - Historical Interpretation**:
+
 - Synthesis: Revolutions occur when structural crises (fiscal, military, economic) combine with elite divisions, popular mobilization, and alternative ideologies
 - Significance: Revolutions fundamentally reshape societies but rarely produce anticipated outcomes
 - Debate: Structural vs. voluntarist explanations, inevitability vs. contingency
 
 **Step 9 - Lessons & Implications**:
+
 - Lessons:
   - Revolutionary coalitions are unstable; radicals often prevail
   - Revolutions rarely produce intended outcomes
@@ -828,8 +935,9 @@ Historical analysis rests on fundamental principles:
 ### Key Historians and Works
 
 #### E.H. Carr (1892-1982)
+
 - **Field**: Historiography
-- **Key Work**: *What Is History?* (1961)
+- **Key Work**: _What Is History?_ (1961)
 - **Contribution**: Rejected empiricism; emphasized historian's role in selecting and interpreting facts
 - **Impact**: Most cited historiographic work in history education (2004-2013)
 - **Sources**:
@@ -837,8 +945,9 @@ Historical analysis rests on fundamental principles:
   - [E.H. Carr - Britannica](https://www.britannica.com/biography/E-H-Carr)
 
 #### Fernand Braudel (1902-1985)
+
 - **Field**: Annales School, structural history
-- **Key Work**: *The Mediterranean and the Mediterranean World in the Time of Phillip II*
+- **Key Work**: _The Mediterranean and the Mediterranean World in the Time of Phillip II_
 - **Contribution**: Longue durée (long-term structures), three temporal levels, emphasis on geography and economics
 - **Recognition**: "Most important historian of previous 60 years" (2011 History Today poll)
 - **Sources**:
@@ -856,6 +965,7 @@ Historical analysis rests on fundamental principles:
 **Website**: https://www.historians.org/
 
 **Sources**:
+
 - [AHA - Wikipedia](https://en.wikipedia.org/wiki/American_Historical_Association)
 - [AHA Website](https://www.historians.org/)
 
@@ -874,10 +984,12 @@ Historical analysis rests on fundamental principles:
 **Access**: https://academic.oup.com/ahr
 
 **2025 Content Examples**:
+
 - June: Opium, slavery terminology, counterrevolution
 - September: Korean atomic bomb survivors, Jamaican socialists, naturalized citizens in China
 
 **Sources**:
+
 - [AHR - Oxford Academic](https://academic.oup.com/ahr)
 - [AHR - AHA](https://www.historians.org/news-publications/american-historical-review/)
 - [AHR - Wikipedia](https://en.wikipedia.org/wiki/The_American_Historical_Review)
@@ -887,11 +999,13 @@ Historical analysis rests on fundamental principles:
 **JSTOR**: https://www.jstor.org/ (Historical journal archives)
 
 **Primary Source Databases**:
+
 - National Archives
 - Library of Congress
 - University libraries special collections
 
 **Historical Associations**:
+
 - Organization of American Historians
 - Historical societies (national, regional, topical)
 
@@ -919,34 +1033,42 @@ After completing historical analysis:
 ## Common Pitfalls to Avoid
 
 **Pitfall 1: Presentism**
+
 - **Problem**: Judging past by present standards
 - **Solution**: Understand historical context; avoid anachronistic judgments
 
 **Pitfall 2: Monocausal Explanations**
+
 - **Problem**: Attributing complex outcomes to single causes
 - **Solution**: Identify multiple causes at different levels; explain interactions
 
 **Pitfall 3: Teleology**
+
 - **Problem**: Assuming past inevitably led to present
 - **Solution**: Recognize contingency; consider alternatives that existed
 
 **Pitfall 4: Cherry-Picking Evidence**
+
 - **Problem**: Selecting only evidence supporting preferred interpretation
 - **Solution**: Consider all relevant evidence; address contradictions
 
 **Pitfall 5: Ignoring Context**
+
 - **Problem**: Analyzing events in isolation
 - **Solution**: Situate in multiple contexts; explain how context shaped events
 
 **Pitfall 6: False Analogies**
+
 - **Problem**: Overextending historical parallels
 - **Solution**: Specify similarities and differences; acknowledge limits of analogies
 
 **Pitfall 7: Ignoring Agency**
+
 - **Problem**: Structural determinism ignoring human choices
 - **Solution**: Balance structure and agency; recognize contingency
 
 **Pitfall 8: Uncritical Use of Sources**
+
 - **Problem**: Accepting sources at face value
 - **Solution**: Apply source criticism; assess reliability, bias, perspective
 
@@ -980,6 +1102,7 @@ Historical analysis complements other perspectives:
 - **Anthropologist**: Cultural continuity and change over time
 
 History is particularly strong on:
+
 - Temporal analysis
 - Contextual understanding
 - Source-based evidence
@@ -992,6 +1115,7 @@ History is particularly strong on:
 ## Continuous Improvement
 
 This skill evolves through:
+
 - New historical research and interpretations
 - Methodological developments
 - Access to new sources

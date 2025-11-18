@@ -15,6 +15,7 @@ This skill combines algorithm analysis, complexity theory, formal methods, infor
 Analyzes the time and space complexity of algorithms using Big-O notation. Determines how algorithm performance scales with input size and identifies optimal approaches.
 
 **Complexity Classes:**
+
 - **O(1)** - Constant time (array access, hash table lookup)
 - **O(log n)** - Logarithmic (binary search, balanced trees)
 - **O(n)** - Linear (array traversal, simple search)
@@ -28,6 +29,7 @@ Analyzes the time and space complexity of algorithms using Big-O notation. Deter
 Classifies problems by inherent computational difficulty. Understands P, NP, NP-complete, NP-hard, and the implications for real-world problem-solving.
 
 **Key Classes:**
+
 - **P** - Problems solvable in polynomial time (efficient)
 - **NP** - Problems verifiable in polynomial time
 - **NP-complete** - Hardest problems in NP (satisfiability, traveling salesman, graph coloring)
@@ -40,6 +42,7 @@ Classifies problems by inherent computational difficulty. Understands P, NP, NP-
 Evaluates trade-offs between different data structures for various operations. Understands when to use arrays, linked lists, trees, graphs, hash tables, heaps, and specialized structures.
 
 **Trade-off Analysis:**
+
 - Access time vs. insertion/deletion time
 - Space efficiency vs. time efficiency
 - Ordered vs. unordered storage
@@ -51,6 +54,7 @@ Evaluates trade-offs between different data structures for various operations. U
 Applies established algorithm design techniques to solve problems efficiently.
 
 **Key Paradigms:**
+
 - **Divide and Conquer** - Break problem into subproblems (merge sort, quicksort)
 - **Dynamic Programming** - Solve overlapping subproblems once (Fibonacci, shortest paths)
 - **Greedy Algorithms** - Make locally optimal choices (Dijkstra's algorithm, Huffman coding)
@@ -63,6 +67,7 @@ Applies established algorithm design techniques to solve problems efficiently.
 Analyzes fundamental limits and trade-offs in distributed computing.
 
 **Core Concepts:**
+
 - **CAP Theorem** - Consistency, Availability, Partition Tolerance (choose 2 of 3)
 - **Byzantine Fault Tolerance** - Consensus despite malicious actors
 - **Consensus Algorithms** - Paxos, Raft, blockchain consensus
@@ -74,6 +79,7 @@ Analyzes fundamental limits and trade-offs in distributed computing.
 Applies Shannon's information theory to understand communication, compression, and entropy.
 
 **Key Metrics:**
+
 - **Entropy** - Average information content
 - **Mutual Information** - Shared information between variables
 - **Channel Capacity** - Maximum reliable communication rate
@@ -107,6 +113,7 @@ Apply computational complexity to cryptography (one-way functions, hardness assu
 ### Method 1: Big-O Analysis
 
 Determine time/space complexity:
+
 1. Identify basic operations
 2. Count operations as function of input size n
 3. Drop constants and lower-order terms
@@ -116,6 +123,7 @@ Determine time/space complexity:
 ### Method 2: NP-Completeness Proof
 
 Show a problem is NP-hard:
+
 1. Choose a known NP-complete problem
 2. Construct polynomial-time reduction
 3. Prove reduction correctness
@@ -125,6 +133,7 @@ Show a problem is NP-hard:
 ### Method 3: Amortized Analysis
 
 Analyze average cost over sequence of operations:
+
 1. Identify operation sequence
 2. Calculate total cost over n operations
 3. Divide by n for amortized cost
@@ -133,6 +142,7 @@ Analyze average cost over sequence of operations:
 ### Method 4: Lower Bound Proof
 
 Prove no algorithm can do better:
+
 1. Use adversary arguments
 2. Apply information-theoretic bounds
 3. Use decision tree complexity
@@ -141,6 +151,7 @@ Prove no algorithm can do better:
 ### Method 5: Trade-off Analysis
 
 Evaluate algorithm/data structure choices:
+
 1. List operations and their frequencies
 2. Calculate weighted complexity
 3. Consider space vs. time trade-offs
@@ -177,7 +188,7 @@ Evaluate algorithm/data structure choices:
 
 - Sorting: QuickSort, MergeSort, HeapSort (O(n log n))
 - Searching: Binary Search (O(log n)), Hash Tables (O(1) average)
-- Graph: Dijkstra (shortest paths), A* (heuristic search), PageRank
+- Graph: Dijkstra (shortest paths), A\* (heuristic search), PageRank
 - String: KMP, Boyer-Moore (pattern matching)
 - Compression: Huffman coding, LZ77
 
@@ -190,6 +201,7 @@ Evaluate algorithm/data structure choices:
 ## Best Practices
 
 **Do:**
+
 - Always analyze time and space complexity
 - Consider worst-case, average-case, and amortized complexity
 - Understand the input size and growth rate
@@ -199,6 +211,7 @@ Evaluate algorithm/data structure choices:
 - Consider cache locality and memory access patterns
 
 **Don't:**
+
 - Optimize prematurely (measure first)
 - Ignore algorithmic complexity for "simple" problems
 - Use exponential algorithms on large inputs

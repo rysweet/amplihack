@@ -53,6 +53,7 @@ This skill helps you create **agentic outside-in tests** that verify application
 ### Outside-In Testing Philosophy
 
 **Traditional Inside-Out Testing**:
+
 ```python
 # Tightly coupled to implementation
 def test_calculator_add():
@@ -63,6 +64,7 @@ def test_calculator_add():
 ```
 
 **Agentic Outside-In Testing**:
+
 ```yaml
 # Implementation-agnostic behavior verification
 scenario:
@@ -77,6 +79,7 @@ scenario:
 ```
 
 **Benefits**:
+
 - Tests survive refactoring (internal changes don't break tests)
 - Readable by non-developers (YAML is declarative)
 - Platform-agnostic (same structure for CLI/TUI/Web/Electron)
@@ -94,6 +97,7 @@ Gadugi-agentic-test is a Python framework that:
 6. **Generates reports** with evidence trails
 
 **Architecture**:
+
 ```
 YAML Scenario → Scenario Loader → Agent Dispatcher → Execution Engine
                                           ↓
@@ -208,6 +212,7 @@ scenario:
 **Use Case**: Command-line tools, scripts, build tools, package managers
 
 **Supported Actions**:
+
 - `launch` - Start the CLI program
 - `send_input` - Send text or commands via stdin
 - `send_signal` - Send OS signals (SIGINT, SIGTERM)
@@ -253,6 +258,7 @@ scenario:
 **Use Case**: Terminal user interfaces (htop, vim, tmux, custom dashboard TUIs)
 
 **Supported Actions**:
+
 - `launch` - Start TUI application
 - `send_keypress` - Send keyboard input (arrow keys, enter, ctrl+c, etc.)
 - `wait_for_screen` - Wait for specific text to appear on screen
@@ -300,6 +306,7 @@ scenario:
 **Use Case**: Web apps, dashboards, SPAs, admin panels
 
 **Supported Actions**:
+
 - `navigate` - Go to URL
 - `click` - Click element by selector or text
 - `type` - Type into input fields
@@ -350,6 +357,7 @@ scenario:
 **Use Case**: Desktop apps built with Electron (VS Code, Slack, Discord clones)
 
 **Supported Actions**:
+
 - `launch` - Start Electron app
 - `window_action` - Interact with windows (focus, minimize, close)
 - `menu_click` - Click application menu items
@@ -409,8 +417,8 @@ scenario:
   # Optional fields
   tags: [smoke, regression, auth, payment]
   priority: high | medium | low
-  timeout: 60s  # Overall scenario timeout
-  retry_on_failure: 2  # Retry count
+  timeout: 60s # Overall scenario timeout
+  retry_on_failure: 2 # Retry count
 
   # Environment requirements
   environment:
@@ -684,6 +692,7 @@ scenario:
 The framework uses AI agents to interpret application output and determine if tests pass. You can customize these agents for domain-specific logic.
 
 **Default Comprehension Agent**:
+
 - Observes raw output (text, HTML, screenshots)
 - Applies general reasoning to verify expectations
 - Returns pass/fail with explanation
@@ -746,7 +755,7 @@ scenario:
     - action: visual_compare
       screenshot: "homepage.png"
       baseline: "./baselines/homepage-baseline.png"
-      threshold: 0.05  # 5% difference allowed
+      threshold: 0.05 # 5% difference allowed
       highlight_differences: true
 ```
 
@@ -772,11 +781,11 @@ scenario:
 
     - action: verify_performance
       metric: page_load_time
-      less_than: 3000  # 3 seconds
+      less_than: 3000 # 3 seconds
 
     - action: verify_performance
       metric: first_contentful_paint
-      less_than: 1500  # 1.5 seconds
+      less_than: 1500 # 1.5 seconds
 ```
 
 ### Multi-Window Coordination (Electron) [LEVEL 3]
@@ -877,16 +886,19 @@ scenario:
 ### Running Tests
 
 **Single test**:
+
 ```bash
 gadugi-agentic-test run test-scenario.yaml
 ```
 
 **Multiple tests**:
+
 ```bash
 gadugi-agentic-test run tests/*.yaml
 ```
 
 **With options**:
+
 ```bash
 gadugi-agentic-test run test.yaml \
   --verbose \
@@ -1047,7 +1059,7 @@ scenario:
     - action: api_call
       endpoint: "/api/users"
       method: POST
-      data: {email: "test@example.com"}
+      data: { email: "test@example.com" }
 
     # Run test
     - action: navigate
@@ -1240,7 +1252,7 @@ This skill follows amplihack's core principles:
 - action: click
   selector: ".load-data-button"
 - action: verify_element
-  selector: ".data-table"  # May not exist yet!
+  selector: ".data-table" # May not exist yet!
 ```
 
 **Solution**: Always wait for dynamic content
@@ -1391,20 +1403,24 @@ The script checks the GitHub repository for releases and compares against the em
 ### Works Well With
 
 **test-gap-analyzer**:
+
 - Use test-gap-analyzer to find untested functions
 - Write outside-in tests for critical user-facing paths
 - Use unit tests (from test-gap-analyzer) for internal functions
 
 **philosophy-guardian**:
+
 - Ensure test YAML follows ruthless simplicity
 - Verify tests focus on behavior, not implementation
 
 **pr-review-assistant**:
+
 - Include outside-in tests in PR reviews
 - Verify tests cover changed functionality
 - Check test readability and clarity
 
 **module-spec-generator**:
+
 - Generate module specs that include outside-in test scenarios
 - Use specs as templates for test YAML
 
@@ -1432,16 +1448,18 @@ git commit -m "Add outside-in tests for auth flow"
 **Symptom**: Test exceeds timeout and fails
 
 **Causes**:
+
 - Application takes longer to start than expected
 - Network requests are slow
 - Element never appears (incorrect selector)
 
 **Solutions**:
+
 ```yaml
 # Increase timeout
 - action: wait_for_element
   selector: ".slow-loading-element"
-  timeout: 30s  # Increase from default
+  timeout: 30s # Increase from default
 
 # Add intermediate verification
 - action: launch
@@ -1459,11 +1477,13 @@ git commit -m "Add outside-in tests for auth flow"
 **Symptom**: `verify_element` or `click` fails with "element not found"
 
 **Causes**:
+
 - Incorrect CSS selector
 - Element not yet rendered (timing issue)
 - Element in iframe or shadow DOM
 
 **Solutions**:
+
 ```yaml
 # Add wait before interaction
 - action: wait_for_element
@@ -1488,12 +1508,14 @@ git commit -m "Add outside-in tests for auth flow"
 **Symptom**: Test works on dev machine but fails in CI environment
 
 **Causes**:
+
 - Different screen size (web/Electron)
 - Missing dependencies
 - Timing differences (slower CI machines)
 - Environment variable differences
 
 **Solutions**:
+
 ```yaml
 # Set explicit viewport size (web/Electron)
 scenario:
@@ -1518,15 +1540,17 @@ prerequisites:
 **Symptom**: `verify_output` fails even though output looks correct
 
 **Causes**:
+
 - Extra whitespace or newlines
 - ANSI color codes in output
 - Case sensitivity
 
 **Solutions**:
+
 ```yaml
 # Use flexible matching
 - action: verify_output
-  matches: "Result:\\s+Success"  # Allow flexible whitespace
+  matches: "Result:\\s+Success" # Allow flexible whitespace
 
 # Strip ANSI codes
 - action: verify_output
@@ -1543,65 +1567,65 @@ prerequisites:
 
 ### CLI Actions
 
-| Action | Parameters | Description |
-|--------|-----------|-------------|
-| `launch` | `target`, `args`, `cwd`, `env` | Start CLI application |
-| `send_input` | `value`, `delay` | Send text to stdin |
-| `send_signal` | `signal` | Send OS signal (SIGINT, SIGTERM, etc.) |
-| `wait_for_output` | `contains`, `matches`, `timeout` | Wait for text in stdout/stderr |
-| `verify_output` | `contains`, `matches`, `stream` | Check output content |
-| `verify_exit_code` | `expected` | Validate exit code |
-| `capture_output` | `save_as`, `stream` | Save output to file |
+| Action             | Parameters                       | Description                            |
+| ------------------ | -------------------------------- | -------------------------------------- |
+| `launch`           | `target`, `args`, `cwd`, `env`   | Start CLI application                  |
+| `send_input`       | `value`, `delay`                 | Send text to stdin                     |
+| `send_signal`      | `signal`                         | Send OS signal (SIGINT, SIGTERM, etc.) |
+| `wait_for_output`  | `contains`, `matches`, `timeout` | Wait for text in stdout/stderr         |
+| `verify_output`    | `contains`, `matches`, `stream`  | Check output content                   |
+| `verify_exit_code` | `expected`                       | Validate exit code                     |
+| `capture_output`   | `save_as`, `stream`              | Save output to file                    |
 
 ### TUI Actions
 
-| Action | Parameters | Description |
-|--------|-----------|-------------|
-| `launch` | `target`, `args`, `terminal_size` | Start TUI application |
-| `send_keypress` | `value`, `times`, `modifiers` | Send keyboard input |
-| `wait_for_screen` | `contains`, `timeout` | Wait for text on screen |
-| `verify_screen` | `contains`, `matches`, `region` | Check screen content |
-| `capture_screenshot` | `save_as` | Save terminal screenshot |
-| `navigate_menu` | `path` | Navigate menu structure |
-| `fill_form` | `fields` | Fill TUI form fields |
+| Action               | Parameters                        | Description              |
+| -------------------- | --------------------------------- | ------------------------ |
+| `launch`             | `target`, `args`, `terminal_size` | Start TUI application    |
+| `send_keypress`      | `value`, `times`, `modifiers`     | Send keyboard input      |
+| `wait_for_screen`    | `contains`, `timeout`             | Wait for text on screen  |
+| `verify_screen`      | `contains`, `matches`, `region`   | Check screen content     |
+| `capture_screenshot` | `save_as`                         | Save terminal screenshot |
+| `navigate_menu`      | `path`                            | Navigate menu structure  |
+| `fill_form`          | `fields`                          | Fill TUI form fields     |
 
 ### Web Actions
 
-| Action | Parameters | Description |
-|--------|-----------|-------------|
-| `navigate` | `url`, `wait_for_load` | Go to URL |
-| `click` | `selector`, `text`, `nth` | Click element |
-| `type` | `selector`, `value`, `delay` | Type into input |
-| `wait_for_element` | `selector`, `timeout`, `disappears` | Wait for element |
-| `verify_element` | `selector`, `contains`, `count`, `exists` | Check element state |
-| `verify_url` | `equals`, `contains`, `matches` | Validate URL |
-| `screenshot` | `save_as`, `selector`, `full_page` | Capture screenshot |
-| `scroll` | `selector`, `direction`, `amount` | Scroll page/element |
-| `select_option` | `selector`, `value` | Select dropdown option |
-| `checkbox` | `selector`, `checked` | Check/uncheck checkbox |
+| Action             | Parameters                                | Description            |
+| ------------------ | ----------------------------------------- | ---------------------- |
+| `navigate`         | `url`, `wait_for_load`                    | Go to URL              |
+| `click`            | `selector`, `text`, `nth`                 | Click element          |
+| `type`             | `selector`, `value`, `delay`              | Type into input        |
+| `wait_for_element` | `selector`, `timeout`, `disappears`       | Wait for element       |
+| `verify_element`   | `selector`, `contains`, `count`, `exists` | Check element state    |
+| `verify_url`       | `equals`, `contains`, `matches`           | Validate URL           |
+| `screenshot`       | `save_as`, `selector`, `full_page`        | Capture screenshot     |
+| `scroll`           | `selector`, `direction`, `amount`         | Scroll page/element    |
+| `select_option`    | `selector`, `value`                       | Select dropdown option |
+| `checkbox`         | `selector`, `checked`                     | Check/uncheck checkbox |
 
 ### Electron Actions
 
-| Action | Parameters | Description |
-|--------|-----------|-------------|
-| `launch` | `target`, `args`, `wait_for_window` | Start Electron app |
-| `window_action` | `window`, `action` | Interact with windows |
-| `menu_click` | `path` | Click menu items |
-| `dialog_action` | `type`, `action`, `filename` | Handle dialogs |
-| `ipc_send` | `channel`, `data` | Send IPC message |
-| `ipc_expect` | `channel`, `timeout` | Wait for IPC message |
-| `verify_window` | `title`, `visible`, `focused`, `count` | Check window state |
-| All web actions | | Electron includes Chromium |
+| Action          | Parameters                             | Description                |
+| --------------- | -------------------------------------- | -------------------------- |
+| `launch`        | `target`, `args`, `wait_for_window`    | Start Electron app         |
+| `window_action` | `window`, `action`                     | Interact with windows      |
+| `menu_click`    | `path`                                 | Click menu items           |
+| `dialog_action` | `type`, `action`, `filename`           | Handle dialogs             |
+| `ipc_send`      | `channel`, `data`                      | Send IPC message           |
+| `ipc_expect`    | `channel`, `timeout`                   | Wait for IPC message       |
+| `verify_window` | `title`, `visible`, `focused`, `count` | Check window state         |
+| All web actions |                                        | Electron includes Chromium |
 
 ### Common Parameters
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `timeout` | Duration | Maximum wait time (e.g., "5s", "2m") |
-| `description` | String | Human-readable step explanation |
-| `continue_on_failure` | Boolean | Don't fail scenario if step fails |
-| `id` | String | Step identifier for conditionals |
-| `condition` | Expression | Execute step only if condition true |
+| Parameter             | Type       | Description                          |
+| --------------------- | ---------- | ------------------------------------ |
+| `timeout`             | Duration   | Maximum wait time (e.g., "5s", "2m") |
+| `description`         | String     | Human-readable step explanation      |
+| `continue_on_failure` | Boolean    | Don't fail scenario if step fails    |
+| `id`                  | String     | Step identifier for conditionals     |
+| `condition`           | Expression | Execute step only if condition true  |
 
 ## Quick Reference: YAML Template [LEVEL 1]
 
@@ -1729,7 +1753,6 @@ scenario:
     - action: screenshot
       save_as: "successful-login.png"
       description: "Save screenshot of logged-in state"
-
 # To run this test:
 # 1. Save as test-login-valid.yaml
 # 2. Run: gadugi-agentic-test run test-login-valid.yaml

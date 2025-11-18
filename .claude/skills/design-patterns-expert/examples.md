@@ -11,6 +11,7 @@ This file contains 10 real-world production examples demonstrating practical pat
 **Scenario**: Application needs centralized configuration accessible from anywhere, loaded once at startup.
 
 **Complete Code**:
+
 ```python
 import json
 from pathlib import Path
@@ -65,12 +66,14 @@ database_url = config['database_url']
 ```
 
 **Why This Pattern Works**:
+
 - Configuration is read-only once loaded
 - Truly global resource (single config file)
 - Thread-safe initialization
 - Performance benefit (load once, access many times)
 
 **Trade-offs**:
+
 - Global state (testing requires reset mechanism)
 - Alternative: Dependency injection with config object
 - Only justified because config is genuinely global and immutable after load
@@ -84,6 +87,7 @@ database_url = config['database_url']
 **Scenario**: Application with extensible plugin system where plugins are discovered at runtime.
 
 **Complete Code**:
+
 ```python
 from abc import ABC, abstractmethod
 from typing import Dict, Type
@@ -175,12 +179,14 @@ print(data)  # {'ID': 1, 'NAME': 'Alice'}
 ```
 
 **Why This Pattern Works**:
+
 - Multiple plugin types (≥2 concrete implementations)
 - Plugins discovered/loaded dynamically at runtime
 - Adding new plugins doesn't require changing factory code
 - Clear separation: factory creates, plugins execute
 
 **Trade-offs**:
+
 - More complex than direct instantiation
 - Only justified with multiple plugin types and dynamic loading requirements
 
@@ -193,6 +199,7 @@ print(data)  # {'ID': 1, 'NAME': 'Alice'}
 **Scenario**: Real-time stock ticker where multiple components (UI, logger, analyzer) react to price updates.
 
 **Complete Code**:
+
 ```python
 from abc import ABC, abstractmethod
 from typing import List, Dict
@@ -298,12 +305,14 @@ ticker.set_price("AAPL", 155.00)  # No alert
 ```
 
 **Why This Pattern Works**:
+
 - Multiple observers with different responsibilities (≥3)
 - Dynamic observer set (attach/detach at runtime)
 - One-to-many broadcast communication
 - Observers are loosely coupled (don't know about each other)
 
 **Trade-offs**:
+
 - More complex than direct method calls
 - Update order not guaranteed
 - Need careful memory management (detach observers to prevent leaks)
@@ -317,6 +326,7 @@ ticker.set_price("AAPL", 155.00)  # No alert
 **Scenario**: E-commerce checkout supporting multiple payment methods (credit card, PayPal, cryptocurrency).
 
 **Complete Code**:
+
 ```python
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -457,12 +467,14 @@ print(f"Result: {result}")
 ```
 
 **Why This Pattern Works**:
+
 - Multiple payment algorithms (≥3) with different implementations
 - Need to switch payment methods at runtime
 - Each strategy has different fee calculation logic
 - Adding new payment methods doesn't change CheckoutProcessor
 
 **Trade-offs**:
+
 - More classes than simple if/else
 - Only justified with ≥3 complex, swappable algorithms
 
@@ -475,6 +487,7 @@ print(f"Result: {result}")
 **Scenario**: Text editor supporting undo/redo for multiple operations (insert, delete, formatting).
 
 **Complete Code**:
+
 ```python
 from abc import ABC, abstractmethod
 from typing import List
@@ -610,12 +623,14 @@ print(f"After redo: {doc}")  # "Hello"
 ```
 
 **Why This Pattern Works**:
+
 - Need undo/redo functionality
 - Multiple command types with different undo logic
 - Commands encapsulate all information needed for undo
 - History management separate from command execution
 
 **Trade-offs**:
+
 - More complex than simple callbacks
 - Memory overhead (storing command history)
 - Only justified when undo/redo or command queuing needed
@@ -629,6 +644,7 @@ print(f"After redo: {doc}")  # "Hello"
 **Scenario**: Application using different weather APIs (OpenWeather, WeatherAPI) with different interfaces.
 
 **Complete Code**:
+
 ```python
 from abc import ABC, abstractmethod
 from typing import Dict
@@ -760,12 +776,14 @@ app.display_weather("Paris")
 ```
 
 **Why This Pattern Works**:
+
 - Third-party APIs we can't modify
 - Different response formats need conversion
 - Application code uses unified interface
 - Easy to add new weather services
 
 **Trade-offs**:
+
 - Additional layer of indirection
 - Only justified for external/unchangeable interfaces
 
@@ -778,6 +796,7 @@ app.display_weather("Paris")
 **Scenario**: Video processing application with complex subsystems (codec, audio, metadata) providing simple interface.
 
 **Complete Code**:
+
 ```python
 from pathlib import Path
 from typing import Optional
@@ -926,12 +945,14 @@ converter.convert_video(
 ```
 
 **Why This Pattern Works**:
+
 - Complex subsystem with many interdependent classes (4+)
 - Common workflow repeated frequently
 - Clients don't need full subsystem control
 - Simplifies client code dramatically
 
 **Trade-offs**:
+
 - May not expose all subsystem features
 - Can become god object if overloaded
 - Only justified when complexity exists (≥3 subsystem classes)
@@ -945,6 +966,7 @@ converter.convert_video(
 **Scenario**: Network connection with optional features (encryption, compression, logging) that can be combined.
 
 **Complete Code**:
+
 ```python
 from abc import ABC, abstractmethod
 import zlib
@@ -1074,12 +1096,14 @@ connection.receive()
 ```
 
 **Why This Pattern Works**:
+
 - Multiple optional features that can be combined (3+ decorators)
 - Need to add/remove features dynamically at runtime
 - Features are independent and composable
 - Avoids explosion of subclasses (without decorator: 2^3 = 8 classes)
 
 **Trade-offs**:
+
 - Can result in many small objects
 - Order of decoration matters
 - Only justified with ≥3 combinable features
@@ -1093,6 +1117,7 @@ connection.receive()
 **Scenario**: File system where files and directories are treated uniformly (directories contain files/directories).
 
 **Complete Code**:
+
 ```python
 from abc import ABC, abstractmethod
 from typing import List
@@ -1199,12 +1224,14 @@ print(f"Python project size: {python_proj.get_size()} bytes")
 ```
 
 **Why This Pattern Works**:
+
 - Truly hierarchical/recursive structure (trees)
 - Need to treat leaves and composites uniformly
 - Operations work same way on both (get_size, display)
 - Natural model for part-whole hierarchies
 
 **Trade-offs**:
+
 - Can make design overly general
 - Type checking complications (all items treated uniformly)
 - Only justified for genuine tree structures
@@ -1218,6 +1245,7 @@ print(f"Python project size: {python_proj.get_size()} bytes")
 **Scenario**: Data processing pipeline with fixed steps but algorithm-specific implementation details.
 
 **Complete Code**:
+
 ```python
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
@@ -1397,12 +1425,14 @@ fixed_processor.process("input.json", "output.csv")
 ```
 
 **Why This Pattern Works**:
+
 - Common algorithm structure with variant steps (5+ steps)
 - Fixed execution order (template method controls flow)
 - Multiple concrete processors with different implementations
 - Mix of required methods and optional hooks
 
 **Trade-offs**:
+
 - Inverted control (subclasses don't call base, base calls subclasses)
 - Less flexible than Strategy (can't swap algorithm at runtime)
 - Only justified when algorithm has invariant parts and variant parts

@@ -45,30 +45,35 @@ Analyzes moral dimensions through ethical frameworks using deontology, consequen
 ## Key Questions
 
 **Deontological**:
+
 - What duties or rights are at stake?
 - Can I universalize this action without contradiction?
 - Am I treating anyone merely as means to an end?
 - What does respect for persons require?
 
 **Consequentialist**:
+
 - What are likely consequences for all affected?
 - Which option maximizes overall well-being?
 - Have I considered long-term and systemic effects?
 - Am I weighing everyone's interests equally?
 
 **Virtue Ethics**:
+
 - What would a virtuous person do in this situation?
 - What character traits are relevant (courage, honesty, wisdom)?
 - What kind of person will I become through this choice?
 - Who are moral exemplars I can learn from?
 
 **Care Ethics**:
+
 - What do my relationships require?
 - Who is vulnerable and needs care?
 - Am I attending to particular context and needs?
 - Are power dynamics affecting the situation?
 
 **Justice**:
+
 - Is this distribution of benefits/burdens fair?
 - Would I choose this behind veil of ignorance?
 - Does this respect equal dignity of all persons?
@@ -77,24 +82,28 @@ Analyzes moral dimensions through ethical frameworks using deontology, consequen
 ## Applied Frameworks
 
 **Four Principles (Bioethics)**:
+
 1. Autonomy - Respect self-determination
 2. Beneficence - Promote well-being
 3. Non-maleficence - Avoid harm
 4. Justice - Fair distribution
 
 **Stakeholder Analysis**:
+
 - List all affected parties
 - Identify interests and rights
 - Assess power and vulnerability
 - Weigh conflicts
 
 **Double Effect**:
+
 - Act itself must be good/neutral
 - Good effect intended, bad merely foreseen
 - Bad not means to good
 - Proportionality: good outweighs bad
 
 **Casuistry**:
+
 - Identify paradigm cases (clear moral judgments)
 - Extract relevant features
 - Compare new case to paradigm
@@ -116,15 +125,18 @@ Analyzes moral dimensions through ethical frameworks using deontology, consequen
 ## Essential Resources
 
 **Online Philosophy**:
+
 - **Stanford Encyclopedia**: https://plato.stanford.edu/ (Comprehensive)
 - **Internet Encyclopedia**: https://iep.utm.edu/ (Accessible)
 - **1000-Word Philosophy**: https://1000wordphilosophy.com/ (Concise)
 
 **Ethics Centers**:
+
 - **Markkula Center**: https://www.scu.edu/ethics/ (Tools & cases)
 - **Prindle Institute**: https://www.prindleinstitute.org/ (Blog & resources)
 
 **Professional Organizations**:
+
 - **APA**: https://www.apaonline.org/ (American Philosophical Association)
 - **APPE**: https://appe.indiana.edu/ (Applied ethics)
 - **Hastings Center**: https://www.thehastingscenter.org/ (Bioethics)
@@ -134,30 +146,35 @@ Analyzes moral dimensions through ethical frameworks using deontology, consequen
 **When to prioritize which framework:**
 
 **Deontology** when:
+
 - Rights violations at stake
 - Professional duties involved
 - Respect for persons central
 - Some acts seem wrong regardless of consequences
 
 **Consequentialism** when:
+
 - Policy design affecting large populations
 - Resource allocation decisions
 - Risk-benefit analysis needed
 - Aggregate welfare paramount
 
 **Virtue Ethics** when:
+
 - Professional character formation
 - Leadership and role modeling
 - Novel situations requiring judgment
 - Long-term character development
 
 **Care Ethics** when:
+
 - Caregiving relationships central
 - Vulnerability and dependency
 - Healthcare and family ethics
 - Power asymmetries present
 
 **Justice** when:
+
 - Distributive fairness at issue
 - Institutional design
 - Systemic inequality
@@ -166,22 +183,27 @@ Analyzes moral dimensions through ethical frameworks using deontology, consequen
 ## Key Principles
 
 **Categorical Imperative (Kant)**:
+
 - Act only on maxims you could will as universal law
 - Treat humanity as end, never merely as means
 
 **Utility Principle (Mill)**:
+
 - Actions right in proportion to tendency to promote happiness
 - Greatest happiness for greatest number
 
 **Difference Principle (Rawls)**:
+
 - Inequalities permitted only if they benefit worst-off
 - Fair equality of opportunity
 
 **Golden Rule**:
+
 - Do unto others as you would have them do unto you
 - (Found across cultures and traditions)
 
 **Harm Principle (Mill)**:
+
 - Only justify restricting liberty to prevent harm to others
 - Self-regarding actions should be free
 
@@ -200,14 +222,14 @@ Analyzes moral dimensions through ethical frameworks using deontology, consequen
 
 ## Framework Selection Guide
 
-| Issue Type | Primary Framework(s) |
-|------------|---------------------|
-| Rights violations | Deontology, Justice |
-| Resource allocation | Consequentialism, Justice |
-| Professional conduct | Virtue Ethics, Deontology |
-| Caregiving | Care Ethics, Virtue |
-| Policy design | Consequentialism, Justice |
-| Technology ethics | All frameworks (pluralistic) |
+| Issue Type            | Primary Framework(s)         |
+| --------------------- | ---------------------------- |
+| Rights violations     | Deontology, Justice          |
+| Resource allocation   | Consequentialism, Justice    |
+| Professional conduct  | Virtue Ethics, Deontology    |
+| Caregiving            | Care Ethics, Virtue          |
+| Policy design         | Consequentialism, Justice    |
+| Technology ethics     | All frameworks (pluralistic) |
 | Organizational ethics | Stakeholder analysis, Virtue |
 
 ## Classic Thought Experiments

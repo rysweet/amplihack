@@ -33,10 +33,10 @@ def _get_preference_file_path() -> Path:
     # __file__ -> amplihack/ -> tools/ -> .claude/
     claude_dir = current.parent.parent.parent
 
-    if not claude_dir.name == '.claude':
+    if not claude_dir.name == ".claude":
         raise RuntimeError(f"Expected .claude directory, found {claude_dir}")
 
-    return claude_dir / '.update_preference'
+    return claude_dir / ".update_preference"
 
 
 def load_update_preference() -> Optional[str]:
@@ -72,7 +72,9 @@ def load_update_preference() -> Optional[str]:
             if "### Auto Update" in content:
                 lines = content.split("\n")
                 for i, line in enumerate(lines):
-                    if "### Auto Update" in line and i + 2 < len(lines):
+                    # Use exact match to distinguish "### Auto Update" from
+                    # "### .claude Directory Auto-Update" and other similar sections
+                    if line.strip() == "### Auto Update" and i + 2 < len(lines):
                         value = lines[i + 2].strip().lower()
                         if value in ["always", "never"]:
                             return value
@@ -87,13 +89,13 @@ def load_update_preference() -> Optional[str]:
         if not pref_file.exists():
             return None
 
-        with open(pref_file, encoding='utf-8') as f:
+        with open(pref_file, encoding="utf-8") as f:
             data = json.load(f)
 
-        auto_update = data.get('auto_update')
+        auto_update = data.get("auto_update")
 
         # Validate the value
-        if auto_update not in ('always', 'never', None):
+        if auto_update not in ("always", "never", None):
             return None
 
         return auto_update
@@ -120,29 +122,29 @@ def save_update_preference(value: str) -> None:
         >>> save_update_preference('ask')     # Prompt each time
     """
     # Validate input
-    if value not in ('always', 'never', 'ask'):
+    if value not in ("always", "never", "ask"):
         raise ValueError(f"Invalid preference value: {value}. Must be 'always', 'never', or 'ask'")
 
     # Convert 'ask' to None for storage
-    auto_update_value = None if value == 'ask' else value
+    auto_update_value = None if value == "ask" else value
 
     pref_file = _get_preference_file_path()
 
     # Create data structure
     data: Dict[str, Any] = {
-        'auto_update': auto_update_value,
-        'last_prompted': datetime.utcnow().isoformat() + 'Z'
+        "auto_update": auto_update_value,
+        "last_prompted": datetime.utcnow().isoformat() + "Z",
     }
 
     # Ensure parent directory exists
     pref_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Write atomically using temp file and rename
-    temp_file = pref_file.with_suffix('.tmp')
+    temp_file = pref_file.with_suffix(".tmp")
     try:
-        with open(temp_file, 'w', encoding='utf-8') as f:
+        with open(temp_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-            f.write('\n')  # Add trailing newline
+            f.write("\n")  # Add trailing newline
 
         # Atomic rename
         temp_file.replace(pref_file)
@@ -171,16 +173,16 @@ def get_last_prompted() -> Optional[datetime]:
         if not pref_file.exists():
             return None
 
-        with open(pref_file, encoding='utf-8') as f:
+        with open(pref_file, encoding="utf-8") as f:
             data = json.load(f)
 
-        last_prompted = data.get('last_prompted')
+        last_prompted = data.get("last_prompted")
         if not last_prompted:
             return None
 
         # Parse ISO format timestamp
         # Remove 'Z' suffix and parse
-        timestamp_str = last_prompted.rstrip('Z')
+        timestamp_str = last_prompted.rstrip("Z")
         return datetime.fromisoformat(timestamp_str)
 
     except (json.JSONDecodeError, OSError, RuntimeError, ValueError):

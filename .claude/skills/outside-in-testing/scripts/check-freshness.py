@@ -36,7 +36,7 @@ def extract_embedded_version(skill_file: Path) -> Optional[str]:
         content = skill_file.read_text()
 
         # Look for embedded_framework_version in YAML frontmatter
-        match = re.search(r'^embedded_framework_version:\s*(.+)$', content, re.MULTILINE)
+        match = re.search(r"^embedded_framework_version:\s*(.+)$", content, re.MULTILINE)
         if match:
             return match.group(1).strip()
 

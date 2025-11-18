@@ -396,18 +396,19 @@ Analyze the cancer cluster and recommend public health interventions.
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Novel Respiratory Virus | 50 | 35 |
-| 2. Foodborne Disease | 50 | 35 |
-| 3. Vaccine-Preventable Disease | 50 | 35 |
-| 4. Healthcare-Associated Infection | 50 | 35 |
-| 5. Environmental Health Crisis | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                           | Max Score | Passing Score |
+| ---------------------------------- | --------- | ------------- |
+| 1. Novel Respiratory Virus         | 50        | 35            |
+| 2. Foodborne Disease               | 50        | 35            |
+| 3. Vaccine-Preventable Disease     | 50        | 35            |
+| 4. Healthcare-Associated Infection | 50        | 35            |
+| 5. Environmental Health Crisis     | 50        | 35            |
+| **Total**                          | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate epidemiologist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -415,6 +416,7 @@ To demonstrate epidemiologist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of epidemiological methods and frameworks
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of disease investigation
 3. **Insight Specificity** (0-10): Clear, actionable public health recommendations
@@ -424,6 +426,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies epidemiological methods accurately (descriptive, analytical, experimental)
 - Considers transmission dynamics, risk factors, population impacts
 - Makes specific, prioritized public health recommendations with timelines
@@ -433,6 +436,7 @@ Each scenario is scored on:
 - Identifies non-obvious transmission routes or interventions
 
 **Good (35-44 points)**:
+
 - Applies key epidemiological concepts correctly
 - Considers main disease characteristics and risk factors
 - Makes reasonable intervention recommendations
@@ -441,6 +445,7 @@ Each scenario is scored on:
 - Provides useful public health insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies epidemiological concepts or methods
 - Ignores critical transmission routes or risk factors
 - Vague or scientifically incorrect recommendations
@@ -453,12 +458,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -476,6 +483,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as disease outbreaks evolve
 - Update expected elements as public health practices change
 - Refine scoring criteria based on analyst performance patterns

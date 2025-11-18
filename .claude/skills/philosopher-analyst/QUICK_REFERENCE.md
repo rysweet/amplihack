@@ -77,18 +77,21 @@ Analyzes fundamental questions through philosophical frameworks using logic, epi
 ## Analytical Frameworks
 
 **Socratic Method**:
+
 - Question assumptions
 - Seek definitions
 - Expose contradictions
 - Intellectual humility
 
 **Conceptual Analysis**:
+
 - Necessary and sufficient conditions
 - Counterexamples
 - Refinement
 - Reflective equilibrium
 
 **Principle of Charity**:
+
 - Interpret arguments in strongest form
 - Avoid straw-manning
 - Assume rationality

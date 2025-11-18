@@ -400,18 +400,19 @@ Analyze the plastic pollution crisis through systems ecology and circular econom
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Coral Reef Collapse | 50 | 35 |
-| 2. Pollinator Decline | 50 | 35 |
-| 3. Urban Environmental Justice | 50 | 35 |
-| 4. Old-Growth Forest | 50 | 35 |
-| 5. Plastic Pollution | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                       | Max Score | Passing Score |
+| ------------------------------ | --------- | ------------- |
+| 1. Coral Reef Collapse         | 50        | 35            |
+| 2. Pollinator Decline          | 50        | 35            |
+| 3. Urban Environmental Justice | 50        | 35            |
+| 4. Old-Growth Forest           | 50        | 35            |
+| 5. Plastic Pollution           | 50        | 35            |
+| **Total**                      | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate environmentalist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -419,6 +420,7 @@ To demonstrate environmentalist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of ecological science, environmental frameworks, systems thinking
 2. **Analytical Depth** (0-10): Thoroughness of ecosystem analysis, structural critique, interconnection mapping
 3. **Insight Specificity** (0-10): Clear identification of leverage points, feedback loops, transformative solutions
@@ -428,6 +430,7 @@ Each scenario is scored on:
 ### What High-Quality Environmental Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies sophisticated ecological frameworks (systems thinking, cascade dynamics, ecosystem services)
 - Identifies root causes and systemic drivers (not just symptoms)
 - Recognizes interconnections across scales (local to global) and domains (ecological, social, economic)
@@ -439,6 +442,7 @@ Each scenario is scored on:
 - Shows sensitivity to indigenous knowledge and traditional ecological practices
 
 **Good (35-44 points)**:
+
 - Correctly applies core ecological principles and frameworks
 - Identifies key drivers and impacts
 - Considers multiple dimensions (ecological, social, economic)
@@ -447,6 +451,7 @@ Each scenario is scored on:
 - Uses relevant evidence and examples
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies or ignores ecological science
 - Focuses on symptoms rather than root causes
 - Ignores interconnections and feedback loops
@@ -461,6 +466,7 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Apply systems thinking and ecological frameworks
 3. Integrate environmental justice perspectives
@@ -469,6 +475,7 @@ Each scenario is scored on:
 6. Identify areas for deeper ecological literacy
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -486,6 +493,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as environmental crises and knowledge evolve
 - Update expected elements based on emerging ecological science
 - Refine scoring criteria based on high-quality environmental analysis patterns

@@ -594,19 +594,35 @@ def main(argv: Optional[List[str]] = None) -> int:
     from . import _local_install, uninstall
 
     if args.command == "install":
-        # Use the existing install logic
-        import subprocess
-        import tempfile
+        # Install from the package's .claude directory (wherever uvx installed it)
+        # This ensures we use the exact version the user installed via uvx --from git+...@branch
+        from pathlib import Path
 
-        with tempfile.TemporaryDirectory() as tmp:
-            repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
-            try:
-                subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-                _local_install(tmp)
-                return 0
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to install: {e}")
-                return 1
+        # Find package location using __file__
+        # __file__ is amplihack/cli.py, so parent is amplihack/
+        package_dir = Path(__file__).resolve().parent
+        claude_source = package_dir / ".claude"
+
+        if claude_source.exists():
+            # Use package's .claude directory (amplihack/.claude/)
+            # _local_install expects repo root, so pass package_dir (which contains .claude/)
+            _local_install(str(package_dir))
+            return 0
+        else:
+            # Fallback: Clone from GitHub (for old installations)
+            import subprocess
+            import tempfile
+
+            print("⚠️  Package .claude/ not found, cloning from GitHub...")
+            with tempfile.TemporaryDirectory() as tmp:
+                repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+                try:
+                    subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
+                    _local_install(tmp)
+                    return 0
+                except subprocess.CalledProcessError as e:
+                    print(f"Failed to install: {e}")
+                    return 1
 
     elif args.command == "uninstall":
         uninstall()

@@ -27,24 +27,28 @@ Unlike general analysis, journalist analysis:
 ## Use Cases
 
 ### Breaking News Analysis
+
 - Rapidly assessing developing events
 - Verifying emerging claims
 - Identifying what's known vs. unknown
 - Evaluating initial reporting quality
 
 ### Fact-Checking
+
 - Verifying specific claims
 - Identifying misinformation
 - Assessing evidence quality
 - Tracking claims to original sources
 
 ### Source Evaluation
+
 - Assessing credibility and reliability
 - Identifying bias and conflicts of interest
 - Evaluating expert qualifications
 - Determining source proximity to events
 
 ### Media Criticism
+
 - Analyzing how news is framed
 - Identifying what's emphasized or omitted
 - Comparing coverage across outlets
@@ -53,24 +57,28 @@ Unlike general analysis, journalist analysis:
 ## Journalistic Frameworks Available
 
 ### Core Frameworks
+
 - **5 Ws and H**: Who, What, When, Where, Why, How - complete story elements
 - **Inverted Pyramid**: Most important information first, decreasing priority
 - **Newsworthiness Criteria**: Timeliness, proximity, impact, prominence, conflict, human interest, novelty
 - **Source Evaluation**: Authority, proximity, bias, corroboration, transparency
 
 ### Ethical Principles (SPJ Code)
+
 - **Seek Truth and Report It**: Verify, provide context, acknowledge mistakes
 - **Minimize Harm**: Balance public need vs. potential harm, show compassion
 - **Act Independently**: Avoid conflicts, resist pressure, distinguish news from opinion
 - **Be Accountable**: Explain choices, respond to questions, correct errors promptly
 
 ### Investigative Methods
+
 - **Document Analysis**: Public records, financial disclosures, FOIA requests
 - **Following the Money**: Financial relationships, conflicts of interest
 - **Data Journalism**: Statistical analysis, pattern recognition, visualization
 - **Human Sources**: Whistleblowers, insiders, experts, affected parties
 
 ### Verification Techniques
+
 - **Identify Claims**: What needs checking
 - **Find Original Source**: Trace to primary sources
 - **Seek Corroboration**: Multiple independent sources
@@ -124,6 +132,7 @@ The journalist analyst follows a systematic 10-step process:
 **Event**: Government announces $500B stimulus package
 
 **Journalistic Analysis**:
+
 - **Who**: Government officials, affected industries, taxpayers
 - **What**: $500B stimulus (breakdown needed)
 - **When**: Announced today (implementation timeline?)
@@ -144,6 +153,7 @@ The journalist analyst follows a systematic 10-step process:
 **Event**: Tech company accused of deceptive data collection
 
 **Journalistic Analysis**:
+
 - **Verification Strategy**: Obtain internal documents, analyze code, consult independent experts, interview employees
 - **Source Assessment**: Whistleblower + documentary evidence + independent verification = strong
 - **Information Gaps**: Exact users affected, company response, regulatory action, user protection steps
@@ -156,6 +166,7 @@ The journalist analyst follows a systematic 10-step process:
 **Event**: Protest covered differently by two outlets
 
 **Analysis**:
+
 - **Outlet A**: Headline emphasizes disruption, sources business owners/police, language "mob/chaos," omits protest rationale
 - **Outlet B**: Headline emphasizes turnout/message, sources organizers/participants, language "activists/demonstrators," omits disruption impacts
 - **Both**: Selective sourcing, biased framing, violations of balance standards
@@ -179,17 +190,20 @@ A complete journalist analysis includes:
 ## Resources
 
 ### Professional Organizations
+
 - **SPJ (Society of Professional Journalists)**: https://www.spj.org/
 - **SPJ Code of Ethics**: Industry standard for ethical journalism
 - **IRE (Investigative Reporters and Editors)**: https://www.ire.org/
 - **Poynter Institute**: https://www.poynter.org/
 
 ### Fact-Checking
+
 - **PolitiFact**: https://www.politifact.com/
 - **FactCheck.org**: https://www.factcheck.org/
 - **Snopes**: https://www.snopes.com/
 
 ### Essential Reading
+
 - **AP Stylebook**: Industry standard for journalism style
 - **Reuters Handbook of Journalism**: Principles and practices
 - **Verification Handbook**: Digital age verification techniques
@@ -199,6 +213,7 @@ A complete journalist analysis includes:
 ### When should I use journalist-analyst vs. other analysts?
 
 Use **journalist-analyst** when focus is:
+
 - Fact verification and truth-seeking
 - Source evaluation and credibility
 - Information gathering and completeness
@@ -207,6 +222,7 @@ Use **journalist-analyst** when focus is:
 - Public accountability and transparency
 
 Use **other analysts** when focus is:
+
 - Economic impacts → Economist
 - Political power dynamics → Political Scientist
 - Historical context → Historian
@@ -215,6 +231,7 @@ Use **other analysts** when focus is:
 ### Can journalist analysis be combined with other perspectives?
 
 Absolutely! Journalistic analysis is particularly powerful when combined with:
+
 - **Economist**: Verifies economic claims, provides data context
 - **Political Scientist**: Verifies political claims, institutional analysis
 - **Historian**: Provides historical context and precedents
@@ -223,6 +240,7 @@ Absolutely! Journalistic analysis is particularly powerful when combined with:
 ### What if sources conflict?
 
 When sources disagree:
+
 1. Assess relative credibility of each source
 2. Look for additional corroboration
 3. Present multiple perspectives clearly
@@ -233,6 +251,7 @@ When sources disagree:
 ## Integration with Other Skills
 
 Journalist analysis complements:
+
 - **Decision Logger**: Document verification decisions and sourcing
 - **Philosophy Guardian**: Ensure analysis follows ruthless simplicity
 - **Fact-Checking Tools**: Integrate with verification resources
@@ -241,6 +260,7 @@ Journalist analysis complements:
 ## Contributing
 
 This skill improves through use. Share feedback on:
+
 - What verification techniques worked well
 - What sources were most helpful
 - What patterns emerged in bias or framing

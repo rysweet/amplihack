@@ -10,6 +10,7 @@ Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
 
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -96,7 +97,13 @@ class StopHook(HookProcessor):
                 ps_checker = PowerSteeringChecker(self.project_root)
                 transcript_path_str = input_data.get("transcript_path")
 
-                if transcript_path_str:
+                if not transcript_path_str:
+                    self.log(
+                        "[CAUSE] Missing transcript_path in input_data. [IMPACT] Power-steering cannot analyze session without transcript. [ACTION] Skipping power-steering check.",
+                        "WARNING",
+                    )
+                    self.save_metric("power_steering_missing_transcript", 1)
+                elif transcript_path_str:
                     from pathlib import Path
 
                     transcript_path = Path(transcript_path_str)
@@ -152,8 +159,12 @@ class StopHook(HookProcessor):
             )
             try:
                 semaphore_file.unlink()
-            except OSError:
-                pass
+            except OSError as e:
+                self.log(
+                    f"[CAUSE] Cannot remove semaphore file {semaphore_file}. [IMPACT] Reflection may incorrectly skip on next stop. [ACTION] Continuing anyway (non-critical). Error: {e}",
+                    "WARNING",
+                )
+                self.save_metric("semaphore_cleanup_errors", 1)
             self.log("=== STOP HOOK ENDED (decision: approve - reflection already shown) ===")
             return {"decision": "approve"}
 
@@ -188,8 +199,12 @@ class StopHook(HookProcessor):
                     self.project_root / ".claude" / "runtime" / "reflection" / "current_findings.md"
                 )
                 current_findings.write_text(filled_template)
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(
+                    f"[CAUSE] Cannot write backward-compatibility file current_findings.md. [IMPACT] Legacy tools may not find reflection results. [ACTION] Primary reflection file still saved. Error: {e}",
+                    "WARNING",
+                )
+                self.save_metric("backward_compat_write_errors", 1)
 
             self.log("Reflection complete - blocking with presentation instructions")
             result = self._block_with_findings(filled_template, str(reflection_path))
@@ -210,8 +225,62 @@ class StopHook(HookProcessor):
             self.log("=== STOP HOOK ENDED (decision: approve - error occurred) ===")
             return {"decision": "approve"}
 
+    def _is_neo4j_in_use(self) -> bool:
+        """Check if Neo4j service requires cleanup.
+
+        Two-layer detection:
+        1. Environment variables - Are credentials configured?
+        2. Docker container status - Is container actually running?
+
+        Returns:
+            bool: True if Neo4j container is running, False otherwise.
+                  Returns False on any errors (fail-safe).
+        """
+        # Layer 1: Check environment variables (instant)
+        if not os.getenv("NEO4J_USERNAME") or not os.getenv("NEO4J_PASSWORD"):
+            self.log("Neo4j credentials not configured - skipping cleanup", "DEBUG")
+            return False
+
+        # Layer 2: Check Docker container status (authoritative check)
+        try:
+            result = subprocess.run(
+                ["docker", "ps", "--filter", "name=neo4j", "--format", "{{.Names}}"],
+                capture_output=True,
+                text=True,
+                timeout=2.0
+            )
+
+            if result.returncode != 0:
+                return False
+
+            containers = result.stdout.strip().split('\n')
+            neo4j_running = any('neo4j' in name.lower() for name in containers if name)
+
+            if neo4j_running:
+                self.log("Neo4j container detected - proceeding with cleanup", "DEBUG")
+            else:
+                self.log("No Neo4j containers running - skipping cleanup", "DEBUG")
+
+            return neo4j_running
+
+        except FileNotFoundError:
+            self.log("Docker command not found - skipping Neo4j cleanup", "WARNING")
+            return False
+
+        except subprocess.TimeoutExpired:
+            self.log("Docker command timed out - skipping Neo4j cleanup", "WARNING")
+            return False
+
+        except Exception as e:
+            self.log(f"Error checking Docker status: {e} - skipping Neo4j cleanup", "WARNING")
+            return False
+
     def _handle_neo4j_cleanup(self) -> None:
         """Handle Neo4j cleanup on session exit.
+
+        Pre-check gate: Only proceeds if Neo4j is actually in use.
+        Prevents unnecessary initialization of Neo4j components when
+        the service isn't running, avoiding spurious authentication errors.
 
         Executes Neo4j shutdown coordination if appropriate.
         Fail-safe: Never raises exceptions.
@@ -221,6 +290,13 @@ class StopHook(HookProcessor):
                 Prevents interactive prompts during session exit.
                 Checked by container_selection.py to skip container selection dialog.
         """
+        # PRE-CHECK GATE: Skip if Neo4j not in use
+        if not self._is_neo4j_in_use():
+            self.log("Neo4j not in use - skipping cleanup handler", "DEBUG")
+            return
+
+        self.log("Neo4j cleanup handler started - service detected as active", "INFO")
+
         try:
             # Set cleanup mode to prevent interactive prompts during session exit
             # This is checked by container_selection.resolve_container_name()
@@ -255,7 +331,11 @@ class StopHook(HookProcessor):
             self.log("Neo4j cleanup handler completed")
 
         except Exception as e:
-            self.log(f"Neo4j cleanup failed: {e}", "WARNING")
+            self.log(
+                f"[CAUSE] Neo4j cleanup failed with exception. [IMPACT] Database may not be properly shut down. [ACTION] Check Neo4j status manually if needed. Error: {e}",
+                "WARNING",
+            )
+            self.save_metric("neo4j_cleanup_errors", 1)
 
     def _handle_neo4j_learning(self) -> None:
         """Handle Neo4j learning capture on session exit.
@@ -354,7 +434,8 @@ class StopHook(HookProcessor):
             is_disabled = checker._is_disabled()
 
             if is_disabled:
-                self.log("Power-steering is disabled - skipping", "DEBUG")
+                self.log("Power-steering is disabled - skipping", "WARNING")
+                self.save_metric("power_steering_disabled_checks", 1)
                 return False
 
             # Check for power-steering lock to prevent concurrent runs
@@ -362,14 +443,19 @@ class StopHook(HookProcessor):
             ps_lock = ps_dir / ".power_steering_lock"
 
             if ps_lock.exists():
-                self.log("Power-steering already running - skipping", "DEBUG")
+                self.log("Power-steering already running - skipping", "WARNING")
+                self.save_metric("power_steering_concurrent_skips", 1)
                 return False
 
             return True
 
         except Exception as e:
             # Fail-open: On any error, skip power-steering
-            self.log(f"Error checking power-steering status: {e} - skipping", "WARNING")
+            self.log(
+                f"[CAUSE] Exception during power-steering status check. [IMPACT] Power-steering will not run this session. [ACTION] Failing open to allow normal stop. Error: {e}",
+                "WARNING",
+            )
+            self.save_metric("power_steering_check_errors", 1)
             return False
 
     def _should_run_reflection(self) -> bool:
@@ -380,25 +466,32 @@ class StopHook(HookProcessor):
         """
         # Check environment variable skip flag
         if os.environ.get("AMPLIHACK_SKIP_REFLECTION"):
-            self.log("AMPLIHACK_SKIP_REFLECTION is set - skipping reflection", "DEBUG")
+            self.log("AMPLIHACK_SKIP_REFLECTION is set - skipping reflection", "WARNING")
+            self.save_metric("reflection_env_skips", 1)
             return False
 
         # Load reflection config
         config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
         if not config_path.exists():
-            self.log("Reflection config not found - skipping reflection", "DEBUG")
+            self.log("Reflection config not found - skipping reflection", "WARNING")
+            self.save_metric("reflection_no_config", 1)
             return False
 
         try:
             with open(config_path) as f:
                 config = json.load(f)
         except (OSError, json.JSONDecodeError) as e:
-            self.log(f"Cannot read reflection config: {e}", "WARNING")
+            self.log(
+                f"[CAUSE] Cannot read or parse reflection config file. [IMPACT] Reflection will not run. [ACTION] Check config file format and permissions. Error: {e}",
+                "WARNING",
+            )
+            self.save_metric("reflection_config_errors", 1)
             return False
 
         # Check if enabled
         if not config.get("enabled", False):
-            self.log("Reflection is disabled - skipping", "DEBUG")
+            self.log("Reflection is disabled - skipping", "WARNING")
+            self.save_metric("reflection_disabled_checks", 1)
             return False
 
         # Check for reflection lock to prevent concurrent runs
@@ -406,7 +499,8 @@ class StopHook(HookProcessor):
         reflection_lock = reflection_dir / ".reflection_lock"
 
         if reflection_lock.exists():
-            self.log("Reflection already running - skipping", "DEBUG")
+            self.log("Reflection already running - skipping", "WARNING")
+            self.save_metric("reflection_concurrent_skips", 1)
             return False
 
         return True
@@ -435,7 +529,11 @@ class StopHook(HookProcessor):
                 if sessions:
                     return sessions[0].name
             except (OSError, PermissionError) as e:
-                self.log(f"Cannot access logs directory: {e}", "WARNING")
+                self.log(
+                    f"[CAUSE] Cannot access logs directory to detect session ID. [IMPACT] Will use timestamp-based ID instead. [ACTION] Check directory permissions. Error: {e}",
+                    "WARNING",
+                )
+                self.save_metric("session_id_detection_errors", 1)
 
         # Generate timestamp-based ID
         return datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -451,8 +549,12 @@ class StopHook(HookProcessor):
         """
         try:
             from claude_reflection import run_claude_reflection
-        except ImportError:
-            self.log("Cannot import claude_reflection - skipping reflection", "WARNING")
+        except ImportError as e:
+            self.log(
+                f"[CAUSE] Cannot import claude_reflection module. [IMPACT] Reflection functionality unavailable. [ACTION] Check if claude_reflection.py exists and is accessible. Error: {e}",
+                "WARNING",
+            )
+            self.save_metric("reflection_import_errors", 1)
             return None
 
         # Get session ID
@@ -490,14 +592,22 @@ class StopHook(HookProcessor):
                             )
                 self.log(f"Loaded {len(conversation)} conversation turns from transcript")
             except Exception as e:
-                self.log(f"Failed to load transcript: {e}", "WARNING")
+                self.log(
+                    f"[CAUSE] Failed to parse transcript file. [IMPACT] Reflection will run without transcript context. [ACTION] Check transcript file format. Error: {e}",
+                    "WARNING",
+                )
+                self.save_metric("transcript_parse_errors", 1)
                 conversation = None
 
         # Find session directory
         session_dir = self.project_root / ".claude" / "runtime" / "logs" / session_id
 
         if not session_dir.exists():
-            self.log(f"Session directory not found: {session_dir}", "WARNING")
+            self.log(
+                f"[CAUSE] Session directory not found at expected path. [IMPACT] Cannot run reflection without session logs. [ACTION] Check session ID detection logic. Path: {session_dir}",
+                "WARNING",
+            )
+            self.save_metric("session_dir_not_found", 1)
             return None
 
         # Run Claude reflection (uses SDK)
@@ -505,7 +615,11 @@ class StopHook(HookProcessor):
             filled_template = run_claude_reflection(session_dir, self.project_root, conversation)
 
             if not filled_template:
-                self.log("Claude reflection returned empty result", "WARNING")
+                self.log(
+                    "[CAUSE] Claude reflection returned empty or None result. [IMPACT] No reflection findings to present. [ACTION] Check reflection implementation and Claude API connectivity.",
+                    "WARNING",
+                )
+                self.save_metric("reflection_empty_results", 1)
                 return None
 
             # Save the filled template
@@ -526,7 +640,11 @@ class StopHook(HookProcessor):
             return filled_template
 
         except Exception as e:
-            self.log(f"Claude reflection failed: {e}", "ERROR")
+            self.log(
+                f"[CAUSE] Claude reflection execution failed with exception. [IMPACT] No reflection analysis available this session. [ACTION] Check Claude SDK configuration and API status. Error: {e}",
+                "ERROR",
+            )
+            self.save_metric("reflection_execution_errors", 1)
             return None
 
     def _announce_reflection_start(self) -> None:

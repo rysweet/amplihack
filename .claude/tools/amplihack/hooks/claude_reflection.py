@@ -61,6 +61,85 @@ def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
     return None
 
 
+def load_power_steering_redirects(session_dir: Path) -> Optional[List[Dict]]:
+    """Load power-steering redirect history from session directory.
+
+    Args:
+        session_dir: Path to session log directory
+
+    Returns:
+        List of redirect dicts, or None if no redirects file exists
+    """
+    redirects_file = session_dir / "redirects.jsonl"
+
+    if not redirects_file.exists():
+        return None
+
+    redirects = []
+    try:
+        with open(redirects_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    redirect = json.loads(line)
+                    redirects.append(redirect)
+                except json.JSONDecodeError:
+                    continue  # Skip malformed lines
+    except OSError:
+        return None
+
+    return redirects if redirects else None
+
+
+def format_redirects_context(redirects: Optional[List[Dict]]) -> str:
+    """Format redirect history for inclusion in reflection prompt.
+
+    Args:
+        redirects: List of redirect dictionaries
+
+    Returns:
+        Formatted markdown string describing redirects
+    """
+    if not redirects:
+        return ""
+
+    redirect_word = "redirect" if len(redirects) == 1 else "redirects"
+    parts = [
+        "",
+        "## Power-Steering Redirect History",
+        "",
+        f"This session had {len(redirects)} power-steering {redirect_word} where Claude was blocked from stopping due to incomplete work:",
+        "",
+    ]
+
+    for redirect in redirects:
+        redirect_num = redirect.get("redirect_number", "?")
+        timestamp = redirect.get("timestamp", "unknown")
+        failed = redirect.get("failed_considerations", [])
+        prompt = redirect.get("continuation_prompt", "")
+
+        parts.append(f"### Redirect #{redirect_num} ({timestamp})")
+        parts.append("")
+        parts.append(f"**Failed Checks:** {', '.join(failed)}")
+        parts.append("")
+        parts.append("**Continuation Prompt Given:**")
+        parts.append("```")
+        parts.append(prompt)
+        parts.append("```")
+        parts.append("")
+
+    parts.append(
+        "**Analysis Note:** These redirects indicate areas where work was incomplete. "
+        "In your feedback, consider whether the redirects were justified and whether "
+        "Claude successfully addressed the blockers after being redirected."
+    )
+    parts.append("")
+
+    return "\n".join(parts)
+
+
 def load_feedback_template(project_root: Path) -> str:
     """Load FEEDBACK_SUMMARY template.
 
@@ -193,7 +272,10 @@ def get_repository_context(project_root: Path) -> str:
 
 
 async def analyze_session_with_claude(
-    conversation: List[Dict], template: str, project_root: Path
+    conversation: List[Dict],
+    template: str,
+    project_root: Path,
+    session_dir: Optional[Path] = None,
 ) -> Optional[str]:
     """Use Claude SDK to analyze session and fill out template.
 
@@ -201,6 +283,7 @@ async def analyze_session_with_claude(
         conversation: Session conversation messages
         template: FEEDBACK_SUMMARY template
         project_root: Project root directory
+        session_dir: Optional session directory for loading redirects
 
     Returns:
         Filled template as string, or None if analysis fails
@@ -241,6 +324,12 @@ The following preferences are REQUIRED and CANNOT be ignored:
     # Get repository context for issue categorization
     repository_context = get_repository_context(project_root)
 
+    # Load power-steering redirects if available
+    redirects_context = ""
+    if session_dir:
+        redirects = load_power_steering_redirects(session_dir)
+        redirects_context = format_redirects_context(redirects)
+
     # Load prompt template and format with variables
     prompt_template = load_prompt_template()
     prompt = format_reflection_prompt(
@@ -251,6 +340,7 @@ The following preferences are REQUIRED and CANNOT be ignored:
             "amplihack_repo_uri": AMPLIHACK_REPO_URI,
             "message_count": str(len(conversation)),
             "conversation_summary": _format_conversation_summary(conversation),
+            "redirects_context": redirects_context,
             "template": template,
         },
     )
@@ -336,9 +426,11 @@ def run_claude_reflection(
     # Load template
     template = load_feedback_template(project_root)
 
-    # Run async analysis
+    # Run async analysis with session_dir for redirect loading
     try:
-        result = asyncio.run(analyze_session_with_claude(conversation, template, project_root))
+        result = asyncio.run(
+            analyze_session_with_claude(conversation, template, project_root, session_dir)
+        )
         return result
     except Exception as e:
         print(f"Claude reflection failed: {e}", file=sys.stderr)

@@ -17,7 +17,9 @@ When analyzing events, analysts should use the WebSearch tool to:
 ## Search Pattern for Each Analyst
 
 ### Economist Analyst
+
 **Search for**:
+
 - Economic data (GDP, unemployment, inflation rates)
 - Policy details (fiscal stimulus amounts, tax rates, regulatory specifics)
 - Market information (commodity prices, stock indices, exchange rates)
@@ -25,6 +27,7 @@ When analyzing events, analysts should use the WebSearch tool to:
 - International data (World Bank, IMF, OECD statistics)
 
 **Example searches**:
+
 ```
 "US inflation rate 2025 Federal Reserve"
 "Carbon tax British Columbia economic impact study"
@@ -32,7 +35,9 @@ When analyzing events, analysts should use the WebSearch tool to:
 ```
 
 ### Political Scientist Analyst
+
 **Search for**:
+
 - Election results and polling data
 - Treaty texts and diplomatic statements
 - Institutional details (constitutions, electoral systems)
@@ -40,6 +45,7 @@ When analyzing events, analysts should use the WebSearch tool to:
 - Political science research (APSA journals, policy briefs)
 
 **Example searches**:
+
 ```
 "NATO Article 5 invocations historical precedents"
 "Democratization success factors comparative study"
@@ -47,7 +53,9 @@ When analyzing events, analysts should use the WebSearch tool to:
 ```
 
 ### Historian Analyst
+
 **Search for**:
+
 - Primary source collections
 - Historical scholarship (American Historical Review)
 - Timeline details and chronologies
@@ -55,6 +63,7 @@ When analyzing events, analysts should use the WebSearch tool to:
 - Archival resources
 
 **Example searches**:
+
 ```
 "Weimar Republic collapse primary sources"
 "Industrial Revolution timeline Britain"
@@ -64,6 +73,7 @@ When analyzing events, analysts should use the WebSearch tool to:
 ### Domain-Specific Patterns
 
 **All analysts** should use WebSearch when they need:
+
 - Current statistics or data
 - Specific details about events
 - Recent research findings

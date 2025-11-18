@@ -42,7 +42,7 @@ autonomous and independent
 
 ### Auto Update
 
-ask
+always
 
 ### Preferred Languages
 
@@ -89,7 +89,9 @@ Always prefer complete work with high quality over speed of implementation.
 
 Controls automatic updating of .claude/ directory when version mismatch detected at session start.
 
-**Current setting:** always
+**Note**: The actual preference value is set in the "### Auto Update" section above (line 43). This section provides documentation and usage examples only.
+
+**Current setting:** always (set at line 43)
 
 **Options:**
 - `always` - Always auto-update without prompting

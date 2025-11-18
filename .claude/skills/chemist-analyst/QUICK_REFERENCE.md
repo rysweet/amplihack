@@ -7,6 +7,7 @@ Apply chemistry principles: molecular structure determines properties, thermodyn
 ## When to Use
 
 **Perfect For:**
+
 - Materials selection and properties analysis
 - Chemical process design and optimization
 - Environmental impact and toxicity assessment
@@ -17,6 +18,7 @@ Apply chemistry principles: molecular structure determines properties, thermodyn
 - Green chemistry and sustainability
 
 **Skip If:**
+
 - Problem has no chemical/material dimension
 - Focused purely on abstract information systems
 - Looking for social or psychological insights
@@ -26,6 +28,7 @@ Apply chemistry principles: molecular structure determines properties, thermodyn
 ### Periodic Table Trends
 
 Understand element behavior from position:
+
 - **Left to right**: Electronegativity increases, atomic radius decreases
 - **Top to bottom**: Atomic radius increases, ionization energy decreases
 - **Metals**: Left side (conductors, lose electrons)
@@ -35,16 +38,19 @@ Understand element behavior from position:
 ### Chemical Bonding
 
 Three main types determine properties:
+
 - **Ionic**: Metal + nonmetal (salt-like, crystalline, high melting point)
 - **Covalent**: Nonmetal + nonmetal (molecules, variable melting points)
 - **Metallic**: Metal + metal (conductive, malleable, lustrous)
 
 Intermolecular forces (weakest to strongest):
+
 - London dispersion < Dipole-dipole < Hydrogen bonding < Ionic/Covalent
 
 ### Thermodynamics (Gibbs Free Energy)
 
 Predicts if reaction is spontaneous:
+
 - **ΔG = ΔH - TΔS**
 - **ΔG < 0**: Spontaneous (favorable)
 - **ΔG > 0**: Non-spontaneous (unfavorable)
@@ -117,6 +123,7 @@ Predicts if reaction is spontaneous:
 ### Functional Groups (Organic Chemistry)
 
 Common groups that determine reactivity:
+
 - **Alcohols** (-OH): Polar, hydrogen bonding, form esters
 - **Carboxylic acids** (-COOH): Acidic, form salts and esters
 - **Amines** (-NH₂): Basic, nucleophilic
@@ -136,6 +143,7 @@ Common groups that determine reactivity:
 ### Oxidation-Reduction (Redox)
 
 Electron transfer reactions:
+
 - **Oxidation**: Loss of electrons (increase oxidation state)
 - **Reduction**: Gain of electrons (decrease oxidation state)
 - **"OIL RIG"**: Oxidation Is Loss, Reduction Is Gain
@@ -192,6 +200,7 @@ Safer often means different performance. Water-based coatings are greener but ma
 ## Red Flags
 
 **Safety and Environmental Concerns:**
+
 - Toxic substances (heavy metals, carcinogens, mutagens)
 - Persistent organic pollutants (PCBs, DDT, PFAS)
 - Ozone-depleting substances (CFCs, halons)
@@ -201,6 +210,7 @@ Safer often means different performance. Water-based coatings are greener but ma
 - Endocrine disruptors (BPA, phthalates)
 
 **Chemical Red Flags:**
+
 - Mixing incompatible chemicals (acids + cyanides, bleach + ammonia)
 - Storing oxidizers with fuels
 - Using outdated or banned substances
@@ -210,6 +220,7 @@ Safer often means different performance. Water-based coatings are greener but ma
 ## Integration Tips
 
 Combine with other skills:
+
 - **Physicist**: Quantum mechanics, thermodynamics
 - **Environmentalist**: Pollution, toxicity, sustainability
 - **Engineer**: Process design, scale-up, materials
@@ -219,6 +230,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Molecular structure and properties are connected
 - Thermodynamic feasibility is assessed (ΔG)
 - Reaction mechanisms are understood

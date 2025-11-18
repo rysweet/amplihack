@@ -20,6 +20,7 @@ This reference contains detailed specifications for all 23 Gang of Four design p
 **Three-Tier System**
 
 **Tier 1: Quick Reference** (always inline, instant)
+
 - One-sentence intent
 - When to use (2-3 bullets)
 - Quick pseudocode example (3-5 lines)
@@ -27,6 +28,7 @@ This reference contains detailed specifications for all 23 Gang of Four design p
 - Related patterns
 
 **Tier 2: Practical Guide** (generated on request or from examples.md)
+
 - Structure diagram
 - Implementation steps
 - Complete code example (Python, 20-40 lines)
@@ -35,6 +37,7 @@ This reference contains detailed specifications for all 23 Gang of Four design p
 - When NOT to use
 
 **Tier 3: Deep Dive** (from reference-patterns.md)
+
 - Full structure explanation
 - Complete pattern specification
 - Problem/Solution/Consequences
@@ -48,17 +51,20 @@ This reference contains detailed specifications for all 23 Gang of Four design p
 I automatically detect desired depth from:
 
 **Tier 3 Signals**:
+
 - "detailed explanation", "deep dive", "comprehensive"
 - "all details", "thorough", "trade-offs"
 - "when not to use", "alternatives", "variations"
 - "implementation details", "show me the full"
 
 **Tier 2 Signals**:
+
 - "code example", "how to implement", "show me how"
 - "practical", "use case", "real-world"
 - "step by step", "guide"
 
 **Tier 1 Signals** (default):
+
 - "what is", "quick summary", "briefly", "overview"
 - "which pattern", "compare"
 
@@ -89,30 +95,30 @@ For EVERY pattern recommendation, I apply this filter:
 
 When you describe a problem, I match against these triggers:
 
-| User Says... | Consider Pattern | Why |
-|--------------|------------------|-----|
-| "need different ways to create..." | Factory Method, Abstract Factory | Object creation flexibility |
-| "create complex object step by step" | Builder | Separate construction from representation |
-| "expensive to create, want to clone" | Prototype | Copy existing objects |
-| "only one instance needed" | Singleton | Controlled single instance (often overused) |
-| "incompatible interfaces" | Adapter | Make incompatible interfaces work together |
-| "separate abstraction from implementation" | Bridge | Vary abstraction and implementation independently |
-| "treat individual and groups uniformly" | Composite | Tree structures, recursive composition |
-| "add responsibilities dynamically" | Decorator | Flexible alternative to subclassing |
-| "simplify complex subsystem" | Facade | Unified interface to subsystems |
-| "many similar objects, memory concern" | Flyweight | Share common state across many objects |
-| "control access to object" | Proxy | Add level of indirection (lazy init, access control) |
-| "pass request along chain" | Chain of Responsibility | Decouple sender from receiver |
-| "encapsulate request as object" | Command | Parameterize, queue, log operations |
-| "traverse collection without exposing structure" | Iterator | Sequential access without exposing internals |
-| "decouple objects that interact" | Mediator | Centralize complex communications |
-| "capture/restore object state" | Memento | Undo mechanism, snapshots |
-| "notify multiple objects of changes" | Observer | One-to-many dependency, event handling |
-| "object behavior changes with state" | State | State-specific behavior without conditionals |
-| "swap algorithms at runtime" | Strategy | Encapsulate algorithm families |
-| "define algorithm skeleton, defer steps" | Template Method | Invariant parts in superclass |
-| "operations on object structure" | Visitor | Add operations without changing classes |
-| "parse/interpret language" | Interpreter | Grammar-based language processing |
+| User Says...                                     | Consider Pattern                 | Why                                                  |
+| ------------------------------------------------ | -------------------------------- | ---------------------------------------------------- |
+| "need different ways to create..."               | Factory Method, Abstract Factory | Object creation flexibility                          |
+| "create complex object step by step"             | Builder                          | Separate construction from representation            |
+| "expensive to create, want to clone"             | Prototype                        | Copy existing objects                                |
+| "only one instance needed"                       | Singleton                        | Controlled single instance (often overused)          |
+| "incompatible interfaces"                        | Adapter                          | Make incompatible interfaces work together           |
+| "separate abstraction from implementation"       | Bridge                           | Vary abstraction and implementation independently    |
+| "treat individual and groups uniformly"          | Composite                        | Tree structures, recursive composition               |
+| "add responsibilities dynamically"               | Decorator                        | Flexible alternative to subclassing                  |
+| "simplify complex subsystem"                     | Facade                           | Unified interface to subsystems                      |
+| "many similar objects, memory concern"           | Flyweight                        | Share common state across many objects               |
+| "control access to object"                       | Proxy                            | Add level of indirection (lazy init, access control) |
+| "pass request along chain"                       | Chain of Responsibility          | Decouple sender from receiver                        |
+| "encapsulate request as object"                  | Command                          | Parameterize, queue, log operations                  |
+| "traverse collection without exposing structure" | Iterator                         | Sequential access without exposing internals         |
+| "decouple objects that interact"                 | Mediator                         | Centralize complex communications                    |
+| "capture/restore object state"                   | Memento                          | Undo mechanism, snapshots                            |
+| "notify multiple objects of changes"             | Observer                         | One-to-many dependency, event handling               |
+| "object behavior changes with state"             | State                            | State-specific behavior without conditionals         |
+| "swap algorithms at runtime"                     | Strategy                         | Encapsulate algorithm families                       |
+| "define algorithm skeleton, defer steps"         | Template Method                  | Invariant parts in superclass                        |
+| "operations on object structure"                 | Visitor                          | Add operations without changing classes              |
+| "parse/interpret language"                       | Interpreter                      | Grammar-based language processing                    |
 
 **Automatic Philosophy Warnings**
 
@@ -224,6 +230,7 @@ Need to manage behavior/algorithms?
 **With Architect Agent**
 
 When architect designs systems, I provide:
+
 - Pattern suggestions based on requirements
 - Trade-off analysis for pattern choices
 - Warnings against over-engineering
@@ -232,6 +239,7 @@ When architect designs systems, I provide:
 **With Builder Agent**
 
 When builder implements code, I provide:
+
 - Code templates and examples (from examples.md)
 - Implementation guidance
 - Language-specific best practices
@@ -240,6 +248,7 @@ When builder implements code, I provide:
 **With Reviewer Agent**
 
 When reviewer checks code, I provide:
+
 - Pattern identification
 - Appropriate usage validation
 - Over-engineering detection (from antipatterns.md)
@@ -260,12 +269,14 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
 **Solution**: Define a factory method in a base class that returns an object of a product interface. Subclasses override this method to return specific product implementations.
 
 **Structure**:
+
 - **Product**: Interface for objects the factory method creates
 - **ConcreteProduct**: Implements the Product interface
 - **Creator**: Declares the factory method returning Product
 - **ConcreteCreator**: Overrides factory method to return ConcreteProduct
 
 **Consequences**:
+
 - **Pros**:
   - Eliminates need to bind application-specific classes into code
   - Provides hooks for subclasses to extend
@@ -275,6 +286,7 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
   - Can lead to large number of similar classes
 
 **References**:
+
 - GoF Book: Pages 107-116
 - Refactoring Guru: https://refactoring.guru/design-patterns/factory-method
 - Python Patterns: https://python-patterns.guide/gang-of-four/factory-method/
@@ -290,6 +302,7 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
 **Solution**: Define an abstract factory interface with methods for creating each type of product. Concrete factories implement this interface to create product families.
 
 **Structure**:
+
 - **AbstractFactory**: Interface for creating abstract products
 - **ConcreteFactory**: Implements operations to create concrete products
 - **AbstractProduct**: Interface for a type of product
@@ -297,6 +310,7 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
 - **Client**: Uses only AbstractFactory and AbstractProduct interfaces
 
 **Consequences**:
+
 - **Pros**:
   - Isolates concrete classes
   - Makes exchanging product families easy
@@ -306,6 +320,7 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
   - Increases number of classes
 
 **References**:
+
 - GoF Book: Pages 87-95
 - Refactoring Guru: https://refactoring.guru/design-patterns/abstract-factory
 - Source Making: https://sourcemaking.com/design_patterns/abstract_factory
@@ -321,12 +336,14 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
 **Solution**: Define a Builder interface with methods for creating parts of a product. Director class uses Builder to construct objects. ConcreteBuilders implement the Builder interface.
 
 **Structure**:
+
 - **Builder**: Interface for creating parts of Product
 - **ConcreteBuilder**: Constructs and assembles parts, defines representation
 - **Director**: Constructs object using Builder interface
 - **Product**: Complex object being built
 
 **Consequences**:
+
 - **Pros**:
   - Lets you vary product's internal representation
   - Isolates code for construction and representation
@@ -337,6 +354,7 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
   - May increase overall code complexity
 
 **References**:
+
 - GoF Book: Pages 97-106
 - Refactoring Guru: https://refactoring.guru/design-patterns/builder
 - Python Patterns: https://python-patterns.guide/gang-of-four/builder/
@@ -352,11 +370,13 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
 **Solution**: Create new objects by cloning a prototypical instance. Prototype interface declares a cloning method.
 
 **Structure**:
+
 - **Prototype**: Interface declaring clone method
 - **ConcretePrototype**: Implements clone method
 - **Client**: Creates new objects by asking prototype to clone itself
 
 **Consequences**:
+
 - **Pros**:
   - Adds/removes products at runtime
   - Specifies new objects by varying values
@@ -367,6 +387,7 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
   - Deep vs shallow copy decisions required
 
 **References**:
+
 - GoF Book: Pages 117-126
 - Refactoring Guru: https://refactoring.guru/design-patterns/prototype
 - GitHub python-patterns: https://github.com/faif/python-patterns/blob/master/patterns/creational/prototype.py
@@ -382,9 +403,11 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
 **Solution**: Make the class responsible for keeping track of its sole instance. Class can ensure no other instance can be created (intercept requests for creating new objects).
 
 **Structure**:
+
 - **Singleton**: Defines Instance operation letting clients access unique instance; may be responsible for creating own unique instance
 
 **Consequences**:
+
 - **Pros**:
   - Controlled access to sole instance
   - Reduced namespace pollution
@@ -399,6 +422,7 @@ Patterns that deal with object creation mechanisms, trying to create objects in 
 **WARNING**: Singleton is often overused and considered an anti-pattern in modern development. Prefer dependency injection for most use cases.
 
 **References**:
+
 - GoF Book: Pages 127-134
 - Refactoring Guru: https://refactoring.guru/design-patterns/singleton
 - Source Making: https://sourcemaking.com/design_patterns/singleton (includes criticism)
@@ -418,12 +442,14 @@ Patterns concerned with how classes and objects are composed to form larger stru
 **Solution**: Define an adapter class that wraps the existing class and implements the interface clients expect.
 
 **Structure**:
+
 - **Target**: Interface that Client uses
 - **Adapter**: Adapts interface of Adaptee to Target interface
 - **Adaptee**: Existing interface that needs adapting
 - **Client**: Collaborates with objects conforming to Target
 
 **Consequences**:
+
 - **Pros**:
   - Allows incompatible interfaces to work together
   - Increases class reusability
@@ -433,6 +459,7 @@ Patterns concerned with how classes and objects are composed to form larger stru
   - Sometimes requires many adaptations along adapter chain
 
 **References**:
+
 - GoF Book: Pages 139-150
 - Refactoring Guru: https://refactoring.guru/design-patterns/adapter
 - Python Patterns: https://python-patterns.guide/gang-of-four/adapter/
@@ -448,12 +475,14 @@ Patterns concerned with how classes and objects are composed to form larger stru
 **Solution**: Separate abstraction and implementation into separate class hierarchies. Abstraction contains a reference to implementation object.
 
 **Structure**:
+
 - **Abstraction**: Defines abstraction's interface; maintains reference to Implementor
 - **RefinedAbstraction**: Extends interface defined by Abstraction
 - **Implementor**: Interface for implementation classes
 - **ConcreteImplementor**: Implements Implementor interface
 
 **Consequences**:
+
 - **Pros**:
   - Decouples interface and implementation
   - Improves extensibility
@@ -463,6 +492,7 @@ Patterns concerned with how classes and objects are composed to form larger stru
   - May impact performance (extra indirection)
 
 **References**:
+
 - GoF Book: Pages 151-161
 - Refactoring Guru: https://refactoring.guru/design-patterns/bridge
 - Source Making: https://sourcemaking.com/design_patterns/bridge
@@ -478,12 +508,14 @@ Patterns concerned with how classes and objects are composed to form larger stru
 **Solution**: Define a Component interface for both primitives and composites. Composite stores child components and implements operations by delegating to children.
 
 **Structure**:
+
 - **Component**: Interface for objects in composition
 - **Leaf**: Represents leaf objects (no children)
 - **Composite**: Defines behavior for components having children; stores child components
 - **Client**: Manipulates objects through Component interface
 
 **Consequences**:
+
 - **Pros**:
   - Makes client simple (treats composites and leaves uniformly)
   - Makes it easy to add new kinds of components
@@ -493,6 +525,7 @@ Patterns concerned with how classes and objects are composed to form larger stru
   - Hard to restrict composite components
 
 **References**:
+
 - GoF Book: Pages 163-173
 - Refactoring Guru: https://refactoring.guru/design-patterns/composite
 - Game Programming Patterns: https://gameprogrammingpatterns.com/component.html
@@ -508,12 +541,14 @@ Patterns concerned with how classes and objects are composed to form larger stru
 **Solution**: Enclose the component in a decorator object. Decorator conforms to the interface of the component it decorates, forwarding requests and potentially performing additional actions.
 
 **Structure**:
+
 - **Component**: Interface for objects that can have responsibilities added
 - **ConcreteComponent**: Object to which additional responsibilities can be attached
 - **Decorator**: Maintains reference to Component and conforms to Component interface
 - **ConcreteDecorator**: Adds responsibilities to component
 
 **Consequences**:
+
 - **Pros**:
   - More flexible than static inheritance
   - Avoids feature-laden classes high in hierarchy
@@ -524,6 +559,7 @@ Patterns concerned with how classes and objects are composed to form larger stru
   - Complex configurations can be hard to debug
 
 **References**:
+
 - GoF Book: Pages 175-184
 - Refactoring Guru: https://refactoring.guru/design-patterns/decorator
 - Python Patterns: https://python-patterns.guide/gang-of-four/decorator-pattern/
@@ -539,10 +575,12 @@ Patterns concerned with how classes and objects are composed to form larger stru
 **Solution**: Define a Facade class that provides simple methods required by client, delegating to appropriate subsystem objects.
 
 **Structure**:
+
 - **Facade**: Knows which subsystem classes are responsible for a request; delegates client requests to appropriate subsystem objects
 - **Subsystem classes**: Implement subsystem functionality; handle work assigned by Facade; have no knowledge of Facade
 
 **Consequences**:
+
 - **Pros**:
   - Shields clients from subsystem components
   - Promotes weak coupling between subsystem and clients
@@ -552,6 +590,7 @@ Patterns concerned with how classes and objects are composed to form larger stru
   - May not provide all functionality clients need
 
 **References**:
+
 - GoF Book: Pages 185-193
 - Refactoring Guru: https://refactoring.guru/design-patterns/facade
 - Source Making: https://sourcemaking.com/design_patterns/facade
@@ -567,12 +606,14 @@ Patterns concerned with how classes and objects are composed to form larger stru
 **Solution**: Share common parts of state between multiple objects instead of keeping all data in each object. Separate intrinsic (shared) state from extrinsic (unique) state.
 
 **Structure**:
+
 - **Flyweight**: Interface through which flyweights can receive and act on extrinsic state
 - **ConcreteFlyweight**: Implements Flyweight interface; stores intrinsic state
 - **FlyweightFactory**: Creates and manages flyweight objects; ensures proper sharing
 - **Client**: Maintains reference to flyweights; computes/stores extrinsic state
 
 **Consequences**:
+
 - **Pros**:
   - Reduces number of objects
   - Reduces memory consumption
@@ -583,6 +624,7 @@ Patterns concerned with how classes and objects are composed to form larger stru
   - Only beneficial when memory savings are significant
 
 **References**:
+
 - GoF Book: Pages 195-206
 - Refactoring Guru: https://refactoring.guru/design-patterns/flyweight
 - Game Programming Patterns: https://gameprogrammingpatterns.com/flyweight.html
@@ -598,17 +640,20 @@ Patterns concerned with how classes and objects are composed to form larger stru
 **Solution**: Provide a proxy object that acts as substitute for the real object. Proxy has same interface as the real object.
 
 **Structure**:
+
 - **Subject**: Common interface for RealSubject and Proxy
 - **RealSubject**: Real object that proxy represents
 - **Proxy**: Maintains reference to RealSubject; controls access; may be responsible for creating/deleting RealSubject
 
 **Proxy Types**:
+
 - **Virtual Proxy**: Delays creation of expensive objects until needed
 - **Protection Proxy**: Controls access based on access rights
 - **Remote Proxy**: Provides local representative for remote object
 - **Smart Proxy**: Performs additional actions (reference counting, locking, loading persistent object)
 
 **Consequences**:
+
 - **Pros**:
   - Controls access to real object
   - Can optimize performance (lazy initialization, caching)
@@ -618,6 +663,7 @@ Patterns concerned with how classes and objects are composed to form larger stru
   - Increases code complexity
 
 **References**:
+
 - GoF Book: Pages 207-217
 - Refactoring Guru: https://refactoring.guru/design-patterns/proxy
 - Python Patterns: https://python-patterns.guide/gang-of-four/proxy/
@@ -637,11 +683,13 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Each handler in chain either handles the request or forwards it to next handler in chain.
 
 **Structure**:
+
 - **Handler**: Interface for handling requests; implements successor link
 - **ConcreteHandler**: Handles requests it's responsible for; forwards others to successor
 - **Client**: Initiates request to ConcreteHandler in chain
 
 **Consequences**:
+
 - **Pros**:
   - Reduces coupling
   - Adds flexibility in assigning responsibilities
@@ -652,6 +700,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
   - May impact performance (chain traversal)
 
 **References**:
+
 - GoF Book: Pages 223-232
 - Refactoring Guru: https://refactoring.guru/design-patterns/chain-of-responsibility
 - Source Making: https://sourcemaking.com/design_patterns/chain_of_responsibility
@@ -667,6 +716,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Encapsulate request as object with all information needed to execute it. Command objects can be stored, passed as parameters, and invoked when needed.
 
 **Structure**:
+
 - **Command**: Interface for executing operations
 - **ConcreteCommand**: Binds Receiver with action; implements execute by invoking operations on Receiver
 - **Client**: Creates ConcreteCommand and sets its Receiver
@@ -674,6 +724,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 - **Receiver**: Knows how to perform operations
 
 **Consequences**:
+
 - **Pros**:
   - Decouples object invoking operation from object performing it
   - Commands are first-class objects (manipulated and extended)
@@ -684,6 +735,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
   - Indirection may reduce code readability
 
 **References**:
+
 - GoF Book: Pages 233-242
 - Refactoring Guru: https://refactoring.guru/design-patterns/command
 - Game Programming Patterns: https://gameprogrammingpatterns.com/command.html
@@ -699,6 +751,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Define a class for each grammar rule. Syntax tree is instance of Composite pattern used to interpret sentences.
 
 **Structure**:
+
 - **AbstractExpression**: Interface for interpreting operations
 - **TerminalExpression**: Implements interpret for terminal symbols
 - **NonterminalExpression**: Implements interpret for grammar rules
@@ -706,6 +759,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 - **Client**: Builds abstract syntax tree; invokes interpret
 
 **Consequences**:
+
 - **Pros**:
   - Easy to change and extend grammar
   - Implementing grammar is straightforward
@@ -717,6 +771,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **WARNING**: Rarely used in modern development. Use parser libraries (pyparsing, ANTLR) for non-trivial grammars.
 
 **References**:
+
 - GoF Book: Pages 243-255
 - Refactoring Guru: https://refactoring.guru/design-patterns/interpreter
 - Source Making: https://sourcemaking.com/design_patterns/interpreter
@@ -732,12 +787,14 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Define Iterator interface that provides methods for traversing collection. Aggregate creates iterator objects.
 
 **Structure**:
+
 - **Iterator**: Interface for accessing and traversing elements
 - **ConcreteIterator**: Implements Iterator; keeps track of current position
 - **Aggregate**: Interface for creating Iterator
 - **ConcreteAggregate**: Implements Iterator creation; returns ConcreteIterator
 
 **Consequences**:
+
 - **Pros**:
   - Supports variations in traversal
   - Simplifies aggregate interface
@@ -749,6 +806,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **NOTE**: Most modern languages (Python, JavaScript, Java, C#) have built-in iterator support. Only implement manually for custom traversal logic.
 
 **References**:
+
 - GoF Book: Pages 257-271
 - Refactoring Guru: https://refactoring.guru/design-patterns/iterator
 - Python Patterns: https://python-patterns.guide/gang-of-four/iterator/
@@ -764,11 +822,13 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Define Mediator object that handles interactions between colleague objects. Colleagues communicate through mediator rather than directly.
 
 **Structure**:
+
 - **Mediator**: Interface for communicating with Colleague objects
 - **ConcreteMediator**: Implements cooperative behavior; coordinates Colleagues
 - **Colleague**: Each Colleague knows its Mediator; communicates through it
 
 **Consequences**:
+
 - **Pros**:
   - Limits subclassing
   - Decouples colleagues
@@ -780,6 +840,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
   - May become god object
 
 **References**:
+
 - GoF Book: Pages 273-282
 - Refactoring Guru: https://refactoring.guru/design-patterns/mediator
 - Source Making: https://sourcemaking.com/design_patterns/mediator
@@ -795,11 +856,13 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Memento object stores snapshot of Originator's internal state. Only Originator can access Memento's contents.
 
 **Structure**:
+
 - **Memento**: Stores internal state of Originator; protects against access by objects other than Originator
 - **Originator**: Creates memento containing snapshot; uses memento to restore state
 - **Caretaker**: Responsible for memento's safekeeping; never operates on or examines memento contents
 
 **Consequences**:
+
 - **Pros**:
   - Preserves encapsulation boundaries
   - Simplifies Originator (no need to manage state history)
@@ -809,6 +872,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
   - May require additional classes/interfaces
 
 **References**:
+
 - GoF Book: Pages 283-291
 - Refactoring Guru: https://refactoring.guru/design-patterns/memento
 - Source Making: https://sourcemaking.com/design_patterns/memento
@@ -824,12 +888,14 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Define Subject that maintains list of Observers. When Subject state changes, it notifies all Observers.
 
 **Structure**:
+
 - **Subject**: Knows its observers; provides interface for attaching/detaching observers
 - **Observer**: Interface for objects that should be notified of changes
 - **ConcreteSubject**: Stores state; sends notification when state changes
 - **ConcreteObserver**: Maintains reference to ConcreteSubject; implements Observer update interface
 
 **Consequences**:
+
 - **Pros**:
   - Abstract coupling between Subject and Observer
   - Support for broadcast communication
@@ -840,6 +906,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
   - Memory leaks (observers not properly detached)
 
 **References**:
+
 - GoF Book: Pages 293-303
 - Refactoring Guru: https://refactoring.guru/design-patterns/observer
 - Game Programming Patterns: https://gameprogrammingpatterns.com/observer.html
@@ -855,11 +922,13 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Define separate State objects that encapsulate state-specific behavior. Context delegates state-specific behavior to current State object.
 
 **Structure**:
+
 - **Context**: Defines interface of interest to clients; maintains instance of ConcreteState that defines current state
 - **State**: Interface for encapsulating behavior associated with particular state
 - **ConcreteState**: Implements behavior associated with state of Context
 
 **Consequences**:
+
 - **Pros**:
   - Localizes state-specific behavior
   - Makes state transitions explicit
@@ -869,6 +938,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
   - May be overkill for simple state machines
 
 **References**:
+
 - GoF Book: Pages 305-313
 - Refactoring Guru: https://refactoring.guru/design-patterns/state
 - Game Programming Patterns: https://gameprogrammingpatterns.com/state.html
@@ -884,11 +954,13 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Define family of Strategy classes that encapsulate different algorithms. Context uses Strategy interface, allowing algorithm to be selected at runtime.
 
 **Structure**:
+
 - **Strategy**: Common interface for all supported algorithms
 - **ConcreteStrategy**: Implements algorithm using Strategy interface
 - **Context**: Configured with ConcreteStrategy; maintains reference to Strategy; may define interface for Strategy to access its data
 
 **Consequences**:
+
 - **Pros**:
   - Families of related algorithms
   - Alternative to subclassing
@@ -900,6 +972,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
   - Communication overhead between Strategy and Context
 
 **References**:
+
 - GoF Book: Pages 315-323
 - Refactoring Guru: https://refactoring.guru/design-patterns/strategy
 - Game Programming Patterns: https://gameprogrammingpatterns.com/strategy.html
@@ -915,10 +988,12 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Define template method in base class that calls hook methods. Subclasses override hook methods to customize behavior.
 
 **Structure**:
+
 - **AbstractClass**: Defines abstract primitive operations; implements template method defining algorithm skeleton
 - **ConcreteClass**: Implements primitive operations to carry out subclass-specific steps
 
 **Consequences**:
+
 - **Pros**:
   - Code reuse (common behavior in base class)
   - Inverted control ("Hollywood Principle")
@@ -929,6 +1004,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
   - Violates Liskov Substitution Principle if subclasses can't implement all steps
 
 **References**:
+
 - GoF Book: Pages 325-330
 - Refactoring Guru: https://refactoring.guru/design-patterns/template-method
 - Source Making: https://sourcemaking.com/design_patterns/template_method
@@ -944,6 +1020,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **Solution**: Define Visitor interface with visit method for each element type. Elements accept Visitors, calling appropriate visit method.
 
 **Structure**:
+
 - **Visitor**: Interface declaring visit operation for each ConcreteElement
 - **ConcreteVisitor**: Implements operations defined by Visitor
 - **Element**: Defines accept operation taking Visitor as argument
@@ -951,6 +1028,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 - **ObjectStructure**: Can enumerate elements; may provide high-level interface for Visitor
 
 **Consequences**:
+
 - **Pros**:
   - Makes adding new operations easy
   - Gathers related operations
@@ -964,6 +1042,7 @@ Patterns concerned with algorithms and the assignment of responsibilities betwee
 **WARNING**: Visitor is complex and often overused. Consider simpler alternatives (polymorphism, function dispatch) before using Visitor.
 
 **References**:
+
 - GoF Book: Pages 331-344
 - Refactoring Guru: https://refactoring.guru/design-patterns/visitor
 - Source Making: https://sourcemaking.com/design_patterns/visitor

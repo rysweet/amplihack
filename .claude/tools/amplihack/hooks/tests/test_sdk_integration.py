@@ -135,9 +135,7 @@ def test_sdk_analysis():
 
     try:
         print("  Testing WITH tests in transcript...")
-        result_with = analyze_consideration_sync(
-            conversation_with_tests, consideration, temp_dir
-        )
+        result_with = analyze_consideration_sync(conversation_with_tests, consideration, temp_dir)
         print(f"    Result: {'SATISFIED' if result_with else 'NOT SATISFIED'}")
 
         print("  Testing WITHOUT tests in transcript...")
@@ -186,7 +184,11 @@ def test_integration_with_checker():
             "type": "assistant",
             "message": {
                 "content": [
-                    {"type": "tool_use", "name": "TodoWrite", "input": {"todos": [{"status": "completed"}]}}
+                    {
+                        "type": "tool_use",
+                        "name": "TodoWrite",
+                        "input": {"todos": [{"status": "completed"}]},
+                    }
                 ]
             },
         },

@@ -13,6 +13,7 @@ Unlike Western analytical approaches that often fragment problems into isolated 
 Applies the principle of considering impacts seven generations into the future. This framework evaluates decisions not just for immediate outcomes but for their long-term consequences on communities, ecosystems, and future peoples.
 
 **Analysis Dimensions:**
+
 - Intergenerational equity and justice
 - Sustainable resource relationships
 - Cultural continuity and transmission
@@ -24,6 +25,7 @@ Applies the principle of considering impacts seven generations into the future. 
 Examines problems through the lens of relationships and responsibilities rather than individual rights or transactions. This approach recognizes that all beings and systems exist in networks of mutual obligation.
 
 **Key Elements:**
+
 - Reciprocity and mutual aid
 - Responsibilities to land and community
 - Stewardship versus ownership
@@ -35,6 +37,7 @@ Examines problems through the lens of relationships and responsibilities rather 
 Incorporates indigenous science and land-based wisdom accumulated over millennia. TEK represents sophisticated understanding of ecological relationships, sustainable harvesting, climate patterns, and biodiversity management.
 
 **Applications:**
+
 - Biodiversity conservation strategies
 - Climate adaptation approaches
 - Sustainable resource management
@@ -46,6 +49,7 @@ Incorporates indigenous science and land-based wisdom accumulated over millennia
 Analyzes governance challenges using indigenous models that prioritize consensus, inclusion, and community voice over majority rule or hierarchical authority.
 
 **Process Elements:**
+
 - Circle processes and inclusive dialogue
 - Elder wisdom and youth voice integration
 - Patience in decision-making
@@ -57,6 +61,7 @@ Analyzes governance challenges using indigenous models that prioritize consensus
 Identifies and addresses colonial patterns in systems, structures, and thinking. This critical lens reveals power imbalances, extractive relationships, and the erasure of indigenous knowledge.
 
 **Focus Areas:**
+
 - Recognition of indigenous sovereignty
 - Land back and rematriation movements
 - Language and cultural revitalization
@@ -141,6 +146,7 @@ Use traditional stories, metaphors, and oral traditions to convey complex concep
 ## Best Practices
 
 **Do:**
+
 - Center indigenous voices and leadership
 - Recognize diversity among indigenous peoples
 - Acknowledge specific nations and territories
@@ -148,6 +154,7 @@ Use traditional stories, metaphors, and oral traditions to convey complex concep
 - Honor protocols and cultural protocols
 
 **Don't:**
+
 - Appropriate or romanticize indigenous culture
 - Treat indigenous knowledge as monolithic
 - Extract knowledge without reciprocity

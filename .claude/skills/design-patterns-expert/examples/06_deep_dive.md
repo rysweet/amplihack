@@ -36,6 +36,7 @@ User: "Deep dive into the Decorator pattern - I want to understand all the varia
    - Example: `ScrollDecorator`, `BorderDecorator`, `EncryptionDecorator`
 
 **Collaborations**:
+
 - Decorator forwards requests to its Component object
 - May perform additional operations before/after forwarding
 - Decorators can be stacked (decorator wraps decorator wraps component)
@@ -249,6 +250,7 @@ if __name__ == "__main__":
 ```
 
 **Output**:
+
 ```
 === Simple File DataSource ===
 Writing to data.txt: Hello World
@@ -328,15 +330,17 @@ class EncryptionDecorator extends DataSourceDecorator {
   }
 
   private encrypt(data: string): string {
-    return data.split('').map(c =>
-      String.fromCharCode(c.charCodeAt(0) + 3)
-    ).join('');
+    return data
+      .split("")
+      .map((c) => String.fromCharCode(c.charCodeAt(0) + 3))
+      .join("");
   }
 
   private decrypt(data: string): string {
-    return data.split('').map(c =>
-      String.fromCharCode(c.charCodeAt(0) - 3)
-    ).join('');
+    return data
+      .split("")
+      .map((c) => String.fromCharCode(c.charCodeAt(0) - 3))
+      .join("");
   }
 }
 
@@ -370,7 +374,7 @@ class CompressionDecorator extends DataSourceDecorator {
       }
     }
     result.push(`${count}${prev}`);
-    return result.join('');
+    return result.join("");
   }
 
   private decompress(data: string): string {
@@ -380,7 +384,7 @@ class CompressionDecorator extends DataSourceDecorator {
       const char = data[i + 1];
       result.push(char.repeat(count));
     }
-    return result.join('');
+    return result.join("");
   }
 }
 
@@ -396,9 +400,7 @@ function clientCode(source: DataSource): void {
 const simple = new FileDataSource("data.txt");
 clientCode(simple);
 
-const encrypted = new EncryptionDecorator(
-  new FileDataSource("encrypted.txt")
-);
+const encrypted = new EncryptionDecorator(new FileDataSource("encrypted.txt"));
 clientCode(encrypted);
 
 const compressedEncrypted = new CompressionDecorator(
@@ -412,6 +414,7 @@ clientCode(compressedEncrypted);
 ### Pattern Variations
 
 #### 1. **Transparent Decorator** (Standard GoF)
+
 - Decorator has same interface as Component
 - Client can't distinguish decorated from undecorated
 - **When**: Need complete interface compatibility
@@ -426,6 +429,7 @@ class Decorator(Component):
 ```
 
 #### 2. **Semi-Transparent Decorator**
+
 - Decorator adds new methods not in Component interface
 - Client can access decorator-specific functionality
 - **When**: Need both forwarding AND new capabilities
@@ -440,6 +444,7 @@ class Decorator(Component):
 ```
 
 #### 3. **Function Decorators** (Python-specific)
+
 - Use @decorator syntax
 - Wrap functions instead of objects
 - **When**: Decorating functions, not classes
@@ -459,6 +464,7 @@ def slow_function():
 ```
 
 #### 4. **Streaming Decorator**
+
 - Process data in chunks (I/O streams)
 - Chain decorators for layered processing
 - **When**: Large data, memory constraints
@@ -478,6 +484,7 @@ class BufferedDecorator(StreamDecorator):
 ### Advanced Topics
 
 #### Thread Safety
+
 - **Problem**: Shared decorator state in concurrent environment
 - **Solution**: Make decorators stateless OR use thread-local storage
 
@@ -496,6 +503,7 @@ class ThreadSafeDecorator(Decorator):
 ```
 
 #### Memory Leaks in Decorator Chains
+
 - **Problem**: Long decorator chains hold references
 - **Solution**: Use weak references OR limit chain depth
 
@@ -512,6 +520,7 @@ class SmartDecorator(Decorator):
 ```
 
 #### Performance Considerations
+
 - Each decorator adds indirection (performance cost)
 - Consider limit: 3-5 decorators maximum
 - Profile before optimizing
@@ -520,12 +529,12 @@ class SmartDecorator(Decorator):
 
 ### When to Use Each Variation
 
-| Variation | Use When | Avoid When |
-|-----------|----------|------------|
-| **Transparent** | Need interface compatibility, multiple decorators | Need decorator-specific methods |
-| **Semi-Transparent** | Need both forwarding and new methods | Interface purity is critical |
-| **Function Decorators** | Decorating functions (logging, timing) | Need object state |
-| **Streaming** | Large data, I/O operations | Small in-memory data |
+| Variation               | Use When                                          | Avoid When                      |
+| ----------------------- | ------------------------------------------------- | ------------------------------- |
+| **Transparent**         | Need interface compatibility, multiple decorators | Need decorator-specific methods |
+| **Semi-Transparent**    | Need both forwarding and new methods              | Interface purity is critical    |
+| **Function Decorators** | Decorating functions (logging, timing)            | Need object state               |
+| **Streaming**           | Large data, I/O operations                        | Small in-memory data            |
 
 ---
 
@@ -534,22 +543,26 @@ class SmartDecorator(Decorator):
 **Amplihack Perspective**:
 
 ✅ **Good fit when**:
+
 - You have ≥3 orthogonal responsibilities to add
 - Responsibilities need to be combined flexibly
 - Subclassing would create explosion of classes
 - You need runtime composition
 
 ⚠️ **Caution when**:
+
 - Only 1-2 simple decorations needed (use simple wrapper function)
 - Decorations are not orthogonal (consider Strategy or State)
 - Interface has many methods (Decorator must forward all)
 
 ❌ **Avoid when**:
+
 - Single decoration (use simple subclass or wrapper)
 - Decorations are mutually exclusive (use Strategy)
 - Performance is critical (indirection overhead)
 
 **Ruthless Simplicity Test**:
+
 1. Do you have ≥3 combinable behaviors? If no → use simple wrapper
 2. Are behaviors orthogonal? If no → use Strategy
 3. Will you actually combine them? If no → use simple subclassing
@@ -563,12 +576,14 @@ class SmartDecorator(Decorator):
 **Also Known As**: Wrapper
 
 **Evolution**:
+
 - Classic GoF: Object-oriented decorator (classes)
 - Modern languages: Function decorators (Python @decorator)
 - React/JavaScript: Higher-Order Components (HOC pattern)
 - Java: I/O streams (BufferedInputStream wraps FileInputStream)
 
 **Modern Relevance**:
+
 - Still widely used in I/O libraries
 - Function decorators ubiquitous in Python
 - Middleware pattern in web frameworks
@@ -578,25 +593,26 @@ class SmartDecorator(Decorator):
 
 ### Related Patterns - Deep Comparison
 
-| Pattern | Similarity | Key Difference | When to Choose |
-|---------|------------|----------------|----------------|
-| **Adapter** | Both wrap objects | Adapter changes interface; Decorator enhances behavior | Use Adapter for incompatible interfaces, Decorator for adding responsibilities |
-| **Proxy** | Both have same interface | Proxy controls access; Decorator adds behavior | Use Proxy for lazy init/access control, Decorator for flexible enhancement |
-| **Composite** | Similar structure (recursion) | Composite focuses on part-whole; Decorator on enhancement | Use Composite for trees, Decorator for layered behavior |
-| **Strategy** | Both change behavior | Strategy swaps algorithm; Decorator stacks behaviors | Use Strategy for alternatives, Decorator for combinations |
+| Pattern       | Similarity                    | Key Difference                                            | When to Choose                                                                 |
+| ------------- | ----------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Adapter**   | Both wrap objects             | Adapter changes interface; Decorator enhances behavior    | Use Adapter for incompatible interfaces, Decorator for adding responsibilities |
+| **Proxy**     | Both have same interface      | Proxy controls access; Decorator adds behavior            | Use Proxy for lazy init/access control, Decorator for flexible enhancement     |
+| **Composite** | Similar structure (recursion) | Composite focuses on part-whole; Decorator on enhancement | Use Composite for trees, Decorator for layered behavior                        |
+| **Strategy**  | Both change behavior          | Strategy swaps algorithm; Decorator stacks behaviors      | Use Strategy for alternatives, Decorator for combinations                      |
 
 ---
 
 ### References
 
-- Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). *Design Patterns: Elements of Reusable Object-Oriented Software*. Addison-Wesley, pp. 175-184.
-- Freeman, E., & Freeman, E. (2004). *Head First Design Patterns*. O'Reilly, Chapter 3.
+- Gamma, E., Helm, R., Johnson, R., & Vlissides, J. (1994). _Design Patterns: Elements of Reusable Object-Oriented Software_. Addison-Wesley, pp. 175-184.
+- Freeman, E., & Freeman, E. (2004). _Head First Design Patterns_. O'Reilly, Chapter 3.
 - Refactoring Guru: https://refactoring.guru/design-patterns/decorator
 - Python Decorator PEP: https://www.python.org/dev/peps/pep-0318/
 
 ---
 
 **Would you like**:
+
 - More code examples for specific use cases?
 - Comparison with Proxy pattern in detail?
 - Implementation in another language (Java, C#, Go)?

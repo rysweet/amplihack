@@ -49,6 +49,7 @@ Political science analysis rests on several fundamental principles:
 ### Framework 1: Realism and Structural Realism
 
 **Core Principles**:
+
 - States are primary actors in international politics
 - International system is anarchic (no overarching authority)
 - States pursue power and security to ensure survival
@@ -57,34 +58,40 @@ Political science analysis rests on several fundamental principles:
 - Security and material power drive state behavior
 
 **Classical Realism (Morgenthau)**:
+
 - Human nature (desire for power) drives politics
 - National interest defined in terms of power
 - Moral principles cannot determine state action
 - Balance of power prevents hegemony
 
 **Structural Realism/Neorealism (Waltz)**:
+
 - System structure (anarchy, distribution of power) determines outcomes
 - States are functionally similar (all seek survival)
 - Bipolarity more stable than multipolarity
 - Structure shapes, not determines, behavior
 
 **Key Insights**:
+
 - "Realism continues to emphasize the centrality of power and security in an anarchic international system, offering insights into state-centric responses to threats and the resurgence of geopolitical rivalries" (2025)
 - Security dilemmas: Actions to increase security can decrease others' security
 - Relative gains matter more than absolute gains
 - Cooperation is difficult but not impossible
 
 **Founding Thinker**: **Hans Morgenthau** (1904-1980)
-- Key Work: *Politics Among Nations* (1948)
+
+- Key Work: _Politics Among Nations_ (1948)
 - Core concept: "Interest defined in terms of power"
 - Contributions: Realist theory, national interest, balance of power
 
 **Structural Realist**: **Kenneth Waltz** (1924-2013)
-- Key Work: *Theory of International Politics* (1979)
+
+- Key Work: _Theory of International Politics_ (1979)
 - Innovation: System-level (structural) theory
 - Focus: Anarchy and distribution of capabilities shape outcomes
 
 **When to Apply**:
+
 - Interstate conflicts and wars
 - Great power competition (e.g., US-China)
 - Alliance formation and balance of power
@@ -93,6 +100,7 @@ Political science analysis rests on several fundamental principles:
 - Territorial disputes
 
 **Sources**:
+
 - [International Relations Theory - Wikipedia](https://en.wikipedia.org/wiki/International_relations_theory)
 - [Hans Morgenthau - Wikipedia](https://en.wikipedia.org/wiki/Hans_Morgenthau)
 - [Political Realism - Stanford Encyclopedia](https://plato.stanford.edu/entries/realism-intl-relations/)
@@ -101,6 +109,7 @@ Political science analysis rests on several fundamental principles:
 ### Framework 2: Liberalism and Neoliberal Institutionalism
 
 **Core Principles**:
+
 - Economic interdependence reduces conflict
 - International institutions facilitate cooperation
 - Domestic factors (regime type, interest groups, public opinion) matter
@@ -110,6 +119,7 @@ Political science analysis rests on several fundamental principles:
 - Cooperation possible even in anarchy
 
 **Key Insights**:
+
 - "Highlights the potential for collective action and rule-based order"
 - Institutions provide information, reduce transaction costs, facilitate monitoring
 - Trade creates interdependence and shared interests
@@ -117,12 +127,14 @@ Political science analysis rests on several fundamental principles:
 - Non-state actors (NGOs, MNCs) play important roles
 
 **Key Thinker**: **Robert Keohane**
-- Key Work: *International Institutions and State Power* (1989)
+
+- Key Work: _International Institutions and State Power_ (1989)
 - Innovation: Shows cooperation possible through institutions even in anarchy
 - With Joseph Nye: "Complex interdependence" concept
 - Uses game theory to demonstrate cooperation serves self-interest
 
 **When to Apply**:
+
 - International organizations (UN, WTO, IMF)
 - Trade agreements and economic integration
 - European integration
@@ -131,12 +143,14 @@ Political science analysis rests on several fundamental principles:
 - Democratic transitions and consolidation
 
 **Sources**:
+
 - [Key Theories of IR - Norwich University](https://online.norwich.edu/online/about/resource-library/key-theories-international-relations)
 - [Introducing Major IR Theories - E-IR](https://www.e-ir.info/2024/12/29/introducing-the-major-international-relations-theories/)
 
 ### Framework 3: Constructivism
 
 **Core Principles**:
+
 - Ideas, norms, and identities shape politics
 - Reality is socially constructed through shared understandings
 - State interests are not fixed but malleable
@@ -146,6 +160,7 @@ Political science analysis rests on several fundamental principles:
 - Norms evolve and diffuse
 
 **Key Insights**:
+
 - "Emphasizing the role of ideas, norms, and identities, provides a dynamic perspective on how global challenges reshape state interests and international norms"
 - Explains norm diffusion (human rights, sovereignty norms, environmental norms)
 - Identity politics and nationalism
@@ -153,6 +168,7 @@ Political science analysis rests on several fundamental principles:
 - Socialization and norm entrepreneurs
 
 **When to Apply**:
+
 - Understanding norm diffusion (e.g., human rights, R2P)
 - Identity conflicts and nationalism
 - Evaluating impact of rhetoric and discourse
@@ -161,6 +177,7 @@ Political science analysis rests on several fundamental principles:
 - Cultural and civilizational factors
 
 **Sources**:
+
 - [Realism, Liberalism, Constructivism - CUNY](https://cuny.manifoldapp.org/read/introduction-to-international-relations/section/ceef6ace-0d87-48d1-927c-283247e3d968)
 - [Theories of IR - Medium](https://medium.com/@archiebee/beyond-statecraft-key-theories-of-international-relations-91911597170b)
 
@@ -170,6 +187,7 @@ Political science analysis rests on several fundamental principles:
 "Field characterized by the use of the comparative method or other empirical methods to explore politics both within and between countries"
 
 **Key Questions**:
+
 - Why do some countries democratize while others remain authoritarian?
 - How do electoral systems affect party systems?
 - What explains variation in economic development?
@@ -177,6 +195,7 @@ Political science analysis rests on several fundamental principles:
 - What causes civil wars and ethnic conflicts?
 
 **Five Main Approaches**:
+
 1. **Institutional Analysis**: How institutions shape outcomes
 2. **Interest Approach**: Role of interest groups and collective action
 3. **Ideas Approach**: Impact of ideology and beliefs
@@ -184,17 +203,20 @@ Political science analysis rests on several fundamental principles:
 5. **International Environment**: Global factors shaping domestic politics
 
 **Institutional Focus**:
+
 - **Definition**: "The set of formal rules and laws (including constitutions) as well as the informal rules, norms, mores, and etiquette"
 - **Types**: Presidential vs. parliamentary, electoral systems, federal vs. unitary, strong vs. weak legislatures
 - **Effects**: Institutions structure competition, shape policy, distribute power
 
 **Democracy vs. Authoritarianism**:
+
 - **Democracy**: Free elections, civil liberties, rule of law, accountability
 - **Authoritarianism**: Limited competition, restricted liberties, concentrated power
 - **Hybrid Regimes**: "Authoritarian regimes increasingly attempting to use 'democratic' institutions to prolong their rule"
 - **Contemporary Trend**: "Concurrent resurgence of authoritarianism" with "sophisticated techniques such as surveillance technology and media manipulation"
 
 **When to Apply**:
+
 - Comparing political systems
 - Analyzing regime transitions
 - Evaluating institutional reforms
@@ -203,6 +225,7 @@ Political science analysis rests on several fundamental principles:
 - Assessing governance quality
 
 **Sources**:
+
 - [Comparative Politics - Wikipedia](https://en.wikipedia.org/wiki/Comparative_politics)
 - [Comparative Politics - ScienceDirect](https://www.sciencedirect.com/topics/social-sciences/comparative-politics)
 - [Democracy vs. Authoritarianism - Fiveable](https://fiveable.me/ap-comp-gov/unit-1/democracy-vs-authoritarianism/study-guide/dUOVpQcgIGwfXVboWg1U)
@@ -238,6 +261,7 @@ Political science analysis rests on several fundamental principles:
    - Example: How does polarity affect stability?
 
 **Analytical Value**:
+
 - Clarifies what is being explained and at what level
 - Reveals different causal mechanisms
 - Avoids conflating levels (e.g., system-level outcomes vs. state-level decisions)
@@ -263,12 +287,14 @@ Political science analysis rests on several fundamental principles:
    - Control over frameworks of interaction
 
 **Power Distribution**:
+
 - **Unipolar**: One dominant power (e.g., US post-Cold War)
 - **Bipolar**: Two great powers (e.g., US-USSR Cold War)
 - **Multipolar**: Multiple great powers (e.g., pre-WWI Europe)
 - **Implications**: Different distributions create different dynamics (stability, conflict likelihood)
 
 **Power Resources vs. Power Outcomes**:
+
 - Resources don't automatically translate to outcomes
 - Context matters: asymmetric interdependence, resolve, strategy
 - Power is relational, not absolute
@@ -278,6 +304,7 @@ Political science analysis rests on several fundamental principles:
 **Purpose**: Analyze situations where outcomes depend on multiple actors' choices
 
 **Key Concepts**:
+
 - **Players**: Actors making strategic choices
 - **Strategies**: Available actions
 - **Payoffs**: Outcomes for each combination of strategies
@@ -301,6 +328,7 @@ Political science analysis rests on several fundamental principles:
    - Challenge: Reaching Pareto-superior equilibrium
 
 **Applications**:
+
 - Interstate bargaining
 - Alliance formation
 - Crisis behavior
@@ -314,6 +342,7 @@ Political science analysis rests on several fundamental principles:
 **Purpose**: "Uncovering the process by which events unfolded"
 
 **Approach**:
+
 - Trace causal mechanisms step-by-step
 - Identify observable implications of hypothesized causes
 - Test whether evidence matches predictions
@@ -322,12 +351,14 @@ Political science analysis rests on several fundamental principles:
 **Strength**: Understanding HOW and WHY, not just THAT
 
 **Applications**:
+
 - Explaining specific historical events
 - Testing causal theories
 - Understanding decision-making processes
 - Tracing diffusion of norms or policies
 
 **Sources**:
+
 - [Process Tracing Methods - Oxford Research Encyclopedia](https://oxfordre.com/politics/display/10.1093/acrefore/9780190228637.001.0001/acrefore-9780190228637-e-176)
 - [Case Studies and Process Tracing - Vennesson](https://minorthesis.wordpress.com/wp-content/uploads/2012/12/vennesson-case-study-methods.pdf)
 
@@ -353,11 +384,13 @@ Political science analysis rests on several fundamental principles:
    - Regional variation within country
 
 **Strengths**:
+
 - Identify necessary and sufficient conditions
 - Test rival hypotheses
 - Establish causal relationships
 
 **Limitations**:
+
 - Small-N problem
 - Selection bias
 - Omitted variables
@@ -373,30 +406,35 @@ Political science analysis rests on several fundamental principles:
 **Definition**: "Focused, in-depth account of a single individual, group, organization, action, or event"
 
 **Types**:
+
 - **Descriptive**: Rich description of a case
 - **Explanatory**: Explain why outcome occurred
 - **Exploratory**: Generate hypotheses for further testing
 - **Critical**: Test or challenge existing theory
 
 **Case Selection**:
+
 - **Typical cases**: Representative of larger population
 - **Deviant cases**: Outliers that don't fit theory
 - **Critical cases**: "If theory doesn't work here, it won't work anywhere"
 - **Influential cases**: Had significant impact
 
 **Strengths**:
+
 - Deep contextual understanding
 - Uncover causal mechanisms
 - Theory development
 - Complex phenomena
 
 **Limitations**:
+
 - Generalizability concerns
 - Selection bias risk
 - Difficulty isolating causes
 
 **Sources**:
-- [What are Qualitative Methods - Social Sci LibreTexts](https://socialsci.libretexts.org/Bookshelves/Political_Science_and_Civics/Introduction_to_Political_Science_Research_Methods_(Franco_et_al.)/07:_Qualitative_Methods/7.01:_What_are_Qualitative_Methods)
+
+- [What are Qualitative Methods - Social Sci LibreTexts](<https://socialsci.libretexts.org/Bookshelves/Political_Science_and_Civics/Introduction_to_Political_Science_Research_Methods_(Franco_et_al.)/07:_Qualitative_Methods/7.01:_What_are_Qualitative_Methods>)
 - [Case-based Research - Taylor & Francis](https://www.tandfonline.com/doi/full/10.1080/13510347.2018.1517255)
 
 ### Method 2: Large-N Quantitative Analysis
@@ -404,24 +442,28 @@ Political science analysis rests on several fundamental principles:
 **Purpose**: Statistical analysis of many observations
 
 **Approaches**:
+
 - Cross-sectional regression
 - Time-series analysis
 - Panel data (cross-section + time-series)
 - Event history analysis
 
 **Strengths**:
+
 - Generalizability
 - Control for confounds
 - Test probabilistic relationships
 - Identify patterns
 
 **Limitations**:
+
 - Measurement challenges
 - Causal identification
 - Missing mechanisms
 - Context loss
 
 **Applications**:
+
 - Democratic survival
 - Civil war onset
 - Trade and conflict
@@ -432,12 +474,14 @@ Political science analysis rests on several fundamental principles:
 **Definition**: "Utilizing both qualitative and quantitative methods"
 
 **Rationale**:
+
 - Quantitative breadth + qualitative depth
 - Triangulation increases confidence
 - Test mechanisms identified quantitatively
 - Generalize findings from qualitative research
 
 **Designs**:
+
 - Sequential: Quant then qual (or reverse)
 - Concurrent: Both simultaneously
 - Nested: Small-N cases within large-N analysis
@@ -447,11 +491,13 @@ Political science analysis rests on several fundamental principles:
 ### Method 4: Experiments and Natural Experiments
 
 **Field Experiments**:
+
 - Randomize treatment in real-world settings
 - Causal identification through randomization
 - Ethical and practical constraints
 
 **Natural Experiments**:
+
 - Exploit quasi-random variation
 - As-if random assignment
 - Examples: Arbitrary borders, close elections, policy discontinuities
@@ -465,12 +511,14 @@ Political science analysis rests on several fundamental principles:
 **Purpose**: Mathematically derive implications of assumptions
 
 **Approaches**:
+
 - Game theory models
 - Spatial models (e.g., median voter theorem)
 - Principal-agent models
 - Bargaining models
 
 **Value**:
+
 - Clarify assumptions
 - Ensure logical consistency
 - Generate testable predictions
@@ -485,35 +533,41 @@ Domain-specific framework for analyzing events through political science lens:
 ### What to Examine
 
 **Power Distribution**:
+
 - Who has power? What kind (military, economic, soft, structural)?
 - How is power distributed (concentrated vs. dispersed)?
 - Is power balance shifting?
 
 **Institutional Context**:
+
 - What institutions are involved (domestic, international)?
 - What are formal rules? Informal norms?
 - How do institutions constrain or enable actors?
 - Are institutions functioning as designed?
 
 **Actor Interests and Preferences**:
+
 - Who are key actors (states, leaders, groups, organizations)?
 - What are their interests and goals?
 - How are preferences formed?
 - Do interests align or conflict?
 
 **Strategic Interactions**:
+
 - How are actors interdependent?
 - What strategies are being employed?
 - What are expected responses and counter-responses?
 - Are there commitment problems or information asymmetries?
 
 **Historical and Cultural Context**:
+
 - What historical precedents exist?
 - How does path dependence shape current events?
 - What cultural or ideational factors matter?
 - What norms are at play?
 
 **Regime Type and Governance**:
+
 - Democratic, authoritarian, or hybrid?
 - Quality of governance
 - State capacity
@@ -522,36 +576,42 @@ Domain-specific framework for analyzing events through political science lens:
 ### Questions to Ask
 
 **Power Questions**:
+
 - Who has power and what kind?
 - How is power exercised?
 - Is power balance stable or shifting?
 - What are power resources vs. power outcomes?
 
 **Institutional Questions**:
+
 - What institutions structure this situation?
 - How do institutional rules shape behavior?
 - Are institutions constraining or being circumvented?
 - What are institutional strengths and weaknesses?
 
 **Interest Questions**:
+
 - What are actors trying to achieve?
 - Are interests material, ideational, or both?
 - How are interests prioritized?
 - Are there principal-agent problems?
 
 **Strategic Questions**:
+
 - What game are actors playing?
 - What are equilibrium outcomes?
 - How do actors signal intentions and credibility?
 - What role does information play?
 
 **Comparative Questions**:
+
 - How is this similar to/different from other cases?
 - What patterns exist across cases?
 - What explains variation?
 - What lessons do comparisons provide?
 
 **Causal Questions**:
+
 - What caused this outcome?
 - What are causal mechanisms?
 - What counterfactuals help clarify causation?
@@ -560,24 +620,28 @@ Domain-specific framework for analyzing events through political science lens:
 ### Factors to Consider
 
 **Systemic Factors**:
+
 - Distribution of power (polarity)
 - International norms and institutions
 - Technological changes
 - Economic interdependence
 
 **State-Level Factors**:
+
 - Regime type
 - State capacity
 - Economic development
 - Domestic institutions
 
 **Societal Factors**:
+
 - Public opinion
 - Interest groups
 - Civil society strength
 - Ethnic/religious divisions
 
 **Individual Factors**:
+
 - Leader personalities and beliefs
 - Decision-making processes
 - Cognitive biases
@@ -594,24 +658,28 @@ Domain-specific framework for analyzing events through political science lens:
 ### Implications to Explore
 
 **Security Implications**:
+
 - Conflict likelihood
 - Alliance stability
 - Regional security dynamics
 - Arms control prospects
 
 **Governance Implications**:
+
 - Democratic quality
 - State capacity
 - Rule of law
 - Accountability
 
 **Policy Implications**:
+
 - Effectiveness of proposed policies
 - Implementation challenges
 - Unintended consequences
 - Policy diffusion potential
 
 **Normative Implications**:
+
 - Legitimacy
 - Justice
 - Human rights
@@ -624,6 +692,7 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 1: Define Event and Context
 
 **Actions**:
+
 - Clearly state what event is being analyzed
 - Identify relevant actors (states, leaders, groups, organizations)
 - Establish timeline and key developments
@@ -631,6 +700,7 @@ Domain-specific framework for analyzing events through political science lens:
 - Identify what type of political event (conflict, election, reform, crisis, etc.)
 
 **Outputs**:
+
 - Event description
 - Key actors identified
 - Timeline established
@@ -639,28 +709,33 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 2: Determine Level(s) of Analysis
 
 **Actions**:
+
 - Decide which level(s) are most relevant: individual, domestic, interstate, systemic
 - Identify whether multiple levels interact
 - Clarify what is being explained (state behavior, system outcome, policy choice, etc.)
 
 **Reasoning**:
+
 - Leader decision → Individual level
 - Domestic regime change → Domestic level
 - Interstate war → Interstate and/or systemic level
 - Often multiple levels matter
 
 **Outputs**:
+
 - Primary level(s) identified
 - Cross-level dynamics noted
 
 ### Step 3: Select Relevant Theoretical Frameworks
 
 **Actions**:
+
 - Determine which theories apply
 - Consider whether event is primarily IR or comparative politics
 - Identify if multiple theories offer competing explanations
 
 **Framework Selection Logic**:
+
 - **Interstate conflict** → Realism
 - **International cooperation** → Liberalism/Institutionalism
 - **Norm change or identity politics** → Constructivism
@@ -668,22 +743,26 @@ Domain-specific framework for analyzing events through political science lens:
 - **Policy outcomes** → Institutional analysis
 
 **Output**:
+
 - List of applicable theories with justification
 
 ### Step 4: Analyze Power Distribution
 
 **Actions**:
+
 - Map power distribution among relevant actors
 - Identify types of power (hard, soft, structural)
 - Assess whether power is concentrated or dispersed
 - Evaluate power dynamics and potential shifts
 
 **Tools**:
+
 - Power inventory (who has what resources?)
 - Relative power assessment
 - Power trends over time
 
 **Outputs**:
+
 - Power map
 - Assessment of power balance
 - Identification of power shifts
@@ -691,18 +770,21 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 5: Analyze Institutional Context
 
 **Actions**:
+
 - Identify relevant institutions (domestic and international)
 - Map formal rules and informal norms
 - Assess how institutions constrain or enable actors
 - Evaluate institutional effectiveness and legitimacy
 
 **Questions**:
+
 - What institutions govern this situation?
 - Are institutions strong or weak?
 - Are actors complying or defecting?
 - Are institutions adapting or rigid?
 
 **Outputs**:
+
 - Institutional inventory
 - Assessment of institutional effects
 - Identification of institutional gaps or failures
@@ -710,17 +792,20 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 6: Identify Actor Interests and Strategies
 
 **Actions**:
+
 - Clarify each actor's interests and goals
 - Analyze how interests are formed (material vs. ideational)
 - Identify strategies actors are employing
 - Assess alignment or conflict of interests
 
 **Tools**:
+
 - Interest mapping
 - Strategy assessment
 - Game-theoretic reasoning (if strategic interdependence)
 
 **Outputs**:
+
 - Interest map for each actor
 - Strategy identification
 - Assessment of strategic interactions
@@ -728,18 +813,21 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 7: Apply Comparative Perspective
 
 **Actions**:
+
 - Identify similar cases for comparison
 - Use comparative method to identify patterns
 - Assess what is similar and what differs
 - Draw lessons from comparisons
 
 **Comparative Questions**:
+
 - How have similar events unfolded elsewhere?
 - What explains variation across cases?
 - What patterns are robust?
 - What context-specific factors matter?
 
 **Outputs**:
+
 - Comparative case selection
 - Pattern identification
 - Causal insights from comparison
@@ -747,18 +835,21 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 8: Trace Causal Mechanisms
 
 **Actions**:
+
 - Hypothesize causal pathways
 - Identify observable implications
 - Test whether evidence matches predictions
 - Rule out alternative explanations
 
 **Process Tracing Steps**:
+
 1. State hypothesis about causal mechanism
 2. Identify what evidence would confirm/disconfirm
 3. Gather evidence
 4. Assess whether mechanism operated as hypothesized
 
 **Outputs**:
+
 - Causal mechanism(s) identified
 - Supporting evidence
 - Alternative explanations considered
@@ -766,18 +857,21 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 9: Assess Historical Context and Precedents
 
 **Actions**:
+
 - Identify historical precedents
 - Assess role of path dependence
 - Draw lessons from history
 - Understand how past shapes present
 
 **Historical Questions**:
+
 - What historical events are analogous?
 - How does history constrain current choices?
 - What lessons does history provide?
 - Are historical patterns repeating?
 
 **Outputs**:
+
 - Historical precedents identified
 - Path dependence assessed
 - Historical lessons articulated
@@ -785,24 +879,28 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 10: Evaluate Normative and Policy Implications
 
 **Actions**:
+
 - Assess legitimacy and justice concerns
 - Identify policy options and trade-offs
 - Evaluate likely effectiveness of interventions
 - Consider ethical dimensions
 
 **Normative Questions**:
+
 - Is this legitimate?
 - What justice concerns arise?
 - Who is harmed/benefited?
 - What values are at stake?
 
 **Policy Questions**:
+
 - What should be done (if anything)?
 - What are costs and benefits of options?
 - What are implementation challenges?
 - What unintended consequences might arise?
 
 **Outputs**:
+
 - Normative assessment
 - Policy recommendations (if appropriate)
 - Trade-off analysis
@@ -810,18 +908,21 @@ Domain-specific framework for analyzing events through political science lens:
 ### Step 11: Synthesize Insights
 
 **Actions**:
+
 - Integrate findings from all steps
 - Reconcile insights from different theories
 - Provide clear bottom-line assessment
 - Acknowledge uncertainties and limitations
 
 **Synthesis Questions**:
+
 - What are most important insights?
 - How do different perspectives complement each other?
 - What are robust conclusions?
 - What remains uncertain?
 
 **Outputs**:
+
 - Integrated analysis
 - Clear conclusions
 - Acknowledged limitations
@@ -837,34 +938,40 @@ Domain-specific framework for analyzing events through political science lens:
 **Analysis Approach**:
 
 **Step 1 - Context**:
+
 - Event: Potential military conflict escalation through alliance
 - Actors: Country A (aggressor), Country B (victim), Country C (ally)
 - Timeline: Invasion → Treaty invocation → Decision point for Country C
 - Scope: Interstate, potential for regional/systemic implications
 
 **Step 2 - Level of Analysis**:
+
 - Primary: Interstate (alliance politics)
 - Secondary: Domestic (Country C's internal debates about honoring commitment)
 - Systemic: How does response affect broader alliance credibility?
 
 **Step 3 - Theoretical Frameworks**:
+
 - **Realism**: Alliance credibility, balance of power, security concerns
 - **Liberalism**: Institutional commitments, reputation costs
 - **Constructivism**: Norms of alliance solidarity, identity as reliable ally
 
 **Step 4 - Power Analysis**:
+
 - Country A: Regional power, military advantage over B
 - Country B: Weaker militarily, but has alliance
 - Country C: Great power, capability to deter A, but costs of intervention
 - Power dynamics: A likely calculated B's allies wouldn't respond; C's response changes calculus
 
 **Step 5 - Institutional Analysis**:
+
 - Institution: Mutual defense treaty
 - Formal rule: Attack on one is attack on all
 - Institutional credibility at stake
 - Historical precedents: NATO Article 5, historical alliance commitments
 
 **Step 6 - Actor Interests and Strategies**:
+
 - **Country A's interests**: Territory, testing alliance resolve, regional dominance
 - **Country A's strategy**: Calculated aggression, fait accompli
 - **Country B's interests**: Territorial integrity, security, alliance value
@@ -873,27 +980,32 @@ Domain-specific framework for analyzing events through political science lens:
 - **Country C's strategy**: Face dilemma—honor commitment (costly) or defect (reputation costs)
 
 **Step 7 - Comparative Perspective**:
+
 - Historical cases: WWI (alliance chains), 1930s (failed commitments)
 - NATO Article 5 invocations (9/11 - honored)
 - Cases where alliances weren't honored (lessons on credibility loss)
 
 **Step 8 - Causal Mechanisms**:
+
 - **Realist mechanism**: If C defects, A emboldened, B abandoned, alliance system weakens → Future aggression more likely
 - **Institutionalist mechanism**: Honoring commitments reinforces institution, creates reputation for reliability
 - **Constructivist mechanism**: Invoking identity as "reliable ally" constrains behavior
 
 **Step 9 - Historical Context**:
+
 - Pre-WWI: Alliance chains escalated regional conflict
 - 1930s appeasement: Failed deterrence invited aggression
 - Cold War: Credible commitments prevented conflicts
 - Post-Cold War: Selective enforcement of commitments
 
 **Step 10 - Implications**:
+
 - **Security**: If C intervenes → Deters A, protects B, maintains alliance. If C defects → A wins, alliances lose credibility
 - **Systemic**: Affects all alliance commitments globally
 - **Normative**: Legitimacy of aggression vs. alliance obligations
 
 **Step 11 - Synthesis**:
+
 - **Realist view**: C must respond to maintain credibility and balance power
 - **Liberal view**: Institutional commitment and reputation costs require response
 - **Constructivist view**: Identity as reliable ally shapes appropriate behavior
@@ -908,34 +1020,40 @@ Domain-specific framework for analyzing events through political science lens:
 **Analysis Approach**:
 
 **Step 1 - Context**:
+
 - Event: Regime collapse and potential democratization
 - Actors: Outgoing authoritarian elite, opposition groups, military, civil society, international actors
 - Timeline: Protests → Economic crisis → Elite splits → Regime collapse → Transition period
 - Scope: Domestic, with international dimensions
 
 **Step 2 - Level of Analysis**:
+
 - Primary: Domestic (regime dynamics, transition politics)
 - Secondary: Societal (protest movements, civil society)
 - Systemic: International diffusion effects, external support
 
 **Step 3 - Theoretical Frameworks**:
+
 - **Democratization theories**: Transitions literature (O'Donnell, Schmitter, Linz)
 - **Institutional analysis**: Role of institutions in shaping transition
 - **Comparative politics**: Democracy vs. authoritarianism dynamics
 
 **Step 4 - Power Analysis**:
+
 - Outgoing regime: Losing power, but retains coercive apparatus
 - Opposition: Growing power through mobilization, but fragmented
 - Military: Pivotal actor—can prop up regime or facilitate transition
 - International actors: Leverage through aid, sanctions, recognition
 
 **Step 5 - Institutional Analysis**:
+
 - **Authoritarian institutions**: Weak, losing legitimacy
 - **Informal institutions**: Patronage networks, coercion
 - **Missing institutions**: Democratic institutions must be built
 - **Transitional institutions**: Constitutional assemblies, interim governments
 
 **Step 6 - Actor Interests and Strategies**:
+
 - **Outgoing elite**: Preserve wealth and security, avoid prosecution
 - **Hardliners vs. Softliners**: Split within elite—fight vs. negotiate
 - **Opposition**: Democracy, but also power and policy goals
@@ -943,26 +1061,31 @@ Domain-specific framework for analyzing events through political science lens:
 - **Strategies**: Negotiations, pacts, constitution-making, transitional justice
 
 **Step 7 - Comparative Perspective**:
+
 - **Successful transitions**: Spain (1970s), South Korea (1980s), Eastern Europe (1990s)
 - **Failed transitions**: Arab Spring cases, Venezuela
 - **Lessons**: Pacted transitions more stable; polarization risks; timing of elections matters
 
 **Step 8 - Causal Mechanisms**:
+
 - **Economic crisis → Regime weakness**: Resource constraints reduce patronage, coercion
 - **Elite defection → Regime collapse**: Once elite splits, regime vulnerable
 - **Pacts → Transition success**: Negotiated agreements reduce uncertainty, facilitate cooperation
 
 **Step 9 - Historical Context**:
+
 - Third Wave democratization (1974-1991): Many transitions, varied outcomes
 - Recent wave of authoritarianism (2000s-2020s): Democratic backsliding
 - Path dependence: Prior regime type affects transition prospects
 
 **Step 10 - Implications**:
+
 - **Democracy prospects**: Depends on elite pacts, institutional design, civil society strength, economic conditions
 - **Stability risks**: Polarization, violence, authoritarian reversion
 - **Policy options**: Constitutional design (presidential vs. parliamentary), electoral system, transitional justice, international support
 
 **Step 11 - Synthesis**:
+
 - Comparative evidence: Pacted transitions with elite guarantees more successful
 - Military's role critical: If sides with democracy, transition likely succeeds
 - Timing matters: Premature elections risk polarization; delayed elections risk authoritarian reversion
@@ -976,61 +1099,72 @@ Domain-specific framework for analyzing events through political science lens:
 **Analysis Approach**:
 
 **Step 1 - Context**:
+
 - Event: Multilateral climate negotiations
 - Actors: Developed countries, emerging economies (China, India, Brazil), developing countries, EU
 - Scope: Global governance, international institution-building
 - Challenge: Collective action problem with distributional conflicts
 
 **Step 2 - Level of Analysis**:
+
 - Primary: Interstate (negotiation dynamics)
 - Secondary: Domestic (domestic politics constrain positions)
 - Systemic: Global public goods provision
 
 **Step 3 - Theoretical Frameworks**:
+
 - **Liberalism/Institutionalism**: Conditions for cooperation, role of institutions
 - **Realism**: Relative gains concerns, sovereignty, enforcement problems
 - **Constructivism**: Norm diffusion, climate justice frames
 
 **Step 4 - Power Analysis**:
+
 - **Great power dynamics**: US, China, EU have most leverage
 - **Coalition power**: G77 developing countries coalition
 - **Economic power**: Developed countries have resources, but emerging economies are major emitters
 - **Moral authority**: Small island states vulnerable to climate change
 
 **Step 5 - Institutional Analysis**:
+
 - **Existing institutions**: UNFCCC framework, Kyoto Protocol precedent
 - **Institutional challenges**: Enforcement, verification, compliance
 - **Institutional innovations**: Nationally Determined Contributions (NDCs), Green Climate Fund
 
 **Step 6 - Actor Interests and Strategies**:
+
 - **Developed countries**: Cap emissions globally, but resist binding targets and financial obligations
 - **Emerging economies**: Right to development, common but differentiated responsibilities
 - **Developing countries**: Financing, adaptation support, loss and damage compensation
 - **Strategies**: Coalition-building, issue linkage, shaming
 
 **Step 7 - Comparative Perspective**:
+
 - **Successful regimes**: Montreal Protocol (ozone), Antarctica Treaty
 - **Lessons**: Side payments facilitate cooperation; clear science helps; verification matters
 - **Failed cases**: Kyoto Protocol (US didn't ratify, limited coverage)
 
 **Step 8 - Causal Mechanisms**:
+
 - **Collective action problem**: Each state incentive to free-ride
 - **Distributive conflict**: Who bears costs? Who pays?
 - **Institutional solutions**: Transparency, targets, financing
 
 **Step 9 - Historical Context**:
+
 - Rio Earth Summit (1992): Framework established
 - Kyoto Protocol (1997): Binding targets for developed countries
 - Paris Agreement (2015): NDCs approach
 - Evolving norms: Climate action increasingly accepted
 
 **Step 10 - Implications**:
+
 - **Success factors**: Binding yet flexible, adequate financing, transparency, ratcheting ambition
 - **Failure risks**: Free-riding, non-compliance, insufficient ambition
 - **Governance**: Shift from top-down to bottom-up (NDCs)
 - **Justice**: Developed countries' historical responsibility vs. emerging economies' current emissions
 
 **Step 11 - Synthesis**:
+
 - **Liberal institutionalist view**: Institutions can facilitate cooperation even with conflicting interests—transparency, iterated interaction, issue linkage
 - **Realist skepticism**: Sovereignty concerns, enforcement problems, relative gains worries limit effectiveness
 - **Constructivist insight**: Norm diffusion and climate justice discourse shape state positions
@@ -1045,26 +1179,30 @@ Domain-specific framework for analyzing events through political science lens:
 ### Key Thinkers and Works
 
 #### Hans Morgenthau (1904-1980)
+
 - **Field**: International Relations (Classical Realism)
-- **Key Work**: *Politics Among Nations* (1948)
+- **Key Work**: _Politics Among Nations_ (1948)
 - **Contribution**: National interest, power politics, balance of power
 - **Quote**: "Interest defined in terms of power"
 
 #### Kenneth Waltz (1924-2013)
+
 - **Field**: International Relations (Structural Realism/Neorealism)
-- **Key Work**: *Theory of International Politics* (1979)
+- **Key Work**: _Theory of International Politics_ (1979)
 - **Contribution**: System-level theory, anarchy and polarity
 - **Innovation**: Structure, not human nature, drives outcomes
 
 #### Robert Keohane
+
 - **Field**: International Relations (Neoliberal Institutionalism)
-- **Key Work**: *International Institutions and State Power* (1989)
+- **Key Work**: _International Institutions and State Power_ (1989)
 - **Contribution**: International cooperation through institutions
 - **With Joseph Nye**: Complex interdependence concept
 
 #### Robert Putnam
+
 - **Field**: Comparative Politics
-- **Key Work**: *Bowling Alone*
+- **Key Work**: _Bowling Alone_
 - **Contribution**: Social capital, civic engagement
 - **Theory**: Two-level games (domestic-international politics)
 
@@ -1075,6 +1213,7 @@ Domain-specific framework for analyzing events through political science lens:
 **Website**: https://apsanet.org/
 
 **Resources**:
+
 - Journals (APSR, Perspectives on Politics, PS, JPSE)
 - eJobs platform
 - Annual meeting
@@ -1084,6 +1223,7 @@ Domain-specific framework for analyzing events through political science lens:
 **2025 Status**: Active with November 2025 publications
 
 **Sources**:
+
 - [APSA](https://apsanet.org/)
 - [APSA Publications](https://apsanet.org/publications/apsa-publications/)
 
@@ -1092,6 +1232,7 @@ Domain-specific framework for analyzing events through political science lens:
 **Description**: "Political science's premier scholarly research journal"
 
 **Areas Covered**:
+
 - Political theory
 - American politics
 - Public policy
@@ -1108,6 +1249,7 @@ Domain-specific framework for analyzing events through political science lens:
 **Access**: https://www.cambridge.org/core/journals/american-political-science-review
 
 **Sources**:
+
 - [APSR - Cambridge](https://www.cambridge.org/core/journals/american-political-science-review)
 - [APSR - APSA](https://apsanet.org/publications/journals/american-political-science-review/)
 - [APSR - Wikipedia](https://en.wikipedia.org/wiki/American_Political_Science_Review)
@@ -1151,34 +1293,42 @@ After completing political science analysis, verify:
 ## Common Pitfalls to Avoid
 
 **Pitfall 1: Conflating Levels of Analysis**
+
 - **Problem**: Mixing individual-level explanations with system-level outcomes
 - **Solution**: Clearly specify level of analysis; distinguish causes at different levels
 
 **Pitfall 2: Applying One Theory Uncritically**
+
 - **Problem**: Using only realism or only liberalism without considering alternatives
 - **Solution**: Apply multiple theories; recognize each offers partial insights
 
 **Pitfall 3: Ignoring Domestic Politics**
+
 - **Problem**: Treating states as unitary actors when domestic politics matters
 - **Solution**: Use two-level game framework; consider regime type, coalitions, public opinion
 
 **Pitfall 4: Atheoretical Analysis**
+
 - **Problem**: Descriptive narrative without theoretical framework
 - **Solution**: Explicitly state theoretical perspective; derive testable implications
 
 **Pitfall 5: Cherry-Picking Historical Cases**
+
 - **Problem**: Selecting only cases supporting preferred interpretation
 - **Solution**: Systematic case selection; address contradictory evidence
 
 **Pitfall 6: Ignoring Strategic Interaction**
+
 - **Problem**: Analyzing actors in isolation without considering interdependence
 - **Solution**: Use game theory or strategic interaction framework
 
 **Pitfall 7: Deterministic Claims**
+
 - **Problem**: Asserting outcomes are inevitable
 - **Solution**: Acknowledge contingency, uncertainty, and alternative scenarios
 
 **Pitfall 8: Presentism**
+
 - **Problem**: Judging past events by contemporary standards without historical context
 - **Solution**: Understand historical context; avoid anachronistic judgments
 
@@ -1214,6 +1364,7 @@ Political science analysis complements other disciplinary perspectives:
 - **Lawyer**: Legal frameworks, international law, constitutionalism
 
 Political science is particularly strong on:
+
 - Power analysis
 - Institutional analysis
 - Strategic interaction
@@ -1225,6 +1376,7 @@ Political science is particularly strong on:
 ## Continuous Improvement
 
 This skill evolves as:
+
 - New political events provide learning opportunities
 - Political science research advances
 - Theories develop and are refined

@@ -62,17 +62,18 @@ amplihack goal-agent-generator execute \
 
 ### Goal-Seeking vs Traditional Agents
 
-| Characteristic | Goal-Seeking Agent | Traditional Agent |
-|----------------|-------------------|------------------|
-| **Input** | High-level objective | Step-by-step instructions |
-| **Decision Making** | Autonomous (adapts to context) | Prescribed (follows fixed workflow) |
-| **Failure Handling** | Self-recovering (tries alternatives) | Manual intervention required |
-| **Complexity** | Multi-phase with dependencies | Single-phase or linear |
-| **Reusability** | High (same agent, different contexts) | Low (context-specific) |
+| Characteristic       | Goal-Seeking Agent                    | Traditional Agent                   |
+| -------------------- | ------------------------------------- | ----------------------------------- |
+| **Input**            | High-level objective                  | Step-by-step instructions           |
+| **Decision Making**  | Autonomous (adapts to context)        | Prescribed (follows fixed workflow) |
+| **Failure Handling** | Self-recovering (tries alternatives)  | Manual intervention required        |
+| **Complexity**       | Multi-phase with dependencies         | Single-phase or linear              |
+| **Reusability**      | High (same agent, different contexts) | Low (context-specific)              |
 
 ### Architecture Components
 
 **1. Goal Definition**: Structured representation of objective
+
 - Primary goal (what to achieve)
 - Domain (security, data, automation, etc.)
 - Constraints (time, resources, safety)
@@ -80,17 +81,20 @@ amplihack goal-agent-generator execute \
 - Complexity level (simple, moderate, complex)
 
 **2. Execution Plan**: Multi-phase plan with dependencies
+
 - 3-5 phases (not too granular, not too coarse)
 - Phase dependencies (sequential, parallel, conditional)
 - Duration estimates
 - Success indicators per phase
 
 **3. Skills**: Capabilities needed for execution
+
 - Map capabilities to existing agents/tools
 - Define delegation targets
 - Specify implementation type (native or delegated)
 
 **4. Agent Bundle**: Complete executable package
+
 - Assembled from goal, plan, and skills
 - Auto-mode configuration
 - Metadata and versioning
@@ -100,28 +104,33 @@ amplihack goal-agent-generator execute \
 ### Pattern Indicators
 
 **Workflow Variability**: Same objective, different approaches based on context
+
 ```
 Example: Release workflow varies by environment (staging vs production),
 change type (hotfix vs feature), current system state (healthy vs degraded)
 ```
 
 **Multi-Phase Complexity**: Objective requires 3-5+ phases with dependencies
+
 ```
 Example: Data pipeline with phases (collection → transformation → validation → publishing)
 Each phase depends on previous, some can run in parallel
 ```
 
 **Autonomous Recovery**: Failures are expected, multiple recovery strategies exist
+
 ```
 Example: CI diagnostic workflow tries multiple fix strategies until success
 ```
 
 **Adaptive Decision Making**: Need to evaluate trade-offs at runtime
+
 ```
 Example: Fix agent selects QUICK/DIAGNOSTIC/COMPREHENSIVE mode based on problem analysis
 ```
 
 **Domain Expertise**: Requires specialized knowledge to coordinate actions
+
 ```
 Example: AKS SRE automation combines Azure, Kubernetes, networking, and security knowledge
 ```
@@ -190,6 +199,7 @@ amplihack goal-agent-generator execute \
 **Problem**: Manual AKS cluster operations are time-consuming and error-prone
 
 **Solution**: Goal-seeking agent that:
+
 - Audits security (RBAC, network policies, Key Vault)
 - Validates networking (ingress, DNS, load balancers)
 - Verifies monitoring (Container Insights, alerts)
@@ -197,6 +207,7 @@ amplihack goal-agent-generator execute \
 - Generates actionable report
 
 **Key Features**:
+
 - Parallel execution of security/networking/monitoring checks
 - Azure + Kubernetes domain expertise
 - Adaptive investigation depth based on findings
@@ -209,6 +220,7 @@ amplihack goal-agent-generator execute \
 **Problem**: CI failures require manual diagnosis and fix iteration
 
 **Solution**: Goal-seeking agent that:
+
 - Monitors CI status after push
 - Diagnoses failures (test, lint, type errors)
 - Applies targeted fixes
@@ -216,6 +228,7 @@ amplihack goal-agent-generator execute \
 - Iterates until all checks pass (max 5 iterations)
 
 **Key Features**:
+
 - Iterative fix loop with max iterations
 - Pattern matching for common failures
 - Smart waiting with exponential backoff
@@ -228,6 +241,7 @@ amplihack goal-agent-generator execute \
 **Problem**: Pre-commit hooks fail with unclear errors
 
 **Solution**: Goal-seeking agent that:
+
 - Identifies failed hooks (ruff, black, mypy, etc.)
 - Checks tool version mismatches
 - Applies hook-specific fixes
@@ -235,6 +249,7 @@ amplihack goal-agent-generator execute \
 - Ensures all hooks pass before commit
 
 **Key Features**:
+
 - Fast local iteration (no CI wait)
 - Tool version management
 - Hook-specific fix templates
@@ -247,12 +262,14 @@ amplihack goal-agent-generator execute \
 **Problem**: Different issues require different fix approaches
 
 **Solution**: Goal-seeking agent that:
+
 - Analyzes issue type and complexity
 - Selects fix mode (QUICK/DIAGNOSTIC/COMPREHENSIVE)
 - Applies mode-appropriate strategy
 - Escalates complexity if initial mode fails
 
 **Key Features**:
+
 - Context-aware mode selection
 - Template-based fixes (80% coverage)
 - Pattern recognition from usage data
@@ -265,6 +282,7 @@ amplihack goal-agent-generator execute \
 When designing goal-seeking agents, verify:
 
 ### Goal Definition
+
 - [ ] Objective is clear and well-defined
 - [ ] Success criteria are measurable
 - [ ] Constraints are explicit
@@ -272,6 +290,7 @@ When designing goal-seeking agents, verify:
 - [ ] Complexity is estimated
 
 ### Phase Design
+
 - [ ] Decomposed into 3-5 phases
 - [ ] Dependencies are explicit
 - [ ] Parallel opportunities identified
@@ -279,12 +298,14 @@ When designing goal-seeking agents, verify:
 - [ ] Duration estimates provided
 
 ### Error Handling
+
 - [ ] Retry strategies defined
 - [ ] Alternative strategies identified
 - [ ] Escalation criteria clear
 - [ ] Graceful degradation options
 
 ### Quality Standards
+
 - [ ] Success criteria verified
 - [ ] Failure scenarios tested
 - [ ] State persisted across phases
@@ -294,57 +315,69 @@ When designing goal-seeking agents, verify:
 ## Common Pitfalls
 
 ### Over-Engineering
+
 **Problem**: Building autonomous agent for simple task
 **Solution**: Use decision framework (5 questions) to validate need
 
 ### Under-Specifying Success Criteria
+
 **Problem**: Agent doesn't know when to stop
 **Solution**: Define measurable, verifiable success criteria
 
 ### Ignoring Failure Scenarios
+
 **Problem**: Agent fails ungracefully, no recovery
 **Solution**: Design retry, alternative, and degradation strategies
 
 ### Missing Escalation Criteria
+
 **Problem**: Agent loops infinitely or makes unsafe decisions
 **Solution**: Define hard limits (max iterations, timeout, safety boundaries)
 
 ### Insufficient Testing
+
 **Problem**: Agent works in happy path, breaks on edge cases
 **Solution**: Test success, failure, and edge cases thoroughly
 
 ## Learning Path
 
 **Beginner**: Build single-phase agent
+
 - Example: File formatter that formats code and reports results
 - Focus: Goal definition, success criteria, basic error handling
 
 **Intermediate**: Build multi-phase agent
+
 - Example: Test generator + runner that creates and executes tests
 - Focus: Phase dependencies, parallel execution, state management
 
 **Advanced**: Build autonomous recovery agent
+
 - Example: CI fixer that diagnoses and iterates fixes
 - Focus: Error recovery, alternative strategies, escalation
 
 **Expert**: Build production goal-seeking agent
+
 - Example: Deployment pipeline with full automation
 - Focus: All concepts, integration with existing agents, observability
 
 ## Resources
 
 ### Documentation
+
 - **Full Skill**: `.claude/skills/goal-seeking-agent-pattern/SKILL.md` (comprehensive guide)
 - **Examples**: `.claude/skills/goal-seeking-agent-pattern/examples/` (3 detailed scenarios)
 - **Templates**: `.claude/skills/goal-seeking-agent-pattern/templates/` (goal prompt, integration guide)
 - **Tests**: `.claude/skills/goal-seeking-agent-pattern/tests/` (validation test suite)
 
 ### Code
+
 - **Module**: `src/amplihack/goal_agent_generator/` (implementation)
 - **API**: `PromptAnalyzer`, `ObjectivePlanner`, `SkillSynthesizer`, `AgentAssembler`, `GoalAgentPackager`
 - **CLI**: `amplihack goal-agent-generator` (command-line interface)
 
 ### Real Agents
+
 - **AKS Expert**: `.claude/agents/amplihack/specialized/azure-kubernetes-expert.md`
 - **CI Diagnostic**: `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
 - **Pre-Commit**: `.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
@@ -353,18 +386,22 @@ When designing goal-seeking agents, verify:
 ## Getting Help
 
 **Questions about pattern applicability?**
+
 - Use decision framework (Section 2 of SKILL.md)
 - Review problem indicators (Section 2 of SKILL.md)
 
 **Need design guidance?**
+
 - Check design checklist (Section 6 of SKILL.md)
 - Study architecture pattern (Section 3 of SKILL.md)
 
 **Integration issues?**
+
 - Read integration guide (templates/integration_guide.md)
 - Review API examples (Section 4 of SKILL.md)
 
 **Want to see real examples?**
+
 - Study amplihack examples (Section 5 of SKILL.md)
 - Read example scenarios (examples/ directory)
 

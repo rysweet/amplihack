@@ -41,6 +41,7 @@ These agents complement amplihack's existing capabilities:
 - **insight-synthesizer** + **optimizer**: Find breakthrough simplifications and novel solutions
 
 For ambiguity handling and post-task cleanup, use the production agents in `amplihack/specialized/`:
+
 - **amplihack/specialized/ambiguity** - Handles complex requirements with multiple valid interpretations
 - **amplihack/specialized/cleanup** - Ensures code quality and philosophy compliance post-implementation
 

@@ -2,6 +2,8 @@
 """
 Claude Code hook for post tool use events.
 Uses unified HookProcessor for common functionality.
+
+Includes automatic context management via context-management skill.
 """
 
 # Import the base processor
@@ -11,6 +13,15 @@ from typing import Any, Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
+
+# Import context automation (will silently fail if not available)
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude" / "skills"))
+    from context_management.automation import run_automation
+
+    CONTEXT_AUTOMATION_AVAILABLE = True
+except ImportError:
+    CONTEXT_AUTOMATION_AVAILABLE = False
 
 
 class PostToolUseHook(HookProcessor):
@@ -78,6 +89,50 @@ class PostToolUseHook(HookProcessor):
             self.save_metric("file_operations", 1)
         elif tool_name in ["Grep", "Glob"]:
             self.save_metric("search_operations", 1)
+
+        # Run context automation if available
+        if CONTEXT_AUTOMATION_AVAILABLE:
+            try:
+                # Get conversation from transcript_path (this IS available!)
+                transcript_path = input_data.get("transcript_path")
+
+                if transcript_path and Path(transcript_path).exists():
+                    # Read conversation transcript
+                    import json
+
+                    with open(transcript_path) as f:
+                        conversation_data = json.load(f)
+
+                    # Calculate ACTUAL token count from transcript
+                    # (same method as statusline.sh)
+                    total_tokens = 0
+                    for msg in conversation_data:
+                        if isinstance(msg, dict) and "usage" in msg:
+                            usage = msg["usage"]
+                            total_tokens += usage.get("input_tokens", 0)
+                            total_tokens += usage.get("output_tokens", 0)
+                            total_tokens += usage.get("cache_read_input_tokens", 0)
+                            total_tokens += usage.get("cache_creation_input_tokens", 0)
+
+                    # Run automation with real token data
+                    automation_result = run_automation(total_tokens, conversation_data)
+
+                    # Add warnings to output if any
+                    if automation_result.get("warnings"):
+                        if "metadata" not in output:
+                            output["metadata"] = {}
+                        output["metadata"]["context_automation"] = {
+                            "warnings": automation_result["warnings"],
+                            "actions": automation_result["actions_taken"],
+                        }
+
+                        # Log automation actions
+                        for warning in automation_result["warnings"]:
+                            self.log(f"Context Automation: {warning}", "INFO")
+
+            except Exception as e:
+                # Silently fail - don't interrupt user workflow
+                self.log(f"Context automation error: {e}", "DEBUG")
 
         return output
 
