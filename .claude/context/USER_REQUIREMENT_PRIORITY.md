@@ -5,9 +5,30 @@
 When agents encounter conflicting guidance, follow this strict priority order:
 
 1. **EXPLICIT USER REQUIREMENTS** (HIGHEST PRIORITY - NEVER OVERRIDE)
-2. **IMPLICIT USER PREFERENCES** (From USER_PREFERENCES.md)
-3. **PROJECT PHILOSOPHY** (Simplicity, modularity, etc.)
-4. **DEFAULT BEHAVIORS** (LOWEST PRIORITY)
+2. **WORKFLOW DEFINITION** (From DEFAULT_WORKFLOW.md - Defines HOW to execute)
+3. **IMPLICIT USER PREFERENCES** (From USER_PREFERENCES.md)
+4. **PROJECT PHILOSOPHY** (Simplicity, modularity, etc.)
+5. **DEFAULT BEHAVIORS** (LOWEST PRIORITY)
+
+## Understanding Workflow Priority
+
+The workflow sits at level 2 because it defines the **execution methodology** - the "HOW" of getting work done. It's positioned between:
+
+- **Level 1 (User Requirements)**: The "WHAT" to build
+- **Level 3+ (Preferences/Philosophy)**: The "STYLE" of implementation
+
+**Key Principle**: User requirements define the goal, workflow defines the path, and agents execute the steps.
+
+**Example Hierarchy in Action**:
+
+```
+User: "Add authentication" (WHAT - Level 1)
+Workflow: Follow steps 1-13 in DEFAULT_WORKFLOW.md (HOW - Level 2)
+Agents: architect → builder → tester (WHO - executing within workflow)
+Philosophy: Keep it simple, modular (STYLE - Level 4)
+```
+
+The workflow cannot override user requirements (Level 1), but it takes precedence over preferences and philosophy when determining execution order and methodology.
 
 ## Explicit User Requirement Recognition
 

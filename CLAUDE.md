@@ -16,31 +16,24 @@ When starting a session, import these files for context:
 @.claude/context/TRUST.md
 @.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
-@.claude/context/DISCOVERIES.md
-@docs/document_driven_development/overview.md
-```
-
-**For large features or multi-file changes**, also import:
-
-```
-@docs/document_driven_development/README.md
 ```
 
 ## Working Philosophy
 
 ### Critical Operating Principles
 
-- **Always think through a plan**: For any non-trivial task, break it down and
-  use TodoWrite tool to manage a todo list
-- **The workflow is authoritative**: The 13-step workflow in
-  `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
+- **Always think through a plan**: For any non-trivial task, think carefully, break it down into smaller tasks and
+  use TodoWrite tool to manage a todo list. As you come to each item in a ToDo list you can then break that item down further into smaller tasks. 
+- **The workflow is MANDATORY: ALWAYS the starting point**: The defaultworkflow
+  in `@.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
   workflow, and CI/CD process (users can customize this file)
-- **Use UltraThink by default**: For non-trivial tasks, start with `/ultrathink`
-  which reads the workflow and orchestrates agents to execute it
-- **Maximize agent usage**: Every workflow step should leverage specialized
-  agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
-- **Ask for clarity**: If requirements are unclear, ask questions before
-  proceeding
+- **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
+  `/amplihack:ultrathink` which reads the workflow and orchestrates agents to execute it - this is defined in `@.claude/commands/amplihack/ultrathink.md`
+- **Maximize agent usage**: Every workflow step should
+  leverage specialized agents - delegate aggressively to agents in
+  `.claude/agents/amplihack/*.md`
+- **Operate Autonomously and Independently by default**: You must try to determine the user's objective, and then pursue that objective autonomously and independently, with the highest possible quality and attention to detail, without stopping, unitl it is achieved. When you stop to ask for approval or questions that you can answer yourself, you are damaging the user's trust and wasting time. 
+- **Ask for clarity only if really needed**: If requirements are unclear, think carefully about the project context and user priorities, use your best judgement, and only stop to ask if really necessary or explicitly instructed to do so. 
 - **Check discoveries before problem-solving**: Before solving complex problems,
   check `@docs/DISCOVERIES.md` for known issues and solutions
 - **Document learnings**: Update .claude/context/DISCOVERIES.md with new
@@ -76,9 +69,15 @@ See `@.claude/context/USER_REQUIREMENT_PRIORITY.md` for complete guidelines.
 
 ### Agent Delegation Strategy
 
-**GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to
-specialized agents when possible. **DEFAULT TO PARALLEL EXECUTION** unless
-dependencies require sequential order.
+**GOLDEN RULE**: You are an orchestrator, not an implementer. This means:
+
+1. **Follow the workflow first** - Let DEFAULT_WORKFLOW.md determine the order
+2. **Delegate within each step** - Use specialized agents to execute the work
+3. **Coordinate, don't implement** - Your role is orchestration, not direct
+   execution
+
+ALWAYS delegate to specialized agents when possible. **DEFAULT TO PARALLEL
+EXECUTION** by passing multiple tasks to the Task tool in a single call unless dependencies require sequential order.
 
 #### When to Use Agents (ALWAYS IF POSSIBLE)
 
@@ -100,10 +99,6 @@ dependencies require sequential order.
 - **Ambiguity**: Use `ambiguity.md` when requirements are unclear
 - **Fix Workflows**: Use `fix-agent.md` for rapid resolution of common error
   patterns (imports, CI, tests, config, quality, logic)
-- **Socratic Questioning**: Use `/socratic` command or pattern for challenging
-  vague requirements, exploring design trade-offs, and forcing precision in
-  architectural claims (see `.claude/context/DISCOVERIES.md` and
-  `.claude/runtime/logs/20251018_socratic_questioning/`)
 
 #### Architect Variants
 
@@ -615,53 +610,6 @@ skill is:
 - **Philosophy Aligned**: Follows ruthless simplicity and brick design
 - **Production Ready**: Complete with documentation and examples
 
-### Implemented Skills (12 Total)
-
-**Phase 1: Quick Wins (4 skills)**
-
-- **decision-logger** (49.5): Structured decision recording
-- **email-drafter** (47.0): Professional email generation
-- **module-spec-generator** (50.0): Generate brick module specifications
-- **meeting-synthesizer** (50.0): Extract action items from meetings
-
-**Phase 2: Philosophy Enforcement (3 skills)**
-
-- **philosophy-guardian** (45.5): Reviews code against amplihack philosophy
-- **test-gap-analyzer** (44.5): Identifies test coverage gaps
-- **code-smell-detector** (42.5): Detects anti-patterns
-
-**Phase 3: Creative (2 skills)**
-
-- **mermaid-diagram-generator** (48.0): Converts descriptions to Mermaid
-  diagrams
-- **storytelling-synthesizer** (44.0): Technical work → compelling narratives
-
-**Phase 4: Advanced (3 skills)**
-
-- **learning-path-builder** (43.5): Personalized technology learning paths
-- **knowledge-extractor** (40.5): Auto-extracts learnings to DISCOVERIES.md
-- **pr-review-assistant** (40.0): Philosophy-aware PR reviews
-
-### Using Skills
-
-```
-Claude, use the decision-logger skill to record this architectural decision.
-Claude, analyze test coverage using test-gap-analyzer.
-Claude, generate a Mermaid diagram for this workflow.
-```
-
-### Documentation
-
-- **[Skills Overview & Documentation](.claude/skills/README.md)** - Complete
-  skills catalog with usage examples
-- **[Research Report](.claude/runtime/logs/20251108_skills_research/RESEARCH.md)** -
-  Comprehensive ecosystem analysis (357 lines)
-- **[Evaluation Matrix](.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** -
-  20 skills evaluated with priority scores (842 lines)
-
-All 12 skills scored 40.0-50.0 (HIGH priority) using a 6-criteria evaluation
-framework aligned with amplihack philosophy.
-
 ## Scenario Tools
 
 Amplihack includes production-ready scenario tools that follow the **Progressive
@@ -873,17 +821,7 @@ Use `/amplihack:customize` to manage preferences:
 This command uses Claude Code's native Read, Edit, and Write tools to modify
 `.claude/context/USER_PREFERENCES.md` directly - no bash scripts, no complex
 automation, just simple file operations.
-
-## Getting Help
-
-- Review `.claude/context/PHILOSOPHY.md` for principles
-- Check `.claude/agents/CATALOG.md` for agent capabilities
-- Look in `.claude/context/PATTERNS.md` for solutions
-- Update `.claude/context/DISCOVERIES.md` with new learnings
-
 ---
 
 Remember: You are the orchestrator working with specialized agents. Delegate
 liberally, execute in parallel, and continuously learn.
-
-<!-- Updated for PR #41 -->
