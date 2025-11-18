@@ -100,6 +100,7 @@ class ClaudeLauncher:
         checkout_repo: Optional[str] = None,
         claude_args: Optional[List[str]] = None,
         verbose: bool = False,
+        containerized: bool = False,
     ):
         """Initialize Claude launcher.
 
@@ -110,6 +111,7 @@ class ClaudeLauncher:
             checkout_repo: Optional GitHub repository URI to clone and use as working directory.
             claude_args: Additional arguments to forward to Claude.
             verbose: If True, add --verbose flag to Claude command.
+            containerized: If True, skip --dangerously-skip-permissions flag. Auto-detects if False.
         """
         self.proxy_manager = proxy_manager
         self.append_system_prompt = append_system_prompt
@@ -120,6 +122,9 @@ class ClaudeLauncher:
         self.verbose = verbose
         self.claude_process: Optional[subprocess.Popen] = None
 
+        # Container detection: explicit flag or auto-detect
+        self.containerized = containerized or self._detect_container()
+
         # Cached computation results for performance optimization
         self._cached_resolved_paths = {}  # Cache for path resolution results
         self._cached_uvx_decision = None  # Cache for UVX --add-dir decision
@@ -127,6 +132,32 @@ class ClaudeLauncher:
 
         # Setup signal handlers for graceful shutdown
         self._setup_signal_handlers()
+
+    def _detect_container(self) -> bool:
+        """Detect if running in a container environment.
+
+        Checks for:
+        1. IS_SANDBOX environment variable (set to '1' in Docker containers)
+        2. Running as root (uid == 0, common in Docker)
+
+        Returns:
+            True if running in a container, False otherwise.
+        """
+        # Check for IS_SANDBOX environment variable
+        if os.getenv("IS_SANDBOX") == "1":
+            logger.info("Container detected: IS_SANDBOX=1")
+            return True
+
+        # Check if running as root (common in Docker containers)
+        try:
+            if os.getuid() == 0:
+                logger.info("Container detected: running as root (uid=0)")
+                return True
+        except AttributeError:
+            # os.getuid() not available on Windows
+            pass
+
+        return False
 
     def prepare_launch(self) -> bool:
         """Prepare environment for launching Claude.
@@ -386,7 +417,13 @@ class ClaudeLauncher:
             if claude_path:
                 cmd.extend(["--claude-path", claude_path])
 
-            claude_args = ["--dangerously-skip-permissions"]
+            # Build claude arguments
+            claude_args = []
+
+            # Only add --dangerously-skip-permissions if NOT in container
+            # (Claude Code blocks this flag when running as root in Docker)
+            if not self.containerized:
+                claude_args.append("--dangerously-skip-permissions")
 
             # Add --verbose flag only if requested (auto mode)
             if self.verbose:
@@ -431,7 +468,12 @@ class ClaudeLauncher:
 
             return cmd
         # Standard claude command
-        cmd = [claude_binary, "--dangerously-skip-permissions"]
+        cmd = [claude_binary]
+
+        # Only add --dangerously-skip-permissions if NOT in container
+        # (Claude Code blocks this flag when running as root in Docker)
+        if not self.containerized:
+            cmd.append("--dangerously-skip-permissions")
 
         # Add --verbose flag only if requested (auto mode)
         if self.verbose:
