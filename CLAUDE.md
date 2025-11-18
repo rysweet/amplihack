@@ -32,13 +32,14 @@ When starting a session, import these files for context:
 
 - **Always think through a plan**: For any non-trivial task, break it down and
   use TodoWrite tool to manage a todo list
-- **The workflow is authoritative**: The 13-step workflow in
-  `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
+- **The workflow is MANDATORY: ALWAYS the starting point**: The 13-step workflow
+  in `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
   workflow, and CI/CD process (users can customize this file)
-- **Use UltraThink by default**: For non-trivial tasks, start with `/ultrathink`
-  which reads the workflow and orchestrates agents to execute it
-- **Maximize agent usage**: Every workflow step should leverage specialized
-  agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
+- **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
+  `/ultrathink` which reads the workflow and orchestrates agents to execute it
+- **Maximize agent usage WITHIN workflow steps**: Every workflow step should
+  leverage specialized agents - delegate aggressively to agents in
+  `.claude/agents/amplihack/*.md`
 - **Ask for clarity**: If requirements are unclear, ask questions before
   proceeding
 - **Check discoveries before problem-solving**: Before solving complex problems,
@@ -76,9 +77,15 @@ See `@.claude/context/USER_REQUIREMENT_PRIORITY.md` for complete guidelines.
 
 ### Agent Delegation Strategy
 
-**GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to
-specialized agents when possible. **DEFAULT TO PARALLEL EXECUTION** unless
-dependencies require sequential order.
+**GOLDEN RULE**: You are an orchestrator, not an implementer. This means:
+
+1. **Follow the workflow first** - Let DEFAULT_WORKFLOW.md determine the order
+2. **Delegate within each step** - Use specialized agents to execute the work
+3. **Coordinate, don't implement** - Your role is orchestration, not direct
+   execution
+
+ALWAYS delegate to specialized agents when possible. **DEFAULT TO PARALLEL
+EXECUTION** unless dependencies require sequential order.
 
 #### When to Use Agents (ALWAYS IF POSSIBLE)
 
