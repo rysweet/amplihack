@@ -2,7 +2,7 @@
 name: learning-path-builder
 description: |
   Creates personalized learning paths for technologies, frameworks, or concepts.
-  Use for onboarding new technologies, hackathon skill-building, or personal development planning.
+  Use for user-interactive session only for onboarding new technologies, hackathon skill-building, or personal development planning. Not for use in automated development or investigation. 
   Sequences resources (docs, tutorials, exercises) based on current skill level and learning goals.
   Adapts to learning style: hands-on, theory-first, project-based.
 ---
