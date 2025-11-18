@@ -159,4 +159,3 @@ if __name__ == "__main__":
 **Philosophy Check**: ✅ Good fit when you have ≥3 complex algorithms that vary at runtime. ⚠️ Over-engineering if used for simple function logic.
 
 **Go Deeper**: Request "Deep dive into Strategy" for TypeScript/Java implementations, variations, and advanced topics.
-

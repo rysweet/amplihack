@@ -40,4 +40,3 @@ class Subject:
 **Related Patterns**: Mediator (complex interactions), Singleton (subject often singleton)
 
 **Deeper**: Request "Practical guide for Observer" (Tier 2) or "Deep dive into Observer" (Tier 3)
-

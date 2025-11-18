@@ -600,4 +600,3 @@ class SmartDecorator(Decorator):
 - More code examples for specific use cases?
 - Comparison with Proxy pattern in detail?
 - Implementation in another language (Java, C#, Go)?
-

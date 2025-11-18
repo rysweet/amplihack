@@ -255,4 +255,3 @@ This skill improves through use. Share feedback on:
 **For detailed framework descriptions, step-by-step process, and comprehensive examples, see [SKILL.md](SKILL.md)**
 
 **For quick reference, see [QUICK_REFERENCE.md](QUICK_REFERENCE.md)**
-

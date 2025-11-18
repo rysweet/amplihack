@@ -6,7 +6,6 @@ package and a project's .claude directory.
 Updated automatically during release process.
 """
 
-from datetime import datetime, timezone
 
 # Package version (from __init__.py)
 VERSION = "0.1.0"  # TODO: Sync with __init__.py in CI

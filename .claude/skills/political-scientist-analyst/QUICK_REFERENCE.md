@@ -5,7 +5,7 @@ Analyzes events through political science lens using IR theory, comparative poli
 
 ## When to Use
 - International crises, conflicts, alliances
-- Elections, regime transitions, democratization  
+- Elections, regime transitions, democratization
 - Policy decisions, institutional reforms
 - Power struggles, governance issues
 

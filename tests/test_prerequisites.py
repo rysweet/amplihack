@@ -102,7 +102,9 @@ class TestToolChecking:
     def test_check_all_prerequisites_success(self):
         """Test checking all prerequisites when all are available."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which", return_value="/usr/bin/tool"):
+        with patch("shutil.which", return_value="/usr/bin/tool"), patch(
+            "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+        ):
             result = checker.check_all_prerequisites()
             assert result.all_available is True
             assert len(result.missing_tools) == 0

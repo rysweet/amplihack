@@ -260,4 +260,3 @@ Based on your description **"create different types of database connections"**:
 - Code example of Registry Pattern for your use case?
 - Implementation guide for Factory Method?
 - Deep dive into when Abstract Factory is actually needed?
-

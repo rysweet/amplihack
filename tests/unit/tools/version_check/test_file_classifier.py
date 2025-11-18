@@ -11,8 +11,6 @@ Tests file classification into update strategies:
 import sys
 from pathlib import Path
 
-import pytest
-
 # Add .claude/tools/amplihack to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
 

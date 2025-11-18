@@ -19,7 +19,6 @@ Phase 1 (MVP) Implementation:
 - Fail-open error handling
 """
 
-import asyncio
 import json
 import os
 import re
@@ -503,7 +502,7 @@ class PowerSteeringChecker:
             # Check 1: Path is within allowed parent (project root)
             try:
                 path_resolved.relative_to(parent_resolved)
-                self._log(f"Path validated: within project root", "DEBUG")
+                self._log("Path validated: within project root", "DEBUG")
                 return True
             except ValueError:
                 pass  # Not in project root, check other allowed locations
@@ -513,7 +512,7 @@ class PowerSteeringChecker:
             try:
                 home = Path.home().resolve()
                 path_resolved.relative_to(home)
-                self._log(f"Path validated: within user home directory", "DEBUG")
+                self._log("Path validated: within user home directory", "DEBUG")
                 return True  # In user's home - safe for read-only operations
             except ValueError:
                 pass  # Not in home directory, check temp directories
@@ -798,8 +797,7 @@ class PowerSteeringChecker:
         # Run checker
         if checker_name == "generic" or checker_func == self._generic_analyzer:
             return checker_func(transcript, session_id, consideration)
-        else:
-            return checker_func(transcript, session_id)
+        return checker_func(transcript, session_id)
 
     # ========================================================================
     # Phase 1: Top 5 Critical Checkers
