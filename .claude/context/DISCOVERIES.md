@@ -4,6 +4,112 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## StatusLine Configuration Missing from Installation Templates (2025-11-18)
+
+### Problem Discovered
+
+**Custom status line feature is fully implemented but never configured during installation**. The `statusline.sh` script exists and works perfectly, but neither installation method (regular or UVX) adds the statusLine configuration to settings.json.
+
+**Result**: Users lose custom status line on install/update, or never discover the feature exists.
+
+### Root Cause
+
+**Both installation paths exclude statusLine configuration**:
+
+1. **Regular Installation** (`.claude/tools/amplihack/install.sh`):
+   - Creates hardcoded settings.json template (lines 126-178)
+   - Template includes permissions, hooks, MCP settings
+   - Template **excludes statusLine** configuration
+
+2. **UVX Installation** (`src/amplihack/utils/uvx_settings_template.json`):
+   - Auto-generated on first UVX run if settings missing or lacks bypass permissions
+   - Template includes permissions, hooks, MCP settings
+   - Template **also excludes statusLine** configuration
+
+**Why This Happens**: Templates were created independently of the statusline.sh implementation. The script exists at `.claude/tools/statusline.sh` but is never referenced in any installation automation.
+
+### Impact
+
+- Users in regular mode: Lose statusLine config when running install.sh
+- Users in UVX mode: Never get statusLine configured automatically
+- Feature discoverability: Zero - not documented in README, prerequisites, or setup guides
+- User experience: Must manually edit settings.json to enable this production-ready feature
+
+### The StatusLine Feature
+
+**Location**: `.claude/tools/statusline.sh`
+
+**Shows**:
+- Directory path (with ~ for home)
+- Git branch with dirty state indicator
+- Git remote tracking
+- Model name (color-coded: Red=Opus, Green=Sonnet, Blue=Haiku)
+- Token usage (formatted with K/M suffixes)
+- Cost tracking (USD)
+- Session duration
+
+**Configuration Required**:
+```json
+"statusLine": {
+  "type": "command",
+  "command": "$CLAUDE_PROJECT_DIR/.claude/tools/statusline.sh"
+}
+```
+
+Or for global installation:
+```json
+"statusLine": {
+  "type": "command",
+  "command": "/home/username/.claude/tools/statusline.sh"
+}
+```
+
+### Solution Implemented (Issue #1433)
+
+**Fixed both installation templates**:
+
+1. **install.sh** (line 136-139):
+```json
+  "statusLine": {
+    "type": "command",
+    "command": "HOME_PLACEHOLDER/.claude/tools/statusline.sh"
+  },
+```
+(Note: HOME_PLACEHOLDER gets replaced with $HOME on line 175)
+
+2. **uvx_settings_template.json** (line 27-30):
+```json
+  "statusLine": {
+    "type": "command",
+    "command": ".claude/tools/statusline.sh"
+  },
+```
+(Note: UVX uses relative paths since it runs from project directory)
+
+### How to Detect This Issue
+
+1. Check if settings.json exists: `cat ~/.claude/settings.json`
+2. Look for statusLine section: `grep -A 3 statusLine ~/.claude/settings.json`
+3. If missing, check if statusline.sh exists: `ls -la ~/.claude/tools/statusline.sh`
+4. Test the script manually:
+```bash
+echo '{"current_dir":"'$(pwd)'","display_name":"Test","id":"test","total_cost_usd":"1.23","total_duration_ms":"45000","transcript_path":""}' | ~/.claude/tools/statusline.sh
+```
+
+### Prevention
+
+- ✅ statusLine now included in both installation templates
+- Future: Document the feature in README.md and PREREQUISITES.md
+- Future: Add setup verification step that checks for statusLine configuration
+- Future: Consider adding to devcontainer post-create.sh for automatic Codespaces setup
+
+**Related Files**:
+- `.claude/tools/statusline.sh` - The actual implementation (production-ready)
+- `.claude/tools/amplihack/install.sh` - Regular installation script (FIXED)
+- `src/amplihack/utils/uvx_settings_template.json` - UVX installation template (FIXED)
+- `src/amplihack/utils/uvx_settings_manager.py` - UVX settings manager
+- `src/amplihack/__init__.py` - UVX detection logic (lines 345-351)
+
 ## Power-Steering Path Validation Bug (2025-11-17)
 
 ### Problem Discovered
