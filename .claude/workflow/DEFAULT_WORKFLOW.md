@@ -1,7 +1,50 @@
 # Default Coding Workflow
 
+<!-- THIS WORKFLOW MUST BE FOLLOWED -->
+<!-- MANDATORY: This workflow defines the authoritative process for all non-trivial code changes -->
+<!-- SKIP AT YOUR OWN RISK: Skipping steps leads to bugs, rework, and failed PRs -->
+
+**CRITICAL READING REQUIREMENT**: Before starting ANY task, Claude MUST:
+
+1. Read this ENTIRE workflow file (DEFAULT_WORKFLOW.md)
+2. Identify which steps apply to the current task
+3. Create todos using TodoWrite that reference specific step numbers
+4. Execute steps in the defined order
+
 This file defines the default workflow for all non-trivial code changes.
 You can customize this workflow by editing this file.
+
+## Workflow Variables
+
+Configure these variables to customize workflow behavior:
+
+```yaml
+# Required Reading
+WORKFLOW_ENFORCEMENT: MANDATORY # Never skip without explicit user permission
+
+# TodoWrite Format
+TODO_FORMAT: "Step N: [Step Name] - [Action]" # MANDATORY format for all todos
+WORKFLOW_PREFIX_REQUIRED: true # Must reference workflow steps in todos
+
+# Agent Usage
+AGENT_DELEGATION_MODE: MAXIMUM # Use agents for every applicable step
+PARALLEL_EXECUTION_DEFAULT: true # Execute independent operations in parallel
+
+# Git Configuration
+WORKTREE_REQUIRED: true # Always use worktrees for isolation
+BRANCH_FORMAT: "feat/issue-{number}-{brief-description}"
+
+# Quality Gates
+PRE_COMMIT_REQUIRED: true # Must pass pre-commit before commit
+LOCAL_TESTING_REQUIRED: true # Must test locally before push (Step 8)
+CI_VALIDATION_REQUIRED: true # CI must pass before merge
+PHILOSOPHY_CHECK_REQUIRED: true # Must verify philosophy compliance (Step 13)
+
+# Review Requirements
+SELF_REVIEW_REQUIRED: true # Always review your own PR (Step 11)
+REVIEWER_AGENT_REQUIRED: true # Use reviewer agent for PR analysis
+SECURITY_REVIEW_REQUIRED: true # Security agent review for sensitive changes
+```
 
 ## How This Workflow Works
 
@@ -44,6 +87,40 @@ This workflow should be followed for:
 - Bug fixes
 - Refactoring
 - Any non-trivial code changes
+
+**IMPORTANT: For specialized scenarios, use these alternative workflows:**
+
+- **Large Features (10+ files)**: Use Document-Driven Development (DDD) workflow
+  - See: `.claude/workflow/DDD_WORKFLOW.md`
+  - Commands: `/ddd:0-help`, `/ddd:1-plan`, `/ddd:2-docs`, etc.
+  - When: Multi-file features requiring clear specifications
+
+- **Codebase Understanding**: Use Investigation workflow
+  - See: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+  - Use when: Analyzing unfamiliar code or system architecture
+  - Creates persistent documentation in `.claude/docs/`
+
+- **Pre-Commit Failures**: Use Pre-Commit Diagnostic workflow
+  - See: `.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
+  - Trigger: "Pre-commit failed", "Can't commit", "Hooks failing"
+  - Handles: Formatting, linting, type checking before push
+
+- **CI Failures**: Use CI Diagnostic workflow
+  - See: `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
+  - Trigger: "CI failing", "Fix CI", "Make PR mergeable"
+  - Iterates until PR is mergeable (never auto-merges)
+
+- **Rapid Fix Patterns**: Use Fix Agent workflow
+  - See: `.claude/agents/amplihack/specialized/fix-agent.md`
+  - Command: `/fix [pattern] [scope]`
+  - Patterns: import, ci, test, config, quality, logic
+
+**Cross-Workflow Integration Points:**
+
+1. **Step 4 + Investigation**: If codebase is unfamiliar, run INVESTIGATION_WORKFLOW before continuing
+2. **Step 7 + Pre-Commit**: If hooks fail, use pre-commit-diagnostic agent
+3. **Step 14 + CI**: If CI fails, use ci-diagnostic-workflow agent
+4. **Any Step + Fix**: For specific error patterns, use fix-agent with appropriate pattern
 
 ## TodoWrite Best Practices
 
@@ -300,3 +377,66 @@ This workflow enforces our core principles:
 - **Test-Driven Development**: Write tests before implementation
 - **Quality Gates**: Multiple review and validation steps
 - **Documentation**: Clear commits and PR descriptions
+
+## Self-Validation Questions
+
+**Before claiming you followed this workflow, ask yourself:**
+
+### Workflow Adherence
+
+- [ ] Did I read this ENTIRE workflow file before starting?
+- [ ] Did I create todos using TodoWrite with "Step N: [Step Name]" format?
+- [ ] Did I execute steps in the defined sequential order?
+- [ ] Did I use specialized agents at every applicable step?
+- [ ] Did I skip any steps without explicit user permission?
+
+### Requirements Preservation
+
+- [ ] Did I identify explicit user requirements that CANNOT be optimized away?
+- [ ] Did I pass these requirements to ALL subsequent agents?
+- [ ] Did cleanup/simplification agents preserve ALL user requirements?
+- [ ] Did I validate that no user requirements were lost?
+
+### Quality Gates
+
+- [ ] Did I run local testing BEFORE committing (Step 8)?
+- [ ] Did I pass all pre-commit hooks (Step 7)?
+- [ ] Did I run a self-review using reviewer agent (Step 11)?
+- [ ] Did I verify philosophy compliance (Step 13)?
+- [ ] Did I ensure CI passes before marking PR ready (Step 14)?
+
+### Git Workflow
+
+- [ ] Did I use a worktree for isolation (Step 3)?
+- [ ] Did I create a properly formatted branch name?
+- [ ] Did I write a detailed commit message referencing the issue?
+- [ ] Did I create a comprehensive PR description with test plan (Step 10)?
+
+### Agent Usage
+
+- [ ] Did I use prompt-writer agent for requirements (Step 1)?
+- [ ] Did I use architect agent for design (Step 4)?
+- [ ] Did I use builder agent for implementation (Step 5)?
+- [ ] Did I use cleanup agent for simplification (Step 6)?
+- [ ] Did I use reviewer agent for PR review (Step 11)?
+- [ ] Did I provide explicit user requirements to cleanup agents?
+
+### Documentation
+
+- [ ] Did I update relevant documentation files?
+- [ ] Did I add inline documentation to new code?
+- [ ] Did I document any discoveries in `.claude/context/DISCOVERIES.md`?
+- [ ] Did I include a test plan in the PR description?
+
+**If you answered "No" to ANY of these questions, you did NOT follow this workflow.**
+
+**Common Skip Patterns to Avoid:**
+
+1. "I'll just quickly implement this..." → Skipped Steps 1-4
+2. "Tests can wait until later..." → Skipped TDD approach
+3. "Pre-commit is annoying..." → Skipped Step 7
+4. "I'll test in CI..." → Skipped Step 8 (local testing)
+5. "It's a small change, no review needed..." → Skipped Step 11
+6. "Philosophy check is overkill..." → Skipped Step 13
+
+**Remember: Every skipped step increases the risk of bugs, rework, and failed PRs.**

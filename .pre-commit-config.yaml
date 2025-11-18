@@ -94,6 +94,37 @@ repos:
   # Custom quality gates to match CI standards
   - repo: local
     hooks:
+      # Python syntax validation (Option C - Test Prevention Suite)
+      - id: python-syntax-validation
+        name: Validate Python syntax (no syntax errors)
+        entry: python3 -m py_compile
+        language: system
+        types: [python]
+        pass_filenames: true
+
+      # Strict merge conflict check (Option C - Test Prevention Suite)
+      - id: check-merge-conflict-strict
+        name: No merge conflict markers (strict)
+        entry: bash
+        args:
+          - -c
+          - |
+            if grep -rn -E '^(<<<<<<<|=======|>>>>>>>)' . --include="*.py" --include="*.md" --include="*.yaml" --include="*.json" --exclude-dir=".git" --exclude-dir="node_modules"; then
+              echo "ERROR: Merge conflict markers detected in tracked files."
+              echo "Resolve all conflicts before committing."
+              exit 1
+            fi
+        language: system
+        pass_filenames: false
+
+      # Code quality test suite (Option C - Test Prevention Suite)
+      - id: code-quality-tests
+        name: Run code quality prevention suite
+        entry: pytest tests/test_code_quality.py -v
+        language: system
+        pass_filenames: false
+        files: '^(tests/.*\.py|\.claude/.*\.py|\.claude/workflow/.*\.md)$'
+
       # Enforce logging over print statements in production code
       - id: no-print-statements
         name: No print statements in production code

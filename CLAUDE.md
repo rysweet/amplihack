@@ -30,15 +30,25 @@ When starting a session, import these files for context:
 
 ### Critical Operating Principles
 
+- **READ THE WORKFLOW FIRST**: Before starting ANY non-trivial task, you MUST:
+  1. Read `.claude/workflow/DEFAULT_WORKFLOW.md` in its ENTIRETY
+  2. Identify which workflow steps apply to the current task
+  3. Create todos using TodoWrite with "Step N: [Step Name] - [Action]" format
+  4. Execute steps in the defined sequential order
+  5. **This is MANDATORY, not optional**
+
 - **Always think through a plan**: For any non-trivial task, break it down and
   use TodoWrite tool to manage a todo list
-- **The workflow is authoritative**: The 13-step workflow in
+- **The workflow is authoritative**: The 15-step workflow in
   `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
   workflow, and CI/CD process (users can customize this file)
 - **Use UltraThink by default**: For non-trivial tasks, start with `/ultrathink`
   which reads the workflow and orchestrates agents to execute it
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
+- **Workflow Variables**: Respect the workflow configuration variables defined
+  in `DEFAULT_WORKFLOW.md` (enforcement level, todo format, agent usage, quality
+  gates)
 - **Ask for clarity**: If requirements are unclear, ask questions before
   proceeding
 - **Check discoveries before problem-solving**: Before solving complex problems,
