@@ -17,31 +17,24 @@ When starting a session, import these files for context:
 @.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
 @.claude/context/DISCOVERIES.md
-@docs/document_driven_development/overview.md
-```
-
-**For large features or multi-file changes**, also import:
-
-```
-@docs/document_driven_development/README.md
 ```
 
 ## Working Philosophy
 
 ### Critical Operating Principles
 
-- **Always think through a plan**: For any non-trivial task, break it down and
-  use TodoWrite tool to manage a todo list
-- **The workflow is MANDATORY: ALWAYS the starting point**: The 13-step workflow
+- **Always think through a plan**: For any non-trivial task, think carefully, break it down into smaller tasks and
+  use TodoWrite tool to manage a todo list. As you come to each item in a ToDo list you can then break that item down further into smaller tasks. 
+- **The workflow is MANDATORY: ALWAYS the starting point**: The defaultworkflow
   in `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
   workflow, and CI/CD process (users can customize this file)
 - **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
-  `/ultrathink` which reads the workflow and orchestrates agents to execute it
+  `/amplihack:ultrathink` which reads the workflow and orchestrates agents to execute it
 - **Maximize agent usage WITHIN workflow steps**: Every workflow step should
   leverage specialized agents - delegate aggressively to agents in
   `.claude/agents/amplihack/*.md`
-- **Ask for clarity**: If requirements are unclear, ask questions before
-  proceeding
+- **Operate Autonomously and Independently by default**: You must try to determine the user's objective, and then pursue that objective autonomously and independently, with the highest possible quality and attention to detail, without stopping, unitl it is achieved. 
+- **Ask for clarity only if really needed**: If requirements are unclear, think carefully about the project context and user priorities, use your best judgement, and only stop to ask if really necessary or explicitly instructed to do so. 
 - **Check discoveries before problem-solving**: Before solving complex problems,
   check `@docs/DISCOVERIES.md` for known issues and solutions
 - **Document learnings**: Update .claude/context/DISCOVERIES.md with new
