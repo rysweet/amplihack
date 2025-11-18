@@ -73,7 +73,9 @@ def load_update_preference() -> Optional[str]:
             if "### Auto Update" in content:
                 lines = content.split("\n")
                 for i, line in enumerate(lines):
-                    if "### Auto Update" in line and i + 2 < len(lines):
+                    # Use exact match to distinguish "### Auto Update" from
+                    # "### .claude Directory Auto-Update" and other similar sections
+                    if line.strip() == "### Auto Update" and i + 2 < len(lines):
                         value = lines[i + 2].strip().lower()
                         if value in ["always", "never"]:
                             return value
