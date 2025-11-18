@@ -56,8 +56,9 @@ amplihack launch --checkout-repo owner/repo
 ```
 
 Not sure where to start? Use the command above to run from uvx, then tell Claude
-Code to `cd /path/to/my/project` and
-`/amplihack:ultrathink <my first prompt here>`.
+Code to `cd /path/to/my/project` and provide your prompt. All prompts are
+automatically wrapped with `/amplihack:ultrathink` for workflow orchestration
+(use `--no-ultrathink` flag to opt-out for simple tasks).
 
 ## Model Configuration
 
@@ -103,6 +104,39 @@ for setup instructions.
 
 ## Features
 
+### Workflow Orchestration by Default (NEW!)
+
+All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
+effectiveness. This enables:
+
+- Multi-agent workflow orchestration
+- 13-step development workflow
+- Automated architecture, building, and testing
+- Philosophy compliance checking
+
+**Benchmark results:** Amplihack without orchestration = vanilla Claude. The
+orchestration IS the value!
+
+**Opt-out for simple tasks:**
+
+```sh
+# Skip orchestration with --no-ultrathink flag
+amplihack launch --no-ultrathink -- -p "simple prompt"
+
+# Or use slash commands directly
+amplihack launch -- -p "/analyze src/file.py"
+```
+
+**How it works:**
+
+```sh
+# Before: Manual orchestration required
+amplihack launch -- -p "/amplihack:ultrathink implement feature"
+
+# Now: Automatic orchestration (same result)
+amplihack launch -- -p "implement feature"
+```
+
 ### Goal-Seeking Agent Generator (NEW!)
 
 **Create autonomous agents from simple prompts:**
@@ -138,7 +172,7 @@ python main.py
 | Command                        | Description                                        |
 | ------------------------------ | -------------------------------------------------- |
 | `amplihack new`                | **NEW!** Generate goal-seeking agents from prompts |
-| `/amplihack:ultrathink`        | Deep multi-agent analysis for complex tasks        |
+| `/amplihack:ultrathink`        | Deep multi-agent analysis (now DEFAULT for all prompts) |
 | `/amplihack:analyze`           | Code analysis and philosophy compliance review     |
 | `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute) |
 | `/amplihack:cascade`           | Fallback cascade for resilient operations          |
