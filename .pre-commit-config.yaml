@@ -177,3 +177,11 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
+
+      # Syntax validation - fail fast on syntax errors
+      - id: check-python-syntax
+        name: Check Python Syntax (AST validation)
+        entry: python3 scripts/pre-commit/check_syntax.py
+        language: system
+        types: [python]
+        pass_filenames: true

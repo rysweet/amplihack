@@ -33,6 +33,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-order>=1.0.0",  # Required for test execution ordering
     "black>=22.0.0",
     "ruff>=0.1.0",
     "build>=1.0.0",  # Required for test_uvx_packaging.py
@@ -100,6 +101,9 @@ pythonpath = ["src"]
 # Exclude standalone test scripts from collection
 norecursedirs = [".git", ".tox", "dist", "build", "*.egg"]
 markers = [
+    "order: specify test execution order (managed by pytest-order)",
+    "syntax: syntax validation tests (run first)",
+    "edge_case: edge case tests (zero false positives)",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "performance: marks tests as performance tests",
