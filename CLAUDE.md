@@ -16,7 +16,6 @@ When starting a session, import these files for context:
 @.claude/context/TRUST.md
 @.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
-@.claude/context/DISCOVERIES.md
 ```
 
 ## Working Philosophy
@@ -33,7 +32,7 @@ When starting a session, import these files for context:
 - **Maximize agent usage WITHIN workflow steps**: Every workflow step should
   leverage specialized agents - delegate aggressively to agents in
   `.claude/agents/amplihack/*.md`
-- **Operate Autonomously and Independently by default**: You must try to determine the user's objective, and then pursue that objective autonomously and independently, with the highest possible quality and attention to detail, without stopping, unitl it is achieved. 
+- **Operate Autonomously and Independently by default**: You must try to determine the user's objective, and then pursue that objective autonomously and independently, with the highest possible quality and attention to detail, without stopping, unitl it is achieved. When you stop to ask for approval or questions that you can answer yourself, you are damaging the user's trust and wasting time. 
 - **Ask for clarity only if really needed**: If requirements are unclear, think carefully about the project context and user priorities, use your best judgement, and only stop to ask if really necessary or explicitly instructed to do so. 
 - **Check discoveries before problem-solving**: Before solving complex problems,
   check `@docs/DISCOVERIES.md` for known issues and solutions
