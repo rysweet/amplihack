@@ -33,30 +33,35 @@ Input: prompt.md (natural language goal)
 ### Components
 
 #### 1. Prompt Analyzer (`prompt_analyzer.py`)
+
 - Extracts primary goal from natural language
 - Classifies domain (data-processing, security, automation, etc.)
 - Identifies constraints and success criteria
 - Determines complexity level
 
 #### 2. Objective Planner (`objective_planner.py`)
+
 - Generates 3-5 phase execution plans
 - Identifies dependencies between phases
 - Calculates required skills and capabilities
 - Estimates duration and identifies risks
 
 #### 3. Skill Synthesizer (`skill_synthesizer.py`)
+
 - Matches existing skills to requirements
 - Scores skill relevance (0-1)
 - Currently copies from `.claude/agents/amplihack`
 - Future: AI-generate custom skills
 
 #### 4. Agent Assembler (`agent_assembler.py`)
+
 - Combines all components into bundle
 - Creates auto-mode configuration
 - Generates initial prompts
 - Validates completeness
 
 #### 5. Packager (`packager.py`)
+
 - Creates standalone agent directory
 - Generates main.py entry point
 - Writes README and documentation
@@ -139,6 +144,7 @@ python main.py
 ```
 
 The agent will:
+
 1. Load goal and execution plan
 2. Initialize auto-mode with Claude SDK
 3. Execute phases autonomously
@@ -155,14 +161,17 @@ A goal prompt should include:
 <Detailed description>
 
 ## Constraints
+
 - Constraint 1
 - Constraint 2
 
 ## Success Criteria
+
 - Criterion 1
 - Criterion 2
 
 ## Context
+
 <Additional context>
 ```
 
@@ -171,6 +180,7 @@ See `example_goal_prompt.md` for a complete example.
 ## Domain Classification
 
 Supported domains:
+
 - **data-processing**: Data ingestion, transformation, analysis
 - **security-analysis**: Vulnerability scanning, auditing, threat detection
 - **automation**: Workflow automation, scheduling, monitoring
@@ -189,6 +199,7 @@ Supported domains:
 ## Auto-Mode Configuration
 
 Generated agents use auto-mode with:
+
 - Max turns based on complexity (5-15)
 - Initial prompt from goal definition
 - Success criteria as completion signals
@@ -228,16 +239,19 @@ This module follows amplihack principles:
 ## Troubleshooting
 
 ### "No skills matched"
+
 - Check that `.claude/agents/amplihack` exists
 - Provide custom `--skills-dir` if using different location
 - Generic executor will be used as fallback
 
 ### "Bundle incomplete"
+
 - Verify prompt file has clear goal and domain
 - Check that all required fields are present
 - Review verbose output for validation errors
 
 ### "Generated agent fails to run"
+
 - Ensure amplihack package is installed
 - Verify Claude API access
 - Check main.py has executable permissions

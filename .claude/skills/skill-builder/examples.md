@@ -13,17 +13,20 @@ Comprehensive examples of creating Claude Code skills using the skill-builder.
 **User Request**: "I need a skill for validating JSON schemas"
 
 **Command**:
+
 ```bash
 /amplihack:skill-builder json-validator skill "Validates JSON data against schemas with detailed error reporting"
 ```
 
 **Expected Output**:
+
 ```
 .claude/skills/json-validator/
 └── SKILL.md
 ```
 
 **Generated SKILL.md**:
+
 ```markdown
 ---
 name: json-validator
@@ -33,15 +36,19 @@ description: Validates JSON data against schemas with detailed error reporting. 
 # JSON Validator
 
 ## Purpose
+
 Validates JSON data against predefined schemas and provides detailed error reports.
 
 ## When I Activate
+
 I automatically load when you mention:
+
 - "validate JSON" or "check JSON schema"
 - "JSON validation" or "schema validation"
 - "verify JSON structure"
 
 ## What I Do
+
 1. Accept JSON data and schema definition
 2. Parse and validate structure
 3. Check types, required fields, constraints
@@ -50,10 +57,13 @@ I automatically load when you mention:
 
 ## Usage Example
 ```
+
 User: "Validate this JSON against the user schema"
-Skill: *activates automatically*
-       "I'll validate that JSON for you..."
+Skill: _activates automatically_
+"I'll validate that JSON for you..."
+
 ```
+
 ```
 
 ### Example 2: Command-Based Skill
@@ -61,16 +71,19 @@ Skill: *activates automatically*
 **User Request**: "Create a command for analyzing test coverage"
 
 **Command**:
+
 ```bash
 /amplihack:skill-builder test-coverage command "Analyzes test coverage gaps and suggests improvements"
 ```
 
 **Expected Output**:
+
 ```
 .claude/commands/amplihack/test-coverage.md
 ```
 
 **Generated File Structure**:
+
 ```markdown
 ---
 description: Analyzes test coverage gaps and suggests improvements
@@ -84,9 +97,11 @@ argument-hint: [target-path]
 `/amplihack:test-coverage [target-path]`
 
 ## Purpose
+
 Identifies gaps in test coverage and recommends additional test cases.
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
+
 [Step-by-step workflow...]
 ```
 
@@ -95,11 +110,13 @@ Identifies gaps in test coverage and recommends additional test cases.
 **User Request**: "Build an agent for dependency analysis"
 
 **Command**:
+
 ```bash
 /amplihack:skill-builder dependency-analyzer agent "Analyzes project dependencies and detects version conflicts"
 ```
 
 **Expected Output**:
+
 ```
 .claude/agents/amplihack/specialized/dependency-analyzer.md
 ```
@@ -109,11 +126,13 @@ Identifies gaps in test coverage and recommends additional test cases.
 **User Request**: "Create a production tool for code review automation"
 
 **Command**:
+
 ```bash
 /amplihack:skill-builder code-reviewer scenario "Automated code review with security and quality checks"
 ```
 
 **Expected Output**:
+
 ```
 .claude/scenarios/code-reviewer/
 ├── README.md
@@ -132,6 +151,7 @@ Identifies gaps in test coverage and recommends additional test cases.
 **User Request**: "Build a skill for financial analysis with calculations"
 
 **Natural Language** (skill auto-activates):
+
 ```
 User: "I need to build a skill that calculates financial ratios like ROE and P/E"
 skill-builder: *activates automatically*
@@ -139,6 +159,7 @@ skill-builder: *activates automatically*
 ```
 
 **Generated Structure**:
+
 ```
 .claude/skills/financial-analyzer/
 ├── SKILL.md              # Core instructions (<5K tokens)
@@ -150,6 +171,7 @@ skill-builder: *activates automatically*
 ```
 
 **SKILL.md** (Progressive Disclosure):
+
 ```markdown
 ---
 name: financial-analyzer
@@ -159,14 +181,17 @@ description: Calculate and interpret financial ratios (ROE, P/E, debt-to-equity,
 # Financial Analyzer
 
 ## Purpose
+
 Calculates key financial ratios and interprets them against industry benchmarks.
 
 ## When I Activate
+
 - "analyze financial statements"
 - "calculate ROE" or "calculate P/E ratio"
 - "financial ratio analysis"
 
 ## What I Do
+
 1. Accept financial data (income statement, balance sheet)
 2. Calculate ratios using scripts/calculate.py
 3. Compare against industry benchmarks
@@ -174,6 +199,7 @@ Calculates key financial ratios and interprets them against industry benchmarks.
 5. Generate formatted analysis report
 
 ## Instructions
+
 For detailed formulas and methodologies, see [reference.md](./reference.md).
 For usage examples, see [examples.md](./examples.md).
 
@@ -185,24 +211,28 @@ For usage examples, see [examples.md](./examples.md).
 **User Request**: "Create a secure skill that only reads code, never modifies"
 
 **Command**:
+
 ```bash
 /amplihack:skill-builder code-auditor skill "Audits code for security vulnerabilities without making changes"
 ```
 
 **Generated SKILL.md**:
+
 ```markdown
 ---
 name: code-auditor
 description: Audits code for security vulnerabilities without making changes. Read-only security analysis for OWASP top 10, injection flaws, and authentication issues.
-allowed-tools: Read, Grep, Glob  # Security restriction
+allowed-tools: Read, Grep, Glob # Security restriction
 ---
 
 # Code Auditor
 
 ## Purpose
+
 Security-focused code auditing without modification capabilities.
 
 ## Security Features
+
 - **Read-Only**: Cannot modify code (allowed-tools restriction)
 - **No Execute**: Cannot run code
 - **Safe Analysis**: Only inspection and reporting
@@ -249,17 +279,20 @@ Security-focused code auditing without modification capabilities.
 ### Session: Creating a Data Transformation Skill
 
 **Step 1: User Request**
+
 ```
 User: "I want to create a skill that transforms data between different formats"
 ```
 
 **Step 2: Skill Builder Activates (Auto-Discovery)**
+
 ```
 skill-builder: "I'll help you create that data transformation skill.
                Let me clarify the requirements..."
 ```
 
 **Step 3: Requirements Clarification (prompt-writer)**
+
 ```
 Questions asked:
 - Which formats to support? (JSON, YAML, XML, CSV)
@@ -269,6 +302,7 @@ Questions asked:
 ```
 
 **Step 4: Architecture Design (architect)**
+
 ```
 Design decisions:
 - Skill type: skill (for auto-discovery)
@@ -278,6 +312,7 @@ Design decisions:
 ```
 
 **Step 5: Skill Generation (builder)**
+
 ```
 Generated files:
 .claude/skills/data-transformer/
@@ -288,6 +323,7 @@ Generated files:
 ```
 
 **Step 6: Validation (reviewer)**
+
 ```
 Validation results:
 - YAML frontmatter: ✅ Valid
@@ -298,6 +334,7 @@ Validation results:
 ```
 
 **Step 7: Completion Report**
+
 ```
 ✅ Skill created successfully!
 
@@ -326,6 +363,7 @@ Validation results:
 **Objective**: Verify skill activates on expected prompts
 
 **Test Prompts**:
+
 ```
 1. "Build a skill for PDF processing"
    → skill-builder should activate
@@ -345,6 +383,7 @@ Validation results:
 **Objective**: Ensure validation catches errors
 
 **Test Cases**:
+
 ```python
 # Test invalid name
 /amplihack:skill-builder DataTransformer skill "Description"
@@ -368,6 +407,7 @@ Expected: Error - "Description exceeds 1,024 character limit"
 **Objective**: Verify correct file paths and structures
 
 **Test Cases**:
+
 ```bash
 # Skill type → creates directory with SKILL.md
 /amplihack:skill-builder test-skill skill "Test skill"
@@ -424,6 +464,7 @@ Expected: .claude/scenarios/test-scenario/README.md
 **Problem**: Skill name already exists
 
 **Detection**:
+
 ```python
 def check_name_conflict(skill_name, skill_type):
     paths = {
@@ -447,6 +488,7 @@ def check_name_conflict(skill_name, skill_type):
 **Detection**: Regular health checks
 
 **Prevention**:
+
 - Monitor token count in CI
 - Warn at 80% budget usage
 - Auto-suggest reference.md split at 4,000 tokens
@@ -459,6 +501,7 @@ def check_name_conflict(skill_name, skill_type):
 **Detection**: Usage analytics show 0 activations
 
 **Fix**: Enhance description with specific keywords:
+
 ```yaml
 # Before (too generic)
 description: Analyzes data
@@ -474,50 +517,59 @@ description: Analyzes CSV, Excel, and JSON data for patterns, outliers, and stat
 ### Skills vs Agents
 
 **Skills**:
+
 - Auto-discover based on description
 - Token-efficient (load on-demand)
 - Can restrict tools via allowed-tools
 - Emphasis on user intent matching
 
 **Agents**:
+
 - Explicitly invoked by orchestrator
 - Always loaded in agent system
 - Full tool access
 - Emphasis on specialization
 
 **When to Use Each**:
+
 - Skill: User-facing capabilities, auto-activation desired
 - Agent: Internal orchestration, explicit delegation needed
 
 ### Skills vs Commands
 
 **Skills**:
+
 - Natural language invocation
 - Auto-discovery
 - Conversational interface
 
 **Commands**:
+
 - Slash command syntax
 - Explicit parameters
 - Structured invocation
 
 **When to Use Each**:
+
 - Skill: Conversational workflow, auto-activation
 - Command: Power users, precise control, clear parameters
 
 ### Skills vs Scenarios
 
 **Skills**:
+
 - Lightweight documentation
 - Fast activation
 - Single SKILL.md (or multi-file)
 
 **Scenarios**:
+
 - Full production tools
 - Complete with tests, docs, Makefile
 - Python/JS implementations
 
 **When to Use Each**:
+
 - Skill: Quick capabilities, documentation-driven
 - Scenario: Complex tools, code implementations, mature features
 
@@ -530,17 +582,20 @@ description: Analyzes CSV, Excel, and JSON data for patterns, outliers, and stat
 Like the skill-builder itself:
 
 **As Command** (explicit):
+
 ```bash
 /amplihack:skill-builder my-skill skill "Description"
 ```
 
 **As Skill** (auto-discovery):
+
 ```
 User: "Help me build a new skill for parsing logs"
 skill-builder: *activates automatically*
 ```
 
 **Benefits**:
+
 - Power users get control (command)
 - Casual users get convenience (skill auto-activation)
 - Same underlying workflow
@@ -573,6 +628,7 @@ Delivers complete skill in .claude/skills/api-tester/
 **Symptoms**: Created skill doesn't load when expected
 
 **Diagnosis**:
+
 ```python
 # Check 1: Description keywords
 skill_md = Path(".claude/skills/my-skill/SKILL.md").read_text()
@@ -589,6 +645,7 @@ yaml.safe_load(frontmatter_text)  # Should not error
 ```
 
 **Solutions**:
+
 1. Enhance description with trigger keywords
 2. Restart Claude Code
 3. Fix YAML syntax errors
@@ -599,6 +656,7 @@ yaml.safe_load(frontmatter_text)  # Should not error
 **Symptoms**: Warning or error about token count
 
 **Diagnosis**:
+
 ```python
 import tiktoken
 
@@ -609,6 +667,7 @@ print(f"Token count: {tokens}")
 ```
 
 **Solutions**:
+
 1. Move details to reference.md
 2. Extract examples to examples.md
 3. Move code to scripts/
@@ -622,6 +681,7 @@ print(f"Token count: {tokens}")
 **Diagnosis**: Descriptions overlap (both match user intent)
 
 **Solutions**:
+
 1. Make descriptions more specific
 2. Add domain constraints
 3. Use `disableModelInvocation: true` for one
@@ -650,6 +710,7 @@ report-generator
 ### Technology Preferences
 
 **Stated preferences** (you can choose differently):
+
 - Node.js v24+ with ESM imports
 - CLI-first (gh, aws, npm, jq over SDKs)
 - Intention-revealing file names
@@ -657,6 +718,7 @@ report-generator
 ### Self-Referential Teaching
 
 The skill-builder skill itself demonstrates best practices:
+
 - Multi-file organization (SKILL.md, reference.md, examples.md)
 - Progressive disclosure (core < 5K tokens)
 - Clear type distinctions (skill, agent, command, scenario)
@@ -672,33 +734,39 @@ The skill-builder skill itself demonstrates best practices:
 **Source**: https://github.com/anthropics/skills
 
 **Document Skills** (source-available):
+
 - `xlsx`: Excel workbooks with formulas, charts
 - `pptx`: PowerPoint presentations
 - `docx`: Word documents
 - `pdf`: PDF extraction and form filling
 
 **Creative Skills**:
+
 - `algorithmic-art`: Generative art using p5.js
 - `canvas-design`: Visual output
 - `slack-gif-creator`: Optimized GIFs
 
 **Development Skills**:
+
 - `artifacts-builder`: React/Tailwind HTML
 - `mcp-builder`: MCP server guide
 - `webapp-testing`: Playwright UI testing
 
 **Meta Skills**:
+
 - `skill-creator`: Framework for developing skills
 - `template-skill`: Starter template
 
 ### Community Skills
 
 **obra/superpowers** (20+ skills):
+
 - TDD workflow automation
 - Debug session capture
 - Collaborative problem-solving
 
 **Patterns Worth Adopting**:
+
 - Clear activation triggers
 - Step-by-step workflows
 - Error handling patterns
@@ -722,6 +790,7 @@ maturity: experimental
 # Log Parser (Experimental)
 
 ## Purpose
+
 Basic log file parsing and analysis.
 
 [Minimal implementation...]
@@ -739,6 +808,7 @@ maturity: beta
 # Log Parser
 
 ## Purpose
+
 Production-ready log parsing with error pattern detection.
 
 [Enhanced implementation with validation...]
@@ -757,6 +827,7 @@ version: 2.0.0
 # Log Analyzer
 
 ## Purpose
+
 Enterprise-grade log analysis with ML-powered anomaly detection.
 
 [Complete implementation + reference.md + examples.md + scripts/...]
@@ -769,6 +840,7 @@ Enterprise-grade log analysis with ML-powered anomaly detection.
 ### When to Update This File
 
 **Triggers for Updates**:
+
 1. Official Anthropic documentation changes
 2. New skill patterns emerge in community
 3. Breaking changes to skill format
@@ -778,6 +850,7 @@ Enterprise-grade log analysis with ML-powered anomaly detection.
 ### Update Process
 
 1. **Check Sources**:
+
    ```bash
    # Visit each documentation source
    # Note changes since last update
@@ -785,6 +858,7 @@ Enterprise-grade log analysis with ML-powered anomaly detection.
    ```
 
 2. **Update Relevant Sections**:
+
    ```bash
    # Edit reference.md
    # Add version history entry
@@ -792,6 +866,7 @@ Enterprise-grade log analysis with ML-powered anomaly detection.
    ```
 
 3. **Test Updated Skill**:
+
    ```bash
    # Create test skill with new patterns
    # Verify works correctly
@@ -807,12 +882,14 @@ Enterprise-grade log analysis with ML-powered anomaly detection.
 ### Sync Mechanism (Manual for Now)
 
 **Current Approach**:
+
 - Manual quarterly reviews
 - Check official docs for changes
 - Update reference.md and examples.md
 - Version history tracking
 
 **Future Enhancement**:
+
 - Automated doc scraping
 - Change detection
 - PR generation for updates

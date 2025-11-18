@@ -116,7 +116,7 @@ async def basic_tool_usage():
         name="assistant",
         model=ModelClient(model="gpt-4"),
         instructions="You are a helpful assistant with access to tools.",
-        tools=[get_current_time, calculate, get_weather]
+        tools=[get_current_time, calculate, get_weather],
     )
 
     # Agent automatically calls appropriate tools
@@ -142,12 +142,10 @@ async def multiple_tool_calls():
         model=ModelClient(model="gpt-4"),
         instructions="You are a helpful assistant.",
         tools=[get_weather, get_current_time],
-        parallel_tool_calls=True  # Enable parallel execution
+        parallel_tool_calls=True,  # Enable parallel execution
     )
 
-    response = await agent.run(
-        message="What's the weather and current time in Seattle?"
-    )
+    response = await agent.run(message="What's the weather and current time in Seattle?")
 
     print("User: What's the weather and current time in Seattle?")
     print(f"Agent: {response.content}")
@@ -159,14 +157,10 @@ async def tool_call_inspection():
     print("=== Tool Call Inspection ===")
 
     agent = Agent(
-        name="assistant",
-        model=ModelClient(model="gpt-4"),
-        tools=[calculate, get_weather]
+        name="assistant", model=ModelClient(model="gpt-4"), tools=[calculate, get_weather]
     )
 
-    response = await agent.run(
-        message="What's 15 * 8 and what's the weather in San Francisco?"
-    )
+    response = await agent.run(message="What's 15 * 8 and what's the weather in San Francisco?")
 
     print("User: What's 15 * 8 and what's the weather in San Francisco?")
     print(f"Agent: {response.content}")
@@ -187,12 +181,10 @@ async def async_tool_example():
         name="assistant",
         model=ModelClient(model="gpt-4"),
         instructions="You are a documentation assistant.",
-        tools=[search_docs]
+        tools=[search_docs],
     )
 
-    response = await agent.run(
-        message="Search for information about agents in the docs"
-    )
+    response = await agent.run(message="Search for information about agents in the docs")
 
     print("User: Search for information about agents in the docs")
     print(f"Agent: {response.content}")

@@ -11,6 +11,7 @@ You are activating test generation and improvement capabilities. Your role is to
 ## When to Activate
 
 This skill activates when:
+
 - New features or functions are implemented
 - User requests tests ("add tests", "test this")
 - Test coverage is low or missing
@@ -47,6 +48,7 @@ This skill activates when:
 ### 1. Analyze Code
 
 Understand what to test:
+
 - What is the purpose?
 - What are the inputs and outputs?
 - What are the edge cases?
@@ -56,21 +58,25 @@ Understand what to test:
 ### 2. Identify Test Cases
 
 #### Happy Path
+
 - Normal, expected usage
 - Valid inputs producing valid outputs
 
 #### Edge Cases
+
 - Boundary values (0, -1, max, empty)
 - Unusual but valid inputs
 - Minimum and maximum values
 
 #### Error Cases
+
 - Invalid inputs
 - Null/undefined/None
 - Wrong types
 - Violations of constraints
 
 #### Integration Points
+
 - External API calls
 - Database interactions
 - File system operations
@@ -99,6 +105,7 @@ def test_function_name_condition_expected():
 ### 4. Check Coverage
 
 Ensure comprehensive coverage:
+
 - All code paths executed
 - All branches tested
 - All error conditions tested
@@ -111,6 +118,7 @@ Ensure comprehensive coverage:
 Test individual functions in isolation.
 
 **Python Example**:
+
 ```python
 import pytest
 from mymodule import calculate_total
@@ -140,32 +148,32 @@ def test_calculate_total_raises_on_negative_price():
 ```
 
 **JavaScript Example**:
-```javascript
-import { describe, it, expect } from 'vitest';
-import { calculateTotal } from './cart';
 
-describe('calculateTotal', () => {
-  it('calculates total for valid items', () => {
+```javascript
+import { describe, it, expect } from "vitest";
+import { calculateTotal } from "./cart";
+
+describe("calculateTotal", () => {
+  it("calculates total for valid items", () => {
     const items = [
-      { price: 10.00, quantity: 2 },
-      { price: 5.00, quantity: 3 },
+      { price: 10.0, quantity: 2 },
+      { price: 5.0, quantity: 3 },
     ];
-    expect(calculateTotal(items)).toBe(35.00);
+    expect(calculateTotal(items)).toBe(35.0);
   });
 
-  it('returns 0 for empty list', () => {
+  it("returns 0 for empty list", () => {
     expect(calculateTotal([])).toBe(0);
   });
 
-  it('handles zero quantity', () => {
-    const items = [{ price: 10.00, quantity: 0 }];
+  it("handles zero quantity", () => {
+    const items = [{ price: 10.0, quantity: 0 }];
     expect(calculateTotal(items)).toBe(0);
   });
 
-  it('throws error for negative price', () => {
-    const items = [{ price: -10.00, quantity: 1 }];
-    expect(() => calculateTotal(items))
-      .toThrow('Price cannot be negative');
+  it("throws error for negative price", () => {
+    const items = [{ price: -10.0, quantity: 1 }];
+    expect(() => calculateTotal(items)).toThrow("Price cannot be negative");
   });
 });
 ```
@@ -175,6 +183,7 @@ describe('calculateTotal', () => {
 Test multiple components working together.
 
 **Example**:
+
 ```python
 def test_user_registration_flow():
     """Test complete user registration workflow."""
@@ -199,6 +208,7 @@ def test_user_registration_flow():
 Isolate code from external dependencies.
 
 **Python Example**:
+
 ```python
 from unittest.mock import Mock, patch
 
@@ -224,6 +234,7 @@ def test_send_notification_calls_email_service():
 Test multiple inputs efficiently.
 
 **Python Example**:
+
 ```python
 @pytest.mark.parametrize("input,expected", [
     (0, "zero"),
@@ -242,6 +253,7 @@ def test_number_to_word(input, expected):
 Generate test cases automatically.
 
 **Python Example**:
+
 ```python
 from hypothesis import given
 from hypothesis.strategies import integers
@@ -280,11 +292,13 @@ project/
 - Test classes: `Test<ClassName>`
 
 **Good Names**:
+
 - `test_calculate_total_with_empty_list_returns_zero`
 - `test_user_login_with_invalid_password_raises_error`
 - `test_api_returns_404_for_nonexistent_resource`
 
 **Bad Names**:
+
 - `test_calc` (too vague)
 - `test_1` (no meaning)
 - `test_it_works` (what works?)
@@ -294,17 +308,20 @@ project/
 For each function/class, ensure tests for:
 
 ### Functionality
+
 - [ ] Happy path (normal usage)
 - [ ] Return values correct
 - [ ] Side effects occur as expected
 
 ### Edge Cases
+
 - [ ] Empty inputs ([], "", 0, None)
 - [ ] Boundary values (min, max, -1)
 - [ ] Large inputs
 - [ ] Special characters/values
 
 ### Error Handling
+
 - [ ] Invalid inputs
 - [ ] Null/undefined/None
 - [ ] Wrong types
@@ -312,6 +329,7 @@ For each function/class, ensure tests for:
 - [ ] External failures (API down, etc.)
 
 ### Integration
+
 - [ ] Calls to other functions/modules
 - [ ] Database interactions
 - [ ] File operations
@@ -322,26 +340,31 @@ For each function/class, ensure tests for:
 ### Good Tests Are:
 
 **Fast**:
+
 - Run in milliseconds
 - No unnecessary I/O
 - Use mocks for external dependencies
 
 **Independent**:
+
 - No shared state between tests
 - Can run in any order
 - Don't depend on other tests
 
 **Repeatable**:
+
 - Same result every time
 - No flaky tests
 - No dependency on external state
 
 **Self-Validating**:
+
 - Pass or fail clearly
 - No manual inspection
 - Descriptive failure messages
 
 **Timely**:
+
 - Written before or with code (TDD)
 - Not as an afterthought
 - Updated when code changes
@@ -349,6 +372,7 @@ For each function/class, ensure tests for:
 ### Anti-Patterns to Avoid
 
 **Testing Implementation Details**:
+
 ```python
 # Bad: Tests internal state
 def test_cache_uses_dict():
@@ -363,6 +387,7 @@ def test_cache_stores_and_retrieves_value():
 ```
 
 **Overly Complex Tests**:
+
 ```python
 # Bad: Test is hard to understand
 def test_complex():
@@ -377,6 +402,7 @@ def test_calculate_returns_average():
 ```
 
 **Not Testing Edge Cases**:
+
 ```python
 # Incomplete: Only tests happy path
 def test_divide():
@@ -397,12 +423,14 @@ def test_divide_with_negative_numbers():
 ## Coverage Targets
 
 ### Minimum Coverage
+
 - **Critical paths**: 100%
 - **Business logic**: 95%+
 - **Utilities**: 90%+
 - **UI code**: 70%+
 
 ### Focus Areas
+
 1. Business-critical features
 2. Complex algorithms
 3. Error handling
@@ -410,6 +438,7 @@ def test_divide_with_negative_numbers():
 5. Bug-prone areas
 
 ### Don't Obsess Over 100%
+
 - Some code is hard to test (UI rendering, etc.)
 - Focus on meaningful coverage
 - Quality > quantity
@@ -417,22 +446,25 @@ def test_divide_with_negative_numbers():
 ## Integration Points
 
 ### Invokes
+
 - **Tester Agent**: Core testing logic from `.claude/agents/tester.md`
 - **Code Analysis**: To identify untested code
 - **Coverage Tools**: pytest-cov, coverage.py, jest --coverage
 
 ### Escalates To
+
 - **Builder Agent**: To fix code that's hard to test
 - **Reviewer Agent**: To review test quality
 
 ### References
+
 - **Testing Guides**: Language-specific best practices
 - **Test Patterns**: Common testing patterns
 - **Fixtures**: Shared test data and setup
 
 ## Example Workflow
 
-```
+````
 User: "I just implemented this authentication function. Can you add tests?"
 
 Testing Code Skill:
@@ -528,11 +560,12 @@ def mock_logger():
     """Mock logger for tests."""
     with patch('myapp.auth.logger') as mock:
         yield mock
-```
+````
 
 ## Coverage Report
 
 Running tests:
+
 ```bash
 pytest tests/test_auth.py --cov=myapp.auth --cov-report=term-missing
 ```
@@ -542,11 +575,13 @@ Current coverage: 95% (missing: edge case for special characters)
 ## Suggestions
 
 Consider adding:
+
 1. Test for rate limiting (if implemented)
 2. Test for account lockout after X failures
 3. Performance test for password hashing time
 
 Ready to implement these tests?
+
 ```
 
 ## Success Criteria
@@ -570,3 +605,4 @@ Good test suite:
 ---
 
 Remember: Tests are documentation that proves your code works. Write tests you'll thank yourself for later.
+```

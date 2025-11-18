@@ -241,7 +241,7 @@ If NO:
 Consider spawning specialized cleanup agent:
 
 ```bash
-Task post-task-cleanup: "Review workspace for any remaining
+Task cleanup: "Review workspace for any remaining
 temporary files, test artifacts, or unnecessary complexity"
 ```
 
@@ -384,10 +384,10 @@ Track finalization tasks:
 
 ## Agent Suggestions
 
-**post-task-cleanup** - For thorough cleanup:
+**cleanup** (amplihack/specialized) - For thorough cleanup:
 
 ```
-Task post-task-cleanup: "Review entire workspace for any remaining
+Task cleanup: "Review entire workspace for any remaining
 temporary files, test artifacts, or unnecessary complexity after
 DDD workflow completion"
 ```

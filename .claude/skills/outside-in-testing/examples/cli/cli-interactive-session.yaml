@@ -8,7 +8,6 @@ scenario:
     Verifies CLI application maintains state across multiple commands in an
     interactive session, including configuration, data manipulation, and query operations.
   type: cli
-
   level: 2
 
   tags: [cli, interactive, stateful, session, intermediate]
@@ -200,7 +199,6 @@ scenario:
     - action: capture_output
       save_as: "interactive-session.txt"
       description: "Save full session transcript"
-
 # Expected Evidence:
 # The test generates a complete session transcript showing:
 # - Configuration changes

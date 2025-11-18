@@ -287,7 +287,9 @@ class SessionStartHook(HookProcessor):
                 # Auto-update without prompting
                 self.log("Auto-updating per user preference")
                 result = perform_update(
-                    version_info.package_path, version_info.project_path, version_info.project_commit
+                    version_info.package_path,
+                    version_info.project_path,
+                    version_info.project_commit,
                 )
 
                 if result.success:

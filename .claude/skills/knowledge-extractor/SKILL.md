@@ -39,6 +39,7 @@ This skill automatically extracts, synthesizes, and preserves knowledge from con
 **What it captures**: Problems encountered, root causes identified, solutions implemented
 
 **When to extract**:
+
 - After solving a complex bug
 - When debugging reveals unexpected behavior
 - When discovering wrong assumptions
@@ -46,26 +47,33 @@ This skill automatically extracts, synthesizes, and preserves knowledge from con
 - When learning why something failed
 
 **Format for DISCOVERIES.md**:
+
 ```markdown
 ## [Brief Title] (YYYY-MM-DD)
 
 ### Issue
+
 What problem or challenge was encountered?
 
 ### Root Cause
+
 Why did this happen? What was the underlying issue?
 
 ### Solution
+
 How was it resolved? Include code examples if relevant.
 
 ### Key Learnings
+
 What insights were gained? What should be remembered?
 
 ### Prevention
+
 How can this be avoided in the future?
 ```
 
 **Quality Criteria**:
+
 - ✅ Specific problem, not generic advice
 - ✅ Root cause clearly identified
 - ✅ Working solution included
@@ -77,6 +85,7 @@ How can this be avoided in the future?
 **What it captures**: Proven solutions to recurring problems, architectural approaches, design patterns
 
 **When to extract**:
+
 - After solving a problem similar to known patterns
 - When recognizing a repeated problem type
 - When implementing a proven solution
@@ -84,31 +93,39 @@ How can this be avoided in the future?
 - When solution applies across multiple contexts
 
 **Format for PATTERNS.md**:
+
 ```markdown
 ## Pattern: [Name]
 
 ### Challenge
+
 What problem does this pattern solve?
 
 ### Solution
+
 How does the pattern work? Include code/examples.
 
 ### Key Points
+
 - Main insight 1
 - Main insight 2
 - When to use / when not to use
 
 ### When to Use
+
 Specific scenarios where this pattern applies.
 
 ### Real Impact
+
 Where has this pattern been used successfully?
 
 ### Related Patterns
+
 Links to similar or complementary patterns.
 ```
 
 **Quality Criteria**:
+
 - ✅ General enough to apply to multiple situations
 - ✅ Problem clearly defined
 - ✅ Solution has proven track record
@@ -120,6 +137,7 @@ Links to similar or complementary patterns.
 **What it captures**: Workflows that are repeated frequently, specialized expertise areas, complex multi-step processes
 
 **When to extract**:
+
 - After performing the same workflow 2-3 times
 - When recognizing a specialized skill area
 - When workflow has clear inputs/outputs
@@ -127,6 +145,7 @@ Links to similar or complementary patterns.
 - When problem domain is narrow and well-defined
 
 **Agent Creation Trigger Checklist**:
+
 - [ ] Same workflow repeated 2+ times
 - [ ] Workflow takes 30+ minutes to execute
 - [ ] Workflow has clear specialized focus
@@ -135,28 +154,36 @@ Links to similar or complementary patterns.
 - [ ] Would be high-value to automate
 
 **Example Agent Creation**:
+
 ```markdown
 ## Recommended New Agent: [domain]-[specialty]
 
 ### Problem
+
 What repeated workflow would this agent handle?
 
 ### Scope
+
 What's in scope | What's explicitly out of scope
 
 ### Inputs
+
 What information does the agent need?
 
 ### Process
+
 Step-by-step workflow the agent follows
 
 ### Outputs
+
 What does the agent produce?
 
 ### Value
+
 How much time/effort does this save?
 
 ### Integration
+
 Where in the workflow does this fit?
 ```
 
@@ -195,6 +222,7 @@ Identify patterns in the work:
 Extract and structure knowledge:
 
 **For DISCOVERIES.md**:
+
 - Specific issue encountered
 - Root cause analysis
 - Solution implemented
@@ -202,6 +230,7 @@ Extract and structure knowledge:
 - Prevention strategy
 
 **For PATTERNS.md**:
+
 - Problem the pattern solves
 - How the pattern works
 - When to use / when not to use
@@ -209,6 +238,7 @@ Extract and structure knowledge:
 - Related patterns
 
 **For New Agent**:
+
 - Repeated workflow identified
 - Clear scope and boundaries
 - Input/output requirements
@@ -364,6 +394,7 @@ Claude:
 Before finalizing an extraction, verify:
 
 ### For DISCOVERIES.md
+
 - [ ] Issue is specific, not generic ("Pre-commit hooks failing" not "Tools broken")
 - [ ] Root cause is identified (Why, not just what)
 - [ ] Solution is working/proven
@@ -373,6 +404,7 @@ Before finalizing an extraction, verify:
 - [ ] Code examples provided where relevant
 
 ### For PATTERNS.md
+
 - [ ] Problem is clear and recognizable
 - [ ] Solution has proven track record (used 2+ times successfully)
 - [ ] When/when-not-to-use guidance is clear
@@ -382,6 +414,7 @@ Before finalizing an extraction, verify:
 - [ ] Real impact or usage is documented
 
 ### For New Agent
+
 - [ ] Workflow has been repeated 2+ times
 - [ ] Would save 30+ minutes per execution
 - [ ] Problem domain is narrow and well-defined
@@ -419,44 +452,52 @@ Before finalizing an extraction, verify:
 ## Real-World Impact Examples
 
 ### Impact 1: Prevent Wasted Debugging Time
+
 **Without knowledge extraction**: Repeat same 45-minute debugging process
 **With extraction**: Reference DISCOVERIES.md, fix in 10 minutes
 
 ### Impact 2: Faster Solution Discovery
+
 **Without extraction**: Rediscover solutions from scratch
 **With extraction**: Reference PATTERNS.md, apply known solution
 
 ### Impact 3: Automated Workflows
+
 **Without extraction**: Manual CI debugging every time (30-45 min)
 **With new agent**: Automated diagnosis in 5-10 minutes
 
 ## Common Extraction Mistakes to Avoid
 
 ### Mistake 1: Too Generic
+
 ```
 BAD: "Learned that good error handling is important"
 GOOD: "Discovered cloud sync issues cause silent file I/O failures - need exponential backoff retry"
 ```
 
 ### Mistake 2: Missing Root Cause
+
 ```
 BAD: "CI failed, fixed it"
 GOOD: "CI failed because version mismatch (local 3.12 vs CI 3.11) - fixed by updating pyproject.toml version constraint"
 ```
 
 ### Mistake 3: No Actionable Learning
+
 ```
 BAD: "This was complicated"
 GOOD: "Multi-layer sanitization at every data transformation prevents credential leakage"
 ```
 
 ### Mistake 4: Over-Generalizing Pattern
+
 ```
 BAD: "Always use caching everywhere"
 GOOD: "Use smart caching with lifecycle management for expensive operations where results may become stale"
 ```
 
 ### Mistake 5: Agent Creation Without ROI
+
 ```
 BAD: "Create agent for task that happens once per quarter"
 GOOD: "Create agent for CI debugging workflow that happens 2-3x per week and takes 30-45 minutes"
@@ -467,6 +508,7 @@ GOOD: "Create agent for CI debugging workflow that happens 2-3x per week and tak
 Use these prompts to trigger knowledge extraction:
 
 ### Extract Discoveries
+
 ```
 Extract what we discovered/learned from this session.
 Focus on: root causes, unexpected behaviors, solutions that worked.
@@ -474,6 +516,7 @@ Update DISCOVERIES.md appropriately.
 ```
 
 ### Extract Patterns
+
 ```
 What patterns should we capture for future reuse?
 These should be proven solutions that apply to multiple situations.
@@ -481,6 +524,7 @@ Update PATTERNS.md appropriately.
 ```
 
 ### Identify Agent Opportunities
+
 ```
 Should we create a new agent to automate any repeated workflows?
 Check if any workflow has been done 2+ times and takes 30+ minutes.
@@ -488,6 +532,7 @@ Recommend creation with scope and value calculation.
 ```
 
 ### Full Extraction
+
 ```
 Perform complete knowledge extraction on this session.
 Extract: discoveries, patterns, and agent creation recommendations.
@@ -497,18 +542,22 @@ Verify quality and update all three knowledge bases.
 ## Integration Points
 
 ### With Document-Driven Development
+
 - Use knowledge extraction to update specs and documentation
 - Extract patterns to guide next implementation
 
 ### With Agent Delegation
+
 - Extract when delegating reveals new specializations needed
 - Create agents based on repeated delegation patterns
 
 ### With Pre-Commit Analysis
+
 - Extract discoveries about CI/CD and testing patterns
 - Update PATTERNS.md with new approaches discovered
 
 ### With Session Reflection
+
 - Automatic knowledge extraction at session end
 - Preserve learnings before context compaction
 

@@ -1,6 +1,6 @@
 ---
 name: pre-commit-diagnostic
-description: Pre-commit workflow specialist. Resolves all local issues BEFORE pushing to repository. Handles pre-commit hook failures, formatting issues, linting errors, and ensures code is committable. Use when pre-commit hooks fail or code won't commit.
+description: Pre-commit failure resolver. Fixes formatting, linting, and type checking issues locally before push. Use when pre-commit hooks fail or code won't commit.
 model: inherit
 ---
 

@@ -28,11 +28,13 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 ## Dependencies
 
 ### External
+
 - Microsoft Agent Framework documentation (embedded, versioned)
 - GitHub repository (reference URLs)
 - OpenTelemetry (mentioned in context)
 
 ### Internal
+
 - Claude Code Read tool (documentation access)
 - amplihack philosophy (integration decisions)
 - Module-spec-generator pattern (doc-heavy skill design)
@@ -40,41 +42,49 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 ## Progressive Disclosure Strategy
 
 ### Tier 1: Metadata (<100 tokens)
+
 **Purpose**: Auto-discovery and routing
 **Content**: Skill identity, capabilities summary, common use cases
 **Load Time**: Always (included in skill.md header)
 
 ### Tier 2: Core Instructions (<5,000 tokens)
+
 **Purpose**: Framework overview and quick reference
 **Content**:
+
 - Architecture components (agents, workflows, tools)
 - Quick start patterns (Python + C#)
 - Decision framework (when to use)
 - Integration with amplihack
-**Load Time**: Default when skill is invoked
+  **Load Time**: Default when skill is invoked
 
 ### Tier 3: Detailed Documentation (5,000-15,000 tokens)
+
 **Purpose**: Deep technical content
 **Content**:
+
 - Component deep dives (agents, workflows, tools, middleware)
 - Tutorial walkthroughs from Microsoft Learn
 - Sample code patterns from GitHub
 - Workflow orchestration patterns
-**Load Time**: On-demand when user needs detailed guidance
+  **Load Time**: On-demand when user needs detailed guidance
 
 ### Tier 4: Advanced Topics (15,000+ tokens)
+
 **Purpose**: Specialized scenarios
 **Content**:
+
 - RAG integration patterns
 - Async multi-agent patterns
 - Function interception and middleware
 - DevUI integration
 - Production deployment patterns
-**Load Time**: Explicit user request or complex scenario
+  **Load Time**: Explicit user request or complex scenario
 
 ## Content Organization
 
 ### Source Material (10 URLs)
+
 1. **Microsoft Learn - Overview**: Architecture fundamentals
 2. **Microsoft Learn - Tutorials**: Step-by-step guides
 3. **Microsoft Learn - Workflows**: Graph-based orchestration
@@ -87,6 +97,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 10. **DevBlog**: Announcement and vision
 
 ### Distillation Strategy
+
 - **Tier 2**: Extract core concepts, API signatures, minimal examples (20% of content)
 - **Tier 3**: Full tutorials, detailed examples, best practices (60% of content)
 - **Tier 4**: Advanced scenarios, edge cases, production patterns (20% of content)
@@ -125,7 +136,9 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 ## File Breakdown
 
 ### skill.md (4,800 tokens)
+
 **Tier 1 Metadata (100 tokens)**:
+
 ```markdown
 # Microsoft Agent Framework Skill
 
@@ -137,6 +150,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 ```
 
 **Tier 2 Core Instructions (4,700 tokens)**:
+
 - Framework architecture (agents, workflows, tools, middleware)
 - Quick start patterns (Python + C# minimal examples)
 - Decision framework (Agent Framework vs amplihack)
@@ -147,6 +161,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 ### reference/ (18,000 tokens total)
 
 **agents.md (3,000 tokens - Tier 3)**:
+
 - Agent lifecycle and state management
 - Tool registration and execution
 - Agent threads and conversation management
@@ -154,6 +169,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 - Agent composition patterns
 
 **workflows.md (3,500 tokens - Tier 3)**:
+
 - Graph-based workflow design
 - Conditional branching and loops
 - State management and checkpointing
@@ -161,6 +177,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 - Workflow testing patterns
 
 **tools.md (2,500 tokens - Tier 3)**:
+
 - Tool definition patterns
 - Function calling conventions
 - Parameter validation
@@ -168,6 +185,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 - MCP client integration
 
 **middleware.md (2,000 tokens - Tier 3)**:
+
 - Context enrichment
 - Logging and observability
 - Request/response transformation
@@ -175,6 +193,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 - Custom middleware patterns
 
 **rag.md (2,500 tokens - Tier 4)**:
+
 - RAG architecture with Agent Framework
 - Vector store integration
 - Context retrieval patterns
@@ -182,6 +201,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 - Production RAG deployment
 
 **async.md (2,500 tokens - Tier 4)**:
+
 - Multi-agent coordination
 - Async workflow patterns
 - Event-driven architecture
@@ -189,6 +209,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 - Deadlock prevention
 
 **production.md (2,000 tokens - Tier 4)**:
+
 - Deployment architecture
 - Monitoring and observability
 - Performance optimization
@@ -198,6 +219,7 @@ Provide Claude Code with comprehensive Microsoft Agent Framework knowledge throu
 ### examples/ (8,000 tokens total)
 
 **quickstart-python.md (800 tokens - Tier 2)**:
+
 ```python
 # Minimal working agent
 from microsoft.agents import Agent, ToolCall
@@ -212,6 +234,7 @@ response = agent.chat("Find recent AI news")
 ```
 
 **quickstart-csharp.md (800 tokens - Tier 2)**:
+
 ```csharp
 // Minimal working agent
 var agent = new Agent(
@@ -224,21 +247,25 @@ var response = await agent.ChatAsync("Find recent AI news");
 ```
 
 **workflow-simple.md (1,500 tokens - Tier 3)**:
+
 - Linear workflow example
 - State passing between agents
 - Error handling
 
 **workflow-conditional.md (2,000 tokens - Tier 3)**:
+
 - Conditional branching
 - Loop patterns
 - Dynamic agent selection
 
 **rag-integration.md (1,500 tokens - Tier 4)**:
+
 - Full RAG workflow
 - Vector store setup
 - Context injection
 
 **async-coordination.md (1,400 tokens - Tier 4)**:
+
 - Multi-agent async pattern
 - Event handling
 - Coordination strategies
@@ -246,10 +273,12 @@ var response = await agent.ChatAsync("Find recent AI news");
 ### integration/ (4,000 tokens total)
 
 **decision-framework.md (1,500 tokens)**:
+
 ```markdown
 # When to Use Microsoft Agent Framework
 
 ## Use Agent Framework When:
+
 - Building .NET/Python enterprise agents
 - Need graph-based workflow orchestration
 - Require OpenTelemetry integration
@@ -257,6 +286,7 @@ var response = await agent.ChatAsync("Find recent AI news");
 - Production deployment with DevUI
 
 ## Use amplihack Agents When:
+
 - Claude Code workflow orchestration
 - Rapid prototyping and experimentation
 - Markdown-based agent definitions
@@ -264,18 +294,21 @@ var response = await agent.ChatAsync("Find recent AI news");
 - Meta-programming and self-improvement
 
 ## Hybrid Approach:
+
 - amplihack orchestrates high-level workflow
 - Agent Framework implements production agents
 - Use UltraThink with Agent Framework tools
 ```
 
 **amplihack-integration.md (1,500 tokens)**:
+
 - Calling Agent Framework from amplihack agents
 - Workflow integration patterns
 - State management between systems
 - Decision point identification
 
 **migration-guide.md (1,000 tokens)**:
+
 - Converting amplihack agents to Agent Framework
 - Preserving agent contracts
 - Testing migration strategy
@@ -283,6 +316,7 @@ var response = await agent.ChatAsync("Find recent AI news");
 ### metadata/ (200 tokens total)
 
 **version.json (100 tokens)**:
+
 ```json
 {
   "skill_version": "0.1.0",
@@ -298,18 +332,19 @@ var response = await agent.ChatAsync("Find recent AI news");
 ```
 
 **sources.json (100 tokens)**:
+
 - URL mappings
 - Source priorities
 - Update frequencies
 
 ## Token Budget Allocation
 
-| Tier | Content | Token Limit | Auto-Load |
-|------|---------|-------------|-----------|
-| 1 | Metadata | 100 | Always |
-| 2 | Core Instructions | 4,700 | Default |
-| 3 | Detailed Docs | 18,000 | On-demand |
-| 4 | Advanced Topics | 12,000 | Explicit |
+| Tier | Content           | Token Limit | Auto-Load |
+| ---- | ----------------- | ----------- | --------- |
+| 1    | Metadata          | 100         | Always    |
+| 2    | Core Instructions | 4,700       | Default   |
+| 3    | Detailed Docs     | 18,000      | On-demand |
+| 4    | Advanced Topics   | 12,000      | Explicit  |
 
 **Total Skill**: ~35,000 tokens (full content)
 **Typical Load**: ~5,000 tokens (Tier 1+2)
@@ -318,6 +353,7 @@ var response = await agent.ChatAsync("Find recent AI news");
 ## Usage Patterns
 
 ### Pattern 1: Quick Reference (Tier 1+2)
+
 ```
 User: "How do I create a basic agent with tools?"
 Load: skill.md (metadata + core) = 4,800 tokens
@@ -325,6 +361,7 @@ Response: Quick start example from Tier 2
 ```
 
 ### Pattern 2: Detailed Tutorial (Tier 2+3)
+
 ```
 User: "Show me how to build a workflow with conditional branching"
 Load: skill.md + reference/workflows.md + examples/workflow-conditional.md
@@ -333,6 +370,7 @@ Response: Full workflow tutorial with example
 ```
 
 ### Pattern 3: Advanced Scenario (Tier 2+3+4)
+
 ```
 User: "Build a RAG agent with async multi-agent coordination"
 Load: skill.md + reference/rag.md + reference/async.md + examples/
@@ -341,6 +379,7 @@ Response: Complete RAG + async implementation
 ```
 
 ### Pattern 4: Decision Support (Tier 2 + Integration)
+
 ```
 User: "Should I use Agent Framework or amplihack for this feature?"
 Load: skill.md + integration/decision-framework.md
@@ -351,12 +390,14 @@ Response: Decision framework with recommendation
 ## Version Checking Mechanism
 
 ### Freshness Strategy
+
 1. **Embedded Version**: `metadata/version.json` records doc generation date
 2. **Optional Check**: `scripts/check-freshness.py` validates against live sources
 3. **Warning Threshold**: Warn if docs >30 days old
 4. **Manual Update**: User or maintainer runs update script
 
 ### Check Process
+
 ```python
 # scripts/check-freshness.py
 import requests
@@ -377,6 +418,7 @@ def check_freshness():
 ```
 
 ### Update Workflow
+
 1. User notices outdated content
 2. Run `check-freshness.py` to confirm
 3. Fetch latest content from 10 URLs
@@ -387,8 +429,10 @@ def check_freshness():
 ## Integration with amplihack
 
 ### Integration Point 1: Workflow Orchestration
+
 ```markdown
 # UltraThink Step 3: Design
+
 - Use architect.md for high-level design
 - If implementation requires .NET/Python agents:
   → Invoke microsoft-agent-framework skill
@@ -397,16 +441,20 @@ def check_freshness():
 ```
 
 ### Integration Point 2: Decision Framework
+
 ```markdown
 # When planning feature implementation:
+
 1. Does feature need production-grade multi-agent system? → Agent Framework
 2. Is feature Claude Code workflow orchestration? → amplihack agents
 3. Hybrid: amplihack orchestrates, Agent Framework implements agents
 ```
 
 ### Integration Point 3: Code Generation
+
 ```markdown
 # builder.md extension:
+
 - For .NET/Python agent code generation
 - Use microsoft-agent-framework skill as reference
 - Generate agent definitions, workflows, tool integrations
@@ -416,17 +464,20 @@ def check_freshness():
 ## Philosophy Alignment
 
 ### Ruthless Simplicity
+
 - **Progressive Disclosure**: Load only what's needed (100 tokens → 35K tokens)
 - **Clear Contracts**: Tier structure explicit and predictable
 - **Minimal Abstraction**: Direct documentation access, no complex loaders
 
 ### Modular Brick Design
+
 - **Single Responsibility**: One skill = Microsoft Agent Framework knowledge
 - **Clear Studs**: Tier-based API for content access
 - **Regeneratable**: All content from 10 source URLs + distillation rules
 - **Self-Contained**: No external runtime dependencies
 
 ### Token Efficiency
+
 - **Default Load**: 4,800 tokens (Tier 1+2)
 - **Lazy Loading**: Tier 3+4 on-demand only
 - **Content Distillation**: 10 URLs → 35K tokens (not 100K+ raw)
@@ -434,18 +485,21 @@ def check_freshness():
 ## Test Requirements
 
 ### Unit Tests
+
 1. **Metadata Parsing**: version.json and sources.json load correctly
 2. **Tier Selection**: Auto-select appropriate tier based on query
 3. **Content Access**: Read reference/ files without errors
 4. **Token Counting**: Verify tier token budgets
 
 ### Integration Tests
+
 1. **Quick Reference**: Query answers from Tier 2 only
 2. **Deep Dive**: Query loads Tier 3 content correctly
 3. **Decision Framework**: Integration guidance works
 4. **Code Generation**: Python and C# examples generate valid code
 
 ### Validation Tests
+
 1. **Freshness Check**: Version checking script runs
 2. **URL Validity**: Source URLs still accessible
 3. **Content Accuracy**: Generated code matches framework docs
@@ -454,18 +508,21 @@ def check_freshness():
 ## Implementation Notes
 
 ### Content Extraction Strategy
+
 1. **Automated Scraping**: Use WebFetch tool to retrieve 10 URLs
 2. **Manual Distillation**: Human review to extract key concepts
 3. **Token Optimization**: Remove redundancy, preserve essential patterns
 4. **Example Prioritization**: Working code examples over prose
 
 ### Maintenance Strategy
+
 1. **Monthly Review**: Check framework release notes
 2. **Quarterly Update**: Refresh content from sources
 3. **Version Tracking**: Update metadata/version.json
 4. **Breaking Changes**: Flag in skill.md header
 
 ### Documentation Workflow
+
 1. Fetch latest content from 10 URLs
 2. Distill content by tier (1→2→3→4)
 3. Generate markdown files with token counts
@@ -476,16 +533,19 @@ def check_freshness():
 ## Success Metrics
 
 ### Efficiency Metrics
+
 - **Token Usage**: Average query <10,000 tokens (vs 35K full load)
 - **Response Time**: <2s for Tier 1+2 queries
 - **Cache Hit Rate**: >80% queries answered by Tier 2
 
 ### Quality Metrics
+
 - **Code Validity**: 100% generated examples compile
 - **Framework Accuracy**: Matches official docs
 - **Decision Quality**: Correct framework selection >90%
 
 ### Adoption Metrics
+
 - **Usage Frequency**: Skill invoked 10+ times/month
 - **User Satisfaction**: Positive feedback on guidance quality
 - **Integration Success**: amplihack + Agent Framework projects launched
@@ -493,11 +553,13 @@ def check_freshness():
 ## Future Enhancements
 
 ### Phase 2: Interactive Features
+
 - RAG-based semantic search across docs
 - Live documentation updates
 - Interactive tutorials with validation
 
 ### Phase 3: Advanced Integration
+
 - Auto-generate amplihack agents from Agent Framework specs
 - Bidirectional workflow translation
 - Unified observability (amplihack + Agent Framework)

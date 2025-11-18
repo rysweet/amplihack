@@ -241,6 +241,7 @@ The tracker uses the following logic:
 ### Nodes
 
 **Codebase**
+
 - `unique_key` (string, unique): SHA-256 hash of remote_url + branch
 - `remote_url` (string): Normalized Git remote URL
 - `branch` (string): Branch name
@@ -250,6 +251,7 @@ The tracker uses the following logic:
 - `ingestion_count` (integer): Number of times ingested
 
 **Ingestion**
+
 - `ingestion_id` (string, unique): UUID for this ingestion
 - `timestamp` (datetime): When ingestion occurred
 - `commit_sha` (string): Commit SHA at ingestion time

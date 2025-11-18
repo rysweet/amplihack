@@ -8,7 +8,6 @@ scenario:
     Verifies all menu items, keyboard shortcuts, menu states (enabled/disabled),
     and menu-triggered actions work correctly.
   type: electron
-
   level: 2
 
   tags: [electron, menus, keyboard-shortcuts, intermediate]
@@ -113,6 +112,5 @@ scenario:
   cleanup:
     - action: stop_application
       force: false
-
 # Run Command:
 # gadugi-agentic-test run examples/electron/electron-menu-testing.yaml

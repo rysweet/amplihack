@@ -19,7 +19,6 @@ Phase 1 (MVP) Implementation:
 - Fail-open error handling
 """
 
-import asyncio
 import json
 import os
 import re
@@ -125,6 +124,17 @@ class ConsiderationAnalysis:
                 grouped[category] = []
             grouped[category].append(result)
         return grouped
+
+
+@dataclass
+class PowerSteeringRedirect:
+    """Record of a power-steering redirect (blocked session)."""
+
+    redirect_number: int
+    timestamp: str  # ISO format
+    failed_considerations: List[str]  # IDs of failed checks
+    continuation_prompt: str
+    work_summary: Optional[str] = None
 
 
 @dataclass
@@ -420,9 +430,19 @@ class PowerSteeringChecker:
             # 6. Make decision
             if analysis.has_blockers:
                 prompt = self._generate_continuation_prompt(analysis)
+
+                # Save redirect record for session reflection
+                failed_ids = [r.consideration_id for r in analysis.failed_blockers]
+                self._save_redirect(
+                    session_id=session_id,
+                    failed_considerations=failed_ids,
+                    continuation_prompt=prompt,
+                    work_summary=None,  # Could be enhanced to extract work summary
+                )
+
                 return PowerSteeringResult(
                     decision="block",
-                    reasons=[r.consideration_id for r in analysis.failed_blockers],
+                    reasons=failed_ids,
                     continuation_prompt=prompt,
                     summary=None,
                 )
@@ -475,18 +495,23 @@ class PowerSteeringChecker:
         return False
 
     def _validate_path(self, path: Path, allowed_parent: Path) -> bool:
-        """Validate path is within allowed directory (security check).
+        """Validate path is safe to read (permissive for user files).
 
         Args:
             path: Path to validate
-            allowed_parent: Parent directory path must be under
+            allowed_parent: Parent directory path must be under (typically project root)
 
         Returns:
             True if path is safe, False otherwise
 
         Note:
-            Allows paths in project root OR common temp directories (/tmp, /var/tmp, system temp).
-            This enables testing scenarios while maintaining security.
+            Allows paths in:
+            1. Project root (backward compatibility)
+            2. User's home directory (for Claude Code transcripts in ~/.claude/projects/)
+            3. Common temp directories (/tmp, /var/tmp, system temp)
+
+            Security: Power-steering only reads files (read-only operations).
+            Reading user-owned files is safe. No privilege escalation risk.
         """
         import tempfile
 
@@ -498,11 +523,22 @@ class PowerSteeringChecker:
             # Check 1: Path is within allowed parent (project root)
             try:
                 path_resolved.relative_to(parent_resolved)
+                self._log("Path validated: within project root", "DEBUG")
                 return True
             except ValueError:
-                pass  # Not in project root, check temp directories
+                pass  # Not in project root, check other allowed locations
 
-            # Check 2: Path is in common temp directories (for testing)
+            # Check 2: Path is within user's home directory
+            # This allows Claude Code transcript paths like ~/.claude/projects/
+            try:
+                home = Path.home().resolve()
+                path_resolved.relative_to(home)
+                self._log("Path validated: within user home directory", "DEBUG")
+                return True  # In user's home - safe for read-only operations
+            except ValueError:
+                pass  # Not in home directory, check temp directories
+
+            # Check 3: Path is in common temp directories (for testing)
             temp_dirs = [
                 Path("/tmp"),
                 Path("/var/tmp"),
@@ -512,14 +548,21 @@ class PowerSteeringChecker:
             for temp_dir in temp_dirs:
                 try:
                     path_resolved.relative_to(temp_dir.resolve())
+                    self._log(f"Path validated: within temp directory {temp_dir}", "DEBUG")
                     return True  # In temp directory - allow for testing
                 except ValueError:
                     continue
 
-            # Not in allowed locations
+            # Not in any allowed locations
+            self._log(
+                f"Path validation failed: {path_resolved} not in project root, "
+                f"home directory, or temp directories",
+                "WARNING",
+            )
             return False
 
-        except (OSError, RuntimeError):
+        except (OSError, RuntimeError) as e:
+            self._log(f"Path validation error: {e}", "ERROR")
             return False
 
     def _already_ran(self, session_id: str) -> bool:
@@ -547,6 +590,113 @@ class PowerSteeringChecker:
             semaphore.chmod(0o600)  # Owner read/write only for security
         except OSError:
             pass  # Fail-open: Continue even if semaphore creation fails
+
+    def _get_redirect_file(self, session_id: str) -> Path:
+        """Get path to redirects file for a session.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Path to redirects.jsonl file
+        """
+        session_dir = self.runtime_dir / session_id
+        return session_dir / "redirects.jsonl"
+
+    def _load_redirects(self, session_id: str) -> List[PowerSteeringRedirect]:
+        """Load redirect history for a session.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            List of PowerSteeringRedirect objects (empty if none exist)
+        """
+        redirects_file = self._get_redirect_file(session_id)
+
+        if not redirects_file.exists():
+            return []
+
+        redirects = []
+        try:
+            with open(redirects_file) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        redirect = PowerSteeringRedirect(
+                            redirect_number=data["redirect_number"],
+                            timestamp=data["timestamp"],
+                            failed_considerations=data["failed_considerations"],
+                            continuation_prompt=data["continuation_prompt"],
+                            work_summary=data.get("work_summary"),
+                        )
+                        redirects.append(redirect)
+                    except (json.JSONDecodeError, KeyError) as e:
+                        self._log(f"Skipping malformed redirect entry: {e}", "WARNING")
+                        continue
+        except OSError as e:
+            self._log(f"Error loading redirects: {e}", "WARNING")
+            return []
+
+        return redirects
+
+    def _save_redirect(
+        self,
+        session_id: str,
+        failed_considerations: List[str],
+        continuation_prompt: str,
+        work_summary: Optional[str] = None,
+    ) -> None:
+        """Save a redirect record to persistent storage.
+
+        Args:
+            session_id: Session identifier
+            failed_considerations: List of failed consideration IDs
+            continuation_prompt: The prompt shown to user
+            work_summary: Optional summary of work done so far
+        """
+        try:
+            # Load existing redirects to get next number
+            existing = self._load_redirects(session_id)
+            redirect_number = len(existing) + 1
+
+            # Create redirect record
+            redirect = PowerSteeringRedirect(
+                redirect_number=redirect_number,
+                timestamp=datetime.now().isoformat(),
+                failed_considerations=failed_considerations,
+                continuation_prompt=continuation_prompt,
+                work_summary=work_summary,
+            )
+
+            # Save to JSONL file (append-only)
+            redirects_file = self._get_redirect_file(session_id)
+            redirects_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Convert to dict for JSON serialization
+            redirect_dict = {
+                "redirect_number": redirect.redirect_number,
+                "timestamp": redirect.timestamp,
+                "failed_considerations": redirect.failed_considerations,
+                "continuation_prompt": redirect.continuation_prompt,
+                "work_summary": redirect.work_summary,
+            }
+
+            with open(redirects_file, "a") as f:
+                f.write(json.dumps(redirect_dict) + "\n")
+
+            # Set permissions on new file
+            if redirect_number == 1:
+                redirects_file.chmod(0o600)  # Owner read/write only for security
+
+            self._log(f"Saved redirect #{redirect_number} for session {session_id}", "INFO")
+
+        except OSError as e:
+            # Fail-open: Don't block user if we can't save redirect
+            self._log(f"Failed to save redirect: {e}", "ERROR")
 
     def _load_transcript(self, transcript_path: Path) -> List[Dict]:
         """Load transcript from JSONL file with size limits.
@@ -775,8 +925,7 @@ class PowerSteeringChecker:
         # Run checker
         if checker_name == "generic" or checker_func == self._generic_analyzer:
             return checker_func(transcript, session_id, consideration)
-        else:
-            return checker_func(transcript, session_id)
+        return checker_func(transcript, session_id)
 
     # ========================================================================
     # Phase 1: Top 5 Critical Checkers

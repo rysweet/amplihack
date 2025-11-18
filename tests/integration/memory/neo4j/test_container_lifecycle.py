@@ -446,7 +446,9 @@ class TestErrorScenarios:
         manager = ContainerManager()
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=1, stderr="Error: error while mounting volume")
+            mock_run.return_value = MagicMock(
+                returncode=1, stderr="Error: error while mounting volume"
+            )
 
             with pytest.raises(VolumeError) as exc_info:
                 manager.start_container()
@@ -511,6 +513,7 @@ class TestPortConflictResolution:
             # Verify container is actually running
             status = manager.get_status()
             from amplihack.memory.neo4j.lifecycle import ContainerStatus
+
             assert status == ContainerStatus.RUNNING
 
         finally:
@@ -533,7 +536,7 @@ class TestPortConflictResolution:
             ["docker", "port", manager.config.container_name],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
 
         assert result.returncode == 0
@@ -567,9 +570,9 @@ class TestConcurrentContainerCreation:
         try:
             manager.stop()
             import subprocess
+
             subprocess.run(
-                ["docker", "rm", "-f", manager.config.container_name],
-                capture_output=True
+                ["docker", "rm", "-f", manager.config.container_name], capture_output=True
             )
         except Exception:
             pass
@@ -601,6 +604,7 @@ class TestConcurrentContainerCreation:
         # Verify only one container exists
         status = manager.get_status()
         from amplihack.memory.neo4j.lifecycle import ContainerStatus
+
         assert status == ContainerStatus.RUNNING
 
         # Cleanup
@@ -618,8 +622,7 @@ class TestConcurrentContainerCreation:
         try:
             manager.stop()
             subprocess.run(
-                ["docker", "rm", "-f", manager.config.container_name],
-                capture_output=True
+                ["docker", "rm", "-f", manager.config.container_name], capture_output=True
             )
         except Exception:
             pass

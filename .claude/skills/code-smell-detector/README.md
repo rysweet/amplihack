@@ -5,6 +5,7 @@ A Claude Code Skill that identifies anti-patterns violating amplihack philosophy
 ## Quick Start
 
 Use this skill when:
+
 - Reviewing code for quality issues
 - Refactoring complex or tightly-coupled code
 - Ensuring new modules follow amplihack philosophy
@@ -22,6 +23,7 @@ Use this skill when:
 ## How It Works
 
 The skill analyzes your code and:
+
 1. Identifies specific violations of amplihack philosophy
 2. Explains WHY each pattern is problematic
 3. Shows BEFORE and AFTER code examples
@@ -31,7 +33,9 @@ The skill analyzes your code and:
 ## Examples
 
 ### Over-Abstraction
+
 **Bad Pattern**:
+
 ```python
 class DataProcessor(ABC):
     @abstractmethod
@@ -44,6 +48,7 @@ class SimpleDataProcessor(DataProcessor):
 ```
 
 **Good Pattern**:
+
 ```python
 def process_data(data):
     """Process data by doubling it."""
@@ -51,7 +56,9 @@ def process_data(data):
 ```
 
 ### Complex Inheritance
+
 **Bad Pattern**:
+
 ```python
 class Entity(Base):
     pass
@@ -67,6 +74,7 @@ class User(AuditableEntity):
 ```
 
 **Good Pattern**:
+
 ```python
 class User:
     def __init__(self, storage, timestamp_service, audit_log):
@@ -76,7 +84,9 @@ class User:
 ```
 
 ### Large Functions
+
 **Bad Pattern**:
+
 ```python
 def process_user(user_dict, validate=True, save=True, notify=True, log=True):
     if validate:
@@ -91,6 +101,7 @@ def process_user(user_dict, validate=True, save=True, notify=True, log=True):
 ```
 
 **Good Pattern**:
+
 ```python
 def validate_user(user_dict):
     """Validate user data."""
@@ -110,7 +121,9 @@ def process_user(user_dict):
 ```
 
 ### Tight Coupling
+
 **Bad Pattern**:
+
 ```python
 class UserService:
     def create_user(self, name, email):
@@ -122,6 +135,7 @@ class UserService:
 ```
 
 **Good Pattern**:
+
 ```python
 class UserService:
     def __init__(self, db, email_service):
@@ -135,7 +149,9 @@ class UserService:
 ```
 
 ### Missing `__all__`
+
 **Bad Pattern**:
+
 ```python
 # module/__init__.py
 from .core import process_data, _internal_helper
@@ -144,6 +160,7 @@ from .utils import validate_input, LOG_LEVEL
 ```
 
 **Good Pattern**:
+
 ```python
 # module/__init__.py
 from .core import process_data
@@ -165,6 +182,7 @@ This skill ensures code follows amplihack's key principles:
 ## Philosophy Alignment
 
 Each code smell detected:
+
 - Violates one or more amplihack principles
 - Creates unnecessary complexity
 - Reduces testability or maintainability
@@ -182,17 +200,18 @@ When using this skill:
 
 ## Common Fixes Summary
 
-| Smell | Root Cause | Quick Fix |
-|-------|-----------|-----------|
-| Over-Abstraction | "Future-proofing" | Delete the abstraction layer |
-| Complex Inheritance | Code reuse attempt | Use composition instead |
-| Large Functions | Mixed concerns | Extract helper functions |
-| Tight Coupling | Hidden dependencies | Use dependency injection |
-| Missing `__all__` | Unclear API | Explicitly define exports |
+| Smell               | Root Cause          | Quick Fix                    |
+| ------------------- | ------------------- | ---------------------------- |
+| Over-Abstraction    | "Future-proofing"   | Delete the abstraction layer |
+| Complex Inheritance | Code reuse attempt  | Use composition instead      |
+| Large Functions     | Mixed concerns      | Extract helper functions     |
+| Tight Coupling      | Hidden dependencies | Use dependency injection     |
+| Missing `__all__`   | Unclear API         | Explicitly define exports    |
 
 ## Integration
 
 Use this skill during:
+
 - **Code Review**: Catch issues before merge
 - **Refactoring**: Identify improvement opportunities
 - **Design Review**: Ensure architecture aligns with philosophy

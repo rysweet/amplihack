@@ -303,18 +303,19 @@ Analyze the populist party's governing dilemma and predict its likely trajectory
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Coalition Formation | 50 | 35 |
-| 2. Democratic Backsliding | 50 | 35 |
-| 3. Social Movement | 50 | 35 |
-| 4. Ethnic Conflict | 50 | 35 |
-| 5. Populist Governance | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                  | Max Score | Passing Score |
+| ------------------------- | --------- | ------------- |
+| 1. Coalition Formation    | 50        | 35            |
+| 2. Democratic Backsliding | 50        | 35            |
+| 3. Social Movement        | 50        | 35            |
+| 4. Ethnic Conflict        | 50        | 35            |
+| 5. Populist Governance    | 50        | 35            |
+| **Total**                 | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate political scientist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -322,6 +323,7 @@ To demonstrate political scientist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of political science frameworks
 2. **Analytical Depth** (0-10): Thoroughness and sophistication
 3. **Insight Specificity** (0-10): Clear, actionable insights and predictions
@@ -331,6 +333,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies multiple relevant frameworks accurately
 - Considers competing perspectives and mechanisms
 - Makes specific, probabilistic predictions with causal reasoning
@@ -340,6 +343,7 @@ Each scenario is scored on:
 - Identifies non-obvious strategic dynamics
 
 **Good (35-44 points)**:
+
 - Applies key frameworks correctly
 - Considers main mechanisms and trade-offs
 - Makes reasonable predictions with justification
@@ -348,6 +352,7 @@ Each scenario is scored on:
 - Provides useful insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies political science frameworks
 - Ignores important dynamics or mechanisms
 - Vague or incorrect predictions
@@ -360,12 +365,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -383,6 +390,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as political events unfold
 - Update expected elements as political science research evolves
 - Refine scoring criteria based on analysis quality patterns

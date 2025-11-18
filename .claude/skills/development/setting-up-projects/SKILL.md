@@ -10,6 +10,7 @@ You are activating project setup automation. Your role is to establish best prac
 ## When to Activate
 
 This skill activates when:
+
 - User is creating a new project
 - Project lacks pre-commit hooks configuration
 - Missing essential config files (.gitignore, .editorconfig, etc.)
@@ -29,6 +30,7 @@ This skill activates when:
 ### Progressive Enhancement
 
 Start with essentials, add more as needed:
+
 1. Core configs (Git, editor, dependencies)
 2. Quality tooling (linting, formatting)
 3. Pre-commit hooks (automation)
@@ -39,12 +41,14 @@ Start with essentials, add more as needed:
 ### 1. Assess Current State
 
 Check what exists:
+
 ```bash
 ls -la  # Check for config files
 git status  # Check Git state
 ```
 
 Identify gaps:
+
 - [ ] `.gitignore` present?
 - [ ] `.editorconfig` for consistency?
 - [ ] Package manager config (package.json, requirements.txt, etc.)?
@@ -58,15 +62,17 @@ Identify gaps:
 #### .gitignore
 
 Generate appropriate ignore patterns:
-- Language-specific (node_modules, __pycache__, etc.)
+
+- Language-specific (node_modules, **pycache**, etc.)
 - IDE files (.vscode, .idea, etc.)
 - OS files (.DS_Store, Thumbs.db, etc.)
 - Environment files (.env, .env.local)
-- Build artifacts (dist/, build/, *.pyc)
+- Build artifacts (dist/, build/, \*.pyc)
 
 #### .editorconfig
 
 Ensure consistent formatting across editors:
+
 ```ini
 root = true
 
@@ -90,10 +96,12 @@ trim_trailing_whitespace = false
 #### Python Projects
 
 **Linting & Formatting**:
+
 - **Ruff**: Fast all-in-one tool (replaces black, flake8, isort)
 - **Pyright** or **Mypy**: Type checking
 
 **Configuration** (pyproject.toml):
+
 ```toml
 [tool.ruff]
 line-length = 100
@@ -109,10 +117,12 @@ typeCheckingMode = "basic"
 #### JavaScript/TypeScript Projects
 
 **Linting & Formatting**:
+
 - **Prettier**: Code formatting
 - **ESLint**: Linting
 
 **Configuration**:
+
 ```json
 // .prettierrc
 {
@@ -146,6 +156,7 @@ pre-commit install
 #### Configuration (.pre-commit-config.yaml)
 
 **Python Project**:
+
 ```yaml
 repos:
   # Universal checks
@@ -158,7 +169,7 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: check-added-large-files
-        args: ['--maxkb=500']
+        args: ["--maxkb=500"]
 
   # Python: Ruff (linting + formatting)
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -179,10 +190,11 @@ repos:
     rev: v1.4.0
     hooks:
       - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
+        args: ["--baseline", ".secrets.baseline"]
 ```
 
 **JavaScript/TypeScript Project**:
+
 ```yaml
 repos:
   # Universal checks
@@ -233,6 +245,7 @@ pre-commit run --all-files
 ### 6. Document Setup
 
 Create or update README.md with:
+
 - Setup instructions
 - Development workflow
 - Quality tooling in use
@@ -244,11 +257,13 @@ Create or update README.md with:
 ### Python
 
 **Essential Files**:
+
 - `requirements.txt` or `pyproject.toml`
 - `.python-version` (for version pinning)
 - `pytest.ini` or `pyproject.toml` (test config)
 
 **Virtual Environment**:
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
@@ -258,11 +273,13 @@ pip install -r requirements.txt
 ### JavaScript/TypeScript
 
 **Essential Files**:
+
 - `package.json`
 - `tsconfig.json` (TypeScript)
 - `.nvmrc` (Node version)
 
 **Install Dependencies**:
+
 ```bash
 npm install
 # or
@@ -272,11 +289,13 @@ yarn install
 ### Rust
 
 **Essential Files**:
+
 - `Cargo.toml`
 - `rustfmt.toml`
 - `clippy.toml`
 
 **Setup**:
+
 ```bash
 cargo build
 cargo fmt
@@ -286,10 +305,12 @@ cargo clippy
 ### Go
 
 **Essential Files**:
+
 - `go.mod`
 - `.golangci.yml`
 
 **Setup**:
+
 ```bash
 go mod download
 go fmt ./...
@@ -301,6 +322,7 @@ go vet ./...
 ### Full Python Project Setup
 
 Create comprehensive setup:
+
 ```
 project/
 ├── .gitignore
@@ -338,11 +360,13 @@ project/
 ## Integration Points
 
 ### Invokes
+
 - **Builder Agent**: For code generation
 - **Templates**: Language-specific boilerplate
 - **Pre-commit Setup**: See `Specs/PreCommitHooks.md`
 
 ### References
+
 - **Project Structure**: `Specs/ProjectStructure.md`
 - **Best Practices**: Language-specific guides
 - **Templates**: `.claude/templates/`
@@ -352,6 +376,7 @@ project/
 ### Always Recommend
 
 These are essential for all projects:
+
 1. `.gitignore` - Prevent committing unwanted files
 2. `.editorconfig` - Consistent formatting
 3. Pre-commit hooks - Automated quality
@@ -360,6 +385,7 @@ These are essential for all projects:
 ### Recommend for Teams
 
 When multiple developers:
+
 1. Code formatting (Prettier, Black, etc.)
 2. Linting (ESLint, Ruff, etc.)
 3. Type checking (TypeScript, Mypy, etc.)
@@ -368,6 +394,7 @@ When multiple developers:
 ### Recommend for Production
 
 When shipping to users:
+
 1. Security scanning (detect-secrets, etc.)
 2. Dependency checking (Dependabot, etc.)
 3. Test coverage tracking
@@ -395,24 +422,26 @@ I'll create:
 
 Creating:
 ```
+
 api-project/
-├── .gitignore              # Ignore patterns
-├── .editorconfig           # Editor consistency
+├── .gitignore # Ignore patterns
+├── .editorconfig # Editor consistency
 ├── .pre-commit-config.yaml # Pre-commit hooks
-├── pyproject.toml          # Python config + dependencies
-├── README.md               # Documentation
-├── requirements.txt        # Production dependencies
-├── requirements-dev.txt    # Development dependencies
+├── pyproject.toml # Python config + dependencies
+├── README.md # Documentation
+├── requirements.txt # Production dependencies
+├── requirements-dev.txt # Development dependencies
 ├── src/
-│   └── api/
-│       ├── __init__.py
-│       ├── main.py         # FastAPI app entry
-│       └── routers/        # API routes
+│ └── api/
+│ ├── **init**.py
+│ ├── main.py # FastAPI app entry
+│ └── routers/ # API routes
 ├── tests/
-│   ├── __init__.py
-│   └── test_main.py
-└── .env.example            # Environment template
-```
+│ ├── **init**.py
+│ └── test_main.py
+└── .env.example # Environment template
+
+````
 
 ## Quality Tooling
 
@@ -448,7 +477,7 @@ pre-commit install
 
 # Run initial check
 pre-commit run --all-files
-```
+````
 
 ## Next Steps
 
@@ -458,6 +487,7 @@ pre-commit run --all-files
 4. [ ] Set up CI/CD (GitHub Actions recommended)
 
 Ready to create these files?
+
 ```
 
 ## Quality Checklist
@@ -519,3 +549,4 @@ Good project setup:
 ---
 
 Remember: Time spent on setup saves exponentially more time fixing avoidable issues later. Start with quality automation from day one.
+```

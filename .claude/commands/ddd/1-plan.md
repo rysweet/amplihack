@@ -182,11 +182,11 @@ Track planning tasks:
 
 Consider spawning agents for help:
 
-**zen-architect** - For complex architectural decisions:
+**philosophy-guardian** - For philosophy compliance validation:
 
 ```
-Task zen-architect: "Design approach for [feature], considering
-IMPLEMENTATION_PHILOSOPHY and MODULAR_DESIGN_PHILOSOPHY"
+Task philosophy-guardian: "Validate design approach for [feature], ensuring
+compliance with IMPLEMENTATION_PHILOSOPHY and MODULAR_DESIGN_PHILOSOPHY"
 ```
 
 **Explore agent** - For codebase reconnaissance:

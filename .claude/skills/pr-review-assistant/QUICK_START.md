@@ -3,6 +3,7 @@
 ## What is This Skill?
 
 A Claude Code skill that reviews pull requests against amplihack's core philosophy:
+
 - **Ruthless Simplicity**: Every line must justify its existence
 - **Modular Architecture**: Clear contracts and boundaries (Brick & Studs)
 - **Zero-BS Implementation**: Production-ready code, no shortcuts
@@ -30,6 +31,7 @@ Focus on:
 ```
 
 Claude will:
+
 1. Analyze PR changes
 2. Check philosophy alignment
 3. Identify issues with specific file:line references
@@ -44,6 +46,7 @@ for ruthless simplicity and over-engineering.
 ```
 
 Claude will:
+
 1. Read the file
 2. Assess against philosophy
 3. Identify issues
@@ -58,6 +61,7 @@ follows brick design principles.
 ```
 
 Claude will:
+
 1. Check public interface clarity
 2. Verify single responsibility
 3. Assess module boundaries
@@ -78,6 +82,7 @@ Claude will:
 ```
 
 **Common Issues Found:**
+
 - Base classes for 2-3 implementations (unnecessary)
 - Configuration frameworks that aren't needed
 - Factory patterns for single implementations
@@ -96,6 +101,7 @@ Claude will:
 ```
 
 **Common Issues Found:**
+
 - Unclear what's public vs private
 - Dependencies not documented
 - Modules doing too many things
@@ -115,6 +121,7 @@ Claude will:
 ```
 
 **Common Issues Found:**
+
 - TODO comments in code
 - Functions that return None on error
 - Caught exceptions with no context
@@ -133,6 +140,7 @@ Claude will:
 ```
 
 **Common Issues Found:**
+
 - No tests for new public functions
 - Edge cases not covered
 - Error paths not tested
@@ -151,6 +159,7 @@ Claude will:
 ```
 
 **Common Issues Found:**
+
 - Missing docstrings
 - No type hints
 - Vague error documentation
@@ -253,6 +262,7 @@ Before merge, address these items:
 ## Common Review Scenarios
 
 ### Scenario 1: Over-Engineering
+
 ```
 DETECTED: Unnecessary abstraction
 - Abstract base class for 2 implementations
@@ -264,6 +274,7 @@ SUGGESTION: Use simple direct classes
 ```
 
 ### Scenario 2: Missing Tests
+
 ```
 DETECTED: New public function without tests
 - check_permission(user, resource) → bool
@@ -278,6 +289,7 @@ ACTION: Add tests/test_permissions.py
 ```
 
 ### Scenario 3: TODOs in Code
+
 ```
 DETECTED: TODO comment at line 34
 "# TODO: Add caching"
@@ -291,6 +303,7 @@ Option C: Remove the comment and the commented-out code
 ```
 
 ### Scenario 4: No Module Spec
+
 ```
 DETECTED: New module without specification
 

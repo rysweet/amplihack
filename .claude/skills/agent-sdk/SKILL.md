@@ -31,6 +31,7 @@ The **Claude Agent SDK** is Anthropic's official framework for building producti
 ### When to Use the Agent SDK
 
 **Use the Agent SDK when:**
+
 - Building autonomous agents that need to use tools iteratively
 - Implementing agentic workflows with verification and iteration
 - Creating subagent hierarchies for complex task decomposition
@@ -38,6 +39,7 @@ The **Claude Agent SDK** is Anthropic's official framework for building producti
 - Need production patterns like hooks, permissions, and context management
 
 **Don't use when:**
+
 - Simple single-turn API calls suffice (use Messages API directly)
 - No tool use required (standard chat)
 - Custom agent loop logic needed (SDK loop is opinionated)
@@ -54,11 +56,13 @@ Both implementations share the same core concepts and API patterns.
 ### Installation
 
 **Python:**
+
 ```bash
 pip install claude-agents
 ```
 
 **TypeScript:**
+
 ```bash
 npm install @anthropics/agent-sdk
 ```
@@ -66,11 +70,13 @@ npm install @anthropics/agent-sdk
 ### Authentication
 
 Set your API key as an environment variable:
+
 ```bash
 export ANTHROPIC_API_KEY="your-api-key-here"
 ```
 
 Or pass it explicitly in code:
+
 ```python
 from claude_agents import Agent
 
@@ -80,6 +86,7 @@ agent = Agent(api_key="your-api-key-here")
 ### Basic Agent Creation
 
 **Python Example:**
+
 ```python
 from claude_agents import Agent
 
@@ -95,12 +102,13 @@ print(result.response)
 ```
 
 **TypeScript Example:**
+
 ```typescript
-import { Agent } from '@anthropics/agent-sdk';
+import { Agent } from "@anthropics/agent-sdk";
 
 const agent = new Agent({
   model: "claude-sonnet-4-5-20250929",
-  system: "You are a helpful assistant focused on accuracy."
+  system: "You are a helpful assistant focused on accuracy.",
 });
 
 const result = await agent.run("What is 2+2?");
@@ -112,6 +120,7 @@ console.log(result.response);
 Tools extend agent capabilities with external functions:
 
 **Python:**
+
 ```python
 from claude_agents import Agent
 from claude_agents.tools import Tool
@@ -157,6 +166,7 @@ The SDK manages a complete agent loop automatically:
 5. **Output**: Final response with full conversation history
 
 **Key Properties:**
+
 - Automatic iteration until task completion or max turns
 - Built-in error handling and retry logic
 - Context management with automatic compaction options
@@ -167,12 +177,14 @@ The SDK manages a complete agent loop automatically:
 The SDK manages conversation context automatically:
 
 **Context Components:**
+
 - System prompt (persistent instructions)
 - Conversation history (user messages + assistant responses)
 - Tool definitions (available capabilities)
 - Tool results (execution outputs)
 
 **Subagents for Context Isolation:**
+
 ```python
 # Spawn subagent with isolated context
 with agent.subagent(
@@ -192,6 +204,7 @@ When approaching token limits, the SDK can automatically summarize earlier conve
 Tools are the agent's interface to external capabilities.
 
 **Built-in Tools:**
+
 - `bash`: Execute shell commands
 - `read_file`: Read file contents
 - `write_file`: Write data to files
@@ -200,6 +213,7 @@ Tools are the agent's interface to external capabilities.
 - `grep`: Content search
 
 **Custom Tool Schema:**
+
 ```python
 Tool(
     name="tool_name",              # Unique identifier
@@ -215,6 +229,7 @@ Tool(
 
 **MCP Integration:**
 The SDK can use Model Context Protocol (MCP) servers as tool providers:
+
 ```python
 from claude_agents import Agent
 from claude_agents.mcp import MCPClient
@@ -233,6 +248,7 @@ agent = Agent(
 Control which tools agents can access:
 
 **Allowed Tools (Whitelist):**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -242,6 +258,7 @@ agent = Agent(
 ```
 
 **Disallowed Tools (Blacklist):**
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -251,6 +268,7 @@ agent = Agent(
 ```
 
 **Permission Modes:**
+
 - `"strict"`: Agent MUST get permission before tool use (via hooks)
 - `"permissive"`: Agent can use allowed tools freely (default)
 
@@ -259,12 +277,14 @@ agent = Agent(
 Hooks provide lifecycle event interception for observability, validation, and control.
 
 **Available Hooks:**
+
 - `PreToolUseHook`: Before tool execution (validation, logging, blocking)
 - `PostToolUseHook`: After tool execution (logging, result modification)
 - `PreSubagentStartHook`: Before subagent spawns (context setup)
 - `PostSubagentStopHook`: After subagent completes (result processing)
 
 **Basic Hook Example:**
+
 ```python
 from claude_agents.hooks import PreToolUseHook
 
@@ -281,6 +301,7 @@ agent = Agent(
 ```
 
 **Blocking Tool Use:**
+
 ```python
 class ValidationHook(PreToolUseHook):
     async def execute(self, context):
@@ -292,6 +313,7 @@ class ValidationHook(PreToolUseHook):
 ## Common Patterns
 
 ### File Operations
+
 ```python
 from claude_agents import Agent
 
@@ -306,6 +328,7 @@ result = agent.run(
 ```
 
 ### Code Execution
+
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
@@ -318,6 +341,7 @@ result = agent.run(
 ```
 
 ### Agentic Search (Gather-Act Pattern)
+
 ```python
 # Agent automatically gathers information iteratively
 search_agent = Agent(
@@ -331,6 +355,7 @@ result = search_agent.run(
 ```
 
 ### Subagent Delegation
+
 ```python
 main_agent = Agent(model="claude-sonnet-4-5-20250929")
 
@@ -346,6 +371,7 @@ main_agent.run(f"Based on this analysis: {analysis.response}, what actions shoul
 ```
 
 ### Error Handling
+
 ```python
 from claude_agents import Agent, AgentError
 
@@ -360,6 +386,7 @@ except AgentError as e:
 ```
 
 ### Verification Pattern
+
 ```python
 # Agent can self-verify results
 agent = Agent(
@@ -378,6 +405,7 @@ result = agent.run(
 ### When to Read Supporting Files
 
 **reference.md** - Read when you need:
+
 - Deep understanding of agent loop internals
 - Complete API reference for all SDK features
 - Detailed tool schema specifications
@@ -386,6 +414,7 @@ result = agent.run(
 - Skills system implementation details
 
 **examples.md** - Read when you need:
+
 - Working code examples for specific patterns
 - Tool implementation templates
 - Hook implementation examples
@@ -393,6 +422,7 @@ result = agent.run(
 - Integration examples with existing systems
 
 **patterns.md** - Read when you need:
+
 - Production-ready architectural patterns
 - Agent loop optimization strategies (Gather, Act, Verify, Iterate)
 - Context management best practices
@@ -401,6 +431,7 @@ result = agent.run(
 - Performance optimization techniques
 
 **drift-detection.md** - Read when you need:
+
 - Understanding how this skill stays current
 - Implementing drift detection for other skills
 - Update workflow and validation processes
@@ -411,6 +442,7 @@ result = agent.run(
 The Agent SDK skill integrates with the Amplihack framework:
 
 **Creating Amplihack Agents with SDK:**
+
 ```python
 # In .claude/agents/amplihack/specialized/my_agent.md
 # Use Agent SDK patterns for tool-using agents
@@ -427,6 +459,7 @@ def create_specialized_agent():
 ```
 
 **Using MCP Servers in Amplihack:**
+
 ```python
 # Integrate MCP tools into Amplihack workflow
 from claude_agents.mcp import MCPClient
@@ -443,6 +476,7 @@ result = agent.run("Create a GitHub issue for the bug we just found")
 ```
 
 **Hooks for Amplihack Observability:**
+
 ```python
 # Log all agent actions to Amplihack runtime logs
 class AmplihackLoggingHook(PreToolUseHook):
@@ -458,6 +492,7 @@ class AmplihackLoggingHook(PreToolUseHook):
 ## Quick Reference
 
 ### Essential Commands
+
 ```python
 # Basic agent
 agent = Agent(model="claude-sonnet-4-5-20250929")
@@ -483,6 +518,7 @@ agent = Agent(model="...", mcp_clients=[mcp])
 ```
 
 ### Common Tool Patterns
+
 ```python
 # File operations
 tools=["read_file", "write_file", "glob"]
@@ -495,6 +531,7 @@ tools=["bash", "read_file", "write_file", "edit_file", "glob", "grep"]
 ```
 
 ### Token Budget Recommendations
+
 - Simple tasks: 4K-8K tokens
 - Complex tasks: 16K-32K tokens
 - Research/analysis: 64K-128K tokens

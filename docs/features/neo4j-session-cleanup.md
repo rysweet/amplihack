@@ -265,11 +265,11 @@ Total time: ~9.25s (3 × 4.0s + 0.5s + 0.75s)
 
 The feature uses carefully tuned timeouts for optimal UX:
 
-| Operation | Timeout | Purpose |
-|-----------|---------|---------|
-| HTTP request | 4.0s | Connection count query (per attempt) |
-| User prompt | 10.0s | Enough time to read and respond |
-| Shutdown execution | 30.0s | Container stop operation (via docker) |
+| Operation          | Timeout | Purpose                               |
+| ------------------ | ------- | ------------------------------------- |
+| HTTP request       | 4.0s    | Connection count query (per attempt)  |
+| User prompt        | 10.0s   | Enough time to read and respond       |
+| Shutdown execution | 30.0s   | Container stop operation (via docker) |
 
 **Note**: HTTP timeout is per attempt. With 3 attempts and backoff, total worst-case connection check time is ~9.25 seconds.
 
@@ -349,6 +349,7 @@ raise ValueError("Database error: password='secret123'\nConnection failed")
 **Cause:** Neo4j container is not running or HTTP API is unavailable
 
 **Solution:**
+
 ```bash
 # Check if container is running
 docker ps | grep neo4j-amplihack
@@ -365,6 +366,7 @@ curl -u neo4j:amplihack http://localhost:7474/db/data/
 **Cause:** Neo4j is running but responding slowly (overloaded or starting up)
 
 **Solution:**
+
 ```bash
 # Check container status
 docker ps | grep neo4j-amplihack
@@ -380,6 +382,7 @@ docker logs neo4j-amplihack
 **Cause:** Preference file doesn't exist in project or home directory
 
 **Solution:**
+
 ```bash
 # Option 1: Create project-local preferences
 mkdir -p .claude/context
@@ -407,6 +410,7 @@ EOF
 **Not an error:** This is intentional safe behavior to avoid disrupting other users
 
 **To verify:**
+
 ```bash
 # Check all processes using Neo4j
 lsof -i :7474 -i :7687
@@ -538,11 +542,11 @@ Tip: Set preference with 'always' or 'never' to avoid future prompts
 
 **Carefully tuned for user experience:**
 
-| Phase | Timeout | Impact |
-|-------|---------|--------|
-| Connection check | 2s | Non-blocking, fails fast |
-| User prompt | 10s | Comfortable response time |
-| Container stop | 30s | Docker operation (handled by container manager) |
+| Phase            | Timeout | Impact                                          |
+| ---------------- | ------- | ----------------------------------------------- |
+| Connection check | 2s      | Non-blocking, fails fast                        |
+| User prompt      | 10s     | Comfortable response time                       |
+| Container stop   | 30s     | Docker operation (handled by container manager) |
 
 **Total worst-case delay:** ~12 seconds (2s + 10s) before session exit completes
 

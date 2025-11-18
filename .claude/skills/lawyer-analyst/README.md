@@ -15,6 +15,7 @@ This skill combines contract law, intellectual property, privacy and data protec
 Analyzes contracts, agreements, and terms of service to identify obligations, liabilities, and risks. Evaluates contract formation, performance, breach, and remedies.
 
 **Key Elements:**
+
 - **Essential terms** - Offer, acceptance, consideration, capacity, legality
 - **Performance obligations** - What each party must do
 - **Payment and compensation** - Amounts, timing, conditions
@@ -27,6 +28,7 @@ Analyzes contracts, agreements, and terms of service to identify obligations, li
 Evaluates IP rights - patents, copyrights, trademarks, trade secrets - and strategies for protection, licensing, and enforcement.
 
 **IP Categories:**
+
 - **Patents** - Inventions, processes (20 years from filing)
 - **Copyrights** - Creative works, software (life + 70 years)
 - **Trademarks** - Brand names, logos (renewable indefinitely)
@@ -38,6 +40,7 @@ Evaluates IP rights - patents, copyrights, trademarks, trade secrets - and strat
 Analyzes compliance with data protection laws (GDPR, CCPA, HIPAA) and privacy frameworks. Addresses data collection, processing, storage, transfer, and individual rights.
 
 **Key Requirements:**
+
 - **Lawful basis** - Consent, contract, legitimate interest
 - **Data minimization** - Collect only what's necessary
 - **Purpose limitation** - Use only for stated purposes
@@ -51,6 +54,7 @@ Analyzes compliance with data protection laws (GDPR, CCPA, HIPAA) and privacy fr
 Identifies applicable regulations and ensures compliance across industries and jurisdictions. Regulations vary by sector (healthcare, finance, telecommunications) and geography.
 
 **Common Regulatory Frameworks:**
+
 - **GDPR** - EU data protection regulation
 - **CCPA/CPRA** - California privacy laws
 - **HIPAA** - US healthcare privacy
@@ -65,6 +69,7 @@ Identifies applicable regulations and ensures compliance across industries and j
 Evaluates legal exposure and liability risks. Identifies potential lawsuits, regulatory enforcement, and financial consequences of legal violations.
 
 **Liability Types:**
+
 - **Contract liability** - Breach of contractual obligations
 - **Tort liability** - Negligence, defamation, fraud
 - **Product liability** - Defective products causing harm
@@ -77,6 +82,7 @@ Evaluates legal exposure and liability risks. Identifies potential lawsuits, reg
 Drafts and analyzes user agreements, privacy policies, and acceptable use policies that govern platform and service usage.
 
 **Key Components:**
+
 - **User obligations** - What users can and cannot do
 - **Service limitations** - Disclaimers, availability, changes
 - **Liability limitations** - Damage caps, exclusions
@@ -111,6 +117,7 @@ Develop content policies that balance free expression with legal obligations (Se
 ### Method 1: IRAC Legal Analysis
 
 Structure legal reasoning using IRAC framework:
+
 1. **Issue**: What is the legal question?
 2. **Rule**: What law, statute, or precedent applies?
 3. **Application**: How does the rule apply to the facts?
@@ -119,6 +126,7 @@ Structure legal reasoning using IRAC framework:
 ### Method 2: Contract Risk Spotting
 
 Identify contractual risks systematically:
+
 1. Read entire agreement carefully
 2. Flag undefined terms and ambiguities
 3. Identify one-sided or unusual provisions
@@ -130,6 +138,7 @@ Identify contractual risks systematically:
 ### Method 3: Regulatory Compliance Mapping
 
 Ensure regulatory coverage:
+
 1. Identify industry sector and geography
 2. List applicable regulations (federal, state, international)
 3. Map regulatory requirements to business practices
@@ -140,6 +149,7 @@ Ensure regulatory coverage:
 ### Method 4: IP Clearance and FTO Analysis
 
 Ensure freedom to operate without infringement:
+
 1. Identify relevant IP (patents, trademarks, copyrights)
 2. Search existing IP registrations and applications
 3. Assess risk of infringement
@@ -150,6 +160,7 @@ Ensure freedom to operate without infringement:
 ### Method 5: Privacy Impact Assessment (PIA)
 
 Evaluate data protection compliance:
+
 1. Describe data processing activities
 2. Identify legal basis for processing
 3. Assess necessity and proportionality
@@ -200,6 +211,7 @@ Evaluate data protection compliance:
 ## Best Practices
 
 **Do:**
+
 - Get legal advice from licensed attorneys for important matters
 - Document legal analysis and decisions
 - Keep current on changing laws and regulations
@@ -210,6 +222,7 @@ Evaluate data protection compliance:
 - Consider worst-case scenarios and liability
 
 **Don't:**
+
 - Give legal advice if you're not a licensed attorney
 - Assume laws are the same across jurisdictions
 - Copy terms from other companies without understanding them

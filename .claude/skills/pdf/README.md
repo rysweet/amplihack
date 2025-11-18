@@ -36,6 +36,7 @@ The PDF skill follows amplihack's brick philosophy:
 3. Use the skill in Claude Code conversations
 
 Example conversation:
+
 ```
 User: Extract all tables from this sales report PDF and save to Excel
 Claude: [Uses PDF skill to extract tables with pdfplumber and saves to .xlsx]
@@ -54,12 +55,14 @@ Claude: [Uses PDF skill to extract tables with pdfplumber and saves to .xlsx]
 The PDF skill has minimal required dependencies and several optional ones:
 
 **Required (Core functionality):**
+
 - pypdf: PDF manipulation
 - pdfplumber: Text and table extraction
 - reportlab: PDF creation
 - pandas: Data manipulation
 
 **Optional (Enhanced functionality):**
+
 - pytesseract: OCR for scanned PDFs
 - pdf2image: PDF to image conversion
 - poppler-utils: Command-line PDF tools
@@ -110,21 +113,25 @@ This integration follows amplihack's core principles:
 ## Troubleshooting
 
 **Skill not recognized:**
+
 1. Verify SKILL.md exists in this directory
 2. Check YAML frontmatter is valid
 3. Restart Claude Code session
 
 **ImportError for dependencies:**
+
 1. Run verification script: `python ../common/verification/verify_skill.py pdf`
 2. Install missing dependencies from DEPENDENCIES.md
 3. Re-run tests to confirm
 
 **OCR not working:**
+
 1. Install tesseract engine (system package)
 2. Install pytesseract Python package
 3. Verify: `tesseract --version`
 
 **Table extraction poor quality:**
+
 1. Try different pages or PDFs
 2. Check if PDF is scanned (requires OCR first)
 3. Consider manual extraction for complex layouts

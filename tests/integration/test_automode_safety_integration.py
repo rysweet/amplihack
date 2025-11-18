@@ -45,7 +45,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
         - No prompt transformation
         """
         # Setup: Mock clean git repo
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse (is repo)
                 MagicMock(returncode=0, stdout=""),  # git status (clean)
@@ -65,7 +65,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
             copy_strategy = strategy_manager.determine_target(
                 original_target=self.test_dir / ".claude",
                 has_conflicts=conflict_result.has_conflicts,
-                conflicting_files=conflict_result.conflicting_files
+                conflicting_files=conflict_result.conflicting_files,
             )
 
             # Verify: Use original target
@@ -82,7 +82,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
             transformed_prompt = transformer.transform_prompt(
                 original_prompt=original_prompt,
                 target_directory=self.test_dir,
-                used_temp=copy_strategy.used_temp
+                used_temp=copy_strategy.used_temp,
             )
 
             # Verify: Prompt unchanged
@@ -100,7 +100,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
         # Setup: Mock git repo with uncommitted .claude/ changes
         git_status_output = " M .claude/tools/amplihack/hooks/stop.py\n"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -113,15 +113,17 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
             # Verify: Conflicts detected
             self.assertTrue(conflict_result.has_conflicts)
             self.assertTrue(conflict_result.is_git_repo)
-            self.assertIn(".claude/tools/amplihack/hooks/stop.py", conflict_result.conflicting_files)
+            self.assertIn(
+                ".claude/tools/amplihack/hooks/stop.py", conflict_result.conflicting_files
+            )
 
         # Execute: Determine copy target (outside mock context)
-        with patch('builtins.print'):  # Suppress warning output
+        with patch("builtins.print"):  # Suppress warning output
             strategy_manager = SafeCopyStrategy()
             copy_strategy = strategy_manager.determine_target(
                 original_target=self.test_dir / ".claude",
                 has_conflicts=conflict_result.has_conflicts,
-                conflicting_files=conflict_result.conflicting_files
+                conflicting_files=conflict_result.conflicting_files,
             )
 
         try:
@@ -133,7 +135,9 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
 
             # Verify: Env vars set
             self.assertEqual(os.environ["AMPLIHACK_STAGED_DIR"], str(copy_strategy.temp_dir))
-            self.assertEqual(os.environ["AMPLIHACK_ORIGINAL_CWD"], str((self.test_dir / ".claude").resolve()))
+            self.assertEqual(
+                os.environ["AMPLIHACK_ORIGINAL_CWD"], str((self.test_dir / ".claude").resolve())
+            )
 
             # Execute: Prompt transformation
             transformer = PromptTransformer()
@@ -141,7 +145,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
             transformed_prompt = transformer.transform_prompt(
                 original_prompt=original_prompt,
                 target_directory=self.test_dir,
-                used_temp=copy_strategy.used_temp
+                used_temp=copy_strategy.used_temp,
             )
 
             # Verify: Prompt transformed
@@ -167,7 +171,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
         # Setup: Mock git repo with uncommitted changes outside .claude/
         git_status_output = " M src/main.py\nA  tests/test_new.py\n"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -187,7 +191,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
             copy_strategy = strategy_manager.determine_target(
                 original_target=self.test_dir / ".claude",
                 has_conflicts=conflict_result.has_conflicts,
-                conflicting_files=conflict_result.conflicting_files
+                conflicting_files=conflict_result.conflicting_files,
             )
 
             # Verify: Use original target
@@ -204,7 +208,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
         - No prompt transformation
         """
         # Setup: Mock non-git directory
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1)  # git rev-parse fails
 
             # Execute: Conflict detection
@@ -221,7 +225,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
             copy_strategy = strategy_manager.determine_target(
                 original_target=self.test_dir / ".claude",
                 has_conflicts=conflict_result.has_conflicts,
-                conflicting_files=conflict_result.conflicting_files
+                conflicting_files=conflict_result.conflicting_files,
             )
 
             # Verify: Use original target
@@ -232,10 +236,19 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
         """Scenario 5: Verify prompt transformation with various slash command formats."""
         test_cases = [
             # (original, should_contain_after_transform)
-            ("/amplihack:ultrathink Task", ["Change your working directory", "/amplihack:ultrathink", "Task"]),
-            ("/analyze /improve Task", ["Change your working directory", "/analyze /improve", "Task"]),
+            (
+                "/amplihack:ultrathink Task",
+                ["Change your working directory", "/amplihack:ultrathink", "Task"],
+            ),
+            (
+                "/analyze /improve Task",
+                ["Change your working directory", "/analyze /improve", "Task"],
+            ),
             ("Simple task", ["Change your working directory", "Simple task"]),
-            ("/amplihack:ddd:1-plan Feature", ["Change your working directory", "/amplihack:ddd:1-plan", "Feature"]),
+            (
+                "/amplihack:ddd:1-plan Feature",
+                ["Change your working directory", "/amplihack:ddd:1-plan", "Feature"],
+            ),
         ]
 
         transformer = PromptTransformer()
@@ -243,14 +256,15 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
 
         for original_prompt, expected_parts in test_cases:
             transformed = transformer.transform_prompt(
-                original_prompt=original_prompt,
-                target_directory=target_dir,
-                used_temp=True
+                original_prompt=original_prompt, target_directory=target_dir, used_temp=True
             )
 
             for expected_part in expected_parts:
-                self.assertIn(expected_part, transformed,
-                            f"Expected '{expected_part}' in transformed prompt: {transformed}")
+                self.assertIn(
+                    expected_part,
+                    transformed,
+                    f"Expected '{expected_part}' in transformed prompt: {transformed}",
+                )
 
     def test_complete_flow_with_conflicts(self):
         """Test complete flow: detection → strategy → transformation.
@@ -260,7 +274,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
         # Setup: Simulate conflicting files
         git_status_output = " M .claude/tools/amplihack/hooks/stop.py\n"
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0),  # git rev-parse
                 MagicMock(returncode=0, stdout=git_status_output),  # git status
@@ -272,12 +286,12 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
             self.assertTrue(conflict_result.has_conflicts)
 
         # Step 2: Strategy determination (cli.py)
-        with patch('builtins.print'):
+        with patch("builtins.print"):
             strategy_manager = SafeCopyStrategy()
             copy_strategy = strategy_manager.determine_target(
                 original_target=self.test_dir / ".claude",
                 has_conflicts=conflict_result.has_conflicts,
-                conflicting_files=conflict_result.conflicting_files
+                conflicting_files=conflict_result.conflicting_files,
             )
             self.assertTrue(copy_strategy.used_temp)
 
@@ -293,9 +307,7 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
                 transformer = PromptTransformer()
                 prompt = "/amplihack:ultrathink Implement feature X"
                 transformed_prompt = transformer.transform_prompt(
-                    original_prompt=prompt,
-                    target_directory=original_cwd_from_env,
-                    used_temp=True
+                    original_prompt=prompt, target_directory=original_cwd_from_env, used_temp=True
                 )
 
                 # Verify final transformed prompt
@@ -309,5 +321,5 @@ class TestAutoModeSafetyIntegration(unittest.TestCase):
                 shutil.rmtree(copy_strategy.temp_dir.parent, ignore_errors=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

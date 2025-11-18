@@ -1758,7 +1758,9 @@ async def create_message(request: MessagesRequest, raw_request: Request):
             logger.debug(f"Using Anthropic API key for model: {request.model}")
 
         # For OpenAI and Azure models - modify request format to work with limitations
-        if ("openai" in litellm_request["model"] or "azure" in litellm_request["model"]) and "messages" in litellm_request:
+        if (
+            "openai" in litellm_request["model"] or "azure" in litellm_request["model"]
+        ) and "messages" in litellm_request:
             logger.debug(f"Processing OpenAI/Azure model request: {litellm_request['model']}")
 
             # For OpenAI models, we need to convert content blocks to simple strings

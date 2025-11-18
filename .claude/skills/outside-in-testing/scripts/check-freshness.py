@@ -9,8 +9,8 @@ Usage:
     python scripts/check-freshness.py
 """
 
-import sys
 import re
+import sys
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -36,7 +36,7 @@ def extract_embedded_version(skill_file: Path) -> Optional[str]:
         content = skill_file.read_text()
 
         # Look for embedded_framework_version in YAML frontmatter
-        match = re.search(r'^embedded_framework_version:\s*(.+)$', content, re.MULTILINE)
+        match = re.search(r"^embedded_framework_version:\s*(.+)$", content, re.MULTILINE)
         if match:
             return match.group(1).strip()
 
@@ -105,10 +105,9 @@ def compare_versions(embedded: str, latest: str) -> int:
 
     if embedded_parts < latest_parts:
         return -1
-    elif embedded_parts > latest_parts:
+    if embedded_parts > latest_parts:
         return 1
-    else:
-        return 0
+    return 0
 
 
 def extract_new_features(release_notes: str, limit: int = 5) -> list:
@@ -187,10 +186,10 @@ def main():
             print()
 
         print("To update:")
-        print(f"  1. Install latest framework: pip install --upgrade gadugi-agentic-test")
+        print("  1. Install latest framework: pip install --upgrade gadugi-agentic-test")
         print(f"  2. Review release notes: {release_url}")
-        print(f"  3. Update SKILL.md with new version and features")
-        print(f"  4. Update examples if API changed")
+        print("  3. Update SKILL.md with new version and features")
+        print("  4. Update examples if API changed")
         print()
 
         sys.exit(1)

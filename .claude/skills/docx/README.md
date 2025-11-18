@@ -33,6 +33,7 @@ The DOCX skill follows amplihack's brick philosophy:
 3. Use the skill in Claude Code conversations
 
 Example conversation:
+
 ```
 User: Create a Word document with a title, 3 sections, and a table
 Claude: [Uses DOCX skill with docx-js to create structured document]
@@ -57,14 +58,16 @@ Use **docx-js** (JavaScript/TypeScript) to create documents from scratch:
 import { Document, Paragraph, TextRun, Packer } from "docx";
 
 const doc = new Document({
-  sections: [{
-    properties: {},
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text: "Hello World", bold: true })]
-      })
-    ]
-  }]
+  sections: [
+    {
+      properties: {},
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text: "Hello World", bold: true })],
+        }),
+      ],
+    },
+  ],
 });
 
 const buffer = await Packer.toBuffer(doc);
@@ -115,11 +118,13 @@ python ooxml/scripts/pack.py unpacked/ output.docx
 The DOCX skill requires both Python and Node.js dependencies:
 
 **Required (Core functionality):**
+
 - defusedxml: Secure XML parsing
 - pandoc: Text extraction and conversion
 - LibreOffice: Document validation and PDF conversion
 
 **Optional (Enhanced functionality):**
+
 - docx (npm): Creating new documents
 - poppler-utils: PDF to image conversion
 
@@ -173,32 +178,38 @@ This integration follows amplihack's core principles:
 ## Troubleshooting
 
 **Skill not recognized:**
+
 1. Verify SKILL.md exists in this directory
 2. Check YAML frontmatter is valid
 3. Verify symlink: `ls -la ooxml/` should show link to ../common/ooxml
 4. Restart Claude Code session
 
 **ImportError for defusedxml:**
+
 1. Run verification script: `python ../common/verification/verify_skill.py docx`
 2. Install missing dependencies: `pip install defusedxml`
 3. Re-run tests to confirm
 
 **Pandoc not found:**
+
 1. Install: `sudo apt-get install pandoc` (Ubuntu) or `brew install pandoc` (macOS)
 2. Verify: `pandoc --version`
 
 **Pack script fails validation:**
+
 1. Check LibreOffice installed: `soffice --version`
 2. Use `--force` flag to skip validation: `python ooxml/scripts/pack.py unpacked/ output.docx --force`
 3. Manually verify document opens in Word
 
 **Tracked changes not appearing:**
+
 1. Verify RSID format (8 hex characters, e.g., "00AB12CD")
 2. Check XML structure matches OOXML specification
 3. Use minimal edits principle (only mark changed text)
 4. Ensure proper `<w:ins>` and `<w:del>` tag structure
 
 **Symlink not working (Windows):**
+
 1. Check if symlinks are enabled (requires admin/developer mode)
 2. Alternatively, copy common/ooxml/ to docx/ooxml/ (not recommended)
 3. Update scripts to use absolute paths

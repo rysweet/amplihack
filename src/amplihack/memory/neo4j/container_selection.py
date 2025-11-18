@@ -357,7 +357,14 @@ def resolve_container_name(
     try:
         from .unified_startup_dialog import unified_container_and_credential_dialog
 
-        container_name = unified_container_and_credential_dialog(default_name, auto_mode=False)
+        # Defense-in-depth: Check cleanup mode again as secondary protection
+        # (Primary check at lines 336-346, this prevents prompts if that check is bypassed)
+        # This ensures no interactive prompts during session cleanup regardless of code path
+        cleanup_mode_check = os.getenv("AMPLIHACK_CLEANUP_MODE", "0") == "1"
+        dialog_auto_mode = context.auto_mode or cleanup_mode_check
+        container_name = unified_container_and_credential_dialog(
+            default_name, auto_mode=dialog_auto_mode
+        )
         if container_name:
             return container_name
         # User cancelled, fall back to default

@@ -48,6 +48,7 @@ wb.save('expenses.xlsx')
 ```
 
 **Recalculate formulas**:
+
 ```bash
 python .claude/skills/xlsx/scripts/recalc.py expenses.xlsx
 ```
@@ -115,6 +116,7 @@ wb.save('revenue_projection.xlsx')
 ```
 
 **Recalculate**:
+
 ```bash
 python .claude/skills/xlsx/scripts/recalc.py revenue_projection.xlsx
 ```
@@ -249,6 +251,7 @@ wb.save('income_statement.xlsx')
 ```
 
 **Recalculate**:
+
 ```bash
 python .claude/skills/xlsx/scripts/recalc.py income_statement.xlsx
 ```
@@ -335,6 +338,7 @@ wb.save('budget_model.xlsx')
 ```
 
 **Recalculate**:
+
 ```bash
 python .claude/skills/xlsx/scripts/recalc.py budget_model.xlsx
 ```
@@ -461,6 +465,7 @@ wb.save('dcf_model.xlsx')
 ```
 
 **Recalculate**:
+
 ```bash
 python .claude/skills/xlsx/scripts/recalc.py dcf_model.xlsx
 ```
@@ -560,6 +565,7 @@ wb.save('dashboard.xlsx')
 ```
 
 **Recalculate**:
+
 ```bash
 python .claude/skills/xlsx/scripts/recalc.py dashboard.xlsx
 ```
@@ -814,6 +820,7 @@ wb.save('integrated_model.xlsx')
 ```
 
 **Recalculate**:
+
 ```bash
 python .claude/skills/xlsx/scripts/recalc.py integrated_model.xlsx
 ```

@@ -35,6 +35,7 @@ START: Need AI agent?
 ### Use Microsoft Agent Framework When:
 
 #### 1. Stateful Conversations Required
+
 ```
 ✅ Customer support chatbots
 ✅ Tutoring systems that remember student progress
@@ -45,6 +46,7 @@ START: Need AI agent?
 ```
 
 **Example**: Multi-turn tech support
+
 ```python
 # Agent Framework - maintains context
 thread = Thread()
@@ -54,6 +56,7 @@ await agent.run(thread=thread, message="It happened after the update")
 ```
 
 #### 2. Complex Orchestration
+
 ```
 ✅ Conditional routing based on output
 ✅ Parallel agent execution
@@ -64,12 +67,14 @@ await agent.run(thread=thread, message="It happened after the update")
 ```
 
 **Example**: Parallel analysis workflow
+
 ```python
 workflow.add_edge("START", ["security", "performance", "ux"])
 workflow.add_edge(["security", "performance", "ux"], "synthesize")
 ```
 
 #### 3. Enterprise Features
+
 ```
 ✅ OpenTelemetry integration
 ✅ Middleware (auth, logging, rate limiting)
@@ -80,6 +85,7 @@ workflow.add_edge(["security", "performance", "ux"], "synthesize")
 ```
 
 #### 4. Tool-Heavy Operations
+
 ```
 ✅ Many external API calls
 ✅ Database queries
@@ -90,6 +96,7 @@ workflow.add_edge(["security", "performance", "ux"], "synthesize")
 ```
 
 #### 5. Cross-Platform Requirements
+
 ```
 ✅ Need both Python and C# implementations
 ✅ .NET ecosystem integration
@@ -101,6 +108,7 @@ workflow.add_edge(["security", "performance", "ux"], "synthesize")
 ### Use amplihack When:
 
 #### 1. Stateless Task Delegation
+
 ```
 ✅ Code review (one-shot analysis)
 ✅ File analysis and transformation
@@ -111,6 +119,7 @@ workflow.add_edge(["security", "performance", "ux"], "synthesize")
 ```
 
 **Example**: Code review
+
 ```python
 # amplihack - stateless
 reviewer = Agent(".claude/agents/amplihack/reviewer.md")
@@ -118,6 +127,7 @@ result = reviewer.process({"files": ["src/module.py"]})
 ```
 
 #### 2. File-Based Operations
+
 ```
 ✅ Reading/writing local files
 ✅ Git operations
@@ -128,6 +138,7 @@ result = reviewer.process({"files": ["src/module.py"]})
 ```
 
 #### 3. Development Workflows
+
 ```
 ✅ Pre-commit hooks
 ✅ CI/CD pipelines
@@ -138,6 +149,7 @@ result = reviewer.process({"files": ["src/module.py"]})
 ```
 
 #### 4. Token Efficiency Priority
+
 ```
 ✅ Minimal context needed
 ✅ Cost-sensitive operations
@@ -147,6 +159,7 @@ result = reviewer.process({"files": ["src/module.py"]})
 ```
 
 #### 5. Rapid Prototyping
+
 ```
 ✅ Quick experiments
 ✅ One-off scripts
@@ -158,6 +171,7 @@ result = reviewer.process({"files": ["src/module.py"]})
 ### Use BOTH When:
 
 #### 1. Hybrid Requirements
+
 ```
 ✅ Stateful conversation + file operations
 ✅ Complex orchestration + local tools
@@ -165,6 +179,7 @@ result = reviewer.process({"files": ["src/module.py"]})
 ```
 
 **Example**: Code review with discussion
+
 ```python
 # amplihack reviews code
 review = amplihack_reviewer.process({"files": ["src/"]})
@@ -176,12 +191,14 @@ await af_agent.run(thread=thread, message="Why this suggestion?")
 ```
 
 #### 2. Separation of Concerns
+
 ```
 ✅ amplihack: Orchestration
 ✅ Agent Framework: Execution
 ```
 
 #### 3. Best-of-Both-Worlds
+
 ```
 ✅ amplihack's file ops + Agent Framework's state
 ✅ amplihack's simplicity + Agent Framework's features
@@ -189,30 +206,32 @@ await af_agent.run(thread=thread, message="Why this suggestion?")
 
 ## Scenario Matrix
 
-| Scenario | amplihack | Agent Framework | Both | Reasoning |
-|----------|-----------|-----------------|------|-----------|
-| Customer chatbot | ❌ | ✅ | - | Needs stateful conversation |
-| Code review | ✅ | ❌ | - | Stateless, file-based |
-| Multi-step research | ❌ | ✅ | - | Complex orchestration |
-| Pre-commit hook | ✅ | ❌ | - | Local, fast, simple |
-| Tutoring system | ❌ | ✅ | - | Persistent student context |
-| File batch processor | ✅ | ❌ | - | File operations, no state |
-| API integration | ❌ | ✅ | - | External calls, tools |
-| Documentation gen | ✅ | ❌ | - | File-based, one-shot |
-| Support + code fix | - | - | ✅ | Conversation + file ops |
-| Research + synthesis | - | - | ✅ | Workflow + analysis |
+| Scenario             | amplihack | Agent Framework | Both | Reasoning                   |
+| -------------------- | --------- | --------------- | ---- | --------------------------- |
+| Customer chatbot     | ❌        | ✅              | -    | Needs stateful conversation |
+| Code review          | ✅        | ❌              | -    | Stateless, file-based       |
+| Multi-step research  | ❌        | ✅              | -    | Complex orchestration       |
+| Pre-commit hook      | ✅        | ❌              | -    | Local, fast, simple         |
+| Tutoring system      | ❌        | ✅              | -    | Persistent student context  |
+| File batch processor | ✅        | ❌              | -    | File operations, no state   |
+| API integration      | ❌        | ✅              | -    | External calls, tools       |
+| Documentation gen    | ✅        | ❌              | -    | File-based, one-shot        |
+| Support + code fix   | -         | -               | ✅   | Conversation + file ops     |
+| Research + synthesis | -         | -               | ✅   | Workflow + analysis         |
 
 ## Cost Considerations
 
 ### Token Usage
 
 **amplihack**:
+
 - Lower per-interaction cost
 - Minimal context overhead
 - Skill-based loading (load only what's needed)
 - Optimized for Claude Code's token limits
 
 **Agent Framework**:
+
 - Higher per-interaction cost
 - Conversation history included in each call
 - Full context for statefulness
@@ -221,12 +240,14 @@ await af_agent.run(thread=thread, message="Why this suggestion?")
 ### Development Cost
 
 **amplihack**:
+
 - Faster prototyping
 - Simpler agent definitions (markdown files)
 - Less infrastructure needed
 - Easier debugging (local)
 
 **Agent Framework**:
+
 - More setup required
 - Infrastructure for production (telemetry, etc.)
 - Steeper learning curve
@@ -237,11 +258,13 @@ await af_agent.run(thread=thread, message="Why this suggestion?")
 ### Latency
 
 **amplihack**:
+
 - Lower latency (less overhead)
 - Direct tool access
 - Local execution
 
 **Agent Framework**:
+
 - Higher latency (state management)
 - Network calls for tools
 - Middleware overhead
@@ -249,11 +272,13 @@ await af_agent.run(thread=thread, message="Why this suggestion?")
 ### Throughput
 
 **amplihack**:
+
 - Good for batch operations
 - Parallel via TodoWrite
 - Limited by Claude Code
 
 **Agent Framework**:
+
 - Excellent for concurrent users
 - Built-in parallel workflows
 - Scalable architecture
@@ -263,12 +288,14 @@ await af_agent.run(thread=thread, message="Why this suggestion?")
 ### From amplihack to Agent Framework
 
 When to migrate:
+
 1. Prototype becomes production system
 2. Need stateful conversations
 3. Require enterprise features
 4. Want cross-platform support
 
 **Migration steps**:
+
 1. Identify stateful components
 2. Convert amplihack agents to Agent Framework agents
 3. Add thread management
@@ -279,12 +306,14 @@ When to migrate:
 ### From Agent Framework to amplihack
 
 When to migrate:
+
 1. Over-engineered for requirements
 2. Cost optimization needed
 3. Moving to local-only operation
 4. Simplifying architecture
 
 **Migration steps**:
+
 1. Identify stateless components
 2. Convert to amplihack agents (markdown)
 3. Remove state management
@@ -307,6 +336,7 @@ Before choosing, answer these questions:
 - [ ] Is this a one-time task or long-term system?
 
 **Scoring**:
+
 - Questions 1-4 YES → Lean toward Agent Framework
 - Questions 5-7 YES → Lean toward amplihack
 - Questions 8-9 YES → Agent Framework
@@ -315,35 +345,43 @@ Before choosing, answer these questions:
 ## Examples of Good Decisions
 
 ### ✅ Correct: Customer Support Bot with Agent Framework
+
 **Why**: Multi-turn conversations, persistent user context, production system with monitoring
 
 ### ✅ Correct: Code Reviewer with amplihack
+
 **Why**: Stateless analysis, file operations, one-shot reviews, local development
 
 ### ✅ Correct: Research Pipeline with Both
+
 **Why**: Agent Framework for workflow + amplihack for file analysis = best of both
 
 ### ❌ Incorrect: Simple Script with Agent Framework
+
 **Why**: Over-engineered, high cost, unnecessary complexity
 
 ### ❌ Incorrect: Multi-user Chatbot with amplihack
+
 **Why**: No state management, can't maintain conversation context
 
 ## Summary
 
 **Default to amplihack for**:
+
 - Development workflows
 - File operations
 - Rapid prototyping
 - Token efficiency
 
 **Default to Agent Framework for**:
+
 - Production user-facing systems
 - Stateful conversations
 - Complex orchestration
 - Enterprise requirements
 
 **Use both when**:
+
 - Best-of-both-worlds needed
 - Clear separation of concerns
 - Hybrid requirements

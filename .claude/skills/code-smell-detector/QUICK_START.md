@@ -22,12 +22,14 @@ Claude Code:
 ### Step-by-Step Analysis
 
 **Step 1: Identify the Code**
+
 ```
 "Check this authentication service for code smells."
 → Claude finds auth_service.py
 ```
 
 **Step 2: Scan for Smells**
+
 ```
 Code Smells Found:
 1. Over-Abstraction (Line 15)
@@ -36,6 +38,7 @@ Code Smells Found:
 ```
 
 **Step 3: Get Fixes**
+
 ```
 For each smell, Claude provides:
 - What's wrong and why
@@ -45,6 +48,7 @@ For each smell, Claude provides:
 ```
 
 **Step 4: Learn Philosophy**
+
 ```
 Why this matters:
 - Violates "ruthless simplicity"
@@ -55,6 +59,7 @@ Why this matters:
 ## Common Scenarios
 
 ### Scenario 1: Code Review
+
 ```
 User: Review this PR for philosophy compliance.
 Claude:
@@ -65,6 +70,7 @@ Claude:
 ```
 
 ### Scenario 2: Refactoring Session
+
 ```
 User: This module is getting complex. Help me refactor it.
 Claude:
@@ -75,6 +81,7 @@ Claude:
 ```
 
 ### Scenario 3: Learning
+
 ```
 User: Why is this code considered a "smell"?
 Claude:
@@ -85,6 +92,7 @@ Claude:
 ```
 
 ### Scenario 4: Team Training
+
 ```
 User: Show the team common code smells.
 Claude:
@@ -115,15 +123,15 @@ Also Good: Show specific code and ask:
 
 For each smell found:
 
-| Item | Detail |
-|------|--------|
-| Location | File and line number |
-| Severity | Critical/Major/Minor |
-| Description | What's wrong |
-| Philosophy | Which principle violated |
-| Example | Bad pattern shown |
-| Fix | Good pattern shown |
-| Steps | How to refactor |
+| Item        | Detail                   |
+| ----------- | ------------------------ |
+| Location    | File and line number     |
+| Severity    | Critical/Major/Minor     |
+| Description | What's wrong             |
+| Philosophy  | Which principle violated |
+| Example     | Bad pattern shown        |
+| Fix         | Good pattern shown       |
+| Steps       | How to refactor          |
 
 ## Example Analysis
 
@@ -268,6 +276,7 @@ RECOMMENDED ACTIONS:
 ## Integration Patterns
 
 ### With Code Review
+
 ```
 PR Review:
 1. Use skill to identify smells
@@ -278,6 +287,7 @@ PR Review:
 ```
 
 ### With Refactoring
+
 ```
 Refactoring Plan:
 1. Identify smells to fix (prioritize)
@@ -288,6 +298,7 @@ Refactoring Plan:
 ```
 
 ### With Architecture Review
+
 ```
 Design Discussion:
 1. Question proposed pattern

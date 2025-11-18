@@ -27,24 +27,28 @@ Unlike general analysis, novelist analysis:
 ## Use Cases
 
 ### Leadership Analysis
+
 - CEO rise and fall narratives
 - Political candidate journeys
 - Transformation stories
 - Crisis management as narrative
 
 ### Organizational Narratives
+
 - Company culture stories
 - Change management arcs
 - Team dynamics and character
 - Origin stories and mythology
 
 ### Crisis and Conflict
+
 - Understanding crisis as dramatic story
 - Conflict escalation and resolution
 - Human dimensions of events
 - Stakeholder motivations
 
 ### Cultural Moments
+
 - Social movements as collective narratives
 - Cultural shifts and zeitgeist
 - Media narratives and their power
@@ -53,24 +57,28 @@ Unlike general analysis, novelist analysis:
 ## Narrative Frameworks Available
 
 ### Core Story Structures
+
 - **Three-Act Structure**: Setup, confrontation, resolution with turning points
 - **Hero's Journey**: 12-stage monomyth from ordinary world to return with wisdom
 - **Character Arc Theory**: Positive (growth), negative (fall), flat (steadfast) arcs
 - **Story Spine**: Simplified narrative framework (once upon a time, until one day...)
 
 ### Dramatic Elements
+
 - **Conflict Types**: Character vs. character, self, society, nature, technology, fate
 - **Dramatic Tension**: Freytag's pyramid, rising action, climax, falling action
 - **Stakes Assessment**: What's at risk, consequences of failure
 - **Turning Points**: Inciting incidents, midpoint reversals, dark nights
 
 ### Character Analysis Tools
+
 - **Desire and Need**: External goals vs. internal psychological needs
 - **Fatal Flaws**: Weaknesses that complicate journey
 - **Character Dimensions**: Backstory, motivation, values, contradictions
 - **Transformation**: How characters change (or fail to change)
 
 ### Thematic Analysis
+
 - **Universal Themes**: Power, redemption, ambition, sacrifice, identity, belonging
 - **Symbolic Meaning**: Recurring symbols and what they represent
 - **Motif Recognition**: Patterns that reinforce themes
@@ -123,6 +131,7 @@ The novelist analyst follows a systematic 10-step process:
 **Event**: Tech CEO faces scandal, potential ouster
 
 **Narrative Analysis**:
+
 - **Stage**: Late Act II (dark night of the soul) approaching climax
 - **Character**: CEO torn between ego and accountability
 - **Conflict**: Internal (self) vs. External (board, public)
@@ -139,6 +148,7 @@ The novelist analyst follows a systematic 10-step process:
 **Event**: Legacy company attempts digital transformation
 
 **Narrative Analysis**:
+
 - **Stage**: Mid-Act II (complications escalating)
 - **Problem**: Unclear protagonist, vague goal weakens narrative
 - **Conflict**: Identity crisis - who are we becoming?
@@ -152,6 +162,7 @@ The novelist analyst follows a systematic 10-step process:
 **Event**: Underdog candidate runs for major office
 
 **Narrative Analysis**:
+
 - **Structure**: Perfect hero's journey - ordinary world → call → trials → ordeal → return
 - **Character**: Growth from uncertain outsider to confident leader
 - **Conflict**: External (opponent) mirrors internal (self-doubt)
@@ -177,18 +188,21 @@ A complete novelist analysis includes:
 ## Resources
 
 ### Key Works
-- Joseph Campbell: *The Hero with a Thousand Faces* (1949)
-- Christopher Vogler: *The Writer's Journey* (1992)
-- Robert McKee: *Story: Substance, Structure, Style* (1997)
-- K.M. Weiland: *Creating Character Arcs* (2016)
-- Syd Field: *Screenplay: The Foundations of Screenwriting*
+
+- Joseph Campbell: _The Hero with a Thousand Faces_ (1949)
+- Christopher Vogler: _The Writer's Journey_ (1992)
+- Robert McKee: _Story: Substance, Structure, Style_ (1997)
+- K.M. Weiland: _Creating Character Arcs_ (2016)
+- Syd Field: _Screenplay: The Foundations of Screenwriting_
 
 ### Story Theory
+
 - Three-Act Structure: https://en.wikipedia.org/wiki/Three-act_structure
 - Hero's Journey: https://en.wikipedia.org/wiki/Hero%27s_journey
 - Character Arc: https://en.wikipedia.org/wiki/Character_arc
 
 ### Organizations
+
 - Writers Guild of America: https://www.wga.org/
 
 ## Common Questions
@@ -196,6 +210,7 @@ A complete novelist analysis includes:
 ### When should I use novelist-analyst vs. other analysts?
 
 Use **novelist-analyst** when the focus is:
+
 - Human stories and character development
 - Narrative structure and dramatic arcs
 - Motivations and psychological complexity
@@ -204,6 +219,7 @@ Use **novelist-analyst** when the focus is:
 - Leadership or organizational transformations
 
 Use **other analysts** when focus is:
+
 - Economic incentives → Economist
 - Political power → Political Scientist
 - Historical precedents → Historian
@@ -212,6 +228,7 @@ Use **other analysts** when focus is:
 ### Can novelist analysis be combined with other perspectives?
 
 Absolutely! Narrative analysis is particularly powerful when combined with:
+
 - **Psychologist**: Deepens character understanding with psychological theory
 - **Historian**: Situates stories in historical context and precedents
 - **Poet**: Enhances attention to language and symbolic depth
@@ -220,6 +237,7 @@ Absolutely! Narrative analysis is particularly powerful when combined with:
 ### What if the story isn't complete?
 
 Real-world narratives are often ongoing:
+
 1. Identify where we are in the arc
 2. Project possible trajectories and endings
 3. Recognize what would be needed for resolution
@@ -229,6 +247,7 @@ Real-world narratives are often ongoing:
 ## Integration with Other Skills
 
 Novelist analysis complements:
+
 - **Decision Logger**: Document narrative insights in decision records
 - **Storytelling Synthesizer**: Transform analysis into compelling narratives
 - **Philosophy Guardian**: Ensure analysis follows ruthless simplicity
@@ -237,6 +256,7 @@ Novelist analysis complements:
 ## Contributing
 
 This skill improves through use. Share feedback on:
+
 - What narrative frameworks worked well
 - What insights were most valuable
 - What patterns emerged across analyses

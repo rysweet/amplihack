@@ -27,24 +27,28 @@ Unlike general analysis, futurist analysis:
 ## Use Cases
 
 ### Strategic Planning
+
 - Long-term planning under uncertainty
 - Preparing for multiple scenarios
 - Building robust strategies
 - Identifying strategic options
 
 ### Trend Analysis
+
 - Emerging technologies and impacts
 - Social and cultural shifts
 - Market evolution
 - Disruption anticipation
 
 ### Risk and Opportunity
+
 - Identifying emerging threats
 - Spotting early opportunities
 - Understanding wildcards
 - Building resilience
 
 ### Innovation Strategy
+
 - Future market needs
 - Technology trajectories
 - Paradigm shifts
@@ -53,12 +57,14 @@ Unlike general analysis, futurist analysis:
 ## Futures Frameworks Available
 
 ### Core Frameworks
+
 - **Three Horizons**: Present (H1) → Transition (H2) → Emerging (H3)
 - **Scenario Planning**: Develop 2-4 plausible futures based on critical uncertainties
 - **STEEP/PESTLE**: Systematic scanning of change drivers
 - **Futures Cone**: Range from probable to possible to preposterous futures
 
 ### Forecasting Methods
+
 - **Exploratory**: Project forward from present (what could happen?)
 - **Normative/Backcasting**: Work backward from desired future (what should happen?)
 - **Delphi Method**: Systematic expert consultation and consensus
@@ -66,12 +72,14 @@ Unlike general analysis, futurist analysis:
 - **Cross-Impact Analysis**: How trends and events affect each other
 
 ### Strategic Tools
+
 - **Wind Tunneling**: Test strategies across scenarios
 - **Monitoring Systems**: Early indicators and trigger points
 - **Causal Layered Analysis**: Surface → systemic → worldview → myth levels
 - **Pre-Mortem**: Anticipate failure modes before they occur
 
 ### Signal Detection
+
 - **Weak Signals**: Early indicators of change at margins
 - **Wild Cards**: Low probability, high impact events
 - **Leading Indicators**: Signs of which future is emerging
@@ -124,10 +132,12 @@ The futurist analyst follows a systematic 10-step process:
 **Focal Question**: How will work evolve over 15 years with AI advancement?
 
 **Critical Uncertainties**:
+
 - AI advancement rate (slow vs. fast)
 - Societal response (adaptive vs. resistant)
 
 **Four Scenarios**:
+
 - **Gradual Evolution**: Slow AI + Adaptive society → smooth transition
 - **Disruption and Adjustment**: Fast AI + Adaptive society → bold policies, UBI
 - **Stagnation and Inequality**: Slow AI + Resistant society → protected jobs, reduced competitiveness
@@ -142,6 +152,7 @@ The futurist analyst follows a systematic 10-step process:
 **Focal Question**: Pace and scale of renewable replacement by 2040
 
 **Scenarios**:
+
 - **Steady Progress**: Incremental tech + Weak politics → 50-60% renewable
 - **Green Acceleration**: Incremental tech + Strong politics → 70-80% renewable
 - **Breakthrough Stagnation**: Transformative tech + Weak politics → potential unrealized
@@ -156,6 +167,7 @@ The futurist analyst follows a systematic 10-step process:
 **Focal Question**: How will precision medicine transform healthcare by 2035?
 
 **Scenarios**:
+
 - **Precision for Some**: Fragmented data + Limited access → inequality deepens
 - **Universal Precision**: Integrated data + Widespread access → broad benefit
 - **Data-Rich, Benefit-Poor**: Integrated data + Limited access → unrealized potential
@@ -181,17 +193,20 @@ A complete futurist analysis includes:
 ## Resources
 
 ### Key Works
-- Peter Schwartz: *The Art of the Long View* (1991)
-- Sharpe et al.: *Three Horizons: A Pathways Practice* (2016)
-- Amy Webb: *The Signals Are Talking*
+
+- Peter Schwartz: _The Art of the Long View_ (1991)
+- Sharpe et al.: _Three Horizons: A Pathways Practice_ (2016)
+- Amy Webb: _The Signals Are Talking_
 - Jim Dator: Four futures framework
 
 ### Organizations
+
 - **Institute for the Future (IFTF)**: https://www.iftf.org/
 - **Association of Professional Futurists**: https://www.apf.org/
 - **World Futures Studies Federation**: https://wfsf.org/
 
 ### Frameworks
+
 - Three Horizons: https://en.wikipedia.org/wiki/Three_Horizons
 - Scenario Planning: https://en.wikipedia.org/wiki/Scenario_planning
 
@@ -200,6 +215,7 @@ A complete futurist analysis includes:
 ### When should I use futurist-analyst vs. other analysts?
 
 Use **futurist-analyst** when focus is:
+
 - Long-term planning and anticipation
 - Emerging trends and weak signals
 - Multiple possible futures
@@ -208,6 +224,7 @@ Use **futurist-analyst** when focus is:
 - Navigating uncertainty
 
 Use **other analysts** when focus is:
+
 - Present situation analysis → Journalist
 - Historical patterns → Historian
 - Economic impacts → Economist
@@ -216,6 +233,7 @@ Use **other analysts** when focus is:
 ### Can futurist analysis be combined with other perspectives?
 
 Absolutely! Futures analysis is particularly powerful when combined with:
+
 - **Economist**: Economic futures, market dynamics, resource allocation
 - **Political Scientist**: Political futures, governance evolution, geopolitics
 - **Historian**: Historical patterns, long-term cycles, precedents
@@ -224,6 +242,7 @@ Absolutely! Futures analysis is particularly powerful when combined with:
 ### Isn't predicting the future impossible?
 
 Yes! That's why futures thinking:
+
 - Explores multiple plausible futures (not prediction)
 - Prepares for uncertainty (not claims of certainty)
 - Identifies robust strategies (work across scenarios)
@@ -233,6 +252,7 @@ Yes! That's why futures thinking:
 ## Integration with Other Skills
 
 Futurist analysis complements:
+
 - **Decision Logger**: Document scenario planning decisions
 - **Storytelling Synthesizer**: Transform scenarios into compelling narratives
 - **Philosophy Guardian**: Ensure analysis avoids over-complexity
@@ -241,6 +261,7 @@ Futurist analysis complements:
 ## Contributing
 
 This skill improves through use. Share feedback on:
+
 - What scenario frameworks worked well
 - What weak signals proved significant
 - What strategic insights were most valuable

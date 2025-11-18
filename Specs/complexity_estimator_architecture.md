@@ -7,6 +7,7 @@ Pre-flight complexity assessment system that analyzes investigation requests and
 ## Problem Statement
 
 Ultra-Think command currently deploys full multi-agent orchestration for ALL investigation tasks without assessing if simpler approaches would suffice. This creates:
+
 - Unnecessary overhead for straightforward questions (50+ messages for simple queries)
 - Slower response times for users with simple needs
 - Resource waste on over-engineered solutions
@@ -29,10 +30,12 @@ Ultra-Think command currently deploys full multi-agent orchestration for ALL inv
 **Responsibility**: Analyze investigation request and classify complexity
 
 **Inputs**:
+
 - User's task description (string)
 - Task type detection (investigation vs implementation)
 
 **Outputs**:
+
 - Complexity classification: Simple | Medium | Complex
 - Routing decision: Explore-Quick | Explore-Thorough | UltraThink-2Agents | UltraThink-Full
 - Announcement message (string)
@@ -87,12 +90,12 @@ Ultra-Think command currently deploys full multi-agent orchestration for ALL inv
 
 **Heuristic Examples**:
 
-| Task | Scope | Depth | Breadth | Avg | Classification |
-|------|-------|-------|---------|-----|----------------|
-| "How does lock system work?" | 1 | 2 | 1 | 1.33 | Simple |
-| "Explain preferences and hooks integration" | 2 | 2 | 2 | 2.0 | Medium |
-| "How does entire agent orchestration work?" | 3 | 3 | 3 | 3.0 | Complex |
-| "What are pre-commit hooks?" | 1 | 1 | 1 | 1.0 | Simple (quick) |
+| Task                                        | Scope | Depth | Breadth | Avg  | Classification |
+| ------------------------------------------- | ----- | ----- | ------- | ---- | -------------- |
+| "How does lock system work?"                | 1     | 2     | 1       | 1.33 | Simple         |
+| "Explain preferences and hooks integration" | 2     | 2     | 2       | 2.0  | Medium         |
+| "How does entire agent orchestration work?" | 3     | 3     | 3       | 3.0  | Complex        |
+| "What are pre-commit hooks?"                | 1     | 1     | 1       | 1.0  | Simple (quick) |
 
 #### Component 2: Routing Dispatcher (Embedded)
 
@@ -104,32 +107,16 @@ Ultra-Think command currently deploys full multi-agent orchestration for ALL inv
 
 ```markdown
 ROUTE: Explore-Quick (Simple + Overview)
-└─> Deploy single Explore agent with focused scope
-    - Limit: Documentation and overview only
-    - Expected messages: 15-25
-    - Skip todo list creation
-    - Announce: "Using quick Explore for overview"
+└─> Deploy single Explore agent with focused scope - Limit: Documentation and overview only - Expected messages: 15-25 - Skip todo list creation - Announce: "Using quick Explore for overview"
 
 ROUTE: Explore-Thorough (Simple + Detailed)
-└─> Deploy single Explore agent with deeper analysis
-    - Include: Code review + documentation
-    - Expected messages: 25-40
-    - Create minimal todo list
-    - Announce: "Using thorough Explore for detailed analysis"
+└─> Deploy single Explore agent with deeper analysis - Include: Code review + documentation - Expected messages: 25-40 - Create minimal todo list - Announce: "Using thorough Explore for detailed analysis"
 
 ROUTE: UltraThink-2Agents (Medium)
-└─> Execute Ultra-Think workflow with targeted agents
-    - Deploy 2-3 specific agents (typically analyzer + patterns)
-    - Follow workflow Steps 1-15 with limited orchestration
-    - Expected messages: 70-120
-    - Announce: "Using targeted Ultra-Think with 2 agents"
+└─> Execute Ultra-Think workflow with targeted agents - Deploy 2-3 specific agents (typically analyzer + patterns) - Follow workflow Steps 1-15 with limited orchestration - Expected messages: 70-120 - Announce: "Using targeted Ultra-Think with 2 agents"
 
 ROUTE: UltraThink-Full (Complex)
-└─> Execute standard Ultra-Think orchestration
-    - Deploy all relevant agents at each step
-    - Full workflow Steps 1-15
-    - Expected messages: 120-250
-    - Announce: "Using full Ultra-Think orchestration"
+└─> Execute standard Ultra-Think orchestration - Deploy all relevant agents at each step - Full workflow Steps 1-15 - Expected messages: 120-250 - Announce: "Using full Ultra-Think orchestration"
 ```
 
 #### Component 3: User Announcement (Embedded)
@@ -139,6 +126,7 @@ ROUTE: UltraThink-Full (Complex)
 **Responsibility**: Provide transparency about routing decision
 
 **Message Template**:
+
 ```
 I've assessed this as a [COMPLEXITY] investigation focusing on [KEY_TOPICS].
 I'll use [APPROACH] for optimal efficiency!
@@ -235,19 +223,23 @@ Specs/
 ## Non-Functional Requirements
 
 ### Performance
+
 - Assessment must complete in < 1 second
 - No noticeable latency added to workflow start
 
 ### Accuracy
+
 - Target 85%+ classification accuracy in practice
 - Conservative routing (when in doubt, route higher)
 
 ### Maintainability
+
 - All logic in single location (ultrathink.md Step 0)
 - Clear comments explaining heuristics
 - Easy to modify scoring thresholds
 
 ### Backward Compatibility
+
 - Zero breaking changes to existing workflow
 - Non-investigation tasks unaffected
 - Users can override routing by being more specific
@@ -255,11 +247,13 @@ Specs/
 ## Success Metrics
 
 ### Primary Metrics
+
 - Simple investigations: 60% message reduction (50+ → 15-25)
 - Classification accuracy: 85%+
 - Zero regressions in complex investigation quality
 
 ### Secondary Metrics
+
 - User satisfaction with routing decisions
 - Average message count per investigation type
 - Time to complete investigations by complexity
@@ -267,30 +261,36 @@ Specs/
 ## Risk Assessment
 
 ### Risk 1: Misclassification
+
 **Impact**: Medium
 **Mitigation**: Conservative routing (when ambiguous, route to higher complexity)
 
 ### Risk 2: Keyword Brittleness
+
 **Impact**: Low
 **Mitigation**: Comprehensive keyword lists, can be tuned based on usage
 
 ### Risk 3: User Confusion
+
 **Impact**: Low
 **Mitigation**: Clear announcement messages explain routing decision
 
 ### Risk 4: False Negatives (Missing Investigations)
+
 **Impact**: Low
 **Mitigation**: Broad investigation keyword detection, implementation tasks naturally skip
 
 ## Future Enhancements
 
 ### Phase 2 (Post-MVP)
+
 1. Machine learning-based classification
 2. User feedback loop for classification tuning
 3. Detailed analytics on routing accuracy
 4. Custom routing rules per user/project
 
 ### Phase 3 (Advanced)
+
 1. Dynamic agent selection based on question content
 2. Predictive message count estimates
 3. Cost optimization for LLM usage
@@ -299,11 +299,13 @@ Specs/
 ## Dependencies
 
 ### Required (Existing)
+
 - ultrathink.md command file
 - Explore agent (core agents)
 - Ultra-Think workflow (Steps 1-15)
 
 ### Optional (Future)
+
 - Analytics collection (for accuracy metrics)
 - User feedback mechanism (for tuning)
 
@@ -318,21 +320,25 @@ Specs/
 ## Decision Log
 
 ### Decision 1: Embedded vs Separate Module
+
 **Choice**: Embedded in ultrathink.md
 **Rationale**: Command files are prompt-based; avoiding Python module complexity
 **Alternatives Considered**: Separate .py module (rejected: harder to invoke from markdown)
 
 ### Decision 2: Heuristics vs ML
+
 **Choice**: Keyword-based heuristics
 **Rationale**: Simpler, more transparent, sufficient for MVP
 **Alternatives Considered**: ML classifier (rejected: over-engineering for MVP)
 
 ### Decision 3: Three Tiers vs Continuous Scale
+
 **Choice**: Three discrete tiers (Simple/Medium/Complex)
 **Rationale**: Easier to reason about, clearer routing decisions
 **Alternatives Considered**: Continuous score (rejected: harder to map to routes)
 
 ### Decision 4: Conservative vs Aggressive Routing
+
 **Choice**: Conservative (when in doubt, route higher)
 **Rationale**: Better to over-analyze than under-analyze
 **Alternatives Considered**: Aggressive routing (rejected: risk of missing details)

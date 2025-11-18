@@ -19,11 +19,11 @@ print(result.response)
 ### Minimal TypeScript Agent
 
 ```typescript
-import { Agent } from '@anthropics/agent-sdk';
+import { Agent } from "@anthropics/agent-sdk";
 
 // Simplest possible agent
 const agent = new Agent({
-  model: "claude-sonnet-4-5-20250929"
+  model: "claude-sonnet-4-5-20250929",
 });
 
 // Single task execution

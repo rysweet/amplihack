@@ -12,6 +12,7 @@
 This report documents the comprehensive security verification of the Neo4j cleanup feature. All 5 critical security requirements have been properly implemented and tested.
 
 **Verification Results:**
+
 - ✅ No hardcoded passwords (except with explicit opt-in)
 - ✅ Exception sanitization in place
 - ✅ Path validation prevents traversal
@@ -23,6 +24,7 @@ This report documents the comprehensive security verification of the Neo4j clean
 ## 1. Hardcoded Password Prevention
 
 ### Requirement
+
 No hardcoded passwords in production code, except with explicit `NEO4J_ALLOW_DEFAULT_PASSWORD=true` environment variable.
 
 ### Implementation Verified
@@ -54,6 +56,7 @@ if not neo4j_password:
 ```
 
 **Security Controls:**
+
 1. ✅ Password required via `NEO4J_PASSWORD` environment variable
 2. ✅ Default password blocked by default
 3. ✅ Explicit opt-in required: `NEO4J_ALLOW_DEFAULT_PASSWORD=true`
@@ -61,6 +64,7 @@ if not neo4j_password:
 5. ✅ ValueError raised if no credentials provided
 
 **Test Coverage:**
+
 - `tests/unit/neo4j/test_connection_tracker.py::test_initialization_with_defaults`
 - `tests/agentic/test_neo4j_cleanup_e2e.py` (Line 24: sets development flag)
 
@@ -71,6 +75,7 @@ if not neo4j_password:
 ## 2. Exception Sanitization
 
 ### Requirement
+
 All exceptions must be sanitized to prevent credential leakage in logs.
 
 ### Implementation Verified
@@ -98,6 +103,7 @@ def _sanitize_for_log(self, value: Any, max_length: int = 100) -> str:
 ```
 
 **Usage in Exception Handling** (Lines 193-199):
+
 ```python
 except Exception as e:
     # Log detailed error at DEBUG level, generic message at WARNING
@@ -109,6 +115,7 @@ except Exception as e:
 ```
 
 **Security Controls:**
+
 1. ✅ Newline removal prevents log injection attacks
 2. ✅ Length truncation prevents log bloat/DOS
 3. ✅ Detailed errors only at DEBUG level
@@ -116,10 +123,12 @@ except Exception as e:
 5. ✅ No credential data in public logs
 
 **Test Coverage:**
+
 - `tests/unit/neo4j/test_connection_tracker.py::test_sanitize_for_log`
 - `tests/unit/neo4j/test_connection_tracker.py::test_generic_exception_logging`
 
 **Example Sanitization:**
+
 ```python
 # Original: "Database error: password='secret123'\nConnection failed"
 # Sanitized (DEBUG): "ValueError: Database error: password='secret123'\\nConnection failed"
@@ -133,6 +142,7 @@ except Exception as e:
 ## 3. Path Validation (Traversal Prevention)
 
 ### Requirement
+
 Prevent path traversal attacks when loading/saving preference files.
 
 ### Implementation Verified
@@ -172,10 +182,12 @@ def _validate_preferences_path(self, path: Path) -> Path:
 ```
 
 **Usage in Critical Operations:**
+
 - Line 102: `prefs_file = self._validate_preferences_path(prefs_file)` (before read)
 - Line 164: `prefs_file = self._validate_preferences_path(prefs_file)` (before write)
 
 **Security Controls:**
+
 1. ✅ Filename must be exactly "USER_PREFERENCES.md"
 2. ✅ Path must contain ".claude/context" directory
 3. ✅ Resolved to canonical absolute path
@@ -183,6 +195,7 @@ def _validate_preferences_path(self, path: Path) -> Path:
 5. ✅ Exceptions logged and re-raised
 
 **Blocked Attack Examples:**
+
 ```python
 # All of these are REJECTED:
 "../../../etc/passwd"                          # Traversal to system files
@@ -192,6 +205,7 @@ def _validate_preferences_path(self, path: Path) -> Path:
 ```
 
 **Test Coverage:**
+
 - `tests/unit/neo4j/test_shutdown_coordinator.py::test_path_validation_rejects_traversal`
 - `tests/unit/neo4j/test_shutdown_coordinator.py::test_path_validation_accepts_valid_paths`
 - `tests/unit/neo4j/test_shutdown_coordinator.py::test_load_preference_with_path_validation`
@@ -204,6 +218,7 @@ def _validate_preferences_path(self, path: Path) -> Path:
 ## 4. Timeout Protections
 
 ### Requirement
+
 All network operations and user prompts must have appropriate timeouts to prevent blocking.
 
 ### Implementation Verified
@@ -226,6 +241,7 @@ response = requests.post(
 ```
 
 **Retry Logic with Exponential Backoff** (Lines 163-181):
+
 ```python
 except requests.exceptions.Timeout:
     if attempt < max_retries:
@@ -241,6 +257,7 @@ except requests.exceptions.Timeout:
 ```
 
 **Security Controls:**
+
 1. ✅ 4.0-second timeout per HTTP request
 2. ✅ Maximum 3 attempts (initial + 2 retries)
 3. ✅ Exponential backoff: 0.5s, 0.75s
@@ -280,6 +297,7 @@ if input_thread.is_alive():
 ```
 
 **Security Controls:**
+
 1. ✅ 10-second user prompt timeout
 2. ✅ Defaults to "no shutdown" (safe default)
 3. ✅ Daemon thread prevents hanging process
@@ -287,6 +305,7 @@ if input_thread.is_alive():
 5. ✅ Helpful timeout message displayed
 
 **Test Coverage:**
+
 - `tests/unit/neo4j/test_connection_tracker.py::test_get_active_connection_count_timeout`
 - `tests/unit/neo4j/test_connection_tracker.py::test_retry_on_timeout`
 - `tests/unit/neo4j/test_connection_tracker.py::test_max_retries_exhausted`
@@ -296,11 +315,11 @@ if input_thread.is_alive():
 
 **Timeout Summary Table:**
 
-| Operation | Timeout | Retries | Total Worst-Case |
-|-----------|---------|---------|------------------|
-| HTTP request | 4.0s | 2 | ~9.25s |
-| User prompt | 10.0s | N/A | 10.0s |
-| Container stop | 30.0s | N/A | 30.0s |
+| Operation      | Timeout | Retries | Total Worst-Case |
+| -------------- | ------- | ------- | ---------------- |
+| HTTP request   | 4.0s    | 2       | ~9.25s           |
+| User prompt    | 10.0s   | N/A     | 10.0s            |
+| Container stop | 30.0s   | N/A     | 30.0s            |
 
 **Status**: ✅ VERIFIED - All operations properly timed out
 
@@ -309,6 +328,7 @@ if input_thread.is_alive():
 ## 5. No Credential Leakage in Logs
 
 ### Requirement
+
 Ensure no sensitive credentials appear in log messages at any level.
 
 ### Implementation Verified
@@ -318,12 +338,14 @@ Ensure no sensitive credentials appear in log messages at any level.
 **File**: `src/amplihack/neo4j/connection_tracker.py`
 
 **Auth Tuple Never Logged:**
+
 ```python
 self.auth = (neo4j_username, neo4j_password)  # Line 67
 # ✅ Never logged anywhere
 ```
 
 **Safe Log Messages:**
+
 - Line 58: Warning about default password (but not the password value)
 - Line 159: "Neo4j connection count: %d active connections" (count only)
 - Line 177-179: Timeout message with container name (no credentials)
@@ -331,6 +353,7 @@ self.auth = (neo4j_username, neo4j_password)  # Line 67
 - Line 195: Sanitized exception at DEBUG level
 
 **Dangerous Operations Avoided:**
+
 ```python
 # ❌ NEVER DONE:
 logger.info(f"Connecting with auth: {self.auth}")  # Would leak credentials
@@ -343,12 +366,14 @@ logger.error(f"Auth failed: {response.text}")  # Could leak credentials
 **File**: `src/amplihack/neo4j/shutdown_coordinator.py`
 
 **Safe Log Messages:**
+
 - Line 114: Preference value only (always/never/ask)
 - Line 239-241: "Last Neo4j connection detected with preference=%s"
 - Line 259: "neo4j_auto_shutdown=always - proceeding"
 - Line 296-297: User selected "always" (no credential data)
 
 **No Credential Access:**
+
 - This module never handles credentials directly
 - Only coordinates shutdown decisions
 - No database connection made (uses tracker)
@@ -390,6 +415,7 @@ def _handle_neo4j_cleanup(self) -> None:
 ```
 
 **Security Controls:**
+
 1. ✅ Credentials only read from environment
 2. ✅ Credentials passed to constructor (never logged)
 3. ✅ Generic error messages on failure
@@ -399,6 +425,7 @@ def _handle_neo4j_cleanup(self) -> None:
 **Log Audit Results:**
 
 Searched entire codebase for credential logging patterns:
+
 ```bash
 # Patterns searched (all safe):
 grep -r "logger.*password" src/amplihack/neo4j/
@@ -420,6 +447,7 @@ While not part of the Neo4j cleanup feature, the UVX cleanup system also demonst
 **File**: `src/amplihack/utils/cleanup_handler.py`
 
 #### 6.1 Symlink Protection
+
 ```python
 def validate_cleanup_path(self, path: Path) -> bool:
     """Validate path is safe for cleanup."""
@@ -435,11 +463,13 @@ def validate_cleanup_path(self, path: Path) -> bool:
 ```
 
 **Security Controls:**
+
 1. ✅ Double-check for symlinks (TOCTOU mitigation)
 2. ✅ Path must be within working directory
 3. ✅ Explicit security warnings in logs
 
 #### 6.2 Registry Size Limit
+
 **File**: `src/amplihack/utils/cleanup_registry.py` (Lines 16-17, 41-44)
 
 ```python
@@ -460,6 +490,7 @@ def register(self, path: Path) -> bool:
 ## Security Test Coverage Summary
 
 ### Unit Tests
+
 - `tests/unit/neo4j/test_connection_tracker.py`: 23 tests
   - Password requirement tests
   - Exception sanitization tests
@@ -473,6 +504,7 @@ def register(self, path: Path) -> bool:
   - Exception safety tests
 
 ### Integration Tests
+
 - `tests/agentic/test_neo4j_cleanup_e2e.py`: End-to-end security verification
   - Development mode flag required
   - Full cleanup flow with mocked credentials
@@ -485,30 +517,30 @@ def register(self, path: Path) -> bool:
 
 ### OWASP Top 10 Compliance
 
-| OWASP Risk | Status | Mitigation |
-|------------|--------|------------|
-| A01: Broken Access Control | ✅ Pass | Path validation prevents traversal |
-| A02: Cryptographic Failures | ✅ Pass | Credentials via environment only |
-| A03: Injection | ✅ Pass | Log injection prevented (newline sanitization) |
-| A04: Insecure Design | ✅ Pass | Fail-safe defaults, timeout protections |
-| A05: Security Misconfiguration | ✅ Pass | Explicit opt-in for development mode |
-| A06: Vulnerable Components | N/A | No deprecated dependencies |
-| A07: Auth Failures | ✅ Pass | No hardcoded credentials |
-| A08: Software Integrity | ✅ Pass | File permissions (0600) enforced |
-| A09: Logging Failures | ✅ Pass | Sanitized logging, no credential exposure |
-| A10: SSRF | N/A | Only local Neo4j connection |
+| OWASP Risk                     | Status  | Mitigation                                     |
+| ------------------------------ | ------- | ---------------------------------------------- |
+| A01: Broken Access Control     | ✅ Pass | Path validation prevents traversal             |
+| A02: Cryptographic Failures    | ✅ Pass | Credentials via environment only               |
+| A03: Injection                 | ✅ Pass | Log injection prevented (newline sanitization) |
+| A04: Insecure Design           | ✅ Pass | Fail-safe defaults, timeout protections        |
+| A05: Security Misconfiguration | ✅ Pass | Explicit opt-in for development mode           |
+| A06: Vulnerable Components     | N/A     | No deprecated dependencies                     |
+| A07: Auth Failures             | ✅ Pass | No hardcoded credentials                       |
+| A08: Software Integrity        | ✅ Pass | File permissions (0600) enforced               |
+| A09: Logging Failures          | ✅ Pass | Sanitized logging, no credential exposure      |
+| A10: SSRF                      | N/A     | Only local Neo4j connection                    |
 
 ### CWE Compliance
 
-| CWE | Description | Status | Implementation |
-|-----|-------------|--------|----------------|
-| CWE-22 | Path Traversal | ✅ Pass | `_validate_preferences_path()` |
-| CWE-259 | Hardcoded Password | ✅ Pass | Environment variables + opt-in |
-| CWE-200 | Information Disclosure | ✅ Pass | `_sanitize_for_log()` |
-| CWE-319 | Cleartext Transmission | ⚠️  N/A | Local-only (localhost) |
-| CWE-367 | TOCTOU | ✅ Pass | Double-check symlinks |
-| CWE-532 | Sensitive Info in Logs | ✅ Pass | No credentials logged |
-| CWE-400 | Resource Exhaustion | ✅ Pass | Timeouts + retry limits |
+| CWE     | Description            | Status  | Implementation                 |
+| ------- | ---------------------- | ------- | ------------------------------ |
+| CWE-22  | Path Traversal         | ✅ Pass | `_validate_preferences_path()` |
+| CWE-259 | Hardcoded Password     | ✅ Pass | Environment variables + opt-in |
+| CWE-200 | Information Disclosure | ✅ Pass | `_sanitize_for_log()`          |
+| CWE-319 | Cleartext Transmission | ⚠️ N/A  | Local-only (localhost)         |
+| CWE-367 | TOCTOU                 | ✅ Pass | Double-check symlinks          |
+| CWE-532 | Sensitive Info in Logs | ✅ Pass | No credentials logged          |
+| CWE-400 | Resource Exhaustion    | ✅ Pass | Timeouts + retry limits        |
 
 ---
 
@@ -565,12 +597,14 @@ All 5 critical security requirements have been properly implemented and verified
 **Status**: ✅ APPROVED FOR PRODUCTION
 
 **Verification Method**:
+
 - Static code analysis of all Neo4j cleanup modules
 - Review of 70+ security-focused unit tests
 - Documentation review (SECURITY_REQUIREMENTS.md)
 - Manual verification of security controls
 
 **Next Steps**:
+
 - None required - feature is production ready
 - Optional: Implement recommended enhancements
 - Continue monitoring security logs in production

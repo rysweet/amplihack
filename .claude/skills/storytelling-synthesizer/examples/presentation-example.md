@@ -5,6 +5,7 @@
 **Technical Achievement**: Migrated monolithic system to microservices architecture
 
 **Metrics**:
+
 - Deployment frequency: 1x/week → 10x/day
 - Mean time to recovery: 4 hours → 15 minutes
 - System scalability: 10M users → 100M users
@@ -49,12 +50,14 @@ By the end of this talk, you'll understand what we did, why it worked, and what 
 **Title**: "The Monolith Problem"
 
 **Content**:
+
 - Single codebase: 2.3M lines of code
 - Single database: 500GB PostgreSQL
 - Single server: Deployed as one unit
 - One team: Shared deployment process
 
 **Visuals**:
+
 - Timeline showing: 2017 (50 people) → 2021 (200 people) → 2023 (400 people)
 - Graph showing: Revenue ↑ 10x | Codebase ↑ 10x | Deployment speed ↓ 3x
 
@@ -100,12 +103,14 @@ Slide 3 shows why this gets painful."
    - Incident response: 4+ hours average
 
 **Metrics Box**:
+
 - Deployments: 1 per week (Monday morning only)
 - Mean Time To Recovery: 4 hours
 - Support incidents: 23 per month
 - Test time: 45 minutes (before each deployment)
 
 **Visuals**:
+
 - Image: Traffic jam illustration (teams waiting)
 - Chart: Incident response time trend (steadily increasing)
 
@@ -132,6 +137,7 @@ This wasn't just inefficient. It was limiting what we could build."
 **Title**: "What If Each Team Owned Their Own Service?"
 
 **Content**:
+
 - One monolith → Multiple independent services
 - Each service: owned by one team
 - Each service: deployed independently
@@ -146,6 +152,7 @@ This wasn't just inefficient. It was limiting what we could build."
 "The insight was simple but powerful: Stop thinking about one system. Start thinking about many services.
 
 Each service:
+
 - Owned by one team
 - Has clear responsibilities
 - Can be deployed independently
@@ -163,6 +170,7 @@ This is the microservices pattern. We'd heard about it. We'd read about it. But 
 **Title**: "The New System Architecture"
 
 **Large Visual** (most of the slide):
+
 ```
 ┌──────────────────────────────────────────────────┐
 │ Client / Frontend                                │
@@ -194,6 +202,7 @@ Key: Each service has its own database
 ```
 
 **Bullet Points**:
+
 - Each service: independent codebase + database
 - Services communicate: through API Gateway or async events
 - Failures isolated: one service dies, others continue
@@ -203,6 +212,7 @@ Key: Each service has its own database
 "Here's what the new architecture looks like.
 
 Instead of one giant system, we have multiple services. Each one:
+
 - Has its own team
 - Has its own database (no shared DB that becomes a bottleneck)
 - Communicates with others through clear APIs or async events
@@ -225,6 +235,7 @@ If User Service team wants to deploy at 3pm? They can. Doesn't wait for anyone e
 **Title**: "How Services Talk: Event Bus"
 
 **Visual**: Timeline diagram
+
 ```
 Time  User Service      Event Bus        Email Service
 ────  ─────────────    ──────────        ──────────────
@@ -242,12 +253,14 @@ Result: User and Email services don't know about each other.
 ```
 
 **Key Insight**:
+
 - Services don't call each other (tight coupling)
 - Services publish events (I did something)
 - Other services listen (if interested)
 - Decoupling = independent deployment
 
 **Code Example** (simple, not scary):
+
 ```python
 # User Service: Publish an event
 bus.publish('UserCreated', {'user_id': 123, 'email': '...'})
@@ -283,6 +296,7 @@ This is revolutionary compared to the monolith where everything happens synchron
 **Visual**: Screenshot of monitoring dashboard
 
 **Content**:
+
 - Show: Real-time metrics (requests/sec, error rate, latency)
 - Show: 20 services deployed
 - Show: Recent deployments log
@@ -291,6 +305,7 @@ This is revolutionary compared to the monolith where everything happens synchron
 "I want to show you this working in production.
 
 What you're looking at is our real monitoring dashboard from yesterday. You can see:
+
 - Our 20 services, all healthy
 - Baseline: 5,000 requests per second
 - Normal latency: 150ms P95
@@ -335,6 +350,7 @@ But notice: User Service didn't scale. Why? Because it wasn't under load. With a
 This is huge for cost and performance."
 
 **Key Metrics on Screen**:
+
 - Before spike: 8 servers | After spike: 13 servers
 - Cost: +$300/day temporary scaling (vs monolith +$500 for everything)
 
@@ -380,6 +396,7 @@ If something goes wrong—and something occasionally does—watch what happens..
 "Automatic rollback. 30 seconds. The old version is back. Incident averted. Now the team can debug and redeploy when they're ready."
 
 **Key Metrics**:
+
 - Deployments: 1/week → 10/day (15 deployments yesterday alone)
 - Rollback time: 30 seconds (automatic)
 - Mean incident time: 4 hours → 15 minutes
@@ -451,6 +468,7 @@ Features? Our velocity went up 40%. Not because the engineers got faster—but b
 "Scaling independently saves us ~$400k/year in infrastructure costs. Better reliability reduces incidents, which reduces on-call load."
 
 **Visuals**:
+
 - Timeline showing: feature velocity 8 → 12 features/sprint
 - Graph: incident duration over time (trending down)
 - Quote from customer: "Your uptime during our big sales event was flawless"
@@ -469,21 +487,25 @@ Features? Our velocity went up 40%. Not because the engineers got faster—but b
 **Content** (by quarter):
 
 **Q1 2024**:
+
 - Service mesh deployment (better inter-service communication)
 - Distributed tracing (understand request flow across services)
 - Advanced monitoring (anomaly detection)
 
 **Q2 2024**:
+
 - Multi-region deployment (serve users globally)
 - Disaster recovery plan (what if a whole region goes down)
 - Security audit of service-to-service communication
 
 **Q3 2024**:
+
 - GraphQL federation (more powerful data querying)
 - Advanced circuit breakers (handle cascading failures)
 - Team training on microservices best practices
 
 **Q4 2024+**:
+
 - AI-driven anomaly detection
 - Serverless functions for ephemeral workloads
 - Event sourcing for perfect audit trails
@@ -494,6 +516,7 @@ Features? Our velocity went up 40%. Not because the engineers got faster—but b
 "We're not done. Microservices is a journey, not a destination.
 
 Next on the agenda: Service mesh. This is a layer that sits between services and handles all inter-service communication. It sounds fancy, but it means we get:
+
 - Automatic retries
 - Circuit breaking (if a service is sick, stop calling it)
 - Traffic shaping (send 90% of traffic here, 10% there for testing)
@@ -599,6 +622,7 @@ And finally: velocity multiplies. This isn't linear improvement. It's multiplica
 "If you're on a team that's not yet microservices-aware, now's the time. Attend the microservices workshop next week. Learn the patterns. Join us as we scale to the next level."
 
 **Contact Info**:
+
 - Slack channel: #microservices-team
 - Documentation: [internal wiki]
 - Office hours: Thursdays 3pm, [room]
@@ -646,29 +670,34 @@ A: "Yes, initially. But we've invested in tooling: Kubernetes for orchestration,
 ## DELIVERY TIPS
 
 **Pacing**:
+
 - First 10 minutes: Problem (set context, make it relatable)
 - Next 8 minutes: Solution (vision, architecture, key insights)
 - Next 8 minutes: Demo (show it working, this is the money moment)
 - Last 9 minutes: Results, roadmap, lessons
 
 **Energy**:
+
 - Start calm (painting the monolith problem)
 - Build energy (architecture slide, getting more interesting)
 - Peak energy (during demos)
 - Calm ending (reflection on lessons learned)
 
 **Engagement**:
+
 - Ask questions (Who's feeling monolith pain? hands?) → shows you understand audience
 - Pause for reactions (slide 10 metrics usually gets reactions)
 - Invite participation (Q&A at end)
 
 **Tech Setup**:
+
 - Have backup of recorded demos (live demos are risky)
 - Have presenter laptop + external display
 - Have Slack open for questions that come in during talk
 - Have metrics dashboard ready to show in real-time
 
 **Timing Buffer**:
+
 - Slides 1-9: 12 minutes (target)
 - Slides 10-15: 8 minutes (target)
 - That's 20 minutes of content with 10-15 minutes of buffer for discussion, tangents, or detailed questions
@@ -678,6 +707,7 @@ A: "Yes, initially. But we've invested in tooling: Kubernetes for orchestration,
 ## SUCCESS CRITERIA
 
 After this presentation, audience should:
+
 - ✅ Understand why we migrated to microservices
 - ✅ Understand the architecture at a high level
 - ✅ Appreciate the business impact (velocity, reliability)

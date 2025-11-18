@@ -105,6 +105,9 @@ ai_working/tmp
 **/runtime/metrics/
 **/runtime/analysis/
 
+# Claude Code auto-generated settings (machine-specific paths)
+.claude/settings.json
+
 # Smoke test runtime logs
 .smoke_test_data/data
 

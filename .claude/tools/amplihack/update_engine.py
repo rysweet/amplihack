@@ -94,7 +94,7 @@ def create_backup(project_path: Path) -> Optional[Path]:
     try:
         # Check if we have enough disk space (simple check - 2x .claude size)
         if claude_dir.exists():
-            claude_size = sum(f.stat().st_size for f in claude_dir.rglob('*') if f.is_file())
+            claude_size = sum(f.stat().st_size for f in claude_dir.rglob("*") if f.is_file())
             statvfs = shutil.disk_usage(project_path)
             if statvfs.free < claude_size * 2:
                 return None  # Not enough space
@@ -146,9 +146,9 @@ def get_changed_files(package_path: Path, old_commit: str, new_commit: str) -> L
 
         # Parse output and filter for .claude directory
         changed_files = []
-        for line in result.stdout.strip().split('\n'):
+        for line in result.stdout.strip().split("\n"):
             line = line.strip()
-            if line and line.startswith('.claude/'):
+            if line and line.startswith(".claude/"):
                 changed_files.append(line)
 
         return changed_files
@@ -242,7 +242,7 @@ def _write_version_file(project_path: Path, version: str) -> bool:
         version_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Write version to file
-        version_file.write_text(version + '\n')
+        version_file.write_text(version + "\n")
         return True
 
     except OSError:
@@ -330,9 +330,7 @@ def perform_update(
             )
 
         changed_files = [
-            str(f.relative_to(package_path))
-            for f in package_claude.rglob('*')
-            if f.is_file()
+            str(f.relative_to(package_path)) for f in package_claude.rglob("*") if f.is_file()
         ]
 
     if not changed_files:
@@ -349,7 +347,7 @@ def perform_update(
     # Step 3: Process each changed file
     for file_path in changed_files:
         # Remove .claude/ prefix for classification
-        relative_path = file_path.replace('.claude/', '', 1)
+        relative_path = file_path.replace(".claude/", "", 1)
 
         # Classify the file
         category = classify_file(relative_path)
@@ -386,7 +384,7 @@ def perform_update(
             preserved_files.append(file_path)
             continue
 
-        elif category == FileCategory.PRESERVE_IF_MODIFIED:
+        if category == FileCategory.PRESERVE_IF_MODIFIED:
             # Preserve if modified, update if unmodified
             if _is_file_modified(dest_file, source_file):
                 preserved_files.append(file_path)

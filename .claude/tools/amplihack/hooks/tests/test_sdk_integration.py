@@ -18,11 +18,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from claude_power_steering import (
     CLAUDE_SDK_AVAILABLE,
-    analyze_consideration_sync,
     _format_consideration_prompt,
     _format_conversation_summary,
+    analyze_consideration_sync,
 )
-from power_steering_checker import PowerSteeringChecker, SDK_AVAILABLE
+from power_steering_checker import SDK_AVAILABLE, PowerSteeringChecker
 
 
 def test_sdk_availability():
@@ -34,9 +34,8 @@ def test_sdk_availability():
     if CLAUDE_SDK_AVAILABLE:
         print("  ✓ Claude SDK is available")
         return True
-    else:
-        print("  ⚠ Claude SDK is NOT available (will use heuristic fallback)")
-        return False
+    print("  ⚠ Claude SDK is NOT available (will use heuristic fallback)")
+    return False
 
 
 def test_conversation_formatting():
@@ -136,9 +135,7 @@ def test_sdk_analysis():
 
     try:
         print("  Testing WITH tests in transcript...")
-        result_with = analyze_consideration_sync(
-            conversation_with_tests, consideration, temp_dir
-        )
+        result_with = analyze_consideration_sync(conversation_with_tests, consideration, temp_dir)
         print(f"    Result: {'SATISFIED' if result_with else 'NOT SATISFIED'}")
 
         print("  Testing WITHOUT tests in transcript...")
@@ -187,7 +184,11 @@ def test_integration_with_checker():
             "type": "assistant",
             "message": {
                 "content": [
-                    {"type": "tool_use", "name": "TodoWrite", "input": {"todos": [{"status": "completed"}]}}
+                    {
+                        "type": "tool_use",
+                        "name": "TodoWrite",
+                        "input": {"todos": [{"status": "completed"}]},
+                    }
                 ]
             },
         },
@@ -230,9 +231,8 @@ def main():
     if all_passed:
         print("✅ All tests passed!")
         return 0
-    else:
-        print("❌ Some tests failed")
-        return 1
+    print("❌ Some tests failed")
+    return 1
 
 
 if __name__ == "__main__":

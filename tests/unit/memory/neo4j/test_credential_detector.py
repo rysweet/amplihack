@@ -28,28 +28,26 @@ class TestDetectContainerPassword:
         with patch("subprocess.run") as mock_run:
             # Simulate docker inspect returning environment with NEO4J_AUTH
             env_vars = ["PATH=/usr/bin", "NEO4J_AUTH=neo4j/secret123", "HOME=/var/lib/neo4j"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
             assert password == "secret123"
             mock_run.assert_called_once()
             call_args = mock_run.call_args[0][0]
-            assert call_args == ["docker", "inspect", "amplihack-neo4j", "--format", "{{json .Config.Env}}"]
+            assert call_args == [
+                "docker",
+                "inspect",
+                "amplihack-neo4j",
+                "--format",
+                "{{json .Config.Env}}",
+            ]
 
     def test_WHEN_container_has_custom_username_THEN_password_extracted(self):
         """Test password extraction with custom username in NEO4J_AUTH."""
         with patch("subprocess.run") as mock_run:
             env_vars = ["NEO4J_AUTH=admin/mypassword123"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("custom-neo4j")
 
@@ -59,11 +57,7 @@ class TestDetectContainerPassword:
         """Test handling of auth-disabled configuration (NEO4J_AUTH=none)."""
         with patch("subprocess.run") as mock_run:
             env_vars = ["NEO4J_AUTH=none", "PATH=/usr/bin"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -73,9 +67,7 @@ class TestDetectContainerPassword:
         """Test handling of non-existent container."""
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(
-                returncode=1,
-                stdout="",
-                stderr="Error: No such container: nonexistent-container"
+                returncode=1, stdout="", stderr="Error: No such container: nonexistent-container"
             )
 
             password = detect_container_password("nonexistent-container")
@@ -86,11 +78,7 @@ class TestDetectContainerPassword:
         """Test handling when NEO4J_AUTH variable is not in environment."""
         with patch("subprocess.run") as mock_run:
             env_vars = ["PATH=/usr/bin", "HOME=/var/lib/neo4j", "JAVA_HOME=/usr/lib/jvm"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -100,11 +88,7 @@ class TestDetectContainerPassword:
         """Test handling of malformed NEO4J_AUTH without slash separator."""
         with patch("subprocess.run") as mock_run:
             env_vars = ["NEO4J_AUTH=invalidformat"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -115,11 +99,7 @@ class TestDetectContainerPassword:
         with patch("subprocess.run") as mock_run:
             # Password contains slashes (split with maxsplit=1 should handle this)
             env_vars = ["NEO4J_AUTH=neo4j/pass/with/slashes"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -129,8 +109,7 @@ class TestDetectContainerPassword:
         """Test handling of Docker command timeout."""
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(
-                cmd=["docker", "inspect", "amplihack-neo4j"],
-                timeout=5
+                cmd=["docker", "inspect", "amplihack-neo4j"], timeout=5
             )
 
             password = detect_container_password("amplihack-neo4j")
@@ -140,11 +119,7 @@ class TestDetectContainerPassword:
     def test_WHEN_json_parsing_fails_THEN_returns_none(self):
         """Test handling of invalid JSON output from docker inspect."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout="invalid json [{]",
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="invalid json [{]", stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -163,11 +138,7 @@ class TestDetectContainerPassword:
         """Test that subprocess.run is called with appropriate timeout."""
         with patch("subprocess.run") as mock_run:
             env_vars = ["NEO4J_AUTH=neo4j/password"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             detect_container_password("amplihack-neo4j")
 
@@ -179,11 +150,7 @@ class TestDetectContainerPassword:
     def test_WHEN_empty_environment_array_THEN_returns_none(self):
         """Test handling of container with empty environment array."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps([]),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps([]), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -193,11 +160,7 @@ class TestDetectContainerPassword:
         """Test handling of NEO4J_AUTH with empty value."""
         with patch("subprocess.run") as mock_run:
             env_vars = ["NEO4J_AUTH="]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -207,11 +170,7 @@ class TestDetectContainerPassword:
         """Test handling of NEO4J_AUTH with username but no password."""
         with patch("subprocess.run") as mock_run:
             env_vars = ["NEO4J_AUTH=neo4j/"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -264,11 +223,7 @@ class TestCredentialDetectorEdgeCases:
         long_password = "a" * 1000
         with patch("subprocess.run") as mock_run:
             env_vars = [f"NEO4J_AUTH=neo4j/{long_password}"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -279,11 +234,7 @@ class TestCredentialDetectorEdgeCases:
         special_password = "p@ss!w0rd#$%^&*()"
         with patch("subprocess.run") as mock_run:
             env_vars = [f"NEO4J_AUTH=neo4j/{special_password}"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -294,11 +245,7 @@ class TestCredentialDetectorEdgeCases:
         unicode_password = "пароль🔑密码"
         with patch("subprocess.run") as mock_run:
             env_vars = [f"NEO4J_AUTH=neo4j/{unicode_password}"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -309,11 +256,7 @@ class TestCredentialDetectorEdgeCases:
         whitespace_password = "pass word\twith\nwhitespace"
         with patch("subprocess.run") as mock_run:
             env_vars = [f"NEO4J_AUTH=neo4j/{whitespace_password}"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -325,13 +268,9 @@ class TestCredentialDetectorEdgeCases:
             env_vars = [
                 "NEO4J_AUTH=neo4j/password1",
                 "OTHER_VAR=value",
-                "NEO4J_AUTH=neo4j/password2"
+                "NEO4J_AUTH=neo4j/password2",
             ]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             password = detect_container_password("amplihack-neo4j")
 
@@ -344,14 +283,11 @@ class TestCredentialDetectorLogging:
 
     def test_WHEN_detection_succeeds_THEN_logs_info(self):
         """Test that successful detection logs appropriate messages."""
-        with patch("subprocess.run") as mock_run, \
-             patch("amplihack.memory.neo4j.credential_detector.logger") as mock_logger:
+        with patch("subprocess.run") as mock_run, patch(
+            "amplihack.memory.neo4j.credential_detector.logger"
+        ) as mock_logger:
             env_vars = ["NEO4J_AUTH=neo4j/password"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             detect_container_password("amplihack-neo4j")
 
@@ -361,14 +297,11 @@ class TestCredentialDetectorLogging:
 
     def test_WHEN_auth_disabled_THEN_logs_info(self):
         """Test that auth-disabled case logs info message."""
-        with patch("subprocess.run") as mock_run, \
-             patch("amplihack.memory.neo4j.credential_detector.logger") as mock_logger:
+        with patch("subprocess.run") as mock_run, patch(
+            "amplihack.memory.neo4j.credential_detector.logger"
+        ) as mock_logger:
             env_vars = ["NEO4J_AUTH=none"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             detect_container_password("amplihack-neo4j")
 
@@ -379,14 +312,11 @@ class TestCredentialDetectorLogging:
 
     def test_WHEN_malformed_auth_THEN_logs_warning(self):
         """Test that malformed auth format logs warning."""
-        with patch("subprocess.run") as mock_run, \
-             patch("amplihack.memory.neo4j.credential_detector.logger") as mock_logger:
+        with patch("subprocess.run") as mock_run, patch(
+            "amplihack.memory.neo4j.credential_detector.logger"
+        ) as mock_logger:
             env_vars = ["NEO4J_AUTH=malformed"]
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout=json.dumps(env_vars),
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
             detect_container_password("amplihack-neo4j")
 
@@ -395,11 +325,11 @@ class TestCredentialDetectorLogging:
 
     def test_WHEN_timeout_occurs_THEN_logs_warning(self):
         """Test that timeout logs warning message."""
-        with patch("subprocess.run") as mock_run, \
-             patch("amplihack.memory.neo4j.credential_detector.logger") as mock_logger:
+        with patch("subprocess.run") as mock_run, patch(
+            "amplihack.memory.neo4j.credential_detector.logger"
+        ) as mock_logger:
             mock_run.side_effect = subprocess.TimeoutExpired(
-                cmd=["docker", "inspect", "amplihack-neo4j"],
-                timeout=5
+                cmd=["docker", "inspect", "amplihack-neo4j"], timeout=5
             )
 
             detect_container_password("amplihack-neo4j")

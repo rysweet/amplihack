@@ -91,11 +91,7 @@
       "description": "Auto-generated from skill structure"
     },
     "tier_2_core": {
-      "sources": [
-        "microsoft_learn_overview",
-        "github_repository",
-        "devblog_announcement"
-      ],
+      "sources": ["microsoft_learn_overview", "github_repository", "devblog_announcement"],
       "description": "Framework overview and quick start"
     },
     "tier_3_detailed": {

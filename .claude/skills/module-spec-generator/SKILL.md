@@ -34,6 +34,7 @@ A good spec enables rebuilding ANY module independently while preserving its con
 Every module specification includes these sections:
 
 ### 1. Module Overview
+
 ```
 # [Module Name] Specification
 
@@ -48,6 +49,7 @@ How this module embodies brick principles and simplicity.
 ```
 
 ### 2. Public Contract (The "Studs")
+
 ```
 ## Public Interface
 
@@ -65,6 +67,7 @@ Important module-level constants and their purposes.
 ```
 
 ### 3. Dependencies
+
 ```
 ## Dependencies
 
@@ -79,27 +82,32 @@ Pure Python, standard library only.
 ```
 
 ### 4. Module Structure
+
 ```
 ## Module Structure
 
 ```
+
 module_name/
-├── __init__.py          # Public interface via __all__
-├── core.py              # Main implementation
-├── models.py            # Data models (if needed)
-├── utils.py             # Internal utilities
+├── **init**.py # Public interface via **all**
+├── core.py # Main implementation
+├── models.py # Data models (if needed)
+├── utils.py # Internal utilities
 ├── tests/
-│   ├── __init__.py
-│   ├── test_core.py     # Main functionality tests
-│   ├── test_models.py   # Data model tests (if needed)
-│   └── fixtures/
-│       └── sample_data.json
+│ ├── **init**.py
+│ ├── test_core.py # Main functionality tests
+│ ├── test_models.py # Data model tests (if needed)
+│ └── fixtures/
+│ └── sample_data.json
 └── examples/
-    └── basic_usage.py   # Usage examples
+└── basic_usage.py # Usage examples
+
 ```
+
 ```
 
 ### 5. Test Requirements
+
 ```
 ## Test Requirements
 
@@ -115,7 +123,8 @@ Target test coverage percentage (typically 85%+)
 ```
 
 ### 6. Example Usage
-```
+
+````
 ## Example Usage
 
 ```python
@@ -126,7 +135,8 @@ result = PublicFunction(input_data)
 
 # Usage example 2
 model = DataModel(field1="value", field2=123)
-```
+````
+
 ```
 
 ## Step-by-Step Analysis Process
@@ -173,10 +183,12 @@ model = DataModel(field1="value", field2=123)
 ### Example 1: Generate Spec for New Module
 
 ```
+
 User: I'm creating a new authentication module.
-      Generate a spec that ensures it follows brick philosophy.
+Generate a spec that ensures it follows brick philosophy.
 
 Claude:
+
 1. Interviews user about module purpose, public functions, dependencies
 2. Analyzes similar modules in codebase
 3. Generates comprehensive spec with:
@@ -185,30 +197,36 @@ Claude:
    - Test requirements
    - Example implementations
 4. Saves to Specs/authentication.md
+
 ```
 
 ### Example 2: Document Existing Module
 
 ```
+
 User: Generate a spec for the existing caching module.
 
 Claude:
+
 1. Analyzes .claude/tools/amplihack/caching/ directory
-2. Extracts __all__ exports
+2. Extracts **all** exports
 3. Documents public functions with signatures
 4. Maps dependencies
 5. Identifies test requirements
 6. Creates Specs/caching.md
 7. Offers to verify spec matches implementation
+
 ```
 
 ### Example 3: Verify Module Spec Accuracy
 
 ```
+
 User: Check if the existing session management spec
-      accurately describes the implementation.
+accurately describes the implementation.
 
 Claude:
+
 1. Reads Specs/session-management.md
 2. Analyzes actual code in .claude/tools/amplihack/session/
 3. Compares:
@@ -217,7 +235,8 @@ Claude:
    - Test coverage
 4. Reports discrepancies
 5. Suggests spec updates if needed
-```
+
+````
 
 ## Analysis Checklist
 
@@ -276,9 +295,10 @@ def primary_function(param: Type) -> ReturnType:
     Returns:
         Description of return value
     """
-```
+````
 
 ### Classes
+
 ```python
 class DataModel:
     """Brief description of responsibility.
@@ -290,14 +310,17 @@ class DataModel:
 ```
 
 ### Constants
+
 - `CONSTANT_NAME`: Description and usage
 
 ## Dependencies
 
 ### External
+
 None - pure Python standard library
 
 ### Internal
+
 - `.models`: Data structures
 - `.utils`: Shared utilities
 
@@ -318,16 +341,19 @@ module_name/
 ## Test Requirements
 
 ### Core Functionality Tests
+
 - ✅ Test primary_function with valid input
 - ✅ Test error handling with invalid input
 - ✅ Test edge cases
 
 ### Contract Verification
-- ✅ All exported items in __all__ work
+
+- ✅ All exported items in **all** work
 - ✅ Type hints match actual behavior
 - ✅ Return values match documentation
 
 ### Coverage Target
+
 85%+ line coverage
 
 ## Example Usage
@@ -346,10 +372,12 @@ print(model.field1)
 ## Regeneration Notes
 
 This module can be rebuilt from this specification while maintaining:
+
 - ✅ Public contract (all "studs" preserved)
 - ✅ Dependencies (same external/internal deps)
 - ✅ Test interface (same test requirements)
 - ✅ Module structure (same file organization)
+
 ```
 
 ## Output Location
@@ -409,3 +437,4 @@ A good module spec:
 - [ ] Follows brick philosophy
 - [ ] No future-proofing or speculation
 - [ ] Regeneratable without breaking system
+```

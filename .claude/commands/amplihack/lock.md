@@ -1,11 +1,11 @@
 # Lock: Enable Continuous Work Mode
 
-
 **Purpose**: Enable continuous work mode to prevent Claude from stopping until explicitly unlocked.
 
 **Usage**: `amplihack:lock [optional lock message]`
 
 When locked, Claude will:
+
 - use the Bash tool to run the amplihack lock tool:,
 
 **Basic usage (default continuation prompt):**
@@ -15,6 +15,7 @@ python .claude/tools/amplihack/lock_tool.py lock
 ```
 
 **With custom instruction:**
+
 ```bash
 python .claude/tools/amplihack/lock_tool.py lock --message "Focus on security fixes first"
 ```
@@ -37,6 +38,7 @@ This enables:
 - Direction for autonomous work
 
 **Example custom messages:**
+
 ```
 "Focus on security fixes first, then performance optimizations"
 "Check all API endpoints for authentication issues"
@@ -53,15 +55,18 @@ This enables:
 Use the Bash tool to run the lock tool:
 
 **Basic usage (default continuation prompt):**
+
 ```bash
 python .claude/tools/amplihack/lock_tool.py lock
 ```
 
 **With custom instruction:**
+
 ```bash
 python .claude/tools/amplihack/lock_tool.py lock --message "Focus on security fixes first"
 ```
 
 **Lock files:**
+
 - Lock flag: `.claude/runtime/locks/.lock_active`
 - Custom message: `.claude/runtime/locks/.lock_message`

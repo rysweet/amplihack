@@ -11,6 +11,7 @@ Provide session lifecycle management with persistent storage, structured logging
 ## Scope
 
 **Handles**:
+
 - Session creation and lifecycle tracking
 - Session persistence to JSON files
 - Session retrieval and resumption
@@ -19,6 +20,7 @@ Provide session lifecycle management with persistent storage, structured logging
 - Defensive file operations with retries
 
 **Does NOT handle**:
+
 - Network/remote session storage
 - Encryption or credential management
 - User authentication (assumes authenticated sessions)
@@ -265,12 +267,15 @@ def save_with_retry(
 ## Dependencies
 
 ### External
+
 None - pure Python standard library only.
 
 ### Internal
+
 None - completely standalone.
 
 ### Standard Library Used
+
 - `json`: Session serialization
 - `pathlib`: File path handling
 - `datetime`: Timestamps and timeout tracking
@@ -304,7 +309,7 @@ session_management/
 
 ## Module Boundaries
 
-### __init__.py
+### **init**.py
 
 ```python
 from .claude_session import ClaudeSession
@@ -340,6 +345,7 @@ Defensive file operations: save_with_retry, load_with_retry, etc.
 ## Test Requirements
 
 ### ClaudeSession Tests
+
 - ✅ Create session with unique ID
 - ✅ Track creation and activity timestamps
 - ✅ Timeout detection works correctly
@@ -349,6 +355,7 @@ Defensive file operations: save_with_retry, load_with_retry, etc.
 - ✅ Invalid session_id raises ValueError
 
 ### SessionManager Tests
+
 - ✅ Create new session
 - ✅ Save session to JSON
 - ✅ Load session from JSON
@@ -361,6 +368,7 @@ Defensive file operations: save_with_retry, load_with_retry, etc.
 - ✅ Cannot load non-existent session (KeyError)
 
 ### ToolkitLogger Tests
+
 - ✅ Create logger with name
 - ✅ Log session events
 - ✅ Log errors with exceptions
@@ -370,6 +378,7 @@ Defensive file operations: save_with_retry, load_with_retry, etc.
 - ✅ No errors if log file unavailable
 
 ### File Operations Tests
+
 - ✅ save_with_retry succeeds on first try
 - ✅ save_with_retry retries on failure
 - ✅ save_with_retry gives up after max retries
@@ -378,6 +387,7 @@ Defensive file operations: save_with_retry, load_with_retry, etc.
 - ✅ Concurrent writes don't corrupt data
 
 ### Integration Tests
+
 - ✅ Create session → save → load → verify integrity
 - ✅ Session timeout detection across load/save cycle
 - ✅ Metadata persists through save/load
@@ -385,6 +395,7 @@ Defensive file operations: save_with_retry, load_with_retry, etc.
 - ✅ Archive moves files correctly
 
 ### Coverage
+
 85%+ line coverage across all classes and functions.
 
 ## Example Usage
@@ -469,7 +480,7 @@ Sessions persist in this structure:
 }
 ```
 
-### session_*.json
+### session\_\*.json
 
 ```json
 {
@@ -486,7 +497,7 @@ Sessions persist in this structure:
     {
       "action": "user_input",
       "timestamp": "2025-11-08T10:30:05Z",
-      "details": {"message": "Hello"}
+      "details": { "message": "Hello" }
     }
   ]
 }
@@ -495,6 +506,7 @@ Sessions persist in this structure:
 ## Regeneration Notes
 
 This module can be rebuilt from this specification while maintaining:
+
 - ✅ Public interface (ClaudeSession, SessionManager, ToolkitLogger)
 - ✅ Session storage contract (JSON format, registry structure)
 - ✅ Logging interface (log methods and formats)
@@ -502,6 +514,7 @@ This module can be rebuilt from this specification while maintaining:
 - ✅ Error handling (same exceptions, same conditions)
 
 Any new implementation can be verified by:
+
 1. Checking all classes and functions exist with correct signatures
 2. Running the test suite (all 40+ tests pass)
 3. Running persistence examples

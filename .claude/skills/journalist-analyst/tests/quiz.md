@@ -325,18 +325,19 @@ Navigate editorial independence vs. business pressure and recommend course of ac
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Investigative Reporting | 50 | 35 |
-| 2. Breaking News | 50 | 35 |
-| 3. Feature Story | 50 | 35 |
-| 4. Fact-Checking | 50 | 35 |
-| 5. Editorial Independence | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                   | Max Score | Passing Score |
+| -------------------------- | --------- | ------------- |
+| 1. Investigative Reporting | 50        | 35            |
+| 2. Breaking News           | 50        | 35            |
+| 3. Feature Story           | 50        | 35            |
+| 4. Fact-Checking           | 50        | 35            |
+| 5. Editorial Independence  | 50        | 35            |
+| **Total**                  | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate journalist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -344,6 +345,7 @@ To demonstrate journalist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of journalistic standards and frameworks
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of analysis
 3. **Insight Specificity** (0-10): Clear, actionable recommendations with reasoning
@@ -353,6 +355,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies multiple relevant journalistic frameworks accurately
 - Identifies subtle ethical tensions and trade-offs
 - Makes specific, defensible recommendations with clear reasoning
@@ -362,6 +365,7 @@ Each scenario is scored on:
 - Identifies non-obvious considerations
 
 **Good (35-44 points)**:
+
 - Applies key frameworks correctly
 - Identifies main ethical and practical challenges
 - Makes reasonable recommendations with justification
@@ -370,6 +374,7 @@ Each scenario is scored on:
 - Provides useful journalistic insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies journalistic standards
 - Ignores important ethical or practical dimensions
 - Vague or indefensible recommendations
@@ -382,12 +387,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -405,6 +412,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as journalism challenges evolve
 - Update expected elements as standards develop
 - Refine scoring criteria based on analysis quality patterns
