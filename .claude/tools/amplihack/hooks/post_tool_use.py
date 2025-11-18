@@ -2,6 +2,8 @@
 """
 Claude Code hook for post tool use events.
 Uses unified HookProcessor for common functionality.
+
+Includes automatic context management via context-management skill.
 """
 
 # Import the base processor
@@ -11,6 +13,14 @@ from typing import Any, Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
+
+# Import context automation (will silently fail if not available)
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude" / "skills"))
+    from context_management.automation import run_automation
+    CONTEXT_AUTOMATION_AVAILABLE = True
+except ImportError:
+    CONTEXT_AUTOMATION_AVAILABLE = False
 
 
 class PostToolUseHook(HookProcessor):
@@ -78,6 +88,34 @@ class PostToolUseHook(HookProcessor):
             self.save_metric("file_operations", 1)
         elif tool_name in ["Grep", "Glob"]:
             self.save_metric("search_operations", 1)
+
+        # Run context automation if available
+        if CONTEXT_AUTOMATION_AVAILABLE:
+            try:
+                # Try to get current token count from input data
+                current_tokens = input_data.get("tokenCount", 0)
+                conversation_data = input_data.get("conversation", [])
+
+                # Only run if we have token data
+                if current_tokens > 0:
+                    automation_result = run_automation(current_tokens, conversation_data)
+
+                    # Add warnings to output if any
+                    if automation_result.get("warnings"):
+                        if "metadata" not in output:
+                            output["metadata"] = {}
+                        output["metadata"]["context_automation"] = {
+                            "warnings": automation_result["warnings"],
+                            "actions": automation_result["actions_taken"],
+                        }
+
+                        # Log automation actions
+                        for warning in automation_result["warnings"]:
+                            self.log(f"Context Automation: {warning}", "INFO")
+
+            except Exception as e:
+                # Silently fail - don't interrupt user workflow
+                self.log(f"Context automation error: {e}", "DEBUG")
 
         return output
 
