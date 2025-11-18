@@ -333,18 +333,19 @@ Analyze the neurobiology and psychology of addiction relapse and develop relapse
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Social Media & Mental Health | 50 | 35 |
-| 2. Eyewitness Testimony | 50 | 35 |
-| 3. Healthcare Worker Burnout | 50 | 35 |
-| 4. Conspiracy Theory Radicalization | 50 | 35 |
-| 5. Addiction Relapse | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                            | Max Score | Passing Score |
+| ----------------------------------- | --------- | ------------- |
+| 1. Social Media & Mental Health     | 50        | 35            |
+| 2. Eyewitness Testimony             | 50        | 35            |
+| 3. Healthcare Worker Burnout        | 50        | 35            |
+| 4. Conspiracy Theory Radicalization | 50        | 35            |
+| 5. Addiction Relapse                | 50        | 35            |
+| **Total**                           | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate psychologist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -352,6 +353,7 @@ To demonstrate psychologist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of psychological theories and principles
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of psychological analysis
 3. **Insight Specificity** (0-10): Clear, actionable insights and intervention strategies
@@ -361,6 +363,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies multiple relevant psychological frameworks accurately
 - Integrates biological, cognitive, social, and environmental factors
 - Provides mechanism-level explanations for behavior
@@ -370,6 +373,7 @@ Each scenario is scored on:
 - Offers evidence-based intervention strategies
 
 **Good (35-44 points)**:
+
 - Applies key psychological principles correctly
 - Considers main mechanisms and factors
 - Makes reasonable predictions about behavior
@@ -378,6 +382,7 @@ Each scenario is scored on:
 - Provides useful psychological insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies psychological theories
 - Ignores important mechanisms or factors
 - Lacks empirical grounding
@@ -390,12 +395,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -413,6 +420,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as psychological research advances
 - Update expected elements as understanding of mechanisms evolves
 - Refine scoring criteria based on analysis quality patterns

@@ -57,9 +57,9 @@ activation_triggers:
   - "plugin system"
 dependencies: []
 related_agents:
-  - architect  # Provides specs that may recommend patterns
-  - builder    # Implements pattern-based solutions
-  - reviewer   # Checks if patterns are appropriate
+  - architect # Provides specs that may recommend patterns
+  - builder # Implements pattern-based solutions
+  - reviewer # Checks if patterns are appropriate
 tags:
   - design
   - patterns

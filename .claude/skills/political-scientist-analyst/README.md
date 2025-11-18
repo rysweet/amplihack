@@ -3,9 +3,11 @@
 > Analyze events through political science frameworks: power, institutions, interests, and norms.
 
 ## Overview
+
 Enables sophisticated political analysis using IR theory, comparative politics, institutional analysis, and strategic interaction frameworks.
 
 ## Core Capabilities
+
 - IR analysis (realism, liberalism, constructivism)
 - Comparative politics (democracy, authoritarianism, institutions)
 - Power analysis (distribution, dynamics, types)
@@ -13,6 +15,7 @@ Enables sophisticated political analysis using IR theory, comparative politics, 
 - Strategic interaction (game theory, bargaining)
 
 ## Use Cases
+
 - International conflicts and cooperation
 - Regime transitions and democratization
 - Electoral politics and party systems
@@ -21,6 +24,7 @@ Enables sophisticated political analysis using IR theory, comparative politics, 
 - International organizations
 
 ## Resources
+
 - Complete framework descriptions in SKILL.md
 - Quick reference in QUICK_REFERENCE.md
 - Test scenarios in tests/quiz.md

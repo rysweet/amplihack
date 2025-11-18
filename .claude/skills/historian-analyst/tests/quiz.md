@@ -303,18 +303,19 @@ Analyze the challenges of post-colonial nation-state formation and predict likel
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Revolutionary Crisis | 50 | 35 |
-| 2. Imperial Decline | 50 | 35 |
-| 3. Industrial Transformation | 50 | 35 |
-| 4. Epidemic Response | 50 | 35 |
-| 5. Decolonization | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                     | Max Score | Passing Score |
+| ---------------------------- | --------- | ------------- |
+| 1. Revolutionary Crisis      | 50        | 35            |
+| 2. Imperial Decline          | 50        | 35            |
+| 3. Industrial Transformation | 50        | 35            |
+| 4. Epidemic Response         | 50        | 35            |
+| 5. Decolonization            | 50        | 35            |
+| **Total**                    | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate historian analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -322,6 +323,7 @@ To demonstrate historian analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of historical frameworks and periodization
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of causal analysis
 3. **Insight Specificity** (0-10): Clear interpretations and trajectory assessments
@@ -331,6 +333,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies multiple relevant historical frameworks accurately
 - Identifies structural causes, contingencies, and agency
 - Makes nuanced trajectory assessments with comparative reasoning
@@ -340,6 +343,7 @@ Each scenario is scored on:
 - Identifies non-obvious historical parallels
 
 **Good (35-44 points)**:
+
 - Applies key frameworks correctly
 - Identifies main causal factors
 - Makes reasonable trajectory assessments
@@ -348,6 +352,7 @@ Each scenario is scored on:
 - Provides useful historical insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies historical frameworks
 - Ignores important causal factors or contingencies
 - Anachronistic or presentist reasoning
@@ -360,12 +365,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -383,6 +390,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as historical debates evolve
 - Update expected elements as historiography develops
 - Refine scoring criteria based on analysis quality patterns

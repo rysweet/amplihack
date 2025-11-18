@@ -9,6 +9,7 @@ This file documents 10 common mistakes and anti-patterns when using design patte
 **Symptom**: Everything is a Singleton because "we only need one instance".
 
 **Bad Example**:
+
 ```python
 class DatabaseConnection(Singleton):
     """DON'T DO THIS"""
@@ -33,6 +34,7 @@ def test_user_service():
 ```
 
 **Why It's Wrong**:
+
 - Creates hidden dependencies (implicit coupling)
 - Makes testing nearly impossible (can't mock/inject)
 - Violates Single Responsibility (manages both creation and behavior)
@@ -40,6 +42,7 @@ def test_user_service():
 - Memory leaks (singletons never garbage collected)
 
 **Correct Approach - Dependency Injection**:
+
 ```python
 class UserService:
     """GOOD: Dependencies explicit and injectable"""
@@ -66,6 +69,7 @@ def test_user_service():
 ```
 
 **When Singleton IS Acceptable**:
+
 - True hardware resources (printer spooler, device driver)
 - Read-only configuration loaded once at startup
 - Application-wide logging infrastructure (with careful design)
@@ -78,6 +82,7 @@ def test_user_service():
 **Symptom**: Every class has a factory "for future flexibility" even with only one implementation.
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - Over-engineered for single use case
 
@@ -104,12 +109,14 @@ user = User("Alice", "alice@example.com")
 ```
 
 **Why It's Wrong**:
+
 - YAGNI violation ("You Aren't Gonna Need It")
 - Adds complexity with zero benefit
 - Harder to understand (extra layer of indirection)
 - More classes to maintain
 
 **Correct Approach - Wait Until You Need It**:
+
 ```python
 # Start simple
 user = User("Alice", "alice@example.com")
@@ -132,6 +139,7 @@ class UserFactory:
 ```
 
 **When Factory IS Appropriate**:
+
 - ≥2 concrete product types exist NOW (not "might exist")
 - Object creation involves complex logic/configuration
 - Need to decouple client from concrete classes
@@ -144,6 +152,7 @@ class UserFactory:
 **Symptom**: Project uses 10+ patterns in 1000 lines of code because "patterns are best practices".
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - Pattern stuffing for simple to-do app
 
@@ -180,12 +189,14 @@ todo = builder.set_title("Buy milk").set_due_date("2024-01-01").build()
 ```
 
 **Why It's Wrong**:
+
 - Over-engineering simple problems
 - Code becomes unreadable (too many abstractions)
 - Maintenance nightmare
 - Poor onboarding (new devs overwhelmed)
 
 **Correct Approach - Ruthless Simplicity**:
+
 ```python
 # GOOD: Simple, direct, readable
 
@@ -219,6 +230,7 @@ todo_list.add(Todo("Buy milk", datetime(2024, 1, 1)))
 ```
 
 **Guideline**: Start with simplest solution. Add patterns ONLY when:
+
 - Complexity justifies them
 - ≥2 concrete use cases exist NOW
 - Pattern reduces overall system complexity
@@ -230,6 +242,7 @@ todo_list.add(Todo("Buy milk", datetime(2024, 1, 1)))
 **Symptom**: Using Abstract Factory when you have only 1-2 products or 1-2 families.
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - Abstract Factory for tiny product family
 
@@ -257,11 +270,13 @@ button = factory.create_button()  # Just call WindowsButton()!
 ```
 
 **Why It's Wrong**:
+
 - Abstract Factory justified only for ≥3 products AND ≥2 families
 - Single product = use Factory Method instead
 - Adds unnecessary abstraction layers
 
 **Correct Approach - Use Simpler Pattern**:
+
 ```python
 # GOOD: Factory Method for single product type
 
@@ -290,6 +305,7 @@ class Button:
 ```
 
 **Use Abstract Factory When**:
+
 - ≥3 product types (Button, Checkbox, TextBox)
 - ≥2 product families (Windows, Mac, Linux)
 - Products must be used together (consistency enforced)
@@ -301,6 +317,7 @@ class Button:
 **Symptom**: Observers are attached but never detached, causing memory leaks.
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - No detach mechanism
 
@@ -335,11 +352,13 @@ for i in range(1000):
 ```
 
 **Why It's Wrong**:
+
 - Memory leaks (observers never garbage collected)
 - Performance degradation (notify iterates over dead observers)
 - Unexpected behavior (dead observers may still receive notifications)
 
 **Correct Approach - Proper Lifecycle Management**:
+
 ```python
 # GOOD: Proper subscribe/unsubscribe with context manager
 
@@ -406,6 +425,7 @@ with subscribe_to(publisher, component):
 **Symptom**: Using complex Visitor pattern when simple polymorphism suffices.
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - Visitor for simple operation
 
@@ -442,12 +462,14 @@ area = circle.accept(visitor)  # Why not circle.area()?
 ```
 
 **Why It's Wrong**:
+
 - Visitor is heavyweight (double dispatch complexity)
 - Simple polymorphism is clearer
 - Harder to understand and maintain
 - Adds many classes for simple operations
 
 **Correct Approach - Simple Polymorphism**:
+
 ```python
 # GOOD: Simple polymorphism for simple operations
 
@@ -483,6 +505,7 @@ print(f"Square area: {square.area()}")
 ```
 
 **Use Visitor When**:
+
 - ≥5 different operations on stable structure
 - Structure rarely changes, but operations change frequently
 - Operations don't belong in element classes (violate SRP)
@@ -494,6 +517,7 @@ print(f"Square area: {square.area()}")
 **Symptom**: Stacking 5+ decorators creating unreadable, unmaintainable code.
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - Decorator chain hell
 
@@ -522,12 +546,14 @@ connection = LoggingDecorator(
 ```
 
 **Why It's Wrong**:
+
 - Hard to read (nested structure unclear)
 - Difficult to debug (which decorator failed?)
 - Inflexible (hard to reorder or remove decorators)
 - Testing nightmare (can't test decorators in isolation)
 
 **Correct Approach - Pipeline or Builder Pattern**:
+
 ```python
 # GOOD: Pipeline pattern with explicit builder
 
@@ -569,6 +595,7 @@ connection = (
 ```
 
 **Guideline**:
+
 - Limit decorator chains to 2-3 decorators
 - Use builder pattern for complex configurations
 - Consider alternatives (Strategy, middleware pipeline)
@@ -580,6 +607,7 @@ connection = (
 **Symptom**: Implementing Command pattern but not supporting undo/redo.
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - Command without undo = just callbacks!
 
@@ -604,11 +632,13 @@ def print_message(message):
 ```
 
 **Why It's Wrong**:
+
 - Command pattern's main benefit is undo/redo support
 - Without undo, it's just callbacks with extra complexity
 - Simple functions/lambdas are clearer
 
 **Correct Approach - Either Support Undo or Use Callbacks**:
+
 ```python
 # Option 1: GOOD - Command WITH undo support
 
@@ -654,6 +684,7 @@ button.click()
 ```
 
 **Use Command When**:
+
 - Need undo/redo functionality
 - Need to queue/log/schedule operations
 - Need macro commands (composite)
@@ -666,6 +697,7 @@ button.click()
 **Symptom**: Using State pattern when simple boolean flags suffice.
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - State pattern for on/off
 
@@ -701,11 +733,13 @@ light.toggle()  # Just use: light.is_on = not light.is_on
 ```
 
 **Why It's Wrong**:
+
 - State pattern overkill for 2-3 simple states
 - Boolean/enum is clearer and simpler
 - More classes to maintain for no benefit
 
 **Correct Approach - Use Simple State Variables**:
+
 ```python
 # GOOD: Simple boolean for simple cases
 
@@ -757,6 +791,7 @@ class Document:
 ```
 
 **Use State Pattern When**:
+
 - ≥5 states with complex transitions
 - State-specific behavior is substantial
 - Need to enforce state transition rules
@@ -769,6 +804,7 @@ class Document:
 **Symptom**: Template Method where all subclasses implement steps identically.
 
 **Bad Example**:
+
 ```python
 # DON'T DO THIS - Template Method with no variance
 
@@ -812,12 +848,14 @@ class XMLProcessor(DataProcessor):
 ```
 
 **Why It's Wrong**:
+
 - Template Method requires both invariant AND variant parts
 - If everything varies: use Strategy instead
 - If nothing varies: don't use pattern at all
 - Forces override of methods that shouldn't vary
 
 **Correct Approach - Strategy for Variable Algorithms**:
+
 ```python
 # GOOD: Strategy pattern when algorithm varies
 
@@ -856,6 +894,7 @@ xml_processor = DataProcessor(XMLLoader(), XMLSaver())
 ```
 
 **Use Template Method When**:
+
 - Algorithm has BOTH invariant and variant parts
 - Invariant parts substantial (≥3 fixed steps)
 - Variant parts are minority (1-2 customization points)

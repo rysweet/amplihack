@@ -425,18 +425,19 @@ Analyze the autonomous vehicle incident from a systems engineering and safety pe
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Bridge Structural Failure | 50 | 35 |
-| 2. Software System Failure | 50 | 35 |
-| 3. Chemical Plant Safety | 50 | 35 |
-| 4. Renewable Energy Grid | 50 | 35 |
-| 5. Autonomous Vehicle Sensor | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                     | Max Score | Passing Score |
+| ---------------------------- | --------- | ------------- |
+| 1. Bridge Structural Failure | 50        | 35            |
+| 2. Software System Failure   | 50        | 35            |
+| 3. Chemical Plant Safety     | 50        | 35            |
+| 4. Renewable Energy Grid     | 50        | 35            |
+| 5. Autonomous Vehicle Sensor | 50        | 35            |
+| **Total**                    | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate engineer analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -444,6 +445,7 @@ To demonstrate engineer analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of engineering principles and methods
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of technical analysis
 3. **Insight Specificity** (0-10): Clear, actionable engineering recommendations
@@ -453,6 +455,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies engineering principles accurately (mechanics, thermodynamics, systems theory)
 - Considers technical, human factors, organizational, and regulatory dimensions
 - Makes specific, prioritized engineering recommendations with quantitative justification
@@ -462,6 +465,7 @@ Each scenario is scored on:
 - Identifies non-obvious failure modes and solutions
 
 **Good (35-44 points)**:
+
 - Applies key engineering concepts correctly
 - Considers main technical and safety factors
 - Makes reasonable engineering recommendations
@@ -470,6 +474,7 @@ Each scenario is scored on:
 - Provides useful engineering insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies engineering concepts or principles
 - Ignores critical failure modes or safety factors
 - Vague or technically incorrect recommendations
@@ -482,12 +487,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -505,6 +512,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as engineering failures occur
 - Update expected elements as standards and practices evolve
 - Refine scoring criteria based on analyst performance patterns

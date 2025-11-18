@@ -15,6 +15,7 @@ This skill combines theoretical physics frameworks with practical problem-solvin
 Breaks problems down to fundamental physical principles rather than reasoning by analogy or tradition. Identifies the basic laws and constraints that govern a system's behavior.
 
 **Key Techniques:**
+
 - Identify fundamental constraints (energy, entropy, information limits)
 - Strip away assumptions to reveal core dynamics
 - Build understanding from ground truth upward
@@ -26,6 +27,7 @@ Breaks problems down to fundamental physical principles rather than reasoning by
 Applies thermodynamic principles to understand energy flows, efficiency limits, waste heat, and irreversibility in any system. Every process involves energy transformation and entropy increase.
 
 **Applications:**
+
 - Calculate theoretical efficiency limits
 - Identify energy waste and optimization opportunities
 - Analyze heat dissipation in computing systems
@@ -38,6 +40,7 @@ Applies thermodynamic principles to understand energy flows, efficiency limits, 
 Develops rapid quantitative estimates using basic physical principles and dimensional analysis. This "Fermi estimation" approach reveals whether ideas are plausible before detailed analysis.
 
 **Process:**
+
 - Break complex questions into estimable components
 - Use physical constraints and typical values
 - Verify dimensional consistency
@@ -49,6 +52,7 @@ Develops rapid quantitative estimates using basic physical principles and dimens
 Identifies how system behavior changes with size, speed, or scale using dimensional analysis and scaling relationships. Understanding scaling reveals which approaches work at different scales.
 
 **Key Concepts:**
+
 - Surface area to volume ratio (square-cube law)
 - Reynolds number (fluid dynamics scaling)
 - Computational complexity scaling
@@ -61,6 +65,7 @@ Identifies how system behavior changes with size, speed, or scale using dimensio
 Applies Noether's theorem and symmetry principles to identify conserved quantities and simplify problems. Symmetries reveal deep structure and invariants.
 
 **Conservation Laws:**
+
 - Energy conservation (time translation symmetry)
 - Momentum conservation (space translation symmetry)
 - Angular momentum (rotational symmetry)
@@ -72,6 +77,7 @@ Applies Noether's theorem and symmetry principles to identify conserved quantiti
 Analyzes how macroscopic behavior emerges from microscopic components using statistical mechanics. Relevant to systems with many interacting agents or particles.
 
 **Applications:**
+
 - Phase transitions and critical phenomena
 - Collective behavior emergence
 - Equilibrium and non-equilibrium dynamics
@@ -106,6 +112,7 @@ Use computational complexity theory (which has deep connections to physics) and 
 ### Method 1: Fermi Estimation
 
 Develop order-of-magnitude estimates for seemingly impossible questions:
+
 1. Break problem into estimable factors
 2. Use typical values and physical constraints
 3. Multiply factors together
@@ -115,6 +122,7 @@ Develop order-of-magnitude estimates for seemingly impossible questions:
 ### Method 2: Energy Budget Analysis
 
 Track all energy inputs, transformations, outputs, and waste:
+
 1. Identify all energy sources
 2. Map transformation processes and efficiencies
 3. Calculate energy outputs and waste heat
@@ -124,6 +132,7 @@ Track all energy inputs, transformations, outputs, and waste:
 ### Method 3: Dimensional Analysis and Buckingham Pi Theorem
 
 Identify key dimensionless parameters that govern system behavior:
+
 1. List all relevant physical quantities
 2. Determine fundamental dimensions (mass, length, time, etc.)
 3. Form dimensionless groups
@@ -133,6 +142,7 @@ Identify key dimensionless parameters that govern system behavior:
 ### Method 4: Limiting Case Analysis
 
 Test understanding by examining extreme cases:
+
 1. What happens as parameter → 0?
 2. What happens as parameter → ∞?
 3. Do results match known physical limits?
@@ -142,6 +152,7 @@ Test understanding by examining extreme cases:
 ### Method 5: Analogy to Known Physical Systems
 
 Map problem to well-understood physics:
+
 1. Identify mathematical structure (differential equations, constraints)
 2. Find physical system with same structure
 3. Import insights from physical system
@@ -191,6 +202,7 @@ Map problem to well-understood physics:
 ## Best Practices
 
 **Do:**
+
 - Always check dimensional consistency
 - Verify conservation laws are satisfied
 - Test limiting cases
@@ -200,6 +212,7 @@ Map problem to well-understood physics:
 - Question assumptions using physical reasoning
 
 **Don't:**
+
 - Confuse precision with accuracy (Fermi estimation beats precise wrong answers)
 - Ignore energy/entropy constraints
 - Overlook scaling effects

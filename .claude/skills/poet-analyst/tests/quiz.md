@@ -365,18 +365,19 @@ Develop selection criteria, discuss tensions and choices, and articulate the ant
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Protest Poem Analysis | 50 | 35 |
-| 2. Ekphrastic Poetry | 50 | 35 |
-| 3. Erasure Poetry | 50 | 35 |
-| 4. Translation Analysis | 50 | 35 |
-| 5. Anthology Curation | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                 | Max Score | Passing Score |
+| ------------------------ | --------- | ------------- |
+| 1. Protest Poem Analysis | 50        | 35            |
+| 2. Ekphrastic Poetry     | 50        | 35            |
+| 3. Erasure Poetry        | 50        | 35            |
+| 4. Translation Analysis  | 50        | 35            |
+| 5. Anthology Curation    | 50        | 35            |
+| **Total**                | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate poet analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -384,6 +385,7 @@ To demonstrate poet analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of poetic terminology, literary frameworks, critical theory
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of close reading, formal analysis, contextual understanding
 3. **Insight Specificity** (0-10): Clear, original interpretations and non-obvious observations about craft and meaning
@@ -393,6 +395,7 @@ Each scenario is scored on:
 ### What High-Quality Poetic Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Demonstrates sophisticated understanding of poetic craft (form, sound, imagery, syntax)
 - Applies multiple critical frameworks appropriately (formal, historical, political, aesthetic)
 - Offers original interpretations grounded in textual evidence
@@ -403,6 +406,7 @@ Each scenario is scored on:
 - Acknowledges complexity, ambiguity, multiple valid readings
 
 **Good (35-44 points)**:
+
 - Correctly identifies key poetic techniques and their effects
 - Applies appropriate critical frameworks
 - Provides reasonable interpretations with textual support
@@ -411,6 +415,7 @@ Each scenario is scored on:
 - Offers useful insights for readers
 
 **Needs Improvement (<35 points)**:
+
 - Misidentifies or misunderstands poetic techniques
 - Relies on plot summary rather than analysis
 - Interpretations lack textual grounding or are implausible
@@ -425,6 +430,7 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Apply close reading and critical frameworks
 3. Compare your analysis to expected elements
@@ -432,6 +438,7 @@ Each scenario is scored on:
 5. Identify areas for deepening literary knowledge
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -449,6 +456,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as contemporary poetry evolves
 - Update expected elements as critical frameworks develop
 - Refine scoring criteria based on high-quality poetic analysis patterns

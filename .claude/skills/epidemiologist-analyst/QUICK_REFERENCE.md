@@ -85,12 +85,14 @@ Analyzes disease patterns through epidemiological lens using surveillance, outbr
 ## Study Design Selection
 
 **Cohort Study** when:
+
 - Population well-defined and accessible
 - Common exposure
 - Short latency disease
 - Need incidence measures
 
 **Case-Control Study** when:
+
 - Large or undefined population
 - Rare disease
 - Long latency
@@ -100,16 +102,19 @@ Analyzes disease patterns through epidemiological lens using surveillance, outbr
 ## Key Measures
 
 **Disease Frequency**:
+
 - Incidence = New cases / Population / Time
 - Prevalence = Existing cases / Population at time point
 - Attack Rate = Cases / Exposed population (outbreak setting)
 
 **Association**:
+
 - Relative Risk (RR) = Incidence₍ₑₓₚₒₛₑ₎ / Incidence₍ᵤₙₑₓₚₒₛₑ₎
 - Odds Ratio (OR) = Odds₍ₑₓₚₒₛₑ₎ / Odds₍ᵤₙₑₓₚₒₛₑ₎
 - Attributable Risk = Incidence₍ₑₓₚₒₛₑ₎ - Incidence₍ᵤₙₑₓₚₒₛₑ₎
 
 **Screening**:
+
 - Sensitivity = True Positives / (True Positives + False Negatives)
 - Specificity = True Negatives / (True Negatives + False Positives)
 - PPV = Depends on sensitivity, specificity, AND prevalence

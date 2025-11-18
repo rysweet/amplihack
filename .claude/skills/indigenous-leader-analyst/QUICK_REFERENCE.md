@@ -7,6 +7,7 @@ Analyze challenges through indigenous wisdom: seven generations thinking, relati
 ## When to Use
 
 **Perfect For:**
+
 - Sustainability and environmental challenges
 - Long-term planning and intergenerational equity
 - Community governance and collective decision-making
@@ -17,6 +18,7 @@ Analyze challenges through indigenous wisdom: seven generations thinking, relati
 - Decolonization and systemic change
 
 **Skip If:**
+
 - Seeking quick individualistic solutions
 - Focused solely on short-term gains
 - Unwilling to question colonial assumptions
@@ -28,6 +30,7 @@ Analyze challenges through indigenous wisdom: seven generations thinking, relati
 ### Seven Generations Principle
 
 Consider impact on seven generations forward (approximately 150-200 years). Ask:
+
 - What will our descendants inherit?
 - Are we leaving relationships stronger or depleted?
 - Does this decision honor future peoples?
@@ -35,6 +38,7 @@ Consider impact on seven generations forward (approximately 150-200 years). Ask:
 ### Relational Accountability
 
 View problems as relationship breakdowns, not isolated failures:
+
 - What relationships are out of balance?
 - Who are we accountable to? (land, community, ancestors, future generations)
 - How do we restore reciprocity?
@@ -42,6 +46,7 @@ View problems as relationship breakdowns, not isolated failures:
 ### Traditional Ecological Knowledge (TEK)
 
 Apply millennia of indigenous ecological science:
+
 - What do seasonal patterns teach?
 - How have indigenous peoples sustained this ecosystem?
 - What traditional practices maintained balance?
@@ -49,6 +54,7 @@ Apply millennia of indigenous ecological science:
 ### Two-Eyed Seeing
 
 Integrate indigenous and Western knowledge:
+
 - What does each knowledge system reveal?
 - Where do they complement each other?
 - How can we honor both without hierarchy?
@@ -148,6 +154,7 @@ Extend time horizons from quarterly or annual to generational. Make decisions th
 ## Red Flags
 
 **Avoid These Mistakes:**
+
 - Cultural appropriation (taking without permission/reciprocity)
 - Pan-indigenous generalizations (honor specific nations and diversity)
 - Romanticization or "noble savage" stereotypes
@@ -159,6 +166,7 @@ Extend time horizons from quarterly or annual to generational. Make decisions th
 ## Integration Tips
 
 Combine with other skills:
+
 - **Environmentalist** - Enhanced by traditional ecological knowledge
 - **Sociologist** - Complementary community analysis
 - **Philosopher** - Deepened by indigenous ethics and epistemology
@@ -167,6 +175,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Indigenous voices and leadership are centered
 - Seven generations impacts are considered
 - Relationships are restored and strengthened

@@ -27,6 +27,7 @@ Unlike general health analysis, epidemiologist analysis:
 ## Use Cases
 
 ### Outbreak Investigation
+
 - Foodborne illness clusters requiring rapid source identification
 - Healthcare-associated infection outbreaks
 - Vaccine-preventable disease resurgence
@@ -34,6 +35,7 @@ Unlike general health analysis, epidemiologist analysis:
 - Emerging infectious disease threats
 
 ### Public Health Policy Evaluation
+
 - Vaccination program effectiveness and coverage
 - Screening program impact on disease detection and mortality
 - Disease surveillance system performance
@@ -41,6 +43,7 @@ Unlike general health analysis, epidemiologist analysis:
 - Prevention strategy comparison
 
 ### Disease Surveillance
+
 - Early outbreak detection through syndromic surveillance
 - Monitoring chronic disease trends
 - Tracking antimicrobial resistance patterns
@@ -48,6 +51,7 @@ Unlike general health analysis, epidemiologist analysis:
 - Evaluating data quality and completeness
 
 ### Research and Causal Analysis
+
 - Establishing risk factors for chronic diseases
 - Quantifying associations between exposures and outcomes
 - Designing observational studies to minimize bias
@@ -57,6 +61,7 @@ Unlike general health analysis, epidemiologist analysis:
 ## Epidemiological Frameworks Available
 
 ### Core Frameworks
+
 - **Outbreak Investigation**: CDC 10-step systematic process from detection to control
 - **Study Designs**: Cohort studies, case-control studies, cross-sectional surveys
 - **Disease Measures**: Incidence, prevalence, attack rates, relative risk, odds ratios
@@ -64,6 +69,7 @@ Unlike general health analysis, epidemiologist analysis:
 - **Epidemic Curves**: Pattern recognition (point-source, propagated, mixed)
 
 ### Theoretical Foundations
+
 - **Germ Theory**: Infectious disease transmission and chain of infection
 - **Chronic Disease Epidemiology**: Multifactorial causation and prevention levels
 - **Causal Inference**: Bradford Hill criteria for establishing causation
@@ -71,6 +77,7 @@ Unlike general health analysis, epidemiologist analysis:
 - **Mathematical Modeling**: SIR/SEIR models, R₀, epidemic forecasting
 
 ### Methodological Approaches
+
 - Disease surveillance (passive, active, syndromic, sentinel, wastewater-based)
 - Outbreak investigation following standardized protocols
 - Analytic epidemiology (cohort, case-control, ecological studies)
@@ -126,6 +133,7 @@ The epidemiologist analyst follows a systematic 9-step process:
 **Situation**: 62 of 200 wedding guests develop acute gastroenteritis within 48 hours.
 
 **Analysis Highlights**:
+
 - Epidemic curve shows sharp peak at 24 hours (point-source pattern)
 - Cohort study identifies wedding cake as vehicle (RR = 4.8, 95% CI: 1.8-12.7)
 - Environmental investigation finds ill pastry chef handled cake without gloves
@@ -138,6 +146,7 @@ The epidemiologist analyst follows a systematic 9-step process:
 **Situation**: Evaluate new school-entry requirement for HPV vaccination after one year.
 
 **Analysis Highlights**:
+
 - Coverage increased from 42% to 76% (34 percentage point gain)
 - Gender gap reduced: females 85%, males 67% (both improved)
 - School-based clinics reached 35% of students, critical for uninsured
@@ -150,6 +159,7 @@ The epidemiologist analyst follows a systematic 9-step process:
 **Situation**: 18 residents test positive for COVID-19 in first 5 days.
 
 **Analysis Highlights**:
+
 - Universal testing identifies 32 cases (27 residents, 5 staff)
 - Outbreak concentrated in Unit B (60% attack rate)
 - Introduced by staff member, rapid spread within unit
@@ -175,22 +185,26 @@ A complete epidemiologist analysis includes:
 ## Resources
 
 ### Data Sources
+
 - **CDC WONDER**: https://wonder.cdc.gov/ (National surveillance data)
 - **WHO Disease Outbreak News**: https://www.who.int/emergencies/disease-outbreak-news
 - **NCHS**: https://www.cdc.gov/nchs/ (Vital statistics, surveys)
 - **State/Local Health Departments**: Reportable disease data
 
 ### Methodological Resources
+
 - **CDC Field Epidemiology Manual**: https://www.cdc.gov/field-epi-manual/ (Comprehensive guide)
 - **CDC Principles of Epidemiology**: https://www.cdc.gov/training/publichealth101/epidemiology.html (Free course)
 - **Outbreak Toolkit**: https://outbreaktools.ca/ (Canadian resource, excellent methods)
 
 ### Professional Associations
+
 - **APHA Epidemiology Section**: https://www.apha.org/apha-communities/member-sections/epidemiology
 - **Society for Epidemiologic Research**: https://epiresearch.org/
 - **CSTE**: https://www.cste.org/ (Applied state/local epidemiologists)
 
 ### Key Journals
+
 - **MMWR**: https://www.cdc.gov/mmwr/ (Outbreak reports, rapid publication)
 - **Emerging Infectious Diseases**: https://wwwnc.cdc.gov/eid/ (EID focus)
 - **American Journal of Epidemiology**: https://academic.oup.com/aje
@@ -200,6 +214,7 @@ A complete epidemiologist analysis includes:
 ### When should I use epidemiologist-analyst vs. other analysts?
 
 Use **epidemiologist-analyst** when the question involves:
+
 - Disease patterns, outbreaks, or clusters
 - Risk factors and causal relationships
 - Population health rather than individual cases
@@ -208,6 +223,7 @@ Use **epidemiologist-analyst** when the question involves:
 - Health disparities and equity
 
 Use **other analysts** when the focus is:
+
 - Molecular disease mechanisms → Biologist
 - Clinical diagnosis and treatment → (Clinical focus)
 - Health policy politics → Political Scientist
@@ -217,6 +233,7 @@ Use **other analysts** when the focus is:
 ### How does epidemiology differ from clinical medicine?
 
 **Epidemiology**:
+
 - Population focus (groups)
 - Prevention oriented
 - Rates and risks
@@ -224,6 +241,7 @@ Use **other analysts** when the focus is:
 - Public health practice
 
 **Clinical Medicine**:
+
 - Individual focus (patients)
 - Treatment oriented
 - Diagnosis and prognosis
@@ -235,6 +253,7 @@ Both collaborate in outbreak investigations and clinical research.
 ### What if data quality is limited?
 
 Epidemiologists frequently work with imperfect data, especially during outbreaks:
+
 1. **Acknowledge limitations explicitly** in analysis
 2. **Use sensitivity analyses** to assess impact of data quality issues
 3. **Triangulate** using multiple data sources
@@ -245,6 +264,7 @@ Epidemiologists frequently work with imperfect data, especially during outbreaks
 ### How do you balance speed and rigor in outbreak investigations?
 
 Outbreak investigations require both:
+
 - **Rapid preliminary analysis** to implement immediate control measures (don't wait)
 - **Rigorous analytic studies** to confirm hypotheses and guide sustained response
 - **Iterative process**: Act quickly on strong suspicions, refine as more data emerges
@@ -253,6 +273,7 @@ Outbreak investigations require both:
 ## Integration with Other Skills
 
 Epidemiologist analysis complements:
+
 - **Decision Logger**: Document investigation decisions and rationale
 - **Module Spec Generator**: Specify surveillance system modules
 - **Philosophy Guardian**: Ensure ruthless simplicity in data collection and analysis
@@ -261,6 +282,7 @@ Epidemiologist analysis complements:
 ## Contributing
 
 This skill improves through use. Share feedback on:
+
 - What frameworks worked well in specific situations
 - What data sources were most valuable
 - What analysis patterns emerged

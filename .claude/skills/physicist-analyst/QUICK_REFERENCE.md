@@ -7,6 +7,7 @@ Apply physics principles to any domain: first-principles thinking, energy/entrop
 ## When to Use
 
 **Perfect For:**
+
 - First-principles analysis of complex problems
 - Energy efficiency and thermodynamic optimization
 - Order-of-magnitude feasibility checks (Fermi problems)
@@ -17,6 +18,7 @@ Apply physics principles to any domain: first-principles thinking, energy/entrop
 - Systems with conservation laws or symmetries
 
 **Skip If:**
+
 - Problem is purely qualitative or subjective
 - Physical constraints are irrelevant
 - Seeking social or psychological insights
@@ -27,6 +29,7 @@ Apply physics principles to any domain: first-principles thinking, energy/entrop
 ### First-Principles Thinking
 
 Strip problems to fundamental physical laws:
+
 - What are the basic constraints? (energy, entropy, speed of light, uncertainty)
 - What assumptions can we eliminate?
 - Can we derive from fundamentals rather than analogy?
@@ -35,6 +38,7 @@ Strip problems to fundamental physical laws:
 ### Conservation Laws
 
 Identify what must remain constant:
+
 - **Energy**: Cannot be created or destroyed, only transformed
 - **Momentum**: Conserved in isolated systems
 - **Angular momentum**: Conserved under rotational symmetry
@@ -44,6 +48,7 @@ Identify what must remain constant:
 ### Thermodynamics
 
 Apply the four laws:
+
 1. **Zeroth**: Temperature equilibrium is transitive
 2. **First**: Energy is conserved (ΔU = Q - W)
 3. **Second**: Entropy always increases (ΔS ≥ 0)
@@ -54,6 +59,7 @@ Every process has efficiency limits and generates waste heat.
 ### Scaling Laws
 
 Understand how behavior changes with size:
+
 - **Square-cube law**: Surface area ~ L², Volume ~ L³
 - **Reynolds number**: Ratio of inertial to viscous forces
 - **Computational complexity**: How runtime scales with input size
@@ -185,6 +191,7 @@ Below nanometer scales or at very low temperatures, quantum mechanics dominates.
 ## Red Flags
 
 **Warning Signs:**
+
 - Claimed efficiency > 100% (violates energy conservation)
 - Perpetual motion machines (violates thermodynamics)
 - Information destroyed (violates quantum unitarity)
@@ -196,6 +203,7 @@ Below nanometer scales or at very low temperatures, quantum mechanics dominates.
 ## Integration Tips
 
 Combine with other skills:
+
 - **Engineer** - Apply physical limits to engineering design
 - **Computer Scientist** - Physical limits of computation
 - **Environmentalist** - Thermodynamics of energy systems
@@ -205,6 +213,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Dimensional analysis is consistent
 - Conservation laws are verified
 - Order-of-magnitude estimates are reasonable

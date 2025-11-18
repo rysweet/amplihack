@@ -7,6 +7,7 @@ Analyze computational problems through theoretical computer science: algorithmic
 ## When to Use
 
 **Perfect For:**
+
 - Algorithm selection and optimization
 - Performance prediction and capacity planning
 - Problem feasibility assessment
@@ -17,6 +18,7 @@ Analyze computational problems through theoretical computer science: algorithmic
 - Compression and encoding decisions
 
 **Skip If:**
+
 - Problem scale is trivially small
 - Performance is not a concern
 - Looking for UI/UX insights
@@ -27,6 +29,7 @@ Analyze computational problems through theoretical computer science: algorithmic
 ### Big-O Complexity
 
 Understand how algorithms scale:
+
 - **O(1)** - Constant: Array access, hash lookup
 - **O(log n)** - Logarithmic: Binary search, balanced trees
 - **O(n)** - Linear: Array traversal
@@ -40,6 +43,7 @@ Understand how algorithms scale:
 ### P vs. NP
 
 Understanding computational tractability:
+
 - **P** - Solvable efficiently (polynomial time)
 - **NP** - Solutions verifiable efficiently
 - **NP-complete** - Hardest problems in NP (Boolean satisfiability, traveling salesman, graph coloring, knapsack)
@@ -50,6 +54,7 @@ Understanding computational tractability:
 ### CAP Theorem
 
 Distributed systems can guarantee at most 2 of 3:
+
 - **Consistency** - All nodes see same data at same time
 - **Availability** - System responds to all requests
 - **Partition Tolerance** - System continues despite network partitions
@@ -59,6 +64,7 @@ Distributed systems can guarantee at most 2 of 3:
 ### Data Structure Selection
 
 Choose based on operation frequency:
+
 - **Array** - O(1) access, O(n) insert/delete
 - **Linked List** - O(1) insert/delete at ends, O(n) access
 - **Hash Table** - O(1) average insert/lookup/delete, O(n) worst case
@@ -188,6 +194,7 @@ Operation appears expensive but averages to O(1). Examples: dynamic array doubli
 ## Red Flags
 
 **Warning Signs:**
+
 - O(2ⁿ) or O(n!) with n > 20
 - O(n²) with n > 10,000
 - Claiming to solve NP-complete problem in polynomial time
@@ -199,6 +206,7 @@ Operation appears expensive but averages to O(1). Examples: dynamic array doubli
 ## Integration Tips
 
 Combine with other skills:
+
 - **Physicist** - Computational complexity connects to entropy and energy
 - **Systems Thinker** - Distributed systems theory
 - **Engineer** - Practical algorithm implementation
@@ -208,6 +216,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Time and space complexity are explicitly stated
 - Scalability to production data sizes is verified
 - NP-complete problems are identified early
