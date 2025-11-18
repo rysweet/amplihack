@@ -133,6 +133,10 @@ else
   },
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": [],
+  "statusLine": {
+    "type": "command",
+    "command": "HOME_PLACEHOLDER/.claude/tools/statusline.sh"
+  },
   "hooks": {
     "SessionStart": [
       {
