@@ -15,16 +15,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
 
 try:
     from context_management import (
-        TokenMonitor,
         ContextExtractor,
         ContextRehydrator,
+        TokenMonitor,
         check_status,
     )
 except ImportError:
     # Fallback for when running from hooks
-    from .token_monitor import TokenMonitor
     from .context_extractor import ContextExtractor
     from .context_rehydrator import ContextRehydrator
+    from .token_monitor import TokenMonitor
 
 
 # Automation state tracking
@@ -106,9 +106,7 @@ class ContextAutomation:
                 threshold_status, conversation_data, current_tokens
             )
             if snapshot_created:
-                result["actions_taken"].append(
-                    f"auto_snapshot_at_{threshold_status}"
-                )
+                result["actions_taken"].append(f"auto_snapshot_at_{threshold_status}")
                 result["warnings"].append(
                     f"⚠️  Auto-snapshot created at {usage.percentage:.1f}% usage"
                 )
@@ -140,9 +138,7 @@ class ContextAutomation:
 
         return False
 
-    def _auto_snapshot(
-        self, threshold: str, conversation_data: list, current_tokens: int
-    ) -> bool:
+    def _auto_snapshot(self, threshold: str, conversation_data: list, current_tokens: int) -> bool:
         """Create automatic snapshot at threshold.
 
         Args:
@@ -179,7 +175,7 @@ class ContextAutomation:
 
             return True
 
-        except Exception as e:
+        except Exception:
             # Silently fail - don't interrupt user workflow
             return False
 
@@ -191,9 +187,7 @@ class ContextAutomation:
         # Find most recent snapshot
         snapshots = self.state.get("snapshots_created", [])
         if not snapshots:
-            result["warnings"].append(
-                "⚠️  Compaction detected but no snapshots available"
-            )
+            result["warnings"].append("⚠️  Compaction detected but no snapshots available")
             return
 
         # Get most recent snapshot

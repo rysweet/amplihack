@@ -18,6 +18,7 @@ from hook_processor import HookProcessor
 try:
     sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude" / "skills"))
     from context_management.automation import run_automation
+
     CONTEXT_AUTOMATION_AVAILABLE = True
 except ImportError:
     CONTEXT_AUTOMATION_AVAILABLE = False
@@ -92,13 +93,29 @@ class PostToolUseHook(HookProcessor):
         # Run context automation if available
         if CONTEXT_AUTOMATION_AVAILABLE:
             try:
-                # Try to get current token count from input data
-                current_tokens = input_data.get("tokenCount", 0)
-                conversation_data = input_data.get("conversation", [])
+                # Get conversation from transcript_path (this IS available!)
+                transcript_path = input_data.get("transcript_path")
 
-                # Only run if we have token data
-                if current_tokens > 0:
-                    automation_result = run_automation(current_tokens, conversation_data)
+                if transcript_path and Path(transcript_path).exists():
+                    # Read conversation transcript
+                    import json
+
+                    with open(transcript_path) as f:
+                        conversation_data = json.load(f)
+
+                    # Calculate ACTUAL token count from transcript
+                    # (same method as statusline.sh)
+                    total_tokens = 0
+                    for msg in conversation_data:
+                        if isinstance(msg, dict) and "usage" in msg:
+                            usage = msg["usage"]
+                            total_tokens += usage.get("input_tokens", 0)
+                            total_tokens += usage.get("output_tokens", 0)
+                            total_tokens += usage.get("cache_read_input_tokens", 0)
+                            total_tokens += usage.get("cache_creation_input_tokens", 0)
+
+                    # Run automation with real token data
+                    automation_result = run_automation(total_tokens, conversation_data)
 
                     # Add warnings to output if any
                     if automation_result.get("warnings"):
