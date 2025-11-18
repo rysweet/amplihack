@@ -142,6 +142,11 @@ class HookProcessor(ABC):
         Raises:
             json.JSONDecodeError: If input is not valid JSON
         """
+        # Skip stdin read during interrupt shutdown to avoid SystemExit race condition
+        if os.environ.get("AMPLIHACK_SHUTDOWN_IN_PROGRESS") == "1":
+            self.log("Skipping stdin read during shutdown", "DEBUG")
+            return {}
+
         raw_input = sys.stdin.read()
         if not raw_input.strip():
             return {}

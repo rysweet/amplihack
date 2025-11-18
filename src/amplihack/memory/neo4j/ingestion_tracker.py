@@ -173,28 +173,27 @@ class IngestionTracker:
                 ingestion_metadata=ingestion_metadata,
                 previous_ingestion_id=None,
             )
-        else:
-            # Existing codebase - update
-            previous_counter = existing_ingestion["ingestion_counter"]
-            previous_ingestion_id = existing_ingestion["ingestion_id"]
+        # Existing codebase - update
+        previous_counter = existing_ingestion["ingestion_counter"]
+        previous_ingestion_id = existing_ingestion["ingestion_id"]
 
-            ingestion_counter = previous_counter + 1
-            ingestion_metadata = IngestionMetadata(
-                ingestion_id=ingestion_id,
-                timestamp=timestamp,
-                commit_sha=identity.commit_sha,
-                ingestion_counter=ingestion_counter,
-                metadata=metadata or {},
-            )
+        ingestion_counter = previous_counter + 1
+        ingestion_metadata = IngestionMetadata(
+            ingestion_id=ingestion_id,
+            timestamp=timestamp,
+            commit_sha=identity.commit_sha,
+            ingestion_counter=ingestion_counter,
+            metadata=metadata or {},
+        )
 
-            self._update_existing_codebase(identity, ingestion_metadata, previous_ingestion_id)
+        self._update_existing_codebase(identity, ingestion_metadata, previous_ingestion_id)
 
-            return IngestionResult(
-                status=IngestionStatus.UPDATE,
-                codebase_identity=identity,
-                ingestion_metadata=ingestion_metadata,
-                previous_ingestion_id=previous_ingestion_id,
-            )
+        return IngestionResult(
+            status=IngestionStatus.UPDATE,
+            codebase_identity=identity,
+            ingestion_metadata=ingestion_metadata,
+            previous_ingestion_id=previous_ingestion_id,
+        )
 
     def get_ingestion_history(self, unique_key: str) -> List[dict]:
         """Get complete ingestion history for a codebase.

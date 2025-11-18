@@ -7,6 +7,7 @@ This directory contains production-ready Claude Code Skills that extend amplihac
 Claude Code Skills are modular, reusable capabilities that extend Claude's functionality. They consist of folders containing a `SKILL.md` file with YAML frontmatter and Markdown instructions, along with optional supporting scripts and resources.
 
 **Key Benefits:**
+
 - **Token Efficient**: Skills load on-demand, consuming minimal tokens until needed
 - **Philosophy Aligned**: All skills follow amplihack's ruthless simplicity and modular design
 - **Portable**: Work across Claude.ai, API, and Claude Code environments
@@ -18,46 +19,46 @@ Claude Code Skills are modular, reusable capabilities that extend Claude's funct
 
 #### Phase 1: Quick Wins (4 skills)
 
-| Skill | Score | Description | Issue | PR |
-|-------|-------|-------------|-------|-----|
-| **decision-logger** | 49.5 | Structured decision recording (What\|Why\|Alternatives) | [#1221](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1221) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
-| **email-drafter** | 47.0 | Professional email generation (formal/casual/technical) | [#1223](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1223) | [#1232](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1232) |
-| **module-spec-generator** | 50.0 | Generate brick module specifications | [#1219](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1219) | TBD |
-| **meeting-synthesizer** | 50.0 | Extract action items and decisions from meetings | [#1220](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1220) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+| Skill                     | Score | Description                                             | Issue                                                                                | PR                                                                                 |
+| ------------------------- | ----- | ------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| **decision-logger**       | 49.5  | Structured decision recording (What\|Why\|Alternatives) | [#1221](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1221) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
+| **email-drafter**         | 47.0  | Professional email generation (formal/casual/technical) | [#1223](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1223) | [#1232](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1232) |
+| **module-spec-generator** | 50.0  | Generate brick module specifications                    | [#1219](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1219) | TBD                                                                                |
+| **meeting-synthesizer**   | 50.0  | Extract action items and decisions from meetings        | [#1220](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1220) | [#1231](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1231) |
 
 #### Phase 2: Philosophy Enforcement (3 skills)
 
-| Skill | Score | Description | Issue | PR |
-|-------|-------|-------------|-------|-----|
-| **philosophy-guardian** | 45.5 | Reviews code against amplihack philosophy | [#1224](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1224) | [#1235](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1235) |
-| **test-gap-analyzer** | 44.5 | Identifies untested functions and coverage gaps | [#1225](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1225) | [#1233](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1233) |
-| **code-smell-detector** | 42.5 | Detects anti-patterns and over-engineering | [#1228](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1228) | [#1234](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1234) |
+| Skill                   | Score | Description                                     | Issue                                                                                | PR                                                                                 |
+| ----------------------- | ----- | ----------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| **philosophy-guardian** | 45.5  | Reviews code against amplihack philosophy       | [#1224](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1224) | [#1235](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1235) |
+| **test-gap-analyzer**   | 44.5  | Identifies untested functions and coverage gaps | [#1225](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1225) | [#1233](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1233) |
+| **code-smell-detector** | 42.5  | Detects anti-patterns and over-engineering      | [#1228](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1228) | [#1234](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1234) |
 
 #### Phase 3: Creative (2 skills)
 
-| Skill | Score | Description | Issue | PR |
-|-------|-------|-------------|-------|-----|
-| **mermaid-diagram-generator** | 48.0 | Converts descriptions to Mermaid diagrams | [#1222](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1222) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
-| **storytelling-synthesizer** | 44.0 | Transforms technical work into compelling narratives | [#1226](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1226) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
+| Skill                         | Score | Description                                          | Issue                                                                                | PR                                                                                 |
+| ----------------------------- | ----- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| **mermaid-diagram-generator** | 48.0  | Converts descriptions to Mermaid diagrams            | [#1222](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1222) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
+| **storytelling-synthesizer**  | 44.0  | Transforms technical work into compelling narratives | [#1226](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1226) | [#1236](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1236) |
 
 #### Phase 4: Advanced (3 skills)
 
-| Skill | Score | Description | Issue | PR |
-|-------|-------|-------------|-------|-----|
-| **learning-path-builder** | 43.5 | Creates personalized technology learning paths | [#1227](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1227) | [#1237](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1237) |
-| **knowledge-extractor** | 40.5 | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
-| **pr-review-assistant** | 40.0 | Philosophy-aware PR reviews | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | TBD |
+| Skill                     | Score | Description                                          | Issue                                                                                | PR                                                                                 |
+| ------------------------- | ----- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| **learning-path-builder** | 43.5  | Creates personalized technology learning paths       | [#1227](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1227) | [#1237](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1237) |
+| **knowledge-extractor**   | 40.5  | Extracts learnings to DISCOVERIES.md and PATTERNS.md | [#1229](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1229) | [#1238](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1238) |
+| **pr-review-assistant**   | 40.0  | Philosophy-aware PR reviews                          | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | TBD                                                                                |
 
 ### Office Document Skills (4 Skills)
 
 Anthropic's office document skills integrated into amplihack for comprehensive document processing capabilities.
 
-| Skill | Status | Description | Documentation |
-|-------|--------|-------------|---------------|
-| **pdf** | Integrated | Comprehensive PDF manipulation - extract, create, merge, OCR | [README](pdf/README.md) |
-| **xlsx** | Integrated | Excel spreadsheet manipulation with formulas and charts | [README](xlsx/README.md) |
-| **docx** | Integrated | Word document processing with tracked changes | [README](docx/README.md) |
-| **pptx** | Integrated | PowerPoint presentation generation | [README](pptx/README.md) |
+| Skill    | Status     | Description                                                  | Documentation            |
+| -------- | ---------- | ------------------------------------------------------------ | ------------------------ |
+| **pdf**  | Integrated | Comprehensive PDF manipulation - extract, create, merge, OCR | [README](pdf/README.md)  |
+| **xlsx** | Integrated | Excel spreadsheet manipulation with formulas and charts      | [README](xlsx/README.md) |
+| **docx** | Integrated | Word document processing with tracked changes                | [README](docx/README.md) |
+| **pptx** | Integrated | PowerPoint presentation generation                           | [README](pptx/README.md) |
 
 ## 📖 Research & Documentation
 
@@ -87,6 +88,7 @@ All skills were evaluated on:
 6. **User Value** (1-5): Solves frequent pain points, measurable time savings
 
 **Priority Score Formula:**
+
 ```
 Priority = (Simplicity * 2) + (Modular * 2) + (Zero-BS * 1.5) +
            (Reusability * 1.5) + ((6 - Maintenance) * 1) + (User Value * 2.5)
@@ -96,6 +98,7 @@ Max Score: 50 points
 ## 🔍 Using Skills
 
 Skills are automatically discovered from:
+
 - User settings: `~/.config/claude/skills/`
 - Project settings: `.claude/skills/`
 - Plugin-provided skills

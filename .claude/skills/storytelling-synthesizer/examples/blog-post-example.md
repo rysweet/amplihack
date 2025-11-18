@@ -14,6 +14,7 @@
 ### Why Task Queues Matter
 
 Every system has async work:
+
 - Sending emails after user signup
 - Generating reports
 - Processing payments
@@ -29,6 +30,7 @@ We started simple: a Redis queue with a single worker process. It worked fine fo
 Then our business grew. Suddenly we needed to process hundreds of thousands of tasks per day. Then millions.
 
 **The problems appeared**:
+
 - Single worker became a bottleneck (CPU maxed at 50% utilization, but we were still late on tasks)
 - Redis memory filled up (we paid $10k/month just for Redis)
 - Worker failures meant lost tasks (no persistence)
@@ -39,12 +41,14 @@ Then our business grew. Suddenly we needed to process hundreds of thousands of t
 ### What We Tried First
 
 **Attempt 1**: Throw more workers at the problem
+
 - Added 10 workers, then 20
 - Cost exploded ($50k/month in infrastructure)
 - Coordination was chaos
 - Still lost tasks when workers died
 
 **Attempt 2**: Use a managed service
+
 - Tried AWS SQS: cheap, but no retry semantics
 - Tried RabbitMQ: powerful, but operationally complex
 - Tried Google Cloud Tasks: expensive, but somewhat simpler
@@ -68,6 +72,7 @@ We needed a solution we could own and control.
 ### Changing Our Mental Model
 
 Traditional task queues think in terms of:
+
 - Individual messages
 - Single consumer per queue
 - In-memory processing
@@ -85,6 +90,7 @@ Don't rely on memory. Every task is written to persistent storage immediately. W
 
 **Insight 4: Observable in Real-Time**
 Every task has a full lifecycle trace:
+
 - Queued at 14:32:05
 - Picked up by worker-3 at 14:32:07
 - Processed in 150ms
@@ -176,6 +182,7 @@ def get_partition(task_id, num_partitions):
 ```
 
 Benefits:
+
 - Task ordering is preserved (all tasks for same object go to same partition)
 - No coordination between workers needed
 - Horizontal scaling is trivial (add more partitions)
@@ -225,18 +232,21 @@ def detect_failed_workers():
 ### Key Design Decisions
 
 **Decision 1: Batching vs. Individual Processing**
+
 - Tried: Processing one task at a time
 - Result: CPU inefficient (context switching, I/O overhead)
 - Solution: Batch 100 tasks, process in parallel
 - Impact: 5x throughput improvement
 
 **Decision 2: Disk vs. Memory**
+
 - Tried: Keep everything in Redis (memory)
 - Result: Expensive, lost data on crashes
 - Solution: Disk-backed queue with in-memory cache
 - Impact: 90% cost reduction, 100% durability
 
 **Decision 3: Centralized vs. Distributed Coordination**
+
 - Tried: Central coordinator manages all partitions
 - Result: Single point of failure, coordination overhead
 - Solution: Distributed ownership (each worker owns partitions)
@@ -249,34 +259,41 @@ def detect_failed_workers():
 ### The Numbers
 
 **Throughput**:
+
 - Before: 1,000 tasks/day with 20 workers
 - After: 1,000,000 tasks/day with 5 workers (100x throughput, 4x fewer servers)
 
 **Latency** (time from enqueue to completion):
+
 - Before: P50=2s, P95=15s, P99=45s
 - After: P50=250ms, P95=1s, P99=5s
 
 **Durability**:
+
 - Before: ~0.01% task loss rate (500 lost tasks per 5M)
 - After: 0% task loss (100% durability)
 
 **Cost**:
+
 - Before: $50k/month (infrastructure + SQS)
 - After: $8k/month (infrastructure only)
 
 **Operational Overhead**:
+
 - Before: ~20 hours/month incident response
 - After: ~2 hours/month (mostly monitoring setup, not firefighting)
 
 ### Real-World Validation
 
 **Test Case 1: Black Friday**
+
 - Submitted 50M tasks over 8 hours
 - System handled at 20k tasks/second without degradation
 - No scaling changes, no manual intervention
 - Customer saw zero impact
 
 **Test Case 2: Worker Failure Scenario**
+
 - Running with 10 workers
 - Killed worker-5 (simulating crash)
 - System detected failure in 30 seconds
@@ -285,6 +302,7 @@ def detect_failed_workers():
 - Zero lost tasks
 
 **Test Case 3: Graceful Degradation**
+
 - Reduced workers from 10 to 5 (50% capacity)
 - Latency increased but stayed acceptable (P99: 5s → 12s)
 - No tasks lost, no errors
@@ -304,6 +322,7 @@ After: Complete durability. We can literally trust the queue. The biggest benefi
 
 **1. Durability First, Performance Second**
 We initially optimized for throughput. Mistakes happened:
+
 - Lost data in failure scenarios
 - Coordination overhead killed performance
 - Scaling required rearchitecture
@@ -312,6 +331,7 @@ Lesson: Make durability the default. Performance optimizations come later.
 
 **2. Distributed Systems Are Hard, Until They're Not**
 We learned the hard way:
+
 - Heartbeat detection requires careful timeouts (30s optimal)
 - Rebalancing must be idempotent (can be called multiple times safely)
 - State must be persistent (in-memory state is fragile)
@@ -322,6 +342,7 @@ Result: Once these pieces were right, everything else was simple.
 Early days: No logging, no tracing. Worker dies? We have no idea why.
 
 Now: Every task has full lifecycle trace:
+
 - When enqueued
 - Which worker picked it up
 - Execution time
@@ -332,6 +353,7 @@ This makes debugging trivial.
 ### What We'd Do Differently
 
 **If We Started Over**:
+
 1. Make durability a hard requirement from day 1
 2. Instrument observability from the start
 3. Design for horizontal scaling from the beginning (don't build single-worker bottleneck)
@@ -344,16 +366,19 @@ This makes debugging trivial.
 ### Current Roadmap
 
 **Q1 2024**: Multi-region support
+
 - Replicate tasks across regions
 - Enables disaster recovery
 - Reduces latency for geographically distributed workers
 
 **Q2 2024**: Priority queues
+
 - Route high-priority tasks faster
 - Useful for customer-facing vs. background tasks
 - Maintains ordering within priority level
 
 **Q3 2024**: Open-source release
+
 - We'll open-source this implementation
 - Great reference for others building task queues
 - Community contributions welcome
@@ -362,16 +387,19 @@ This makes debugging trivial.
 
 **1. Dead Letter Queue Improvements**
 Currently, failed tasks are logged. We want:
+
 - Automatic retry with exponential backoff
 - Manual replay interface
 - Dead letter analytics
 
 **2. Predictive Scaling**
+
 - ML model learns traffic patterns
 - Predicts when to provision more workers
 - Reduces latency spikes
 
 **3. Task Dependency Chains**
+
 - "Run Task B after Task A completes"
 - DAG-based task workflows
 - Needed by several customers
@@ -416,6 +444,7 @@ consumer.run()
 ```
 
 **Key Points**:
+
 - Enqueue is non-blocking, returns immediately
 - Durability is transparent (happens automatically)
 - Consumer batches work automatically
@@ -426,6 +455,7 @@ consumer.run()
 ## CONCLUSION
 
 Building a task queue that scales from thousands to millions of tasks required:
+
 1. Durability-first architecture (disk, not memory)
 2. Distributed design (no single bottleneck)
 3. Observable operations (full task lifecycle tracing)

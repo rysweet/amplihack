@@ -1,0 +1,246 @@
+# Level 3: Custom Comprehension Agent
+# This test demonstrates how to create domain-specific comprehension logic
+# for specialized validation that goes beyond simple text matching.
+
+scenario:
+  name: "Custom Agent - Financial Dashboard Validation"
+  description: |
+    Uses a custom comprehension agent with domain-specific knowledge to validate
+    financial dashboard data for correctness, consistency, and proper formatting.
+  type: web
+  level: 3
+
+  tags: [custom-agent, comprehension, domain-specific, advanced]
+
+  prerequisites:
+    - "Financial dashboard running at http://localhost:3000"
+    - "Dashboard has sample financial data loaded"
+    - "OpenAI API key available for custom agent"
+
+  # Define custom comprehension agent behavior
+  comprehension_agent:
+    model: "gpt-4"
+    temperature: 0.1 # Low temperature for consistent validation
+
+    # System prompt defines validation rules
+    system_prompt: |
+      You are a financial data validator specialized in dashboard validation.
+      Your role is to verify that financial data is correctly formatted, internally
+      consistent, and follows financial reporting standards.
+
+      Validation Rules:
+      1. Monetary values MUST use currency symbols ($, €, £, etc.)
+      2. Amounts >= $1,000 MUST include comma separators ($1,234.56)
+      3. Percentages MUST include % symbol (e.g., 15.5%)
+      4. Dates MUST be in MM/DD/YYYY or YYYY-MM-DD format
+      5. Negative values MUST be displayed in red or with minus sign
+      6. Charts MUST have consistent data (no impossible values)
+      7. Totals MUST sum correctly (verify arithmetic)
+      8. Year-over-year changes MUST be mathematically correct
+
+      For each verification request:
+      - Extract relevant numbers and check formatting
+      - Verify mathematical consistency
+      - Check for impossible values (negative revenue growth shown as positive, etc.)
+      - Confirm visual indicators (colors, symbols) match data semantics
+
+      Respond with:
+      - PASS if all validations succeed
+      - FAIL with specific reason if any validation fails
+      - List each validation check performed
+
+    # Example validations to train the agent
+    examples:
+      - input: |
+          Total Revenue: 45000
+          Growth: +15%
+        output: |
+          FAIL - Revenue formatting invalid
+          Issues:
+          1. Missing currency symbol ($)
+          2. Missing comma separator (should be $45,000)
+          Correct format: Total Revenue: $45,000
+
+      - input: |
+          Total Revenue: $45,000.00
+          Growth: +15%
+          Previous: $39,130.43
+        output: |
+          PASS - All validations successful
+          Checks performed:
+          1. ✓ Currency symbol present
+          2. ✓ Comma separator correct
+          3. ✓ Percentage format correct
+          4. ✓ Math verification: $39,130.43 * 1.15 = $45,000.00 (correct)
+
+      - input: |
+          Profit Margin: -5.2
+          Color: black text
+        output: |
+          FAIL - Visual indicator mismatch
+          Issues:
+          1. Negative value should be displayed in red
+          2. Missing % symbol
+          Correct: Profit Margin: -5.2% (in red text)
+
+  steps:
+    # Navigate to dashboard
+    - action: navigate
+      url: "http://localhost:3000/financial-dashboard"
+      wait_for_load: true
+
+    - action: wait_for_element
+      selector: ".dashboard-loaded"
+      timeout: 10s
+
+    # Test Case 1: Validate Revenue Widget with Custom Agent
+    - action: verify_element
+      selector: ".widget-revenue"
+      use_custom_comprehension: true
+      description: "Custom agent validates revenue formatting and consistency"
+
+    # The agent will:
+    # - Check currency formatting
+    # - Verify comma separators
+    # - Validate growth percentage
+    # - Check arithmetic consistency
+
+    # Test Case 2: Validate Profit Widget
+    - action: verify_element
+      selector: ".widget-profit"
+      use_custom_comprehension: true
+      description: "Validate profit metrics with custom logic"
+
+    # Test Case 3: Validate Quarterly Comparison Table
+    - action: verify_element
+      selector: ".quarterly-comparison"
+      use_custom_comprehension: true
+      context: |
+        This table shows quarterly revenue for Q1-Q4.
+        Verify: All quarters use consistent formatting, totals sum correctly,
+        and year-over-year changes are calculated correctly.
+
+    # Test Case 4: Validate Chart Data Consistency
+    - action: verify_element
+      selector: ".revenue-chart"
+      use_custom_comprehension: true
+      context: |
+        This chart displays monthly revenue trend.
+        Verify: Chart data points match table values, no negative revenue,
+        trend direction matches summary indicators.
+
+    # Test Case 5: Test Error Detection
+    # Inject known bad data (in test mode)
+    - action: click
+      selector: "button.inject-test-error"
+      description: "Inject formatting error for testing"
+      continue_on_failure: true
+
+    - action: wait_for_screen
+      timeout: 1s
+
+    # Custom agent should catch the error
+    - action: verify_element
+      selector: ".widget-revenue"
+      use_custom_comprehension: true
+      expected_result: "FAIL"
+      description: "Agent should detect injected formatting error"
+
+    # Verify agent provides specific error details
+    - action: verify_comprehension_output
+      contains:
+        - "Missing currency symbol"
+        - "Issues:"
+      description: "Agent should explain what's wrong"
+
+    # Reset dashboard
+    - action: click
+      selector: "button.reset-data"
+      continue_on_failure: true
+
+    # Test Case 6: Complex Validation - Multi-Currency
+    - action: navigate
+      url: "http://localhost:3000/global-revenue"
+
+    - action: wait_for_element
+      selector: ".currency-breakdown"
+      timeout: 5s
+
+    - action: verify_element
+      selector: ".currency-breakdown"
+      use_custom_comprehension: true
+      context: |
+        This widget shows revenue in multiple currencies (USD, EUR, GBP).
+        Verify: Each currency uses appropriate symbol, exchange rates are reasonable,
+        USD total matches sum of converted values.
+
+    # Test Case 7: Date Format Validation
+    - action: verify_element
+      selector: ".report-metadata"
+      use_custom_comprehension: true
+      context: |
+        Report metadata with dates.
+        Verify: All dates use consistent format (MM/DD/YYYY),
+        report date is not in future, fiscal year dates are valid.
+
+    - action: screenshot
+      save_as: "dashboard-validated.png"
+
+  cleanup:
+    - action: generate_report
+      include_agent_reasoning: true
+      description: "Generate report with custom agent's validation reasoning"
+# Custom Comprehension Agent Benefits:
+
+# Traditional Verification (Brittle):
+# - action: verify_element
+#   selector: ".revenue"
+#   contains: "$45,000.00"  # Breaks if value changes
+
+# Custom Agent Verification (Robust):
+# - action: verify_element
+#   selector: ".revenue"
+#   use_custom_comprehension: true
+#   # Agent validates:
+#   # - Has currency symbol? ✓
+#   # - Has comma separator? ✓
+#   # - Decimal places correct? ✓
+#   # - Consistent with growth %? ✓
+#   # → PASS (even if exact value changes)
+
+# Run Command:
+# gadugi-agentic-test run examples/custom-agents/custom-comprehension-agent.yaml --verbose
+
+# Key Learning Points (Level 3):
+# 1. Custom agents understand domain-specific rules
+# 2. System prompts define validation logic
+# 3. Examples train agent on expected behavior
+# 4. Agents can verify complex consistency rules
+# 5. More robust than brittle exact-match assertions
+# 6. Agent reasoning included in test reports
+# 7. Context parameter provides additional instructions
+
+# When to Use Custom Comprehension Agents:
+# ✓ Domain-specific validation (financial, medical, legal)
+# ✓ Complex consistency checks (arithmetic, logic)
+# ✓ Format verification (proper currency, date formatting)
+# ✓ Visual semantics (colors match data meaning)
+# ✓ Natural language outputs (error messages, summaries)
+
+# When NOT to Use:
+# ✗ Simple text matching (use contains/matches)
+# ✗ Exact value verification (brittle, use traditional checks)
+# ✗ Performance-critical tests (AI calls add latency)
+
+# Custom Agent Configuration:
+# - model: Choose appropriate AI model (GPT-4 for complex logic)
+# - temperature: Low (0-0.3) for consistent validation
+# - system_prompt: Define validation rules clearly
+# - examples: Provide representative pass/fail cases
+# - context: Per-test additional instructions
+
+# Cost Considerations:
+# - Each custom verification calls AI API
+# - Use strategically for high-value validations
+# - Cache agent responses when possible
+# - Consider cost vs. value of robust validation

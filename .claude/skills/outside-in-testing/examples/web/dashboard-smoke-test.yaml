@@ -1,0 +1,220 @@
+# Level 1: Web Dashboard Smoke Test
+# This is a simple smoke test that verifies a web dashboard loads correctly
+# and displays its primary widgets without testing detailed functionality.
+
+scenario:
+  name: "Web Dashboard - Basic Smoke Test"
+  description: |
+    Verifies that the analytics dashboard loads, displays all required widgets,
+    and basic navigation works. This is a quick health check for critical pages.
+  type: web
+  level: 1
+
+  tags: [web, smoke, dashboard, basic]
+
+  prerequisites:
+    - "Web application running on http://localhost:3000"
+    - "User is authenticated (or auth is disabled for tests)"
+    - "Database has sample data loaded"
+
+  steps:
+    # Navigate to dashboard
+    - action: navigate
+      url: "http://localhost:3000/dashboard"
+      description: "Load dashboard page"
+      wait_for_load: true
+
+    # Wait for main content
+    - action: wait_for_element
+      selector: "h1.dashboard-title"
+      timeout: 5s
+      description: "Wait for page to fully load"
+
+    # Verify page title
+    - action: verify_element
+      selector: "h1.dashboard-title"
+      contains: "Analytics Dashboard"
+      description: "Page should have correct title"
+
+    # Verify primary widgets are present
+    - action: verify_element
+      selector: ".widget-stats"
+      count: 4
+      description: "Should have 4 statistics widgets"
+
+    - action: verify_element
+      selector: ".widget-chart"
+      exists: true
+      description: "Chart widget should be present"
+
+    - action: verify_element
+      selector: ".widget-recent-activity"
+      exists: true
+      description: "Recent activity widget should be present"
+
+    # Verify navigation menu
+    - action: verify_element
+      selector: "nav.sidebar"
+      exists: true
+      description: "Sidebar navigation should be visible"
+
+    - action: verify_element
+      selector: "nav.sidebar a"
+      count: 5
+      description: "Should have 5 navigation links"
+
+    # Verify specific stat widgets
+    - action: verify_element
+      selector: ".stat-users"
+      contains: "Total Users"
+      description: "Users stat widget should be present"
+
+    - action: verify_element
+      selector: ".stat-revenue"
+      contains: "Revenue"
+      description: "Revenue stat widget should be present"
+
+    - action: verify_element
+      selector: ".stat-orders"
+      contains: "Orders"
+      description: "Orders stat widget should be present"
+
+    - action: verify_element
+      selector: ".stat-conversion"
+      contains: "Conversion"
+      description: "Conversion stat widget should be present"
+
+    # Verify data is loaded (not just placeholders)
+    - action: verify_element
+      selector: ".stat-users .value"
+      matches: "\\d+"
+      description: "User count should display a number"
+
+    - action: verify_element
+      selector: ".stat-revenue .value"
+      matches: "\\$[\\d,]+"
+      description: "Revenue should display dollar amount"
+
+    # Take screenshot for visual verification
+    - action: screenshot
+      save_as: "dashboard-loaded.png"
+      full_page: false
+      description: "Capture above-the-fold dashboard view"
+
+    # Verify chart renders (basic check)
+    - action: verify_element
+      selector: ".widget-chart canvas"
+      exists: true
+      description: "Chart should have canvas element"
+
+    # Verify recent activity has items
+    - action: verify_element
+      selector: ".widget-recent-activity .activity-item"
+      count: 5
+      description: "Should display 5 recent activity items"
+
+    # Scroll to bottom to ensure full page loads
+    - action: scroll
+      direction: "down"
+      amount: "bottom"
+      description: "Scroll to page bottom"
+
+    # Verify footer
+    - action: verify_element
+      selector: "footer"
+      exists: true
+      description: "Page footer should be present"
+
+    # Take full page screenshot
+    - action: screenshot
+      save_as: "dashboard-full-page.png"
+      full_page: true
+      description: "Capture complete dashboard"
+
+    # Basic interaction test: refresh data
+    - action: click
+      selector: "button.refresh-data"
+      description: "Click refresh button"
+
+    # Verify loading indicator appears
+    - action: wait_for_element
+      selector: ".loading-spinner"
+      timeout: 2s
+      description: "Loading spinner should appear"
+
+    # Verify loading completes
+    - action: wait_for_element
+      selector: ".loading-spinner"
+      disappears: true
+      timeout: 10s
+      description: "Loading should complete within 10 seconds"
+
+    # Verify data still present after refresh
+    - action: verify_element
+      selector: ".stat-users .value"
+      matches: "\\d+"
+      description: "Data should still be loaded after refresh"
+# Expected Visual State:
+
+# ┌──────────────────────────────────────────────────────────┐
+# │  [Logo]  Analytics Dashboard                    [User ▾] │
+# ├─────────┬────────────────────────────────────────────────┤
+# │ Nav     │                                                 │
+# │ ├ Dash  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌──────┐│
+# │ ├ Users │  │  Users  │ │ Revenue │ │ Orders  │ │Conv. ││
+# │ ├ Orders│  │  1,234  │ │ $45.2K  │ │   543   │ │ 3.2% ││
+# │ ├ Report│  └─────────┘ └─────────┘ └─────────┘ └──────┘│
+# │ └ Settings                                               │
+# │         │  ┌──────────────────────────────────┐         │
+# │         │  │   Sales Trend (Last 30 Days)     │         │
+# │         │  │   [Chart visualization]          │         │
+# │         │  └──────────────────────────────────┘         │
+# │         │                                                 │
+# │         │  Recent Activity                               │
+# │         │  • User john@example.com registered            │
+# │         │  • Order #1234 completed                       │
+# │         │  • Payment received $299.99                    │
+# └─────────┴────────────────────────────────────────────────┘
+
+# Run Command:
+# gadugi-agentic-test run examples/web/dashboard-smoke-test.yaml
+
+# What This Test Validates:
+# ✓ Dashboard page loads without errors
+# ✓ All expected widgets are present
+# ✓ Data displays correctly (not empty/placeholder)
+# ✓ Navigation structure exists
+# ✓ Charts render properly
+# ✓ Recent activity shows entries
+# ✓ Refresh functionality works
+# ✓ Loading states appear and disappear
+
+# Key Learning Points (Level 1):
+# 1. navigate action loads the page
+# 2. wait_for_element ensures page is ready
+# 3. verify_element checks existence and content
+# 4. count parameter verifies multiple elements
+# 5. matches parameter uses regex for dynamic content
+# 6. screenshot captures visual evidence
+# 7. full_page parameter controls screenshot scope
+
+# Smoke Test Strategy:
+# - Verify page loads (no 404/500 errors)
+# - Check critical elements exist
+# - Confirm data is present (not empty)
+# - Test one simple interaction (refresh)
+# - Keep test fast (< 30 seconds)
+# - Don't test detailed functionality
+
+# When to Use Smoke Tests:
+# - After deployments (quick health check)
+# - Before full test suite (fail fast)
+# - In CI/CD pipelines (every commit)
+# - Monitoring production (synthetic checks)
+
+# What Smoke Tests Don't Cover:
+# - Detailed business logic
+# - Edge cases and error handling
+# - Complex user workflows
+# - Data validation and persistence
+# → Use Level 2+ tests for those

@@ -356,10 +356,10 @@ Track code planning tasks:
 
 ## Agent Suggestions
 
-**zen-architect** - For architecture review:
+**philosophy-guardian** - For philosophy compliance review:
 
 ```
-Task zen-architect: "Review code plan for architecture compliance
+Task philosophy-guardian: "Review code plan for philosophy compliance
 with IMPLEMENTATION_PHILOSOPHY and MODULAR_DESIGN_PHILOSOPHY"
 ```
 

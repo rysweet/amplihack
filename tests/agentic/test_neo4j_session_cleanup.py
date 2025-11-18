@@ -43,13 +43,11 @@ def test_neo4j_cleanup_interactive_prompt_yes():
 
     # Create coordinator in interactive mode
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Simulate user typing 'y'
-    with patch('builtins.input', return_value='y'):
+    with patch("builtins.input", return_value="y"):
         result = coordinator.prompt_user_shutdown()
 
     # Verify user choice was respected
@@ -76,13 +74,11 @@ def test_neo4j_cleanup_interactive_prompt_no():
     container_manager.stop.return_value = True
 
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Simulate user typing 'n'
-    with patch('builtins.input', return_value='n'):
+    with patch("builtins.input", return_value="n"):
         result = coordinator.prompt_user_shutdown()
 
     # Verify user choice was respected
@@ -113,13 +109,11 @@ def test_neo4j_cleanup_preference_always():
 
     # Create coordinator with 'always' preference
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Mock preference loading to return 'always'
-    with patch.object(coordinator, '_preference', 'always'):
+    with patch.object(coordinator, "_preference", "always"):
         # Should NOT prompt, should automatically return True
         result = coordinator.prompt_user_shutdown()
 
@@ -145,13 +139,11 @@ def test_neo4j_cleanup_preference_never():
     container_manager = Mock()
 
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Mock preference to 'never'
-    with patch.object(coordinator, '_preference', 'never'):
+    with patch.object(coordinator, "_preference", "never"):
         # should_prompt_shutdown should return False
         result = coordinator.should_prompt_shutdown()
 
@@ -177,31 +169,29 @@ def test_neo4j_cleanup_preference_persistence():
     container_manager = Mock()
 
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Mock _save_preference to verify it's called
-    with patch.object(coordinator, '_save_preference') as save_mock:
+    with patch.object(coordinator, "_save_preference") as save_mock:
         # Simulate user typing 'always'
-        with patch('builtins.input', return_value='always'):
+        with patch("builtins.input", return_value="always"):
             result = coordinator.prompt_user_shutdown()
 
         # Verify preference was saved
         assert save_mock.called, "User said 'always' but preference was not saved"
-        assert save_mock.call_args[0][0] == 'always', "Wrong preference value saved"
+        assert save_mock.call_args[0][0] == "always", "Wrong preference value saved"
         assert result is True, "User said 'always' but shutdown not initiated"
 
     # Reset and test 'never'
-    with patch.object(coordinator, '_save_preference') as save_mock:
+    with patch.object(coordinator, "_save_preference") as save_mock:
         # Simulate user typing 'never'
-        with patch('builtins.input', return_value='never'):
+        with patch("builtins.input", return_value="never"):
             result = coordinator.prompt_user_shutdown()
 
         # Verify preference was saved
         assert save_mock.called, "User said 'never' but preference was not saved"
-        assert save_mock.call_args[0][0] == 'never', "Wrong preference value saved"
+        assert save_mock.call_args[0][0] == "never", "Wrong preference value saved"
         assert result is False, "User said 'never' but shutdown was initiated"
 
     print("\n✓ Preference persistence test passed")
@@ -227,7 +217,7 @@ def test_neo4j_cleanup_auto_mode_skips_prompt():
     coordinator = Neo4jShutdownCoordinator(
         connection_tracker=tracker,
         container_manager=container_manager,
-        auto_mode=True  # AUTO MODE
+        auto_mode=True,  # AUTO MODE
     )
 
     # should_prompt_shutdown should return False in auto mode
@@ -258,9 +248,7 @@ def test_neo4j_cleanup_multiple_connections_no_prompt():
     container_manager = Mock()
 
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Should not prompt when multiple connections exist
@@ -289,9 +277,7 @@ def test_neo4j_cleanup_fail_safe_on_error():
     container_manager = Mock()
 
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Should handle exception gracefully
@@ -322,17 +308,15 @@ def test_neo4j_cleanup_timeout_defaults_to_no():
     container_manager = Mock()
 
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Mock input to hang (simulate no response)
     def hang(prompt_text):
         time.sleep(15)  # Longer than timeout
-        return ''
+        return ""
 
-    with patch('builtins.input', side_effect=hang):
+    with patch("builtins.input", side_effect=hang):
         result = coordinator.prompt_user_shutdown()
 
     # Should default to False (no shutdown) on timeout
@@ -360,13 +344,11 @@ def test_neo4j_cleanup_complete_flow():
     container_manager.stop.return_value = True
 
     coordinator = Neo4jShutdownCoordinator(
-        connection_tracker=tracker,
-        container_manager=container_manager,
-        auto_mode=False
+        connection_tracker=tracker, container_manager=container_manager, auto_mode=False
     )
 
     # Simulate user interaction
-    with patch('builtins.input', return_value='y'):
+    with patch("builtins.input", return_value="y"):
         coordinator.handle_session_exit()
 
     # Verify complete flow

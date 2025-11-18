@@ -5,6 +5,7 @@
 **Technical Achievement**: Implemented intelligent rate limiting that adapts to traffic patterns
 
 **Metrics**:
+
 - Response time for rate-limited requests: 50ms instead of 500ms (10x faster)
 - System handles 10x spike in traffic without degradation
 - 99.99% uptime during high-traffic events
@@ -60,6 +61,7 @@ Now let me show you our new approach."
 "See? Response time barely moves. Stayed around 100 milliseconds. Not queueing requests. Not making people wait. Not crashing.
 
 How? Instead of a fixed rate limit, we're using an adaptive algorithm. It looks at:
+
 - Current system capacity
 - Queue depth
 - Historical patterns
@@ -82,17 +84,21 @@ The result? The system stays responsive even under 10x load."
 "The numbers tell the story:
 
 **Performance**: Response time stayed at 100ms even at 10x traffic
+
 - Old system: 5 seconds (50x slower)
 - New system: 100 milliseconds (consistent)
 
 **Reliability**: 99.99% uptime during Black Friday (traffic spike)
+
 - Old system: 47-minute outage
 
 **User Experience**: No timeout errors
+
 - Old system: 12% error rate during spike
 - New system: 0.01% error rate (infrastructure-level only)
 
 **System Efficiency**:
+
 - Handled 100 billion requests that week
 - Database was never at capacity
 - CPU never exceeded 40%"
@@ -126,11 +132,13 @@ Questions?"
 **Timing**: 8 minutes (pad for questions)
 
 **Equipment Needed**:
+
 - Live system dashboard or recording of dashboard
 - Terminal or web UI showing API responses
 - Load testing tool (for live spike demonstration, or pre-recorded video)
 
 **Key Talking Points to Emphasize**:
+
 1. Graceful degradation instead of failure
 2. User-friendly rate limiting (clear signal instead of error)
 3. Business impact (uptime during high-value events)

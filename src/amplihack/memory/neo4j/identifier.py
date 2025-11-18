@@ -197,7 +197,7 @@ class CodebaseIdentifier:
         Returns:
             SHA-256 hash as hex string
         """
-        key_input = f"{remote_url}#{branch}".encode("utf-8")
+        key_input = f"{remote_url}#{branch}".encode()
         return hashlib.sha256(key_input).hexdigest()
 
     @staticmethod

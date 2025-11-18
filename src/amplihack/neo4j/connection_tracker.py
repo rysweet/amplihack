@@ -52,14 +52,18 @@ class Neo4jConnectionTracker:
             # Use config system to get real credentials and port
             try:
                 from amplihack.memory.neo4j.config import get_config
+
                 config = get_config()
                 neo4j_username = config.user
                 neo4j_password = config.password
                 # Use configured HTTP port with Neo4j 5.x endpoint
                 self.http_url = f"http://localhost:{config.http_port}/db/neo4j/tx/commit"
-                logger.debug("Using credentials and port from Neo4j config system (port %d)", config.http_port)
+                logger.debug(
+                    "Using credentials and port from Neo4j config system (port %d)",
+                    config.http_port,
+                )
             except Exception as e:
-                logger.warning(f"Could not load Neo4j config: {e}, falling back to env vars")
+                logger.warning("Could not load Neo4j config: %s, falling back to env vars", e)
                 # Fallback to environment variables
                 neo4j_username = username or os.getenv("NEO4J_USERNAME", "neo4j")
                 neo4j_password = password or os.getenv("NEO4J_PASSWORD")
@@ -92,10 +96,10 @@ class Neo4jConnectionTracker:
         """
         s = str(value)
         # Remove newlines that could break log format
-        s = s.replace('\n', '\\n').replace('\r', '\\r')
+        s = s.replace("\n", "\\n").replace("\r", "\\r")
         # Truncate to prevent log bloat
         if len(s) > max_length:
-            s = s[:max_length] + '...[truncated]'
+            s = s[:max_length] + "...[truncated]"
         return s
 
     def get_active_connection_count(self, max_retries: int = 2) -> Optional[int]:
@@ -114,7 +118,7 @@ class Neo4jConnectionTracker:
             "Attempting to query Neo4j connection count at %s (timeout=%.1fs, max_retries=%d)",
             self.http_url,
             self.timeout,
-            max_retries
+            max_retries,
         )
 
         for attempt in range(max_retries + 1):
@@ -128,7 +132,11 @@ class Neo4jConnectionTracker:
                     ]
                 }
 
-                logger.debug("Sending connection count query to Neo4j (attempt %d/%d)", attempt + 1, max_retries + 1)
+                logger.debug(
+                    "Sending connection count query to Neo4j (attempt %d/%d)",
+                    attempt + 1,
+                    max_retries + 1,
+                )
                 response = requests.post(
                     self.http_url,
                     json=query,
@@ -170,18 +178,22 @@ class Neo4jConnectionTracker:
                     return None
 
                 count = row["row"][0]
-                logger.info("Neo4j connection count: %d active connection%s", count, "" if count == 1 else "s")
+                logger.info(
+                    "Neo4j connection count: %d active connection%s",
+                    count,
+                    "" if count == 1 else "s",
+                )
                 logger.debug("Successfully queried Neo4j connection count: %d", count)
                 return count
 
             except requests.exceptions.Timeout:
                 if attempt < max_retries:
-                    backoff = 0.5 * (1.5 ** attempt)  # 0.5s, 0.75s
+                    backoff = 0.5 * (1.5**attempt)  # 0.5s, 0.75s
                     logger.debug(
                         "Connection timeout on attempt %d/%d, retrying in %.2fs...",
                         attempt + 1,
                         max_retries + 1,
-                        backoff
+                        backoff,
                     )
                     time.sleep(backoff)
                     continue
@@ -190,7 +202,7 @@ class Neo4jConnectionTracker:
                     "Timeout querying Neo4j connection count after %.1fs. "
                     "Check if Neo4j container is running with: docker ps | grep %s",
                     self.timeout,
-                    self.container_name
+                    self.container_name,
                 )
                 return None
 
@@ -200,7 +212,7 @@ class Neo4jConnectionTracker:
                     "Cannot connect to Neo4j HTTP API at %s. "
                     "Verify container is running with: docker ps | grep %s",
                     self.http_url,
-                    self.container_name
+                    self.container_name,
                 )
                 return None
 

@@ -1,0 +1,357 @@
+# Level 2: Web Visual Regression Testing
+# This test captures screenshots and compares them against baseline images
+# to detect unintended visual changes in the UI.
+
+scenario:
+  name: "Web Application - Visual Regression Testing"
+  description: |
+    Captures screenshots of key pages and compares them against baseline images
+    to detect visual regressions, layout breaks, and styling issues.
+  type: web
+  level: 2
+
+  tags: [web, visual-regression, ui, screenshots, intermediate]
+
+  prerequisites:
+    - "Web application running on http://localhost:3000"
+    - "Baseline screenshots exist in ./baselines/ (or will be created)"
+    - "Application data is in a known stable state"
+
+  environment:
+    viewport:
+      width: 1920
+      height: 1080
+    variables:
+      BASELINE_DIR: "./baselines"
+      THRESHOLD: "0.05" # 5% difference allowed
+
+  steps:
+    # Test Case 1: Homepage Visual Regression
+    - action: navigate
+      url: "http://localhost:3000"
+      description: "Load homepage"
+      wait_for_load: true
+
+    - action: wait_for_element
+      selector: ".page-loaded"
+      timeout: 10s
+      description: "Wait for all content to load"
+
+    # Wait for any animations to complete
+    - action: wait_for_screen
+      timeout: 2s
+      description: "Allow animations to settle"
+
+    - action: screenshot
+      save_as: "homepage-full.png"
+      full_page: true
+      description: "Capture full homepage"
+
+    - action: visual_compare
+      screenshot: "homepage-full.png"
+      baseline: "${BASELINE_DIR}/homepage-baseline.png"
+      threshold: "${THRESHOLD}"
+      highlight_differences: true
+      save_diff_as: "homepage-diff.png"
+      description: "Compare against baseline homepage"
+
+    # Test Case 2: Navigation Menu Visual Check
+    - action: screenshot
+      selector: "nav.main-nav"
+      save_as: "navigation-menu.png"
+      description: "Capture navigation menu"
+
+    - action: visual_compare
+      screenshot: "navigation-menu.png"
+      baseline: "${BASELINE_DIR}/navigation-baseline.png"
+      threshold: "${THRESHOLD}"
+      description: "Verify navigation hasn't changed"
+
+    # Test Case 3: Responsive Design - Mobile Viewport
+    - action: set_viewport
+      width: 375
+      height: 667
+      description: "Switch to mobile viewport (iPhone 8)"
+
+    - action: navigate
+      url: "http://localhost:3000"
+      description: "Reload in mobile view"
+
+    - action: wait_for_element
+      selector: ".mobile-nav"
+      timeout: 5s
+      description: "Wait for mobile navigation"
+
+    - action: screenshot
+      save_as: "homepage-mobile.png"
+      full_page: true
+      description: "Capture mobile homepage"
+
+    - action: visual_compare
+      screenshot: "homepage-mobile.png"
+      baseline: "${BASELINE_DIR}/homepage-mobile-baseline.png"
+      threshold: "${THRESHOLD}"
+      highlight_differences: true
+      save_diff_as: "homepage-mobile-diff.png"
+
+    # Test Case 4: Responsive Design - Tablet Viewport
+    - action: set_viewport
+      width: 768
+      height: 1024
+      description: "Switch to tablet viewport (iPad)"
+
+    - action: navigate
+      url: "http://localhost:3000"
+      description: "Reload in tablet view"
+
+    - action: wait_for_element
+      selector: ".page-loaded"
+      timeout: 5s
+
+    - action: screenshot
+      save_as: "homepage-tablet.png"
+      full_page: true
+      description: "Capture tablet homepage"
+
+    - action: visual_compare
+      screenshot: "homepage-tablet.png"
+      baseline: "${BASELINE_DIR}/homepage-tablet-baseline.png"
+      threshold: "${THRESHOLD}"
+      save_diff_as: "homepage-tablet-diff.png"
+
+    # Reset to desktop viewport
+    - action: set_viewport
+      width: 1920
+      height: 1080
+      description: "Return to desktop viewport"
+
+    # Test Case 5: Dashboard Page Visual Regression
+    - action: navigate
+      url: "http://localhost:3000/dashboard"
+      description: "Navigate to dashboard"
+
+    - action: wait_for_element
+      selector: ".dashboard-loaded"
+      timeout: 10s
+      description: "Wait for dashboard data to load"
+
+    # Hide dynamic elements (timestamps, random data)
+    - action: hide_elements
+      selectors:
+        - ".timestamp"
+        - ".live-data"
+        - ".random-banner"
+      description: "Hide elements with dynamic content"
+
+    - action: screenshot
+      save_as: "dashboard-full.png"
+      full_page: true
+      description: "Capture dashboard with dynamic elements hidden"
+
+    - action: visual_compare
+      screenshot: "dashboard-full.png"
+      baseline: "${BASELINE_DIR}/dashboard-baseline.png"
+      threshold: "${THRESHOLD}"
+      highlight_differences: true
+      save_diff_as: "dashboard-diff.png"
+
+    # Test Case 6: Individual Widget Visual Checks
+    - action: screenshot
+      selector: ".widget-stats"
+      save_as: "widget-stats.png"
+      description: "Capture stats widget"
+
+    - action: visual_compare
+      screenshot: "widget-stats.png"
+      baseline: "${BASELINE_DIR}/widget-stats-baseline.png"
+      threshold: 0.02
+      description: "Stats widget should be very stable (2% threshold)"
+
+    - action: screenshot
+      selector: ".widget-chart"
+      save_as: "widget-chart.png"
+      description: "Capture chart widget"
+
+    - action: visual_compare
+      screenshot: "widget-chart.png"
+      baseline: "${BASELINE_DIR}/widget-chart-baseline.png"
+      threshold: 0.10
+      description: "Chart may have slight rendering differences (10% threshold)"
+
+    # Test Case 7: Form Visual Regression
+    - action: navigate
+      url: "http://localhost:3000/profile/edit"
+      description: "Navigate to profile edit form"
+
+    - action: wait_for_element
+      selector: "form.profile-form"
+      timeout: 5s
+
+    - action: screenshot
+      selector: "form.profile-form"
+      save_as: "profile-form.png"
+      description: "Capture profile form"
+
+    - action: visual_compare
+      screenshot: "profile-form.png"
+      baseline: "${BASELINE_DIR}/profile-form-baseline.png"
+      threshold: "${THRESHOLD}"
+      save_diff_as: "profile-form-diff.png"
+
+    # Test Case 8: Modal Dialog Visual Check
+    - action: navigate
+      url: "http://localhost:3000/dashboard"
+
+    - action: click
+      selector: "button.open-settings"
+      description: "Open settings modal"
+
+    - action: wait_for_element
+      selector: ".modal.settings-modal"
+      timeout: 3s
+      description: "Wait for modal to appear"
+
+    # Wait for modal animation
+    - action: wait_for_screen
+      timeout: 0.5s
+      description: "Wait for modal animation to complete"
+
+    - action: screenshot
+      selector: ".modal.settings-modal"
+      save_as: "settings-modal.png"
+      description: "Capture settings modal"
+
+    - action: visual_compare
+      screenshot: "settings-modal.png"
+      baseline: "${BASELINE_DIR}/settings-modal-baseline.png"
+      threshold: "${THRESHOLD}"
+      save_diff_as: "settings-modal-diff.png"
+
+    # Close modal
+    - action: click
+      selector: ".modal .close-button"
+      description: "Close modal"
+
+    # Test Case 9: Dark Mode Visual Regression
+    - action: click
+      selector: ".theme-toggle"
+      description: "Toggle to dark mode"
+      continue_on_failure: true
+
+    - action: wait_for_screen
+      timeout: 1s
+      description: "Wait for theme transition"
+
+    - action: screenshot
+      save_as: "homepage-dark-mode.png"
+      full_page: true
+      description: "Capture dark mode homepage"
+
+    - action: visual_compare
+      screenshot: "homepage-dark-mode.png"
+      baseline: "${BASELINE_DIR}/homepage-dark-baseline.png"
+      threshold: 0.15
+      description: "Dark mode may have more variance (15% threshold)"
+      continue_on_failure: true
+
+    # Test Case 10: Hover States (Advanced)
+    - action: navigate
+      url: "http://localhost:3000"
+
+    - action: hover
+      selector: "nav a.nav-link:first-child"
+      description: "Hover over first nav link"
+
+    - action: wait_for_screen
+      timeout: 0.3s
+      description: "Wait for hover effect"
+
+    - action: screenshot
+      selector: "nav"
+      save_as: "nav-hover-state.png"
+      description: "Capture navigation with hover state"
+
+    - action: visual_compare
+      screenshot: "nav-hover-state.png"
+      baseline: "${BASELINE_DIR}/nav-hover-baseline.png"
+      threshold: 0.08
+      description: "Verify hover effect styling"
+
+  # Summary and Reporting
+  cleanup:
+    - action: generate_visual_report
+      output: "visual-regression-report.html"
+      include:
+        - all_screenshots
+        - all_diffs
+        - comparison_summary
+      description: "Generate HTML report with all visual comparisons"
+# Visual Regression Testing Strategy:
+
+# What This Test Validates:
+# ✓ Layout hasn't broken (elements in correct positions)
+# ✓ Styling is consistent (colors, fonts, spacing)
+# ✓ Responsive design works (mobile, tablet, desktop)
+# ✓ Component rendering is correct (widgets, forms, modals)
+# ✓ Theme switching works (dark mode)
+# ✓ Hover states render correctly
+# ✓ Animations complete properly
+
+# Run Commands:
+
+# First run (create baselines):
+# gadugi-agentic-test run examples/web/web-visual-regression.yaml --create-baselines
+
+# Subsequent runs (compare against baselines):
+# gadugi-agentic-test run examples/web/web-visual-regression.yaml
+
+# Update specific baseline:
+# gadugi-agentic-test run examples/web/web-visual-regression.yaml --update-baseline homepage
+
+# Key Learning Points (Level 2):
+# 1. set_viewport changes browser size for responsive testing
+# 2. hide_elements removes dynamic content before comparison
+# 3. threshold allows acceptable difference (anti-flake)
+# 4. highlight_differences shows what changed
+# 5. Different thresholds for different components
+# 6. Wait for animations before capturing
+# 7. Test multiple viewports (mobile, tablet, desktop)
+# 8. Capture both full page and specific components
+
+# Best Practices:
+# - Set consistent viewport size
+# - Wait for animations to complete
+# - Hide timestamps and dynamic data
+# - Use appropriate thresholds per component
+# - Test multiple screen sizes
+# - Create baselines on stable builds
+# - Review diffs carefully before updating baselines
+
+# Threshold Guidelines:
+# - Static content (text, buttons): 0.02 (2%)
+# - Layout and structure: 0.05 (5%)
+# - Charts and graphs: 0.10 (10%)
+# - Animations and transitions: 0.15 (15%)
+
+# Common Visual Regression Causes:
+# - CSS changes
+# - Font rendering differences
+# - Browser version updates
+# - Image compression changes
+# - Animation timing
+# - Dynamic content not hidden
+# - Viewport size inconsistency
+
+# Handling Failures:
+# 1. Review diff image (shows what changed)
+# 2. Determine if change is intentional
+# 3. If intentional: update baseline
+# 4. If unintentional: fix the code
+# 5. If flaky: adjust threshold or hide dynamic elements
+
+# Integration with CI/CD:
+# - Run on every PR
+# - Auto-update baselines on main branch merges
+# - Fail builds on visual regressions
+# - Upload diff images as artifacts
+# - Compare against target branch baseline

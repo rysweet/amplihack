@@ -25,6 +25,7 @@ class TestStartStopRestartCycle:
     def test_WHEN_container_started_THEN_status_is_running(self):
         """Test starting container and checking status."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
@@ -39,6 +40,7 @@ class TestStartStopRestartCycle:
     def test_WHEN_container_stopped_THEN_status_is_stopped(self):
         """Test stopping container."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
@@ -55,6 +57,7 @@ class TestStartStopRestartCycle:
     def test_WHEN_container_restarted_THEN_becomes_running_again(self):
         """Test restart after stop."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
@@ -98,8 +101,9 @@ class TestDataPersistenceAcrossRestarts:
 
     def test_WHEN_data_created_and_container_stopped_THEN_data_persists_on_restart(self):
         """Test full stop/start cycle with data persistence."""
-        from amplihack.memory.neo4j.connector import Neo4jConnector
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
+        from amplihack.memory.neo4j.connector import Neo4jConnector
 
         manager = ContainerManager()
         manager.start_container()
@@ -143,8 +147,9 @@ class TestDataPersistenceAcrossRestarts:
         """Test data persistence when container is removed but volume remains."""
         import subprocess
 
-        from amplihack.memory.neo4j.connector import Neo4jConnector
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
+        from amplihack.memory.neo4j.connector import Neo4jConnector
 
         manager = ContainerManager()
         manager.start_container()
@@ -219,6 +224,7 @@ class TestMultipleSessionStarts:
     def test_WHEN_first_session_starts_container_THEN_second_session_uses_it(self):
         """Test that second session detects and uses existing container."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         # First session
@@ -241,6 +247,7 @@ class TestMultipleSessionStarts:
     def test_WHEN_session_exits_THEN_container_keeps_running(self):
         """Test that container persists after session exit."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
@@ -307,8 +314,9 @@ class TestResourceCleanup:
         """Test that removing volume deletes data (destructive test)."""
         import subprocess
 
-        from amplihack.memory.neo4j.connector import Neo4jConnector
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
+        from amplihack.memory.neo4j.connector import Neo4jConnector
 
         manager = ContainerManager()
         manager.start_container()
@@ -402,6 +410,7 @@ class TestErrorScenarios:
     def test_WHEN_docker_daemon_stops_during_operation_THEN_error_handled(self):
         """Test handling Docker daemon failure."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.exceptions import DockerNotAvailableError
 
         manager = ContainerManager()
@@ -415,6 +424,7 @@ class TestErrorScenarios:
     def test_WHEN_container_fails_to_start_THEN_detailed_error_provided(self):
         """Test error details when container fails to start."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.exceptions import ContainerStartError
 
         manager = ContainerManager()
@@ -430,12 +440,15 @@ class TestErrorScenarios:
     def test_WHEN_volume_mount_fails_THEN_error_explains_issue(self):
         """Test error handling for volume mount issues."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.exceptions import VolumeError
 
         manager = ContainerManager()
 
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=1, stderr="Error: error while mounting volume")
+            mock_run.return_value = MagicMock(
+                returncode=1, stderr="Error: error while mounting volume"
+            )
 
             with pytest.raises(VolumeError) as exc_info:
                 manager.start_container()
@@ -500,6 +513,7 @@ class TestPortConflictResolution:
             # Verify container is actually running
             status = manager.get_status()
             from amplihack.memory.neo4j.lifecycle import ContainerStatus
+
             assert status == ContainerStatus.RUNNING
 
         finally:
@@ -522,7 +536,7 @@ class TestPortConflictResolution:
             ["docker", "port", manager.config.container_name],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
 
         assert result.returncode == 0
@@ -556,9 +570,9 @@ class TestConcurrentContainerCreation:
         try:
             manager.stop()
             import subprocess
+
             subprocess.run(
-                ["docker", "rm", "-f", manager.config.container_name],
-                capture_output=True
+                ["docker", "rm", "-f", manager.config.container_name], capture_output=True
             )
         except Exception:
             pass
@@ -590,6 +604,7 @@ class TestConcurrentContainerCreation:
         # Verify only one container exists
         status = manager.get_status()
         from amplihack.memory.neo4j.lifecycle import ContainerStatus
+
         assert status == ContainerStatus.RUNNING
 
         # Cleanup
@@ -607,8 +622,7 @@ class TestConcurrentContainerCreation:
         try:
             manager.stop()
             subprocess.run(
-                ["docker", "rm", "-f", manager.config.container_name],
-                capture_output=True
+                ["docker", "rm", "-f", manager.config.container_name], capture_output=True
             )
         except Exception:
             pass

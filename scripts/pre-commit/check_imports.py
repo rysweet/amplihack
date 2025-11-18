@@ -47,6 +47,7 @@ def extract_used_types(file_path: Path) -> set:
     except Exception as e:
         # Log parse failures but return empty set to allow check to continue
         import logging
+
         logging.debug(f"Failed to extract type usage from {file_path}: {e}")
         return set()
 
@@ -78,6 +79,7 @@ def extract_actual_imports(file_path: Path) -> Dict[str, set]:
     except Exception as e:
         # Log parse failures but return empty dict to allow check to continue
         import logging
+
         logging.debug(f"Failed to extract imports from {file_path}: {e}")
         return {}
 

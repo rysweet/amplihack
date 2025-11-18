@@ -105,6 +105,14 @@ dependencies require sequential order.
   architectural claims (see `.claude/context/DISCOVERIES.md` and
   `.claude/runtime/logs/20251018_socratic_questioning/`)
 
+#### Architect Variants
+
+**Multiple specialized architects** exist for different tasks (see agent frontmatter descriptions for when to use each):
+- `architect` (core) - General design, problem decomposition, module specs
+- `amplifier-cli-architect` - CLI applications, hybrid code/AI systems
+- `philosophy-guardian` - Philosophy compliance reviews, simplicity validation
+- `visualization-architect` - Architecture diagrams, visual documentation
+
 ### Development Workflow Agents
 
 **Two-Stage Diagnostic Workflow:**
@@ -456,6 +464,8 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
 
+**For command selection guidance**, see `docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash commands).
+
 ### Fault Tolerance Patterns
 
 Three workflow-based patterns for critical operations that require consensus,
@@ -592,11 +602,14 @@ across sessions instead of being lost in chat history.
 
 ## Claude Code Skills
 
-Amplihack includes **12 production-ready Claude Code Skills** that extend capabilities across coding, creative work, and knowledge management.
+Amplihack includes **12 production-ready Claude Code Skills** that extend
+capabilities across coding, creative work, and knowledge management.
 
 ### What Are Skills?
 
-Skills are modular, reusable capabilities that Claude loads on-demand. Each skill is:
+Skills are modular, reusable capabilities that Claude loads on-demand. Each
+skill is:
+
 - **Token Efficient**: Loads only when needed
 - **Self-Contained**: Independent, testable modules
 - **Philosophy Aligned**: Follows ruthless simplicity and brick design
@@ -605,21 +618,26 @@ Skills are modular, reusable capabilities that Claude loads on-demand. Each skil
 ### Implemented Skills (12 Total)
 
 **Phase 1: Quick Wins (4 skills)**
+
 - **decision-logger** (49.5): Structured decision recording
 - **email-drafter** (47.0): Professional email generation
 - **module-spec-generator** (50.0): Generate brick module specifications
 - **meeting-synthesizer** (50.0): Extract action items from meetings
 
 **Phase 2: Philosophy Enforcement (3 skills)**
+
 - **philosophy-guardian** (45.5): Reviews code against amplihack philosophy
 - **test-gap-analyzer** (44.5): Identifies test coverage gaps
 - **code-smell-detector** (42.5): Detects anti-patterns
 
 **Phase 3: Creative (2 skills)**
-- **mermaid-diagram-generator** (48.0): Converts descriptions to Mermaid diagrams
+
+- **mermaid-diagram-generator** (48.0): Converts descriptions to Mermaid
+  diagrams
 - **storytelling-synthesizer** (44.0): Technical work → compelling narratives
 
 **Phase 4: Advanced (3 skills)**
+
 - **learning-path-builder** (43.5): Personalized technology learning paths
 - **knowledge-extractor** (40.5): Auto-extracts learnings to DISCOVERIES.md
 - **pr-review-assistant** (40.0): Philosophy-aware PR reviews
@@ -634,11 +652,15 @@ Claude, generate a Mermaid diagram for this workflow.
 
 ### Documentation
 
-- **[Skills Overview & Documentation](.claude/skills/README.md)** - Complete skills catalog with usage examples
-- **[Research Report](.claude/runtime/logs/20251108_skills_research/RESEARCH.md)** - Comprehensive ecosystem analysis (357 lines)
-- **[Evaluation Matrix](.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** - 20 skills evaluated with priority scores (842 lines)
+- **[Skills Overview & Documentation](.claude/skills/README.md)** - Complete
+  skills catalog with usage examples
+- **[Research Report](.claude/runtime/logs/20251108_skills_research/RESEARCH.md)** -
+  Comprehensive ecosystem analysis (357 lines)
+- **[Evaluation Matrix](.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** -
+  20 skills evaluated with priority scores (842 lines)
 
-All 12 skills scored 40.0-50.0 (HIGH priority) using a 6-criteria evaluation framework aligned with amplihack philosophy.
+All 12 skills scored 40.0-50.0 (HIGH priority) using a 6-criteria evaluation
+framework aligned with amplihack philosophy.
 
 ## Scenario Tools
 

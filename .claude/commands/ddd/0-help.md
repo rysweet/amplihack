@@ -194,11 +194,11 @@ ai_working/ddd/
 
 **Each phase suggests specialized agents**:
 
-- zen-architect for design
+- philosophy-guardian for design philosophy validation
 - modular-builder for implementation
 - bug-hunter for debugging
 - test-coverage for tests
-- post-task-cleanup for cleanup
+- cleanup (amplihack/specialized) for cleanup
 
 ---
 

@@ -1,0 +1,287 @@
+# Level 1: Basic Electron Single Window Test
+# This test verifies basic Electron application launch, window properties,
+# and simple interactions in a single-window desktop application.
+
+scenario:
+  name: "Electron Application - Single Window Basics"
+  description: |
+    Verifies Electron desktop application launches correctly, displays a single window
+    with expected properties, and handles basic menu interactions.
+  type: electron
+
+  level: 1
+
+  tags: [electron, desktop, single-window, basic]
+
+  prerequisites:
+    - "./dist/my-app executable exists (built Electron app)"
+    - "Application is configured for single-window mode"
+
+  steps:
+    # Launch Electron application
+    - action: launch
+      target: "./dist/my-app"
+      wait_for_window: true
+      timeout: 10s
+      description: "Start Electron application and wait for main window"
+
+    # Test Case 1: Verify Window Properties
+    - action: verify_window
+      title: "My Application"
+      visible: true
+      focused: true
+      description: "Main window should be visible and focused"
+
+    - action: verify_window
+      count: 1
+      description: "Should have exactly one window"
+
+    - action: verify_window
+      width: 800
+      height: 600
+      tolerance: 20
+      description: "Window should have default dimensions (±20px tolerance)"
+
+    # Take screenshot of initial state
+    - action: screenshot
+      save_as: "01-application-launched.png"
+      description: "Capture initial window state"
+
+    # Test Case 2: Verify Window Content (web content in Electron)
+    - action: wait_for_element
+      selector: ".app-container"
+      timeout: 5s
+      description: "Wait for main app container to render"
+
+    - action: verify_element
+      selector: "h1.app-title"
+      contains: "Welcome to My Application"
+      description: "Should display welcome message"
+
+    - action: verify_element
+      selector: "button.action-button"
+      count: 3
+      description: "Should have 3 action buttons"
+
+    # Test Case 3: Test Basic Interaction
+    - action: click
+      selector: "button.open-file"
+      description: "Click 'Open File' button"
+
+    - action: wait_for_element
+      selector: ".file-info"
+      timeout: 3s
+      description: "File info panel should appear"
+
+    - action: screenshot
+      save_as: "02-file-panel-opened.png"
+
+    # Test Case 4: Menu Interaction
+    - action: menu_click
+      path: ["File", "New Document"]
+      description: "Click File > New Document menu item"
+
+    - action: wait_for_element
+      selector: ".document-editor"
+      timeout: 3s
+      description: "Document editor should appear"
+
+    - action: verify_element
+      selector: ".document-title"
+      contains: "Untitled"
+      description: "New document should be titled 'Untitled'"
+
+    - action: screenshot
+      save_as: "03-new-document-created.png"
+
+    # Test Case 5: Type in Editor
+    - action: type
+      selector: ".document-editor textarea"
+      value: "This is a test document created by automated testing."
+      description: "Type test content into editor"
+
+    - action: verify_element
+      selector: ".document-editor textarea"
+      contains: "automated testing"
+      description: "Text should appear in editor"
+
+    - action: screenshot
+      save_as: "04-text-entered.png"
+
+    # Test Case 6: Test Window Controls
+    - action: window_action
+      action: minimize
+      description: "Minimize window"
+
+    - action: wait_for_screen
+      timeout: 1s
+      description: "Allow minimize animation"
+
+    - action: verify_window
+      visible: false
+      description: "Window should not be visible when minimized"
+
+    - action: window_action
+      action: restore
+      description: "Restore window"
+
+    - action: wait_for_screen
+      timeout: 1s
+
+    - action: verify_window
+      visible: true
+      focused: true
+      description: "Window should be visible and focused after restore"
+
+    # Test Case 7: Test Menu - View Options
+    - action: menu_click
+      path: ["View", "Toggle Sidebar"]
+      description: "Toggle sidebar visibility"
+
+    - action: wait_for_element
+      selector: ".sidebar"
+      disappears: true
+      timeout: 2s
+      description: "Sidebar should disappear"
+
+    - action: menu_click
+      path: ["View", "Toggle Sidebar"]
+      description: "Toggle sidebar again"
+
+    - action: wait_for_element
+      selector: ".sidebar"
+      timeout: 2s
+      description: "Sidebar should reappear"
+
+    # Test Case 8: Test Help Menu
+    - action: menu_click
+      path: ["Help", "About"]
+      description: "Open About dialog"
+
+    - action: wait_for_element
+      selector: ".about-dialog"
+      timeout: 3s
+      description: "About dialog should appear"
+
+    - action: verify_element
+      selector: ".about-dialog .version"
+      matches: "Version \\d+\\.\\d+\\.\\d+"
+      description: "Should display version number"
+
+    - action: screenshot
+      save_as: "05-about-dialog.png"
+
+    # Close about dialog
+    - action: click
+      selector: ".about-dialog button.close"
+      description: "Close about dialog"
+
+    - action: wait_for_element
+      selector: ".about-dialog"
+      disappears: true
+      timeout: 2s
+
+    # Test Case 9: Test Window Title Updates
+    - action: menu_click
+      path: ["File", "Save"]
+      description: "Attempt to save document"
+
+    - action: verify_window
+      title_contains: "Untitled"
+      description: "Window title should still contain 'Untitled' before save"
+
+    # Test Case 10: Clean Exit
+    - action: menu_click
+      path: ["File", "Close"]
+      description: "Close document"
+
+    # May show unsaved changes dialog
+    - action: click
+      selector: "button.dont-save"
+      continue_on_failure: true
+      description: "Click 'Don't Save' if prompted"
+
+    - action: verify_element
+      selector: ".document-editor"
+      exists: false
+      description: "Document editor should be closed"
+
+    # Exit application
+    - action: menu_click
+      path: ["File", "Quit"]
+      description: "Quit application via menu"
+
+    # Verify application closed
+    - action: verify_window
+      count: 0
+      timeout: 5s
+      description: "All windows should be closed"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Application should exit cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: false
+      description: "Ensure application is terminated"
+
+# Expected Application Structure:
+
+# ┌─────────────────────────────────────────────────────┐
+# │ My Application                          _ □ ✕       │ (Window chrome)
+# ├─────────────────────────────────────────────────────┤
+# │ File  Edit  View  Help                              │ (Menu bar)
+# ├───────┬─────────────────────────────────────────────┤
+# │ Side  │ Welcome to My Application                   │
+# │ bar   │                                              │
+# │       │ [Open File] [New Doc] [Settings]           │
+# │       │                                              │
+# │       │ Document Editor:                            │
+# │ [•]   │ ┌──────────────────────────────────────┐  │
+# │ [•]   │ │ Untitled                             │  │
+# │ [•]   │ │                                      │  │
+# │       │ │ (Text content here)                  │  │
+# │       │ │                                      │  │
+# │       │ └──────────────────────────────────────┘  │
+# │       │                                              │
+# └───────┴─────────────────────────────────────────────┘
+
+# Run Command:
+# gadugi-agentic-test run examples/electron/single-window-basic.yaml
+
+# Key Learning Points (Level 1):
+# 1. launch with wait_for_window ensures app is ready
+# 2. verify_window checks window state (title, visibility, count)
+# 3. Electron apps combine native (menus, windows) and web (DOM) interactions
+# 4. menu_click navigates application menus by path
+# 5. window_action controls window state (minimize, restore, maximize)
+# 6. Screenshots capture both native chrome and web content
+# 7. Both native and web selectors work in Electron tests
+
+# Electron Testing Patterns:
+# - Launch and wait for window
+# - Verify window properties first
+# - Test menu interactions (native UI)
+# - Test web content (DOM elements)
+# - Test window controls (minimize, restore)
+# - Test dialogs (native and custom)
+# - Clean exit via menu
+
+# Electron-Specific Actions:
+# - launch: Start Electron app
+# - verify_window: Check window properties
+# - window_action: Control window state
+# - menu_click: Navigate native menus
+# - All web actions: Work on renderer content
+
+# Common Electron App Patterns:
+# - File menu: New, Open, Save, Close, Quit
+# - Edit menu: Undo, Redo, Cut, Copy, Paste
+# - View menu: Zoom, Fullscreen, DevTools
+# - Help menu: About, Documentation, Updates
+
+# Platform Considerations:
+# - macOS: Menu bar is global (not in window)
+# - Windows/Linux: Menu bar is in window
+# - Use platform-agnostic menu_click (framework handles differences)

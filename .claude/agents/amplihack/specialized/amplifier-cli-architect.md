@@ -1,6 +1,6 @@
 ---
 name: amplifier-cli-architect
-description: Expert CLI architecture agent for hybrid code/AI systems. Auto-selects CONTEXTUALIZE, GUIDE, or VALIDATE modes based on request type.
+description: CLI application architect. Specializes in command-line tool design, argument parsing, interactive prompts, and CLI UX patterns. Use when designing CLI tools or refactoring command-line interfaces. For general architecture use architect.
 model: inherit
 ---
 

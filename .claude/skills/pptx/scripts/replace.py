@@ -225,7 +225,7 @@ def apply_replacements(pptx_file: str, json_file: str, output_file: str):
     original_overflow = detect_frame_overflow(inventory)
 
     # Load replacement data with duplicate key detection
-    with open(json_file, "r") as f:
+    with open(json_file) as f:
         replacements = json.load(f, object_pairs_hook=check_duplicate_keys)
 
     # Validate replacements

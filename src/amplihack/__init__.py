@@ -18,6 +18,12 @@ ESSENTIAL_DIRS = [
     "tools/xpia",  # XPIA security hooks (Issue #458)
     "context",  # Philosophy, patterns, project info
     "workflow",  # DEFAULT_WORKFLOW.md
+    "skills",  # Claude Code Skills (12 production skills)
+    "templates",  # Investigation & architecture doc templates
+    "scenarios",  # Production scenario tools
+    "docs",  # Investigation examples and documentation
+    "schemas",  # JSON/YAML schemas for validation
+    "config",  # Configuration files for tools
 ]
 
 # Runtime directories that need to be created
@@ -550,7 +556,7 @@ def _local_install(repo_root):
     # Step 3.5: Smart PROJECT.md initialization
     print("\n📝 Initializing PROJECT.md:")
     try:
-        from .utils.project_initializer import initialize_project_md, InitMode
+        from .utils.project_initializer import InitMode, initialize_project_md
 
         # Use FORCE mode during installation to fix amplihack-describing PROJECT.md
         result = initialize_project_md(Path(CLAUDE_DIR).parent, mode=InitMode.FORCE)
@@ -561,7 +567,7 @@ def _local_install(repo_root):
             elif result.action_taken.value == "offered":
                 print(f"   ℹ️  {result.message}")
             else:
-                print(f"   ✅ PROJECT.md valid (skipped)")
+                print("   ✅ PROJECT.md valid (skipped)")
         else:
             print(f"   ⚠️  {result.message}")
     except Exception as e:

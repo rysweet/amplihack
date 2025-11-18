@@ -1,0 +1,306 @@
+# Level 2: TUI Form Validation and Complex Input
+# This test demonstrates filling complex forms in a TUI with validation,
+# error handling, and field navigation.
+
+scenario:
+  name: "TUI Form - User Registration with Validation"
+  description: |
+    Verifies TUI form handling including field navigation, input validation,
+    error messages, and successful submission with complex multi-field forms.
+  type: tui
+  level: 2
+
+  tags: [tui, forms, validation, input, intermediate]
+
+  prerequisites:
+    - "./registration-app binary exists"
+    - "Application supports TUI form mode"
+
+  environment:
+    terminal_size:
+      width: 100
+      height: 30
+    variables:
+      TERM: "xterm-256color"
+
+  # Test data
+  variables:
+    valid_email: "user@example.com"
+    invalid_email: "not-an-email"
+    short_password: "123"
+    valid_password: "SecurePass123!"
+    username: "testuser"
+
+  steps:
+    # Launch registration form
+    - action: launch
+      target: "./registration-app"
+      args: ["--form-mode"]
+      description: "Start registration form"
+      timeout: 5s
+
+    - action: wait_for_screen
+      contains: "User Registration"
+      timeout: 3s
+      description: "Wait for form to render"
+
+    # Verify form structure
+    - action: verify_screen
+      contains: "Username:"
+      description: "Should show username field"
+
+    - action: verify_screen
+      contains: "Email:"
+      description: "Should show email field"
+
+    - action: verify_screen
+      contains: "Password:"
+      description: "Should show password field"
+
+    - action: verify_screen
+      contains: "Confirm Password:"
+      description: "Should show password confirmation field"
+
+    - action: capture_screenshot
+      save_as: "form-initial.txt"
+      description: "Capture empty form state"
+
+    # Test Case 1: Fill username field
+    - action: send_keypress
+      value: "${username}"
+      description: "Type username into first field"
+
+    - action: verify_screen
+      contains: "${username}"
+      description: "Username should appear in field"
+
+    # Move to next field
+    - action: send_keypress
+      value: "tab"
+      description: "Tab to email field"
+
+    - action: verify_screen
+      contains: "Email: [      ]"
+      description: "Email field should be focused (cursor visible)"
+
+    # Test Case 2: Test email validation with invalid input
+    - action: send_keypress
+      value: "${invalid_email}"
+      description: "Enter invalid email"
+
+    # Try to move forward (should validate)
+    - action: send_keypress
+      value: "tab"
+      description: "Attempt to move to next field"
+
+    - action: wait_for_screen
+      contains: "Invalid email format"
+      timeout: 2s
+      description: "Should show validation error"
+
+    # Capture error state
+    - action: capture_screenshot
+      save_as: "form-email-error.txt"
+      description: "Capture validation error state"
+
+    # Clear invalid input
+    - action: send_keypress
+      value: "ctrl+u"
+      description: "Clear field (Ctrl+U)"
+
+    # Enter valid email
+    - action: send_keypress
+      value: "${valid_email}"
+      description: "Enter valid email"
+
+    # Move to password field (should succeed now)
+    - action: send_keypress
+      value: "tab"
+      description: "Tab to password field"
+
+    - action: verify_screen
+      contains: "Password: [      ]"
+      description: "Should move to password field"
+
+    # Verify error cleared
+    - action: verify_screen
+      contains: "Invalid email format"
+      expected: false
+      description: "Error message should be cleared"
+
+    # Test Case 3: Test password validation (too short)
+    - action: send_keypress
+      value: "${short_password}"
+      description: "Enter password that's too short"
+
+    - action: send_keypress
+      value: "tab"
+      description: "Attempt to move forward"
+
+    - action: wait_for_screen
+      matches: "(Password must be|at least \\d+ characters)"
+      timeout: 2s
+      description: "Should show password length error"
+
+    # Clear and enter valid password
+    - action: send_keypress
+      value: "ctrl+u"
+      description: "Clear password field"
+
+    - action: send_keypress
+      value: "${valid_password}"
+      description: "Enter valid password"
+
+    # Note: Password should be masked
+    - action: verify_screen
+      contains: "Password: [******]"
+      description: "Password should be masked with asterisks"
+
+    # Move to confirmation field
+    - action: send_keypress
+      value: "tab"
+      description: "Tab to password confirmation"
+
+    # Test Case 4: Password mismatch validation
+    - action: send_keypress
+      value: "DifferentPassword123!"
+      description: "Enter non-matching password"
+
+    - action: send_keypress
+      value: "tab"
+      description: "Attempt to move forward"
+
+    - action: wait_for_screen
+      contains: "Passwords do not match"
+      timeout: 2s
+      description: "Should show mismatch error"
+
+    # Fix password confirmation
+    - action: send_keypress
+      value: "ctrl+u"
+      description: "Clear confirmation field"
+
+    - action: send_keypress
+      value: "${valid_password}"
+      description: "Enter matching password"
+
+    # Test Case 5: Navigate backwards
+    - action: send_keypress
+      value: "shift+tab"
+      description: "Shift+Tab to go back to previous field"
+
+    - action: verify_screen
+      contains: "Password: [******]"
+      description: "Should return to password field"
+
+    # Navigate forward again
+    - action: send_keypress
+      value: "tab"
+      description: "Tab forward to confirmation"
+
+    # Test Case 6: Review and submit
+    - action: send_keypress
+      value: "tab"
+      description: "Tab to submit button"
+
+    - action: verify_screen
+      contains: "[Submit]"
+      description: "Submit button should be focused"
+
+    # Capture pre-submission state
+    - action: capture_screenshot
+      save_as: "form-ready-to-submit.txt"
+      description: "Capture completed form"
+
+    # Submit form
+    - action: send_keypress
+      value: "enter"
+      description: "Press Enter to submit"
+
+    - action: wait_for_screen
+      contains: "Registration successful"
+      timeout: 5s
+      description: "Should show success message"
+
+    # Verify success details
+    - action: verify_screen
+      contains: "Username: ${username}"
+      description: "Should confirm username"
+
+    - action: verify_screen
+      contains: "Email: ${valid_email}"
+      description: "Should confirm email"
+
+    # Capture success state
+    - action: capture_screenshot
+      save_as: "form-success.txt"
+      description: "Capture success confirmation"
+
+    # Exit
+    - action: send_keypress
+      value: "q"
+      description: "Quit application"
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: stop_application
+      force: false
+# Expected Form States:
+
+# Initial Form:
+# ┌─────────────────────────────────────────────────────┐
+# │              User Registration Form                  │
+# ├─────────────────────────────────────────────────────┤
+# │                                                      │
+# │  Username:          [_____________________________] │
+# │                                                      │
+# │  Email:             [_____________________________] │
+# │                                                      │
+# │  Password:          [_____________________________] │
+# │                                                      │
+# │  Confirm Password:  [_____________________________] │
+# │                                                      │
+# │                      [Submit] [Cancel]              │
+# │                                                      │
+# └─────────────────────────────────────────────────────┘
+
+# With Error:
+# │  Email:             [not-an-email________________] │
+# │  ⚠ Invalid email format                            │
+
+# Success Screen:
+# │  ✓ Registration successful!                        │
+# │                                                     │
+# │  Username: testuser                                │
+# │  Email: user@example.com                           │
+
+# Run Command:
+# gadugi-agentic-test run examples/tui/tui-form-validation.yaml --verbose
+
+# Key Learning Points (Level 2):
+# 1. Tab/Shift+Tab navigate between fields
+# 2. Validation errors appear inline
+# 3. Fields can be masked (passwords)
+# 4. Ctrl+U clears field content
+# 5. Form state persists during error correction
+# 6. Variables make test data reusable
+# 7. Capture screenshots at error states for debugging
+
+# Form Testing Strategy:
+# - Test happy path (all valid inputs)
+# - Test each validation rule
+# - Verify error messages appear and clear
+# - Test forward and backward navigation
+# - Verify form submission
+# - Confirm success feedback
+
+# Common TUI Form Patterns:
+# - Tab: Next field
+# - Shift+Tab: Previous field
+# - Ctrl+U: Clear field
+# - Ctrl+K: Delete to end of line
+# - Ctrl+W: Delete word
+# - Enter: Submit (when on submit button)
+# - Escape: Cancel

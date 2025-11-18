@@ -37,6 +37,7 @@ class TestFullStartupFlow:
     def test_WHEN_neo4j_starts_THEN_container_is_running_within_timeout(self):
         """Test that container becomes running within reasonable time."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=False)
@@ -65,9 +66,10 @@ class TestFullStartupFlow:
 
     def test_WHEN_schema_initialized_THEN_constraints_exist(self):
         """Test that schema is properly initialized after startup."""
+        from amplihack.memory.neo4j.schema_manager import SchemaManager
+
         from amplihack.memory.neo4j.connector import Neo4jConnector
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
-        from amplihack.memory.neo4j.schema_manager import SchemaManager
 
         ensure_neo4j_running(blocking=True)
 
@@ -121,6 +123,7 @@ class TestSessionIntegration:
     def test_WHEN_session_starts_twice_THEN_neo4j_not_duplicated(self):
         """Test that multiple session starts don't create duplicate containers."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         # First start
@@ -141,6 +144,7 @@ class TestSessionIntegration:
     def test_WHEN_session_ends_THEN_neo4j_keeps_running(self):
         """Test that Neo4j container persists after session ends."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
@@ -361,8 +365,9 @@ class TestDataPersistence:
 
     def test_WHEN_data_created_and_container_restarted_THEN_data_persists(self):
         """Test data persistence through container restart."""
-        from amplihack.memory.neo4j.connector import Neo4jConnector
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
+        from amplihack.memory.neo4j.connector import Neo4jConnector
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         ensure_neo4j_running(blocking=True)
@@ -429,6 +434,7 @@ class TestErrorRecovery:
     def test_WHEN_container_stopped_manually_THEN_next_session_restarts_it(self):
         """Test recovery when container is stopped manually."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
+
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
         manager = ContainerManager()

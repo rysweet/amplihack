@@ -1,6 +1,6 @@
 ---
 name: optimizer
-description: Performance optimization specialist. Follows "measure twice, optimize once" principle. Analyzes bottlenecks, optimizes algorithms, improves queries, reduces memory usage. Use for any performance concerns.
+description: Performance optimization specialist. Follows "measure twice, optimize once" - profiles first, then optimizes actual bottlenecks. Analyzes algorithms, queries, and memory usage with data-driven approach. Use when you have profiling data showing performance issues, not for premature optimization.
 model: inherit
 ---
 

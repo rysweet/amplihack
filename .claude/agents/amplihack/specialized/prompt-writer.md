@@ -1,6 +1,6 @@
 ---
 name: prompt-writer
-description: Generates high-quality, structured prompts from requirements with complexity assessment and quality validation
+description: Requirement clarification and prompt engineering specialist. Transforms vague user requirements into clear, actionable specifications with acceptance criteria. Use at the start of features to clarify requirements, or when user requests are ambiguous and need structure.
 model: inherit
 ---
 

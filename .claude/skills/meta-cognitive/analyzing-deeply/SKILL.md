@@ -10,6 +10,7 @@ You are activating deep analysis capabilities. Your role is to systematically ex
 ## When to Activate
 
 This skill activates when:
+
 - User says "I'm not sure...", "I'm confused...", "Help me think through..."
 - Problem statement is ambiguous or unclear
 - Multiple competing approaches exist
@@ -49,6 +50,7 @@ Start by ensuring you understand the actual problem:
 **My Interpretation**: [What I think they're asking]
 
 **Questions Before Proceeding**:
+
 1. [Clarifying question 1]
 2. [Clarifying question 2]
 3. [Clarifying question 3]
@@ -66,6 +68,7 @@ Break problem into analyzable components:
 **Core Problem**: [One sentence essence]
 
 **Related Subproblems**:
+
 1. Subproblem A: [Description]
 2. Subproblem B: [Description]
 3. Subproblem C: [Description]
@@ -73,6 +76,7 @@ Break problem into analyzable components:
 **Dependencies**: [What depends on what]
 
 **Constraints**:
+
 - Technical: [Technical limitations]
 - Business: [Business requirements]
 - Resource: [Time, budget, people]
@@ -86,24 +90,28 @@ Break problem into analyzable components:
 Examine from different angles:
 
 #### Perspective 1: User/Customer
+
 - What problem are they trying to solve?
 - What outcome do they actually need?
 - What's their mental model?
 - What are their pain points?
 
 #### Perspective 2: Technical
+
 - What are the technical constraints?
 - What are the implementation challenges?
 - What are the performance requirements?
 - What are the scalability needs?
 
 #### Perspective 3: Business
+
 - What's the ROI?
 - What's the opportunity cost?
 - What's the risk?
 - What's the timeline?
 
 #### Perspective 4: Maintenance
+
 - Who will maintain this?
 - How complex is it?
 - What's the bus factor?
@@ -117,14 +125,17 @@ Challenge hidden assumptions:
 ## Assumptions to Validate
 
 **Stated Assumptions**:
+
 - [Assumption 1]: [Why we believe it]
 - [Assumption 2]: [Why we believe it]
 
 **Unstated Assumptions** (discovered):
+
 - [Hidden assumption 1]: [Impact if wrong]
 - [Hidden assumption 2]: [Impact if wrong]
 
 **Critical to Verify**:
+
 - [Most risky assumption]: [How to validate]
 ```
 
@@ -136,6 +147,7 @@ Explore solution space:
 ## Solution Options
 
 ### Option 1: [Name]
+
 **Approach**: [How it works]
 **Pros**: [Advantages]
 **Cons**: [Disadvantages]
@@ -144,12 +156,15 @@ Explore solution space:
 **Impact**: [High/Medium/Low]
 
 ### Option 2: [Name]
+
 [Same structure]
 
 ### Option 3: [Name]
+
 [Same structure]
 
 ### Option 0: Do Nothing
+
 **Consequences**: [What happens if we don't solve this]
 **Is this viable?**: [Yes/No + reasoning]
 ```
@@ -161,14 +176,14 @@ Compare options systematically:
 ```markdown
 ## Tradeoff Matrix
 
-| Dimension | Option 1 | Option 2 | Option 3 |
-|-----------|----------|----------|----------|
-| Complexity | Low | Medium | High |
-| Performance | Medium | High | High |
-| Maintainability | High | Medium | Low |
-| Time to Implement | 2 weeks | 4 weeks | 8 weeks |
-| Risk | Low | Medium | High |
-| Scalability | Medium | High | High |
+| Dimension         | Option 1 | Option 2 | Option 3 |
+| ----------------- | -------- | -------- | -------- |
+| Complexity        | Low      | Medium   | High     |
+| Performance       | Medium   | High     | High     |
+| Maintainability   | High     | Medium   | Low      |
+| Time to Implement | 2 weeks  | 4 weeks  | 8 weeks  |
+| Risk              | Low      | Medium   | High     |
+| Scalability       | Medium   | High     | High     |
 
 ## Key Tradeoffs
 
@@ -186,15 +201,18 @@ Identify and analyze risks:
 ## Risk Analysis
 
 ### Risk 1: [Name]
+
 - **Probability**: High/Medium/Low
 - **Impact**: High/Medium/Low
 - **Mitigation**: [How to reduce risk]
 - **Contingency**: [What if risk occurs]
 
 ### Risk 2: [Name]
+
 [Same structure]
 
 **Highest Priority Risks**:
+
 1. [Most critical risk to address]
 2. [Second most critical]
 ```
@@ -209,22 +227,26 @@ Synthesize analysis into clear recommendation:
 **Proposed Approach**: [Clear choice]
 
 **Rationale**:
+
 1. [Reason 1 with supporting analysis]
 2. [Reason 2 with supporting analysis]
 3. [Reason 3 with supporting analysis]
 
 **This Approach**:
+
 - Solves: [What it addresses]
 - Accepts: [Tradeoffs we're making]
 - Risks: [Risks we're taking]
 - Mitigates: [How we reduce risk]
 
 **Implementation Path**:
+
 1. [First step]
 2. [Second step]
 3. [Third step]
 
 **Decision Points**:
+
 - [Checkpoint 1]: [What to validate]
 - [Checkpoint 2]: [What to validate]
 
@@ -234,6 +256,7 @@ Synthesize analysis into clear recommendation:
 ## Analysis Dimensions
 
 ### Technical Dimension
+
 - Feasibility and implementation complexity
 - Performance and scalability characteristics
 - Technology stack and dependencies
@@ -241,6 +264,7 @@ Synthesize analysis into clear recommendation:
 - Testing and quality assurance needs
 
 ### Business Dimension
+
 - Value delivered vs effort required
 - Opportunity cost of alternatives
 - Timeline and resource requirements
@@ -248,6 +272,7 @@ Synthesize analysis into clear recommendation:
 - Market and competitive factors
 
 ### User Dimension
+
 - User needs and pain points
 - User experience and usability
 - Adoption and change management
@@ -255,6 +280,7 @@ Synthesize analysis into clear recommendation:
 - Support and documentation needs
 
 ### Organizational Dimension
+
 - Team capabilities and skills
 - Organizational priorities and politics
 - Existing systems and processes
@@ -264,35 +290,45 @@ Synthesize analysis into clear recommendation:
 ## Thinking Tools
 
 ### First Principles Thinking
+
 Break down to fundamental truths:
+
 1. What do we know for certain?
 2. What are we assuming?
 3. Can we rebuild from first principles?
 4. What's actually required vs nice-to-have?
 
 ### Inversion
+
 Think backwards:
+
 1. How could this fail spectacularly?
 2. What would make this impossible?
 3. If we wanted the opposite outcome, what would we do?
 4. What are we trying to avoid?
 
 ### Second-Order Effects
+
 Look beyond immediate consequences:
+
 1. If we do X, what happens?
 2. Then what happens after that?
 3. What are the ripple effects?
 4. What changes in the system?
 
 ### Pre-Mortem
+
 Imagine failure:
+
 1. It's 6 months later, project failed. Why?
 2. What warning signs did we miss?
 3. What assumptions were wrong?
 4. What could we have done differently?
 
 ### Opportunity Cost
+
 What are we giving up:
+
 1. If we do this, what can't we do?
 2. What else could we do with these resources?
 3. What's the next best alternative?
@@ -301,17 +337,20 @@ What are we giving up:
 ## Integration Points
 
 ### Invokes
+
 - **Architect Agent**: For design implications
 - **WebSearch**: For external validation
 - **/ultrathink**: For even deeper structured analysis
 
 ### Escalates To
+
 - **/ultrathink**: When analysis needs extreme depth (30+ min)
 - **/consensus**: When multiple stakeholders need alignment
 - **/debate**: When competing viewpoints need exploration
 - **Architecting Solutions**: Once problem is understood, design solution
 
 ### References
+
 - **Decision Frameworks**: `Specs/DecisionFrameworks.md`
 - **Analysis Templates**: `Templates/ProblemAnalysis.md`
 
@@ -323,30 +362,39 @@ Structure analysis as:
 # Deep Analysis: [Problem Name]
 
 ## Problem Understanding
+
 [Clarified problem statement]
 
 ## Problem Decomposition
+
 [Subproblems and structure]
 
 ## Perspectives
+
 [Multi-angle analysis]
 
 ## Assumptions
+
 [Stated and hidden assumptions]
 
 ## Options
+
 [Solution alternatives]
 
 ## Tradeoffs
+
 [Systematic comparison]
 
 ## Risks
+
 [Risk analysis]
 
 ## Recommendation
+
 [Clear path forward]
 
 ## Next Steps
+
 [Action items]
 ```
 
@@ -360,12 +408,14 @@ Structure analysis as:
 **As Stated**: "Should we use PostgreSQL or MongoDB for our new app?"
 
 **My Interpretation**: Choosing data storage for application with:
+
 - User data (profiles, auth)
 - Content data (posts, comments)
 - Analytics data (events, metrics)
 - Unknown future requirements
 
 **Questions Before Proceeding**:
+
 1. What are the access patterns? (Read-heavy? Write-heavy?)
 2. What's the data structure? (Relational? Nested documents?)
 3. What's the scale? (Users, data size, queries/sec)
@@ -380,18 +430,21 @@ starting small but need to scale, team knows SQL]
 enabling future growth without excessive complexity or cost.
 
 **Related Subproblems**:
+
 1. Data modeling: How to represent user/content relationships
 2. Query patterns: How to efficiently access data
 3. Scaling: How to grow as user base increases
 4. Team productivity: How to develop quickly with existing skills
 
 **Constraints**:
+
 - Technical: Must handle 1M+ users eventually
 - Business: 6-month timeline to launch
 - Resource: 2 backend developers, both know SQL
 - External: Need real-time features eventually
 
 **Success Criteria**:
+
 - Supports all CRUD operations efficiently
 - Can scale to 1M+ users
 - Team can develop productively
@@ -400,23 +453,27 @@ enabling future growth without excessive complexity or cost.
 ## Perspectives
 
 ### User Perspective
+
 - Don't care about database choice
 - Want fast, responsive application
 - Need reliable data consistency
 
 ### Technical Perspective
+
 - Need ACID for user/payment data
 - Could use denormalization for performance
 - Real-time features need change feeds
 - Team knows SQL, would need MongoDB training
 
 ### Business Perspective
+
 - Faster time to market = more important than perfect choice
 - Can migrate later if needed
 - Team productivity = business velocity
 - Hosting costs matter at scale
 
 ### Maintenance Perspective
+
 - Simpler = easier to maintain
 - Fewer technologies = smaller operational burden
 - Team skills = faster debugging
@@ -425,87 +482,98 @@ enabling future growth without excessive complexity or cost.
 ## Assumptions to Validate
 
 **Stated Assumptions**:
+
 - Will need to scale to 1M+ users (based on business plan)
 - Data is mostly relational (based on current understanding)
 
 **Unstated Assumptions** (discovered):
+
 - Need ACID transactions (Impact if wrong: data corruption)
 - Team won't learn MongoDB quickly (Impact: slower development)
 - Requirements won't radically change (Impact: wrong database choice)
 - Single database handles everything (Impact: might need multiple)
 
 **Critical to Verify**:
+
 - "Mostly relational with some nested" - Can we use JSONB in PostgreSQL?
 - "Need to scale" - What's actual timeline? Can we start simple?
 
 ## Solution Options
 
 ### Option 1: PostgreSQL
+
 **Approach**: Relational DB with JSONB for nested data
 **Pros**:
+
 - Team knows it well (fast development)
 - ACID guarantees
 - Mature, reliable, well-documented
 - JSONB handles nested data
 - Can scale vertically initially, horizontally later
-**Cons**:
+  **Cons**:
 - More complex horizontal scaling
 - Not ideal for true document workloads
 - Need to design schema upfront
-**Risks**:
+  **Risks**:
 - Might hit scaling limits (mitigated by proven PostgreSQL scaling)
-**Effort**: Low (team expertise)
-**Impact**: High (proven, reliable)
+  **Effort**: Low (team expertise)
+  **Impact**: High (proven, reliable)
 
 ### Option 2: MongoDB
+
 **Approach**: Document database
 **Pros**:
+
 - Flexible schema
 - Easy horizontal scaling
 - Good for nested documents
 - Built-in sharding
-**Cons**:
+  **Cons**:
 - Team needs to learn it (2-4 week ramp-up)
 - Eventual consistency by default
 - More operational complexity
 - ACID only within documents (mostly)
-**Risks**:
+  **Risks**:
 - Team productivity hit during learning
 - Consistency issues if not careful
-**Effort**: Medium (learning curve)
-**Impact**: Medium (works but slower start)
+  **Effort**: Medium (learning curve)
+  **Impact**: Medium (works but slower start)
 
 ### Option 3: Both (PostgreSQL + MongoDB)
+
 **Approach**: PostgreSQL for relational, MongoDB for documents
 **Pros**:
+
 - Right tool for each job
 - Optimal performance
-**Cons**:
+  **Cons**:
 - Much higher complexity
 - More operational burden
 - Data consistency across databases
 - Team needs both skills
-**Risks**:
+  **Risks**:
 - Over-engineering
 - Complexity kills velocity
-**Effort**: High
-**Impact**: Low (unnecessary complexity)
+  **Effort**: High
+  **Impact**: Low (unnecessary complexity)
 
 ### Option 0: Do Nothing
+
 Not viable - need database for application.
 
 ## Tradeoff Analysis
 
-| Dimension | PostgreSQL | MongoDB | Both |
-|-----------|------------|---------|------|
-| Team Velocity | High ✓ | Medium | Low |
-| Scalability | Medium | High ✓ | High ✓ |
-| Complexity | Low ✓ | Medium | High |
-| Operational | Low ✓ | Medium | High |
-| Flexibility | Medium | High ✓ | High ✓ |
-| Time to Launch | 6 mo ✓ | 8 mo | 10 mo |
+| Dimension      | PostgreSQL | MongoDB | Both   |
+| -------------- | ---------- | ------- | ------ |
+| Team Velocity  | High ✓     | Medium  | Low    |
+| Scalability    | Medium     | High ✓  | High ✓ |
+| Complexity     | Low ✓      | Medium  | High   |
+| Operational    | Low ✓      | Medium  | High   |
+| Flexibility    | Medium     | High ✓  | High ✓ |
+| Time to Launch | 6 mo ✓     | 8 mo    | 10 mo  |
 
 **Key Tradeoffs**:
+
 - **Speed vs Flexibility**: PostgreSQL faster to start, MongoDB more flexible
 - **Known vs Optimal**: PostgreSQL = known and good, MongoDB = potentially better
 - **Simplicity vs Scaling**: PostgreSQL simpler, MongoDB scales easier
@@ -513,18 +581,21 @@ Not viable - need database for application.
 ## Risk Analysis
 
 ### Risk 1: PostgreSQL hits scaling limits
+
 - **Probability**: Low (can handle 1M+ users with proper design)
 - **Impact**: Medium (would need to migrate or shard)
 - **Mitigation**: Design for scalability from start (indexes, queries)
 - **Contingency**: Can migrate to MongoDB or add read replicas
 
 ### Risk 2: MongoDB slows team velocity
+
 - **Probability**: High (learning curve is real)
 - **Impact**: High (misses 6-month launch window)
 - **Mitigation**: Training and pairing (still 2-4 week slowdown)
 - **Contingency**: Fall back to PostgreSQL (wasted time)
 
 ### Risk 3: Requirements change dramatically
+
 - **Probability**: Medium (startups pivot)
 - **Impact**: Medium (might need different database)
 - **Mitigation**: Either choice handles most patterns
@@ -535,6 +606,7 @@ Not viable - need database for application.
 **Proposed Approach**: Start with PostgreSQL
 
 **Rationale**:
+
 1. **Team Velocity**: Team knows PostgreSQL, can develop 2x faster than learning MongoDB
 2. **Time to Market**: 6-month deadline is tight, can't afford learning curve
 3. **Good Enough**: PostgreSQL + JSONB handles the "nested data" requirement
@@ -542,12 +614,14 @@ Not viable - need database for application.
 5. **Reversible**: Can migrate to MongoDB later if truly needed (rare)
 
 **This Approach**:
+
 - Solves: All stated requirements with known technology
 - Accepts: Slightly more complex horizontal scaling (when needed)
 - Risks: Might need to migrate later (low probability)
 - Mitigates: Fast time to market, team productivity
 
 **Implementation Path**:
+
 1. Design PostgreSQL schema with scaling in mind
 2. Use JSONB for nested data (comments, metadata)
 3. Add proper indexes and query optimization
@@ -555,11 +629,13 @@ Not viable - need database for application.
 5. Re-evaluate after 100K users
 
 **Decision Points**:
+
 - At 100K users: Check performance metrics, decide on scaling strategy
 - At 500K users: Validate scaling approach, consider read replicas
 - If requirements change to heavily document-based: Re-evaluate MongoDB
 
 **Reversibility**: Medium
+
 - Can migrate PostgreSQL → MongoDB (tools exist, takes weeks)
 - Can add MongoDB alongside for specific use cases
 - Can use read replicas / Citus for PostgreSQL scaling
@@ -578,6 +654,7 @@ Questions or shall we move forward with PostgreSQL?
 ## Quality Checklist
 
 Before finalizing analysis:
+
 - [ ] Problem is clearly understood
 - [ ] Multiple perspectives considered
 - [ ] Assumptions surfaced and validated
@@ -591,6 +668,7 @@ Before finalizing analysis:
 ## Success Criteria
 
 Good deep analysis:
+
 - Reveals insights not obvious at start
 - Surfaces hidden assumptions
 - Considers multiple perspectives
