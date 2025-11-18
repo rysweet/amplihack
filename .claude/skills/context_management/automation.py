@@ -64,6 +64,9 @@ class ContextAutomation:
             "snapshots_created": [],
             "last_rehydration": None,
             "compaction_detected": False,
+            "tool_use_count": 0,
+            "last_transcript_size": 0,
+            "cached_token_count": 0,
         }
 
     def _save_state(self) -> None:
@@ -77,6 +80,12 @@ class ContextAutomation:
     ) -> Dict[str, Any]:
         """Process after tool use for automatic context management.
 
+        Uses adaptive frequency to minimize overhead:
+        - 0-40% usage: Check every 50th tool use
+        - 40-55% usage: Check every 10th tool use
+        - 55-70% usage: Check every 3rd tool use
+        - 70%+ usage: Check every tool use
+
         Args:
             current_tokens: Current token count
             conversation_data: Optional conversation history
@@ -89,7 +98,32 @@ class ContextAutomation:
             "actions_taken": [],
             "warnings": [],
             "recommendations": [],
+            "skipped": False,
         }
+
+        # Increment tool use counter
+        self.state["tool_use_count"] = self.state.get("tool_use_count", 0) + 1
+        tool_count = self.state["tool_use_count"]
+
+        # Calculate current percentage (use cached if available)
+        percentage = (current_tokens / self.monitor.max_tokens) * 100
+
+        # Adaptive frequency: skip if not time to check
+        if percentage < 40:
+            check_every = 50  # Very safe - minimal checks
+        elif percentage < 55:
+            check_every = 10  # Warming up - occasional checks
+        elif percentage < 70:
+            check_every = 3   # Close to threshold - frequent checks
+        else:
+            check_every = 1   # Critical zone - check every time
+
+        # Skip if not time to check yet
+        if tool_count % check_every != 0:
+            result["skipped"] = True
+            result["next_check_in"] = check_every - (tool_count % check_every)
+            self._save_state()  # Save updated counter
+            return result
 
         # Check usage
         usage = self.monitor.check_usage(current_tokens)
