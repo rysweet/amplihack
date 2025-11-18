@@ -398,18 +398,19 @@ Analyze this scenario through decolonization, urban indigenous experience, and s
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Sacred Site Protection | 50 | 35 |
-| 2. Traditional Ecological Knowledge | 50 | 35 |
-| 3. Language Revitalization | 50 | 35 |
-| 4. FPIC and Resource Extraction | 50 | 35 |
-| 5. Urban Indigenous Identity | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                            | Max Score | Passing Score |
+| ----------------------------------- | --------- | ------------- |
+| 1. Sacred Site Protection           | 50        | 35            |
+| 2. Traditional Ecological Knowledge | 50        | 35            |
+| 3. Language Revitalization          | 50        | 35            |
+| 4. FPIC and Resource Extraction     | 50        | 35            |
+| 5. Urban Indigenous Identity        | 50        | 35            |
+| **Total**                           | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate indigenous leader analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -417,6 +418,7 @@ To demonstrate indigenous leader analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of indigenous knowledge systems, sovereignty principles, decolonization frameworks
 2. **Analytical Depth** (0-10): Thoroughness of worldview analysis, structural critique, historical context
 3. **Insight Specificity** (0-10): Clear identification of power dynamics, colonial continuities, indigenous-centered solutions
@@ -426,6 +428,7 @@ Each scenario is scored on:
 ### What High-Quality Indigenous-Centered Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Centers indigenous worldviews, epistemologies, and governance systems
 - Demonstrates sophisticated understanding of settler colonialism as ongoing structure
 - Applies decolonization frameworks (not just inclusion/diversity)
@@ -438,6 +441,7 @@ Each scenario is scored on:
 - Acknowledges intergenerational and relational dimensions
 
 **Good (35-44 points)**:
+
 - Correctly identifies key indigenous perspectives and sovereignty issues
 - Understands distinction between symbolic and structural change
 - Recognizes historical trauma and ongoing colonialism
@@ -446,6 +450,7 @@ Each scenario is scored on:
 - Demonstrates cultural sensitivity and respect
 
 **Needs Improvement (<35 points)**:
+
 - Centers settler perspectives or treats indigenous views as one among many
 - Conflates diversity/inclusion with decolonization
 - Treats indigenous knowledge as inferior or merely cultural (not epistemological)
@@ -461,6 +466,7 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Center indigenous perspectives and sovereignty
 3. Apply decolonization frameworks
@@ -469,6 +475,7 @@ Each scenario is scored on:
 6. Identify areas for deeper learning (with humility and respect for indigenous knowledge sovereignty)
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -486,6 +493,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as decolonization movements evolve
 - Update expected elements in consultation with indigenous scholars and leaders
 - Refine scoring criteria based on indigenous-centered analysis standards

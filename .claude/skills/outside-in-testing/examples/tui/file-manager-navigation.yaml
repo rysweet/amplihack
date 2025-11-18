@@ -8,7 +8,6 @@ scenario:
     Verifies keyboard navigation in a TUI file manager application.
     Tests arrow key movement, directory entry, and screen state verification.
   type: tui
-
   level: 1
 
   tags: [tui, navigation, keyboard, basic]
@@ -169,7 +168,6 @@ scenario:
     - action: stop_application
       force: false
       description: "Allow graceful shutdown"
-
 # Expected Screen State Examples:
 
 # Initial State:

@@ -9,11 +9,11 @@ Validates that all example YAML files are:
 - Have consistent structure
 """
 
+from pathlib import Path
+from typing import Any, Dict, List
+
 import pytest
 import yaml
-from pathlib import Path
-from typing import Dict, Any, List
-
 
 # Skill directory paths
 SKILL_DIR = Path(__file__).parent.parent
@@ -27,7 +27,7 @@ def get_all_example_files() -> List[Path]:
 
 def load_yaml_file(file_path: Path) -> Dict[str, Any]:
     """Load and parse a YAML file."""
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         return yaml.safe_load(f)
 
 
@@ -42,8 +42,9 @@ class TestExampleFiles:
     def test_all_examples_exist(self, example_files):
         """Verify all expected example files exist."""
         expected_count = 15  # 3 CLI + 3 TUI + 3 Web + 4 Electron + 2 Custom
-        assert len(example_files) == expected_count, \
+        assert len(example_files) == expected_count, (
             f"Expected {expected_count} example files, found {len(example_files)}"
+        )
 
     def test_example_files_are_valid_yaml(self, example_files):
         """Verify all examples are valid YAML."""
@@ -63,8 +64,7 @@ class TestExampleFiles:
             scenario = data.get("scenario", {})
 
             for field in required_fields:
-                assert field in scenario, \
-                    f"{file_path.name} missing required field: {field}"
+                assert field in scenario, f"{file_path.name} missing required field: {field}"
 
     def test_examples_have_valid_type(self, example_files):
         """Verify all examples have valid application type."""
@@ -74,8 +74,9 @@ class TestExampleFiles:
             data = load_yaml_file(file_path)
             scenario_type = data.get("scenario", {}).get("type")
 
-            assert scenario_type in valid_types, \
+            assert scenario_type in valid_types, (
                 f"{file_path.name} has invalid type: {scenario_type}"
+            )
 
     def test_examples_have_level_indicator(self, example_files):
         """Verify all examples specify their complexity level."""
@@ -83,12 +84,10 @@ class TestExampleFiles:
             data = load_yaml_file(file_path)
             scenario = data.get("scenario", {})
 
-            assert "level" in scenario, \
-                f"{file_path.name} missing level indicator"
+            assert "level" in scenario, f"{file_path.name} missing level indicator"
 
             level = scenario["level"]
-            assert level in [1, 2, 3], \
-                f"{file_path.name} has invalid level: {level}"
+            assert level in [1, 2, 3], f"{file_path.name} has invalid level: {level}"
 
     def test_examples_have_tags(self, example_files):
         """Verify all examples have tags."""
@@ -96,14 +95,11 @@ class TestExampleFiles:
             data = load_yaml_file(file_path)
             scenario = data.get("scenario", {})
 
-            assert "tags" in scenario, \
-                f"{file_path.name} missing tags"
+            assert "tags" in scenario, f"{file_path.name} missing tags"
 
             tags = scenario["tags"]
-            assert isinstance(tags, list), \
-                f"{file_path.name} tags should be a list"
-            assert len(tags) > 0, \
-                f"{file_path.name} should have at least one tag"
+            assert isinstance(tags, list), f"{file_path.name} tags should be a list"
+            assert len(tags) > 0, f"{file_path.name} should have at least one tag"
 
     def test_examples_have_steps(self, example_files):
         """Verify all examples have at least one step."""
@@ -111,8 +107,7 @@ class TestExampleFiles:
             data = load_yaml_file(file_path)
             steps = data.get("scenario", {}).get("steps", [])
 
-            assert len(steps) > 0, \
-                f"{file_path.name} has no steps"
+            assert len(steps) > 0, f"{file_path.name} has no steps"
 
     def test_all_steps_have_action(self, example_files):
         """Verify all steps have an action field."""
@@ -121,8 +116,7 @@ class TestExampleFiles:
             steps = data.get("scenario", {}).get("steps", [])
 
             for idx, step in enumerate(steps):
-                assert "action" in step, \
-                    f"{file_path.name} step {idx} missing action field"
+                assert "action" in step, f"{file_path.name} step {idx} missing action field"
 
     def test_examples_have_description(self, example_files):
         """Verify all examples have non-empty description."""
@@ -130,58 +124,60 @@ class TestExampleFiles:
             data = load_yaml_file(file_path)
             description = data.get("scenario", {}).get("description", "")
 
-            assert description.strip(), \
-                f"{file_path.name} has empty description"
+            assert description.strip(), f"{file_path.name} has empty description"
 
     def test_cli_examples_in_correct_directory(self):
         """Verify CLI examples are in cli directory."""
         cli_files = list((EXAMPLES_DIR / "cli").glob("*.yaml"))
-        assert len(cli_files) == 3, \
-            f"Expected 3 CLI examples, found {len(cli_files)}"
+        assert len(cli_files) == 3, f"Expected 3 CLI examples, found {len(cli_files)}"
 
         for file_path in cli_files:
             data = load_yaml_file(file_path)
-            assert data["scenario"]["type"] == "cli", \
+            assert data["scenario"]["type"] == "cli", (
                 f"{file_path.name} in cli/ but type is not 'cli'"
+            )
 
     def test_tui_examples_in_correct_directory(self):
         """Verify TUI examples are in tui directory."""
         tui_files = list((EXAMPLES_DIR / "tui").glob("*.yaml"))
-        assert len(tui_files) == 3, \
-            f"Expected 3 TUI examples, found {len(tui_files)}"
+        assert len(tui_files) == 3, f"Expected 3 TUI examples, found {len(tui_files)}"
 
         for file_path in tui_files:
             data = load_yaml_file(file_path)
-            assert data["scenario"]["type"] == "tui", \
+            assert data["scenario"]["type"] == "tui", (
                 f"{file_path.name} in tui/ but type is not 'tui'"
+            )
 
     def test_web_examples_in_correct_directory(self):
         """Verify Web examples are in web directory."""
         web_files = list((EXAMPLES_DIR / "web").glob("*.yaml"))
-        assert len(web_files) == 3, \
-            f"Expected 3 Web examples, found {len(web_files)}"
+        assert len(web_files) == 3, f"Expected 3 Web examples, found {len(web_files)}"
 
         for file_path in web_files:
             data = load_yaml_file(file_path)
-            assert data["scenario"]["type"] == "web", \
+            assert data["scenario"]["type"] == "web", (
                 f"{file_path.name} in web/ but type is not 'web'"
+            )
 
     def test_electron_examples_in_correct_directory(self):
         """Verify Electron examples are in electron directory."""
         electron_files = list((EXAMPLES_DIR / "electron").glob("*.yaml"))
-        assert len(electron_files) == 4, \
+        assert len(electron_files) == 4, (
             f"Expected 4 Electron examples, found {len(electron_files)}"
+        )
 
         for file_path in electron_files:
             data = load_yaml_file(file_path)
-            assert data["scenario"]["type"] == "electron", \
+            assert data["scenario"]["type"] == "electron", (
                 f"{file_path.name} in electron/ but type is not 'electron'"
+            )
 
     def test_custom_agent_examples_exist(self):
         """Verify custom agent examples exist."""
         custom_files = list((EXAMPLES_DIR / "custom-agents").glob("*.yaml"))
-        assert len(custom_files) == 2, \
+        assert len(custom_files) == 2, (
             f"Expected 2 custom agent examples, found {len(custom_files)}"
+        )
 
     def test_level_distribution(self, example_files):
         """Verify examples have good level distribution."""
@@ -205,12 +201,12 @@ class TestExampleFiles:
             filename = file_path.stem  # Without .yaml extension
 
             # Should be lowercase with hyphens
-            assert filename == filename.lower(), \
-                f"{file_path.name} should be lowercase"
+            assert filename == filename.lower(), f"{file_path.name} should be lowercase"
 
             # Should not have underscores
-            assert "_" not in filename or "custom" in filename, \
+            assert "_" not in filename or "custom" in filename, (
                 f"{file_path.name} should use hyphens, not underscores"
+            )
 
     def test_no_placeholder_content(self, example_files):
         """Verify examples don't contain placeholder content."""
@@ -220,8 +216,9 @@ class TestExampleFiles:
             content = file_path.read_text()
 
             for placeholder in placeholders:
-                assert placeholder not in content, \
+                assert placeholder not in content, (
                     f"{file_path.name} contains placeholder: {placeholder}"
+                )
 
 
 class TestSkillStructure:
@@ -281,8 +278,9 @@ class TestSkillStructure:
         assert "name" in metadata, "Frontmatter missing 'name'"
         assert "description" in metadata, "Frontmatter missing 'description'"
         assert "version" in metadata, "Frontmatter missing 'version'"
-        assert "embedded_framework_version" in metadata, \
+        assert "embedded_framework_version" in metadata, (
             "Frontmatter missing 'embedded_framework_version'"
+        )
 
 
 if __name__ == "__main__":

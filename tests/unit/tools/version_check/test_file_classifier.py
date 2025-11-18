@@ -11,10 +11,10 @@ Tests file classification into update strategies:
 import sys
 from pathlib import Path
 
-import pytest
-
 # Add .claude/tools/amplihack to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
+sys.path.insert(
+    0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack")
+)
 
 from file_classifier import (
     FileCategory,
@@ -35,9 +35,7 @@ class TestAlwaysUpdateFiles:
     def test_always_update_framework_tools(self):
         """Test that framework tool files are always updated."""
         assert classify_file("tools/amplihack/version_checker.py") == FileCategory.ALWAYS_UPDATE
-        assert (
-            classify_file("tools/amplihack/file_classifier.py") == FileCategory.ALWAYS_UPDATE
-        )
+        assert classify_file("tools/amplihack/file_classifier.py") == FileCategory.ALWAYS_UPDATE
         assert classify_file("tools/amplihack/update_engine.py") == FileCategory.ALWAYS_UPDATE
 
     def test_always_update_core_context_files(self):
@@ -45,9 +43,7 @@ class TestAlwaysUpdateFiles:
         assert classify_file("context/PHILOSOPHY.md") == FileCategory.ALWAYS_UPDATE
         assert classify_file("context/PATTERNS.md") == FileCategory.ALWAYS_UPDATE
         assert classify_file("context/TRUST.md") == FileCategory.ALWAYS_UPDATE
-        assert (
-            classify_file("context/AGENT_INPUT_VALIDATION.md") == FileCategory.ALWAYS_UPDATE
-        )
+        assert classify_file("context/AGENT_INPUT_VALIDATION.md") == FileCategory.ALWAYS_UPDATE
 
     def test_always_update_workflow_files(self):
         """Test that workflow files are always updated (except DEFAULT_WORKFLOW.md)."""
@@ -57,17 +53,12 @@ class TestAlwaysUpdateFiles:
 
     def test_always_update_with_claude_prefix(self):
         """Test that files with .claude/ prefix are properly classified."""
-        assert (
-            classify_file(".claude/agents/amplihack/architect.md")
-            == FileCategory.ALWAYS_UPDATE
-        )
+        assert classify_file(".claude/agents/amplihack/architect.md") == FileCategory.ALWAYS_UPDATE
         assert (
             classify_file(".claude/tools/amplihack/version_checker.py")
             == FileCategory.ALWAYS_UPDATE
         )
-        assert (
-            classify_file(".claude/context/PHILOSOPHY.md") == FileCategory.ALWAYS_UPDATE
-        )
+        assert classify_file(".claude/context/PHILOSOPHY.md") == FileCategory.ALWAYS_UPDATE
 
     def test_always_update_subdirectories(self):
         """Test that subdirectories within framework paths are handled."""
@@ -75,9 +66,7 @@ class TestAlwaysUpdateFiles:
             classify_file("agents/amplihack/specialized/knowledge-archaeologist.md")
             == FileCategory.ALWAYS_UPDATE
         )
-        assert (
-            classify_file("tools/amplihack/memory/storage.py") == FileCategory.ALWAYS_UPDATE
-        )
+        assert classify_file("tools/amplihack/memory/storage.py") == FileCategory.ALWAYS_UPDATE
 
 
 class TestPreserveIfModifiedFiles:
@@ -85,9 +74,7 @@ class TestPreserveIfModifiedFiles:
 
     def test_preserve_if_modified_default_workflow(self):
         """Test that DEFAULT_WORKFLOW.md is preserved if modified."""
-        assert (
-            classify_file("workflow/DEFAULT_WORKFLOW.md") == FileCategory.PRESERVE_IF_MODIFIED
-        )
+        assert classify_file("workflow/DEFAULT_WORKFLOW.md") == FileCategory.PRESERVE_IF_MODIFIED
         assert (
             classify_file(".claude/workflow/DEFAULT_WORKFLOW.md")
             == FileCategory.PRESERVE_IF_MODIFIED
@@ -95,9 +82,7 @@ class TestPreserveIfModifiedFiles:
 
     def test_preserve_if_modified_user_preferences(self):
         """Test that user preferences are preserved."""
-        assert (
-            classify_file("context/USER_PREFERENCES.md") == FileCategory.PRESERVE_IF_MODIFIED
-        )
+        assert classify_file("context/USER_PREFERENCES.md") == FileCategory.PRESERVE_IF_MODIFIED
         assert (
             classify_file("context/USER_REQUIREMENT_PRIORITY.md")
             == FileCategory.PRESERVE_IF_MODIFIED
@@ -107,18 +92,12 @@ class TestPreserveIfModifiedFiles:
         """Test that custom commands are preserved."""
         assert classify_file("commands/custom.md") == FileCategory.PRESERVE_IF_MODIFIED
         assert classify_file("commands/my-command.md") == FileCategory.PRESERVE_IF_MODIFIED
-        assert (
-            classify_file(".claude/commands/ultrathink.md") == FileCategory.PRESERVE_IF_MODIFIED
-        )
+        assert classify_file(".claude/commands/ultrathink.md") == FileCategory.PRESERVE_IF_MODIFIED
 
     def test_preserve_if_modified_hooks(self):
         """Test that hook files are preserved if modified."""
-        assert (
-            classify_file("tools/amplihack/hooks/start.py") == FileCategory.PRESERVE_IF_MODIFIED
-        )
-        assert (
-            classify_file("tools/amplihack/hooks/stop.py") == FileCategory.PRESERVE_IF_MODIFIED
-        )
+        assert classify_file("tools/amplihack/hooks/start.py") == FileCategory.PRESERVE_IF_MODIFIED
+        assert classify_file("tools/amplihack/hooks/stop.py") == FileCategory.PRESERVE_IF_MODIFIED
         assert (
             classify_file(".claude/tools/amplihack/hooks/pre_compact.py")
             == FileCategory.PRESERVE_IF_MODIFIED
@@ -159,24 +138,18 @@ class TestNeverUpdateFiles:
     def test_never_update_ai_working(self):
         """Test that experimental tools are never updated."""
         assert classify_file("ai_working/experiment.py") == FileCategory.NEVER_UPDATE
-        assert (
-            classify_file("ai_working/tool-name/implementation.py")
-            == FileCategory.NEVER_UPDATE
-        )
+        assert classify_file("ai_working/tool-name/implementation.py") == FileCategory.NEVER_UPDATE
 
     def test_never_update_scenarios(self):
         """Test that scenario tools are never updated."""
         assert classify_file("scenarios/analyze-codebase/tool.py") == FileCategory.NEVER_UPDATE
-        assert (
-            classify_file("scenarios/my-tool/README.md") == FileCategory.NEVER_UPDATE
-        )
+        assert classify_file("scenarios/my-tool/README.md") == FileCategory.NEVER_UPDATE
 
     def test_never_update_skills(self):
         """Test that user skills are never updated."""
         assert classify_file("skills/custom-skill/skill.md") == FileCategory.NEVER_UPDATE
         assert (
-            classify_file(".claude/skills/my-skill/implementation.py")
-            == FileCategory.NEVER_UPDATE
+            classify_file(".claude/skills/my-skill/implementation.py") == FileCategory.NEVER_UPDATE
         )
 
 
@@ -185,44 +158,31 @@ class TestPathNormalization:
 
     def test_path_normalization_forward_slashes(self):
         """Test that paths with forward slashes are handled correctly."""
-        assert (
-            classify_file("agents/amplihack/architect.md") == FileCategory.ALWAYS_UPDATE
-        )
+        assert classify_file("agents/amplihack/architect.md") == FileCategory.ALWAYS_UPDATE
 
     def test_path_normalization_backslashes(self):
         """Test that paths with backslashes are normalized to forward slashes."""
         # Windows-style paths should be normalized
-        assert (
-            classify_file("agents\\amplihack\\architect.md") == FileCategory.ALWAYS_UPDATE
-        )
+        assert classify_file("agents\\amplihack\\architect.md") == FileCategory.ALWAYS_UPDATE
 
     def test_path_normalization_with_path_object(self):
         """Test that Path objects are handled correctly."""
-        assert (
-            classify_file(Path("agents/amplihack/architect.md"))
-            == FileCategory.ALWAYS_UPDATE
-        )
-        assert (
-            classify_file(Path("context/DISCOVERIES.md")) == FileCategory.NEVER_UPDATE
-        )
+        assert classify_file(Path("agents/amplihack/architect.md")) == FileCategory.ALWAYS_UPDATE
+        assert classify_file(Path("context/DISCOVERIES.md")) == FileCategory.NEVER_UPDATE
 
     def test_path_normalization_leading_claude_removed(self):
         """Test that leading .claude/ is removed for consistent matching."""
         # Both should match the same pattern
-        assert (
-            classify_file("agents/amplihack/architect.md")
-            == classify_file(".claude/agents/amplihack/architect.md")
+        assert classify_file("agents/amplihack/architect.md") == classify_file(
+            ".claude/agents/amplihack/architect.md"
         )
-        assert (
-            classify_file("context/PHILOSOPHY.md")
-            == classify_file(".claude/context/PHILOSOPHY.md")
+        assert classify_file("context/PHILOSOPHY.md") == classify_file(
+            ".claude/context/PHILOSOPHY.md"
         )
 
     def test_path_normalization_relative_paths(self):
         """Test that relative paths are handled correctly."""
-        assert (
-            classify_file("./agents/amplihack/architect.md") == FileCategory.ALWAYS_UPDATE
-        )
+        assert classify_file("./agents/amplihack/architect.md") == FileCategory.ALWAYS_UPDATE
 
 
 class TestEdgeCases:
@@ -258,15 +218,9 @@ class TestEdgeCases:
 
     def test_edge_case_file_extension_variations(self):
         """Test that file extensions are handled correctly."""
-        assert (
-            classify_file("agents/amplihack/architect.md") == FileCategory.ALWAYS_UPDATE
-        )
-        assert (
-            classify_file("tools/amplihack/version_checker.py") == FileCategory.ALWAYS_UPDATE
-        )
-        assert (
-            classify_file("docs/README.rst") == FileCategory.NEVER_UPDATE
-        )
+        assert classify_file("agents/amplihack/architect.md") == FileCategory.ALWAYS_UPDATE
+        assert classify_file("tools/amplihack/version_checker.py") == FileCategory.ALWAYS_UPDATE
+        assert classify_file("docs/README.rst") == FileCategory.NEVER_UPDATE
 
     def test_edge_case_deep_nesting(self):
         """Test that deeply nested paths are handled correctly."""
@@ -274,9 +228,7 @@ class TestEdgeCases:
             classify_file("agents/amplihack/very/deep/nested/path/file.md")
             == FileCategory.ALWAYS_UPDATE
         )
-        assert (
-            classify_file("docs/very/deep/nested/path/file.md") == FileCategory.NEVER_UPDATE
-        )
+        assert classify_file("docs/very/deep/nested/path/file.md") == FileCategory.NEVER_UPDATE
 
     def test_edge_case_partial_matches(self):
         """Test that partial path matches are handled correctly."""

@@ -8,7 +8,6 @@ scenario:
     Verifies that the analytics dashboard loads, displays all required widgets,
     and basic navigation works. This is a quick health check for critical pages.
   type: web
-
   level: 1
 
   tags: [web, smoke, dashboard, basic]
@@ -155,7 +154,6 @@ scenario:
       selector: ".stat-users .value"
       matches: "\\d+"
       description: "Data should still be loaded after refresh"
-
 # Expected Visual State:
 
 # ┌──────────────────────────────────────────────────────────┐

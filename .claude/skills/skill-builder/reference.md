@@ -37,6 +37,7 @@ This file contains comprehensive documentation about Claude Code skills, built f
    - All templates included in this document
 
 **What This Means:**
+
 - Progressive disclosure is now the DEFAULT approach, not an exception
 - Skills should use supporting files even if SKILL.md is under 2,000 tokens
 - Better organization = better user experience (quick start vs deep dive)
@@ -67,6 +68,7 @@ This file contains comprehensive documentation about Claude Code skills, built f
 Skills are **prompt-based conversation and execution context modifiers** that inject specialized instructions and dynamically adjust tool permissions within scoped execution contexts.
 
 Unlike traditional tools or function calling, skills:
+
 - Modify Claude's behavior through instruction injection
 - Load progressively (metadata → instructions → resources)
 - Activate autonomously via description matching
@@ -75,18 +77,21 @@ Unlike traditional tools or function calling, skills:
 ### Three-Tier Progressive Disclosure
 
 **Tier 1: Metadata (~100 tokens)**
+
 - YAML frontmatter with `name` and `description`
 - Pre-loaded at startup for all available skills
 - Enables discovery without loading full content
 - Embedded in `<available_skills>` section
 
 **Tier 2: Core Instructions (<5,000 tokens)**
+
 - Full SKILL.md content loaded when skill deemed relevant
 - All .md files in root directory load together
 - Provides complete instructions and workflows
 - Token budget critical for efficiency
 
 **Tier 3: Modular Resources (unbounded)**
+
 - Supporting files: scripts/, templates/, data/
 - Loaded on-demand during execution
 - Can include any file type
@@ -102,6 +107,7 @@ Unlike traditional tools or function calling, skills:
 4. No regex, keyword matching, or ML classification
 
 **What This Means**:
+
 - Description quality is CRITICAL for discovery
 - Must include trigger keywords users naturally say
 - Provide contextual usage scenarios
@@ -110,21 +116,24 @@ Unlike traditional tools or function calling, skills:
 ### Execution Context Modification
 
 Skills yield a `contextModifier` callback that:
+
 - Dynamically adjusts tool permissions during execution
 - Creates scoped privilege elevation pattern
 - Pre-approves tools to bypass permission prompts
 - Persists only during skill execution
 
 **Example**:
+
 ```yaml
 ---
 name: read-only-analyzer
 description: Analyzes code patterns without modifications
-allowed-tools: Read, Grep, Glob  # Restricts to read-only operations
+allowed-tools: Read, Grep, Glob # Restricts to read-only operations
 ---
 ```
 
 During execution:
+
 - Only Read, Grep, Glob available
 - Write, Bash blocked
 - Permissions revert after skill completes
@@ -138,16 +147,19 @@ During execution:
 ### Design Philosophy
 
 **Progressive Disclosure**: Reveal information only as needed
+
 - Optimizes token usage
 - Scales to many skills without context bloat
 - Flexible through filesystem access
 
 **Autonomous Discovery**: Let LLM decide relevance
+
 - No external systems required
 - Natural language interface
 - Adaptable to new use cases
 
 **Modular Composition**: Combine multiple skills
+
 - Each skill focused on single responsibility
 - Skills work together for complex tasks
 - Easier maintenance and testing
@@ -155,16 +167,19 @@ During execution:
 ### Key Innovations
 
 **Dual-Message Communication**:
+
 - Visible metadata: User-facing status in conversation
 - Hidden prompt (`isMeta: true`): API-sent instructions not rendered in UI
 - Solves transparency-vs-clarity tension
 
 **Token-Efficient Discovery**:
+
 - ~15K character budget for all skill descriptions
 - Forces concise, meaningful descriptions
 - Strategic prioritization required
 
 **Scoped Permissions**:
+
 - Skills restrict tool access for safety
 - Read-only workflows prevent accidents
 - Reduces risk surface area
@@ -179,18 +194,20 @@ During execution:
 
 ```yaml
 ---
-name: skill-identifier           # Required
-description: Brief capability summary  # Required
+name: skill-identifier # Required
+description: Brief capability summary # Required
 ---
 ```
 
 **name**:
+
 - Lowercase alphanumeric with hyphens only
 - Max 64 characters
 - Pattern: `^[a-z0-9]+(-[a-z0-9]+)*$`
 - Example: `analyzing-financial-data`, `pdf-form-filler`
 
 **description**:
+
 - Max 1,024 characters (recommend 50-200)
 - Most critical field for discovery
 - Must combine: capabilities + triggers + context
@@ -203,23 +220,26 @@ description: Brief capability summary  # Required
 ---
 name: skill-name
 description: Capability description
-allowed-tools: Read, Write, Grep  # Optional: Restrict available tools
-disableModelInvocation: false     # Optional: Opt-out of auto-activation
-when_to_use: Alternative trigger   # Optional: Additional trigger text
+allowed-tools: Read, Write, Grep # Optional: Restrict available tools
+disableModelInvocation: false # Optional: Opt-out of auto-activation
+when_to_use: Alternative trigger # Optional: Additional trigger text
 ---
 ```
 
 **allowed-tools**:
+
 - Comma-separated list of tool names
 - Security-critical for restricted workflows
 - Example: `Read, Grep, Glob` for read-only skills
 
 **disableModelInvocation**:
+
 - Set to `true` to prevent automatic activation
 - Skill must be explicitly requested
 - Useful for experimental or dangerous skills
 
 **when_to_use**:
+
 - Alternative to description for activation
 - Can be more verbose than description
 - Provides additional context clues
@@ -246,6 +266,7 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 **Solution**: Load information incrementally as needed
 
 **Benefits**:
+
 - Token efficiency (skills don't compete)
 - Scalable (can have many skills)
 - Flexible (unbounded resources via filesystem)
@@ -254,6 +275,7 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 ### Implementation Strategy
 
 **SKILL.md** (Core - 1,000-2,000 tokens TARGET):
+
 - YAML frontmatter with source_urls
 - Overview and purpose (2-3 sentences)
 - Quick start examples
@@ -263,10 +285,12 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 - High-level workflow instructions
 
 **Split based on CONTENT, not just token count:**
+
 - SKILL.md = Beginner-friendly, covers 80% of use cases
 - Supporting files = Expert deep-dives, edge cases, internals
 
 **reference.md** (Deep Technical Details):
+
 - Complete API reference with all methods and parameters
 - Detailed configuration options and environment setup
 - Architecture and internals documentation
@@ -275,6 +299,7 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 - Security considerations
 
 **examples.md** (Practical Implementation):
+
 - Working code examples (copy-paste ready)
 - Step-by-step implementation guides
 - Common integration patterns
@@ -283,6 +308,7 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 - Advanced use case demonstrations
 
 **patterns.md** (Production Expertise - Optional):
+
 - Production-ready architectural patterns
 - Performance optimization techniques
 - Security best practices and anti-patterns
@@ -291,6 +317,7 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 - Testing and debugging approaches
 
 **scripts/** (Executable Utilities):
+
 - Deterministic operations
 - Mathematical calculations
 - Data parsing/validation
@@ -300,12 +327,14 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 ### Token Budget Guidelines
 
 **Recommended Sizes:**
+
 - SKILL.md: 1,000-2,000 tokens (strict target, not "up to 5,000")
 - reference.md: 2,000-5,000 tokens (comprehensive but focused)
 - examples.md: 1,500-3,000 tokens (practical, copy-paste ready)
 - patterns.md: 1,500-3,000 tokens (production wisdom)
 
 **When to Split:**
+
 - **Always split** skills with supporting documentation (even if SKILL.md < 2,000 tokens)
 - Progressive disclosure is about CONTENT organization, not just token count
 - Better to have 1,500-token SKILL.md + reference.md than 4,000-token monolithic SKILL.md
@@ -314,12 +343,14 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 ### Loading Behavior
 
 **All .md files in root load together** when skill activates:
+
 - SKILL.md (always)
 - reference.md, examples.md, patterns.md (if present)
 - Enables modular documentation
 - Each file focused on specific aspect
 
 **Supporting files load on-demand**:
+
 - Scripts execute when referenced
 - Templates read when needed
 - Resources accessed during processing
@@ -331,34 +362,40 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 Every skill with supporting documents MUST include a "Navigation Guide" section in SKILL.md that explicitly tells Claude when to read each file.
 
 **Template:**
+
 ```markdown
 ## Navigation Guide
 
 ### When to Read Supporting Files
 
 **reference.md** - Read when you need:
+
 - [Specific use cases requiring this file]
 - [Technical details not in SKILL.md]
 - [Complete API or configuration reference]
 
 **examples.md** - Read when you need:
+
 - [Working code for specific patterns]
 - [Step-by-step implementation guides]
 - [Integration examples]
 
 **patterns.md** - Read when you need:
+
 - [Production best practices]
 - [Performance optimization]
 - [Security patterns]
 ```
 
 **Good Example:** `.claude/skills/agent-sdk/SKILL.md` lines 376-408
+
 - Lists each supporting file
 - Clearly states WHEN to read it
 - Specific enough to guide Claude's decision
 - Prevents unnecessary file reads
 
 **Bad Example:** Omitting navigation guide entirely
+
 - Claude doesn't know when to load supporting files
 - May load everything (token waste) or nothing (missing details)
 - User experience degrades
@@ -391,18 +428,21 @@ skill-name/
 ### Storage Locations
 
 **Personal Skills** (`~/.claude/skills/`):
+
 - Available across all projects
 - User-specific workflows
 - Experimental capabilities
 - Installation: `git clone <repo> ~/.claude/skills/skill-name`
 
 **Project Skills** (`.claude/skills/`):
+
 - Shared with team via git
 - Project-specific expertise
 - Automatically available when team pulls updates
 - Committed to version control
 
 **Plugin Skills**:
+
 - Bundled with Claude Code plugins
 - Install automatically with parent plugin
 - Managed by plugin system
@@ -412,12 +452,14 @@ skill-name/
 From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 
 **Why Split Across Files**:
+
 - **Maintainability**: Easier to update specific sections
 - **Token Efficiency**: Load only what's needed
 - **Readability**: Focused, scannable documentation
 - **Versioning**: Track changes to specific aspects
 
 **When to Split**:
+
 - Target SKILL.md at 1,000-2,000 tokens (use supporting files for rest)
 - Many examples → Separate examples.md
 - Complex logic → Scripts in scripts/
@@ -430,6 +472,7 @@ From https://github.com/anthropics/claude-cookbooks/tree/main/skills:
 **When to Include source_urls in YAML frontmatter:**
 
 MANDATORY for skills based on external documentation:
+
 - Official product documentation
 - GitHub repositories
 - Technical blog posts
@@ -437,6 +480,7 @@ MANDATORY for skills based on external documentation:
 - Tutorial series
 
 **Format:**
+
 ```yaml
 ---
 name: skill-name
@@ -449,17 +493,20 @@ source_urls:
 ```
 
 **Benefits:**
+
 - **Attribution**: Gives credit to original sources
 - **Drift Detection**: Enables automated checks for documentation updates
 - **User Reference**: Users can consult authoritative sources directly
 - **Maintenance**: Maintainers know where to check for updates
 
 **Good Examples:**
+
 - agent-sdk skill: Lists 4 official Anthropic documentation URLs
 - Skills derived from open-source projects: Include GitHub repo URL
 - Skills based on API docs: Include API documentation URL
 
 **Bad Examples:**
+
 - Omitting source_urls when skill is clearly based on external docs
 - Generic URLs (e.g., just "https://github.com") instead of specific documentation links
 - Broken or outdated URLs
@@ -472,27 +519,35 @@ source_urls:
 # [Skill Name] - Complete API Reference
 
 ## Architecture
+
 [Deep dive into how the system works internally]
 
 ### Component 1
+
 [Detailed explanation]
 
 ### Component 2
+
 [Detailed explanation]
 
 ## Setup & Configuration
+
 [Complete configuration options]
 
 ### Environment Setup
+
 [Detailed steps]
 
 ### Advanced Configuration
+
 [Expert-level options]
 
 ## API Reference
+
 [Complete method/function/tool reference]
 
 ### Method/Tool 1
+
 **Description:** [What it does]
 **Parameters:** [Complete parameter list with types]
 **Returns:** [Return values]
@@ -500,16 +555,20 @@ source_urls:
 **Errors:** [Error conditions]
 
 ### Method/Tool 2
+
 [Same structure]
 
 ## Advanced Topics
+
 [Expert-level concepts]
 
 ## Troubleshooting
+
 [Common issues and solutions]
 ```
 
 **Key Principles:**
+
 - Comprehensive but organized
 - Every parameter documented
 - Code examples for complex features
@@ -518,19 +577,22 @@ source_urls:
 
 **examples.md should follow this template:**
 
-```markdown
+````markdown
 # [Skill Name] - Working Examples
 
 ## Basic Examples
 
 ### Example 1: [Simple Use Case]
+
 [Description of what this demonstrates]
 
 ```[language]
 [Complete, copy-paste ready code]
 ```
+````
 
 **Expected Output:**
+
 ```
 [What user should see]
 ```
@@ -539,23 +601,28 @@ source_urls:
 [Key points about the example]
 
 ### Example 2: [Another Common Use Case]
+
 [Same structure]
 
 ## Intermediate Examples
 
 ### Example 3: [More Complex Scenario]
+
 [Complete working code with explanation]
 
 ## Advanced Examples
 
 ### Example 4: [Production Pattern]
+
 [Real-world implementation]
 
 ## Integration Examples
 
 ### Example 5: [Integrating with System X]
+
 [How to use with other tools/systems]
-```
+
+````
 
 **Key Principles:**
 - Every example is complete and runnable
@@ -603,9 +670,10 @@ source_urls:
 **Symptom:** [How it manifests]
 **Cause:** [Why it happens]
 **Solution:** [How to fix]
-```
+````
 
 **Key Principles:**
+
 - Focus on production lessons learned
 - Include anti-patterns (what NOT to do)
 - Explain tradeoffs honestly
@@ -631,6 +699,7 @@ source_urls:
 ❌ Bad: "Analysis tool" (lacks context)
 
 **Description Checklist**:
+
 - [ ] Specific capabilities listed (verbs: analyze, generate, calculate)
 - [ ] Trigger keywords users naturally say
 - [ ] File extensions or formats mentioned (.xlsx, .pdf, JSON)
@@ -642,14 +711,17 @@ source_urls:
 **Focus on ONE expertise area**:
 
 ✅ Good: Separate skills for different domains
+
 - `analyzing-financial-statements` (financial ratios only)
 - `filling-pdf-forms` (PDF form processing only)
 - `analyzing-excel-data` (Excel analysis only)
 
 ❌ Bad: Monolithic skill
+
 - `document-processing` (tries to handle all document types)
 
 **Benefits**:
+
 - Better discovery (precise descriptions)
 - Easier maintenance
 - Composable (combine multiple skills)
@@ -658,12 +730,14 @@ source_urls:
 ### Token Budget Management
 
 **Recommended limits** (from Anthropic engineering):
+
 - Frontmatter description: <500 chars (ideal), 1,024 max
 - SKILL.md total: <5,000 tokens
 - Supporting .md files: <3,000 tokens each
 - Total skill context: <15,000 tokens
 
 **Optimization strategies**:
+
 1. Move detailed documentation to reference.md
 2. Extract code to scripts/ directory
 3. Use examples.md for sample outputs
@@ -673,6 +747,7 @@ source_urls:
 ### Security Safeguards
 
 **Critical security practices**:
+
 - ⚠️ Never hardcode API keys, credentials, or secrets
 - ⚠️ Exclude sensitive data from skill documentation
 - ⚠️ Sanitize all inputs in scripts
@@ -681,11 +756,12 @@ source_urls:
 - ⚠️ Only install skills from trusted sources
 
 **Example: Read-only skill**
+
 ```yaml
 ---
 name: analyzing-code
 description: Analyze code patterns and architecture
-allowed-tools: Read, Grep, Glob  # Cannot modify files
+allowed-tools: Read, Grep, Glob # Cannot modify files
 ---
 ```
 
@@ -696,6 +772,7 @@ allowed-tools: Read, Grep, Glob  # Cannot modify files
 ### Pre-Creation Validation
 
 **Name Validation**:
+
 ```python
 import re
 
@@ -712,6 +789,7 @@ def validate_skill_name(name):
 ```
 
 **YAML Validation**:
+
 ```python
 import yaml
 
@@ -767,6 +845,7 @@ def validate_token_budget(skill_path):
 ```
 
 **Token Budget Philosophy:**
+
 - **Target: 1,000-2,000 tokens** for SKILL.md
 - **Warning at 2,000+**: Should move content to supporting files
 - **Error at 20,000+**: Absolute maximum, must split
@@ -775,6 +854,7 @@ def validate_token_budget(skill_path):
 ### Structure Validation
 
 **File Checklist**:
+
 - [ ] SKILL.md exists with valid YAML frontmatter
 - [ ] All required sections present (Purpose, Usage, Instructions)
 - [ ] No broken links or missing references
@@ -795,6 +875,7 @@ def validate_token_budget(skill_path):
 **Tools**: Read, Write, code_execution
 
 **Template**:
+
 ```yaml
 ---
 name: processing-csv-reports
@@ -822,6 +903,7 @@ Transforms raw CSV data into formatted analytical reports.
 **Tools**: Grep, Glob, Read
 
 **Template**:
+
 ```yaml
 ---
 name: analyzing-dependencies
@@ -849,6 +931,7 @@ Identifies and analyzes project dependencies, detecting conflicts.
 **Tools**: AskUserQuestion, Read, Write
 
 **Template**:
+
 ```yaml
 ---
 name: configuring-systems
@@ -880,6 +963,7 @@ Guides users through system configuration with validation.
 To use skills with the SDK, you MUST configure filesystem loading:
 
 **Python**:
+
 ```python
 from anthropic import Anthropic
 
@@ -894,11 +978,12 @@ async for message in query(prompt="Help process this PDF", options=options):
 ```
 
 **TypeScript**:
+
 ```typescript
 const options = {
   cwd: "/path/to/project",
-  settingSources: ['user', 'project'],  // CRITICAL
-  allowedTools: ['Skill', 'Read', 'Write', 'Bash']
+  settingSources: ["user", "project"], // CRITICAL
+  allowedTools: ["Skill", "Read", "Write", "Bash"],
 };
 ```
 
@@ -911,6 +996,7 @@ Without this, the SDK doesn't load any filesystem settings including skills.
 ### Tool Restrictions
 
 **Claude Code vs SDK**:
+
 - In Claude Code CLI: `allowed-tools` in YAML frontmatter restricts tools
 - In SDK: Tool access controlled by `allowedTools` option only
 - YAML `allowed-tools` has no effect in SDK applications
@@ -987,6 +1073,7 @@ Without this, the SDK doesn't load any filesystem settings including skills.
 ### How to Keep This Updated
 
 **Manual Sync Process**:
+
 1. Check official docs quarterly: https://code.claude.com/docs/en/skills
 2. Review Agent SDK changes: https://docs.claude.com/en/docs/agent-sdk/skills
 3. Monitor Anthropic engineering blog for updates
@@ -994,6 +1081,7 @@ Without this, the SDK doesn't load any filesystem settings including skills.
 5. Update this file when changes detected
 
 **Automated Sync** (Future Enhancement):
+
 - Could use web scraping to detect doc changes
 - Compare current content vs source
 - Flag outdated sections
@@ -1002,6 +1090,7 @@ Without this, the SDK doesn't load any filesystem settings including skills.
 ### Version History
 
 **v1.0.0** (2025-11-15):
+
 - Initial comprehensive research compilation
 - 10 primary documentation sources
 - All core patterns documented
@@ -1010,6 +1099,7 @@ Without this, the SDK doesn't load any filesystem settings including skills.
 
 **Update Protocol**:
 When official documentation changes:
+
 1. Note change in version history
 2. Update relevant section
 3. Increment version number

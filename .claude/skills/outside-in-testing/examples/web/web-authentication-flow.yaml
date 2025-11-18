@@ -8,7 +8,6 @@ scenario:
     Verifies complete authentication workflow: login with valid/invalid credentials,
     session persistence, protected routes, and logout functionality.
   type: web
-
   level: 2
 
   tags: [web, auth, login, security, intermediate]
@@ -306,7 +305,6 @@ scenario:
     - action: screenshot
       save_as: "09-final-logged-in.png"
       description: "Final state after complete auth flow"
-
 # Expected Flow:
 
 # 1. Login Page → Invalid Credentials → Error

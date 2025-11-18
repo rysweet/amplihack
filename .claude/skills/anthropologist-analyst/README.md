@@ -15,6 +15,7 @@ Anthropological thinking is essential for working across cultures, designing for
 Deeply understands cultures through immersive fieldwork, participant observation, and close attention to local meanings, practices, and worldviews.
 
 **Ethnographic Methods:**
+
 - **Participant observation** - Living with and observing people in natural settings
 - **Deep hanging out** - Extended, informal immersion
 - **Key informant interviews** - Learning from cultural experts
@@ -27,6 +28,7 @@ Deeply understands cultures through immersive fieldwork, participant observation
 Compares cultures systematically to identify universal patterns, cultural variations, and the dangers of ethnocentrism (judging other cultures by your own standards).
 
 **Key Insights:**
+
 - **Cultural relativism** - Understanding practices within cultural context
 - **Emic vs. etic** - Insider perspective vs. outsider analysis
 - **Cultural universals** - Patterns found across all societies (language, kinship, ritual)
@@ -38,6 +40,7 @@ Compares cultures systematically to identify universal patterns, cultural variat
 Interprets symbols, rituals, myths, and practices to reveal underlying cultural meanings and values.
 
 **Interpretive Frameworks:**
+
 - **Symbols** - Objects, actions, or concepts with culturally-specific meanings
 - **Rituals** - Formalized, symbolic behaviors (rites of passage, religious ceremonies)
 - **Myths and narratives** - Stories that encode cultural values and worldviews
@@ -49,6 +52,7 @@ Interprets symbols, rituals, myths, and practices to reveal underlying cultural 
 Analyzes how societies organize relationships, distribute authority, and structure social life beyond Western nuclear family and state models.
 
 **Organizational Forms:**
+
 - **Kinship systems** - Descent (matrilineal, patrilineal), marriage rules, fictive kin
 - **Political organization** - Bands, tribes, chiefdoms, states
 - **Economic systems** - Reciprocity, redistribution, market exchange
@@ -60,6 +64,7 @@ Analyzes how societies organize relationships, distribute authority, and structu
 Examines how humans adapt to diverse environments through cultural and biological means.
 
 **Adaptive Strategies:**
+
 - **Subsistence patterns** - Foraging, pastoralism, horticulture, agriculture, industrial
 - **Cultural ecology** - Relationship between culture and environment
 - **Political ecology** - Power relations and resource access
@@ -71,6 +76,7 @@ Examines how humans adapt to diverse environments through cultural and biologica
 Studies how language shapes thought, how meaning is negotiated in interaction, and how communication varies across cultures.
 
 **Key Concepts:**
+
 - **Sapir-Whorf hypothesis** - Language influences thought (linguistic relativity)
 - **Pragmatics** - How context shapes meaning
 - **Code-switching** - Alternating between languages/dialects
@@ -104,6 +110,7 @@ Work with communities as partners, not subjects. Understand local knowledge syst
 ### Method 1: Ethnographic Fieldwork
 
 Immersive, long-term study in natural settings:
+
 1. Gain access and build relationships
 2. Participate in daily activities
 3. Observe and take detailed field notes
@@ -115,6 +122,7 @@ Immersive, long-term study in natural settings:
 ### Method 2: Cultural Domain Analysis
 
 Systematically map cultural knowledge:
+
 1. Identify cultural domain (e.g., "family," "success," "health")
 2. Free-list items in domain from multiple informants
 3. Analyze frequency and salience
@@ -125,6 +133,7 @@ Systematically map cultural knowledge:
 ### Method 3: Kinship Diagram Analysis
 
 Map social relationships:
+
 1. Diagram kinship connections using standard symbols
 2. Identify descent patterns (matrilineal, patrilineal, bilateral)
 3. Map marriage alliances and residence patterns
@@ -134,6 +143,7 @@ Map social relationships:
 ### Method 4: Ritual Analysis
 
 Interpret symbolic practices:
+
 1. Document ritual sequence and participants
 2. Identify symbols and their meanings
 3. Analyze social functions (solidarity, status change, conflict resolution)
@@ -143,6 +153,7 @@ Interpret symbolic practices:
 ### Method 5: Comparative Cultural Analysis
 
 Learn from cultural diversity:
+
 1. Select cultures for comparison (similar or contrasting)
 2. Identify dimension of comparison (marriage, leadership, etc.)
 3. Document how each culture organizes that domain
@@ -193,6 +204,7 @@ Learn from cultural diversity:
 ## Best Practices
 
 **Do:**
+
 - Practice cultural relativism (understand before judging)
 - Spend extended time in field settings
 - Listen more than talk in early fieldwork
@@ -204,6 +216,7 @@ Learn from cultural diversity:
 - Acknowledge anthropology's colonial history
 
 **Don't:**
+
 - Impose your cultural categories as universal
 - Make snap judgments about "strange" practices
 - Treat culture as static or unchanging
@@ -250,6 +263,7 @@ Embodied dispositions and habits acquired through socialization. Culture becomes
 ## Four-Field Approach
 
 Traditional American anthropology integrates:
+
 1. **Cultural anthropology** - Contemporary cultures and meanings
 2. **Archaeology** - Past societies through material remains
 3. **Biological anthropology** - Human evolution, variation, primatology

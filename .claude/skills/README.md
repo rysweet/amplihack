@@ -46,6 +46,7 @@ These skills add NEW capabilities like decision recording, email drafting, meeti
 These skills provide deep domain expertise for multi-perspective analysis of events, policies, and phenomena. Each analyst applies discipline-specific theories, methods, and evidence.
 
 **Social Sciences** (5):
+
 - **economist-analyst** - Markets, incentives, supply/demand, policy analysis
 - **political-scientist-analyst** - Power, institutions, IR theory, comparative politics
 - **historian-analyst** - Causation, continuity/change, historical context, precedents
@@ -53,12 +54,14 @@ These skills provide deep domain expertise for multi-perspective analysis of eve
 - **anthropologist-analyst** - Cultural analysis, ethnography, cross-cultural comparison
 
 **Humanities & Communication** (4):
+
 - **novelist-analyst** - Narrative structure, character development, dramatic tension
 - **journalist-analyst** - Investigation, verification, 5Ws+H, fact-checking
 - **poet-analyst** - Metaphor, imagery, close reading, emotional truth
 - **futurist-analyst** - Scenario planning, trend analysis, strategic foresight
 
 **Natural Sciences** (5):
+
 - **physicist-analyst** - Physical principles, conservation laws, modeling
 - **chemist-analyst** - Molecular structure, reactions, synthesis planning
 - **psychologist-analyst** - Cognition, behavior, social influence, neuroscience
@@ -66,6 +69,7 @@ These skills provide deep domain expertise for multi-perspective analysis of eve
 - **biologist-analyst** - Evolution, genetics, ecology, systems biology
 
 **Applied Fields** (6):
+
 - **computer-scientist-analyst** - Algorithms, complexity, systems design
 - **cybersecurity-analyst** - Threat modeling, defense, incident response
 - **lawyer-analyst** - Legal analysis, IRAC, statutory interpretation
@@ -74,11 +78,13 @@ These skills provide deep domain expertise for multi-perspective analysis of eve
 - **urban-planner-analyst** - Land use, zoning, transportation, housing, sustainability
 
 **Philosophy & Ethics** (3):
+
 - **ethicist-analyst** - Moral frameworks, value conflicts, normative analysis
 - **philosopher-analyst** - Logic, epistemology, metaphysics, conceptual analysis
 - **epidemiologist-analyst** - Disease patterns, public health, outbreak investigation
 
 **Key Features**:
+
 - All 23 analysts have comprehensive test suites (tests/quiz.md with 5 scenarios each)
 - Domain-specific search capability (see ANALYST_SEARCH_CAPABILITY.md)
 - Progressive disclosure structure (SKILL.md + README.md + QUICK_REFERENCE.md)

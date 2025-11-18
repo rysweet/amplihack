@@ -19,7 +19,6 @@ Phase 1 (MVP) Implementation:
 - Fail-open error handling
 """
 
-import asyncio
 import json
 import os
 import re
@@ -926,8 +925,7 @@ class PowerSteeringChecker:
         # Run checker
         if checker_name == "generic" or checker_func == self._generic_analyzer:
             return checker_func(transcript, session_id, consideration)
-        else:
-            return checker_func(transcript, session_id)
+        return checker_func(transcript, session_id)
 
     # ========================================================================
     # Phase 1: Top 5 Critical Checkers

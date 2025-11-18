@@ -8,7 +8,6 @@ scenario:
     Uses a custom comprehension agent with domain-specific knowledge to validate
     financial dashboard data for correctness, consistency, and proper formatting.
   type: web
-
   level: 3
 
   tags: [custom-agent, comprehension, domain-specific, advanced]
@@ -21,7 +20,7 @@ scenario:
   # Define custom comprehension agent behavior
   comprehension_agent:
     model: "gpt-4"
-    temperature: 0.1  # Low temperature for consistent validation
+    temperature: 0.1 # Low temperature for consistent validation
 
     # System prompt defines validation rules
     system_prompt: |
@@ -191,7 +190,6 @@ scenario:
     - action: generate_report
       include_agent_reasoning: true
       description: "Generate report with custom agent's validation reasoning"
-
 # Custom Comprehension Agent Benefits:
 
 # Traditional Verification (Brittle):

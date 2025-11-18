@@ -545,6 +545,7 @@ This skill follows Amplihack principles:
 - Skills are token-efficient (load only when needed)
 
 **Progressive Disclosure Philosophy:**
+
 - SKILL.md = Quick start and core workflows only
 - Supporting files = Deep dives, API details, advanced patterns
 - Split based on CONTENT (beginner vs expert), not just token count
@@ -557,8 +558,8 @@ This skill follows Amplihack principles:
 name: skill-name
 description: Keyword-rich description for auto-discovery (optimized for trigger words)
 version: 1.0.0
-token_budget: 2000  # Target for SKILL.md only (1,000-2,000 recommended)
-source_urls:  # MANDATORY if skill is based on external documentation
+token_budget: 2000 # Target for SKILL.md only (1,000-2,000 recommended)
+source_urls: # MANDATORY if skill is based on external documentation
   - https://docs.example.com/main-source
   - https://github.com/org/repo/reference
 ---
@@ -573,6 +574,7 @@ source_urls:  # MANDATORY if skill is based on external documentation
 - Length: 50-200 characters (not too short, not too long)
 
 **Source URLs:**
+
 - MUST include if skill is based on external documentation (official docs, GitHub repos, blog posts)
 - Provides drift detection capability and attribution
 - Helps users find authoritative sources for deeper information
@@ -600,18 +602,21 @@ When your skill includes supporting documents (reference.md, examples.md, patter
 ### When to Read Supporting Files
 
 **reference.md** - Read when you need:
+
 - Complete API reference with all methods and parameters
 - Detailed configuration options and environment setup
 - Comprehensive tool schema specifications
 - In-depth architecture and internals documentation
 
 **examples.md** - Read when you need:
+
 - Working code examples for specific patterns
 - Step-by-step implementation guides
 - Advanced use case demonstrations
 - Integration examples with existing systems
 
 **patterns.md** - Read when you need:
+
 - Production-ready architectural patterns
 - Performance optimization techniques
 - Security best practices and anti-patterns

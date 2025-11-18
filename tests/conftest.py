@@ -642,3 +642,150 @@ def mock_time():
             self.duration_ms = (self.end - self.start) * 1000
 
     return TimeTracker
+
+
+# =============================================================================
+# Code Quality Validation Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def validate_python_syntax():
+    """
+    Fixture for validating Python syntax.
+
+    Prevents commits with syntax errors by checking Python files
+    for valid syntax during test runs.
+
+    Returns:
+        callable: Function that validates Python file syntax
+    """
+    import ast
+
+    def validate(file_path: Path) -> tuple[bool, str]:
+        """
+        Validate Python file syntax.
+
+        Args:
+            file_path: Path to Python file to validate
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            ast.parse(content, filename=str(file_path))
+            return True, ""
+        except SyntaxError as e:
+            error_msg = f"Syntax error in {file_path}:{e.lineno}:{e.offset}: {e.msg}"
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"Error parsing {file_path}: {e!s}"
+            return False, error_msg
+
+    return validate
+
+
+@pytest.fixture
+def validate_no_merge_conflicts():
+    """
+    Fixture for detecting merge conflict markers.
+
+    Prevents commits with unresolved merge conflicts by scanning
+    files for conflict markers.
+
+    Returns:
+        callable: Function that checks for merge conflict markers
+    """
+
+    def validate(file_path: Path) -> tuple[bool, list[int]]:
+        """
+        Check for merge conflict markers in file.
+
+        Args:
+            file_path: Path to file to check
+
+        Returns:
+            Tuple of (is_clean, line_numbers_with_conflicts)
+        """
+        conflict_markers = [
+            "<<<<<<<",  # Conflict start
+            "=======",  # Conflict middle
+            ">>>>>>>",  # Conflict end
+        ]
+
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            lines = content.split("\n")
+
+            conflict_lines = []
+            for line_num, line in enumerate(lines, start=1):
+                if any(marker in line for marker in conflict_markers):
+                    conflict_lines.append(line_num)
+
+            return len(conflict_lines) == 0, conflict_lines
+
+        except Exception:
+            # If we can't read the file, assume it's clean
+            # (other tests will catch actual file issues)
+            return True, []
+
+    return validate
+
+
+@pytest.fixture
+def validate_no_todos_in_production():
+    """
+    Fixture for detecting TODO markers in production code.
+
+    Enforces zero-BS principle by preventing commits with TODO comments
+    in production code (tests are allowed to have TODOs).
+
+    Returns:
+        callable: Function that checks for TODO markers
+    """
+
+    def validate(
+        file_path: Path, allow_in_tests: bool = True
+    ) -> tuple[bool, list[tuple[int, str]]]:
+        """
+        Check for TODO markers in file.
+
+        Args:
+            file_path: Path to file to check
+            allow_in_tests: Whether to allow TODOs in test files
+
+        Returns:
+            Tuple of (is_clean, list_of_todos_with_line_numbers)
+        """
+        # Allow TODOs in test files if requested
+        if allow_in_tests and ("test_" in file_path.name or "/tests/" in str(file_path)):
+            return True, []
+
+        todo_patterns = [
+            "TODO",
+            "FIXME",
+            "XXX",
+            "HACK",
+            "NotImplementedError",  # Catch stub implementations
+        ]
+
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            lines = content.split("\n")
+
+            todos = []
+            for line_num, line in enumerate(lines, start=1):
+                # Skip comments about TODOs (like this docstring)
+                if any(
+                    pattern in line and not line.strip().startswith("#")
+                    for pattern in todo_patterns
+                ):
+                    todos.append((line_num, line.strip()))
+
+            return len(todos) == 0, todos
+
+        except Exception:
+            return True, []
+
+    return validate

@@ -58,7 +58,7 @@ Design modules as self-contained "bricks" with explicit "studs" (public API):
 
 Key elements:
 
-1. **Explicit **all**** - Defines exact public interface
+1. **Explicit **all\*\*\*\* - Defines exact public interface
 2. **Single Responsibility** - Module does ONE thing well
 3. **Type Hints** - All exported functions fully typed
 4. **Comprehensive Tests** - Tests verify public contract, not implementation
@@ -102,7 +102,7 @@ def primary_function(input_model: InputModel) -> OutputModel:
 
 ### Key Points
 
-- **Explicit **all****: Others know exact connection points
+- **Explicit **all\*\*\*\*: Others know exact connection points
 - **Single responsibility**: Easy to understand and rebuild
 - **Type hints throughout**: Clear contracts prevent mistakes
 - **Test public interface**: Tests verify "studs", not implementation

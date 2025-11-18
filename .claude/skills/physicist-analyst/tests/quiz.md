@@ -334,18 +334,19 @@ Analyze the physics feasibility and engineering challenges of this system.
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Space Debris Collision | 50 | 35 |
-| 2. Fusion Reactor Breakthrough | 50 | 35 |
-| 3. Arctic Ice Albedo Feedback | 50 | 35 |
-| 4. Quantum Computing | 50 | 35 |
-| 5. Hyperloop Transportation | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                       | Max Score | Passing Score |
+| ------------------------------ | --------- | ------------- |
+| 1. Space Debris Collision      | 50        | 35            |
+| 2. Fusion Reactor Breakthrough | 50        | 35            |
+| 3. Arctic Ice Albedo Feedback  | 50        | 35            |
+| 4. Quantum Computing           | 50        | 35            |
+| 5. Hyperloop Transportation    | 50        | 35            |
+| **Total**                      | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate physicist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -353,6 +354,7 @@ To demonstrate physicist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of physical principles and laws
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of analysis
 3. **Insight Specificity** (0-10): Clear, quantitative predictions and assessments
@@ -362,6 +364,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies fundamental physics principles correctly (conservation laws, thermodynamics, etc.)
 - Performs quantitative calculations with proper units and orders of magnitude
 - Considers multiple physical effects and their interactions
@@ -371,6 +374,7 @@ Each scenario is scored on:
 - Recognizes when claims violate physical laws
 
 **Good (35-44 points)**:
+
 - Applies key physics principles correctly
 - Makes reasonable quantitative estimates
 - Considers main physical effects
@@ -379,6 +383,7 @@ Each scenario is scored on:
 - Provides useful physical insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies physical principles
 - Lacks quantitative analysis or makes calculation errors
 - Ignores important physical effects
@@ -391,12 +396,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -414,6 +421,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as physics-related events unfold
 - Update expected elements as scientific understanding evolves
 - Refine scoring criteria based on analysis quality patterns

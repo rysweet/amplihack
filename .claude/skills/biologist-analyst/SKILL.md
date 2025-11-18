@@ -51,6 +51,7 @@ Biological analysis rests on several fundamental principles:
 ### Foundation 1: Evolution by Natural Selection
 
 **Core Principles**:
+
 - Variation exists within populations (genetic, phenotypic)
 - Some variations are heritable (passed to offspring)
 - Organisms produce more offspring than can survive (struggle for existence)
@@ -58,6 +59,7 @@ Biological analysis rests on several fundamental principles:
 - Over time, advantageous traits increase in frequency (adaptation)
 
 **Key Insights**:
+
 - Evolution explains both similarity (common ancestry) and difference (adaptation to niches)
 - Natural selection is non-random (favors fitness) but mutations are random
 - Evolution has no goal or direction; it optimizes for current environment, not future
@@ -65,11 +67,13 @@ Biological analysis rests on several fundamental principles:
 - Co-evolution between species (predator-prey, host-parasite, plant-pollinator)
 
 **Founding Thinkers**:
-- **Charles Darwin** (1809-1882): *On the Origin of Species* (1859), natural selection, descent with modification
+
+- **Charles Darwin** (1809-1882): _On the Origin of Species_ (1859), natural selection, descent with modification
 - **Alfred Russel Wallace** (1823-1913): Co-discoverer of natural selection
 - **Theodosius Dobzhansky** (1900-1975): Modern synthesis integrating genetics and evolution; "Nothing in biology makes sense except in light of evolution"
 
 **When to Apply**:
+
 - Explaining adaptations and traits
 - Understanding phylogenetic relationships
 - Predicting antibiotic/pesticide resistance
@@ -77,6 +81,7 @@ Biological analysis rests on several fundamental principles:
 - Disease evolution and virulence
 
 **Sources**:
+
 - [Understanding Evolution - UC Berkeley](https://evolution.berkeley.edu/)
 - [Darwin Online - Complete Works](http://darwin-online.org.uk/)
 - [Evolution - NCBI Bookshelf](https://www.ncbi.nlm.nih.gov/books/NBK21154/)
@@ -84,6 +89,7 @@ Biological analysis rests on several fundamental principles:
 ### Foundation 2: Molecular Biology and Central Dogma
 
 **Core Principles**:
+
 - DNA stores genetic information in nucleotide sequences
 - DNA replicates semi-conservatively (each strand templates new strand)
 - DNA transcribed to RNA (messenger, ribosomal, transfer)
@@ -92,6 +98,7 @@ Biological analysis rests on several fundamental principles:
 - Gene expression regulated at transcription, translation, post-translational levels
 
 **Key Insights**:
+
 - Genetic code is nearly universal (shared ancestry of life)
 - One gene can produce multiple proteins (alternative splicing, post-translational modifications)
 - Non-coding DNA includes regulatory elements, not all "junk"
@@ -100,6 +107,7 @@ Biological analysis rests on several fundamental principles:
 - CRISPR enables precise gene editing (biotechnology revolution)
 
 **Key Discoveries**:
+
 - **DNA Structure** (Watson, Crick, Franklin, Wilkins, 1953): Double helix
 - **Genetic Code** (Nirenberg, Khorana, 1960s): Codon table deciphered
 - **Restriction Enzymes** (Arber, Smith, Nathans, 1970s): Molecular cloning foundation
@@ -107,6 +115,7 @@ Biological analysis rests on several fundamental principles:
 - **CRISPR-Cas9** (Doudna, Charpentier, 2012): Programmable gene editing
 
 **When to Apply**:
+
 - Understanding disease mechanisms at molecular level
 - Evaluating gene therapies and biotechnology
 - Interpreting genomic data and mutations
@@ -114,6 +123,7 @@ Biological analysis rests on several fundamental principles:
 - Assessing GMO technology and risks
 
 **Sources**:
+
 - [Molecular Biology of the Cell - Alberts et al.](https://www.ncbi.nlm.nih.gov/books/NBK21054/)
 - [NCBI Genes and Disease](https://www.ncbi.nlm.nih.gov/books/NBK22183/)
 - [Nature Scitable - Molecular Biology](https://www.nature.com/scitable/topic/genetics-5/)
@@ -121,6 +131,7 @@ Biological analysis rests on several fundamental principles:
 ### Foundation 3: Ecological Principles and Interactions
 
 **Core Principles**:
+
 - **Niche**: Species' role in ecosystem (habitat, diet, behavior)
 - **Competitive Exclusion**: Two species can't occupy identical niche indefinitely
 - **Predation**: Regulates prey populations, drives adaptations
@@ -130,6 +141,7 @@ Biological analysis rests on several fundamental principles:
 - **Succession**: Predictable changes in community composition over time
 
 **Key Insights**:
+
 - Biodiversity enhances ecosystem stability and resilience
 - Keystone species have disproportionate impact on ecosystems
 - Invasive species disrupt ecosystems, often lacking natural predators
@@ -139,11 +151,13 @@ Biological analysis rests on several fundamental principles:
 - Ecosystem services: Benefits humans derive from nature (pollination, water purification, climate regulation)
 
 **Founding Thinkers**:
+
 - **Charles Elton** (1900-1991): Trophic levels, food chains, invasive species
 - **Eugene Odum** (1913-2002): Ecosystem ecology, energy flow
 - **Robert Paine** (1933-2016): Keystone species concept
 
 **When to Apply**:
+
 - Conservation planning and biodiversity protection
 - Invasive species management
 - Ecosystem restoration
@@ -151,6 +165,7 @@ Biological analysis rests on several fundamental principles:
 - Understanding species interactions and community dynamics
 
 **Sources**:
+
 - [Ecology - Khan Academy](https://www.khanacademy.org/science/biology/ecology)
 - [Ecological Society of America](https://www.esa.org/)
 - [Conservation Biology - Society for Conservation Biology](https://conbio.org/)
@@ -158,6 +173,7 @@ Biological analysis rests on several fundamental principles:
 ### Foundation 4: Cell Biology and Organization
 
 **Core Principles**:
+
 - Cell theory: All organisms composed of cells; all cells from pre-existing cells
 - Prokaryotic cells (bacteria, archaea): No nucleus, simpler structure
 - Eukaryotic cells (animals, plants, fungi, protists): Nucleus, membrane-bound organelles
@@ -166,6 +182,7 @@ Biological analysis rests on several fundamental principles:
 - Organelles: Nucleus (DNA), mitochondria (energy), chloroplasts (photosynthesis), ER, Golgi, lysosomes
 
 **Key Insights**:
+
 - Mitochondria and chloroplasts likely originated from endosymbiotic bacteria
 - Cell signaling enables communication between cells (hormones, neurotransmitters, cytokines)
 - Cell cycle tightly regulated; cancer results from loss of regulation
@@ -174,6 +191,7 @@ Biological analysis rests on several fundamental principles:
 - Cell membranes enable compartmentalization and electrochemical gradients
 
 **When to Apply**:
+
 - Understanding disease mechanisms at cellular level
 - Cancer biology and treatment strategies
 - Stem cell therapy and regenerative medicine
@@ -181,12 +199,14 @@ Biological analysis rests on several fundamental principles:
 - Understanding cellular metabolism and signaling
 
 **Sources**:
+
 - [Cell Biology by the Numbers](http://book.bionumbers.org/)
 - [The Cell - NCBI Bookshelf](https://www.ncbi.nlm.nih.gov/books/NBK9841/)
 
 ### Foundation 5: Genetics and Heredity
 
 **Core Principles**:
+
 - Mendelian inheritance: Dominant and recessive alleles, segregation, independent assortment
 - Chromosomes carry genes; meiosis produces gametes with half chromosome number
 - Linked genes on same chromosome inherited together (unless crossing over)
@@ -195,6 +215,7 @@ Biological analysis rests on several fundamental principles:
 - Mutations create genetic variation (point mutations, insertions, deletions, chromosomal rearrangements)
 
 **Key Insights**:
+
 - Most traits are polygenic and influenced by environment (complex inheritance)
 - Genetic drift (random) and natural selection (non-random) both change allele frequencies
 - Hardy-Weinberg equilibrium: Allele frequencies stable without evolution
@@ -204,6 +225,7 @@ Biological analysis rests on several fundamental principles:
 - Epigenetics: Environment affects gene expression without changing DNA sequence
 
 **When to Apply**:
+
 - Genetic counseling and disease risk assessment
 - Understanding inheritance patterns
 - Plant and animal breeding
@@ -211,6 +233,7 @@ Biological analysis rests on several fundamental principles:
 - Personalized medicine based on genotype
 
 **Sources**:
+
 - [Genetics Home Reference - NIH](https://medlineplus.gov/genetics/)
 - [Online Mendelian Inheritance in Man (OMIM)](https://www.omim.org/)
 
@@ -223,6 +246,7 @@ Biological analysis rests on several fundamental principles:
 **Overview**: Analyze biological phenomena at appropriate scale(s).
 
 **Hierarchy**:
+
 1. **Molecular**: Atoms, molecules, macromolecules (DNA, proteins, lipids)
 2. **Cellular**: Organelles, cells, cellular processes
 3. **Tissue**: Groups of similar cells performing common function
@@ -243,6 +267,7 @@ Biological analysis rests on several fundamental principles:
 **Overview**: Examine how biological structures enable functions.
 
 **Process**:
+
 1. **Identify structure**: What is the physical form? (Shape, composition, organization)
 2. **Identify function**: What does it do? (Role, activity, output)
 3. **Link structure to function**: How does form enable function?
@@ -251,6 +276,7 @@ Biological analysis rests on several fundamental principles:
 6. **Evolutionary context**: How did structure evolve? Selection pressures?
 
 **Examples**:
+
 - Enzyme active sites shaped to bind specific substrates
 - Bird wings shaped for flight (lightweight bones, feathers, muscles)
 - Root structures maximize surface area for water/nutrient absorption
@@ -263,6 +289,7 @@ Biological analysis rests on several fundamental principles:
 **Overview**: Rigorous methods to test biological hypotheses.
 
 **Components**:
+
 - **Hypothesis**: Testable prediction
 - **Independent variable**: What you manipulate
 - **Dependent variable**: What you measure
@@ -272,6 +299,7 @@ Biological analysis rests on several fundamental principles:
 - **Sample size**: Adequate statistical power
 
 **Study Types**:
+
 - **Observational**: Collect data without intervention
 - **Experimental**: Manipulate variables, measure effects
 - **Comparative**: Compare across species, populations, conditions
@@ -285,6 +313,7 @@ Biological analysis rests on several fundamental principles:
 **Overview**: Infer evolutionary relationships from shared characteristics.
 
 **Process**:
+
 1. **Select characters**: Morphological, molecular, behavioral traits
 2. **Determine character states**: Ancestral vs. derived
 3. **Construct tree**: Branch points represent common ancestors
@@ -292,6 +321,7 @@ Biological analysis rests on several fundamental principles:
 5. **Interpret tree**: Clades (monophyletic groups), sister groups, outgroups
 
 **Applications**:
+
 - **Taxonomy**: Classification based on evolutionary relationships
 - **Comparative method**: Control for phylogeny when comparing species
 - **Tracing traits**: When did trait evolve? How many times?
@@ -307,6 +337,7 @@ Biological analysis rests on several fundamental principles:
 **Overview**: Analyze how organisms maintain stable internal conditions.
 
 **Components**:
+
 - **Set point**: Target value (body temperature, blood glucose, pH)
 - **Sensor**: Detects deviation from set point
 - **Control center**: Processes information, activates response
@@ -315,6 +346,7 @@ Biological analysis rests on several fundamental principles:
 - **Positive feedback**: Response amplifies deviation (less common, e.g., childbirth)
 
 **Examples**:
+
 - **Thermoregulation**: Shivering (heat production), sweating (heat loss)
 - **Blood glucose**: Insulin lowers, glucagon raises
 - **Blood pH**: Respiratory and renal regulation
@@ -331,6 +363,7 @@ Biological analysis rests on several fundamental principles:
 **Description**: Compare across species to test hypotheses while controlling for phylogeny.
 
 **Process**:
+
 1. Select species representing phylogenetic diversity
 2. Measure traits of interest
 3. Account for evolutionary relationships (phylogenetic comparative methods)
@@ -344,6 +377,7 @@ Biological analysis rests on several fundamental principles:
 **Description**: Use tractable species to study fundamental biological processes.
 
 **Key Model Organisms**:
+
 - **E. coli**: Bacterial genetics, molecular biology
 - **Yeast** (S. cerevisiae): Eukaryotic cell cycle, genetics
 - **C. elegans** (nematode): Development, neurobiology, aging
@@ -359,6 +393,7 @@ Biological analysis rests on several fundamental principles:
 **Description**: Integrate data across levels to understand complex biological systems.
 
 **Tools**:
+
 - **Genomics**: All genes
 - **Transcriptomics**: All RNA transcripts
 - **Proteomics**: All proteins
@@ -373,6 +408,7 @@ Biological analysis rests on several fundamental principles:
 **Description**: Study evolution of developmental processes.
 
 **Key Concepts**:
+
 - **Hox genes**: Master regulatory genes controlling body plan
 - **Deep homology**: Shared developmental mechanisms across distantly related species
 - **Heterochrony**: Changes in timing of development
@@ -386,6 +422,7 @@ Biological analysis rests on several fundamental principles:
 **Description**: Evaluate threats and design conservation strategies.
 
 **Process**:
+
 1. **Assess status**: Population size, distribution, trends
 2. **Identify threats**: Habitat loss, overexploitation, invasive species, pollution, climate change
 3. **Evaluate vulnerability**: Extinction risk factors
@@ -406,6 +443,7 @@ Biological analysis rests on several fundamental principles:
 **Biological Analysis**:
 
 **Evolutionary Mechanism**:
+
 - **Variation**: Random mutations create genetic diversity in bacterial populations
 - **Selection pressure**: Antibiotic kills susceptible bacteria
 - **Survival**: Bacteria with resistance mutations survive and reproduce
@@ -413,18 +451,21 @@ Biological analysis rests on several fundamental principles:
 - **Amplification**: Resistant strain becomes dominant
 
 **Molecular Mechanisms of Resistance**:
+
 - **Target modification**: Altered penicillin-binding proteins reduce antibiotic binding
 - **Efflux pumps**: Actively pump antibiotics out of cell
 - **Enzyme inactivation**: β-lactamases break down β-lactam antibiotics
 - **Horizontal gene transfer**: Resistance genes spread via plasmids between bacteria
 
 **Population Genetics**:
+
 - High mutation rate in bacteria (large population size, rapid reproduction)
 - Antibiotic use creates strong selection pressure
 - Incomplete treatment courses allow resistant survivors
 - Horizontal transfer accelerates resistance spread beyond vertical inheritance
 
 **Ecological Context**:
+
 - Hospital environment: High antibiotic use, vulnerable patients, close contact
 - Agricultural use: Low-dose antibiotics in livestock promote resistance
 - Community transmission: Resistance spreads beyond hospitals
@@ -432,24 +473,20 @@ Biological analysis rests on several fundamental principles:
 **Mitigation Strategies**:
 
 **Evolutionary Approaches**:
+
 1. **Reduce selection pressure**: Antibiotic stewardship, use only when necessary
 2. **Combination therapy**: Multiple antibiotics reduce resistance probability (multiple simultaneous mutations required)
 3. **Cycling antibiotics**: Rotate antibiotic classes to reduce sustained pressure
 4. **Preserve susceptibility**: Keep some antibiotics in reserve
 
-**Infection Control**:
-5. **Hygiene**: Hand washing, sterilization reduce transmission
-6. **Isolation**: Separate infected patients
-7. **Surveillance**: Monitor resistance patterns
+**Infection Control**: 5. **Hygiene**: Hand washing, sterilization reduce transmission 6. **Isolation**: Separate infected patients 7. **Surveillance**: Monitor resistance patterns
 
-**Research Priorities**:
-8. **New antibiotics**: Develop drugs with novel mechanisms
-9. **Phage therapy**: Use bacterial viruses as alternative
-10. **Microbiome approaches**: Preserve beneficial bacteria
+**Research Priorities**: 8. **New antibiotics**: Develop drugs with novel mechanisms 9. **Phage therapy**: Use bacterial viruses as alternative 10. **Microbiome approaches**: Preserve beneficial bacteria
 
 **Key Insight**: Antibiotic resistance is inevitable consequence of evolution by natural selection. Slowing resistance requires evolutionary thinking: reduce selection pressure, use combinations, preserve drug effectiveness. Purely technological solutions fail without evolutionary understanding.
 
 **Sources**:
+
 - [CDC Antibiotic Resistance](https://www.cdc.gov/drugresistance/)
 - [Evolution of Antibiotic Resistance - Nature](https://www.nature.com/articles/s41579-018-0109-z)
 
@@ -460,6 +497,7 @@ Biological analysis rests on several fundamental principles:
 **Biological Analysis**:
 
 **Disease Mechanism** (Molecular Level):
+
 - **Mutation**: Single nucleotide change in β-globin gene (hemoglobin subunit)
 - **Effect**: Glutamic acid → valine substitution at position 6
 - **Consequence**: Hemoglobin polymerizes when deoxygenated, distorting red blood cells into sickle shape
@@ -467,6 +505,7 @@ Biological analysis rests on several fundamental principles:
 - **Inheritance**: Autosomal recessive (both copies mutated for disease)
 
 **CRISPR Therapy Approach**:
+
 1. **Extract patient's stem cells** from bone marrow
 2. **Use CRISPR-Cas9** to correct sickle mutation or activate fetal hemoglobin production
 3. **Expand corrected cells** in culture
@@ -475,32 +514,38 @@ Biological analysis rests on several fundamental principles:
 6. **Corrected cells produce healthy red blood cells**
 
 **Molecular Mechanisms**:
+
 - **CRISPR guide RNA** directs Cas9 enzyme to specific DNA sequence
 - **Cas9 cuts DNA** at target site
 - **Cell repair** via homology-directed repair (insert correct sequence) or non-homologous end joining
 
 **Safety Considerations**:
+
 - **Off-target effects**: Cas9 might cut unintended sites (screen for off-targets, use high-fidelity Cas9 variants)
 - **Incomplete correction**: Some cells remain uncorrected (need sufficient corrected cells for benefit)
 - **Immune response**: Possible reaction to Cas9 protein
 - **Mosaicism**: Corrected and uncorrected cells coexist
 
 **Efficacy Evidence**:
+
 - Clinical trials show elimination of pain crises and transfusion needs in treated patients
 - Long-term follow-up (5+ years) shows sustained benefit
 - High percentage of hemoglobin from corrected cells
 
 **Alternative Approaches**:
+
 - **Fetal hemoglobin reactivation**: Edit BCL11A gene to maintain fetal hemoglobin (doesn't sickle)
 - **Allogeneic transplant**: Use matched donor cells (risks rejection, graft-vs-host disease)
 
 **Ethical Considerations**:
+
 - **Somatic vs. germline**: This is somatic (only patient affected, not offspring) - less controversial
 - **Access**: Extremely expensive ($2-3 million per treatment) - justice concerns
 - **Informed consent**: Long-term risks unknown (first generation of treatment)
 - **Alternatives**: Disease management (transfusions, hydroxyurea) vs. curative intent
 
 **Recommendation**:
+
 - **Promising curative therapy** for severe sickle cell disease
 - **Somatic editing acceptable** (not heritable)
 - **Rigorous monitoring** for long-term safety
@@ -510,6 +555,7 @@ Biological analysis rests on several fundamental principles:
 **Key Insight**: CRISPR enables precise genetic correction, translating molecular understanding of disease into therapy. Safety and access challenges remain. Somatic gene therapy less ethically fraught than germline editing.
 
 **Sources**:
+
 - [CRISPR Sickle Cell Trials - NEJM](https://www.nejm.org/doi/full/10.1056/NEJMoa2031054)
 - [Gene Editing Ethics - National Academies](https://www.nationalacademies.org/our-work/human-genome-editing)
 
@@ -520,6 +566,7 @@ Biological analysis rests on several fundamental principles:
 **Ecological Analysis**:
 
 **Baseline Ecosystem**:
+
 - **Structure**: Corals create 3D habitat
 - **Biodiversity**: High species richness (fish, invertebrates, algae)
 - **Primary production**: Corals plus symbiotic zooxanthellae (photosynthetic algae)
@@ -551,6 +598,7 @@ Biological analysis rests on several fundamental principles:
    - **Anchoring, trampling**: Localized damage
 
 **Ecosystem Shift**:
+
 - **Phase shift**: Coral-dominated → algae-dominated
 - **Positive feedback**: Algae prevents coral recruitment, shift self-reinforcing
 - **Lost resilience**: System less able to recover from disturbances
@@ -558,22 +606,18 @@ Biological analysis rests on several fundamental principles:
 **Restoration Strategies**:
 
 **Immediate Interventions** (1-5 years):
+
 1. **Marine Protected Areas**: Prohibit fishing to restore herbivore populations
 2. **Coral gardening**: Grow coral fragments in nurseries, outplant to reef
 3. **Algae removal**: Manually remove macroalgae to allow coral recovery
 4. **Reduce local stressors**: Improve wastewater treatment, reduce runoff
 
-**Medium-term** (5-15 years):
-5. **Assisted evolution**: Select heat-tolerant coral genotypes for restoration
-6. **Microbiome manipulation**: Inoculate corals with beneficial microbes
-7. **Herbivore restoration**: Restock sea urchins (parrotfish proxy)
-8. **Substrate stabilization**: Create favorable settlement surfaces
+**Medium-term** (5-15 years): 5. **Assisted evolution**: Select heat-tolerant coral genotypes for restoration 6. **Microbiome manipulation**: Inoculate corals with beneficial microbes 7. **Herbivore restoration**: Restock sea urchins (parrotfish proxy) 8. **Substrate stabilization**: Create favorable settlement surfaces
 
-**Long-term** (15+ years):
-9. **Climate mitigation**: Reduce greenhouse gas emissions (global challenge)
-10. **Adaptation planning**: Accept transformed ecosystems, manage for resilience
+**Long-term** (15+ years): 9. **Climate mitigation**: Reduce greenhouse gas emissions (global challenge) 10. **Adaptation planning**: Accept transformed ecosystems, manage for resilience
 
 **Feasibility Assessment**:
+
 - **Local actions insufficient** without climate stabilization
 - **Buy time**: Restoration can slow decline, maintain some function
 - **Novel ecosystems**: May never return to historical baseline
@@ -582,6 +626,7 @@ Biological analysis rests on several fundamental principles:
 **Key Insight**: Coral reef decline results from multiple interacting stressors operating at local to global scales. Restoration requires addressing local stressors (feasible) while working toward climate solutions (difficult). Ecosystem shifts can be resistant to reversal. Conservation is cheaper than restoration; prevention better than cure.
 
 **Sources**:
+
 - [Coral Reef Alliance](https://coral.org/)
 - [NOAA Coral Reef Conservation Program](https://www.coralreef.noaa.gov/)
 - [Reef Resilience Network](https://reefresilience.org/)
@@ -593,17 +638,20 @@ Biological analysis rests on several fundamental principles:
 When using the biologist-analyst skill, follow this systematic 9-step process:
 
 ### Step 1: Define Biological Question
+
 - What biological phenomenon or process are we analyzing?
 - What level(s) of organization relevant? (Molecular, cellular, organismal, population, ecosystem)
 - Is this about structure, function, evolution, ecology, or combinations?
 
 ### Step 2: Gather Biological Context
+
 - What is known about this system/organism/process?
 - What is the evolutionary history?
 - What are relevant environmental contexts?
 - What are current research frontiers?
 
 ### Step 3: Select Appropriate Level(s) of Analysis
+
 - Molecular mechanisms?
 - Cellular processes?
 - Organismal physiology or behavior?
@@ -612,6 +660,7 @@ When using the biologist-analyst skill, follow this systematic 9-step process:
 - Multiple levels integrated?
 
 ### Step 4: Apply Relevant Theoretical Frameworks
+
 - **Evolution**: How did this trait/process evolve? What selection pressures?
 - **Structure-Function**: How does form enable function?
 - **Homeostasis**: How is regulation achieved?
@@ -619,24 +668,28 @@ When using the biologist-analyst skill, follow this systematic 9-step process:
 - **Molecular Biology**: What genes, proteins, pathways involved?
 
 ### Step 5: Consider Evolutionary Context
+
 - What is the adaptive significance?
 - Are there phylogenetic constraints?
 - Is this convergent evolution or homology?
 - How does it vary across related species?
 
 ### Step 6: Analyze Mechanisms
+
 - What are molecular mechanisms?
 - What are physiological processes?
 - What are ecological interactions?
 - How do mechanisms integrate across levels?
 
 ### Step 7: Evaluate Evidence
+
 - What experimental evidence exists?
 - What are strengths/limitations of studies?
 - Are alternative hypotheses ruled out?
 - What additional data would strengthen conclusions?
 
 ### Step 8: Consider Practical Applications
+
 - Health implications?
 - Conservation relevance?
 - Biotechnology applications?
@@ -644,6 +697,7 @@ When using the biologist-analyst skill, follow this systematic 9-step process:
 - Environmental management?
 
 ### Step 9: Communicate Findings
+
 - Explain mechanisms clearly
 - Connect levels of analysis
 - Acknowledge uncertainties
@@ -671,35 +725,42 @@ A thorough biological analysis includes:
 ## Key Resources
 
 ### General Biology
+
 - [Khan Academy Biology](https://www.khanacademy.org/science/biology)
 - [Nature Scitable](https://www.nature.com/scitable)
 - [HHMI BioInteractive](https://www.biointeractive.org/)
 
 ### Evolution
+
 - [Understanding Evolution - UC Berkeley](https://evolution.berkeley.edu/)
 - [Darwin Online](http://darwin-online.org.uk/)
 - [Tree of Life Web Project](http://tolweb.org/)
 
 ### Molecular Biology
+
 - [NCBI Resources](https://www.ncbi.nlm.nih.gov/)
 - [Molecular Biology of the Cell](https://www.ncbi.nlm.nih.gov/books/NBK21054/)
 - [PDB - Protein Data Bank](https://www.rcsb.org/)
 
 ### Ecology
+
 - [Ecological Society of America](https://www.esa.org/)
 - [Ecology.com](https://www.ecology.com/)
 
 ### Health/Medicine
+
 - [Genetics Home Reference](https://medlineplus.gov/genetics/)
 - [OMIM - Genetic Disorders](https://www.omim.org/)
 - [CDC](https://www.cdc.gov/)
 
 ### Conservation
+
 - [IUCN Red List](https://www.iucnredlist.org/)
 - [Conservation Biology - Society](https://conbio.org/)
 - [WWF](https://www.worldwildlife.org/)
 
 ### Journals
+
 - **Nature**, **Science** (top-tier)
 - **Cell**, **PLOS Biology** (molecular/cell)
 - **Evolution**, **Molecular Biology and Evolution** (evolution)
@@ -711,16 +772,19 @@ A thorough biological analysis includes:
 ## Integration with Amplihack Principles
 
 ### Ruthless Simplicity
+
 - Start with simplest explanations consistent with evidence
 - Avoid unnecessary complexity in models
 - Use Occam's Razor for competing hypotheses
 
 ### Evidence-Based Practice
+
 - Ground conclusions in empirical data
 - Distinguish facts from hypotheses
 - Update understanding as new evidence emerges
 
 ### Modular Design
+
 - Recognize hierarchical organization
 - Understand interfaces between levels
 - Emergent properties arise from interactions

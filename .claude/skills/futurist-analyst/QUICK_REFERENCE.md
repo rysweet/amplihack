@@ -62,7 +62,7 @@ Analyzes events through futures lens using scenario planning, trend analysis, an
 ## Key Thinkers
 
 - **Herman Kahn** - Scenario planning methodology (RAND, 1950s)
-- **Peter Schwartz** - *The Art of the Long View*
+- **Peter Schwartz** - _The Art of the Long View_
 - **Sohail Inayatullah** - Causal layered analysis
 - **Jim Dator** - Four futures: Growth, Collapse, Discipline, Transformation
 - **Sharpe, Hodgson, Leicester** - Three horizons framework

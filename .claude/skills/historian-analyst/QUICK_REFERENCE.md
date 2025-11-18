@@ -1,9 +1,11 @@
 # Historian Analyst - Quick Reference
 
 ## TL;DR
+
 Analyzes events through historical lens using source analysis, causation, continuity/change, and comparative history.
 
 ## When to Use
+
 - Historical context needed
 - Identifying precedents
 - Long-term patterns
@@ -11,6 +13,7 @@ Analyzes events through historical lens using source analysis, causation, contin
 - Understanding change over time
 
 ## Core Methods
+
 1. **Source Analysis** - Primary vs secondary, source criticism
 2. **Comparative History** - Cross-temporal/spatial comparison
 3. **Periodization** - Organizing historical time
@@ -18,6 +21,7 @@ Analyzes events through historical lens using source analysis, causation, contin
 5. **Continuity/Change** - What persists vs transforms
 
 ## Key Concepts
+
 - Path dependency
 - Critical junctures
 - Longue durée (Braudel)
@@ -25,6 +29,7 @@ Analyzes events through historical lens using source analysis, causation, contin
 - Contextualization
 
 ## Quick Analysis
+
 1. **Chronology** - Timeline, sequence
 2. **Sources** - Evaluate evidence
 3. **Causation** - Multiple levels/timeframes
@@ -35,9 +40,11 @@ Analyzes events through historical lens using source analysis, causation, contin
 8. **Lessons** - Tentative, limited
 
 ## Key Historians
+
 - E.H. Carr (historiography, bias)
 - Fernand Braudel (longue durée, structures)
 
 ## Resources
+
 - AHA: https://www.historians.org/
 - AHR: https://academic.oup.com/ahr

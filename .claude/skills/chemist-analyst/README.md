@@ -15,6 +15,7 @@ This skill combines organic chemistry (carbon-based molecules), inorganic chemis
 Analyzes how atomic arrangement determines molecular properties - reactivity, solubility, toxicity, stability, and physical characteristics. Structure-property relationships predict behavior.
 
 **Key Concepts:**
+
 - **Bonding** - Covalent, ionic, metallic, hydrogen bonds
 - **Molecular geometry** - Shape determines properties (VSEPR theory)
 - **Polarity** - Charge distribution affects solubility and reactions
@@ -27,6 +28,7 @@ Analyzes how atomic arrangement determines molecular properties - reactivity, so
 Identifies reaction types, predicts products, and understands reaction pathways. Explains how and why chemical transformations occur.
 
 **Reaction Types:**
+
 - **Synthesis** - Building larger molecules from smaller ones
 - **Decomposition** - Breaking molecules apart
 - **Oxidation-reduction** - Electron transfer reactions
@@ -39,12 +41,14 @@ Identifies reaction types, predicts products, and understands reaction pathways.
 Applies thermodynamic principles to predict if reactions occur (energetics, spontaneity) and kinetics to understand reaction rates and mechanisms.
 
 **Thermodynamic Analysis:**
+
 - **Gibbs free energy** - Spontaneity (ΔG < 0 → spontaneous)
 - **Enthalpy** - Heat of reaction (exothermic vs. endothermic)
 - **Entropy** - Disorder and spontaneity
 - **Equilibrium** - Balance between forward and reverse reactions
 
 **Kinetic Analysis:**
+
 - **Reaction rates** - How fast reactions proceed
 - **Activation energy** - Energy barrier to reaction
 - **Catalysis** - Lowering activation energy
@@ -55,6 +59,7 @@ Applies thermodynamic principles to predict if reactions occur (energetics, spon
 Evaluates material properties based on chemical composition and structure. Applies to metals, polymers, ceramics, semiconductors, and nanomaterials.
 
 **Material Classes:**
+
 - **Metals** - Conductivity, malleability, strength
 - **Polymers** - Plastics, elastomers, fibers
 - **Ceramics** - High-temperature stability, hardness
@@ -67,6 +72,7 @@ Evaluates material properties based on chemical composition and structure. Appli
 Analyzes chemical impacts on environment and health. Applies green chemistry principles to design safer, more sustainable chemical processes.
 
 **Green Chemistry Principles:**
+
 - **Waste prevention** - Better than cleanup
 - **Atom economy** - Maximize atoms in product
 - **Less hazardous synthesis** - Safer chemicals and processes
@@ -80,6 +86,7 @@ Analyzes chemical impacts on environment and health. Applies green chemistry pri
 Applies techniques to identify substances, quantify concentrations, and characterize materials.
 
 **Analytical Techniques:**
+
 - **Spectroscopy** - IR, NMR, UV-Vis, mass spec
 - **Chromatography** - GC, HPLC, TLC for separation
 - **Titration** - Quantitative analysis
@@ -114,6 +121,7 @@ Analyze batteries, fuel cells, solar cells, and energy materials. Understand ele
 ### Method 1: Structure-Property Analysis
 
 Predict properties from molecular structure:
+
 1. Identify functional groups and bonding patterns
 2. Determine molecular geometry and polarity
 3. Assess intermolecular forces
@@ -123,6 +131,7 @@ Predict properties from molecular structure:
 ### Method 2: Thermodynamic Feasibility
 
 Determine if reaction/process is favorable:
+
 1. Calculate/estimate ΔH (enthalpy change)
 2. Calculate/estimate ΔS (entropy change)
 3. Determine ΔG = ΔH - TΔS
@@ -132,6 +141,7 @@ Determine if reaction/process is favorable:
 ### Method 3: Reaction Mechanism Analysis
 
 Understand reaction pathways:
+
 1. Identify reactants and products
 2. Determine bond breaking and forming steps
 3. Identify intermediates and transition states
@@ -141,6 +151,7 @@ Understand reaction pathways:
 ### Method 4: Green Chemistry Assessment
 
 Evaluate sustainability:
+
 1. Calculate atom economy (product mass / reactant mass)
 2. Assess hazard of reagents and products
 3. Evaluate energy requirements
@@ -150,6 +161,7 @@ Evaluate sustainability:
 ### Method 5: Material Property Prediction
 
 Estimate material behavior:
+
 1. Identify chemical composition and structure
 2. Determine bonding type (metallic, covalent, ionic)
 3. Assess crystallinity or amorphous nature
@@ -198,6 +210,7 @@ Estimate material behavior:
 ## Best Practices
 
 **Do:**
+
 - Consider molecular structure when predicting properties
 - Apply thermodynamics to assess feasibility
 - Evaluate both reactivity and stability
@@ -208,6 +221,7 @@ Estimate material behavior:
 - Account for impurities and side reactions
 
 **Don't:**
+
 - Ignore stereochemistry (3D structure matters)
 - Assume all reactions go to completion
 - Neglect reaction conditions (temperature, pressure, solvent)

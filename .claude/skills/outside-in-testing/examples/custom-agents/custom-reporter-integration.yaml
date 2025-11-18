@@ -8,7 +8,6 @@ scenario:
     Demonstrates custom test reporting with HTML templates, metrics tracking,
     external system integration, and automated notifications on test completion.
   type: web
-
   level: 3
 
   tags: [custom-reporter, reporting, integration, advanced]
@@ -200,7 +199,6 @@ scenario:
         - "*.json"
         - "*.html"
       continue_on_failure: true
-
 # Custom Report Template Structure (detailed-report.html):
 
 # <!DOCTYPE html>

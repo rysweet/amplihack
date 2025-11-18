@@ -44,22 +44,26 @@ Analyzes technical systems through engineering frameworks using first principles
 ## Key Questions
 
 **Requirements**:
+
 - What is the technical objective? (Performance? Reliability? Cost?)
 - What are hard constraints? (Physics, budget, timeline, compatibility)
 - What are priorities when trade-offs inevitable?
 
 **System Analysis**:
+
 - How does current system work? (Architecture, bottlenecks)
 - What are usage patterns and load profiles?
 - What are theoretical limits? (Physics, algorithms, network)
 
 **Design Evaluation**:
+
 - What alternatives exist? (Include status quo)
 - How do alternatives score on multiple objectives?
 - Which designs are Pareto-optimal?
 - What are sensitivities to assumptions?
 
 **Failure Modes**:
+
 - How can each component fail?
 - What are consequences? (Severity)
 - How likely? (Occurrence)
@@ -67,6 +71,7 @@ Analyzes technical systems through engineering frameworks using first principles
 - What mitigations exist?
 
 **Scalability**:
+
 - Will design work at 10x scale?
 - Where will bottlenecks shift?
 - Is this vertical or horizontal scaling problem?
@@ -74,14 +79,17 @@ Analyzes technical systems through engineering frameworks using first principles
 ## Applied Frameworks
 
 **Requirements Engineering**:
+
 - **MoSCoW**: Must have, Should have, Could have, Won't have
 - **Types**: Functional, Performance, Interface, Operational, Constraint
 
 **Root Cause Analysis**:
+
 - **5 Whys**: Ask "Why?" repeatedly until reaching root cause
 - **Fishbone**: Organize causes by category (People, Process, Technology, Environment)
 
 **FMEA Process**:
+
 1. Identify failure modes
 2. Assess Severity (1-10)
 3. Assess Occurrence (1-10)
@@ -91,6 +99,7 @@ Analyzes technical systems through engineering frameworks using first principles
 7. Implement mitigations
 
 **Load Testing**:
+
 - **Load Test**: Performance at expected load
 - **Stress Test**: Performance at/beyond max capacity
 - **Spike Test**: Sudden load increases
@@ -112,18 +121,22 @@ Analyzes technical systems through engineering frameworks using first principles
 ## Essential Resources
 
 **Systems Engineering**:
+
 - **NASA SE Handbook**: https://www.nasa.gov/seh/
 - **INCOSE**: https://www.incose.org/
 
 **Software Architecture**:
+
 - **System Design Primer**: https://github.com/donnemartin/system-design-primer
 - **AOSA**: https://aosabook.org/
 
 **Performance**:
+
 - **Brendan Gregg**: https://www.brendangregg.com/
 - **High Scalability**: http://highscalability.com/
 
 **Reliability**:
+
 - **Google SRE**: https://sre.google/books/
 
 ## Key Principles
@@ -148,13 +161,13 @@ Can't have Consistency, Availability, Partition-tolerance simultaneously
 
 ## Design Trade-offs
 
-| Objective 1 | vs. | Objective 2 |
-|-------------|-----|-------------|
-| Performance | ← → | Cost |
-| Reliability | ← → | Simplicity |
-| Flexibility | ← → | Performance |
-| Consistency | ← → | Availability |
-| Latency | ← → | Throughput |
+| Objective 1      | vs. | Objective 2        |
+| ---------------- | --- | ------------------ |
+| Performance      | ← → | Cost               |
+| Reliability      | ← → | Simplicity         |
+| Flexibility      | ← → | Performance        |
+| Consistency      | ← → | Availability       |
+| Latency          | ← → | Throughput         |
 | Vertical Scaling | ← → | Horizontal Scaling |
 
 ## Scalability Patterns
@@ -189,14 +202,14 @@ Can't have Consistency, Availability, Partition-tolerance simultaneously
 
 ## Decision Matrix Template
 
-| Criterion | Weight | Alt 1 Score | Alt 2 Score | Alt 3 Score |
-|-----------|--------|-------------|-------------|-------------|
-| Performance | 0.3 | | | |
-| Reliability | 0.25 | | | |
-| Cost | 0.2 | | | |
-| Maintainability | 0.15 | | | |
-| Scalability | 0.1 | | | |
-| **Weighted Total** | | | | |
+| Criterion          | Weight | Alt 1 Score | Alt 2 Score | Alt 3 Score |
+| ------------------ | ------ | ----------- | ----------- | ----------- |
+| Performance        | 0.3    |             |             |             |
+| Reliability        | 0.25   |             |             |             |
+| Cost               | 0.2    |             |             |             |
+| Maintainability    | 0.15   |             |             |             |
+| Scalability        | 0.1    |             |             |             |
+| **Weighted Total** |        |             |             |             |
 
 ## Capacity Planning Rules
 

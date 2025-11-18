@@ -13,7 +13,6 @@ Philosophy:
 """
 
 import asyncio
-import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -160,9 +159,9 @@ def _format_consideration_prompt(consideration: Dict, conversation: List[Dict]) 
     # Simple inline prompt (no template file needed for fail-open behavior)
     prompt = f"""You are analyzing a Claude Code session to determine if the following consideration is satisfied:
 
-**Consideration**: {consideration['question']}
-**Description**: {consideration.get('description', consideration.get('question', ''))}
-**Category**: {consideration.get('category', 'General')}
+**Consideration**: {consideration["question"]}
+**Description**: {consideration.get("description", consideration.get("question", ""))}
+**Category**: {consideration.get("category", "General")}
 
 **Session Conversation** ({len(conversation)} messages):
 {conv_summary}
@@ -274,9 +273,7 @@ if __name__ == "__main__":
     import argparse
     import json
 
-    parser = argparse.ArgumentParser(
-        description="Test Claude-powered consideration analysis"
-    )
+    parser = argparse.ArgumentParser(description="Test Claude-powered consideration analysis")
     parser.add_argument("transcript_file", type=Path, help="Transcript JSON file")
     parser.add_argument("consideration_id", type=str, help="Consideration ID to check")
     parser.add_argument(

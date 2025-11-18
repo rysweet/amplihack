@@ -5,6 +5,7 @@ Comprehensive knowledge of all 23 GoF design patterns with progressive disclosur
 ## Quick Start
 
 This skill auto-activates when you mention:
+
 - Pattern names (Factory Method, Observer, Strategy, etc.)
 - "design pattern", "which pattern should I use"
 - Problems needing structural solutions
@@ -21,6 +22,7 @@ This skill auto-activates when you mention:
 This skill follows amplihack's ruthless simplicity - it helps you decide if patterns are appropriate, not encourage their use.
 
 **Key Principles**:
+
 - Start with simplest solution that works
 - YAGNI: Don't add patterns "for future flexibility"
 - Patterns need ≥2 actual use cases RIGHT NOW
@@ -40,6 +42,7 @@ This skill follows amplihack's ruthless simplicity - it helps you decide if patt
 ## Pattern Coverage
 
 **All 23 GoF Patterns**:
+
 - 5 Creational: Factory Method, Abstract Factory, Builder, Prototype, Singleton
 - 7 Structural: Adapter, Bridge, Composite, Decorator, Facade, Flyweight, Proxy
 - 11 Behavioral: Chain of Responsibility, Command, Interpreter, Iterator, Mediator, Memento, Observer, State, Strategy, Template Method, Visitor
@@ -52,6 +55,7 @@ This skill follows amplihack's ruthless simplicity - it helps you decide if patt
 ## Usage Examples
 
 See `examples/` directory for:
+
 - Quick pattern lookups
 - Implementation guides
 - Pattern recognition

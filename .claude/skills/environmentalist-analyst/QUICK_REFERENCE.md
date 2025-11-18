@@ -7,6 +7,7 @@ Analyze problems through environmental lenses: life cycle impacts, climate conse
 ## When to Use
 
 **Perfect For:**
+
 - Technology environmental footprint assessment
 - Sustainability strategy and planning
 - Climate impact evaluation and reduction
@@ -18,6 +19,7 @@ Analyze problems through environmental lenses: life cycle impacts, climate conse
 - Circular economy transitions
 
 **Skip If:**
+
 - Environmental impacts are genuinely negligible
 - Looking for pure social/cultural analysis
 - Focused only on immediate financial returns
@@ -28,6 +30,7 @@ Analyze problems through environmental lenses: life cycle impacts, climate conse
 ### Planetary Boundaries
 
 Nine critical Earth system boundaries humanity must stay within:
+
 1. Climate change
 2. Biodiversity loss
 3. Nitrogen/phosphorus cycles
@@ -43,6 +46,7 @@ Ask: Does this keep us within safe operating space?
 ### Life Cycle Thinking
 
 Trace environmental impacts from cradle to grave:
+
 - **Extraction**: Raw material sourcing
 - **Production**: Manufacturing and processing
 - **Distribution**: Transportation and logistics
@@ -52,6 +56,7 @@ Trace environmental impacts from cradle to grave:
 ### Circular Economy
 
 Transform linear (take-make-waste) to circular (regenerative):
+
 - Design out waste and pollution
 - Keep products and materials in use
 - Regenerate natural systems
@@ -60,6 +65,7 @@ Transform linear (take-make-waste) to circular (regenerative):
 ### Environmental Justice
 
 Assess who benefits and who bears environmental burdens:
+
 - Pollution exposure disparities
 - Access to environmental amenities
 - Climate vulnerability and displacement
@@ -183,6 +189,7 @@ Solving one environmental problem can create another (e.g., biofuels competing w
 ## Red Flags
 
 **Warning Signs:**
+
 - Ignoring scope 3 emissions (often 70-90% of footprint)
 - Focusing only on one metric (e.g., carbon) while ignoring others
 - No consideration of end-of-life
@@ -193,6 +200,7 @@ Solving one environmental problem can create another (e.g., biofuels competing w
 ## Integration Tips
 
 Combine with other skills:
+
 - **Systems Thinker** - Enhanced systems dynamics
 - **Economist** - Full-cost accounting and natural capital
 - **Indigenous Leader** - Traditional ecological knowledge
@@ -202,6 +210,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Full life cycle impacts are mapped
 - Climate footprint is quantified (Scope 1, 2, 3)
 - Environmental justice dimensions are addressed

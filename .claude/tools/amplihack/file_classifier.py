@@ -25,6 +25,7 @@ class FileCategory(Enum):
         PRESERVE_IF_MODIFIED: User-customizable files, preserve if modified
         NEVER_UPDATE: User-generated content that must never be updated
     """
+
     ALWAYS_UPDATE = "always"
     PRESERVE_IF_MODIFIED = "preserve"
     NEVER_UPDATE = "never"
@@ -75,26 +76,26 @@ def classify_file(file_path: Union[str, Path]) -> FileCategory:
     parts = path.parts
 
     # Remove leading .claude/ if present for consistent matching
-    if parts and parts[0] == '.claude':
+    if parts and parts[0] == ".claude":
         parts = parts[1:]
 
     # Convert back to string path for pattern matching
     normalized = str(Path(*parts)) if parts else str(path)
-    normalized = normalized.replace('\\', '/')  # Ensure forward slashes
+    normalized = normalized.replace("\\", "/")  # Ensure forward slashes
 
     # NEVER_UPDATE: User-generated content
     never_update_patterns = [
-        'context/DISCOVERIES.md',
-        'context/PROJECT.md',
-        'docs/',
-        'runtime/',
-        'ai_working/',
-        'scenarios/',
-        'skills/',
+        "context/DISCOVERIES.md",
+        "context/PROJECT.md",
+        "docs/",
+        "runtime/",
+        "ai_working/",
+        "scenarios/",
+        "skills/",
     ]
 
     for pattern in never_update_patterns:
-        if pattern.endswith('/'):
+        if pattern.endswith("/"):
             # Directory pattern - check if path starts with it
             if normalized.startswith(pattern) or f"/{pattern}" in f"/{normalized}":
                 return FileCategory.NEVER_UPDATE
@@ -105,15 +106,15 @@ def classify_file(file_path: Union[str, Path]) -> FileCategory:
 
     # PRESERVE_IF_MODIFIED: User-customizable framework files
     preserve_patterns = [
-        'workflow/DEFAULT_WORKFLOW.md',
-        'context/USER_PREFERENCES.md',
-        'context/USER_REQUIREMENT_PRIORITY.md',
-        'commands/',
-        'tools/amplihack/hooks/',
+        "workflow/DEFAULT_WORKFLOW.md",
+        "context/USER_PREFERENCES.md",
+        "context/USER_REQUIREMENT_PRIORITY.md",
+        "commands/",
+        "tools/amplihack/hooks/",
     ]
 
     for pattern in preserve_patterns:
-        if pattern.endswith('/'):
+        if pattern.endswith("/"):
             # Directory pattern
             if normalized.startswith(pattern) or f"/{pattern}" in f"/{normalized}":
                 return FileCategory.PRESERVE_IF_MODIFIED
@@ -124,17 +125,17 @@ def classify_file(file_path: Union[str, Path]) -> FileCategory:
 
     # ALWAYS_UPDATE: Core framework infrastructure
     always_update_patterns = [
-        'agents/amplihack/',
-        'tools/amplihack/',  # General tools (except hooks which were already caught)
-        'context/PHILOSOPHY.md',
-        'context/PATTERNS.md',
-        'context/TRUST.md',
-        'context/AGENT_INPUT_VALIDATION.md',
-        'workflow/',
+        "agents/amplihack/",
+        "tools/amplihack/",  # General tools (except hooks which were already caught)
+        "context/PHILOSOPHY.md",
+        "context/PATTERNS.md",
+        "context/TRUST.md",
+        "context/AGENT_INPUT_VALIDATION.md",
+        "workflow/",
     ]
 
     for pattern in always_update_patterns:
-        if pattern.endswith('/'):
+        if pattern.endswith("/"):
             # Directory pattern
             if normalized.startswith(pattern) or f"/{pattern}" in f"/{normalized}":
                 # Special case: tools/amplihack/hooks/ was already handled above
@@ -165,11 +166,8 @@ def get_category_description(category: FileCategory) -> str:
         Core framework file - always updated to match repository version
     """
     descriptions = {
-        FileCategory.ALWAYS_UPDATE:
-            "Core framework file - always updated to match repository version",
-        FileCategory.PRESERVE_IF_MODIFIED:
-            "User-customizable file - preserved if locally modified",
-        FileCategory.NEVER_UPDATE:
-            "User content - never touched by framework updates",
+        FileCategory.ALWAYS_UPDATE: "Core framework file - always updated to match repository version",
+        FileCategory.PRESERVE_IF_MODIFIED: "User-customizable file - preserved if locally modified",
+        FileCategory.NEVER_UPDATE: "User content - never touched by framework updates",
     }
     return descriptions[category]

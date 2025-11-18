@@ -51,6 +51,7 @@ Narrative analysis rests on fundamental principles:
 **Origin**: Aristotelian poetics, refined through centuries of dramatic tradition
 
 **Core Principles**:
+
 - Stories naturally organize into beginning, middle, and end
 - Each act serves distinct narrative function
 - Turning points propel story forward
@@ -60,6 +61,7 @@ Narrative analysis rests on fundamental principles:
 **Three Acts**:
 
 **Act I: Setup (25%)**
+
 - Establish status quo and normal world
 - Introduce protagonist and core desires
 - Present inciting incident that disrupts equilibrium
@@ -67,6 +69,7 @@ Narrative analysis rests on fundamental principles:
 - First Act Turn: Point of no return
 
 **Act II: Confrontation (50%)**
+
 - Protagonist pursues goal, faces obstacles
 - Complications escalate, stakes rise
 - Midpoint: Major reversal or revelation
@@ -74,68 +77,69 @@ Narrative analysis rests on fundamental principles:
 - Second Act Turn: Final push toward resolution
 
 **Act III: Resolution (25%)**
+
 - Climax: Confrontation with central conflict
 - Protagonist transformed or defeated
 - New equilibrium established
 - Themes crystallized
 
 **Key Insights**:
+
 - Provides roadmap for narrative development
 - Identifies where story is in its arc
 - Reveals whether narrative is complete or truncated
 - Shows how tension builds and releases
 
 **When to Apply**:
+
 - Leadership journeys (rise and fall narratives)
 - Organizational transformations
 - Crisis management stories
 - Policy initiatives with clear beginnings/ends
 
 **Sources**:
+
 - [Three-Act Structure - Wikipedia](https://en.wikipedia.org/wiki/Three-act_structure)
-- Syd Field, *Screenplay: The Foundations of Screenwriting*
+- Syd Field, _Screenplay: The Foundations of Screenwriting_
 
 ### Framework 2: Hero's Journey (Monomyth)
 
-**Origin**: Joseph Campbell's *The Hero with a Thousand Faces* (1949)
+**Origin**: Joseph Campbell's _The Hero with a Thousand Faces_ (1949)
 
 **Core Principle**: Stories across cultures follow common pattern of departure, initiation, return
 
 **Twelve Stages**:
 
 **Act I: Departure**
+
 1. Ordinary World: Hero's normal life
 2. Call to Adventure: Challenge or quest appears
 3. Refusal of the Call: Hero hesitates
 4. Meeting the Mentor: Guidance received
 5. Crossing the Threshold: Hero commits
 
-**Act II: Initiation**
-6. Tests, Allies, Enemies: Hero faces challenges
-7. Approach to Inmost Cave: Preparation for ordeal
-8. Ordeal: Supreme challenge, confronting death/fear
-9. Reward: Hero seizes treasure or knowledge
+**Act II: Initiation** 6. Tests, Allies, Enemies: Hero faces challenges 7. Approach to Inmost Cave: Preparation for ordeal 8. Ordeal: Supreme challenge, confronting death/fear 9. Reward: Hero seizes treasure or knowledge
 
-**Act III: Return**
-10. The Road Back: Journey home begins
-11. Resurrection: Final test, transformation complete
-12. Return with Elixir: Hero brings wisdom/gift to community
+**Act III: Return** 10. The Road Back: Journey home begins 11. Resurrection: Final test, transformation complete 12. Return with Elixir: Hero brings wisdom/gift to community
 
 **Key Insights**:
+
 - Universal pattern reflects human psychology
 - Transformation through trial is core human story
 - Mentors, allies, and tests serve archetypal functions
 - True heroism involves bringing wisdom back to community
 
 **When to Apply**:
+
 - Entrepreneurial journeys
 - Leadership transformations
 - Social movements
 - Personal and organizational reinventions
 
 **Sources**:
-- Joseph Campbell, *The Hero with a Thousand Faces* (1949)
-- Christopher Vogler, *The Writer's Journey* (1992)
+
+- Joseph Campbell, _The Hero with a Thousand Faces_ (1949)
+- Christopher Vogler, _The Writer's Journey_ (1992)
 
 ### Framework 3: Character Arc Theory
 
@@ -144,36 +148,41 @@ Narrative analysis rests on fundamental principles:
 **Three Arc Types**:
 
 **Positive/Change Arc**:
+
 - Character overcomes flaws, grows, achieves goal
 - Truth replaces lie they believe
 - Internal and external goals align
 - Example: Scrooge's redemption
 
 **Negative/Fall Arc**:
+
 - Character succumbs to flaws, degrades, fails
 - Lie they believe deepens
 - Corruption or destruction
 - Example: Macbeth's ambition leads to downfall
 
 **Flat Arc**:
+
 - Character already embodies truth
 - Remains steadfast in values
 - Transforms world around them instead
 - Example: Atticus Finch's moral constancy
 
 **Key Insights**:
+
 - Character change (or refusal to change) is story's heart
 - Internal journey mirrors external events
 - Flaws and desires drive choices
 - Transformation must be earned through trials
 
 **When to Apply**:
+
 - Leadership analysis (growth or corruption)
 - Organizational culture shifts
 - Personal transformation stories
 - Evaluating whether change is authentic or superficial
 
-**Source**: K.M. Weiland, *Creating Character Arcs* (2016)
+**Source**: K.M. Weiland, _Creating Character Arcs_ (2016)
 
 ### Framework 4: Dramatic Conflict Types
 
@@ -217,6 +226,7 @@ Narrative analysis rests on fundamental principles:
    - Example: Investigation, discovery narratives
 
 **Key Insights**:
+
 - Identifying primary conflict clarifies what's at stake
 - Multiple conflicts can operate simultaneously
 - External conflicts often reflect internal ones
@@ -229,28 +239,34 @@ Narrative analysis rests on fundamental principles:
 **Point of View Options**:
 
 **First Person**: "I" narrator, subjective, limited knowledge
+
 - Intimate, unreliable narrator possible
 - Example: Memoir, insider account
 
 **Second Person**: "You" narrator, immersive, rare
+
 - Directly implicates reader
 - Example: Choose-your-own-adventure effect
 
 **Third Person Limited**: "He/she," one character's perspective
+
 - Balanced intimacy and objectivity
 - Most common in fiction
 
 **Third Person Omniscient**: "He/she," all-knowing narrator
+
 - Access to all minds, broader view
 - Godlike perspective
 
 **Key Insights**:
+
 - Who tells the story determines what we know
 - Perspective reveals bias and limits
 - Unreliable narrators shape (mis)understanding
 - Omniscient view provides context but loses intimacy
 
 **When to Apply**:
+
 - Media analysis (whose story is told?)
 - Organizational narratives (management vs. worker perspective)
 - Historical events (victor's story vs. loser's)
@@ -262,6 +278,7 @@ Narrative analysis rests on fundamental principles:
 ### Framework 1: Story Spine (Narrative Skeleton)
 
 **Structure** (Kenn Adams):
+
 - Once upon a time...
 - And every day...
 - Until one day...
@@ -273,6 +290,7 @@ Narrative analysis rests on fundamental principles:
 **Purpose**: Reduces any story to essential narrative beats
 
 **Analysis Questions**:
+
 - What was the status quo?
 - What disrupted it?
 - What chain of consequences followed?
@@ -284,6 +302,7 @@ Narrative analysis rests on fundamental principles:
 ### Framework 2: Freytag's Pyramid (Dramatic Arc)
 
 **Five-Part Structure**:
+
 1. **Exposition**: Setup, characters, context
 2. **Rising Action**: Complications, escalating tension
 3. **Climax**: Turning point, highest tension
@@ -301,6 +320,7 @@ Narrative analysis rests on fundamental principles:
 **Formula**: Character wants X, but Y prevents it
 
 **Elements**:
+
 - **Desire/Goal**: What character wants (external)
 - **Need**: What character actually needs (internal)
 - **Obstacle**: What prevents achievement
@@ -309,6 +329,7 @@ Narrative analysis rests on fundamental principles:
 - **Flaw**: Character weakness that complicates journey
 
 **Analysis Process**:
+
 1. Identify protagonist's stated goal
 2. Identify deeper psychological need
 3. Map obstacles (external and internal)
@@ -323,6 +344,7 @@ Narrative analysis rests on fundamental principles:
 **Theme**: Central idea or universal truth explored by story
 
 **Common Themes**:
+
 - Power and corruption
 - Redemption and forgiveness
 - Ambition and consequence
@@ -334,6 +356,7 @@ Narrative analysis rests on fundamental principles:
 **Motif**: Recurring element (image, phrase, symbol) that reinforces theme
 
 **Analysis**:
+
 - What deeper meaning do events convey?
 - What patterns recur across narrative?
 - What symbols carry thematic weight?
@@ -344,18 +367,21 @@ Narrative analysis rests on fundamental principles:
 ### Framework 5: Narrative Coherence and Plausibility
 
 **Coherence Criteria**:
+
 - **Internal Consistency**: Do events logically follow from previous events?
 - **Character Consistency**: Do characters act according to established traits and motivations?
 - **Causal Logic**: Are cause-effect relationships clear and believable?
 - **Thematic Unity**: Do elements serve coherent themes?
 
 **Plausibility**:
+
 - Does this ring true psychologically?
 - Are motivations believable?
 - Are coincidences excessive?
 - Does resolution feel earned?
 
 **Red Flags**:
+
 - Deus ex machina (contrived solutions)
 - Plot holes (inconsistencies)
 - Character acting out of character
@@ -372,6 +398,7 @@ Narrative analysis rests on fundamental principles:
 **Definition**: Careful, detailed analysis of text to understand how meaning is created
 
 **Process**:
+
 1. Read/observe events multiple times
 2. Note language, imagery, symbolism
 3. Identify patterns and repetitions
@@ -384,6 +411,7 @@ Narrative analysis rests on fundamental principles:
 ### Method 2: Character Study
 
 **Dimensions of Character**:
+
 - **Backstory**: History shaping character
 - **Motivation**: Conscious and unconscious drives
 - **Values**: Core beliefs and principles
@@ -394,6 +422,7 @@ Narrative analysis rests on fundamental principles:
 - **Arc**: Transformation or stasis
 
 **Process**:
+
 1. Gather biographical information
 2. Identify stated goals and hidden needs
 3. Analyze past actions for patterns
@@ -406,6 +435,7 @@ Narrative analysis rests on fundamental principles:
 ### Method 3: Plot Mapping
 
 **Elements to Map**:
+
 - Inciting incident
 - Rising action beats
 - Midpoint reversal
@@ -423,6 +453,7 @@ Narrative analysis rests on fundamental principles:
 ### Method 4: Thematic Analysis
 
 **Process**:
+
 1. Identify recurring ideas, questions, concerns
 2. Note symbolic elements and their meanings
 3. Recognize contrasts and oppositions (freedom/control, tradition/change)
@@ -438,6 +469,7 @@ Narrative analysis rests on fundamental principles:
 **Approach**: Compare multiple versions or parallel stories
 
 **Comparison Dimensions**:
+
 - How do different narrators tell same events?
 - What elements are emphasized or omitted?
 - Whose perspective is privileged?
@@ -452,6 +484,7 @@ Narrative analysis rests on fundamental principles:
 ### What to Examine
 
 **Narrative Structure**:
+
 - Where is this story in its arc (setup, confrontation, resolution)?
 - What was the inciting incident?
 - What are major turning points?
@@ -459,6 +492,7 @@ Narrative analysis rests on fundamental principles:
 - How complete is the story?
 
 **Characters and Motivations**:
+
 - Who are the protagonists and antagonists?
 - What do characters want (external goals)?
 - What do characters need (internal)?
@@ -466,6 +500,7 @@ Narrative analysis rests on fundamental principles:
 - How do characters change?
 
 **Conflict and Stakes**:
+
 - What is the central conflict?
 - What are the stakes (what happens if protagonist fails)?
 - What obstacles stand in the way?
@@ -473,6 +508,7 @@ Narrative analysis rests on fundamental principles:
 - How is tension building or releasing?
 
 **Theme and Meaning**:
+
 - What deeper ideas are being explored?
 - What questions does this raise?
 - What patterns recur?
@@ -480,6 +516,7 @@ Narrative analysis rests on fundamental principles:
 - What is this story really about?
 
 **Coherence and Plausibility**:
+
 - Does the narrative hold together?
 - Are motivations believable?
 - Are events causally connected?
@@ -489,12 +526,14 @@ Narrative analysis rests on fundamental principles:
 ### Questions to Ask
 
 **Structural Questions**:
+
 - What is the story spine (setup → disruption → consequences → resolution)?
 - Where are we in the three-act structure?
 - What was the point of no return?
 - What is the climax?
 
 **Character Questions**:
+
 - Who is the protagonist of this story?
 - What does the protagonist want?
 - What does the protagonist need (internally)?
@@ -503,6 +542,7 @@ Narrative analysis rests on fundamental principles:
 - Who are the supporting characters and what roles do they play?
 
 **Conflict Questions**:
+
 - What is the core conflict?
 - What are the stakes?
 - What obstacles prevent resolution?
@@ -510,18 +550,21 @@ Narrative analysis rests on fundamental principles:
 - How does conflict escalate?
 
 **Thematic Questions**:
+
 - What is this story really about?
 - What deeper truths emerge?
 - What universal human experiences does this touch?
 - What does this say about power, identity, belonging, sacrifice, etc.?
 
 **Perspective Questions**:
+
 - Whose story is being told?
 - Whose perspective is privileged?
 - What would this look like from another viewpoint?
 - Who is the narrator and are they reliable?
 
 **Plausibility Questions**:
+
 - Do character motivations make sense?
 - Are coincidences excessive?
 - Does the resolution feel earned?
@@ -530,24 +573,28 @@ Narrative analysis rests on fundamental principles:
 ### Factors to Consider
 
 **Narrative Factors**:
+
 - Story structure and pacing
 - Turning points and reversals
 - Dramatic tension
 - Causality and logic
 
 **Character Factors**:
+
 - Depth and complexity
 - Consistency and evolution
 - Motivation and desire
 - Flaws and contradictions
 
 **Thematic Factors**:
+
 - Central ideas and questions
 - Symbolic elements
 - Recurring patterns
 - Universal resonance
 
 **Context Factors**:
+
 - Cultural moment
 - Genre conventions
 - Audience expectations
@@ -556,6 +603,7 @@ Narrative analysis rests on fundamental principles:
 ### Narrative Parallels to Consider
 
 **Classic Story Types**:
+
 - Hero's journey (transformation through trial)
 - Tragedy (fatal flaw leads to downfall)
 - Comedy (obstacles overcome, harmony restored)
@@ -568,24 +616,28 @@ Narrative analysis rests on fundamental principles:
 ### Implications to Explore
 
 **Narrative Implications**:
+
 - What does story structure reveal about meaning?
 - Is narrative complete or ongoing?
 - What would satisfying resolution require?
 - What narrative patterns does this exemplify?
 
 **Character Implications**:
+
 - What do character choices reveal about values?
 - Is transformation authentic or superficial?
 - What drives behavior?
 - What would redemption require?
 
 **Thematic Implications**:
+
 - What universal truths emerge?
 - What does this say about human nature?
 - What cultural values are reinforced or challenged?
 - What lessons does the narrative offer?
 
 **Strategic Implications**:
+
 - How should protagonists navigate their arc?
 - What narrative framing serves goals?
 - How can story be shaped going forward?
@@ -598,12 +650,14 @@ Narrative analysis rests on fundamental principles:
 ### Step 1: Identify the Story and Its Stage
 
 **Actions**:
+
 - Clearly state what narrative is being analyzed
 - Determine where story is in its arc (beginning, middle, end)
 - Identify genre or type of story
 - Establish timeline and key events
 
 **Outputs**:
+
 - Story summary
 - Current stage in narrative arc
 - Genre identification
@@ -611,6 +665,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 2: Map the Plot Structure
 
 **Actions**:
+
 - Identify inciting incident (what disrupted status quo)
 - Map rising action (escalating complications)
 - Locate midpoint (major reversal or revelation)
@@ -619,11 +674,13 @@ Narrative analysis rests on fundamental principles:
 - Assess resolution (if any)
 
 **Tools**:
+
 - Three-act structure
 - Freytag's pyramid
 - Story spine
 
 **Outputs**:
+
 - Plot map with major beats
 - Identification of turning points
 - Assessment of narrative completeness
@@ -631,6 +688,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 3: Analyze Characters
 
 **Actions**:
+
 - Identify protagonist(s) and antagonist(s)
 - Map character desires (external goals)
 - Identify character needs (internal)
@@ -639,6 +697,7 @@ Narrative analysis rests on fundamental principles:
 - Track character arcs (change or stasis)
 
 **Character Dimensions**:
+
 - Backstory
 - Motivation
 - Values
@@ -646,6 +705,7 @@ Narrative analysis rests on fundamental principles:
 - Transformation
 
 **Outputs**:
+
 - Character profiles
 - Motivation map
 - Arc assessment
@@ -653,6 +713,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 4: Identify Core Conflicts
 
 **Actions**:
+
 - Determine primary conflict type(s)
 - Identify what's at stake
 - Map obstacles preventing resolution
@@ -660,6 +721,7 @@ Narrative analysis rests on fundamental principles:
 - Assess how conflict escalates or resolves
 
 **Conflict Types**:
+
 - Character vs. Character
 - Character vs. Self
 - Character vs. Society
@@ -668,6 +730,7 @@ Narrative analysis rests on fundamental principles:
 - Character vs. Fate
 
 **Outputs**:
+
 - Conflict identification
 - Stakes assessment
 - Obstacle mapping
@@ -675,6 +738,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 5: Extract Themes and Meaning
 
 **Actions**:
+
 - Identify recurring ideas, questions, symbols
 - Recognize thematic oppositions (freedom/control, etc.)
 - Synthesize central themes
@@ -682,6 +746,7 @@ Narrative analysis rests on fundamental principles:
 - Consider what story is "really about"
 
 **Common Themes**:
+
 - Power and corruption
 - Redemption
 - Ambition
@@ -690,6 +755,7 @@ Narrative analysis rests on fundamental principles:
 - Belonging
 
 **Outputs**:
+
 - Thematic analysis
 - Symbolic interpretation
 - Deeper meaning synthesis
@@ -697,6 +763,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 6: Evaluate Narrative Coherence
 
 **Actions**:
+
 - Check internal consistency
 - Assess character consistency
 - Evaluate causal logic
@@ -705,12 +772,14 @@ Narrative analysis rests on fundamental principles:
 - Note any deus ex machina elements
 
 **Coherence Criteria**:
+
 - Logical causality
 - Character consistency
 - Plausible motivation
 - Earned outcomes
 
 **Outputs**:
+
 - Coherence assessment
 - Identification of weaknesses
 - Plausibility evaluation
@@ -718,6 +787,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 7: Consider Perspective and Voice
 
 **Actions**:
+
 - Identify whose story is being told
 - Recognize narrator's perspective
 - Assess reliability of narrator
@@ -725,12 +795,14 @@ Narrative analysis rests on fundamental principles:
 - Evaluate what is emphasized or omitted
 
 **Perspective Questions**:
+
 - Who controls the narrative?
 - What viewpoints are privileged?
 - What would antagonist's version be?
 - How does perspective shape understanding?
 
 **Outputs**:
+
 - Perspective analysis
 - Alternative viewpoints
 - Bias identification
@@ -738,6 +810,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 8: Apply Comparative Narrative Analysis
 
 **Actions**:
+
 - Identify analogous narratives (historical, fictional)
 - Compare story structures
 - Recognize archetypal patterns
@@ -745,12 +818,14 @@ Narrative analysis rests on fundamental principles:
 - Learn from similar narratives
 
 **Comparison Types**:
+
 - Hero's journey parallels
 - Tragedy patterns
 - Redemption arcs
 - Rise and fall narratives
 
 **Outputs**:
+
 - Narrative parallels
 - Pattern recognition
 - Comparative insights
@@ -758,6 +833,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 9: Assess Narrative Trajectory
 
 **Actions**:
+
 - Determine if story is complete or ongoing
 - Project possible endings
 - Identify what resolution would require
@@ -765,12 +841,14 @@ Narrative analysis rests on fundamental principles:
 - Assess likelihood of different outcomes
 
 **Trajectory Questions**:
+
 - Where is this story headed?
 - What endings are possible?
 - What would satisfying resolution require?
 - What choice points remain?
 
 **Outputs**:
+
 - Trajectory assessment
 - Possible endings
 - Resolution requirements
@@ -778,6 +856,7 @@ Narrative analysis rests on fundamental principles:
 ### Step 10: Synthesize Narrative Insights
 
 **Actions**:
+
 - Integrate all analytical dimensions
 - Provide clear interpretation
 - Identify key insights about motivations, stakes, trajectory
@@ -785,6 +864,7 @@ Narrative analysis rests on fundamental principles:
 - Draw lessons or implications
 
 **Synthesis Questions**:
+
 - What does narrative analysis reveal?
 - What are characters really after?
 - What's truly at stake?
@@ -792,6 +872,7 @@ Narrative analysis rests on fundamental principles:
 - What can we learn?
 
 **Outputs**:
+
 - Comprehensive narrative interpretation
 - Key insights
 - Strategic implications
@@ -807,34 +888,39 @@ Narrative analysis rests on fundamental principles:
 **Analysis**:
 
 **Step 1 - Story Identification**:
+
 - Story: CEO's leadership arc, crisis point
 - Stage: Late Act II (crisis/dark night) or early Act III (climax approaching)
 - Genre: Leadership rise-and-fall or redemption narrative
 
 **Step 2 - Plot Structure**:
-- *Inciting Incident*: Public revelation of ethical violation
-- *Rising Action*: Media scrutiny, internal investigations, board meetings
-- *Midpoint* (earlier): Peak of CEO's power and success
-- *Crisis/Dark Night*: Current moment—reputation in ruins, allies deserting, future uncertain
-- *Climax* (approaching): Board vote, resignation decision, or public statement
-- *Resolution* (unknown): Departure, redemption, or new chapter
+
+- _Inciting Incident_: Public revelation of ethical violation
+- _Rising Action_: Media scrutiny, internal investigations, board meetings
+- _Midpoint_ (earlier): Peak of CEO's power and success
+- _Crisis/Dark Night_: Current moment—reputation in ruins, allies deserting, future uncertain
+- _Climax_ (approaching): Board vote, resignation decision, or public statement
+- _Resolution_ (unknown): Departure, redemption, or new chapter
 
 **Step 3 - Character Analysis**:
-- *Protagonist*: CEO
-- *Desire* (external): Retain position, restore reputation
-- *Need* (internal): Reckon with ethical choices, find authentic identity beyond role
-- *Flaw*: Hubris, ethical blind spot, isolation at top
-- *Arc Type*: TBD—Positive (redeemed through acknowledgment and change) or Negative (fall due to inability to change)
-- *Supporting Cast*: Board (gatekeepers), loyal lieutenants, critics, family
+
+- _Protagonist_: CEO
+- _Desire_ (external): Retain position, restore reputation
+- _Need_ (internal): Reckon with ethical choices, find authentic identity beyond role
+- _Flaw_: Hubris, ethical blind spot, isolation at top
+- _Arc Type_: TBD—Positive (redeemed through acknowledgment and change) or Negative (fall due to inability to change)
+- _Supporting Cast_: Board (gatekeepers), loyal lieutenants, critics, family
 
 **Step 4 - Core Conflicts**:
-- *Primary*: Character vs. Self (internal reckoning with choices and values)
-- *Secondary*: Character vs. Society (public judgment, media)
-- *Tertiary*: Character vs. Character (board members, activist shareholders)
-- *Stakes*: Career, legacy, identity, company future
-- *Obstacles*: Past actions, public opinion, board skepticism, own ego
+
+- _Primary_: Character vs. Self (internal reckoning with choices and values)
+- _Secondary_: Character vs. Society (public judgment, media)
+- _Tertiary_: Character vs. Character (board members, activist shareholders)
+- _Stakes_: Career, legacy, identity, company future
+- _Obstacles_: Past actions, public opinion, board skepticism, own ego
 
 **Step 5 - Themes**:
+
 - Power and corruption (how power led to ethical compromise)
 - Redemption (can CEO acknowledge wrongdoing and change?)
 - Identity (who is CEO without the title and power?)
@@ -842,35 +928,40 @@ Narrative analysis rests on fundamental principles:
 - Accountability (facing consequences)
 
 **Step 6 - Coherence**:
+
 - Motivation: Believable—CEO wants to preserve achievement and identity
 - Causality: Clear—past choices → exposure → crisis
 - Character consistency: Does CEO have capacity for change? Prior behavior suggests not, but crisis can catalyze transformation
 - Plausibility: High—familiar pattern
 
 **Step 7 - Perspective**:
-- *CEO's perspective*: Sees self as visionary unfairly attacked
-- *Board's perspective*: Sees CEO as liability, violation of trust
-- *Public's perspective*: Betrayal by powerful figure
-- *Employees' perspective*: Confusion, disappointment, concern for company
+
+- _CEO's perspective_: Sees self as visionary unfairly attacked
+- _Board's perspective_: Sees CEO as liability, violation of trust
+- _Public's perspective_: Betrayal by powerful figure
+- _Employees' perspective_: Confusion, disappointment, concern for company
 - Note: Whose story gets told shapes outcome
 
 **Step 8 - Narrative Parallels**:
+
 - Classical tragedy (Macbeth, hubris leads to downfall)
 - Redemption arc (Scrooge, transformation through crisis)
 - Hero's journey (ordeal stage—will CEO emerge transformed?)
 - Real-world parallels: Other CEO scandals (outcomes vary)
 
 **Step 9 - Trajectory Assessment**:
-- *Possible Endings*:
+
+- _Possible Endings_:
   - **Tragedy**: CEO refuses accountability, fights, loses everything
   - **Redemption**: CEO acknowledges failure, steps down with dignity, works to make amends, returns later transformed
   - **Pyrrhic Victory**: CEO survives but reputation permanently damaged
   - **Escape/Avoidance**: CEO resigns, moves on without real reckoning
-- *Resolution Requirements*:
+- _Resolution Requirements_:
   - For redemption: Genuine acknowledgment, accountability, changed behavior, time
   - For tragedy: Continued denial, blame others, isolation
 
 **Step 10 - Synthesis**:
+
 - This is a classic leadership crisis narrative at Act II's dark night
 - CEO faces choice: Transform (positive arc) or fall (negative arc)
 - Core conflict is internal—can CEO see past ego and role to confront ethical failure?
@@ -887,73 +978,82 @@ Narrative analysis rests on fundamental principles:
 **Analysis**:
 
 **Step 1 - Story Identification**:
+
 - Story: Organizational transformation journey
 - Stage: Mid-Act II (complications escalating)
 - Genre: Quest narrative or cautionary tale
 
 **Step 2 - Plot Structure**:
-- *Status Quo*: Traditional company, analog processes, established culture
-- *Inciting Incident*: Market pressures, new CEO declares "digital transformation"
-- *Rising Action*: New hires, investments, pilot projects, cultural resistance
-- *Midpoint*: Six months in, early pilots mixed, excitement waning
-- *Current*: Year two, divided leadership, employees confused, results unclear
-- *Crisis* (approaching): Leadership must decide—double down, pivot, or retreat
+
+- _Status Quo_: Traditional company, analog processes, established culture
+- _Inciting Incident_: Market pressures, new CEO declares "digital transformation"
+- _Rising Action_: New hires, investments, pilot projects, cultural resistance
+- _Midpoint_: Six months in, early pilots mixed, excitement waning
+- _Current_: Year two, divided leadership, employees confused, results unclear
+- _Crisis_ (approaching): Leadership must decide—double down, pivot, or retreat
 
 **Step 3 - Character Analysis**:
-- *Protagonist*: CEO or entire organization
-- *Desire*: Transform into modern, competitive company
-- *Need*: Understand what transformation truly requires, reconcile old and new
-- *Flaw*: Impatience, superficial understanding of culture change, underestimating obstacles
-- *Supporting Cast*:
+
+- _Protagonist_: CEO or entire organization
+- _Desire_: Transform into modern, competitive company
+- _Need_: Understand what transformation truly requires, reconcile old and new
+- _Flaw_: Impatience, superficial understanding of culture change, underestimating obstacles
+- _Supporting Cast_:
   - **Digital evangelists** (allies pushing change)
   - **Old guard** (resisters, protecting traditional ways)
   - **Confused middle** (majority, uncertain what's expected)
   - **Consultants** (mentors/tricksters, helpful or just selling)
 
 **Step 4 - Core Conflicts**:
-- *Primary*: Organization vs. Self (identity crisis—who are we becoming?)
-- *Secondary*: Tradition vs. Progress (old guard vs. new guard)
-- *Tertiary*: Organization vs. Market (competitive pressure)
-- *Stakes*: Survival, identity, jobs, culture
-- *Obstacles*: Entrenched culture, skills gaps, cost, resistance, unclear vision
+
+- _Primary_: Organization vs. Self (identity crisis—who are we becoming?)
+- _Secondary_: Tradition vs. Progress (old guard vs. new guard)
+- _Tertiary_: Organization vs. Market (competitive pressure)
+- _Stakes_: Survival, identity, jobs, culture
+- _Obstacles_: Entrenched culture, skills gaps, cost, resistance, unclear vision
 
 **Step 5 - Themes**:
+
 - Change and continuity (what to preserve, what to abandon?)
 - Identity (who are we if we're no longer what we were?)
 - Progress and loss (gains from change, but also what's lost)
 - Authenticity (real transformation vs. superficial rebranding)
 
 **Step 6 - Coherence**:
-- *Weaknesses*:
+
+- _Weaknesses_:
   - Unclear protagonist (whose journey is this?)
   - Vague goal ("digital transformation" means what exactly?)
   - Unmotivated behavior (why should employees change if unclear why?)
   - Possible deus ex machina (expecting technology alone to solve problems)
-- *Strengths*:
+- _Strengths_:
   - Realistic obstacles (culture change is hard)
   - Believable resistance (people fear change)
   - Stakes are clear (adapt or die)
 
 **Step 7 - Perspective**:
-- *CEO's story*: Heroic transformation, resistance is obstacle to overcome
-- *Old guard's story*: Wisdom being discarded, valuable traditions threatened
-- *Employees' story*: Confusion, mixed messages, fear
-- *Customers' story*: Hoping for better service, skeptical of changes
+
+- _CEO's story_: Heroic transformation, resistance is obstacle to overcome
+- _Old guard's story_: Wisdom being discarded, valuable traditions threatened
+- _Employees' story_: Confusion, mixed messages, fear
+- _Customers' story_: Hoping for better service, skeptical of changes
 - Note: Coherent narrative requires integrating perspectives, not privileging one
 
 **Step 8 - Narrative Parallels**:
+
 - Hero's journey (ordeal stage—transformation through trial)
 - Quest narrative (seeking prize, facing obstacles)
 - Cautionary tales (Icarus flying too high, moving too fast)
 - Successful transformations (other companies that navigated change)
 
 **Step 9 - Trajectory Assessment**:
-- *Possible Endings*:
+
+- _Possible Endings_:
   - **Success**: True transformation, culture shifts, outcomes delivered
   - **Failure**: Initiative fizzles, return to old ways, demoralization
   - **Partial Success**: Some changes stick, others don't, muddled outcome
   - **Pivot**: Recognize original vision flawed, adjust to more realistic path
-- *Resolution Requirements*:
+- _Resolution Requirements_:
   - Clear, compelling vision (why we're changing)
   - Leadership alignment (no more divided message)
   - Small wins that build momentum
@@ -961,6 +1061,7 @@ Narrative analysis rests on fundamental principles:
   - Time (transformation takes years, not months)
 
 **Step 10 - Synthesis**:
+
 - This transformation narrative suffers from coherence problems
 - Unclear protagonist and vague goal undermine story
 - Core conflict is identity crisis—organization doesn't know what it's becoming
@@ -980,29 +1081,32 @@ Narrative analysis rests on fundamental principles:
 **Analysis**:
 
 **Step 1 - Story Identification**:
+
 - Story: Candidate's campaign journey
 - Stage: Full arc from announcement to election
 - Genre: Hero's journey, underdog narrative
 
 **Step 2 - Plot Structure (Hero's Journey)**:
-- *Ordinary World*: Candidate's life before campaign, relative obscurity
-- *Call to Adventure*: Decision to run, driven by issue or moment
-- *Refusal*: Initial hesitation, doubts, long odds
-- *Meeting Mentor*: Campaign manager, key advisor, or personal figure
-- *Crossing Threshold*: Campaign announcement, point of no return
-- *Tests, Allies, Enemies*: Primary battles, building coalition, facing opponents
-- *Approach Inmost Cave*: Final stretch, highest stakes
-- *Ordeal*: Election day, supreme test
-- *Reward*: Victory (or noble defeat)
-- *Return with Elixir*: Bringing change or lesson to community
+
+- _Ordinary World_: Candidate's life before campaign, relative obscurity
+- _Call to Adventure_: Decision to run, driven by issue or moment
+- _Refusal_: Initial hesitation, doubts, long odds
+- _Meeting Mentor_: Campaign manager, key advisor, or personal figure
+- _Crossing Threshold_: Campaign announcement, point of no return
+- _Tests, Allies, Enemies_: Primary battles, building coalition, facing opponents
+- _Approach Inmost Cave_: Final stretch, highest stakes
+- _Ordeal_: Election day, supreme test
+- _Reward_: Victory (or noble defeat)
+- _Return with Elixir_: Bringing change or lesson to community
 
 **Step 3 - Character Analysis**:
-- *Protagonist*: Candidate
-- *Desire*: Win election, enact agenda
-- *Need*: Serve community, prove self, or fulfill deeper calling
-- *Flaw*: Inexperience, naivete, or specific personal weakness
-- *Arc*: Growth from uncertain outsider to confident leader (or disillusionment)
-- *Supporting Cast*:
+
+- _Protagonist_: Candidate
+- _Desire_: Win election, enact agenda
+- _Need_: Serve community, prove self, or fulfill deeper calling
+- _Flaw_: Inexperience, naivete, or specific personal weakness
+- _Arc_: Growth from uncertain outsider to confident leader (or disillusionment)
+- _Supporting Cast_:
   - Mentor (advisor)
   - Allies (campaign team, volunteers)
   - Threshold guardians (party gatekeepers)
@@ -1011,13 +1115,15 @@ Narrative analysis rests on fundamental principles:
   - Trickster (media, unpredictable events)
 
 **Step 4 - Core Conflicts**:
-- *Primary*: Candidate vs. Opponent (political competition)
-- *Secondary*: Candidate vs. Self (internal doubts, learning to lead)
-- *Tertiary*: Candidate vs. System (establishment resistance)
-- *Stakes*: Policy outcomes, representation, personal vindication
-- *Obstacles*: Resources, name recognition, opposition attacks, gaffes, scandals
+
+- _Primary_: Candidate vs. Opponent (political competition)
+- _Secondary_: Candidate vs. Self (internal doubts, learning to lead)
+- _Tertiary_: Candidate vs. System (establishment resistance)
+- _Stakes_: Policy outcomes, representation, personal vindication
+- _Obstacles_: Resources, name recognition, opposition attacks, gaffes, scandals
 
 **Step 5 - Themes**:
+
 - Democracy and representation (giving voice to voiceless)
 - Underdog resilience (overcoming odds)
 - Transformation (personal growth through trial)
@@ -1025,6 +1131,7 @@ Narrative analysis rests on fundamental principles:
 - Power and service (using power for good)
 
 **Step 6 - Coherence**:
+
 - Classic narrative arc, highly coherent
 - Character motivation clear and believable
 - Obstacles realistic and escalating
@@ -1032,31 +1139,35 @@ Narrative analysis rests on fundamental principles:
 - Potential weakness: Too neat, real politics messier
 
 **Step 7 - Perspective**:
-- *Candidate's story*: Hero fighting for change
-- *Opponent's story*: Experienced leader defending record against demagogue
-- *Voters' story*: Choosing between visions for future
-- *Media's story*: Horse race, drama, conflict
+
+- _Candidate's story_: Hero fighting for change
+- _Opponent's story_: Experienced leader defending record against demagogue
+- _Voters' story_: Choosing between visions for future
+- _Media's story_: Horse race, drama, conflict
 - Note: Framing matters enormously—is candidate hero or threat?
 
 **Step 8 - Narrative Parallels**:
+
 - Classic hero's journey (Luke Skywalker, Frodo)
 - Underdog sports narratives (Rocky)
 - Historical political outsiders (various)
 - David vs. Goliath (archetypal)
 
 **Step 9 - Trajectory Assessment**:
-- *Possible Endings*:
+
+- _Possible Endings_:
   - **Victory**: Hero succeeds, elixir delivered, community transformed
   - **Noble Defeat**: Hero loses but movement built, lessons learned, return later
   - **Corruption**: Hero compromised by process, loses self
   - **Pyrrhic Victory**: Wins but at great cost, ideals compromised
-- *Resolution Requirements*:
+- _Resolution Requirements_:
   - Climactic election day ordeal
   - Clear outcome (win or loss)
   - Reflection on journey and meaning
   - Sense of transformation or lesson
 
 **Step 10 - Synthesis**:
+
 - Campaign is near-perfect hero's journey structure
 - Candidate transforms from ordinary world to tested leader
 - Core conflict external (opponent) mirrors internal (self-doubt)
@@ -1074,32 +1185,38 @@ Narrative analysis rests on fundamental principles:
 ### Key Theorists and Works
 
 #### Aristotle (384-322 BCE)
+
 - **Field**: Poetics, dramatic theory
-- **Key Work**: *Poetics* (~335 BCE)
+- **Key Work**: _Poetics_ (~335 BCE)
 - **Contribution**: Three-act structure, plot as soul of drama, catharsis
 
 #### Joseph Campbell (1904-1987)
+
 - **Field**: Comparative mythology, narrative theory
-- **Key Work**: *The Hero with a Thousand Faces* (1949)
+- **Key Work**: _The Hero with a Thousand Faces_ (1949)
 - **Contribution**: Monomyth (hero's journey), universal story patterns
 
 #### Christopher Vogler
+
 - **Field**: Screenwriting, narrative structure
-- **Key Work**: *The Writer's Journey* (1992)
+- **Key Work**: _The Writer's Journey_ (1992)
 - **Contribution**: Adapted Campbell's hero's journey for modern storytelling
 
 #### Robert McKee
+
 - **Field**: Screenwriting, story structure
-- **Key Work**: *Story: Substance, Structure, Style* (1997)
+- **Key Work**: _Story: Substance, Structure, Style_ (1997)
 - **Contribution**: Principles of story design, character arc
 
 #### Kurt Vonnegut
+
 - **Field**: Fiction, narrative theory
 - **Contribution**: Story shapes on graph (man in hole, boy meets girl, etc.)
 
 #### Vladimir Propp (1895-1970)
+
 - **Field**: Narratology, folklore studies
-- **Key Work**: *Morphology of the Folktale* (1928)
+- **Key Work**: _Morphology of the Folktale_ (1928)
 - **Contribution**: Identified 31 narrative functions and 7 character archetypes in Russian fairy tales, revealing underlying story patterns
 - **Impact**: "Reshaped the study of narrative almost completely"
 - **Sources**: [Vladimir Propp - Fiveable](https://fiveable.me/literary-theory-criticism/unit-2/vladimir-propp/study-guide/5YLLqKWkXDIvbxtl), [Propp's Functions - ResearchGate](https://www.researchgate.net/publication/319293980_The_Thirty-One_Functions_in_Vladimir_Propp's_Morphology_of_the_Folktale_An_Outline_and_Recent_Trends_in_the_Applicability_of_the_Proppian_Taxonomic_Model)
@@ -1107,6 +1224,7 @@ Narrative analysis rests on fundamental principles:
 ### Narratology and Literary Theory
 
 #### Narratology Resources
+
 - [Structuralist Narratology - Literary Theory and Criticism](https://literariness.org/2016/03/21/structuralist-narratology/) - Overview of narratological approaches
 - [Narratology - Wikipedia](https://en.wikipedia.org/wiki/Narratology) - Comprehensive introduction
 - [Narratology (literary theory) - EBSCO](https://www.ebsco.com/research-starters/literature-and-writing/narratology-literary-theory) - Academic resource
@@ -1114,6 +1232,7 @@ Narrative analysis rests on fundamental principles:
 - [Narrative Theory - Literariness.org](https://literariness.org/2017/04/25/narrative-theory/) - Theory foundations
 
 #### Story Structure Resources
+
 - [Story Structure: 7 Types - Reedsy](https://blog.reedsy.com/guide/story-structure/) - Contemporary guide
 - [Narrative Structure - Bookish Bay](https://bookishbay.com/understanding-narrative-structure/) - Key components explained
 - [How to Structure a Story - MasterClass (2025)](https://www.masterclass.com/articles/how-to-structure-a-story) - Modern teaching resource
@@ -1122,19 +1241,21 @@ Narrative analysis rests on fundamental principles:
 ### Professional Organizations
 
 #### Writers Guild of America
+
 - **Website**: https://www.wga.org/
 - **Resources**: Industry standards, craft resources
 
 #### International Association of Literary Journalism
+
 - **Focus**: Narrative nonfiction, literary journalism
 
 ### Essential Resources
 
-- Syd Field, *Screenplay: The Foundations of Screenwriting*
-- K.M. Weiland, *Creating Character Arcs*
-- John Truby, *The Anatomy of Story*
-- Blake Snyder, *Save the Cat!*
-- E.M. Forster, *Aspects of the Novel*
+- Syd Field, _Screenplay: The Foundations of Screenwriting_
+- K.M. Weiland, _Creating Character Arcs_
+- John Truby, _The Anatomy of Story_
+- Blake Snyder, _Save the Cat!_
+- E.M. Forster, _Aspects of the Novel_
 
 ---
 
@@ -1158,34 +1279,42 @@ After completing narrative analysis:
 ## Common Pitfalls to Avoid
 
 **Pitfall 1: Forcing Structure**
+
 - **Problem**: Imposing three-act structure where it doesn't fit
 - **Solution**: Use frameworks flexibly, recognize when narratives deviate
 
 **Pitfall 2: Overlooking Complexity**
+
 - **Problem**: Reducing real people to simple character types
 - **Solution**: Recognize human complexity, multiple motivations, contradictions
 
 **Pitfall 3: Ignoring Context**
+
 - **Problem**: Analyzing narrative in isolation from social/political context
 - **Solution**: Situate stories in their contexts, understand constraints
 
 **Pitfall 4: Privileging Protagonist**
+
 - **Problem**: Only seeing story from protagonist's viewpoint
 - **Solution**: Consider antagonist's perspective, multiple viewpoints
 
 **Pitfall 5: Confusing Narrative with Reality**
+
 - **Problem**: Treating narrative framing as objective truth
 - **Solution**: Recognize narrative is interpretation, seek underlying facts
 
 **Pitfall 6: Demanding Neat Endings**
+
 - **Problem**: Expecting real-world stories to have clean resolutions
 - **Solution**: Accept ambiguity, ongoing stories, messy reality
 
 **Pitfall 7: Overlooking Smaller Stories**
+
 - **Problem**: Focusing only on central narrative, missing subplots
 - **Solution**: Attend to supporting characters, parallel stories
 
 **Pitfall 8: Presentism**
+
 - **Problem**: Judging past characters by contemporary values
 - **Solution**: Understand historical context, values of the time
 
@@ -1219,6 +1348,7 @@ Narrative analysis complements other perspectives:
 - **Sociologist**: Individual stories within social structures
 
 Narrative analysis is particularly strong on:
+
 - Character motivation and development
 - Story structure and meaning
 - Thematic interpretation
@@ -1230,6 +1360,7 @@ Narrative analysis is particularly strong on:
 ## Continuous Improvement
 
 This skill evolves through:
+
 - Studying diverse narratives and story forms
 - Analyzing real-world events through narrative lens
 - Refining character and plot analysis techniques

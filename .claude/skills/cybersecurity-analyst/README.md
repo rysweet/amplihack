@@ -15,6 +15,7 @@ This skill combines offensive security thinking (how attackers exploit systems) 
 Systematically identifies potential threats, attack vectors, and security risks for systems, applications, and organizations. Threat modeling reveals vulnerabilities before attackers exploit them.
 
 **Methodologies:**
+
 - **STRIDE** - Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of Privilege
 - **PASTA** - Process for Attack Simulation and Threat Analysis
 - **Attack Trees** - Hierarchical diagrams of attack paths
@@ -26,6 +27,7 @@ Systematically identifies potential threats, attack vectors, and security risks 
 Identifies weaknesses in systems that could be exploited by attackers. Combines automated scanning with manual analysis to discover security flaws.
 
 **Vulnerability Categories:**
+
 - **Injection flaws** - SQL injection, command injection, XSS
 - **Broken authentication/authorization** - Weak credentials, session management
 - **Sensitive data exposure** - Unencrypted data, weak crypto
@@ -38,6 +40,7 @@ Identifies weaknesses in systems that could be exploited by attackers. Combines 
 Evaluates cryptographic implementations, key management, and protocols. Ensures proper use of encryption, hashing, digital signatures, and random number generation.
 
 **Key Areas:**
+
 - **Encryption** - AES, RSA, elliptic curves (proper algorithms, key lengths, modes)
 - **Hashing** - SHA-256, bcrypt, Argon2 (password storage, integrity)
 - **Key management** - Generation, storage, rotation, destruction
@@ -49,6 +52,7 @@ Evaluates cryptographic implementations, key management, and protocols. Ensures 
 Analyzes authentication, authorization, and identity systems to ensure proper access controls.
 
 **Principles:**
+
 - **Least privilege** - Minimum necessary permissions
 - **Separation of duties** - No single person has complete control
 - **Defense in depth** - Multiple layers of security
@@ -60,6 +64,7 @@ Analyzes authentication, authorization, and identity systems to ensure proper ac
 Designs detection mechanisms and response procedures for security incidents.
 
 **Components:**
+
 - **Logging and monitoring** - SIEM, IDS/IPS, anomaly detection
 - **Incident response** - Preparation, detection, containment, eradication, recovery, lessons learned
 - **Forensics** - Evidence collection and analysis
@@ -70,6 +75,7 @@ Designs detection mechanisms and response procedures for security incidents.
 Applies security principles throughout software development lifecycle.
 
 **Practices:**
+
 - **Secure coding** - Input validation, output encoding, parameterized queries
 - **SAST/DAST** - Static and dynamic application security testing
 - **Dependency scanning** - Known vulnerabilities in libraries
@@ -103,6 +109,7 @@ Evaluate security architectures for defense-in-depth, identify single points of 
 ### Method 1: STRIDE Threat Modeling
 
 Apply STRIDE to identify threats:
+
 1. **Spoofing** - Attacker impersonates user/system
 2. **Tampering** - Unauthorized modification of data
 3. **Repudiation** - Denying actions without proof
@@ -115,6 +122,7 @@ For each component, ask: What STRIDE threats apply?
 ### Method 2: Attack Surface Analysis
 
 Map all entry points and assess risk:
+
 1. Enumerate interfaces (APIs, UI, network services)
 2. Identify input sources (user input, file uploads, API calls)
 3. Map trust boundaries (internal vs. external, privileged vs. unprivileged)
@@ -124,6 +132,7 @@ Map all entry points and assess risk:
 ### Method 3: Defense in Depth
 
 Layer security controls:
+
 1. **Perimeter** - Firewalls, VPN, network segmentation
 2. **Network** - IDS/IPS, network monitoring
 3. **Host** - Endpoint protection, hardening, patching
@@ -134,6 +143,7 @@ Layer security controls:
 ### Method 4: Risk Assessment (CVSS)
 
 Quantify vulnerability severity using Common Vulnerability Scoring System:
+
 - **Base score** - Intrinsic qualities of vulnerability
 - **Temporal score** - Current exploit availability
 - **Environmental score** - Impact in specific environment
@@ -142,6 +152,7 @@ Quantify vulnerability severity using Common Vulnerability Scoring System:
 ### Method 5: Security Testing Pyramid
 
 Test security at multiple levels:
+
 1. **Unit tests** - Security test cases for functions
 2. **Integration tests** - Security of component interactions
 3. **SAST** - Static analysis of source code
@@ -192,6 +203,7 @@ Test security at multiple levels:
 ## Best Practices
 
 **Do:**
+
 - Assume breach (defense in depth)
 - Practice least privilege
 - Validate all input, encode all output
@@ -204,6 +216,7 @@ Test security at multiple levels:
 - Security test before deployment
 
 **Don't:**
+
 - Rely on security through obscurity
 - Roll your own crypto
 - Store passwords in plain text or weak hashes

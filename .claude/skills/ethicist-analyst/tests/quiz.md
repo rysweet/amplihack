@@ -436,18 +436,19 @@ Analyze the ethical dimensions of germline gene editing for enhancement.
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Autonomous Vehicle Dilemma | 50 | 35 |
-| 2. Medical Resource Allocation | 50 | 35 |
-| 3. AI Bias in Criminal Justice | 50 | 35 |
-| 4. Climate Ethics | 50 | 35 |
-| 5. Gene Editing Enhancement | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                       | Max Score | Passing Score |
+| ------------------------------ | --------- | ------------- |
+| 1. Autonomous Vehicle Dilemma  | 50        | 35            |
+| 2. Medical Resource Allocation | 50        | 35            |
+| 3. AI Bias in Criminal Justice | 50        | 35            |
+| 4. Climate Ethics              | 50        | 35            |
+| 5. Gene Editing Enhancement    | 50        | 35            |
+| **Total**                      | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate ethicist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -455,6 +456,7 @@ To demonstrate ethicist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of ethical frameworks and principles
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of moral reasoning
 3. **Insight Specificity** (0-10): Clear, actionable ethical recommendations
@@ -464,6 +466,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies multiple ethical frameworks accurately (utilitarian, deontological, virtue ethics, care ethics, rights-based)
 - Considers stakeholder perspectives, competing values, and moral trade-offs
 - Makes specific, well-justified normative recommendations
@@ -473,6 +476,7 @@ Each scenario is scored on:
 - Identifies non-obvious ethical dimensions and implications
 
 **Good (35-44 points)**:
+
 - Applies key ethical frameworks correctly
 - Considers main stakeholder interests and value tensions
 - Makes reasonable normative recommendations
@@ -481,6 +485,7 @@ Each scenario is scored on:
 - Provides useful ethical insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies ethical frameworks or principles
 - Ignores critical stakeholder interests or value conflicts
 - Vague or poorly justified normative claims
@@ -493,12 +498,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -516,6 +523,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as ethical issues evolve
 - Update expected elements as moral philosophy develops
 - Refine scoring criteria based on analyst performance patterns

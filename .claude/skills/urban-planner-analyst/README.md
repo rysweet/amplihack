@@ -27,24 +27,28 @@ Unlike general urban analysis, urban planner analysis:
 ## Use Cases
 
 ### Development Review
+
 - Evaluate proposed residential, commercial, mixed-use projects
 - Assess comprehensive plan and zoning consistency
 - Analyze impacts (transportation, environmental, fiscal, community)
 - Recommend conditions of approval or improvements
 
 ### Policy Development
+
 - Design zoning codes and comprehensive plans
 - Develop affordable housing strategies
 - Create climate action and sustainability plans
 - Establish design guidelines and form-based codes
 
 ### Transportation Planning
+
 - Analyze transit-oriented development opportunities
 - Evaluate complete streets and bike/ped improvements
 - Assess parking policies and management
 - Coordinate land use and transportation
 
 ### Equity and Affordability
+
 - Assess displacement risks and mitigation
 - Design inclusionary zoning and community benefits
 - Evaluate equitable distribution of amenities and burdens
@@ -53,6 +57,7 @@ Unlike general urban analysis, urban planner analysis:
 ## Planning Frameworks Available
 
 ### Core Frameworks
+
 - **Comprehensive Planning**: Long-range vision and policy foundation
 - **Zoning Analysis**: Compliance, variances, rezonings, form-based codes
 - **Transit-Oriented Development**: 3V Framework (node, place, market value)
@@ -60,6 +65,7 @@ Unlike general urban analysis, urban planner analysis:
 - **Housing Affordability**: Needs assessment, inclusionary zoning, anti-displacement
 
 ### Theoretical Foundations
+
 - **Comprehensive Planning**: Rational planning model, long-range vision
 - **Zoning and Land Use**: Euclidean and form-based, regulatory tools
 - **Transit-Oriented Development**: Mixed-use, walkable, station areas
@@ -67,6 +73,7 @@ Unlike general urban analysis, urban planner analysis:
 - **Equity Planning**: Environmental justice, anti-displacement, community voice
 
 ### Methodological Approaches
+
 - Comprehensive planning process (10 steps)
 - Site plan and development review
 - Community engagement and participatory planning
@@ -120,6 +127,7 @@ The urban planner analyst follows a systematic 9-step process:
 **Situation**: 300-unit mixed-use building at light rail station, requesting density bonus and reduced parking.
 
 **Analysis Highlights**:
+
 - TOD district comp plan designation → Consistent
 - High Walk Score (78) and Transit Score (85) → Supports reduced parking
 - Inclusionary zoning: 45 affordable units (15%) at 60% AMI
@@ -132,6 +140,7 @@ The urban planner analyst follows a systematic 9-step process:
 **Situation**: Historic downtown with 30% vacancy, declining retail, aging infrastructure.
 
 **Analysis Highlights**:
+
 - Strategy: Zoning reform, streetscape improvements, upper-floor housing, business support
 - 150 housing units in upper floors over 5 years
 - $5M public investment leverages $10M private
@@ -144,6 +153,7 @@ The urban planner analyst follows a systematic 9-step process:
 **Situation**: Severe affordability crisis, 7,000-unit gap, 50% renters cost-burdened.
 
 **Analysis Highlights**:
+
 - Comprehensive strategy: Eliminate single-family zoning, inclusionary zoning, dedicated funding ($45M annually)
 - Production goal: 500 units/year for 10 years
 - Anti-displacement: Tenant protections, legal aid, community preference
@@ -168,28 +178,33 @@ A complete urban planner analysis includes:
 ## Resources
 
 ### Professional Associations
+
 - **American Planning Association**: https://www.planning.org/ (JAPA, Planning magazine, PAS Reports)
 - **Congress for New Urbanism**: https://www.cnu.org/ (New Urbanism principles, Charter)
 - **Urban Land Institute**: https://uli.org/ (Development best practices, case studies)
 
 ### Data and Tools
+
 - **US Census Bureau**: https://www.census.gov/ (Demographics, housing, economic data)
 - **Walk Score**: https://www.walkscore.com/ (Walkability ratings)
 - **PolicyMap**: https://www.policymap.com/ (Mapping and analysis platform)
 
 ### Educational Resources
+
 - **Planetizen**: https://www.planetizen.com/ (Planning news, courses, Planopedia)
 - **Lincoln Institute**: https://www.lincolninst.edu/ (Land policy research, courses)
 - **Smart Growth America**: https://smartgrowthamerica.org/ (Smart growth resources)
 
 ### Key Textbooks
-- *The Death and Life of Great American Cities* - Jane Jacobs
-- *The Image of the City* - Kevin Lynch
-- *Suburban Nation* - Duany, Plater-Zyberk, Speck
+
+- _The Death and Life of Great American Cities_ - Jane Jacobs
+- _The Image of the City_ - Kevin Lynch
+- _Suburban Nation_ - Duany, Plater-Zyberk, Speck
 
 ## Integration with Other Skills
 
 Urban planner analysis complements:
+
 - **Decision Logger**: Document planning decisions and rationale
 - **Module Spec Generator**: Specify planning system modules
 - **Storytelling Synthesizer**: Transform plans into compelling community narratives
