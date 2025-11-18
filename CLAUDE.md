@@ -99,10 +99,6 @@ EXECUTION** by passing multiple tasks to the Task tool in a single call unless d
 - **Ambiguity**: Use `ambiguity.md` when requirements are unclear
 - **Fix Workflows**: Use `fix-agent.md` for rapid resolution of common error
   patterns (imports, CI, tests, config, quality, logic)
-- **Socratic Questioning**: Use `/socratic` command or pattern for challenging
-  vague requirements, exploring design trade-offs, and forcing precision in
-  architectural claims (see `.claude/context/DISCOVERIES.md` and
-  `.claude/runtime/logs/20251018_socratic_questioning/`)
 
 ### Development Workflow Agents
 
@@ -604,53 +600,6 @@ skill is:
 - **Philosophy Aligned**: Follows ruthless simplicity and brick design
 - **Production Ready**: Complete with documentation and examples
 
-### Implemented Skills (12 Total)
-
-**Phase 1: Quick Wins (4 skills)**
-
-- **decision-logger** (49.5): Structured decision recording
-- **email-drafter** (47.0): Professional email generation
-- **module-spec-generator** (50.0): Generate brick module specifications
-- **meeting-synthesizer** (50.0): Extract action items from meetings
-
-**Phase 2: Philosophy Enforcement (3 skills)**
-
-- **philosophy-guardian** (45.5): Reviews code against amplihack philosophy
-- **test-gap-analyzer** (44.5): Identifies test coverage gaps
-- **code-smell-detector** (42.5): Detects anti-patterns
-
-**Phase 3: Creative (2 skills)**
-
-- **mermaid-diagram-generator** (48.0): Converts descriptions to Mermaid
-  diagrams
-- **storytelling-synthesizer** (44.0): Technical work → compelling narratives
-
-**Phase 4: Advanced (3 skills)**
-
-- **learning-path-builder** (43.5): Personalized technology learning paths
-- **knowledge-extractor** (40.5): Auto-extracts learnings to DISCOVERIES.md
-- **pr-review-assistant** (40.0): Philosophy-aware PR reviews
-
-### Using Skills
-
-```
-Claude, use the decision-logger skill to record this architectural decision.
-Claude, analyze test coverage using test-gap-analyzer.
-Claude, generate a Mermaid diagram for this workflow.
-```
-
-### Documentation
-
-- **[Skills Overview & Documentation](.claude/skills/README.md)** - Complete
-  skills catalog with usage examples
-- **[Research Report](.claude/runtime/logs/20251108_skills_research/RESEARCH.md)** -
-  Comprehensive ecosystem analysis (357 lines)
-- **[Evaluation Matrix](.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** -
-  20 skills evaluated with priority scores (842 lines)
-
-All 12 skills scored 40.0-50.0 (HIGH priority) using a 6-criteria evaluation
-framework aligned with amplihack philosophy.
-
 ## Scenario Tools
 
 Amplihack includes production-ready scenario tools that follow the **Progressive
@@ -862,17 +811,7 @@ Use `/amplihack:customize` to manage preferences:
 This command uses Claude Code's native Read, Edit, and Write tools to modify
 `.claude/context/USER_PREFERENCES.md` directly - no bash scripts, no complex
 automation, just simple file operations.
-
-## Getting Help
-
-- Review `.claude/context/PHILOSOPHY.md` for principles
-- Check `.claude/agents/CATALOG.md` for agent capabilities
-- Look in `.claude/context/PATTERNS.md` for solutions
-- Update `.claude/context/DISCOVERIES.md` with new learnings
-
 ---
 
 Remember: You are the orchestrator working with specialized agents. Delegate
 liberally, execute in parallel, and continuously learn.
-
-<!-- Updated for PR #41 -->
