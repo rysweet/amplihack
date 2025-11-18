@@ -120,6 +120,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
         checkout_repo=getattr(args, "checkout_repo", None),
         claude_args=claude_args,
         verbose=False,  # Interactive mode does not use --verbose
+        containerized=getattr(args, "containerized", False),
     )
 
     # Check if claude_args contains a prompt (-p) - if so, use non-interactive mode
@@ -312,6 +313,11 @@ def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
         "--docker",
         action="store_true",
         help="Run amplihack in Docker container for isolated execution",
+    )
+    parser.add_argument(
+        "--containerized",
+        action="store_true",
+        help="Skip --dangerously-skip-permissions flag for Docker compatibility (auto-detected by default)",
     )
 
 
