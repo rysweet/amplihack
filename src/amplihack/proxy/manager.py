@@ -1,6 +1,7 @@
 """Proxy lifecycle management."""
 
 import atexit
+import logging
 import os
 import re
 import signal
@@ -12,6 +13,8 @@ from typing import Any, Dict, List, Optional
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
+
+logger = logging.getLogger(__name__)
 
 
 class ProxyManager:
@@ -246,7 +249,7 @@ class ProxyManager:
         self,
         exc_type: Optional[type[BaseException]],
         exc_val: Optional[BaseException],
-        exc_tb: Optional[object],
+        exc_tb: object,
     ) -> None:
         """Context manager exit - stops proxy.
 
@@ -750,15 +753,15 @@ class ProxyManager:
         if self._stdout_log_file:
             try:
                 self._stdout_log_file.close()
-            except Exception:
-                pass  # Ignore errors when closing
+            except Exception as e:
+                logger.debug(f"Error closing stdout log file: {e}")
             self._stdout_log_file = None
 
         if self._stderr_log_file:
             try:
                 self._stderr_log_file.close()
-            except Exception:
-                pass  # Ignore errors when closing
+            except Exception as e:
+                logger.debug(f"Error closing stderr log file: {e}")
             self._stderr_log_file = None
 
     def _display_log_locations(self) -> None:
