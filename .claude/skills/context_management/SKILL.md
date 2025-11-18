@@ -21,11 +21,36 @@ This skill enables **fully automatic** context window management for Claude Code
 
 ### Automatic Workflow
 
-After **every tool use**, the system:
-1. **Monitors token usage** (checks against 40%, 55%, 70%, 85% thresholds)
-2. **Creates snapshots** automatically at thresholds (55%+)
+After tool uses (with adaptive frequency), the system:
+1. **Monitors token usage** (checks with model-aware thresholds)
+2. **Creates snapshots** automatically at thresholds
 3. **Detects compaction** when tokens drop >30%
 4. **Rehydrates context** automatically with smart level selection
+
+### Model-Aware Thresholds
+
+The system automatically adjusts based on your model:
+
+**1M Token Model (Sonnet 4.5):**
+- Thresholds: 20%, 30%, 40%, **50% (top)**
+- Auto-snapshots at: 300k, 400k, 500k tokens
+- Conservative approach (plenty of headroom)
+
+**200k Token Model (Haiku):**
+- Thresholds: 40%, 55%, 70%, **85% (top)**
+- Auto-snapshots at: 110k, 140k, 170k tokens
+- Aggressive approach (limited space)
+
+**800k Token Model (Opus):**
+- Treated same as 1M (conservative thresholds)
+
+### Adaptive Frequency (Performance Optimization)
+
+To minimize overhead, checks run at different frequencies:
+- **0-40% usage**: Every 50th tool use (98% overhead reduction)
+- **40-55% usage**: Every 10th tool use (90% overhead reduction)
+- **55-70% usage**: Every 3rd tool use (67% overhead reduction)
+- **70%+ usage**: Every tool use (maximum protection)
 
 ### Smart Rehydration
 

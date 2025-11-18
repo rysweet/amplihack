@@ -48,10 +48,24 @@ result = context_management_skill('list')
 ### How It Works
 
 After each tool use, the automation system:
-1. **Monitors token usage** automatically
-2. **Creates snapshots** at thresholds (55%, 70%, 85%)
+1. **Monitors token usage** automatically (with adaptive frequency)
+2. **Creates snapshots** at model-appropriate thresholds
 3. **Detects compaction** when tokens drop >30%
 4. **Rehydrates context** automatically with smart level selection
+
+### Model-Aware Thresholds
+
+**1M Token Model (Sonnet 4.5):**
+- Top threshold: **50%** (500k tokens)
+- Auto-snapshots at: 30%, 40%, 50%
+- Philosophy: Conservative (plenty of space)
+
+**200k Token Model (Haiku):**
+- Top threshold: **85%** (170k tokens)
+- Auto-snapshots at: 55%, 70%, 85%
+- Philosophy: Aggressive (limited space)
+
+The system automatically detects your model size and adjusts thresholds accordingly!
 
 ### Smart Rehydration Logic
 

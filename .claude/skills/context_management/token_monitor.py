@@ -8,12 +8,40 @@ from .models import UsageStats
 
 # Default configuration
 DEFAULT_MAX_TOKENS = 1_000_000
-THRESHOLDS = {
+
+# Model-specific thresholds
+# For large models (1M tokens): Be conservative (top threshold = 50%)
+# For small models (200k tokens): Be aggressive (top threshold = 85%)
+THRESHOLDS_1M = {
+    "ok": 0.2,  # 0-20%: All good
+    "consider": 0.3,  # 30%+: Consider snapshotting (auto-snapshot)
+    "recommended": 0.4,  # 40%+: Snapshot recommended (auto-snapshot)
+    "urgent": 0.5,  # 50%+: Snapshot urgent (auto-snapshot)
+}
+
+THRESHOLDS_SMALL = {
     "ok": 0.4,  # 0-40%: All good
     "consider": 0.55,  # 55%+: Consider snapshotting (auto-snapshot)
     "recommended": 0.7,  # 70%+: Snapshot recommended (auto-snapshot)
     "urgent": 0.85,  # 85%+: Snapshot urgent (auto-snapshot)
 }
+
+
+def get_thresholds_for_model(max_tokens: int) -> dict:
+    """Get appropriate thresholds based on model size.
+
+    Args:
+        max_tokens: Maximum context window size
+
+    Returns:
+        Dict of thresholds appropriate for the model
+    """
+    # Large models (800k+): Use conservative thresholds (top = 50%)
+    if max_tokens >= 800_000:
+        return THRESHOLDS_1M
+    # Small models (< 800k): Use aggressive thresholds (top = 85%)
+    else:
+        return THRESHOLDS_SMALL
 
 
 class TokenMonitor:
@@ -35,7 +63,8 @@ class TokenMonitor:
             max_tokens: Maximum context window size (default: 1,000,000)
         """
         self.max_tokens = max_tokens
-        self.thresholds = THRESHOLDS.copy()
+        # Use model-appropriate thresholds
+        self.thresholds = get_thresholds_for_model(max_tokens)
         self.current_usage = 0
 
     def check_usage(self, current_tokens: int) -> UsageStats:
