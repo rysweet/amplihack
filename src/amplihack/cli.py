@@ -12,6 +12,79 @@ from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
 
+def ensure_ultrathink_command(prompt: str) -> str:
+    """Ensure prompt starts with /amplihack:ultrathink command for orchestration.
+
+    If prompt already starts with a slash command, returns unchanged.
+    Otherwise prepends /amplihack:ultrathink to enable workflow orchestration.
+
+    Args:
+        prompt: The user's prompt string.
+
+    Returns:
+        Transformed prompt with /amplihack:ultrathink prepended (or unchanged if already a slash command).
+
+    Examples:
+        >>> ensure_ultrathink_command("implement feature X")
+        "/amplihack:ultrathink implement feature X"
+        >>> ensure_ultrathink_command("/analyze src")
+        "/analyze src"
+        >>> ensure_ultrathink_command("  test  ")
+        "/amplihack:ultrathink test"
+    """
+    # Strip whitespace
+    prompt = prompt.strip()
+
+    # Return empty if prompt is empty after stripping
+    if not prompt:
+        return ""
+
+    # If starts with slash, it's already a command - return unchanged
+    if prompt.startswith("/"):
+        return prompt
+
+    # Prepend ultrathink command for orchestration
+    return f"/amplihack:ultrathink {prompt}"
+
+
+def wrap_prompt_with_ultrathink(
+    claude_args: Optional[List[str]], no_ultrathink: bool = False
+) -> Optional[List[str]]:
+    """Wrap prompt in claude_args with /amplihack:ultrathink command.
+
+    Modifies the prompt passed via -p flag to use workflow orchestration.
+
+    Args:
+        claude_args: Command line arguments to pass to Claude (may contain -p prompt).
+        no_ultrathink: If True, skip wrapping (for simple tasks or opt-out).
+
+    Returns:
+        Modified claude_args with wrapped prompt, or original if no prompt or opt-out.
+    """
+    # No-op if no args or opt-out
+    if not claude_args or no_ultrathink:
+        return claude_args
+
+    # Find -p flag and wrap its value
+    try:
+        p_index = claude_args.index("-p")
+        if p_index + 1 < len(claude_args):
+            original_prompt = claude_args[p_index + 1]
+            wrapped_prompt = ensure_ultrathink_command(original_prompt)
+
+            # Only modify if transformation occurred
+            if wrapped_prompt != original_prompt:
+                # Create new list to avoid mutating original
+                new_args = claude_args.copy()
+                new_args[p_index + 1] = wrapped_prompt
+                return new_args
+    except ValueError:
+        # -p flag not found, return unchanged
+        pass
+
+    return claude_args
+
+
 def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
     """Handle the launch command.
 
@@ -286,6 +359,11 @@ def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
         "--no-reflection",
         action="store_true",
         help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
+    )
+    parser.add_argument(
+        "--no-ultrathink",
+        action="store_true",
+        help="Skip /amplihack:ultrathink workflow orchestration for simple tasks. By default, all prompts are wrapped with /ultrathink for maximum effectiveness.",
     )
 
 
@@ -567,6 +645,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print("Created settings.json with relative hook paths")
 
     args, claude_args = parse_args_with_passthrough(argv)
+
+    # Wrap prompts with /amplihack:ultrathink by default (unless --no-ultrathink is set)
+    # This enables workflow orchestration for all prompts
+    no_ultrathink = getattr(args, "no_ultrathink", False)
+    claude_args = wrap_prompt_with_ultrathink(claude_args, no_ultrathink)
 
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
