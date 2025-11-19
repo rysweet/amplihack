@@ -1,5 +1,5 @@
 ---
-name: claude-agent-sdk
+name: agent-sdk
 description: Comprehensive knowledge of Claude Agent SDK architecture, tools, hooks, skills, and production patterns. Auto-activates for agent building, SDK integration, tool design, and MCP server tasks.
 version: 1.0.0
 last_updated: 2025-11-15
