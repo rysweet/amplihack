@@ -585,55 +585,44 @@ def main(argv: Optional[List[str]] = None) -> int:
             settings_path = os.path.join(temp_claude_dir, "settings.json")
             import json
 
-            # Create minimal settings.json with just amplihack hooks
-            settings = {
-                "hooks": {
-                    "SessionStart": [
-                        {
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-                                    "timeout": 10000,
-                                }
-                            ]
-                        }
-                    ],
-                    "Stop": [
-                        {
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
-                                    "timeout": 30000,
-                                }
-                            ]
-                        }
-                    ],
-                    "PostToolUse": [
-                        {
-                            "matcher": "*",
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
-                                }
-                            ],
-                        }
-                    ],
-                    "PreCompact": [
-                        {
-                            "hooks": [
-                                {
-                                    "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
-                                    "timeout": 30000,
-                                }
-                            ]
-                        }
-                    ],
+            # Load settings from template (includes statusLine and all hooks)
+            template_path = Path(__file__).parent / "utils" / "uvx_settings_template.json"
+            try:
+                with open(template_path) as f:
+                    settings = json.load(f)
+
+                # Replace relative paths with $CLAUDE_PROJECT_DIR for UVX mode
+                def replace_paths(obj):
+                    if isinstance(obj, dict):
+                        for key, value in obj.items():
+                            if key == "command" and isinstance(value, str) and value.startswith(".claude/"):
+                                obj[key] = value.replace(".claude/", "$CLAUDE_PROJECT_DIR/.claude/")
+                            else:
+                                replace_paths(value)
+                    elif isinstance(obj, list):
+                        for item in obj:
+                            replace_paths(item)
+
+                replace_paths(settings)
+
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                # Fallback to minimal settings if template not found
+                print(f"Warning: Could not load settings template: {e}", file=sys.stderr)
+                settings = {
+                    "hooks": {
+                        "SessionStart": [
+                            {
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+                                        "timeout": 10000,
+                                    }
+                                ]
+                            }
+                        ],
+                    }
                 }
-            }
 
             # Write settings.json
             os.makedirs(temp_claude_dir, exist_ok=True)
@@ -642,7 +631,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"UVX staging completed to {temp_claude_dir}")
-                print("Created settings.json with relative hook paths")
+                print("Created settings.json from template with relative hook paths")
 
     args, claude_args = parse_args_with_passthrough(argv)
 
