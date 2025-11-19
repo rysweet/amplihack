@@ -97,9 +97,14 @@ class SafeCopyStrategy:
         print("       → Commit your changes first, then try again")
         print("=" * 70)
 
-        # Check if running non-interactively (UVX, CI, etc.)
-        if not sys.stdin.isatty():
-            print("\n🚀 Non-interactive mode detected - auto-approving overwrite")
+        # Check if running non-interactively (--auto or -p flag)
+        # Note: UVX itself is NOT non-interactive unless --auto or -p is used
+        is_auto_mode = "--auto" in sys.argv
+        has_prompt_flag = "-p" in sys.argv
+
+        if is_auto_mode or has_prompt_flag:
+            mode_desc = "auto mode" if is_auto_mode else "-p flag"
+            print(f"\n🚀 Non-interactive mode detected ({mode_desc}) - auto-approving overwrite")
             return "overwrite"
 
         try:
