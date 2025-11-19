@@ -4,6 +4,101 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## UVX Stop Hook Not Found Error (2025-11-18)
+
+### Problem Discovered
+
+**"Stop hook not found" error when running `uvx --from git+...@main amplihack` on clean directory**. The error occurs at session exit because the Stop hook can't locate the `.claude` directory that was staged during startup.
+
+### Root Cause
+
+**Path resolution mismatch between staging and hook lookup**:
+
+1. **CLI Staging** (`cli.py` lines 523-645):
+   - Stages `.claude` directory before Claude Code starts
+   - Sets `CLAUDE_PROJECT_DIR` environment variable
+   - Creates `settings.json` with hooks configured
+
+2. **Hook Lookup** (`hooks/manager.py` `_find_stop_hook()`):
+   - Searches from `Path.cwd()` upward for `.claude` directory
+   - Does NOT check `CLAUDE_PROJECT_DIR` environment variable
+   - Fails to find hook because CLI staged to different location
+
+**The Mismatch**: CLI stages to location indicated by `CLAUDE_PROJECT_DIR`, but hook searches from current working directory, which may differ in UVX deployments.
+
+### Impact
+
+- Users running `uvx --from git` get "Stop hook not found" warning
+- Stop hook doesn't execute (Neo4j cleanup, reflection, etc. skipped)
+- Confusing error message on clean directory installations
+- Affects UVX zero-install deployment experience
+
+### The Flow
+
+```
+1. User runs: uvx --from git+https://github.com/...@main amplihack
+2. CLI detects UVX mode (UV_PYTHON in environment)
+3. CLI stages .claude to temp directory
+4. CLI sets CLAUDE_PROJECT_DIR env var
+5. Claude Code starts, runs SessionStart hook
+6. User exits Claude Code
+7. Stop hook execution triggered
+8. _find_stop_hook() searches from Path.cwd()
+9. Can't find .claude (it's at CLAUDE_PROJECT_DIR location)
+10. Returns None, hook doesn't execute
+```
+
+### Solution Implemented (Issue #1437)
+
+**Fixed `_find_stop_hook()` to check `CLAUDE_PROJECT_DIR` first**:
+
+Added Strategy 1 (highest priority) to check the `CLAUDE_PROJECT_DIR` environment variable before searching from current working directory. This ensures UVX deployments find the hook at the staged location.
+
+**Changes**:
+- `src/amplihack/hooks/manager.py` - Added CLAUDE_PROJECT_DIR check as first strategy
+- Added debug logging to show which strategy successfully found the hook
+- Maintains backward compatibility with existing non-UVX deployments
+
+### How to Detect This Issue
+
+1. Run amplihack via UVX on clean directory:
+   ```bash
+   mkdir /tmp/test_clean && cd /tmp/test_clean
+   uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding@main amplihack
+   ```
+
+2. Work in Claude Code session, then exit
+
+3. Check for error: "Stop hook not found"
+
+4. Verify no `.claude` directory in working directory:
+   ```bash
+   ls -la .claude  # Should not exist
+   ```
+
+5. Check CLAUDE_PROJECT_DIR was set:
+   ```bash
+   echo $CLAUDE_PROJECT_DIR  # Should show path
+   ```
+
+### Prevention
+
+- ✅ Hook now checks `CLAUDE_PROJECT_DIR` first (highest priority)
+- ✅ Added debug logging to show which strategy found the hook
+- Future: Consider consolidating staging to always use working directory
+- Future: Document UVX deployment staging behavior
+
+### Related Issues
+
+This is related to the broader UVX staging architecture where `.claude` gets staged to a temporary location rather than the working directory. As noted by user: "the whole thing where we are staging the amplihack .claude dir somewhere else is a bad idea and we should stage it in the dir where we are started."
+
+**Related Files**:
+- `src/amplihack/hooks/manager.py` - Hook lookup logic (FIXED)
+- `src/amplihack/cli.py` - CLI staging logic (lines 523-645)
+- `src/amplihack/utils/uvx_staging.py` - UVX staging implementation
+- `.claude/tools/amplihack/hooks/session_start.py` - SessionStart hook (also tries to stage)
+- `.claude/tools/amplihack/hooks/stop.py` - The actual Stop hook
+
 ## StatusLine Configuration Missing from Installation Templates (2025-11-18)
 
 ### Problem Discovered

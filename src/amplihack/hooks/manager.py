@@ -59,26 +59,40 @@ def _find_stop_hook() -> Optional[Path]:
     """Find the stop.py hook file.
 
     Searches in multiple locations:
-    1. .claude/tools/amplihack/hooks/stop.py (relative to project root)
-    2. Standard amplihack installation locations
+    1. CLAUDE_PROJECT_DIR environment variable (for UVX deployments)
+    2. .claude/tools/amplihack/hooks/stop.py (relative to project root)
+    3. Standard amplihack installation locations
 
     Returns:
         Path to stop.py if found, None otherwise
     """
-    # Try to find project root by looking for .claude directory
+    import os
+
+    # Strategy 1: Check CLAUDE_PROJECT_DIR (UVX deployments set this)
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if project_dir:
+        claude_dir = Path(project_dir) / ".claude"
+        stop_hook = claude_dir / "tools" / "amplihack" / "hooks" / "stop.py"
+        if stop_hook.exists():
+            logger.debug(f"Found stop hook via CLAUDE_PROJECT_DIR: {stop_hook}")
+            return stop_hook
+
+    # Strategy 2: Try to find project root by looking for .claude directory
     current = Path.cwd()
     for parent in [current] + list(current.parents):
         claude_dir = parent / ".claude"
         if claude_dir.exists() and claude_dir.is_dir():
             stop_hook = claude_dir / "tools" / "amplihack" / "hooks" / "stop.py"
             if stop_hook.exists():
+                logger.debug(f"Found stop hook in parent directory: {stop_hook}")
                 return stop_hook
 
-    # Fallback: Try relative to this module's location
+    # Strategy 3: Try relative to this module's location
     # This handles development/testing scenarios
     module_dir = Path(__file__).parent.parent.parent.parent
     stop_hook = module_dir / ".claude" / "tools" / "amplihack" / "hooks" / "stop.py"
     if stop_hook.exists():
+        logger.debug(f"Found stop hook relative to module: {stop_hook}")
         return stop_hook
 
     logger.debug("Stop hook not found in standard locations")
