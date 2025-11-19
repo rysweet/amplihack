@@ -1,0 +1,4 @@
+amplihack -- claude --verbose \
+  --output-format stream-json \
+  --disallowedTools "AskUserQuestion" \
+  "{{task_instructions}}"

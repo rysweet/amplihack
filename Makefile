@@ -120,3 +120,65 @@ new-scenario:
 	@mkdir -p .claude/ai_working/$(NAME)/examples
 	@echo "✅ Scenario template created in .claude/ai_working/$(NAME)/"
 	@echo "   Start developing your tool there, then graduate to scenarios/"
+
+# =============================================================================
+# Benchmarking Commands (eval-recipes integration)
+# =============================================================================
+
+.PHONY: benchmark benchmark-compare benchmark-list benchmark-clean benchmark-help
+
+# Run benchmark for a single agent on a single task
+benchmark:
+	@if [ -z "$(TARGET)" ]; then \
+		echo "Error: TARGET is required"; \
+		echo "Usage: make benchmark TARGET=<agent> TASK=<task>"; \
+		echo "Example: make benchmark TARGET=amplihack TASK=simple-task"; \
+		echo "Available agents: amplihack, claude_code"; \
+		exit 1; \
+	fi
+	@echo "Running benchmark for $(TARGET)..."
+	@cd worktrees/feat-issue-1382-eval-recipes-integration && \
+		python -m .claude.tools.benchmarking.runner --agent $(TARGET) --task $(TASK)
+
+# Run benchmark comparison between amplihack and claude_code
+benchmark-compare:
+	@if [ -z "$(TASK)" ]; then \
+		echo "Error: TASK is required"; \
+		echo "Usage: make benchmark-compare TASK=<task>"; \
+		echo "Example: make benchmark-compare TASK=simple-task"; \
+		exit 1; \
+	fi
+	@echo "Running benchmark comparison..."
+	@make benchmark TARGET=amplihack TASK=$(TASK)
+	@make benchmark TARGET=claude_code TASK=$(TASK)
+	@echo "Comparison complete. Results in .claude/runtime/benchmarks/latest/"
+
+# List available benchmark tasks
+benchmark-list:
+	@echo "Available benchmark tasks:"
+	@echo "========================="
+	@if [ -d "data/tasks" ]; then \
+		ls -1 data/tasks/ | grep -v "^_" | sort; \
+	else \
+		echo "No tasks directory found. Please configure eval-recipes tasks."; \
+	fi
+
+# Clean benchmark results
+benchmark-clean:
+	@echo "Cleaning benchmark results..."
+	@rm -rf .claude/runtime/benchmarks/*
+	@echo "Benchmark results cleaned."
+
+# Show benchmark help
+benchmark-help:
+	@echo "Benchmarking Commands"
+	@echo "===================="
+	@echo ""
+	@echo "make benchmark TARGET=<agent> TASK=<task>  - Run single benchmark"
+	@echo "make benchmark-compare TASK=<task>         - Compare amplihack vs claude_code"
+	@echo "make benchmark-list                        - List available tasks"
+	@echo "make benchmark-clean                       - Clean results"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make benchmark TARGET=amplihack TASK=simple-task"
+	@echo "  make benchmark-compare TASK=simple-task"
