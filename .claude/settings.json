@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+            "command": "/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/.claude/tools/amplihack/hooks/session_start.py",
             "timeout": 10000
           }
         ]
@@ -16,19 +16,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+            "command": "/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/.claude/tools/amplihack/hooks/stop.py",
             "timeout": 30000
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_tool_use.py"
           }
         ]
       }
@@ -39,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py"
+            "command": "/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/.claude/tools/amplihack/hooks/post_tool_use.py"
           }
         ]
       }
@@ -49,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+            "command": "/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding/.claude/tools/amplihack/hooks/pre_compact.py",
             "timeout": 30000
           }
         ]
