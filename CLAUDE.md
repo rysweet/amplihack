@@ -9,7 +9,11 @@ automation and collaborative problem-solving.
 
 **READ THIS FIRST:** @.claude/context/TOOL_VS_SKILL_CLASSIFICATION.md
 
-When user says "create a tool" → Build EXECUTABLE code (Python/Node program), NOT a Claude Code skill (markdown).
+**PREFERRED PATTERN:** When user says "create a tool" → Build BOTH:
+1. Executable tool in `.claude/scenarios/` (the program itself)
+2. Skill in `.claude/skills/` that calls the tool (convenient interface)
+
+**In eval-recipes:** Build tool FIRST (executable required for scoring), skill optional.
 
 ## Important Files to Import
 

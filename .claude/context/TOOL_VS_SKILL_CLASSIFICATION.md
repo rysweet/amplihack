@@ -31,11 +31,46 @@ When user says:
 - **"create a script"** → Build EXECUTABLE code
 - **"create a skill"** → Build DOCUMENTATION (Claude Code skill)
 
-### The Pattern: Tools Can Use Skills
+### The PREFERRED Pattern: Tool + Skill (Best of Both Worlds)
 
-- A TOOL (executable) can CALL a SKILL (via Claude Code SDK)
-- A SKILL cannot replace a TOOL
-- When in doubt: Build the TOOL (executable code)
+**Most of the time, build BOTH:**
+
+1. **First**: Build the TOOL (executable program in `.claude/scenarios/`)
+   - Reusable, testable, version-controlled code
+   - Can be run standalone: `python linkedin_drafter.py --args`
+   - Has tests, documentation, proper structure
+
+2. **Then**: Build a SKILL that uses the tool (in `.claude/skills/`)
+   - Skill calls the tool via Claude Code SDK
+   - Provides convenient conversational interface
+   - User can say "draft a LinkedIn post" and skill invokes tool
+
+**Why This Is Best:**
+- ✅ Tool is executable and testable (satisfies eval requirements)
+- ✅ Skill provides convenient interface (satisfies user experience)
+- ✅ Tool can be used standalone OR via skill
+- ✅ Separation of concerns: Tool = functionality, Skill = interface
+
+**Example:**
+```
+Scenarios/linkedin_drafter/cli.py  # The executable tool
+.claude/skills/linkedin-drafter/   # Skill that calls the tool
+```
+
+### When Tool-Only Is Sufficient
+
+Build just the tool when:
+- One-off scripts or utilities
+- Batch processing programs
+- CI/CD integration points
+- The user explicitly doesn't want a skill
+
+### In eval-recipes Context
+
+For benchmarks like eval-recipes:
+- Build the TOOL first (executable is required for scoring)
+- Skill creation is optional (not tested by evals)
+- Default to tool-only in eval contexts
 
 ## Critical Warning
 
