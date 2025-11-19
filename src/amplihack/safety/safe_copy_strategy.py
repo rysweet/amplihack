@@ -48,11 +48,18 @@ class SafeCopyStrategy:
         """
         print("\n⚠️  Uncommitted changes detected in .claude/")
         print("=" * 70)
-        print("\nThe following files have uncommitted changes:")
-        for file_path in conflicting_files[:10]:
-            print(f"  • {file_path}")
-        if len(conflicting_files) > 10:
-            print(f"  ... and {len(conflicting_files) - 10} more")
+
+        # List ALL files that will be overwritten
+        print("\n📁 The following files will be overwritten:")
+        if target_path.exists():
+            all_files = sorted([str(f.relative_to(target_path.parent)) for f in target_path.rglob("*") if f.is_file()])
+            for file_path in all_files[:20]:
+                # Highlight conflicting files
+                marker = "⚠️ " if file_path in conflicting_files else "  "
+                print(f"  {marker}{file_path}")
+            if len(all_files) > 20:
+                print(f"  ... and {len(all_files) - 20} more files")
+            print(f"\n  Total: {len(all_files)} files")
 
         print("\n📝 For amplihack to function, it needs to overwrite .claude/")
         print("\n💡 Guidance:")
@@ -67,8 +74,9 @@ class SafeCopyStrategy:
             return True
 
         try:
-            response = input("\nOverwrite .claude/ directory? [y/N]: ").strip().lower()
-            return response in ("y", "yes")
+            response = input("\nOverwrite .claude/ directory? [Y/n]: ").strip().lower()
+            # Empty response or 'y'/'yes' means yes (Y is default)
+            return response in ("", "y", "yes")
         except (EOFError, KeyboardInterrupt):
             print("\n\nOperation cancelled by user")
             return False
