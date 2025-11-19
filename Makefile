@@ -1,7 +1,7 @@
 # Makefile for Scenarios Directory Pattern Tools
 # Provides easy access to production-ready scenario tools
 
-.PHONY: help analyze-codebase scenarios-help list-scenarios
+.PHONY: help analyze-codebase scenarios-help list-scenarios catalog
 
 # Default target - show help
 help:
@@ -12,6 +12,7 @@ help:
 	@echo "  make analyze-codebase TARGET=<path> [OPTIONS=<opts>]  - Analyze codebase structure and patterns"
 	@echo "  make list-scenarios                                   - List all available scenario tools"
 	@echo "  make scenarios-help                                   - Show detailed help for scenarios"
+	@echo "  make catalog                                          - Generate component catalog from frontmatter"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make analyze-codebase TARGET=./src"
@@ -54,6 +55,12 @@ scenarios-help:
 	@echo "  └── examples/                 # Usage examples"
 	@echo ""
 	@echo "For more information, see: .claude/scenarios/README.md"
+
+# Generate component catalog from frontmatter
+catalog:
+	@echo "📚 Generating component catalog..."
+	@python3 .claude/tools/generate_catalog.py
+	@echo "✅ Catalog generated: .claude/context/COMPONENT_CATALOG.md"
 
 # Scenario Tools
 # =============
