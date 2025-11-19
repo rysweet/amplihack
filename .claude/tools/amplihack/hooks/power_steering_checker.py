@@ -523,7 +523,7 @@ class PowerSteeringChecker:
             # Check 1: Path is within allowed parent (project root)
             try:
                 path_resolved.relative_to(parent_resolved)
-                self._log(f"Path validated: within project root", "DEBUG")
+                self._log("Path validated: within project root", "DEBUG")
                 return True
             except ValueError:
                 pass  # Not in project root, check other allowed locations
@@ -533,7 +533,7 @@ class PowerSteeringChecker:
             try:
                 home = Path.home().resolve()
                 path_resolved.relative_to(home)
-                self._log(f"Path validated: within user home directory", "DEBUG")
+                self._log("Path validated: within user home directory", "DEBUG")
                 return True  # In user's home - safe for read-only operations
             except ValueError:
                 pass  # Not in home directory, check temp directories
