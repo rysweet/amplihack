@@ -205,14 +205,14 @@ def analyze_project_structure(project_root: Path) -> Dict[str, Any]:
         "package_files": {},
     }
 
-    # Detect languages
-    if list(project_root.rglob("*.py"))[:1]:
+    # Detect languages (use next() to avoid scanning entire directory tree)
+    if next(project_root.rglob("*.py"), None):
         info["languages"].append("Python")
-    if list(project_root.rglob("*.js"))[:1] or list(project_root.rglob("*.ts"))[:1]:
+    if next(project_root.rglob("*.js"), None) or next(project_root.rglob("*.ts"), None):
         info["languages"].append("JavaScript/TypeScript")
-    if list(project_root.rglob("*.rs"))[:1]:
+    if next(project_root.rglob("*.rs"), None):
         info["languages"].append("Rust")
-    if list(project_root.rglob("*.go"))[:1]:
+    if next(project_root.rglob("*.go"), None):
         info["languages"].append("Go")
 
     # Read package metadata
