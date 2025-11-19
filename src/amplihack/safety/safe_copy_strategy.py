@@ -57,7 +57,9 @@ class SafeCopyStrategy:
             temp_dir = Path(tempfile.mkdtemp(prefix="amplihack-")) / ".claude"
             temp_dir.mkdir(parents=True, exist_ok=True)
             print(f"\n📁 Staging to temp directory: {temp_dir.parent}")
-            print("   Your working directory .claude/ remains unchanged\n")
+            print("   Your working directory .claude/ remains unchanged")
+            print("   Note: Hooks will use $CLAUDE_PROJECT_DIR environment variable")
+            print("   Temp mode is safe for concurrent sessions\n")
             return CopyStrategy(temp_dir, True, use_temp=True, temp_dir=temp_dir)
         else:  # "overwrite"
             return CopyStrategy(original_path, True, use_temp=False)
@@ -93,6 +95,7 @@ class SafeCopyStrategy:
         print("  • t: Stage to temp directory instead")
         print("       → Your .claude/ remains unchanged")
         print("       → Some features may not work (hooks, statusline)")
+        print("       → Useful for running auto mode concurrently with interactive session")
         print("  • n: Cancel and exit")
         print("       → Commit your changes first, then try again")
         print("=" * 70)
