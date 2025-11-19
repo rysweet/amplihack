@@ -101,8 +101,6 @@ ai_working/tmp
 .claude/runtime/
 !.claude/runtime/*/.gitkeep
 .claude/.claude/
-# Claude backup directories (created during UVX staging conflicts)
-.claude.backup-*
 **/runtime/logs/
 **/runtime/metrics/
 **/runtime/analysis/

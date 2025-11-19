@@ -1,8 +1,7 @@
 """Safe copy strategy for conflict-free file operations."""
 
 import os
-import shutil
-import time
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
@@ -13,9 +12,7 @@ class CopyStrategy:
     """Strategy for where to copy files."""
 
     target_dir: Path
-    used_temp: bool
-    temp_dir: Optional[Path]
-    backup_dir: Optional[Path] = None
+    should_proceed: bool
 
 
 class SafeCopyStrategy:
@@ -26,49 +23,30 @@ class SafeCopyStrategy:
     ) -> CopyStrategy:
         """Determine where to copy files based on conflict status.
 
-        Always stages to working directory. If conflicts exist, backs up
-        existing .claude directory to .claude.backup-<timestamp>.
+        Always stages to working directory. If conflicts exist, prompts user
+        to confirm overwrite.
         """
         original_path = Path(original_target).resolve()
 
         if not has_conflicts:
-            return CopyStrategy(original_path, False, None, None)
+            return CopyStrategy(original_path, True)
 
-        # Backup existing .claude directory instead of using temp
-        backup_dir = self._create_backup(original_path)
+        # Prompt user about overwrite
+        should_proceed = self._prompt_user_for_overwrite(conflicting_files, original_path)
 
-        if backup_dir:
-            self._log_backup_info(conflicting_files, original_path, backup_dir)
+        return CopyStrategy(original_path, should_proceed)
 
-        # Always return original path (working directory)
-        return CopyStrategy(original_path, False, None, backup_dir)
-
-    def _create_backup(self, original_path: Path) -> Optional[Path]:
-        """Create timestamped backup of existing .claude directory.
+    def _prompt_user_for_overwrite(self, conflicting_files: List[str], target_path: Path) -> bool:
+        """Prompt user to confirm overwrite of existing .claude directory.
 
         Args:
-            original_path: Path to .claude directory
+            conflicting_files: List of files with uncommitted changes
+            target_path: Path to .claude directory
 
         Returns:
-            Path to backup directory if successful, None otherwise
+            True if user approves overwrite, False otherwise
         """
-        if not original_path.exists():
-            return None
-
-        # Create backup with timestamp
-        timestamp = int(time.time())
-        backup_dir = original_path.parent / f".claude.backup-{timestamp}"
-
-        try:
-            shutil.copytree(original_path, backup_dir)
-            return backup_dir
-        except Exception as e:
-            print(f"⚠️  Warning: Could not create backup: {e}")
-            return None
-
-    def _log_backup_info(self, conflicting_files: List[str], target_path: Path, backup_dir: Path) -> None:
-        """Log information about backup and staging."""
-        print("\n⚠️  SAFETY: Uncommitted changes detected in .claude/")
+        print("\n⚠️  Uncommitted changes detected in .claude/")
         print("=" * 70)
         print("\nThe following files have uncommitted changes:")
         for file_path in conflicting_files[:10]:
@@ -76,10 +54,21 @@ class SafeCopyStrategy:
         if len(conflicting_files) > 10:
             print(f"  ... and {len(conflicting_files) - 10} more")
 
-        print(f"\n📁 Existing .claude/ backed up to:")
-        print(f"   {backup_dir}")
-        print(f"\n✅ Fresh .claude/ will be staged in your working directory:")
-        print(f"   {target_path}")
-        print("\n💡 Your changes are safe in the backup.")
+        print("\n📝 For amplihack to function, it needs to overwrite .claude/")
+        print("\n💡 Guidance:")
+        print("  • If files are versioned in git: You can recover via git")
+        print("  • Project-specific context should go in: .claude/context/PROJECT.md")
+        print("  • Amplihack framework files will be updated to latest version")
         print("=" * 70)
-        print()
+
+        # Check if running non-interactively (UVX, CI, etc.)
+        if not sys.stdin.isatty():
+            print("\n🚀 Non-interactive mode detected - auto-approving")
+            return True
+
+        try:
+            response = input("\nOverwrite .claude/ directory? [y/N]: ").strip().lower()
+            return response in ("y", "yes")
+        except (EOFError, KeyboardInterrupt):
+            print("\n\nOperation cancelled by user")
+            return False

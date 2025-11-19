@@ -542,14 +542,23 @@ def main(argv: Optional[List[str]] = None) -> int:
             conflicting_files=conflict_result.conflicting_files,
         )
 
-        # If backup was created, remove the old .claude directory to make room for fresh staging
-        if copy_strategy.backup_dir and copy_strategy.target_dir.exists():
+        # Check if user declined to proceed
+        if not copy_strategy.should_proceed:
+            print("\n❌ Staging cancelled by user")
+            print("💡 To use amplihack, either:")
+            print("  • Commit your .claude/ changes first")
+            print("  • Move project-specific context to .claude/context/PROJECT.md")
+            print("  • Run with conflicts and choose 'y' to overwrite")
+            return 1
+
+        # If target exists, remove it to make room for fresh staging
+        target_path = Path(copy_strategy.target_dir)
+        if target_path.exists():
             try:
-                shutil.rmtree(copy_strategy.target_dir)
+                shutil.rmtree(target_path)
             except Exception as e:
-                print(f"⚠️  Error: Could not remove old .claude directory: {e}")
-                print(f"    Backup is safe at: {copy_strategy.backup_dir}")
-                print(f"    Please manually remove {copy_strategy.target_dir} and try again")
+                print(f"\n⚠️  Error: Could not remove existing .claude directory: {e}")
+                print(f"    Please manually remove {target_path} and try again")
                 return 1
 
         temp_claude_dir = str(copy_strategy.target_dir)
