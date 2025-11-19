@@ -1,7 +1,7 @@
 """Safe copy strategy for conflict-free file operations."""
 
 import os
-import tempfile
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
@@ -12,8 +12,7 @@ class CopyStrategy:
     """Strategy for where to copy files."""
 
     target_dir: Path
-    used_temp: bool
-    temp_dir: Optional[Path]
+    should_proceed: bool
 
 
 class SafeCopyStrategy:
@@ -22,34 +21,62 @@ class SafeCopyStrategy:
     def determine_target(
         self, original_target: Union[str, Path], has_conflicts: bool, conflicting_files: List[str]
     ) -> CopyStrategy:
-        """Determine where to copy files based on conflict status."""
+        """Determine where to copy files based on conflict status.
+
+        Always stages to working directory. If conflicts exist, prompts user
+        to confirm overwrite.
+        """
         original_path = Path(original_target).resolve()
 
         if not has_conflicts:
-            return CopyStrategy(original_path, False, None)
+            return CopyStrategy(original_path, True)
 
-        temp_dir = Path(tempfile.mkdtemp(prefix="amplihack-")) / ".claude"
-        temp_dir.mkdir(parents=True, exist_ok=True)
+        # Prompt user about overwrite
+        should_proceed = self._prompt_user_for_overwrite(conflicting_files, original_path)
 
-        self._log_conflict_warning(conflicting_files, temp_dir)
+        return CopyStrategy(original_path, should_proceed)
 
-        os.environ["AMPLIHACK_STAGED_DIR"] = str(temp_dir)
-        os.environ["AMPLIHACK_ORIGINAL_CWD"] = str(original_path)
+    def _prompt_user_for_overwrite(self, conflicting_files: List[str], target_path: Path) -> bool:
+        """Prompt user to confirm overwrite of existing .claude directory.
 
-        return CopyStrategy(temp_dir, True, temp_dir)
+        Args:
+            conflicting_files: List of files with uncommitted changes
+            target_path: Path to .claude directory
 
-    def _log_conflict_warning(self, conflicting_files: List[str], temp_dir: Path) -> None:
-        """Log warning about conflicts and temp directory usage."""
-        print("\n⚠️  SAFETY WARNING: Uncommitted changes detected in .claude/")
+        Returns:
+            True if user approves overwrite, False otherwise
+        """
+        print("\n⚠️  Uncommitted changes detected in .claude/")
         print("=" * 70)
-        print("\nThe following files have uncommitted changes that would be overwritten:")
-        for file_path in conflicting_files[:10]:
-            print(f"  • {file_path}")
-        if len(conflicting_files) > 10:
-            print(f"  ... and {len(conflicting_files) - 10} more")
 
-        print("\n📁 To protect your changes, .claude/ will be staged in:")
-        print(f"   {temp_dir}")
-        print("\n💡 Auto mode will automatically work in your original directory.")
+        # List ALL files that will be overwritten
+        print("\n📁 The following files will be overwritten:")
+        if target_path.exists():
+            all_files = sorted([str(f.relative_to(target_path.parent)) for f in target_path.rglob("*") if f.is_file()])
+            for file_path in all_files[:20]:
+                # Highlight conflicting files
+                marker = "⚠️ " if file_path in conflicting_files else "  "
+                print(f"  {marker}{file_path}")
+            if len(all_files) > 20:
+                print(f"  ... and {len(all_files) - 20} more files")
+            print(f"\n  Total: {len(all_files)} files")
+
+        print("\n📝 For amplihack to function, it needs to overwrite .claude/")
+        print("\n💡 Guidance:")
+        print("  • If files are versioned in git: You can recover via git")
+        print("  • Project-specific context should go in: .claude/context/PROJECT.md")
+        print("  • Amplihack framework files will be updated to latest version")
         print("=" * 70)
-        print()
+
+        # Check if running non-interactively (UVX, CI, etc.)
+        if not sys.stdin.isatty():
+            print("\n🚀 Non-interactive mode detected - auto-approving")
+            return True
+
+        try:
+            response = input("\nOverwrite .claude/ directory? [Y/n]: ").strip().lower()
+            # Empty response or 'y'/'yes' means yes (Y is default)
+            return response in ("", "y", "yes")
+        except (EOFError, KeyboardInterrupt):
+            print("\n\nOperation cancelled by user")
+            return False

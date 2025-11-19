@@ -542,6 +542,25 @@ def main(argv: Optional[List[str]] = None) -> int:
             conflicting_files=conflict_result.conflicting_files,
         )
 
+        # Check if user declined to proceed
+        if not copy_strategy.should_proceed:
+            print("\n❌ Staging cancelled by user")
+            print("💡 To use amplihack, either:")
+            print("  • Commit your .claude/ changes first")
+            print("  • Move project-specific context to .claude/context/PROJECT.md")
+            print("  • Run with conflicts and choose 'y' to overwrite")
+            return 1
+
+        # If target exists, remove it to make room for fresh staging
+        target_path = Path(copy_strategy.target_dir)
+        if target_path.exists():
+            try:
+                shutil.rmtree(target_path)
+            except Exception as e:
+                print(f"\n⚠️  Error: Could not remove existing .claude directory: {e}")
+                print(f"    Please manually remove {target_path} and try again")
+                return 1
+
         temp_claude_dir = str(copy_strategy.target_dir)
 
         # Store original_cwd for auto mode (always set, regardless of conflicts)
@@ -579,13 +598,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")
 
-        # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
-        # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
+        # Create settings.json with relative paths since we stage to working directory
         if copied:
             settings_path = os.path.join(temp_claude_dir, "settings.json")
             import json
 
             # Create minimal settings.json with just amplihack hooks
+            # Use relative paths since .claude is in working directory
             settings = {
                 "hooks": {
                     "SessionStart": [
@@ -593,7 +612,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+                                    "command": ".claude/tools/amplihack/hooks/session_start.py",
                                     "timeout": 10000,
                                 }
                             ]
@@ -604,7 +623,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+                                    "command": ".claude/tools/amplihack/hooks/stop.py",
                                     "timeout": 30000,
                                 }
                             ]
@@ -616,7 +635,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
+                                    "command": ".claude/tools/amplihack/hooks/post_tool_use.py",
                                 }
                             ],
                         }
@@ -626,7 +645,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+                                    "command": ".claude/tools/amplihack/hooks/pre_compact.py",
                                     "timeout": 30000,
                                 }
                             ]
