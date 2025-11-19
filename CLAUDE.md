@@ -5,11 +5,18 @@ configures the amplihack agentic coding framework - a development tool that uses
 specialized AI agents to accelerate software development through intelligent
 automation and collaborative problem-solving.
 
+## CRITICAL: Tool vs Skill Classification
+
+**READ THIS FIRST:** @.claude/context/TOOL_VS_SKILL_CLASSIFICATION.md
+
+When user says "create a tool" → Build EXECUTABLE code (Python/Node program), NOT a Claude Code skill (markdown).
+
 ## Important Files to Import
 
 When starting a session, import these files for context:
 
 ```
+@.claude/context/TOOL_VS_SKILL_CLASSIFICATION.md
 @.claude/context/PHILOSOPHY.md
 @.claude/context/PROJECT.md
 @.claude/context/PATTERNS.md
