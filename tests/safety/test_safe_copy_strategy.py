@@ -1,15 +1,16 @@
 """Unit tests for SafeCopyStrategy module.
 
-Tests all scenarios from the architecture specification:
+Tests all scenarios for the new backup-based approach:
 1. No conflicts - use original target
-2. With conflicts - create temp directory
-3. Warning output is displayed
-4. Environment variables are set correctly
+2. With conflicts - backup existing, use original target
+3. Backup creation and timestamping
+4. Warning output is displayed
 """
 
 import os
 import shutil
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -22,7 +23,9 @@ class TestSafeCopyStrategy(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.original_target = Path("/tmp/test-project/.claude")
+        # Create temporary test directory
+        self.test_dir = Path(tempfile.mkdtemp(prefix="test-safecopy-"))
+        self.original_target = self.test_dir / ".claude"
         self.conflicting_files = [
             ".claude/tools/amplihack/hooks/stop.py",
             ".claude/agents/amplihack/builder.md",
@@ -30,11 +33,9 @@ class TestSafeCopyStrategy(unittest.TestCase):
         self.strategy_manager = SafeCopyStrategy()
 
     def tearDown(self):
-        """Clean up environment variables after each test."""
-        if "AMPLIHACK_STAGED_DIR" in os.environ:
-            del os.environ["AMPLIHACK_STAGED_DIR"]
-        if "AMPLIHACK_ORIGINAL_CWD" in os.environ:
-            del os.environ["AMPLIHACK_ORIGINAL_CWD"]
+        """Clean up test directory."""
+        if self.test_dir.exists():
+            shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def test_no_conflicts(self):
         """Test Case 1: No conflicts - use original target.
@@ -43,7 +44,7 @@ class TestSafeCopyStrategy(unittest.TestCase):
         - target_dir == original_target
         - used_temp == False
         - temp_dir == None
-        - No env vars set
+        - backup_dir == None
         """
         result = self.strategy_manager.determine_target(
             original_target=self.original_target, has_conflicts=False, conflicting_files=[]
@@ -52,21 +53,53 @@ class TestSafeCopyStrategy(unittest.TestCase):
         self.assertEqual(result.target_dir, self.original_target.resolve())
         self.assertFalse(result.used_temp)
         self.assertIsNone(result.temp_dir)
+        self.assertIsNone(result.backup_dir)
 
-        # Verify no env vars were set
-        self.assertNotIn("AMPLIHACK_STAGED_DIR", os.environ)
-
-    def test_with_conflicts_creates_temp_dir(self):
-        """Test Case 2: With conflicts - create temp directory.
+    def test_with_conflicts_creates_backup(self):
+        """Test Case 2: With conflicts - create backup and use original target.
 
         Expected behavior:
-        - target_dir starts with /tmp/amplihack-
-        - used_temp == True
-        - temp_dir is set
-        - AMPLIHACK_STAGED_DIR env var is set
-        - AMPLIHACK_ORIGINAL_CWD env var is set
-        - Temp directory exists
-        - .claude subdirectory exists in temp
+        - target_dir == original_target (not temp!)
+        - used_temp == False
+        - temp_dir == None
+        - backup_dir is set and exists
+        - Backup directory has timestamp in name
+        """
+        # Create existing .claude directory with a file
+        self.original_target.mkdir(parents=True)
+        test_file = self.original_target / "test.txt"
+        test_file.write_text("original content")
+
+        result = self.strategy_manager.determine_target(
+            original_target=self.original_target,
+            has_conflicts=True,
+            conflicting_files=self.conflicting_files,
+        )
+
+        # Verify original target is used (not temp)
+        self.assertEqual(result.target_dir, self.original_target.resolve())
+        self.assertFalse(result.used_temp)
+        self.assertIsNone(result.temp_dir)
+
+        # Verify backup was created
+        self.assertIsNotNone(result.backup_dir)
+        self.assertTrue(result.backup_dir.exists())
+        self.assertTrue(result.backup_dir.is_dir())
+
+        # Verify backup directory naming
+        self.assertTrue(result.backup_dir.name.startswith(".claude.backup-"))
+
+        # Verify backup contains original file
+        backed_up_file = result.backup_dir / "test.txt"
+        self.assertTrue(backed_up_file.exists())
+        self.assertEqual(backed_up_file.read_text(), "original content")
+
+    def test_no_backup_when_target_doesnt_exist(self):
+        """Test Case 3: No backup created if target doesn't exist.
+
+        Expected behavior:
+        - backup_dir == None when original_target doesn't exist
+        - Still returns original_target as target_dir
         """
         result = self.strategy_manager.determine_target(
             original_target=self.original_target,
@@ -74,41 +107,24 @@ class TestSafeCopyStrategy(unittest.TestCase):
             conflicting_files=self.conflicting_files,
         )
 
-        try:
-            # Verify temp directory was created
-            self.assertTrue(result.used_temp)
-            self.assertIsNotNone(result.temp_dir)
-            self.assertTrue(str(result.target_dir).startswith(tempfile.gettempdir()))
-            self.assertTrue("amplihack-" in str(result.target_dir))
+        # Verify no backup created
+        self.assertIsNone(result.backup_dir)
 
-            # Verify directory exists
-            self.assertTrue(result.target_dir.exists())
-            self.assertTrue(result.target_dir.is_dir())
-
-            # Verify .claude subdirectory was created
-            self.assertEqual(result.target_dir.name, ".claude")
-            self.assertTrue(result.target_dir.parent.name.startswith("amplihack-"))
-
-            # Verify environment variables
-            self.assertEqual(os.environ["AMPLIHACK_STAGED_DIR"], str(result.temp_dir))
-            self.assertEqual(
-                os.environ["AMPLIHACK_ORIGINAL_CWD"], str(self.original_target.resolve())
-            )
-
-        finally:
-            # Clean up temp directory
-            if result.temp_dir and result.temp_dir.exists():
-                # Remove the parent directory (amplihack-XXX), not just .claude
-                shutil.rmtree(result.temp_dir.parent, ignore_errors=True)
+        # But original target still used
+        self.assertEqual(result.target_dir, self.original_target.resolve())
 
     def test_warning_output_displayed(self):
-        """Test Case 3: Warning output is displayed with conflicts.
+        """Test Case 4: Warning output is displayed with conflicts.
 
         Expected behavior:
         - Warning message printed to stdout
         - Conflicting files listed
-        - Temp directory path shown
+        - Backup directory path shown
+        - Working directory staging confirmed
         """
+        # Create existing directory for backup
+        self.original_target.mkdir(parents=True)
+
         with patch("builtins.print") as mock_print:
             result = self.strategy_manager.determine_target(
                 original_target=self.original_target,
@@ -116,32 +132,33 @@ class TestSafeCopyStrategy(unittest.TestCase):
                 conflicting_files=self.conflicting_files,
             )
 
-            try:
-                # Verify print was called multiple times
-                self.assertGreater(mock_print.call_count, 5)
+            # Verify print was called multiple times
+            self.assertGreater(mock_print.call_count, 5)
 
-                # Collect all print calls (handle both positional and keyword args)
-                all_output = " ".join(
-                    [
-                        str(call.args[0]) if call.args else str(call.kwargs.get(""))
-                        for call in mock_print.call_args_list
-                    ]
-                )
+            # Collect all print calls
+            all_output = " ".join(
+                [
+                    str(call.args[0]) if call.args else str(call.kwargs.get(""))
+                    for call in mock_print.call_args_list
+                ]
+            )
 
-                # Verify warning message content
-                self.assertIn("SAFETY WARNING", all_output)
-                self.assertIn("uncommitted changes", all_output.lower())
-                self.assertIn("protect your changes", all_output.lower())
-                self.assertIn(".claude/tools/amplihack/hooks/stop.py", all_output)
-                self.assertIn(str(result.temp_dir), all_output)
+            # Verify warning message content
+            self.assertIn("SAFETY", all_output)
+            self.assertIn("uncommitted changes", all_output.lower())
+            self.assertIn("backed up", all_output.lower())
+            self.assertIn(".claude/tools/amplihack/hooks/stop.py", all_output)
+            self.assertIn("working directory", all_output.lower())
 
-            finally:
-                # Clean up
-                if result.temp_dir and result.temp_dir.exists():
-                    shutil.rmtree(result.temp_dir.parent, ignore_errors=True)
+            # Verify backup path is shown
+            if result.backup_dir:
+                self.assertIn(str(result.backup_dir), all_output)
 
     def test_warning_limits_file_list(self):
         """Test that warning limits displayed files to 10."""
+        # Create existing directory
+        self.original_target.mkdir(parents=True)
+
         # Create list of 15 conflicting files
         many_files = [f".claude/tools/file{i}.py" for i in range(15)]
 
@@ -152,30 +169,38 @@ class TestSafeCopyStrategy(unittest.TestCase):
                 conflicting_files=many_files,
             )
 
-            try:
-                # Collect all print output (handle both positional and keyword args)
-                all_output = " ".join(
-                    [
-                        str(call.args[0]) if call.args else str(call.kwargs.get(""))
-                        for call in mock_print.call_args_list
-                    ]
-                )
+            # Collect all print output
+            all_output = " ".join(
+                [
+                    str(call.args[0]) if call.args else str(call.kwargs.get(""))
+                    for call in mock_print.call_args_list
+                ]
+            )
 
-                # Verify "... and 5 more" message is shown
-                self.assertIn("and 5 more", all_output)
+            # Verify "... and 5 more" message is shown
+            self.assertIn("and 5 more", all_output)
 
-            finally:
-                # Clean up
-                if result.temp_dir and result.temp_dir.exists():
-                    shutil.rmtree(result.temp_dir.parent, ignore_errors=True)
+    def test_backup_timestamp_uniqueness(self):
+        """Test that multiple backups get unique timestamps."""
+        # Create existing directory
+        self.original_target.mkdir(parents=True)
+        (self.original_target / "test.txt").write_text("content1")
 
-    def test_multiple_calls_create_different_temp_dirs(self):
-        """Test that multiple calls create different temp directories."""
         result1 = self.strategy_manager.determine_target(
             original_target=self.original_target,
             has_conflicts=True,
             conflicting_files=self.conflicting_files,
         )
+
+        # Wait to ensure different timestamp
+        time.sleep(1)
+
+        # Remove the old directory and recreate for second backup
+        # (In real usage, CLI removes the old directory after backup)
+        if self.original_target.exists():
+            shutil.rmtree(self.original_target)
+        self.original_target.mkdir(parents=True)
+        (self.original_target / "test.txt").write_text("content2")
 
         result2 = self.strategy_manager.determine_target(
             original_target=self.original_target,
@@ -183,18 +208,14 @@ class TestSafeCopyStrategy(unittest.TestCase):
             conflicting_files=self.conflicting_files,
         )
 
-        try:
-            # Verify different directories were created
-            self.assertNotEqual(result1.target_dir, result2.target_dir)
-            self.assertTrue(result1.target_dir.exists())
-            self.assertTrue(result2.target_dir.exists())
+        # Verify different backup directories
+        self.assertIsNotNone(result1.backup_dir)
+        self.assertIsNotNone(result2.backup_dir)
+        self.assertNotEqual(result1.backup_dir, result2.backup_dir)
 
-        finally:
-            # Clean up both temp directories
-            if result1.temp_dir and result1.temp_dir.exists():
-                shutil.rmtree(result1.temp_dir.parent, ignore_errors=True)
-            if result2.temp_dir and result2.temp_dir.exists():
-                shutil.rmtree(result2.temp_dir.parent, ignore_errors=True)
+        # Both should exist with different content
+        self.assertEqual((result1.backup_dir / "test.txt").read_text(), "content1")
+        self.assertEqual((result2.backup_dir / "test.txt").read_text(), "content2")
 
     def test_original_target_path_resolution(self):
         """Test that original target path is properly resolved."""
@@ -209,59 +230,27 @@ class TestSafeCopyStrategy(unittest.TestCase):
         self.assertTrue(result.target_dir.is_absolute())
         self.assertEqual(result.target_dir, Path(relative_path).resolve())
 
-    def test_env_var_overwrite_on_multiple_calls(self):
-        """Test that env vars are overwritten correctly on multiple calls."""
-        # First call
-        result1 = self.strategy_manager.determine_target(
-            original_target=self.original_target,
-            has_conflicts=True,
-            conflicting_files=self.conflicting_files,
-        )
+    def test_backup_failure_handling(self):
+        """Test graceful handling when backup fails."""
+        # Create a directory we can't copy
+        self.original_target.mkdir(parents=True)
 
-        first_staged_dir = os.environ["AMPLIHACK_STAGED_DIR"]
+        # Mock copytree to raise an exception
+        with patch("shutil.copytree", side_effect=PermissionError("Access denied")):
+            with patch("builtins.print") as mock_print:
+                result = self.strategy_manager.determine_target(
+                    original_target=self.original_target,
+                    has_conflicts=True,
+                    conflicting_files=self.conflicting_files,
+                )
 
-        # Second call
-        result2 = self.strategy_manager.determine_target(
-            original_target=self.original_target,
-            has_conflicts=True,
-            conflicting_files=self.conflicting_files,
-        )
+                # Should handle failure gracefully
+                self.assertIsNone(result.backup_dir)
+                self.assertEqual(result.target_dir, self.original_target.resolve())
 
-        second_staged_dir = os.environ["AMPLIHACK_STAGED_DIR"]
-
-        try:
-            # Verify env var was updated
-            self.assertNotEqual(first_staged_dir, second_staged_dir)
-            self.assertEqual(second_staged_dir, str(result2.temp_dir))
-
-        finally:
-            # Clean up
-            if result1.temp_dir and result1.temp_dir.exists():
-                shutil.rmtree(result1.temp_dir.parent, ignore_errors=True)
-            if result2.temp_dir and result2.temp_dir.exists():
-                shutil.rmtree(result2.temp_dir.parent, ignore_errors=True)
-
-    def test_empty_conflicting_files_list(self):
-        """Test behavior with empty conflicting files list but has_conflicts=True.
-
-        This is an edge case that shouldn't happen in practice, but we should
-        handle it gracefully.
-        """
-        with patch("builtins.print"):
-            result = self.strategy_manager.determine_target(
-                original_target=self.original_target, has_conflicts=True, conflicting_files=[]
-            )
-
-            try:
-                # Should still create temp directory
-                self.assertTrue(result.used_temp)
-                self.assertIsNotNone(result.temp_dir)
-                self.assertTrue(result.target_dir.exists())
-
-            finally:
-                # Clean up
-                if result.temp_dir and result.temp_dir.exists():
-                    shutil.rmtree(result.temp_dir.parent, ignore_errors=True)
+                # Should print warning
+                all_output = " ".join([str(call.args[0]) if call.args else "" for call in mock_print.call_args_list])
+                self.assertIn("Could not create backup", all_output)
 
 
 if __name__ == "__main__":

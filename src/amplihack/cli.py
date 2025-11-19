@@ -544,8 +544,13 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # If backup was created, remove the old .claude directory to make room for fresh staging
         if copy_strategy.backup_dir and copy_strategy.target_dir.exists():
-            import shutil
-            shutil.rmtree(copy_strategy.target_dir)
+            try:
+                shutil.rmtree(copy_strategy.target_dir)
+            except Exception as e:
+                print(f"⚠️  Error: Could not remove old .claude directory: {e}")
+                print(f"    Backup is safe at: {copy_strategy.backup_dir}")
+                print(f"    Please manually remove {copy_strategy.target_dir} and try again")
+                return 1
 
         temp_claude_dir = str(copy_strategy.target_dir)
 
