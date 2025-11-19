@@ -1,5 +1,6 @@
 ---
 name: ethicist-analyst
+version: 1.0.0
 description: |
   Analyzes moral dimensions and value conflicts through ethical frameworks using deontology, consequentialism,
   virtue ethics, and applied ethics methodologies.

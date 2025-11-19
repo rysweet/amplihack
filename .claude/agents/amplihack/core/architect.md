@@ -1,6 +1,8 @@
 ---
 name: architect
+version: 1.0.0
 description: General architecture and design agent. Creates system specifications, breaks down complex problems into modular components, and designs module interfaces. Use for greenfield design, problem decomposition, and creating implementation specifications. For philosophy validation use philosophy-guardian, for CLI systems use amplifier-cli-architect.
+role: "System architect and problem decomposition specialist"
 model: inherit
 ---
 

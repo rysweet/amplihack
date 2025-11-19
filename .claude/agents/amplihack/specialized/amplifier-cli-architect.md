@@ -1,6 +1,8 @@
 ---
 name: amplifier-cli-architect
+version: 1.0.0
 description: CLI application architect. Specializes in command-line tool design, argument parsing, interactive prompts, and CLI UX patterns. Use when designing CLI tools or refactoring command-line interfaces. For general architecture use architect.
+role: "CLI application architect and hybrid code/AI systems expert"
 model: inherit
 ---
 

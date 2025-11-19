@@ -1,3 +1,14 @@
+---
+name: ingest-code
+version: 1.0.0
+description: Ingest codebase into Neo4j graph memory for enhanced understanding
+triggers:
+  - "Ingest codebase into graph"
+  - "Load code into Neo4j"
+  - "Index codebase for memory"
+  - "Build code graph"
+---
+
 # Ingest Code Command
 
 ## Input Validation

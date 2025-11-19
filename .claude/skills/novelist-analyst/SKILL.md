@@ -1,5 +1,6 @@
 ---
 name: novelist-analyst
+version: 1.0.0
 description: |
   Analyzes events through narrative lens using story structure, character arc analysis, dramatic tension,
   thematic development, and narrative theory (three-act structure, hero's journey, conflict-resolution).

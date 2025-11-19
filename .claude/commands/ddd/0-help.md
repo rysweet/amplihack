@@ -1,5 +1,14 @@
 ---
-description: DDD workflow guide and help (project:ddd)
+name: ddd:0-help
+version: 1.0.0
+description: DDD workflow guide and help
+triggers:
+  - "Need help with DDD"
+  - "How does document-driven development work"
+  - "DDD workflow overview"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DDD_WORKFLOW.md
 ---
 
 # Document-Driven Development (DDD) - Complete Guide

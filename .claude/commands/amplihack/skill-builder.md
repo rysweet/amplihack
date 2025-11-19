@@ -1,6 +1,17 @@
 ---
+name: skill-builder
+version: 1.0.0
 description: Build new Claude Code skills with guided workflow and agent orchestration
 argument-hint: <skill-name> <skill-type> <description>
+triggers:
+  - "create a new skill"
+  - "build a Claude Code skill"
+  - "generate skill for"
+invokes:
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/prompt-writer.md
+  - type: subagent
+    path: .claude/agents/amplihack/core/architect.md
 ---
 
 # Skill Builder Command
@@ -43,10 +54,18 @@ Creates new Claude Code skills following the Amplihack framework patterns. Orche
 This command implements patterns from:
 
 - **Official Claude Code Skills**: https://code.claude.com/docs/en/skills
+- **Claude Code Skills Best Practices**: https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices
 - **Anthropic Agent SDK Skills**: https://docs.claude.com/en/docs/agent-sdk/skills
 - **Agent Skills Blog Post**: https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills
 - **Claude Cookbooks Skills**: https://github.com/anthropics/claude-cookbooks/tree/main/skills
 - **Skill Builder Reference**: https://github.com/metaskills/skill-builder
+
+**Key Best Practices to Follow:**
+- Keep SKILL.md under 500 lines (use progressive disclosure)
+- Avoid deeply nested references (max 1 level deep)
+- Use workflows and feedback loops for complex tasks
+- Provide concrete examples with input/output pairs
+- Test across Claude Haiku, Sonnet, and Opus models
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 

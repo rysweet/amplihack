@@ -59,6 +59,48 @@ When starting a session, import these files for context:
 **IMPORTANT**: Record significant decisions in session logs as: What was decided
 | Why | Alternatives considered
 
+### Extensibility Mechanisms and Composition Rules
+
+Amplihack provides four extensibility mechanisms with clear invocation patterns:
+
+| Mechanism | Purpose | Invoked By | Invocation Method |
+|-----------|---------|------------|-------------------|
+| **Workflow** | Multi-step process blueprint | Commands, Skills, Agents | `Read` workflow file, follow steps |
+| **Command** | User-explicit entry point | User, Commands, Skills, Agents | User types `/cmd` OR `SlashCommand` tool |
+| **Skill** | Auto-discovered capability | Claude auto-discovers | Context triggers OR explicit `Skill` tool |
+| **Subagent** | Specialized delegation | Commands, Skills, Agents | `Task` tool with `subagent_type` |
+
+**Key Invocation Patterns:**
+
+- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked programmatically by commands, skills, and agents. Only built-in commands (`/help`, `/clear`) cannot be invoked programmatically.
+  ```python
+  SlashCommand(command="/ultrathink Analyze architecture")
+  ```
+
+- **Skill Tool**: Invoke skills explicitly when auto-discovery isn't sufficient
+  ```python
+  Skill(skill="mermaid-diagram-generator")
+  ```
+
+- **Task Tool**: Invoke subagents for specialized perspectives
+  ```python
+  Task(subagent_type="architect", prompt="Design system...")
+  ```
+
+- **Workflow Reference**: Commands/skills/agents read workflow files to follow process
+  ```python
+  Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
+  ```
+
+**Composition Examples:**
+
+- Command invoking workflow: `/ultrathink` reads `DEFAULT_WORKFLOW.md`
+- Command invoking command: `/improve` can invoke `/amplihack:reflect`
+- Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
+- Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
+
+See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata in frontmatter.
+
 ### CRITICAL: User Requirement Priority
 
 **MANDATORY BEHAVIOR**: All agents must follow the priority hierarchy:

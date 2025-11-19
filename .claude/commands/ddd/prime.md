@@ -1,5 +1,14 @@
 ---
-description: Load complete DDD context for this session (project:ddd)
+name: ddd:prime
+version: 1.0.0
+description: Load complete DDD context for this session
+triggers:
+  - "Load DDD context"
+  - "Prime DDD for session"
+  - "Initialize DDD understanding"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DDD_WORKFLOW.md
 ---
 
 # Priming Document-Driven Development Context

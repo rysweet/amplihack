@@ -1,5 +1,6 @@
 ---
 name: skill-builder
+version: 1.0.0
 description: Creates, refines, and validates Claude Code skills following amplihack philosophy and official best practices. Automatically activates when building, creating, generating, or designing new skills.
 ---
 

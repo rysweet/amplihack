@@ -1,5 +1,6 @@
 ---
 name: indigenous-leader-analyst
+version: 1.0.0
 description: |
   Analyzes events through indigenous knowledge systems using relational thinking, seven generations principle,
   reciprocity, holistic integration, and traditional ecological knowledge frameworks.

@@ -1,6 +1,15 @@
 ---
-description: Show current DDD progress and next steps (project:ddd)
+name: ddd:status
+version: 1.0.0
+description: Show current DDD progress and next steps
 allowed-tools: Read, Bash(ls:*), Bash(cat:*), Bash(git status:*), Bash(git log:*)
+triggers:
+  - "Check DDD status"
+  - "Where am I in DDD workflow"
+  - "Show DDD progress"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DDD_WORKFLOW.md
 ---
 
 # DDD Workflow Status

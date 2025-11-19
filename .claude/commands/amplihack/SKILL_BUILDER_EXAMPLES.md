@@ -1,3 +1,13 @@
+---
+name: skill-builder-examples
+version: 1.0.0
+description: Practical examples for using the skill-builder command
+triggers:
+  - "skill-builder examples"
+  - "how to use skill-builder"
+  - "skill-builder usage"
+---
+
 # Skill Builder Command - Usage Examples
 
 This document provides practical examples of using the `/amplihack:skill-builder` command.
