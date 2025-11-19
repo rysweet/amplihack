@@ -58,11 +58,12 @@ Before analyzing requirements, classify the task to prevent confusion between EX
    - "documentation", "docs", "tutorial", "how-to", "instructions"
    - "reference", "specification", "design document"
 
-3. **AMBIGUOUS Classification** - Keyword "tool" alone without context or no clear indicators:
-   - "tool" without EXECUTABLE or DOCUMENTATION qualifiers
-   - "create a tool" (unclear if code or documentation)
-   - "build a tool" (unclear if code or documentation)
-   - **DEFAULT**: When no clear EXECUTABLE or DOCUMENTATION keywords found → AMBIGUOUS (fail-secure)
+3. **AMBIGUOUS Classification** - Only when truly unclear:
+   - Rare edge cases where intent is genuinely unclear
+   - **IMPORTANT**: "tool" requests default to EXECUTABLE (tools are programs)
+   - "create a tool" → EXECUTABLE (reusable program that may use skills via SDK)
+   - "build a tool" → EXECUTABLE (reusable program)
+   - **DEFAULT**: When uncertain → EXECUTABLE (tools call skills, skills call tools, but evals expect executables)
 
 **Classification Actions:**
 
