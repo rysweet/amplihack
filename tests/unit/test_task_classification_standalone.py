@@ -60,7 +60,7 @@ class TestTaskClassification:
         if has_executable and has_documentation:
             return "AMBIGUOUS"
 
-        return "EXECUTABLE"  # Default to executable if no clear indicators
+        return "AMBIGUOUS"  # Fail-secure: default to asking user when uncertain
 
     def run_all_tests(self):
         """Run all test methods and report results."""
