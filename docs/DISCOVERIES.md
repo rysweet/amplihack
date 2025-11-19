@@ -28,6 +28,7 @@ fork_output = fork_manager.create_fork(session_id)
 ```
 
 **Test enforcement** updated to respect auto mode:
+
 ```python
 # Check if running in auto mode before enforcing tests
 if not is_auto_mode():
@@ -64,6 +65,7 @@ Proxy failed to start with port already in use errors, causing sessions to hang 
 ### Solution
 
 **Dynamic port selection** with retry:
+
 ```python
 # Try binding to requested port, fall back to dynamic port if busy
 for attempt in range(max_retries):
@@ -79,6 +81,7 @@ for attempt in range(max_retries):
 ```
 
 **Health check timeout**:
+
 ```python
 # Don't wait forever for proxy
 health_check_timeout = 30  # seconds
@@ -105,6 +108,7 @@ if not wait_for_proxy_health(timeout=health_check_timeout):
 ### Issue
 
 User-provided hooks failed silently or with cryptic errors. Common failure modes:
+
 - Hooks without execute permissions
 - Relative paths in hook configuration
 - Hooks timing out without clear feedback
@@ -119,6 +123,7 @@ User-provided hooks failed silently or with cryptic errors. Common failure modes
 ### Solution
 
 **Hook validation at installation time**:
+
 ```python
 def validate_hook(hook_path: Path) -> None:
     if not hook_path.exists():
@@ -132,6 +137,7 @@ def validate_hook(hook_path: Path) -> None:
 ```
 
 **Clear timeout handling**:
+
 ```python
 try:
     result = subprocess.run(
@@ -165,6 +171,7 @@ except subprocess.TimeoutExpired:
 ### Issue
 
 Multiple developers working on the same repository encountered:
+
 - Lost work when switching branches
 - Confusion about which worktree was active
 - Stale worktrees cluttering filesystem
@@ -180,6 +187,7 @@ Multiple developers working on the same repository encountered:
 ### Solution
 
 **Worktree manager agent** with standardized workflow:
+
 ```bash
 # Create worktree with standard naming
 git worktree add ./worktrees/feat/issue-123-feature-name -b feat/issue-123-feature-name
@@ -192,6 +200,7 @@ git worktree prune
 ```
 
 **Standard worktree structure**:
+
 ```
 ./worktrees/
 ├── feat/
@@ -233,24 +242,31 @@ Long-running tasks or multi-session projects lost important context between Clau
 ### Solution
 
 **Session continuation system**:
+
 ```markdown
 # ai_working/session_state.md
+
 ## Current Task
+
 [Description of what we're working on]
 
 ## Recent Decisions
+
 - [Date] Chose approach X over Y because [rationale]
 - [Date] Decided to defer Z until [condition]
 
 ## Next Steps
+
 1. [What needs to happen next]
 2. [Dependencies or blockers]
 
 ## Important Context
+
 [Key information that must be preserved]
 ```
 
 **Agent prompts reference session state**:
+
 ```
 Before starting any task, read @ai_working/session_state.md to understand:
 - What we're currently working on
@@ -277,6 +293,7 @@ Before starting any task, read @ai_working/session_state.md to understand:
 ### Issue
 
 Agents frequently generated code that violated amplihack's core philosophy principles:
+
 - Placeholder functions with TODO comments
 - Overly complex abstractions for simple operations
 - Generic "future-proof" code for hypothetical requirements
@@ -292,8 +309,10 @@ Agents frequently generated code that violated amplihack's core philosophy princ
 ### Solution
 
 **Mandatory philosophy check in workflow**:
+
 ```markdown
 ### Step 6: Refactor and Simplify
+
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements**
 - [ ] **Always use** cleanup agent for ruthless simplification WITHIN user constraints
 - [ ] Remove unnecessary abstractions (that weren't explicitly requested)
@@ -302,6 +321,7 @@ Agents frequently generated code that violated amplihack's core philosophy princ
 ```
 
 **Enhanced cleanup agent prompt**:
+
 ```
 PHILOSOPHY ENFORCEMENT CHECKLIST:
 ❌ No TODO comments or placeholder functions
@@ -332,6 +352,7 @@ PHILOSOPHY ENFORCEMENT CHECKLIST:
 ### Issue
 
 High-frequency agent operations hit Claude API rate limits, causing:
+
 - Failed tool calls with cryptic 429 errors
 - Degraded user experience with unexplained delays
 - Wasted tokens on retry attempts
@@ -347,6 +368,7 @@ High-frequency agent operations hit Claude API rate limits, causing:
 ### Solution
 
 **Rate limit protection system**:
+
 ```python
 class RateLimitProtection:
     def __init__(self, requests_per_minute=50):
@@ -365,6 +387,7 @@ class RateLimitProtection:
 ```
 
 **Exponential backoff with jitter**:
+
 ```python
 def exponential_backoff(attempt: int) -> float:
     base_delay = 2 ** attempt
@@ -393,6 +416,7 @@ def exponential_backoff(attempt: int) -> float:
 ### When to Add an Entry
 
 Add a discovery when you encounter:
+
 - A non-obvious problem that took significant time to diagnose
 - A solution that contradicts common assumptions
 - A pattern that prevents an entire class of issues
@@ -404,18 +428,23 @@ Add a discovery when you encounter:
 ## Problem Title (YYYY-MM-DD)
 
 ### Issue
+
 [Clear description of the problem and its symptoms]
 
 ### Root Cause
+
 [What actually caused the issue - dig deep]
 
 ### Solution
+
 [What you implemented to fix it - include code examples]
 
 ### Key Learnings
+
 [Principles and insights from this experience]
 
 ### Prevention
+
 [How to avoid this problem in the future]
 ```
 
@@ -429,6 +458,7 @@ Add a discovery when you encounter:
 ### Integration
 
 This file should be referenced by:
+
 - **CLAUDE.md**: "Before solving complex problems, check @docs/DISCOVERIES.md"
 - **AGENTS.md**: "Review @docs/DISCOVERIES.md to avoid known pitfalls"
 - **New developers**: "Read DISCOVERIES.md to understand institutional knowledge"

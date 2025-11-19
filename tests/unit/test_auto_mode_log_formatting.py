@@ -31,10 +31,7 @@ class TestLogOutputFormatting:
     def auto_mode(self, temp_working_dir):
         """Create AutoMode instance for testing."""
         return AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
     def test_log_output_has_double_newline(self, auto_mode):
@@ -46,7 +43,7 @@ class TestLogOutputFormatting:
         """
         captured_output = StringIO()
 
-        with patch('sys.stdout', captured_output):
+        with patch("sys.stdout", captured_output):
             auto_mode.log("First log message", level="INFO")
             auto_mode.log("Second log message", level="INFO")
 
@@ -70,7 +67,7 @@ class TestLogOutputFormatting:
         """
         captured_output = StringIO()
 
-        with patch('sys.stdout', captured_output):
+        with patch("sys.stdout", captured_output):
             auto_mode.log("Test message", level="INFO")
 
         output = captured_output.getvalue()
@@ -85,7 +82,7 @@ class TestLogOutputFormatting:
         """
         captured_output = StringIO()
 
-        with patch('sys.stdout', captured_output):
+        with patch("sys.stdout", captured_output):
             auto_mode.log("Debug message", level="DEBUG")
             auto_mode.log("Info message", level="INFO")
 
@@ -102,13 +99,13 @@ class TestLogOutputFormatting:
         """
         captured_output = StringIO()
 
-        with patch('sys.stdout', captured_output):
+        with patch("sys.stdout", captured_output):
             auto_mode.log("Message 1", level="INFO")
             auto_mode.log("Message 2", level="INFO")
             auto_mode.log("Message 3", level="INFO")
 
         output = captured_output.getvalue()
-        lines = output.split('\n')
+        lines = output.split("\n")
 
         # After adding double newlines, we should have:
         # [AUTO CLAUDE] Message 1
@@ -144,6 +141,6 @@ class TestLogOutputFormatting:
         assert "File test message" in content, "Message should be in file"
 
         # File should use single newline (standard format)
-        lines = content.strip().split('\n')
+        lines = content.strip().split("\n")
         # Should be one line per log entry (no blank lines)
         assert len(lines) >= 1, "File should have log entries"

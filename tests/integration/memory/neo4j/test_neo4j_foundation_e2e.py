@@ -14,8 +14,7 @@ All tests should FAIL initially (TDD approach).
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+from unittest.mock import patch, MagicMock
 import time
 
 
@@ -85,7 +84,7 @@ class TestFullStartupFlow:
         """Test graceful degradation when Neo4j cannot start."""
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # Simulate Docker not available
             mock_run.side_effect = FileNotFoundError("docker not found")
 
@@ -109,7 +108,7 @@ class TestSessionIntegration:
         launcher = ClaudeLauncher()
 
         # Mock the rest of launcher initialization
-        with patch.object(launcher, 'check_prerequisites') as mock_prereq:
+        with patch.object(launcher, "check_prerequisites") as mock_prereq:
             mock_prereq.return_value = True
 
             # Should trigger Neo4j startup
@@ -254,7 +253,7 @@ class TestGracefulFallback:
         """Test that amplihack works without Neo4j."""
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("docker not found")
 
             # Should not raise exception
@@ -280,7 +279,7 @@ class TestGracefulFallback:
         from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
         from amplihack.memory.neo4j.exceptions import PortConflictError
 
-        with patch('socket.socket') as mock_socket:
+        with patch("socket.socket") as mock_socket:
             mock_sock = MagicMock()
             mock_socket.return_value.__enter__.return_value = mock_sock
             mock_sock.bind.side_effect = OSError("Address already in use")

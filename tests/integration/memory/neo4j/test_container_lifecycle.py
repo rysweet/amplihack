@@ -14,7 +14,6 @@ All tests should FAIL initially (TDD approach).
 
 import pytest
 import time
-from pathlib import Path
 
 
 @pytest.mark.integration
@@ -194,10 +193,15 @@ class TestDataPersistenceAcrossRestarts:
 
         # Verify restart policy is set
         result = subprocess.run(
-            ["docker", "inspect", "--format={{.HostConfig.RestartPolicy.Name}}", manager.container_name],
+            [
+                "docker",
+                "inspect",
+                "--format={{.HostConfig.RestartPolicy.Name}}",
+                manager.container_name,
+            ],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
 
         restart_policy = result.stdout.strip()
@@ -282,7 +286,7 @@ class TestResourceCleanup:
         # Ports should be in use
         with pytest.raises(OSError):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(('localhost', manager.bolt_port))
+                s.bind(("localhost", manager.bolt_port))
 
         # Stop container
         manager.stop_container()
@@ -290,7 +294,7 @@ class TestResourceCleanup:
 
         # Ports should be free
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('localhost', manager.bolt_port))
+            s.bind(("localhost", manager.bolt_port))
             # Success - port is free
 
     def test_WHEN_volume_removed_THEN_data_is_deleted(self):
@@ -394,7 +398,7 @@ class TestErrorScenarios:
 
         manager = ContainerManager()
 
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = ConnectionError("Docker daemon not responding")
 
             with pytest.raises(DockerNotAvailableError):
@@ -407,11 +411,8 @@ class TestErrorScenarios:
 
         manager = ContainerManager()
 
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=1,
-                stderr="Error: port already in use"
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=1, stderr="Error: port already in use")
 
             with pytest.raises(ContainerStartError) as exc_info:
                 manager.start_container()
@@ -425,11 +426,8 @@ class TestErrorScenarios:
 
         manager = ContainerManager()
 
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=1,
-                stderr="Error: error while mounting volume"
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=1, stderr="Error: error while mounting volume")
 
             with pytest.raises(VolumeError) as exc_info:
                 manager.start_container()
@@ -447,19 +445,13 @@ def clean_container_state():
     manager = ContainerManager()
 
     # Stop and remove container if exists
-    subprocess.run(
-        ["docker", "rm", "-f", manager.container_name],
-        capture_output=True
-    )
+    subprocess.run(["docker", "rm", "-f", manager.container_name], capture_output=True)
     time.sleep(1)
 
     yield
 
     # Cleanup after test
-    subprocess.run(
-        ["docker", "rm", "-f", manager.container_name],
-        capture_output=True
-    )
+    subprocess.run(["docker", "rm", "-f", manager.container_name], capture_output=True)
 
 
 @pytest.fixture(scope="function")

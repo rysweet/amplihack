@@ -3,21 +3,25 @@
 Manual Neo4j container starter using docker-py library.
 Bypasses docker-compose dependency issues.
 """
+
 import docker
-import os
 import time
 import secrets
 import string
 from pathlib import Path
 
+
 def generate_password(length=32):  # ggignore
     """Generate a secure random password."""
-    alphabet = string.ascii_letters + string.digits + string.punctuation.replace('"', '').replace("'", '')
-    return ''.join(secrets.choice(alphabet) for _ in range(length))  # ggignore
+    alphabet = (
+        string.ascii_letters + string.digits + string.punctuation.replace('"', "").replace("'", "")
+    )
+    return "".join(secrets.choice(alphabet) for _ in range(length))  # ggignore
+
 
 def get_or_create_password():
     """Get existing password or create new one."""
-    password_file = Path.home() / '.amplihack' / '.neo4j_password'
+    password_file = Path.home() / ".amplihack" / ".neo4j_password"
     password_file.parent.mkdir(parents=True, exist_ok=True)
 
     if password_file.exists():
@@ -28,6 +32,7 @@ def get_or_create_password():
     password_file.chmod(0o600)
     print(f"✅ Generated new Neo4j password and saved to {password_file}")
     return password
+
 
 def start_neo4j_container():
     """Start Neo4j container using docker-py."""
@@ -40,13 +45,12 @@ def start_neo4j_container():
     container_name = "amplihack-neo4j"
     try:
         existing = client.containers.get(container_name)
-        if existing.status == 'running':
+        if existing.status == "running":
             print(f"✅ Container {container_name} already running")
             return existing
-        else:
-            print(f"🔄 Starting existing container {container_name}")
-            existing.start()
-            return existing
+        print(f"🔄 Starting existing container {container_name}")
+        existing.start()
+        return existing
     except docker.errors.NotFound:
         pass
 
@@ -58,31 +62,32 @@ def start_neo4j_container():
         name=container_name,
         detach=True,
         ports={
-            '7474/tcp': ('127.0.0.1', 7474),  # HTTP
-            '7687/tcp': ('127.0.0.1', 7687),  # Bolt
+            "7474/tcp": ("127.0.0.1", 7474),  # HTTP
+            "7687/tcp": ("127.0.0.1", 7687),  # Bolt
         },
         environment={
-            'NEO4J_AUTH': f'neo4j/{password}',
-            'NEO4J_PLUGINS': '["apoc"]',
-            'NEO4J_server_memory_heap_initial__size': '1G',
-            'NEO4J_server_memory_heap_max__size': '2G',
-            'NEO4J_server_memory_pagecache_size': '1G',
+            "NEO4J_AUTH": f"neo4j/{password}",
+            "NEO4J_PLUGINS": '["apoc"]',
+            "NEO4J_server_memory_heap_initial__size": "1G",
+            "NEO4J_server_memory_heap_max__size": "2G",
+            "NEO4J_server_memory_pagecache_size": "1G",
         },
         volumes={
-            'amplihack-neo4j-data': {'bind': '/data', 'mode': 'rw'},
+            "amplihack-neo4j-data": {"bind": "/data", "mode": "rw"},
         },
         restart_policy={"Name": "unless-stopped"},
         healthcheck={
-            'test': ['CMD-SHELL', 'cypher-shell -u neo4j -p $NEO4J_PASSWORD "RETURN 1" || exit 1'],
-            'interval': 10000000000,  # 10s in nanoseconds
-            'timeout': 5000000000,    # 5s
-            'retries': 3,
-            'start_period': 40000000000,  # 40s
+            "test": ["CMD-SHELL", 'cypher-shell -u neo4j -p $NEO4J_PASSWORD "RETURN 1" || exit 1'],
+            "interval": 10000000000,  # 10s in nanoseconds
+            "timeout": 5000000000,  # 5s
+            "retries": 3,
+            "start_period": 40000000000,  # 40s
         },
     )
 
     print(f"✅ Container created: {container.id[:12]}")
     return container
+
 
 def wait_for_neo4j(container, timeout=60):
     """Wait for Neo4j to be ready."""
@@ -92,11 +97,11 @@ def wait_for_neo4j(container, timeout=60):
     while time.time() - start_time < timeout:
         try:
             container.reload()
-            if container.status == 'running':
+            if container.status == "running":
                 # Check if Neo4j is accepting connections
                 # We'll check logs for "Started." message
-                logs = container.logs(tail=50).decode('utf-8')
-                if 'Started.' in logs or 'Remote interface available' in logs:
+                logs = container.logs(tail=50).decode("utf-8")
+                if "Started." in logs or "Remote interface available" in logs:
                     print("✅ Neo4j is ready!")
                     return True
             time.sleep(2)
@@ -107,12 +112,13 @@ def wait_for_neo4j(container, timeout=60):
     print(f"❌ Timeout waiting for Neo4j after {timeout}s")
     return False
 
+
 def test_connection():
     """Test Neo4j connection."""
     try:
         from neo4j import GraphDatabase
 
-        password_file = Path.home() / '.amplihack' / '.neo4j_password'
+        password_file = Path.home() / ".amplihack" / ".neo4j_password"
         password = password_file.read_text().strip()
 
         print("🔌 Testing Neo4j connection...")
@@ -132,6 +138,7 @@ def test_connection():
 
     return False
 
+
 if __name__ == "__main__":
     print("=" * 60)
     print("Neo4j Container Startup Script")
@@ -143,10 +150,10 @@ if __name__ == "__main__":
         if wait_for_neo4j(container):
             if test_connection():
                 print("\n✅ Neo4j is fully operational!")
-                print(f"   - UI: http://localhost:7474")
-                print(f"   - Bolt: bolt://localhost:7687")
-                print(f"   - Username: neo4j")
-                print(f"   - Password: (stored in ~/.amplihack/.neo4j_password)")
+                print("   - UI: http://localhost:7474")
+                print("   - Bolt: bolt://localhost:7687")
+                print("   - Username: neo4j")
+                print("   - Password: (stored in ~/.amplihack/.neo4j_password)")
             else:
                 print("\n⚠️  Container started but connection test failed")
                 print("   - Check logs: docker logs amplihack-neo4j")
@@ -157,4 +164,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Error: {e}")
         import traceback
+
         traceback.print_exc()

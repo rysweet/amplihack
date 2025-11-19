@@ -11,21 +11,25 @@ Phases 5-6 complete the Neo4j memory system with advanced retrieval strategies, 
 #### 1. Retrieval Strategies (`src/amplihack/memory/neo4j/retrieval.py`)
 
 **TemporalRetrieval**
+
 - Time-based memory access (recent, historical)
 - Automatic sorting by recency
 - Configurable time windows
 
 **SimilarityRetrieval**
+
 - Content similarity via tags/labels
 - Relevance scoring based on tag overlap
 - Foundation for future vector similarity
 
 **GraphTraversal**
+
 - Navigate memory relationships
 - Distance-based scoring
 - Supports depth-limited traversal (1-2 hops)
 
 **HybridRetrieval**
+
 - Combines temporal, similarity, and graph strategies
 - Weighted scoring with configurable weights
 - Comprehensive memory discovery
@@ -35,16 +39,19 @@ Phases 5-6 complete the Neo4j memory system with advanced retrieval strategies, 
 Three isolation levels implemented:
 
 **PROJECT Level**
+
 - Agent can only see memories from their project
 - Option to include global memories
 - Prevents cross-project memory leaks
 
 **AGENT_TYPE Level**
+
 - Architect can't see builder memories
 - Agent-specific memory spaces
 - Role-based access control
 
 **INSTANCE Level**
+
 - Ephemeral session state
 - Instance-specific isolation
 - Temporary memory boundaries
@@ -52,21 +59,25 @@ Three isolation levels implemented:
 #### 3. Consolidation (`src/amplihack/memory/neo4j/consolidation.py`)
 
 **Quality Scoring**
+
 - Multi-factor scoring: access frequency (30%), importance (30%), tag richness (20%), relationships (20%)
 - Automatic score calculation and updates
 - Quality-based ranking
 
 **Memory Promotion**
+
 - Project -> Global promotion for high-quality memories
 - Pattern detection across sessions
 - Configurable promotion threshold
 
 **Decay Management**
+
 - Automatic decay of old/unused memories
 - Configurable age thresholds
 - Graceful archival process
 
 **Duplicate Detection**
+
 - Tag overlap similarity
 - Creation time proximity
 - Automated merging capability
@@ -78,6 +89,7 @@ Three isolation levels implemented:
 #### 1. Circuit Breaker (`src/amplihack/memory/neo4j/connector.py`)
 
 **Features:**
+
 - Three states: CLOSED, OPEN, HALF_OPEN
 - Automatic failure detection
 - Configurable thresholds (default: 5 failures)
@@ -85,6 +97,7 @@ Three isolation levels implemented:
 - Manual reset capability
 
 **Benefits:**
+
 - Prevents cascading failures
 - Graceful degradation
 - Fast-fail when Neo4j unavailable
@@ -93,12 +106,14 @@ Three isolation levels implemented:
 #### 2. Retry Logic with Exponential Backoff
 
 **Query Retry:**
+
 - Automatic retry for transient failures (ServiceUnavailable)
 - Exponential backoff (2^attempt seconds)
 - Configurable max retries (default: 3)
 - Non-transient errors fail immediately
 
 **Write Retry:**
+
 - Same strategy for write operations
 - Transaction-safe retries
 - Preserves data integrity
@@ -106,23 +121,27 @@ Three isolation levels implemented:
 #### 3. Monitoring System (`src/amplihack/memory/neo4j/monitoring.py`)
 
 **MetricsCollector:**
+
 - Operation timing and success tracking
 - Aggregated statistics (avg, min, max, p95)
 - In-memory storage with configurable history
 - Structured logging for all operations
 
 **MonitoredConnector:**
+
 - Automatic instrumentation wrapper
 - Zero-code-change monitoring
 - Context manager support
 
 **HealthMonitor:**
+
 - Comprehensive health checks
 - Neo4j version detection
 - Memory usage tracking
 - Container status monitoring
 
 **Structured Logging:**
+
 - Consistent log format
 - Operation context tracking
 - Error tracking with context
@@ -131,12 +150,14 @@ Three isolation levels implemented:
 #### 4. Error Handling Improvements
 
 **Comprehensive Exception Handling:**
+
 - All modules have try-catch blocks
 - Clear error messages with context
 - Proper exception propagation
 - Graceful degradation paths
 
 **Validation:**
+
 - Configuration validation at startup
 - Input validation for all public APIs
 - Clear error messages for invalid inputs
@@ -148,18 +169,21 @@ Three isolation levels implemented:
 All features tested with `/scripts/test_retrieval_isolation_simple.py`:
 
 **Infrastructure Tests:** ✓
+
 - Connection management
 - Circuit breaker behavior
 - Monitoring system
 - Health checks
 
 **Retrieval Tests:** ✓
+
 - Temporal retrieval with time windows
 - Similarity retrieval with tag matching
 - Graph traversal with relationships
 - Hybrid retrieval with combined scoring
 
 **Consolidation Tests:** ✓
+
 - Quality score calculation
 - Score persistence to database
 - Memory promotion logic
@@ -296,8 +320,8 @@ NEO4J_MAX_RETRIES=3
 ### Retrieval Performance
 
 - **Temporal**: O(n log n) for sorting, fast with indexes
-- **Similarity**: O(n*m) tag comparison, optimized with Cypher
-- **Graph Traversal**: O(depth * branching factor), limited to depth 2
+- **Similarity**: O(n\*m) tag comparison, optimized with Cypher
+- **Graph Traversal**: O(depth \* branching factor), limited to depth 2
 - **Hybrid**: 3x individual strategy cost, parallelizable
 
 ### Consolidation Performance

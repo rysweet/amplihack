@@ -12,7 +12,7 @@ Each example is self-contained and includes:
 """
 
 from neo4j import GraphDatabase
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 import json
 import hashlib
@@ -24,8 +24,10 @@ from enum import Enum
 # PATTERN 1.1: Three-Tier Hierarchical Graph
 # ============================================================================
 
+
 class MemoryType(Enum):
     """Memory types for organizing knowledge"""
+
     EPISODE = "Episode"
     ENTITY = "Entity"
     COMMUNITY = "Community"
@@ -34,6 +36,7 @@ class MemoryType(Enum):
 @dataclass
 class Episode:
     """Episodic memory entry (raw events)"""
+
     id: str
     timestamp: datetime
     type: str  # conversation, commit, error, etc.
@@ -45,6 +48,7 @@ class Episode:
 @dataclass
 class Entity:
     """Semantic memory entry (extracted knowledge)"""
+
     id: str
     name: str
     type: str  # Function, Class, Concept, etc.
@@ -73,13 +77,19 @@ class ThreeTierMemoryGraph:
         """Create indexes and constraints"""
         with self.driver.session() as session:
             # Indexes for fast lookups
-            session.run("CREATE INDEX episode_timestamp IF NOT EXISTS FOR (e:Episode) ON (e.timestamp)")
+            session.run(
+                "CREATE INDEX episode_timestamp IF NOT EXISTS FOR (e:Episode) ON (e.timestamp)"
+            )
             session.run("CREATE INDEX entity_name IF NOT EXISTS FOR (e:Entity) ON (e.name)")
             session.run("CREATE INDEX community_id IF NOT EXISTS FOR (c:Community) ON (c.id)")
 
             # Unique constraints
-            session.run("CREATE CONSTRAINT episode_id IF NOT EXISTS FOR (e:Episode) REQUIRE e.id IS UNIQUE")
-            session.run("CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE")
+            session.run(
+                "CREATE CONSTRAINT episode_id IF NOT EXISTS FOR (e:Episode) REQUIRE e.id IS UNIQUE"
+            )
+            session.run(
+                "CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE"
+            )
 
     def store_episode(self, episode: Episode) -> str:
         """
@@ -100,13 +110,14 @@ class ThreeTierMemoryGraph:
         """
 
         with self.driver.session() as session:
-            result = session.run(query,
+            result = session.run(
+                query,
                 id=episode.id,
                 timestamp=episode.timestamp.isoformat(),
                 type=episode.type,
                 content=episode.content,
                 actor=episode.actor,
-                metadata=json.dumps(episode.metadata)
+                metadata=json.dumps(episode.metadata),
             )
             return result.single()["id"]
 
@@ -140,10 +151,10 @@ class ThreeTierMemoryGraph:
 
         entities_data = [asdict(e) for e in entities]
         for e_data in entities_data:
-            e_data['created_at'] = e_data['created_at'].isoformat()
-            e_data['updated_at'] = e_data['updated_at'].isoformat()
-            if e_data['t_valid']:
-                e_data['t_valid'] = e_data['t_valid'].isoformat()
+            e_data["created_at"] = e_data["created_at"].isoformat()
+            e_data["updated_at"] = e_data["updated_at"].isoformat()
+            if e_data["t_valid"]:
+                e_data["t_valid"] = e_data["t_valid"].isoformat()
 
         with self.driver.session() as session:
             result = session.run(query, episode_id=episode_id, entities=entities_data)
@@ -199,7 +210,7 @@ def example_three_tier_hierarchy():
         type="conversation",
         content="User asked about authentication bug in login function",
         actor="user_123",
-        metadata={"file": "auth.py", "function": "login"}
+        metadata={"file": "auth.py", "function": "login"},
     )
     episode_id = memory.store_episode(episode)
 
@@ -212,7 +223,7 @@ def example_three_tier_hierarchy():
             summary="Authenticates user credentials",
             created_at=datetime.now(),
             updated_at=datetime.now(),
-            t_valid=datetime.now()
+            t_valid=datetime.now(),
         ),
         Entity(
             id="entity_concept_auth",
@@ -221,8 +232,8 @@ def example_three_tier_hierarchy():
             summary="User authentication system",
             created_at=datetime.now(),
             updated_at=datetime.now(),
-            t_valid=datetime.now()
-        )
+            t_valid=datetime.now(),
+        ),
     ]
     memory.extract_and_link_entities(episode_id, entities)
 
@@ -236,6 +247,7 @@ def example_three_tier_hierarchy():
 # ============================================================================
 # PATTERN 1.2: Temporal Validity Tracking
 # ============================================================================
+
 
 class TemporalMemoryManager:
     """
@@ -265,11 +277,7 @@ class TemporalMemoryManager:
         """
 
         with self.driver.session() as session:
-            result = session.run(query,
-                content=content,
-                t_valid=t_valid.isoformat(),
-                source=source
-            )
+            result = session.run(query, content=content, t_valid=t_valid.isoformat(), source=source)
             return result.single()["fact_id"]
 
     def invalidate_fact(self, old_fact_id: str, new_fact_id: str, t_invalid: datetime):
@@ -282,10 +290,11 @@ class TemporalMemoryManager:
         """
 
         with self.driver.session() as session:
-            result = session.run(query,
+            result = session.run(
+                query,
                 old_fact_id=old_fact_id,
                 new_fact_id=new_fact_id,
-                t_invalid=t_invalid.isoformat()
+                t_invalid=t_invalid.isoformat(),
             )
             return result.single()["invalidated_id"]
 
@@ -327,16 +336,12 @@ def example_temporal_tracking():
 
     # Day 1: User prefers dark mode
     fact1_id = memory.store_fact(
-        content="User prefers dark mode",
-        t_valid=datetime(2025, 10, 1),
-        source="user_settings"
+        content="User prefers dark mode", t_valid=datetime(2025, 10, 1), source="user_settings"
     )
 
     # Day 30: User changes to light mode
     fact2_id = memory.store_fact(
-        content="User prefers light mode",
-        t_valid=datetime(2025, 11, 1),
-        source="user_settings"
+        content="User prefers light mode", t_valid=datetime(2025, 11, 1), source="user_settings"
     )
 
     # Invalidate old fact (but keep history!)
@@ -356,6 +361,7 @@ def example_temporal_tracking():
 # ============================================================================
 # PATTERN 1.3: Hybrid Search (Vector + Graph + Temporal)
 # ============================================================================
+
 
 class HybridSearchEngine:
     """
@@ -423,9 +429,7 @@ class HybridSearchEngine:
             result = session.run(query, entity_ids=entity_ids, days=days)
             return [record["id"] for record in result]
 
-    def reciprocal_rank_fusion(self,
-                                rank_lists: List[List[str]],
-                                k: int = 60) -> List[str]:
+    def reciprocal_rank_fusion(self, rank_lists: List[List[str]], k: int = 60) -> List[str]:
         """
         Stage 4: Combine results using Reciprocal Rank Fusion (RRF)
 
@@ -459,11 +463,9 @@ class HybridSearchEngine:
         temporal_results = self.temporal_filter(expanded_results, days=30)
 
         # Stage 4: Reciprocal Rank Fusion (combine signals)
-        final_results = self.reciprocal_rank_fusion([
-            semantic_results,
-            expanded_results,
-            temporal_results
-        ])
+        final_results = self.reciprocal_rank_fusion(
+            [semantic_results, expanded_results, temporal_results]
+        )
 
         return final_results[:top_k]
 
@@ -487,6 +489,7 @@ def example_hybrid_search():
 # PATTERN 1.4: Incremental Graph Updates
 # ============================================================================
 
+
 class IncrementalGraphUpdater:
     """
     Implementation of Pattern 1.4: Incremental Graph Updates
@@ -498,9 +501,9 @@ class IncrementalGraphUpdater:
     def __init__(self, uri: str, auth: tuple):
         self.driver = GraphDatabase.driver(uri, auth=auth)
 
-    def update_file_entities(self, file_path: str,
-                             new_entities: List[Dict],
-                             old_entities: List[Dict] = None):
+    def update_file_entities(
+        self, file_path: str, new_entities: List[Dict], old_entities: List[Dict] = None
+    ):
         """
         Incrementally update entities for a file
 
@@ -528,31 +531,41 @@ class IncrementalGraphUpdater:
             with session.begin_transaction() as tx:
                 # Remove deleted entities
                 if removed:
-                    tx.run("""
+                    tx.run(
+                        """
                         UNWIND $entities as entity
                         MATCH (e:Entity {id: entity.id})
                         DETACH DELETE e
-                    """, entities=removed)
+                    """,
+                        entities=removed,
+                    )
 
                 # Add new entities
                 if added:
-                    tx.run("""
+                    tx.run(
+                        """
                         UNWIND $entities as entity
                         CREATE (e:Entity)
                         SET e = entity
-                    """, entities=added)
+                    """,
+                        entities=added,
+                    )
 
                 # Update modified entities
                 if modified:
-                    tx.run("""
+                    tx.run(
+                        """
                         UNWIND $entities as entity
                         MATCH (e:Entity {id: entity.id})
                         SET e += entity
                         SET e.updated_at = datetime()
-                    """, entities=modified)
+                    """,
+                        entities=modified,
+                    )
 
                 # Update file relationship
-                tx.run("""
+                tx.run(
+                    """
                     MERGE (f:File {path: $file_path})
 
                     // Remove old relationships
@@ -563,15 +576,14 @@ class IncrementalGraphUpdater:
                     UNWIND $entity_ids as entity_id
                     MATCH (e:Entity {id: entity_id})
                     MERGE (f)-[:CONTAINS]->(e)
-                """, file_path=file_path, entity_ids=list(new_ids))
+                """,
+                    file_path=file_path,
+                    entity_ids=list(new_ids),
+                )
 
                 tx.commit()
 
-        return {
-            "added": len(added),
-            "removed": len(removed),
-            "modified": len(modified)
-        }
+        return {"added": len(added), "removed": len(removed), "modified": len(modified)}
 
 
 # Example usage:
@@ -582,20 +594,18 @@ def example_incremental_updates():
     # Initial state
     old_entities = [
         {"id": "func_1", "name": "login", "type": "Function"},
-        {"id": "func_2", "name": "logout", "type": "Function"}
+        {"id": "func_2", "name": "logout", "type": "Function"},
     ]
 
     # New state (added verify_token, removed logout, modified login)
     new_entities = [
         {"id": "func_1", "name": "login", "type": "Function", "updated": True},
-        {"id": "func_3", "name": "verify_token", "type": "Function"}
+        {"id": "func_3", "name": "verify_token", "type": "Function"},
     ]
 
     # Apply incremental update
     changes = updater.update_file_entities(
-        file_path="auth.py",
-        new_entities=new_entities,
-        old_entities=old_entities
+        file_path="auth.py", new_entities=new_entities, old_entities=old_entities
     )
 
     print(f"Changes: {changes}")
@@ -605,6 +615,7 @@ def example_incremental_updates():
 # ============================================================================
 # PATTERN 5.4: Error Pattern Learning
 # ============================================================================
+
 
 class ErrorPatternLearner:
     """
@@ -616,8 +627,9 @@ class ErrorPatternLearner:
     def __init__(self, uri: str, auth: tuple):
         self.driver = GraphDatabase.driver(uri, auth=auth)
 
-    def record_error(self, error_type: str, error_message: str,
-                     file_path: str, line: int, context: Dict) -> str:
+    def record_error(
+        self, error_type: str, error_message: str, file_path: str, line: int, context: Dict
+    ) -> str:
         """Record error episode"""
         query = """
         CREATE (ep:Episode:Error {
@@ -634,12 +646,13 @@ class ErrorPatternLearner:
         """
 
         with self.driver.session() as session:
-            result = session.run(query,
+            result = session.run(
+                query,
                 error_type=error_type,
                 error_message=error_message,
                 file_path=file_path,
                 line=line,
-                context=json.dumps(context)
+                context=json.dumps(context),
             )
             return result.single()["episode_id"]
 
@@ -698,11 +711,7 @@ class ErrorPatternLearner:
         """
 
         with self.driver.session() as session:
-            result = session.run(query,
-                episode_id=episode_id,
-                steps=steps,
-                success=success
-            )
+            result = session.run(query, episode_id=episode_id, steps=steps, success=success)
             record = result.single()
             return dict(record) if record else None
 
@@ -718,7 +727,7 @@ def example_error_pattern_learning():
         error_message="Module 'requests' not found",
         file_path="api.py",
         line=10,
-        context={"function": "fetch_data"}
+        context={"function": "fetch_data"},
     )
 
     # Check for known procedure
@@ -734,7 +743,7 @@ def example_error_pattern_learning():
     steps = [
         "Check if module installed: pip list | grep requests",
         "Install module: pip install requests",
-        "Verify import works"
+        "Verify import works",
     ]
 
     result = learner.record_resolution(episode_id, steps, success=True)
@@ -749,6 +758,7 @@ def example_error_pattern_learning():
 # ============================================================================
 # PATTERN 6.1: Batch Operations with UNWIND
 # ============================================================================
+
 
 class BatchOperations:
     """
@@ -765,8 +775,7 @@ class BatchOperations:
         with self.driver.session() as session:
             for node in nodes:
                 session.run(
-                    "CREATE (n:Entity {id: $id, name: $name})",
-                    id=node["id"], name=node["name"]
+                    "CREATE (n:Entity {id: $id, name: $name})", id=node["id"], name=node["name"]
                 )
 
     def batch_create_nodes_fast(self, nodes: List[Dict]):
@@ -800,10 +809,7 @@ def example_batch_operations():
     batch_ops = BatchOperations("bolt://localhost:7687", ("neo4j", "password"))
 
     # Create 1000 nodes
-    nodes = [
-        {"id": f"node_{i}", "name": f"Entity {i}", "type": "Test"}
-        for i in range(1000)
-    ]
+    nodes = [{"id": f"node_{i}", "name": f"Entity {i}", "type": "Test"} for i in range(1000)]
 
     # SLOW approach: ~10 seconds
     # batch_ops.batch_create_nodes_slow(nodes)
@@ -813,8 +819,7 @@ def example_batch_operations():
 
     # Create relationships between nodes
     relationships = [
-        {"from_id": f"node_{i}", "to_id": f"node_{i+1}", "rel_type": "NEXT"}
-        for i in range(999)
+        {"from_id": f"node_{i}", "to_id": f"node_{i + 1}", "rel_type": "NEXT"} for i in range(999)
     ]
 
     batch_ops.batch_create_relationships_fast(relationships)
@@ -823,6 +828,7 @@ def example_batch_operations():
 # ============================================================================
 # COMPLETE EXAMPLE: Production Coding Assistant Memory
 # ============================================================================
+
 
 class CodingAssistantMemory:
     """
@@ -845,18 +851,27 @@ class CodingAssistantMemory:
         """Initialize schema and indexes"""
         with self.driver.session() as session:
             # Indexes
-            session.run("CREATE INDEX episode_timestamp IF NOT EXISTS FOR (e:Episode) ON (e.timestamp)")
+            session.run(
+                "CREATE INDEX episode_timestamp IF NOT EXISTS FOR (e:Episode) ON (e.timestamp)"
+            )
             session.run("CREATE INDEX entity_name IF NOT EXISTS FOR (e:Entity) ON (e.name)")
             session.run("CREATE INDEX error_type IF NOT EXISTS FOR (e:Error) ON (e.error_type)")
 
             # Constraints
-            session.run("CREATE CONSTRAINT episode_id IF NOT EXISTS FOR (e:Episode) REQUIRE e.id IS UNIQUE")
-            session.run("CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE")
+            session.run(
+                "CREATE CONSTRAINT episode_id IF NOT EXISTS FOR (e:Episode) REQUIRE e.id IS UNIQUE"
+            )
+            session.run(
+                "CREATE CONSTRAINT entity_id IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE"
+            )
 
-    def record_conversation(self, user_message: str, assistant_response: str,
-                           files_mentioned: List[str] = None) -> str:
+    def record_conversation(
+        self, user_message: str, assistant_response: str, files_mentioned: List[str] = None
+    ) -> str:
         """Record conversation episode"""
-        episode_id = f"conv_{hashlib.md5((user_message + assistant_response).encode()).hexdigest()[:16]}"
+        episode_id = (
+            f"conv_{hashlib.md5((user_message + assistant_response).encode()).hexdigest()[:16]}"
+        )
 
         query = """
         CREATE (ep:Episode:Conversation {
@@ -870,11 +885,12 @@ class CodingAssistantMemory:
         """
 
         with self.driver.session() as session:
-            result = session.run(query,
+            result = session.run(
+                query,
                 episode_id=episode_id,
                 user_message=user_message,
                 assistant_response=assistant_response,
-                files_mentioned=files_mentioned or []
+                files_mentioned=files_mentioned or [],
             )
             return result.single()["id"]
 
@@ -914,11 +930,12 @@ class CodingAssistantMemory:
             result = session.run(query, file_path=file_path, functions=functions)
             return result.single()["functions_updated"]
 
-    def on_error(self, error_type: str, error_message: str,
-                 file_path: str, line: int) -> Dict:
+    def on_error(self, error_type: str, error_message: str, file_path: str, line: int) -> Dict:
         """Handle error with pattern learning"""
         # Record error episode
-        episode_id = f"error_{hashlib.md5(f'{error_type}_{file_path}_{line}'.encode()).hexdigest()[:16]}"
+        episode_id = (
+            f"error_{hashlib.md5(f'{error_type}_{file_path}_{line}'.encode()).hexdigest()[:16]}"
+        )
 
         query = """
         CREATE (ep:Episode:Error {
@@ -945,12 +962,13 @@ class CodingAssistantMemory:
         """
 
         with self.driver.session() as session:
-            result = session.run(query,
+            result = session.run(
+                query,
                 episode_id=episode_id,
                 error_type=error_type,
                 error_message=error_message,
                 file_path=file_path,
-                line=line
+                line=line,
             )
             ep_id = result.single()["episode_id"]
 
@@ -964,7 +982,7 @@ class CodingAssistantMemory:
             "episode_id": ep_id,
             "procedure": procedure,
             "similar_errors": similar_errors,
-            "confidence": procedure["success_rate"] if procedure else 0.3
+            "confidence": procedure["success_rate"] if procedure else 0.3,
         }
 
     def _find_procedure(self, error_type: str) -> Optional[Dict]:
@@ -1030,7 +1048,7 @@ def example_complete_system():
     conv_id = memory.record_conversation(
         user_message="How do I fix the authentication bug?",
         assistant_response="Let me check the login function...",
-        files_mentioned=["auth.py"]
+        files_mentioned=["auth.py"],
     )
     print(f"Recorded conversation: {conv_id}")
 
@@ -1041,7 +1059,7 @@ def example_complete_system():
             "name": "login",
             "signature": "def login(username: str, password: str) -> User",
             "line_start": 45,
-            "line_end": 67
+            "line_end": 67,
         }
     ]
     updated = memory.on_file_change("auth.py", functions)
@@ -1052,7 +1070,7 @@ def example_complete_system():
         error_type="ImportError",
         error_message="Module 'bcrypt' not found",
         file_path="auth.py",
-        line=52
+        line=52,
     )
     print(f"Error recorded: {error_info['episode_id']}")
 

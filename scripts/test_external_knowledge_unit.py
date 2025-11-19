@@ -4,12 +4,11 @@
 Tests the core functionality without database integration.
 """
 
-import json
 import sys
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -32,11 +31,13 @@ class TestExternalKnowledgeUnit:
         """Record test result."""
         status_icon = "✅" if passed else "❌"
         print(f"{status_icon} {name}: {message}")
-        self.test_results.append({
-            "name": name,
-            "status": "PASS" if passed else "FAIL",
-            "message": message,
-        })
+        self.test_results.append(
+            {
+                "name": name,
+                "status": "PASS" if passed else "FAIL",
+                "message": message,
+            }
+        )
 
     def test_external_doc_creation(self):
         """Test ExternalDoc dataclass creation."""
@@ -60,7 +61,7 @@ class TestExternalKnowledgeUnit:
         self.record_result(
             "external_doc_creation",
             passed,
-            "ExternalDoc created with correct attributes" if passed else "Attributes mismatch"
+            "ExternalDoc created with correct attributes" if passed else "Attributes mismatch",
         )
 
     def test_api_reference_creation(self):
@@ -86,7 +87,7 @@ class TestExternalKnowledgeUnit:
         self.record_result(
             "api_reference_creation",
             passed,
-            "APIReference created correctly" if passed else "Attributes mismatch"
+            "APIReference created correctly" if passed else "Attributes mismatch",
         )
 
     def test_knowledge_source_enum(self):
@@ -106,7 +107,7 @@ class TestExternalKnowledgeUnit:
         self.record_result(
             "knowledge_source_enum",
             passed,
-            f"All {len(sources)} sources valid" if passed else "Enum validation failed"
+            f"All {len(sources)} sources valid" if passed else "Enum validation failed",
         )
 
     def test_cache_path_generation(self):
@@ -118,7 +119,9 @@ class TestExternalKnowledgeUnit:
         mock_config = Mock()
         temp_cache = Path(tempfile.mkdtemp())
 
-        with patch("amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config):
+        with patch(
+            "amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config
+        ):
             manager = ExternalKnowledgeManager(
                 connector=mock_conn,
                 cache_dir=temp_cache,
@@ -130,16 +133,12 @@ class TestExternalKnowledgeUnit:
             path1 = manager._get_cache_path(url)
             path2 = manager._get_cache_path(url)
 
-            passed = (
-                path1 == path2
-                and path1.parent == temp_cache
-                and path1.suffix == ".json"
-            )
+            passed = path1 == path2 and path1.parent == temp_cache and path1.suffix == ".json"
 
             self.record_result(
                 "cache_path_generation",
                 passed,
-                "Cache paths consistent and valid" if passed else "Path generation issue"
+                "Cache paths consistent and valid" if passed else "Path generation issue",
             )
 
     def test_local_cache_write_read(self):
@@ -150,7 +149,9 @@ class TestExternalKnowledgeUnit:
         mock_config = Mock()
         temp_cache = Path(tempfile.mkdtemp())
 
-        with patch("amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config):
+        with patch(
+            "amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config
+        ):
             manager = ExternalKnowledgeManager(
                 connector=mock_conn,
                 cache_dir=temp_cache,
@@ -183,7 +184,7 @@ class TestExternalKnowledgeUnit:
             self.record_result(
                 "local_cache_write_read",
                 passed,
-                "Document cached and retrieved correctly" if passed else "Cache mismatch"
+                "Document cached and retrieved correctly" if passed else "Cache mismatch",
             )
 
     def test_cache_expiry(self):
@@ -194,7 +195,9 @@ class TestExternalKnowledgeUnit:
         mock_config = Mock()
         temp_cache = Path(tempfile.mkdtemp())
 
-        with patch("amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config):
+        with patch(
+            "amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config
+        ):
             manager = ExternalKnowledgeManager(
                 connector=mock_conn,
                 cache_dir=temp_cache,
@@ -224,7 +227,7 @@ class TestExternalKnowledgeUnit:
             self.record_result(
                 "cache_expiry",
                 passed,
-                "Expired document correctly ignored" if passed else "Expired doc returned"
+                "Expired document correctly ignored" if passed else "Expired doc returned",
             )
 
     def test_title_extraction(self):
@@ -234,7 +237,9 @@ class TestExternalKnowledgeUnit:
         mock_conn = Mock()
         mock_config = Mock()
 
-        with patch("amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config):
+        with patch(
+            "amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config
+        ):
             manager = ExternalKnowledgeManager(connector=mock_conn)
 
             html_samples = [
@@ -254,7 +259,9 @@ class TestExternalKnowledgeUnit:
             self.record_result(
                 "title_extraction",
                 passed,
-                f"All {len(html_samples)} title extractions correct" if passed else "Extraction mismatch"
+                f"All {len(html_samples)} title extractions correct"
+                if passed
+                else "Extraction mismatch",
             )
 
     def test_http_fetch_with_mock(self):
@@ -264,7 +271,9 @@ class TestExternalKnowledgeUnit:
         mock_conn = Mock()
         mock_config = Mock()
 
-        with patch("amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config):
+        with patch(
+            "amplihack.memory.neo4j.external_knowledge.get_config", return_value=mock_config
+        ):
             manager = ExternalKnowledgeManager(connector=mock_conn)
 
             # Mock HTTP response
@@ -293,7 +302,7 @@ class TestExternalKnowledgeUnit:
                 self.record_result(
                     "http_fetch_mocked",
                     passed,
-                    "HTTP fetch successful with mock" if passed else "Fetch failed"
+                    "HTTP fetch successful with mock" if passed else "Fetch failed",
                 )
 
     def run_all_tests(self):

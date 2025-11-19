@@ -190,9 +190,8 @@ def test_schema_initialization(integration: BlarifyIntegration) -> bool:
     if success:
         logger.info("✓ Code schema initialized successfully")
         return True
-    else:
-        logger.error("✗ Schema initialization failed")
-        return False
+    logger.error("✗ Schema initialization failed")
+    return False
 
 
 def test_sample_import(integration: BlarifyIntegration, temp_file: Path) -> bool:
@@ -233,11 +232,10 @@ def test_sample_import(integration: BlarifyIntegration, temp_file: Path) -> bool
         if all_match:
             logger.info("✓ All counts match expected values")
             return True
-        else:
-            logger.warning("⚠ Some counts don't match expected values")
-            logger.warning("  Expected: %s", expected)
-            logger.warning("  Got:      %s", counts)
-            return False
+        logger.warning("⚠ Some counts don't match expected values")
+        logger.warning("  Expected: %s", expected)
+        logger.warning("  Got:      %s", counts)
+        return False
 
     except Exception as e:
         logger.error("✗ Import failed: %s", e)
@@ -280,9 +278,8 @@ def test_code_memory_relationships(
         if context["files"] or context["functions"]:
             logger.info("✓ Memory successfully linked to code")
             return True
-        else:
-            logger.warning("⚠ Memory not linked to any code")
-            return False
+        logger.warning("⚠ Memory not linked to any code")
+        return False
 
     except Exception as e:
         logger.error("✗ Code-memory linking failed: %s", e)
@@ -349,12 +346,14 @@ def test_incremental_update(integration: BlarifyIntegration, temp_file: Path) ->
     try:
         # Create updated sample data (add a new file)
         sample_data = create_sample_blarify_output()
-        sample_data["files"].append({
-            "path": "src/amplihack/memory/neo4j/code_graph.py",
-            "language": "python",
-            "lines_of_code": 600,
-            "last_modified": "2025-01-02T00:00:00Z",
-        })
+        sample_data["files"].append(
+            {
+                "path": "src/amplihack/memory/neo4j/code_graph.py",
+                "language": "python",
+                "lines_of_code": 600,
+                "last_modified": "2025-01-02T00:00:00Z",
+            }
+        )
 
         # Write to temp file
         with open(temp_file, "w") as f:
@@ -372,9 +371,8 @@ def test_incremental_update(integration: BlarifyIntegration, temp_file: Path) ->
         if stats["file_count"] == 4:  # 3 original + 1 new
             logger.info("✓ New file successfully added")
             return True
-        else:
-            logger.warning("⚠ File count unexpected: %d", stats["file_count"])
-            return False
+        logger.warning("⚠ File count unexpected: %d", stats["file_count"])
+        return False
 
     except Exception as e:
         logger.error("✗ Incremental update failed: %s", e)
@@ -416,7 +414,10 @@ def main():
             results.append(("Schema initialization", test_schema_initialization(integration)))
             results.append(("Sample import", test_sample_import(integration, temp_file)))
             results.append(
-                ("Code-memory relationships", test_code_memory_relationships(integration, memory_store))
+                (
+                    "Code-memory relationships",
+                    test_code_memory_relationships(integration, memory_store),
+                )
             )
             results.append(("Query functionality", test_query_functionality(integration, conn)))
             results.append(("Incremental update", test_incremental_update(integration, temp_file)))
@@ -438,9 +439,8 @@ def main():
             if passed == total:
                 logger.info("\n🎉 All tests passed! Blarify integration is working.")
                 return 0
-            else:
-                logger.warning("\n⚠ Some tests failed. Check logs above for details.")
-                return 1
+            logger.warning("\n⚠ Some tests failed. Check logs above for details.")
+            return 1
 
     except Exception as e:
         logger.error("Test suite failed: %s", e, exc_info=True)

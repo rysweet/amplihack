@@ -4,25 +4,34 @@
 
 **Status**: FULLY OPERATIONAL ✅
 
-The Neo4j memory system is now fully integrated with Claude Code's agent invocation system. Agents ACTUALLY USE memory during execution, and memory helps them produce better output.
+The Neo4j memory system is now fully integrated with Claude Code's agent
+invocation system. Agents ACTUALLY USE memory during execution, and memory helps
+them produce better output.
 
 ## What Was Built
 
 ### 1. Agent Memory Hook Module
+
 **File**: `.claude/tools/amplihack/hooks/agent_memory_hook.py`
 
 Provides shared logic for memory integration:
-- **Agent Detection**: Detects agent references in prompts (@.claude/agents/..., slash commands)
-- **Memory Injection**: Queries Neo4j for relevant memories and injects into agent prompts
-- **Learning Extraction**: Extracts learnings from agent outputs and stores in Neo4j
+
+- **Agent Detection**: Detects agent references in prompts (@.claude/agents/...,
+  slash commands)
+- **Memory Injection**: Queries Neo4j for relevant memories and injects into
+  agent prompts
+- **Learning Extraction**: Extracts learnings from agent outputs and stores in
+  Neo4j
 - **Format Utilities**: Formats memory context for display
 
 ### 2. UserPromptSubmit Hook Integration
+
 **File**: `.claude/tools/amplihack/hooks/user_prompt_submit.py`
 
 **Updated**: Settings.json now includes UserPromptSubmit hook
 
 **Functionality**:
+
 - Intercepts EVERY user prompt before agent execution
 - Detects agent references (e.g., "@.claude/agents/amplihack/core/architect.md")
 - Queries Neo4j for relevant memories for that agent type
@@ -30,9 +39,11 @@ Provides shared logic for memory integration:
 - Logs metrics for memory injection
 
 ### 3. Stop Hook Integration
+
 **File**: `.claude/tools/amplihack/hooks/stop.py`
 
 **Functionality**:
+
 - Runs after agent execution completes
 - Reads session logs and metrics to find agent activity
 - Extracts learnings from agent outputs
@@ -40,9 +51,11 @@ Provides shared logic for memory integration:
 - Non-blocking: failures don't crash sessions
 
 ### 4. End-to-End Test
+
 **File**: `scripts/test_real_agent_with_memory.py`
 
 **Test Flow**:
+
 1. ✅ Starts Neo4j container
 2. ✅ Seeds test pattern ("Always use type hints")
 3. ✅ Simulates agent invocation through hook system
@@ -94,16 +107,20 @@ Stop Hook
 
 ### Key Features
 
-1. **Automatic Detection**: No manual configuration needed - detects agents from prompt
-2. **Intelligent Memory Retrieval**: Uses agent type + task category to find relevant memories
+1. **Automatic Detection**: No manual configuration needed - detects agents from
+   prompt
+2. **Intelligent Memory Retrieval**: Uses agent type + task category to find
+   relevant memories
 3. **Non-Intrusive**: Memory injection is transparent to agents
-4. **Graceful Degradation**: If Neo4j unavailable, agents continue without memory
+4. **Graceful Degradation**: If Neo4j unavailable, agents continue without
+   memory
 5. **Thread-Safe**: Uses proper locking for concurrent access
 6. **Logged & Traced**: All operations logged for debugging
 
 ## Evidence of Working Integration
 
 ### Test Output (Actual Run)
+
 ```
 ============================================================
 Neo4j Memory Integration - End-to-End Test
@@ -166,6 +183,7 @@ Neo4j Memory Integration - End-to-End Test
 ### Agent Detection Patterns
 
 The system recognizes agents through multiple patterns:
+
 - `@.claude/agents/amplihack/core/architect.md` - Direct agent reference
 - `@.claude/agents/architect.md` - Shortened reference
 - `Include @.claude/agents/...` - Include pattern
@@ -176,9 +194,12 @@ The system recognizes agents through multiple patterns:
 ### Memory Query Strategy
 
 For each detected agent:
-1. **Detect agent type**: Normalize agent name (e.g., "architect.md" → "architect")
+
+1. **Detect agent type**: Normalize agent name (e.g., "architect.md" →
+   "architect")
 2. **Detect task category**: Analyze prompt keywords (e.g., "auth" → "security")
-3. **Query memories**: `mgr.recall(category=task_category, min_quality=0.6, max=5)`
+3. **Query memories**:
+   `mgr.recall(category=task_category, min_quality=0.6, max=5)`
 4. **Filter by relevance**: Keyword matching against task description
 5. **Format context**: Convert memories to markdown format
 6. **Inject**: Prepend to original prompt
@@ -186,6 +207,7 @@ For each detected agent:
 ### Learning Extraction Strategy
 
 After agent execution:
+
 1. **Detect agents used**: Check metrics for agent detections
 2. **Read session logs**: Get DECISIONS.md and conversation logs
 3. **Extract patterns**: Use extraction_patterns.py to find:
@@ -199,10 +221,12 @@ After agent execution:
 ## Files Modified
 
 ### New Files
+
 - `.claude/tools/amplihack/hooks/agent_memory_hook.py` - Core integration logic
 - `scripts/test_real_agent_with_memory.py` - End-to-end test
 
 ### Modified Files
+
 - `.claude/tools/amplihack/hooks/user_prompt_submit.py` - Added memory injection
 - `.claude/tools/amplihack/hooks/stop.py` - Added learning extraction
 - `.claude/settings.json` - Added UserPromptSubmit hook
@@ -211,6 +235,7 @@ After agent execution:
 ## Configuration
 
 ### Environment Variables
+
 ```bash
 export NEO4J_PASSWORD='your_secure_password'  # Required
 export NEO4J_URI='bolt://localhost:7687'      # Optional (default shown)
@@ -219,6 +244,7 @@ export NEO4J_HTTP_PORT=7474                   # Optional (default shown)
 ```
 
 ### Claude Code Settings
+
 ```json
 {
   "hooks": {
@@ -253,27 +279,33 @@ export NEO4J_HTTP_PORT=7474                   # Optional (default shown)
 ### Example 1: Architect Agent with Memory
 
 **User Input**:
+
 ```
 @.claude/agents/amplihack/core/architect.md Design a caching layer for the API
 ```
 
 **What Happens**:
+
 1. UserPromptSubmit hook detects "architect" agent
 2. Queries Neo4j for architect memories in "performance" category
-3. Finds memories like "Use Redis for session cache" and "Always set TTL on cache keys"
+3. Finds memories like "Use Redis for session cache" and "Always set TTL on
+   cache keys"
 4. Injects these memories into prompt
 5. Architect sees past learnings and applies them
-6. Stop hook extracts new learnings (e.g., "Cache invalidation strategy X worked well")
+6. Stop hook extracts new learnings (e.g., "Cache invalidation strategy X worked
+   well")
 7. Stores for future use
 
 ### Example 2: Slash Command Agent
 
 **User Input**:
+
 ```
 /fix import - resolve the circular import issue in auth module
 ```
 
 **What Happens**:
+
 1. UserPromptSubmit hook detects "/fix" → maps to "fix-agent"
 2. Queries Neo4j for fix-agent memories in "error_handling" category
 3. Finds past solutions for circular imports
@@ -284,11 +316,13 @@ export NEO4J_HTTP_PORT=7474                   # Optional (default shown)
 ### Example 3: Multiple Agents
 
 **User Input**:
+
 ```
 Use @.claude/agents/amplihack/core/architect.md and @.claude/agents/amplihack/core/builder.md to implement OAuth2 flow
 ```
 
 **What Happens**:
+
 1. UserPromptSubmit hook detects BOTH agents
 2. Queries memories for architect AND builder
 3. Injects separate memory sections for each
@@ -298,6 +332,7 @@ Use @.claude/agents/amplihack/core/architect.md and @.claude/agents/amplihack/co
 ## Performance Metrics
 
 From test run:
+
 - **Memory Query Time**: <100ms (cached after first query)
 - **Injection Overhead**: <5ms (string concatenation)
 - **Learning Extraction**: Async, non-blocking
@@ -316,6 +351,7 @@ The system is designed to be **resilient**:
 ## Future Enhancements
 
 Potential improvements (not currently implemented):
+
 1. **Semantic Search**: Use vector embeddings instead of keyword matching
 2. **Memory Relevance Scoring**: Machine learning model for relevance
 3. **Cross-Agent Learning**: Share learnings between related agent types
@@ -330,6 +366,7 @@ Potential improvements (not currently implemented):
 **The Neo4j memory integration is COMPLETE and WORKING.**
 
 Evidence:
+
 - ✅ Agents receive memory context before execution
 - ✅ Memory context influences agent output (proven by test)
 - ✅ New learnings are extracted and stored after execution
@@ -337,10 +374,10 @@ Evidence:
 - ✅ System degrades gracefully when Neo4j unavailable
 - ✅ End-to-end test proves memory helps agents produce better output
 
-**The integration is production-ready** for use in Claude Code agent invocations.
+**The integration is production-ready** for use in Claude Code agent
+invocations.
 
 ---
 
-*Generated: 2025-11-03*
-*Test Run: scripts/test_real_agent_with_memory.py*
-*Status: COMPLETE ✅*
+_Generated: 2025-11-03_ _Test Run: scripts/test_real_agent_with_memory.py_
+_Status: COMPLETE ✅_

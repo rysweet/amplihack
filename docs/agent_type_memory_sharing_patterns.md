@@ -35,6 +35,7 @@ Modern multi-agent systems use three-tier memory inspired by operating system de
 ```
 
 **Application to Amplihack**:
+
 - **Working Memory**: Current conversation, active task context
 - **Main Memory**: Session-specific learning, recent decisions
 - **Archive**: Shared agent-type memory across all sessions and projects
@@ -61,11 +62,13 @@ Multi-agent systems implement two memory tiers:
 **Definition**: Memory verified and agreed upon by multiple agents of the same type.
 
 **Implementation**:
+
 - Multiple agents encounter same pattern independently
 - System creates "consensus score" based on agreement frequency
 - Higher consensus = higher confidence in shared memory
 
 **Example for Architect Agents**:
+
 ```
 Pattern: "Prefer composition over inheritance for extensibility"
 - Architect Agent A discovers this (confidence: 0.7)
@@ -77,6 +80,7 @@ Pattern: "Prefer composition over inheritance for extensibility"
 ### 1.4 Retrospective Log Pattern
 
 After each project or complex task, agents store:
+
 - What went well
 - What issues arose
 - How they were resolved
@@ -141,14 +145,15 @@ Research identifies five dimensions for agent taxonomy:
 
 **Answer Framework**:
 
-| Consideration | Same Type Memory | Separate Type Memory |
-|--------------|------------------|---------------------|
-| **Core responsibility** | If identical core responsibility (e.g., "building code from specs") | If fundamentally different responsibilities |
-| **Mental models** | If approaches/patterns are transferable | If domain-specific mental models differ significantly |
-| **Error patterns** | If failure modes are similar | If failure modes are domain-specific |
-| **Cross-pollination value** | If learning from one helps the other | If learning from one confuses the other |
+| Consideration               | Same Type Memory                                                    | Separate Type Memory                                  |
+| --------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Core responsibility**     | If identical core responsibility (e.g., "building code from specs") | If fundamentally different responsibilities           |
+| **Mental models**           | If approaches/patterns are transferable                             | If domain-specific mental models differ significantly |
+| **Error patterns**          | If failure modes are similar                                        | If failure modes are domain-specific                  |
+| **Cross-pollination value** | If learning from one helps the other                                | If learning from one confuses the other               |
 
 **Recommendation for Amplihack**:
+
 - **Share**: All "Builder" agents share builder-type memory (language-agnostic patterns)
 - **Separate**: Language-specific builders have additional language-specific memory
 - **Hybrid Model**: Two-level memory sharing (general + specialized)
@@ -175,6 +180,7 @@ An agent should be considered a distinct "type" when:
 5. **Independent Value**: Provides value without requiring other agent types
 
 **Examples**:
+
 - **Architect ≠ Builder**: Different responsibilities, mental models, success criteria
 - **Architect (Python) = Architect (JavaScript)**: Same responsibility, transferable mental models
 - **Reviewer ≠ Tester**: Different focuses (quality vs coverage)
@@ -188,24 +194,28 @@ An agent should be considered a distinct "type" when:
 #### High-Value Shared Memory
 
 **Procedural Knowledge** (HOW to do things):
+
 - Successful patterns and approaches
 - Step-by-step workflows that worked
 - Decision frameworks and heuristics
 - Common pitfall avoidance strategies
 
 **Declarative Knowledge** (WHAT is true):
+
 - Verified facts and relationships
 - Project-agnostic principles
 - Tool capabilities and limitations
 - Performance characteristics
 
 **Meta-Knowledge** (WHEN to apply):
+
 - Context patterns for technique selection
 - Success/failure indicators
 - Adaptation strategies
 - Exception cases
 
 **Example for Architect Agents**:
+
 ```json
 {
   "memory_id": "arch_mem_0042",
@@ -234,23 +244,27 @@ An agent should be considered a distinct "type" when:
 #### Private/Instance-Specific Memory
 
 **Session Context** (NOT shared):
+
 - Current conversation history
 - User preferences for this session
 - Temporary working state
 - Draft ideas not yet validated
 
 **Project-Specific** (Scoped sharing only):
+
 - Project-specific conventions
 - Team-specific patterns
 - Codebase-specific quirks
 - Local environment configurations
 
 **Failed Experiments** (Selective sharing):
+
 - Share: Why it failed, lessons learned
 - Don't Share: The bad solution itself as a recommendation
 - Pattern: Store as "anti-pattern" with clear warning
 
 **Low-Confidence Hypotheses** (NOT shared until validated):
+
 - Unverified theories
 - Single-instance observations
 - Untested assumptions
@@ -296,6 +310,7 @@ Agent uses shared memory → Outcome observed → Agent provides feedback
 ```
 
 **Automatic Quality Decay**:
+
 - Memory quality decreases over time without validation
 - Requires periodic re-validation to maintain high scores
 - Old memory without recent usage gets flagged for review
@@ -340,6 +355,7 @@ class TemporalMemory:
 ```
 
 **Example**:
+
 ```
 Memory: "Use Redux for React state management"
 Valid From: 2020-01-01
@@ -369,6 +385,7 @@ class ContextFingerprint:
 ```
 
 **Usage**:
+
 ```
 Query: "How should I design authentication?"
 Current Context: {type: "api_service", scale: "large", ...}
@@ -428,6 +445,7 @@ class AgentReputation:
 ```
 
 **Application**:
+
 - High-reputation agents' memories start with higher initial quality
 - Low-reputation agents' memories require more validation
 - Reputation scores are transparent and updateable
@@ -443,12 +461,14 @@ class AgentReputation:
 **Scenario**: Two architect agents recommend different approaches for the same problem at different times.
 
 **Example**:
+
 ```
 Memory A (2023): "Use Redux for React state"
 Memory B (2025): "Use React Context + hooks for state"
 ```
 
 **Resolution Strategy**: **Temporal Priority**
+
 - Newer memory takes precedence (with quality threshold)
 - Older memory marked as "superseded_by: B"
 - Keep historical record for learning
@@ -458,12 +478,14 @@ Memory B (2025): "Use React Context + hooks for state"
 **Scenario**: Same problem, different solutions based on context.
 
 **Example**:
+
 ```
 Memory A: "Use microservices for scalability" (context: large_team, high_scale)
 Memory B: "Use monolith for simplicity" (context: small_team, low_scale)
 ```
 
 **Resolution Strategy**: **Context-Based Selection**
+
 - Not a true conflict - both can be correct in their contexts
 - Retrieve based on context similarity
 - Present both with context explanations
@@ -473,12 +495,14 @@ Memory B: "Use monolith for simplicity" (context: small_team, low_scale)
 **Scenario**: Two agents genuinely disagree on the best approach.
 
 **Example**:
+
 ```
 Memory A: "Always use ORMs for database access" (quality: 0.75)
 Memory B: "Use raw SQL for performance-critical queries" (quality: 0.82)
 ```
 
 **Resolution Strategy**: **Quality-Weighted Consensus**
+
 - If quality difference > 0.1, higher quality wins
 - If quality similar, flag as "debate" and present both
 - Invoke multi-agent debate mechanism to resolve
@@ -515,11 +539,13 @@ Does it contradict existing memory?
 #### Mechanism 1: Automatic Resolution (70% of cases)
 
 **Criteria for Automatic Resolution**:
+
 - Clear quality difference (>0.15)
 - Temporal supersession with validation
 - Contextual separation obvious
 
 **Implementation**:
+
 ```python
 class AutomaticResolver:
     def resolve(self, conflict: Conflict) -> Resolution:
@@ -548,12 +574,14 @@ class AutomaticResolver:
 **When to Use**: Quality similar, both valid arguments, high-impact decision.
 
 **Process**:
+
 1. Present both conflicting memories to fresh agent instances
 2. Each argues for its position
 3. Agents vote on resolution
 4. Create new consensus memory incorporating insights from both
 
 **Example Debate Structure**:
+
 ```
 Topic: "Should we use microservices or monolith for this service?"
 
@@ -585,6 +613,7 @@ New Consensus Memory:
 **When to Use**: Fundamental disagreement, insufficient data, high risk.
 
 **Process**:
+
 1. System detects unresolvable conflict
 2. Generate escalation report with both positions
 3. Request human expert judgment
@@ -593,12 +622,14 @@ New Consensus Memory:
 ### 4.4 Maintaining Conflict History
 
 **Why Track Conflicts**:
+
 - Learn from resolution patterns
 - Improve automatic resolution
 - Identify systematic disagreements
 - Understand knowledge evolution
 
 **Conflict Registry Schema**:
+
 ```json
 {
   "conflict_id": "conf_0123",
@@ -611,10 +642,7 @@ New Consensus Memory:
     "new_memory": "mem_0124",
     "rationale": "Both valid in different contexts, created decision framework"
   },
-  "lessons_learned": [
-    "Context fingerprinting was too coarse",
-    "Need scale dimension in context"
-  ]
+  "lessons_learned": ["Context fingerprinting was too coarse", "Need scale dimension in context"]
 }
 ```
 
@@ -868,13 +896,14 @@ ORDER BY m.quality_score DESC
 
 **Trade-offs**:
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Global Sharing** | Maximum learning, largest data set | Risk of irrelevant/conflicting memories |
-| **Project-Scoped** | Highly relevant, context-appropriate | Limited learning, slower improvement |
-| **Hybrid (Recommended)** | Best of both worlds | More complex to implement |
+| Approach                 | Pros                                 | Cons                                    |
+| ------------------------ | ------------------------------------ | --------------------------------------- |
+| **Global Sharing**       | Maximum learning, largest data set   | Risk of irrelevant/conflicting memories |
+| **Project-Scoped**       | Highly relevant, context-appropriate | Limited learning, slower improvement    |
+| **Hybrid (Recommended)** | Best of both worlds                  | More complex to implement               |
 
 **Recommendation**: Hybrid approach with two memory pools per agent type:
+
 1. **Universal Pool**: Project-agnostic patterns (design principles, general approaches)
 2. **Project Pool**: Project-specific patterns (codebase conventions, team patterns)
 
@@ -1104,11 +1133,13 @@ optimizer_memory = Memory(
 ### Anti-Pattern 1: Over-Sharing Without Context
 
 **Problem**: Sharing all memories universally without context leads to:
+
 - Irrelevant recommendations
 - Conflicting advice
 - Decision paralysis (too many options)
 
 **Example**:
+
 ```
 Bad: All architect agents share all design decisions
 Result: Microservices patterns suggested for tiny projects
@@ -1125,6 +1156,7 @@ Result: Patterns matched to project scale, team size, constraints
 **Problem**: Old patterns remain "trusted" without re-validation.
 
 **Example**:
+
 ```
 2018 Memory: "Use Angular for web apps" (quality: 0.90)
 2025 Query: "What framework for web app?"
@@ -1140,6 +1172,7 @@ Problem: Quality score frozen in time
 **Problem**: Positive feedback inflates scores indefinitely without bounds.
 
 **Example**:
+
 ```
 Memory starts at quality 0.75
 After 100 successful uses: quality = 0.99
@@ -1163,6 +1196,7 @@ def update_quality_bounded(current: float, feedback: float,
 **Problem**: Only one "best practice" stored, no alternatives presented.
 
 **Example**:
+
 ```
 Memory: "Always use PostgreSQL for database"
 → No alternatives stored
@@ -1182,6 +1216,7 @@ Memory C: SQLite (context: embedded, single-user, simple)
 **Problem**: Storing "what to do" without "why" or "when not to".
 
 **Example**:
+
 ```
 Bad Memory:
 "Use Redis for caching"
@@ -1202,6 +1237,7 @@ Alternatives: Memcached (simpler), CDN (static content), database query cache
 **Problem**: Only storing successes, not learning from failures.
 
 **Example**:
+
 ```
 System: "Let's try X pattern"
 Outcome: Failed due to Y reason
@@ -1219,7 +1255,7 @@ Memory: [Nothing stored]
   "lesson": "Use raw SQL or bulk insert API for >1000 records",
   "evidence": "Performance degraded from 2s to 45s with 5000 records",
   "quality_score": 0.88,
-  "validation_count": 7  // 7 agents confirmed this anti-pattern
+  "validation_count": 7 // 7 agents confirmed this anti-pattern
 }
 ```
 
@@ -1228,6 +1264,7 @@ Memory: [Nothing stored]
 **Problem**: Never deleting or archiving old, obsolete memories.
 
 **Example**:
+
 ```
 Database grows to millions of memories
 Retrieval becomes slow
@@ -1279,17 +1316,20 @@ class MemoryLifecycle:
 #### Phase 1: Foundation (Weeks 1-2)
 
 **Objectives**:
+
 - Implement basic graph schema
 - Set up hybrid storage (vector + graph)
 - Create agent type taxonomy
 
 **Deliverables**:
+
 1. Neo4j or FalkorDB graph database setup
 2. Vector store integration (e.g., Pinecone, Qdrant, or pgvector)
 3. Core node/relationship schema implemented
 4. Basic memory CRUD operations
 
 **Code Example**:
+
 ```python
 # /src/amplihack/memory/graph_store.py
 class GraphMemoryStore:
@@ -1339,17 +1379,20 @@ class GraphMemoryStore:
 #### Phase 2: Quality Control (Weeks 3-4)
 
 **Objectives**:
+
 - Implement quality scoring system
 - Add validation and feedback mechanisms
 - Create conflict detection
 
 **Deliverables**:
+
 1. Quality scoring algorithms
 2. Feedback collection system
 3. Automatic quality decay
 4. Basic conflict detection
 
 **Code Example**:
+
 ```python
 # /src/amplihack/memory/quality.py
 class QualityManager:
@@ -1396,11 +1439,13 @@ class QualityManager:
 #### Phase 3: Conflict Resolution (Weeks 5-6)
 
 **Objectives**:
+
 - Implement conflict detection algorithms
 - Create resolution mechanisms
 - Add temporal invalidation
 
 **Deliverables**:
+
 1. Conflict detection system
 2. Automatic resolution for simple cases
 3. Multi-agent debate mechanism stub
@@ -1409,11 +1454,13 @@ class QualityManager:
 #### Phase 4: Context & Scoping (Weeks 7-8)
 
 **Objectives**:
+
 - Add context fingerprinting
 - Implement project scoping
 - Create context similarity matching
 
 **Deliverables**:
+
 1. Context fingerprint system
 2. Project-scoped memory queries
 3. Universal vs project-specific separation
@@ -1422,11 +1469,13 @@ class QualityManager:
 #### Phase 5: Optimization & Production (Weeks 9-10)
 
 **Objectives**:
+
 - Performance optimization
 - Production hardening
 - Monitoring and observability
 
 **Deliverables**:
+
 1. Query optimization
 2. Caching layer
 3. Metrics and monitoring
@@ -1437,16 +1486,19 @@ class QualityManager:
 #### Graph Database Options
 
 **Option 1: Neo4j (Recommended)**
+
 - **Pros**: Mature, excellent Cypher query language, strong community
 - **Cons**: Commercial licensing for scale, resource intensive
 - **Best for**: Production systems, complex queries, large scale
 
 **Option 2: FalkorDB**
+
 - **Pros**: Redis-based (in-memory speed), GraphQL support, open source
 - **Cons**: Less mature than Neo4j, smaller ecosystem
 - **Best for**: High-performance requirements, Redis infrastructure
 
 **Option 3: ArangoDB**
+
 - **Pros**: Multi-model (graph + document), flexible, single database
 - **Cons**: Query language different from Cypher
 - **Best for**: Mixed workloads, document + graph needs
@@ -1456,16 +1508,19 @@ class QualityManager:
 #### Vector Store Options
 
 **Option 1: Qdrant**
+
 - **Pros**: Fast, open source, excellent Python support, filtering capabilities
 - **Cons**: Relatively new, smaller community
 - **Best for**: Self-hosted, full control, cost-sensitive
 
 **Option 2: Pinecone**
+
 - **Pros**: Managed service, scalable, simple API
 - **Cons**: Costs at scale, vendor lock-in
 - **Best for**: Quick start, managed infrastructure preferred
 
 **Option 3: pgvector (PostgreSQL extension)**
+
 - **Pros**: Same database as possibly already using, simpler stack
 - **Cons**: Not specialized for vectors, slower at very large scale
 - **Best for**: Existing PostgreSQL infrastructure, smaller scale
@@ -1702,38 +1757,34 @@ Archive (not delete):
 ### Implementation Priority
 
 **High Priority (Must Have)**:
+
 1. Temporal graph schema with validity windows
 2. Quality scoring system with decay
 3. Context fingerprinting for appropriate application
 4. Basic conflict detection (temporal, quality-based)
 
-**Medium Priority (Should Have)**:
-5. Multi-agent debate mechanism for complex conflicts
-6. Cross-project vs project-specific scoping
-7. Hybrid storage (vector + graph)
-8. Feedback and validation tracking
+**Medium Priority (Should Have)**: 5. Multi-agent debate mechanism for complex conflicts 6. Cross-project vs project-specific scoping 7. Hybrid storage (vector + graph) 8. Feedback and validation tracking
 
-**Low Priority (Nice to Have)**:
-9. Advanced conflict resolution (ML-based)
-10. Cross-agent-type learning references
-11. Memory visualization dashboard
-12. Automated memory curation
+**Low Priority (Nice to Have)**: 9. Advanced conflict resolution (ML-based) 10. Cross-agent-type learning references 11. Memory visualization dashboard 12. Automated memory curation
 
 ### Success Metrics
 
 **After 3 Months**:
+
 - 80% of agent invocations use relevant shared memory
 - Average memory quality score > 0.75
 - <5% conflicts require manual resolution
 - Memory retrieval time < 100ms (p95)
 
 **After 6 Months**:
+
 - Measurable improvement in agent decision quality
 - 50%+ reduction in repeated mistakes
 - Agents proactively suggest relevant patterns
 - 90%+ user satisfaction with agent recommendations
 
 **After 12 Months**:
+
 - Self-improving agent system (quality increases over time)
 - Comprehensive knowledge base covering 80% of common scenarios
 - Cross-project learning demonstrably effective
@@ -1914,8 +1965,18 @@ LIMIT 20
     },
     "agent_type": {
       "type": "string",
-      "enum": ["architect", "builder", "reviewer", "tester", "optimizer",
-               "security", "database", "api_designer", "integration", "analyzer"],
+      "enum": [
+        "architect",
+        "builder",
+        "reviewer",
+        "tester",
+        "optimizer",
+        "security",
+        "database",
+        "api_designer",
+        "integration",
+        "analyzer"
+      ],
       "description": "Type of agent this memory belongs to"
     },
     "type": {
@@ -1950,7 +2011,7 @@ LIMIT 20
         },
         "alternatives_considered": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": { "type": "string" },
           "description": "Other approaches that were considered"
         },
         "when_not_to_use": {
@@ -1968,52 +2029,55 @@ LIMIT 20
     "quality_breakdown": {
       "type": "object",
       "properties": {
-        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-        "validation": {"type": "number", "minimum": 0, "maximum": 1},
-        "recency": {"type": "number", "minimum": 0, "maximum": 1},
-        "consensus": {"type": "number", "minimum": 0, "maximum": 1},
-        "context_specificity": {"type": "number", "minimum": 0, "maximum": 1},
-        "impact": {"type": "number", "minimum": 0, "maximum": 1}
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "validation": { "type": "number", "minimum": 0, "maximum": 1 },
+        "recency": { "type": "number", "minimum": 0, "maximum": 1 },
+        "consensus": { "type": "number", "minimum": 0, "maximum": 1 },
+        "context_specificity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "impact": { "type": "number", "minimum": 0, "maximum": 1 }
       }
     },
     "temporal_metadata": {
       "type": "object",
       "required": ["created_at", "last_validated"],
       "properties": {
-        "created_at": {"type": "string", "format": "date-time"},
-        "last_validated": {"type": "string", "format": "date-time"},
-        "valid_from": {"type": "string", "format": "date-time"},
-        "valid_until": {"type": "string", "format": "date-time", "nullable": true},
-        "deprecation_date": {"type": "string", "format": "date-time", "nullable": true}
+        "created_at": { "type": "string", "format": "date-time" },
+        "last_validated": { "type": "string", "format": "date-time" },
+        "valid_from": { "type": "string", "format": "date-time" },
+        "valid_until": { "type": "string", "format": "date-time", "nullable": true },
+        "deprecation_date": { "type": "string", "format": "date-time", "nullable": true }
       }
     },
     "context_fingerprint": {
       "type": "object",
       "properties": {
-        "project_type": {"type": "array", "items": {"type": "string"}},
-        "scale": {"type": "string", "enum": ["small", "medium", "large", "xlarge"]},
-        "tech_stack": {"type": "array", "items": {"type": "string"}},
-        "constraints": {"type": "array", "items": {"type": "string"}},
-        "team_size": {"type": "string", "enum": ["solo", "small_team", "medium_team", "large_team"]}
+        "project_type": { "type": "array", "items": { "type": "string" } },
+        "scale": { "type": "string", "enum": ["small", "medium", "large", "xlarge"] },
+        "tech_stack": { "type": "array", "items": { "type": "string" } },
+        "constraints": { "type": "array", "items": { "type": "string" } },
+        "team_size": {
+          "type": "string",
+          "enum": ["solo", "small_team", "medium_team", "large_team"]
+        }
       }
     },
     "usage_statistics": {
       "type": "object",
       "properties": {
-        "application_count": {"type": "integer", "minimum": 0},
-        "success_rate": {"type": "number", "minimum": 0, "maximum": 1},
-        "validation_count": {"type": "integer", "minimum": 0},
-        "last_used": {"type": "string", "format": "date-time"}
+        "application_count": { "type": "integer", "minimum": 0 },
+        "success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "validation_count": { "type": "integer", "minimum": 0 },
+        "last_used": { "type": "string", "format": "date-time" }
       }
     },
     "contributor_agents": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": { "type": "string" },
       "description": "Agent instance IDs that contributed to this memory"
     },
     "supersedes": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": { "type": "string" },
       "description": "Memory IDs that this memory supersedes"
     },
     "superseded_by": {
@@ -2026,9 +2090,9 @@ LIMIT 20
       "items": {
         "type": "object",
         "properties": {
-          "memory_id": {"type": "string"},
-          "conflict_type": {"type": "string", "enum": ["temporal", "contextual", "direct"]},
-          "resolution_status": {"type": "string", "enum": ["unresolved", "resolved", "debate"]}
+          "memory_id": { "type": "string" },
+          "conflict_type": { "type": "string", "enum": ["temporal", "contextual", "direct"] },
+          "resolution_status": { "type": "string", "enum": ["unresolved", "resolved", "debate"] }
         }
       }
     },
@@ -2037,9 +2101,9 @@ LIMIT 20
       "items": {
         "type": "object",
         "properties": {
-          "agent_type": {"type": "string"},
-          "memory_id": {"type": "string"},
-          "relationship": {"type": "string", "enum": ["supports", "contradicts", "extends"]}
+          "agent_type": { "type": "string" },
+          "memory_id": { "type": "string" },
+          "relationship": { "type": "string", "enum": ["supports", "contradicts", "extends"] }
         }
       },
       "description": "References to memories from other agent types"
@@ -2047,14 +2111,17 @@ LIMIT 20
     "scope": {
       "type": "object",
       "properties": {
-        "scope_type": {"type": "string", "enum": ["universal", "project_specific", "domain_specific"]},
-        "project_id": {"type": "string", "nullable": true},
-        "domain": {"type": "string", "nullable": true}
+        "scope_type": {
+          "type": "string",
+          "enum": ["universal", "project_specific", "domain_specific"]
+        },
+        "project_id": { "type": "string", "nullable": true },
+        "domain": { "type": "string", "nullable": true }
       }
     },
     "tags": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": { "type": "string" },
       "description": "Searchable tags for categorization"
     }
   }

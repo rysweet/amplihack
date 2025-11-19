@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 from pathlib import Path
+
 env_file = Path(__file__).parent.parent / ".env"
 if env_file.exists():
     for line in env_file.read_text().splitlines():
@@ -30,12 +31,10 @@ Usage:
 
 import logging
 import os
-import subprocess
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -48,17 +47,8 @@ from amplihack.memory.neo4j.connector import Neo4jConnector, CircuitState
 from amplihack.memory.neo4j.schema import SchemaManager
 from amplihack.memory.neo4j.memory_store import MemoryStore
 from amplihack.memory.neo4j.agent_memory import AgentMemoryManager
-from amplihack.memory.neo4j.retrieval import (
-    TemporalRetrieval,
-    SimilarityRetrieval,
-    GraphTraversal,
-    HybridRetrieval,
-    RetrievalContext,
-    IsolationLevel,
-)
 from amplihack.memory.neo4j.monitoring import (
     HealthMonitor,
-    MetricsCollector,
     get_global_metrics,
 )
 
@@ -420,7 +410,9 @@ class E2ETestRunner:
         logger.info("Step 4.2: Simulating Neo4j failure...")
         # NOTE: Instead of stopping the actual container (which has docker command issues),
         # we'll test circuit breaker by closing the connection and testing with a bad URI
-        logger.info("✅ Circuit breaker test will use connection errors instead of stopping container")
+        logger.info(
+            "✅ Circuit breaker test will use connection errors instead of stopping container"
+        )
 
         logger.info("Step 4.3: Testing circuit breaker with bad connection...")
         # Create a new connector with bad URI to trigger failures
@@ -433,10 +425,10 @@ class E2ETestRunner:
         for i in range(max_attempts):
             try:
                 bad_connector.execute_query("RETURN 1")
-                logger.warning(f"Query succeeded unexpectedly (attempt {i+1})")
+                logger.warning(f"Query succeeded unexpectedly (attempt {i + 1})")
             except Exception as e:
                 failures += 1
-                logger.debug(f"Expected failure {i+1}: {type(e).__name__}")
+                logger.debug(f"Expected failure {i + 1}: {type(e).__name__}")
 
                 # Check if circuit opened
                 cb_state = bad_connector.get_circuit_breaker_state()
@@ -589,13 +581,17 @@ class E2ETestRunner:
 
         logger.info(f"Found {len(high_quality_memories)} high-quality performance memories")
         for mem in high_quality_memories:
-            logger.info(f"  - {mem['id']}: quality={mem.get('quality_score', 0):.2f}, validations={mem.get('validation_count', 0)}")
+            logger.info(
+                f"  - {mem['id']}: quality={mem.get('quality_score', 0):.2f}, validations={mem.get('validation_count', 0)}"
+            )
 
         if not any(m["id"] == memory_id for m in high_quality_memories):
             logger.error("Improved memory not in high-quality results")
             logger.error(f"Expected to find: {memory_id}")
             # Log details for debugging
-            logger.error(f"Memory stats: quality={updated_quality:.2f}, validations={validation_count}, applications={application_count}")
+            logger.error(
+                f"Memory stats: quality={updated_quality:.2f}, validations={validation_count}, applications={application_count}"
+            )
             return False
 
         logger.info(f"✅ Memory promoted to high-quality ({len(high_quality_memories)} total)")

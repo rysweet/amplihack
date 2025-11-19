@@ -155,18 +155,17 @@ except Exception as e:
             [sys.executable, "-c", code, json.dumps(module_name)],
             capture_output=True,
             text=True,
-            timeout=15  # Increased from 5 to 15 seconds
+            timeout=15,  # Increased from 5 to 15 seconds
         )
 
         if result.returncode == 0:
             return file_path, True, ""
-        else:
-            return file_path, False, result.stdout + result.stderr
+        return file_path, False, result.stdout + result.stderr
 
     except subprocess.TimeoutExpired:
         return file_path, False, "Import timeout (>15s)"
     except Exception as e:
-        return file_path, False, f"Test error: {str(e)}"
+        return file_path, False, f"Test error: {e!s}"
 
 
 def main():

@@ -11,8 +11,7 @@ All tests should FAIL initially (TDD approach).
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 class TestContainerManagerStartup:
@@ -24,7 +23,7 @@ class TestContainerManagerStartup:
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="Container started")
 
             result = manager.start_container()
@@ -33,21 +32,17 @@ class TestContainerManagerStartup:
             mock_run.assert_called_once()
             # Verify docker-compose command was called
             call_args = mock_run.call_args[0][0]
-            assert 'docker' in call_args
-            assert 'compose' in call_args or 'docker-compose' in call_args[0]
+            assert "docker" in call_args
+            assert "compose" in call_args or "docker-compose" in call_args[0]
 
     def test_WHEN_container_already_running_THEN_start_is_idempotent(self):
         """Test that starting an already-running container is idempotent."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # First call: container already running
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout="amplihack-neo4j",
-                stderr=""
-            )
+            mock_run.return_value = Mock(returncode=0, stdout="amplihack-neo4j", stderr="")
 
             result = manager.start_container()
 
@@ -60,7 +55,7 @@ class TestContainerManagerStartup:
         from amplihack.memory.neo4j.exceptions import DockerNotAvailableError
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("docker not found")
 
             with pytest.raises(DockerNotAvailableError) as exc_info:
@@ -90,7 +85,7 @@ class TestContainerManagerShutdown:
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="Container stopped")
 
             result = manager.stop_container()
@@ -98,14 +93,14 @@ class TestContainerManagerShutdown:
             assert result is True
             mock_run.assert_called_once()
             call_args = mock_run.call_args[0][0]
-            assert 'down' in call_args or 'stop' in call_args
+            assert "down" in call_args or "stop" in call_args
 
     def test_WHEN_container_not_running_THEN_stop_is_graceful(self):
         """Test that stopping a non-running container doesn't error."""
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout="No containers to stop")
 
             # Should not raise exception
@@ -121,12 +116,9 @@ class TestContainerHealthCheck:
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             # Simulate healthy container response
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout='{"Status": "healthy"}'
-            )
+            mock_run.return_value = Mock(returncode=0, stdout='{"Status": "healthy"}')
 
             is_healthy = manager.is_healthy()
 
@@ -137,11 +129,8 @@ class TestContainerHealthCheck:
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout='{"Status": "unhealthy"}'
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout='{"Status": "unhealthy"}')
 
             is_healthy = manager.is_healthy()
 
@@ -153,7 +142,7 @@ class TestContainerHealthCheck:
         import subprocess
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired(cmd="docker", timeout=5)
 
             is_healthy = manager.is_healthy(timeout=5)
@@ -165,14 +154,14 @@ class TestContainerHealthCheck:
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0, stdout='{"Status": "healthy"}')
 
             manager.is_healthy(timeout=10)
 
             # Verify timeout parameter was passed
             call_kwargs = mock_run.call_args[1]
-            assert call_kwargs.get('timeout') == 10
+            assert call_kwargs.get("timeout") == 10
 
 
 class TestContainerStatus:
@@ -184,11 +173,8 @@ class TestContainerStatus:
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout="Up 2 hours"
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="Up 2 hours")
 
             status = manager.get_status()
 
@@ -200,11 +186,8 @@ class TestContainerStatus:
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout="Exited (0) 5 minutes ago"
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="Exited (0) 5 minutes ago")
 
             status = manager.get_status()
 
@@ -216,7 +199,7 @@ class TestContainerStatus:
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=1, stdout="")
 
             status = manager.get_status()
@@ -229,11 +212,8 @@ class TestContainerStatus:
         from amplihack.memory.neo4j.models import ContainerStatus
 
         manager = ContainerManager()
-        with patch('subprocess.run') as mock_run:
-            mock_run.return_value = Mock(
-                returncode=0,
-                stdout="Up 2 seconds (health: starting)"
-            )
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout="Up 2 seconds (health: starting)")
 
             status = manager.get_status()
 
@@ -286,7 +266,7 @@ class TestContainerWaitForReady:
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch.object(manager, 'is_healthy') as mock_healthy:
+        with patch.object(manager, "is_healthy") as mock_healthy:
             # Simulate container becoming healthy after 2 checks
             mock_healthy.side_effect = [False, False, True]
 
@@ -299,7 +279,7 @@ class TestContainerWaitForReady:
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch.object(manager, 'is_healthy') as mock_healthy:
+        with patch.object(manager, "is_healthy") as mock_healthy:
             # Container never becomes healthy
             mock_healthy.return_value = False
 
@@ -312,7 +292,7 @@ class TestContainerWaitForReady:
         from amplihack.memory.neo4j.container_manager import ContainerManager
 
         manager = ContainerManager()
-        with patch.object(manager, 'is_healthy') as mock_healthy:
+        with patch.object(manager, "is_healthy") as mock_healthy:
             mock_healthy.return_value = True
 
             result = manager.wait_for_ready(timeout=0)

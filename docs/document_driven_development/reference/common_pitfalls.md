@@ -258,6 +258,7 @@ Discover implementation needs to differ, change code but not docs.
 # If drift detected:
 
 ## Situation
+
 Implemented provider use. Testing revealed --model should be
 optional with defaults, but docs say it's required.
 

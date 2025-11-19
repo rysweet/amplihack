@@ -5,6 +5,7 @@ Complete integration of [blarify](https://github.com/blarApp/blarify) code graph
 ## Overview
 
 This integration allows the memory system to understand code structure by:
+
 1. Converting codebase to graph representation via blarify
 2. Storing code nodes (files, classes, functions) in Neo4j
 3. Linking code to memories for context-aware retrieval
@@ -17,12 +18,14 @@ This integration allows the memory system to understand code structure by:
 ### Node Types
 
 #### Code Nodes
+
 - **CodeFile**: Source files with language and LOC
 - **Class**: Classes with docstrings and metadata
 - **Function**: Functions/methods with parameters and complexity
 - **Import**: Import statements (as relationships)
 
 #### Relationship Types
+
 - `DEFINED_IN`: Class/Function → CodeFile
 - `METHOD_OF`: Function → Class
 - `IMPORTS`: CodeFile → CodeFile
@@ -56,6 +59,7 @@ Code schema extends existing memory schema:
 
 1. **Neo4j Running**: Memory system Neo4j instance
 2. **Blarify Installed** (optional for testing):
+
    ```bash
    pip install blarify
    ```
@@ -68,6 +72,7 @@ Code schema extends existing memory schema:
 ### Supported Languages
 
 Blarify supports 6 languages:
+
 - Python
 - JavaScript
 - TypeScript
@@ -86,6 +91,7 @@ python scripts/import_codebase_to_neo4j.py
 ```
 
 This will:
+
 1. Run blarify on `./src` (default)
 2. Generate code graph JSON
 3. Import to Neo4j
@@ -199,6 +205,7 @@ python scripts/test_blarify_integration.py
 Tests run with **sample data**, so you don't need blarify installed to verify integration works.
 
 Test coverage:
+
 1. ✓ Schema initialization
 2. ✓ Sample code import
 3. ✓ Code-memory relationships
@@ -282,6 +289,7 @@ MATCH (cf:CodeFile) RETURN cf LIMIT 10
 ### Custom Blarify Output
 
 If blarify output format differs, modify parsing in `code_graph.py`:
+
 - `_import_files()`: Parse file nodes
 - `_import_classes()`: Parse class nodes
 - `_import_functions()`: Parse function nodes
@@ -347,16 +355,19 @@ RETURN f.name, f.complexity,
 ### Optimization Tips
 
 1. **Use SCIP for Speed**: 330x faster than LSP
+
    ```bash
    npm install -g @sourcegraph/scip-python
    ```
 
 2. **Incremental Updates**: Only import changed files
+
    ```bash
    python scripts/import_codebase_to_neo4j.py --incremental
    ```
 
 3. **Filter Languages**: Reduce parsing time
+
    ```bash
    python scripts/import_codebase_to_neo4j.py --languages python
    ```
@@ -367,12 +378,12 @@ RETURN f.name, f.complexity,
 
 Typical codebase (1000 files, 100K LOC):
 
-| Operation          | Time (LSP) | Time (SCIP) |
-|--------------------|------------|-------------|
-| Blarify Analysis   | 5-10 min   | ~2 sec      |
-| Neo4j Import       | ~30 sec    | ~30 sec     |
-| Memory Linking     | ~10 sec    | ~10 sec     |
-| **Total**          | **6-11 min** | **~42 sec** |
+| Operation        | Time (LSP)   | Time (SCIP) |
+| ---------------- | ------------ | ----------- |
+| Blarify Analysis | 5-10 min     | ~2 sec      |
+| Neo4j Import     | ~30 sec      | ~30 sec     |
+| Memory Linking   | ~10 sec      | ~10 sec     |
+| **Total**        | **6-11 min** | **~42 sec** |
 
 ## Troubleshooting
 
@@ -474,6 +485,7 @@ To extend blarify integration:
 ## Support
 
 For issues or questions:
+
 1. Check test suite: `python scripts/test_blarify_integration.py`
 2. Review logs in console output
 3. Check Neo4j Browser: `http://localhost:7474`

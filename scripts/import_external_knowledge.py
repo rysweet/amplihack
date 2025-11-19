@@ -35,8 +35,6 @@ from amplihack.memory.neo4j import (
     Neo4jConnector,
     ExternalKnowledgeManager,
     KnowledgeSource,
-    ExternalDoc,
-    APIReference,
     ensure_neo4j_running,
 )
 
@@ -263,8 +261,7 @@ def import_custom_url(
         if manager.cache_external_doc(doc):
             logger.info("Imported: %s", url)
             return 1
-        else:
-            logger.error("Failed to cache: %s", url)
+        logger.error("Failed to cache: %s", url)
     else:
         logger.error("Failed to fetch: %s", url)
 
@@ -302,7 +299,7 @@ def import_from_json(
         return 0
 
     try:
-        with open(json_path, "r") as f:
+        with open(json_path) as f:
             docs = json.load(f)
 
         count = 0

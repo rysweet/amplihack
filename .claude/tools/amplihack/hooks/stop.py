@@ -29,13 +29,13 @@ class StopHook(HookProcessor):
 
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Check lock flag and block stop if active.
-Also trigger reflection analysis and memory extraction if enabled.
+        Also trigger reflection analysis and memory extraction if enabled.
 
-        Args:
-            input_data: Input from Claude Code
+                Args:
+                    input_data: Input from Claude Code
 
-        Returns:
-            Dict with decision to block or allow stop
+                Returns:
+                    Dict with decision to block or allow stop
         """
         # LOG START - Always log entry for debugging
         self.log("=== STOP HOOK STARTED ===")
@@ -61,7 +61,7 @@ Also trigger reflection analysis and memory extraction if enabled.
 
         # Not locked - extract learnings and run reflection
         self._extract_agent_learnings(input_data)
-        
+
         # Check if reflection should run
         if not self._should_run_reflection():
             self.log("Reflection not enabled - allowing stop after memory extraction")
@@ -71,7 +71,11 @@ Also trigger reflection analysis and memory extraction if enabled.
         # FIX #2: Check for reflection semaphore (prevents infinite loop)
         session_id = self._get_current_session_id()
         semaphore_file = (
-            self.project_root / ".claude" / "runtime" / "reflection" / f".reflection_presented_{session_id}"
+            self.project_root
+            / ".claude"
+            / "runtime"
+            / "reflection"
+            / f".reflection_presented_{session_id}"
         )
 
     def _extract_agent_learnings(self, input_data: Dict[str, Any]):
@@ -111,7 +115,7 @@ Also trigger reflection analysis and memory extraction if enabled.
                 output=conversation,
                 task="session_work",
                 success=True,
-                project_id=str(self.project_root.name) if self.project_root else "unknown"
+                project_id=str(self.project_root.name) if self.project_root else "unknown",
             )
 
             if memory_ids:
@@ -197,9 +201,7 @@ Also trigger reflection analysis and memory extraction if enabled.
             return False
 
         # Load reflection config
-        config_path = (
-            self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
-        )
+        config_path = self.project_root / ".claude" / "tools" / "amplihack" / ".reflection_config"
         if not config_path.exists():
             self.log("Reflection config not found - skipping reflection", "DEBUG")
             return False
@@ -301,10 +303,12 @@ Also trigger reflection analysis and memory extraction if enabled.
                                         text_parts.append(block.get("text", ""))
                                 content = "\n".join(text_parts)
 
-                            conversation.append({
-                                "role": msg.get("role", entry.get("type", "user")),
-                                "content": content
-                            })
+                            conversation.append(
+                                {
+                                    "role": msg.get("role", entry.get("type", "user")),
+                                    "content": content,
+                                }
+                            )
                 self.log(f"Loaded {len(conversation)} conversation turns from transcript")
             except Exception as e:
                 self.log(f"Failed to load transcript: {e}", "WARNING")
@@ -379,7 +383,8 @@ Also trigger reflection analysis and memory extraction if enabled.
                 first_sentence = summary_section.split(".")[0][:100]
                 # Convert to slug
                 import re
-                task_slug = re.sub(r'[^a-z0-9]+', '-', first_sentence.lower()).strip('-')
+
+                task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
                 # Limit length
                 task_slug = task_slug[:50]
         except Exception:

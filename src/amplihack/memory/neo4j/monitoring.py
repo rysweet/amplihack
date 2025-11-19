@@ -17,7 +17,6 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from .connector import Neo4jConnector
-from .exceptions import Neo4jConnectionError
 
 logger = logging.getLogger(__name__)
 
@@ -151,9 +150,7 @@ class MetricsCollector:
             metric.to_dict(),
         )
 
-    def get_statistics(
-        self, operation_type: Optional[OperationType] = None
-    ) -> Dict[str, Any]:
+    def get_statistics(self, operation_type: Optional[OperationType] = None) -> Dict[str, Any]:
         """Get aggregated statistics.
 
         Args:
@@ -185,9 +182,7 @@ class MetricsCollector:
             "avg_duration_ms": round(sum(durations) / total, 2),
             "min_duration_ms": round(min(durations), 2),
             "max_duration_ms": round(max(durations), 2),
-            "p95_duration_ms": round(
-                sorted(durations)[int(len(durations) * 0.95)], 2
-            ),
+            "p95_duration_ms": round(sorted(durations)[int(len(durations) * 0.95)], 2),
         }
 
     def get_recent_errors(self, limit: int = 10) -> List[OperationMetric]:
@@ -229,7 +224,9 @@ class MonitoredConnector:
         self.metrics = metrics_collector or MetricsCollector()
 
     @contextmanager
-    def _monitor_operation(self, operation_type: OperationType, metadata: Optional[Dict[str, Any]] = None):
+    def _monitor_operation(
+        self, operation_type: OperationType, metadata: Optional[Dict[str, Any]] = None
+    ):
         """Context manager for monitoring operations.
 
         Args:

@@ -58,7 +58,9 @@ def auto_create_env_file(project_root: Optional[Path] = None) -> Tuple[bool, str
     # Check if .env exists and has NEO4J_PASSWORD
     if env_file.exists():
         content = env_file.read_text()
-        if "NEO4J_PASSWORD=" in content and not content.split("NEO4J_PASSWORD=")[1].startswith("your_"):
+        if "NEO4J_PASSWORD=" in content and not content.split("NEO4J_PASSWORD=")[1].startswith(
+            "your_"
+        ):
             logger.info(".env file already configured")
             return True, "✅ .env file already exists and configured"
 
@@ -136,6 +138,7 @@ def auto_start_docker() -> Tuple[bool, str]:
         if result.returncode == 0:
             # Wait a moment for Docker to be ready
             import time
+
             time.sleep(3)
 
             if check_docker_running():
@@ -145,7 +148,9 @@ def auto_start_docker() -> Tuple[bool, str]:
 
         # If systemctl failed, try other methods
         logger.warning("systemctl failed, Docker may need manual start")
-        return False, """
+        return (
+            False,
+            """
 ⚠️  Docker not running and auto-start failed.
 
 Please start Docker manually:
@@ -153,7 +158,8 @@ Please start Docker manually:
   macOS: Open Docker Desktop
 
 Then try again.
-"""
+""",
+        )
 
     except Exception as e:
         logger.error("Failed to start Docker: %s", e)
@@ -221,7 +227,7 @@ def auto_setup_prerequisites() -> Tuple[bool, list[str]]:
 
     except Exception as e:
         logger.warning("Port conflict resolution failed: %s", e)
-        messages.append(f"⚠️  Using default ports (conflict check failed)")
+        messages.append("⚠️  Using default ports (conflict check failed)")
 
     # 3. Check Docker installed
     if not check_docker_installed():
@@ -277,9 +283,9 @@ def ensure_prerequisites() -> bool:
 
 if __name__ == "__main__":
     # Test auto-setup
-    print("="*70)
+    print("=" * 70)
     print("Testing Auto-Setup")
-    print("="*70)
+    print("=" * 70)
 
     if ensure_prerequisites():
         print("\n🎉 Ready to start Neo4j!")

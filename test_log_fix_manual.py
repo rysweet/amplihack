@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from amplihack.launcher.auto_mode import AutoMode
 
+
 def test_log_formatting():
     """Test that log messages have proper spacing."""
     print("=" * 60)
@@ -35,7 +36,7 @@ def test_log_formatting():
             sdk="claude",
             prompt="Test prompt for log formatting",
             max_turns=5,
-            working_dir=Path(temp_dir)
+            working_dir=Path(temp_dir),
         )
 
         print("EXPECTED OUTPUT: Three log messages with blank lines between them")
@@ -80,7 +81,7 @@ def test_log_formatting():
                 print()
 
                 # Count lines - file should use single newlines
-                file_lines = file_content.strip().split('\n')
+                file_lines = file_content.strip().split("\n")
                 print(f"File has {len(file_lines)} log entries")
 
                 # Verify DEBUG is in file
@@ -104,6 +105,7 @@ def test_log_formatting():
         print("  [ ] DEBUG DOES appear in log file")
         print("  [ ] File log uses single newlines (no blank lines)")
         print()
+
 
 if __name__ == "__main__":
     test_log_formatting()

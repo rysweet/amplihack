@@ -27,6 +27,7 @@ Phase 3: Full graph integration (ONLY IF NEEDED)
 ### Node Types
 
 #### ExternalDoc Node
+
 ```cypher
 CREATE (doc:ExternalDoc {
     id: string,                  // Unique identifier
@@ -48,6 +49,7 @@ CREATE (doc:ExternalDoc {
 ```
 
 #### APIReference Node
+
 ```cypher
 CREATE (api:APIReference {
     id: string,
@@ -67,6 +69,7 @@ CREATE (api:APIReference {
 ```
 
 #### BestPractice Node
+
 ```cypher
 CREATE (bp:BestPractice {
     id: string,
@@ -85,6 +88,7 @@ CREATE (bp:BestPractice {
 ```
 
 #### CodeExample Node
+
 ```cypher
 CREATE (ex:CodeExample {
     id: string,
@@ -163,18 +167,21 @@ CREATE (ex:CodeExample {
 ### Tier 1: Official Documentation (Highest Priority)
 
 **Sources:**
+
 - Microsoft Learn (Azure, .NET, TypeScript)
 - Python.org official docs
 - MDN Web Docs (JavaScript, Web APIs)
 - Library-specific official docs
 
 **Characteristics:**
+
 - High credibility (trust_score: 0.9-1.0)
 - Version-specific
 - Regularly updated
 - Comprehensive
 
 **Fetch Strategy:**
+
 ```python
 def fetch_official_docs(package_name: str, version: str) -> ExternalDoc:
     """
@@ -205,18 +212,21 @@ def fetch_official_docs(package_name: str, version: str) -> ExternalDoc:
 ### Tier 2: Curated Tutorials (Medium Priority)
 
 **Sources:**
+
 - Real Python
 - FreeCodeCamp
 - Official framework tutorials
 - Microsoft sample code repositories
 
 **Characteristics:**
+
 - High quality (trust_score: 0.7-0.9)
 - Practical, working examples
 - Often more accessible than official docs
 - May lag behind latest versions
 
 **Fetch Strategy:**
+
 ```python
 def fetch_tutorial_knowledge(topic: str, language: str) -> List[ExternalDoc]:
     """
@@ -235,17 +245,20 @@ def fetch_tutorial_knowledge(topic: str, language: str) -> List[ExternalDoc]:
 ### Tier 3: Community Knowledge (Advisory Only)
 
 **Sources:**
+
 - StackOverflow (accepted answers with high upvotes)
 - GitHub issues (maintainer responses)
 - Reddit r/programming (highly upvoted)
 
 **Characteristics:**
+
 - Variable quality (trust_score: 0.4-0.8)
 - Often practical, real-world solutions
 - Version compatibility may vary
 - Require validation
 
 **Fetch Strategy:**
+
 ```python
 def fetch_community_knowledge(error_pattern: str) -> List[CodeExample]:
     """
@@ -279,11 +292,13 @@ def fetch_community_knowledge(error_pattern: str) -> List[CodeExample]:
 ### Tier 4: Library-Specific Knowledge
 
 **Sources:**
+
 - PyPI package documentation
 - NPM package README
 - Library changelog and migration guides
 
 **Fetch Strategy:**
+
 ```python
 def fetch_library_knowledge(package: str, version: str) -> Dict:
     """
@@ -311,13 +326,13 @@ def fetch_library_knowledge(package: str, version: str) -> Dict:
 
 ### Decision Matrix
 
-| Knowledge Type | Cache Strategy | Reason |
-|----------------|----------------|--------|
-| Official API docs | **Cache + Refresh** | Stable, frequently used, version-specific |
-| Tutorials | **Cache Long-term** | Don't change often, high value |
-| StackOverflow | **On-demand + Short cache** | Dynamic, context-dependent |
-| Library READMEs | **Cache + Version-aware** | Stable per version |
-| Best practices | **Cache + Periodic refresh** | Evolve slowly |
+| Knowledge Type    | Cache Strategy               | Reason                                    |
+| ----------------- | ---------------------------- | ----------------------------------------- |
+| Official API docs | **Cache + Refresh**          | Stable, frequently used, version-specific |
+| Tutorials         | **Cache Long-term**          | Don't change often, high value            |
+| StackOverflow     | **On-demand + Short cache**  | Dynamic, context-dependent                |
+| Library READMEs   | **Cache + Version-aware**    | Stable per version                        |
+| Best practices    | **Cache + Periodic refresh** | Evolve slowly                             |
 
 ### Caching Implementation
 
@@ -371,12 +386,14 @@ class ExternalKnowledgeCache:
 ### When to Fetch On-Demand
 
 **Fetch on-demand for:**
+
 - Error-specific solutions (context-dependent)
 - Rare API usage (< 5% of queries)
 - Rapidly changing content (beta features)
 - User-initiated searches
 
 **Pre-cache for:**
+
 - Common APIs (used in > 10% of projects)
 - Core language features
 - Framework essentials
@@ -699,7 +716,7 @@ class ExternalKnowledgeRetriever:
 
 ### Combining Project Memory + External Knowledge
 
-```python
+````python
 def build_agent_context(agent_id: str, task: str) -> str:
     """
     Build comprehensive context from project memory + external knowledge.
@@ -737,7 +754,7 @@ def build_agent_context(agent_id: str, task: str) -> str:
                     context_parts.append(f"  Example:\n  ```\n  {doc.example_code}\n  ```")
 
     return "\n".join(context_parts)
-```
+````
 
 ---
 
@@ -1168,6 +1185,7 @@ class ErrorDrivenKnowledgeFetcher:
 **Goal**: File-based cache + basic Neo4j metadata
 
 **Tasks**:
+
 1. Implement `ExternalKnowledgeCache` (file-based)
 2. Create Neo4j schema (ExternalDoc, APIReference nodes)
 3. Build basic fetch functions for official docs
@@ -1180,6 +1198,7 @@ class ErrorDrivenKnowledgeFetcher:
 **Goal**: Integrate with existing memory system
 
 **Tasks**:
+
 1. Implement `should_query_external()` logic
 2. Add external knowledge to agent context builder
 3. Create Neo4j relationships to code files
@@ -1192,6 +1211,7 @@ class ErrorDrivenKnowledgeFetcher:
 **Goal**: Support multiple knowledge sources
 
 **Tasks**:
+
 1. Add MS Learn fetcher
 2. Add MDN fetcher
 3. Add StackOverflow fetcher (with filtering)
@@ -1204,6 +1224,7 @@ class ErrorDrivenKnowledgeFetcher:
 **Goal**: Performance and ranking
 
 **Tasks**:
+
 1. Implement relevance scoring
 2. Add usage tracking
 3. Build recommendation engine
@@ -1216,6 +1237,7 @@ class ErrorDrivenKnowledgeFetcher:
 **Goal**: Adaptive knowledge retrieval
 
 **Tasks**:
+
 1. Track which knowledge helps
 2. Implement feedback loop
 3. Auto-refresh stale content
@@ -1228,16 +1250,19 @@ class ErrorDrivenKnowledgeFetcher:
 ## 13. Success Metrics
 
 ### Performance Metrics
+
 - External knowledge query time: <100ms (p95)
 - Cache hit rate: >80%
 - Neo4j query time: <50ms (p95)
 
 ### Quality Metrics
+
 - Source credibility score: >0.7 average
 - Knowledge freshness: <30 days average age for high-use docs
 - Agent satisfaction: Track when external knowledge was useful
 
 ### Usage Metrics
+
 - External knowledge query rate: 20-40% of agent tasks
 - Cache efficiency: >80% hit rate
 - Storage efficiency: <100MB for 10k documents (metadata only)

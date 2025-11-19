@@ -115,6 +115,7 @@ if __name__ == "__main__":
 ```
 
 **Test**:
+
 ```bash
 chmod +x .claude/tools/amplihack/hooks/pre_agent.py
 
@@ -278,6 +279,7 @@ if __name__ == "__main__":
 ```
 
 **Test**:
+
 ```bash
 chmod +x .claude/tools/amplihack/hooks/post_agent.py
 
@@ -393,6 +395,7 @@ def _consolidate_session_memories(self):
 ### Step 1.5: Create Default Config
 
 **Command**:
+
 ```bash
 mkdir -p .claude/runtime/memory
 
@@ -430,6 +433,7 @@ print("✅ Agent type detection tests passed")
 ```
 
 **Run**:
+
 ```bash
 cd .claude/tools/amplihack
 python test_agent_detection.py
@@ -462,6 +466,7 @@ def _detect_task_category(self, task: str) -> str:
 ```
 
 **Test**:
+
 ```python
 hook = PreAgentHook()
 assert hook._detect_task_category("design auth system") == "system_design"
@@ -627,6 +632,7 @@ EOF
 **Test Scenario**: Architect agent with memory
 
 1. **First invocation** (no memories):
+
 ```bash
 # Start Claude Code session
 amplihack
@@ -643,6 +649,7 @@ grep "memories stored" .claude/runtime/logs/*/session.log
 ```
 
 2. **Second invocation** (with memories):
+
 ```bash
 # Still in same session or new session:
 @architect design authorization system
@@ -682,10 +689,11 @@ docker start amplihack-neo4j
 
 **File**: `docs/MEMORY_AGENT_INTEGRATION.md`
 
-```markdown
+````markdown
 # Agent Memory Integration
 
 ## Overview
+
 Agents automatically gain memory capabilities through hook integration.
 
 ## Enabling Memory
@@ -695,8 +703,10 @@ Agents automatically gain memory capabilities through hook integration.
    nano .claude/runtime/memory/.config
    # Set "enabled": true
    ```
+````
 
 2. Start Neo4j:
+
    ```bash
    docker start amplihack-neo4j
    ```
@@ -715,16 +725,19 @@ Agents automatically gain memory capabilities through hook integration.
 ## CLI Commands
 
 Check status:
+
 ```bash
 amplihack memory status
 ```
 
 Query memories:
+
 ```bash
 amplihack memory query architect system_design
 ```
 
 Session report:
+
 ```bash
 amplihack memory session-report
 ```
@@ -732,14 +745,17 @@ amplihack memory session-report
 ## Troubleshooting
 
 **Memory not loading**:
+
 - Check Neo4j: `docker ps | grep neo4j`
 - Check config: `cat .claude/runtime/memory/.config`
 - Check logs: `grep -i memory .claude/runtime/logs/*/auto.log`
 
 **Storage failing**:
+
 - Verify Neo4j connectivity: `docker logs amplihack-neo4j`
 - Check disk space: `df -h`
-```
+
+````
 
 ---
 
@@ -784,9 +800,10 @@ def query(agent_type, category, limit):
     for i, mem in enumerate(memories, 1):
         click.echo(f"\n{i}. {mem['content']}")
         click.echo(f"   Quality: {mem['quality_score']:.2f}")
-```
+````
 
 Add to `src/amplihack/cli.py`:
+
 ```python
 from .cli.memory import memory
 
@@ -794,6 +811,7 @@ cli.add_command(memory)
 ```
 
 **Test**:
+
 ```bash
 amplihack memory status
 amplihack memory query architect system_design --limit 3
@@ -826,18 +844,23 @@ After implementation, verify:
 ## Common Issues & Solutions
 
 ### Issue: "Module not found: amplihack.memory"
+
 **Solution**: Ensure `src/amplihack/memory/neo4j/` is in Python path
 
 ### Issue: "Neo4j connection refused"
+
 **Solution**: Start Neo4j container: `docker start amplihack-neo4j`
 
 ### Issue: "No memories returned"
+
 **Solution**: Seed test data or lower quality threshold
 
 ### Issue: "Hook not executing"
+
 **Solution**: Check file permissions: `chmod +x .claude/tools/amplihack/hooks/*.py`
 
 ### Issue: "Context not appearing in agent prompt"
+
 **Solution**: Check memory enabled: `cat .claude/runtime/memory/.config`
 
 ---
@@ -845,12 +868,14 @@ After implementation, verify:
 ## Performance Benchmarks
 
 Expected performance:
+
 - Memory query: <100ms (p95)
 - Memory storage: <200ms (p95)
 - Context formatting: <10ms
 - Learning extraction: <50ms
 
 If slower, check:
+
 - Neo4j indexes created
 - Connection pooling enabled
 - Query limits enforced

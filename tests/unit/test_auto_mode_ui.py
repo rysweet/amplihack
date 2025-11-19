@@ -20,8 +20,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
-from threading import Event
+from unittest.mock import patch
 
 import pytest
 
@@ -54,22 +53,19 @@ class TestAutoModeUIInitialization:
             prompt="Test prompt",
             max_turns=5,
             working_dir=temp_working_dir,
-            ui_mode=True
+            ui_mode=True,
         )
 
-        assert hasattr(auto_mode_with_ui, 'ui_enabled'), "Should have ui_enabled attribute"
+        assert hasattr(auto_mode_with_ui, "ui_enabled"), "Should have ui_enabled attribute"
         assert auto_mode_with_ui.ui_enabled is True, "UI should be enabled"
-        assert hasattr(auto_mode_with_ui, 'ui'), "Should have ui instance"
+        assert hasattr(auto_mode_with_ui, "ui"), "Should have ui instance"
 
         # Test with UI disabled (default)
         auto_mode_no_ui = AutoMode(
-            sdk="claude",
-            prompt="Test prompt",
-            max_turns=5,
-            working_dir=temp_working_dir
+            sdk="claude", prompt="Test prompt", max_turns=5, working_dir=temp_working_dir
         )
 
-        assert not hasattr(auto_mode_no_ui, 'ui') or auto_mode_no_ui.ui is None
+        assert not hasattr(auto_mode_no_ui, "ui") or auto_mode_no_ui.ui is None
 
     def test_ui_has_required_components(self, temp_working_dir):
         """Test that UI instance has all required components.
@@ -86,15 +82,15 @@ class TestAutoModeUIInitialization:
             prompt="Build authentication system",
             max_turns=5,
             working_dir=temp_working_dir,
-            ui_mode=True
+            ui_mode=True,
         )
 
         ui = auto_mode.ui
-        assert hasattr(ui, 'title_panel'), "UI should have title_panel"
-        assert hasattr(ui, 'session_panel'), "UI should have session_panel"
-        assert hasattr(ui, 'todo_panel'), "UI should have todo_panel"
-        assert hasattr(ui, 'log_panel'), "UI should have log_panel"
-        assert hasattr(ui, 'input_panel'), "UI should have input_panel"
+        assert hasattr(ui, "title_panel"), "UI should have title_panel"
+        assert hasattr(ui, "session_panel"), "UI should have session_panel"
+        assert hasattr(ui, "todo_panel"), "UI should have todo_panel"
+        assert hasattr(ui, "log_panel"), "UI should have log_panel"
+        assert hasattr(ui, "input_panel"), "UI should have input_panel"
 
     def test_ui_initializes_with_layout(self, temp_working_dir):
         """Test that UI creates proper Rich layout structure.
@@ -109,11 +105,11 @@ class TestAutoModeUIInitialization:
             prompt="Test prompt",
             max_turns=5,
             working_dir=temp_working_dir,
-            ui_mode=True
+            ui_mode=True,
         )
 
         ui = auto_mode.ui
-        assert hasattr(ui, 'layout'), "UI should have layout"
+        assert hasattr(ui, "layout"), "UI should have layout"
         assert ui.layout is not None, "Layout should be initialized"
 
         # Check that layout has correct structure
@@ -138,7 +134,7 @@ class TestUITitleGeneration:
                 prompt="Build a REST API with authentication and rate limiting",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -153,8 +149,8 @@ class TestUITitleGeneration:
         ui = auto_mode_with_ui.ui
 
         # Mock SDK call
-        with patch('amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE', True):
-            with patch('amplihack.launcher.auto_mode.query') as mock_query:
+        with patch("amplihack.launcher.auto_mode.CLAUDE_SDK_AVAILABLE", True):
+            with patch("amplihack.launcher.auto_mode.query") as mock_query:
                 # This will fail until title generation is implemented
                 with pytest.raises(AttributeError):
                     title = ui.generate_title()
@@ -175,7 +171,7 @@ class TestUITitleGeneration:
             prompt=long_prompt,
             max_turns=5,
             working_dir=auto_mode_with_ui.working_dir,
-            ui_mode=True
+            ui_mode=True,
         )
 
         # This will fail until title generation is implemented
@@ -193,11 +189,7 @@ class TestUITitleGeneration:
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="",
-                max_turns=5,
-                working_dir=Path(temp_dir),
-                ui_mode=True
+                sdk="claude", prompt="", max_turns=5, working_dir=Path(temp_dir), ui_mode=True
             )
 
             # This will fail until edge case handling is implemented
@@ -218,7 +210,7 @@ class TestSessionDetailsDisplay:
                 prompt="Test prompt",
                 max_turns=10,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             auto_mode.start_time = time.time()
             yield auto_mode
@@ -263,16 +255,16 @@ class TestSessionDetailsDisplay:
         ui = auto_mode_with_ui.ui
 
         # Mock SDK cost tracking
-        with patch.object(ui, 'get_cost_info', return_value={
-            'input_tokens': 1500,
-            'output_tokens': 800,
-            'estimated_cost': 0.025
-        }):
+        with patch.object(
+            ui,
+            "get_cost_info",
+            return_value={"input_tokens": 1500, "output_tokens": 800, "estimated_cost": 0.025},
+        ):
             # This will fail until cost tracking is implemented
             with pytest.raises(AttributeError):
                 session_text = ui.get_session_details()
                 assert "1500" in session_text  # Input tokens
-                assert "800" in session_text   # Output tokens
+                assert "800" in session_text  # Output tokens
                 assert "$0.025" in session_text or "0.025" in session_text
 
     def test_session_panel_formats_large_numbers(self, auto_mode_with_ui):
@@ -284,11 +276,11 @@ class TestSessionDetailsDisplay:
         """
         ui = auto_mode_with_ui.ui
 
-        with patch.object(ui, 'get_cost_info', return_value={
-            'input_tokens': 150000,
-            'output_tokens': 80000,
-            'estimated_cost': 2.50
-        }):
+        with patch.object(
+            ui,
+            "get_cost_info",
+            return_value={"input_tokens": 150000, "output_tokens": 80000, "estimated_cost": 2.50},
+        ):
             # This will fail until number formatting is implemented
             with pytest.raises(AttributeError):
                 session_text = ui.get_session_details()
@@ -308,7 +300,7 @@ class TestTodoListIntegration:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -324,7 +316,11 @@ class TestTodoListIntegration:
 
         # Mock todo list
         todos = [
-            {"content": "Clarify objective", "status": "completed", "activeForm": "Clarifying objective"},
+            {
+                "content": "Clarify objective",
+                "status": "completed",
+                "activeForm": "Clarifying objective",
+            },
             {"content": "Create plan", "status": "in_progress", "activeForm": "Creating plan"},
             {"content": "Execute plan", "status": "pending", "activeForm": "Executing plan"},
         ]
@@ -385,7 +381,7 @@ class TestLogAreaUpdates:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -467,7 +463,8 @@ class TestLogAreaUpdates:
             log_content = ui.get_log_content()
             # Check for timestamp pattern [HH:MM:SS]
             import re
-            assert re.search(r'\[\d{2}:\d{2}:\d{2}\]', log_content)
+
+            assert re.search(r"\[\d{2}:\d{2}:\d{2}\]", log_content)
 
 
 class TestPromptInputHandling:
@@ -482,7 +479,7 @@ class TestPromptInputHandling:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -573,7 +570,7 @@ class TestKeyboardCommands:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -589,7 +586,7 @@ class TestKeyboardCommands:
 
         # This will fail until exit command is implemented
         with pytest.raises(AttributeError):
-            ui.handle_keyboard_input('x')
+            ui.handle_keyboard_input("x")
             assert ui.should_exit()
             assert not auto_mode_with_ui.should_stop()
 
@@ -606,11 +603,11 @@ class TestKeyboardCommands:
         # This will fail until pause command is implemented
         with pytest.raises(AttributeError):
             # Pause
-            ui.handle_keyboard_input('p')
+            ui.handle_keyboard_input("p")
             assert auto_mode_with_ui.is_paused()
 
             # Resume
-            ui.handle_keyboard_input('p')
+            ui.handle_keyboard_input("p")
             assert not auto_mode_with_ui.is_paused()
 
     def test_keyboard_command_k_kills_auto_mode(self, auto_mode_with_ui):
@@ -625,7 +622,7 @@ class TestKeyboardCommands:
 
         # This will fail until kill command is implemented
         with pytest.raises(AttributeError):
-            ui.handle_keyboard_input('k')
+            ui.handle_keyboard_input("k")
             assert auto_mode_with_ui.should_stop()
             assert ui.should_exit()
 
@@ -639,7 +636,7 @@ class TestKeyboardCommands:
 
         # This will fail until case handling is implemented
         with pytest.raises(AttributeError):
-            ui.handle_keyboard_input('X')
+            ui.handle_keyboard_input("X")
             assert ui.should_exit()
 
     def test_keyboard_ignores_invalid_commands(self, auto_mode_with_ui):
@@ -653,9 +650,9 @@ class TestKeyboardCommands:
 
         # This will fail until input validation is implemented
         with pytest.raises(AttributeError):
-            ui.handle_keyboard_input('z')
-            ui.handle_keyboard_input('1')
-            ui.handle_keyboard_input('!')
+            ui.handle_keyboard_input("z")
+            ui.handle_keyboard_input("1")
+            ui.handle_keyboard_input("!")
             # Should not raise exceptions
 
     def test_keyboard_shows_help_on_h(self, auto_mode_with_ui):
@@ -669,7 +666,7 @@ class TestKeyboardCommands:
 
         # This will fail until help overlay is implemented
         with pytest.raises(AttributeError):
-            ui.handle_keyboard_input('h')
+            ui.handle_keyboard_input("h")
             assert ui.is_showing_help()
 
 
@@ -690,7 +687,7 @@ class TestUIBoundaryConditions:
                 prompt=very_long_prompt,
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
 
             # This will fail until length handling is implemented
@@ -707,11 +704,7 @@ class TestUIBoundaryConditions:
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="Test",
-                max_turns=5,
-                working_dir=Path(temp_dir),
-                ui_mode=True
+                sdk="claude", prompt="Test", max_turns=5, working_dir=Path(temp_dir), ui_mode=True
             )
 
             # This will fail until unicode handling is implemented
@@ -732,11 +725,7 @@ class TestUIBoundaryConditions:
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="Test",
-                max_turns=0,
-                working_dir=Path(temp_dir),
-                ui_mode=True
+                sdk="claude", prompt="Test", max_turns=0, working_dir=Path(temp_dir), ui_mode=True
             )
 
             # This will fail until edge case is handled
@@ -753,11 +742,7 @@ class TestUIBoundaryConditions:
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             auto_mode = AutoMode(
-                sdk="claude",
-                prompt="Test",
-                max_turns=5,
-                working_dir=Path(temp_dir),
-                ui_mode=True
+                sdk="claude", prompt="Test", max_turns=5, working_dir=Path(temp_dir), ui_mode=True
             )
             # Set start_time in the future
             auto_mode.start_time = time.time() + 100
@@ -780,7 +765,7 @@ class TestUIErrorHandling:
                 prompt="Test prompt",
                 max_turns=5,
                 working_dir=Path(temp_dir),
-                ui_mode=True
+                ui_mode=True,
             )
             yield auto_mode
 
@@ -793,7 +778,7 @@ class TestUIErrorHandling:
         """
         ui = auto_mode_with_ui.ui
 
-        with patch.object(ui, 'get_cost_info', return_value=None):
+        with patch.object(ui, "get_cost_info", return_value=None):
             # This will fail until error handling is implemented
             with pytest.raises(AttributeError):
                 session_text = ui.get_session_details()
@@ -823,7 +808,7 @@ class TestUIErrorHandling:
         ui = auto_mode_with_ui.ui
 
         # Mock append to raise exception
-        with patch.object(ui, '_append_to_buffer', side_effect=OSError("Disk full")):
+        with patch.object(ui, "_append_to_buffer", side_effect=OSError("Disk full")):
             # This will fail until error handling is implemented
             with pytest.raises(AttributeError):
                 ui.append_log("Test message")
