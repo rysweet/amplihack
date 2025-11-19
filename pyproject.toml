@@ -55,6 +55,7 @@ include = ["amplihack*"]
 # .claude/ is handled by custom build command in setup.py
 amplihack = [
     "prompts/*.md",
+    "utils/uvx_settings_template.json",
 ]
 
 [tool.ruff]
