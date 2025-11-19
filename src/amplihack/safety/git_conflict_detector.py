@@ -69,7 +69,9 @@ class GitConflictDetector:
                     continue
                 status = line[:2]
                 filename = line[3:]
-                if any(c in status for c in ["M", "A", "D", "R"]):
+                # Only treat Modified, Added, and Renamed as conflicts
+                # Deleted files (D) are NOT conflicts - we're copying fresh files anyway
+                if any(c in status for c in ["M", "A", "R"]):
                     uncommitted.append(filename)
 
             return uncommitted
