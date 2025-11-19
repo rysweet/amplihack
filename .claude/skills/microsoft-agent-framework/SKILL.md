@@ -1,3 +1,13 @@
+---
+name: microsoft-agent-framework
+version: 0.1.0
+description: Comprehensive knowledge of Microsoft Agent Framework patterns and integration with amplihack
+auto_activates:
+  - "Microsoft Agent Framework"
+  - "agent framework integration"
+priority_score: 45.0
+---
+
 # Microsoft Agent Framework Skill
 
 **Version**: 0.1.0-preview | **Last Updated**: 2025-11-15 | **Framework Version**: 0.1.0-preview
