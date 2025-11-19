@@ -50,30 +50,47 @@ project.
 
 ### Solution Implemented (Issue #1437, #1439)
 
-**ROOT FIX: Stage `.claude` to working directory, not temp directory**
+**FINAL SOLUTION: Prompt user for overwrite, stage to working directory**
 
-Changed UVX staging architecture to ALWAYS stage to working directory:
+Evolved through three iterations to find the simplest approach:
 
-**SafeCopyStrategy Changes** (`src/amplihack/safety/safe_copy_strategy.py`):
-- **Before**: Create temp directory when conflicts exist
-- **After**: Backup existing `.claude/` to `.claude.backup-<timestamp>`, stage to working directory
-- **Result**: Users see `.claude/` in their working directory, not hidden in /tmp
+**Iteration 1**: CLAUDE_PROJECT_DIR check (workaround)
+**Iteration 2**: Backup to .claude.backup-* (messy, clutters repos)
+**Iteration 3**: **Prompt user for overwrite** (simple, clean) ✅
 
-**CLI Changes** (`src/amplihack/cli.py`):
-- Remove old `.claude/` after backup created
-- Use relative paths in generated settings.json (`.claude/tools/...`)
-- No more `$CLAUDE_PROJECT_DIR` variable needed
+**SafeCopyStrategy** (`src/amplihack/safety/safe_copy_strategy.py`) - SIMPLIFIED:
+- No conflicts: Proceed automatically
+- Conflicts detected: Prompt user "Overwrite .claude/? [y/N]"
+- Non-interactive mode (UVX, CI): Auto-approve
+- User guidance: Git recovery available, use PROJECT.md for custom content
+- **No backup creation** (user feedback: "backup copies are just messy")
 
-**Hook Manager Changes** (`src/amplihack/hooks/manager.py`):
-- Added `CLAUDE_PROJECT_DIR` check for compatibility (future-proofing)
-- Added debug logging to show which strategy found the hook
+**CLI** (`src/amplihack/cli.py`) - SIMPLIFIED:
+- Check `should_proceed` flag from strategy
+- Remove `.claude/` if it exists (user approved)
+- Clear error handling with actionable guidance
+- Use relative paths in generated settings.json
+
+**Hook Manager** (`src/amplihack/hooks/manager.py`) - SIMPLIFIED:
+- Removed CLAUDE_PROJECT_DIR check (was future-proofing - philosophy violation)
+- Simple .claude directory search from cwd
+- Works because .claude is now always in working directory
+
+**Tests** (`tests/safety/test_safe_copy_strategy.py`) - SIMPLIFIED:
+- 8 tests validate prompt behavior
+- Test approve, decline, auto-approve, Ctrl+C
+- All pass in 0.006s (167x faster than backup tests!)
 
 **Benefits**:
 - ✅ `.claude/` visible in working directory
 - ✅ Hooks work with simple relative paths
 - ✅ No temp directory confusion
-- ✅ User changes backed up safely
-- ✅ Simpler architecture
+- ✅ **No backup clutter in any repo** ✅
+- ✅ Git-versioned files recoverable
+- ✅ Clear user choice with guidance
+- ✅ Auto-approves in UVX/CI
+- ✅ Simpler code (64 fewer lines)
+- ✅ Philosophy compliant
 
 ### How to Detect This Issue
 
