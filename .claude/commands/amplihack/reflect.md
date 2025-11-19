@@ -1,3 +1,14 @@
+---
+name: reflect
+version: 1.0.0
+description: AI-powered session analysis for continuous improvement
+triggers:
+  - "Analyze session"
+  - "Run reflection"
+  - "Identify improvements"
+  - "Session retrospective"
+---
+
 # /amplihack:reflect - Session Reflection Analysis
 
 ## Input Validation

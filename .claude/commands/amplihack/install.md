@@ -1,3 +1,13 @@
+---
+name: install
+version: 1.0.0
+description: Install amplihack tools and customizations
+triggers:
+  - "Install amplihack"
+  - "Setup amplihack tools"
+  - "Configure amplihack"
+---
+
 # Install the amplihack tools
 
 Amplihack is a collection of claude code customizations designed to enhance productivity and streamline workflows.

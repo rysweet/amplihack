@@ -1,7 +1,16 @@
 ---
-description: DDD Phase 1 - Planning and design (project:ddd)
+name: ddd:1-plan
+version: 1.0.0
+description: DDD Phase 1 - Planning and design
 argument-hint: [feature description or leave empty to use existing plan]
 allowed-tools: TodoWrite, Read, Grep, Glob, Task
+triggers:
+  - "Start DDD workflow"
+  - "Plan new feature with DDD"
+  - "Create DDD plan"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DDD_WORKFLOW.md
 ---
 
 # DDD Phase 1: Planning & Design

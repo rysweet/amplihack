@@ -1,3 +1,11 @@
+---
+name: n-version-validator
+version: 1.0.0
+description: N-version programming validator. Generates multiple independent implementations and selects the best through comparison and voting for critical tasks.
+role: "N-version programming validator and fault-tolerance specialist"
+model: inherit
+---
+
 # N-Version Programming Validator Agent
 
 ## Purpose

@@ -1,3 +1,14 @@
+---
+name: transcripts
+version: 1.0.0
+description: Conversation transcript management for context preservation and restoration
+triggers:
+  - "View conversation history"
+  - "Restore session context"
+  - "Search past conversations"
+  - "Find original request"
+---
+
 # /transcripts - Conversation Transcript Management
 
 **Purpose**: amplihack-style transcript management for context preservation and restoration.

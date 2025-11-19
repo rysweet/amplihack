@@ -1,3 +1,14 @@
+---
+name: modular-build
+version: 1.0.0
+description: Build self-contained modules using progressive validation pipeline
+triggers:
+  - "Build a module"
+  - "Create self-contained component"
+  - "Generate module from spec"
+  - "Progressive module build"
+---
+
 # Modular Build Command
 
 ## Input Validation

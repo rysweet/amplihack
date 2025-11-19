@@ -1,6 +1,8 @@
 ---
 name: cleanup
+version: 1.0.0
 description: Post-task cleanup specialist. Reviews git status, removes temporary artifacts, eliminates unnecessary complexity, ensures philosophy compliance. Use proactively after completing tasks or todo lists.
+role: "Post-task cleanup and codebase hygiene specialist"
 model: inherit
 ---
 

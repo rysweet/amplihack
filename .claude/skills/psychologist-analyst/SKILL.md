@@ -1,5 +1,6 @@
 ---
 name: psychologist-analyst
+version: 1.0.0
 description: |
   Analyzes events through psychological lens using cognitive psychology, social psychology, developmental psychology,
   clinical psychology, and neuroscience. Provides insights on behavior, cognition, emotion, motivation, group dynamics,

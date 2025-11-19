@@ -1,6 +1,8 @@
 ---
 name: memory-manager
+version: 1.0.0
 description: Session state manager. Persists important context, decisions, and findings across conversations to .claude/runtime/logs/. Use when you need to save context for future sessions or retrieve information from past work.
+role: "Session state manager and context persistence specialist"
 model: inherit
 ---
 
