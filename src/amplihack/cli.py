@@ -679,7 +679,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "install":
         # Install from the package's .claude directory (wherever uvx installed it)
         # This ensures we use the exact version the user installed via uvx --from git+...@branch
-        from pathlib import Path
 
         # Find package location using __file__
         # __file__ is amplihack/cli.py, so parent is amplihack/
@@ -818,8 +817,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "new":
-        from pathlib import Path
-
         from .goal_agent_generator.cli import new_goal_agent
 
         # Convert string paths to Path objects
