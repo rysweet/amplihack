@@ -68,21 +68,13 @@ additional configuration needed.
 
 ### Azure OpenAI
 
-To use Azure OpenAI models, create an `azure.env` file with the following
-minimum configuration:
+To use Azure OpenAI models, create an `azure.env` file:
 
 ```env
-# Required: Your Azure OpenAI API key
 AZURE_OPENAI_API_KEY=your-api-key
-
-# Required: Azure OpenAI endpoint (base URL without path)
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-
-# Required: Model deployment name (use either BIG_MODEL or AZURE_OPENAI_DEPLOYMENT_NAME)
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
-
-# Optional: API version (defaults to 2025-04-01-preview)
-AZURE_OPENAI_API_VERSION=2024-12-01-preview
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 ```
 
 Launch with Azure configuration:
@@ -91,53 +83,16 @@ Launch with Azure configuration:
 amplihack launch --with-proxy-config ./azure.env
 ```
 
-**Note:** The endpoint should be just the base URL (e.g.,
-`https://your-resource.openai.azure.com`) without `/openai` or other path
-suffixes. The proxy will automatically construct the correct API paths.
-
 ### GitHub Copilot CLI
 
 amplihack also supports GitHub Copilot CLI integration. See
 [docs/github-copilot-litellm-integration.md](docs/github-copilot-litellm-integration.md)
 for setup instructions.
 
-## Features
-
-### Goal-Seeking Agent Generator (NEW!)
-
-**Create autonomous agents from simple prompts:**
-
-```bash
-# Write your goal
-cat > my_goal.md <<'EOF'
-# Goal: Automated Code Review
-Review Python code and suggest improvements.
-EOF
-
-# Generate agent
-amplihack new --file my_goal.md
-
-# Run agent
-cd goal_agents/automated-code-review-agent
-python main.py
-```
-
-**Features:**
-
-- Generate agents in < 0.1 seconds
-- Automatic skill matching
-- Multi-phase execution planning
-- Standalone, distributable agents
-
-**Learn more:** [Goal Agent Generator Guide](docs/GOAL_AGENT_GENERATOR_GUIDE.md)
-
----
-
 ## Quick Reference - Commands
 
 | Command                        | Description                                        |
 | ------------------------------ | -------------------------------------------------- |
-| `amplihack new`                | **NEW!** Generate goal-seeking agents from prompts |
 | `/amplihack:ultrathink`        | Deep multi-agent analysis for complex tasks        |
 | `/amplihack:analyze`           | Code analysis and philosophy compliance review     |
 | `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute) |
@@ -206,7 +161,7 @@ python main.py
 | **security**                | Security analysis and vulnerability detection |
 | **visualization-architect** | Data visualization design                     |
 | **xpia-defense**            | Advanced threat detection                     |
-| **philosophy-guardian**     | Philosophy compliance and simplicity validation |
+| **zen-architect**           | Minimalist architecture design                |
 
 ## Core Concepts
 
@@ -374,3 +329,39 @@ pytest tests/
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## RustyClawd Integration
+
+Amplihack now supports RustyClawd, a high-performance Rust implementation of Claude Code.
+
+### Installation
+
+```bash
+# Test directly from PR branch
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git@feat/rustyclawd-integration amplihack RustyClawd -- -p "your prompt"
+
+# Or install and use
+pip install git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git@feat/rustyclawd-integration
+amplihack RustyClawd -- -p "your prompt"
+```
+
+### Benefits
+
+- **5-10x faster startup** compared to Node.js Claude Code
+- **7x less memory** usage
+- **Rust safety guarantees** - no runtime errors
+- **Same features** - drop-in compatible
+
+### Requirements
+
+RustyClawd must be built first:
+```bash
+git clone https://github.com/rysweet/RustyClawd
+cd RustyClawd
+cargo build --release
+```
+
+Or install via npx:
+```bash
+npx github:rysweet/RustyClawd --help
+```

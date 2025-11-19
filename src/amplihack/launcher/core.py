@@ -22,52 +22,6 @@ from .repo_checkout import checkout_repository
 logger = logging.getLogger(__name__)
 
 
-def merge_node_options(user_node_options: Optional[str], default_memory_mb: int = 8192) -> str:
-    """Merge user's NODE_OPTIONS with amplihack defaults.
-
-    Respects user's explicit memory limit if set, otherwise applies default.
-    Preserves all user's other Node.js flags.
-
-    CRITICAL USER REQUIREMENT: "If the user needs more mem, we should honor that"
-    - User's memory limit is NEVER overridden
-    - User's other flags are ALWAYS preserved
-    - Default only applied when user hasn't set memory
-
-    Args:
-        user_node_options: User's current NODE_OPTIONS value (may be None or empty)
-        default_memory_mb: Default memory limit in MB (default: 8192)
-
-    Returns:
-        Merged NODE_OPTIONS string ready for env assignment
-
-    Examples:
-        >>> merge_node_options(None)
-        '--max-old-space-size=8192'
-
-        >>> merge_node_options("")
-        '--max-old-space-size=8192'
-
-        >>> merge_node_options("--inspect --trace-warnings")
-        '--inspect --trace-warnings --max-old-space-size=8192'
-
-        >>> merge_node_options("--max-old-space-size=4096")
-        '--max-old-space-size=4096'
-
-        >>> merge_node_options("--inspect --max-old-space-size=4096 --trace-warnings")
-        '--inspect --max-old-space-size=4096 --trace-warnings'
-    """
-    # Case 1: No user options or empty string
-    if not user_node_options or user_node_options.strip() == "":
-        return f"--max-old-space-size={default_memory_mb}"
-
-    # Case 2: User has set memory limit - RESPECT IT (critical requirement)
-    if "--max-old-space-size" in user_node_options:
-        return user_node_options
-
-    # Case 3: User has other flags but no memory - add default
-    return f"{user_node_options} --max-old-space-size={default_memory_mb}"
-
-
 class ClaudeLauncher:
     """Launches Claude Code with proper configuration and performance optimization.
 
@@ -372,10 +326,42 @@ class ClaudeLauncher:
         Returns:
             List of command arguments for subprocess.
         """
-        # Use claude-trace if requested and available, otherwise use claude
+        # Get claude command (could be claude, claude-trace, or rustyclawd)
         claude_binary = get_claude_command()
 
-        if claude_binary == "claude-trace":
+        # Check if this is RustyClawd (Rust implementation)
+        is_rustyclawd = "rustyclawd" in claude_binary.lower() or "claude-code-rs" in claude_binary
+
+        if is_rustyclawd:
+            # RustyClawd has same CLI as claude (simpler than claude-trace)
+            cmd = [claude_binary, "--dangerously-skip-permissions"]
+
+            # Add --verbose if requested
+            if self.verbose:
+                cmd.append("--verbose")
+
+            # Add system prompt if provided
+            if self.append_system_prompt and self.append_system_prompt.exists():
+                cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
+
+            # Add --add-dir if in UVX mode
+            if self._target_directory and self._cached_uvx_decision:
+                cmd.extend(["--add-dir", str(self._target_directory)])
+
+            # Add model
+            if self.proxy_manager:
+                cmd.extend(["--model", "azure/gpt-5-codex"])
+            elif not self._has_model_arg():
+                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
+                cmd.extend(["--model", default_model])
+
+            # Add forwarded arguments
+            if self.claude_args:
+                cmd.extend(self.claude_args)
+
+            return cmd
+
+        elif claude_binary == "claude-trace":
             # claude-trace requires --run-with before Claude arguments
             cmd = [claude_binary]
 
@@ -403,19 +389,7 @@ class ClaudeLauncher:
 
             # Add Azure model when using proxy
             if self.proxy_manager:
-                # Get model from proxy config (which loaded the .env file)
-                azure_model = next(
-                    (
-                        model
-                        for model in [
-                            self.proxy_manager.proxy_config.get("BIG_MODEL"),
-                            self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
-                        ]
-                        if model and model.strip()
-                    ),
-                    "gpt-5-codex",  # Fallback default
-                )
-                claude_args.extend(["--model", f"azure/{azure_model}"])
+                claude_args.extend(["--model", "azure/gpt-5-codex"])
             # Add default model if not using proxy and user hasn't specified one
             elif not self._has_model_arg():
                 default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
@@ -448,13 +422,7 @@ class ClaudeLauncher:
 
         # Add Azure model when using proxy
         if self.proxy_manager:
-            # Get model from proxy config (which loaded the .env file)
-            azure_model = (
-                self.proxy_manager.proxy_config.get("BIG_MODEL")
-                or self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
-                or "gpt-5-codex"  # Fallback default
-            )
-            cmd.extend(["--model", f"azure/{azure_model}"])
+            cmd.extend(["--model", "azure/gpt-5-codex"])
         # Add default model if not using proxy and user hasn't specified one
         elif not self._has_model_arg():
             default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
@@ -594,8 +562,7 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Set Node.js memory limit to 8GB for claude/claude-trace
-            # Respects user's existing NODE_OPTIONS if set
-            env["NODE_OPTIONS"] = merge_node_options(os.environ.get("NODE_OPTIONS"))
+            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -668,8 +635,6 @@ class ClaudeLauncher:
                 print("\nReceived interrupt signal. Shutting down...")
                 if self.proxy_manager:
                     self.proxy_manager.stop_proxy()
-                # Set flag to prevent stdin reads during shutdown (avoids SystemExit race)
-                os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
                 sys.exit(0)
 
             signal.signal(signal.SIGINT, signal_handler)
@@ -680,8 +645,7 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Set Node.js memory limit to 8GB for claude/claude-trace
-            # Respects user's existing NODE_OPTIONS if set
-            env["NODE_OPTIONS"] = merge_node_options(os.environ.get("NODE_OPTIONS"))
+            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -740,7 +704,6 @@ class ClaudeLauncher:
         """Interactive Neo4j startup with user feedback.
 
         BLOCKS until Neo4j ready or user decides to continue without it.
-        Neo4j is disabled by default unless AMPLIHACK_ENABLE_NEO4J_MEMORY=1 is set.
 
         Returns:
             True to continue, False to exit
@@ -749,18 +712,6 @@ class ClaudeLauncher:
 
         method_logger = logging.getLogger(__name__)
 
-        # Check if Neo4j is enabled via environment variable (default: disabled)
-        neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
-
-        if not neo4j_enabled:
-            print("ℹ️  Neo4j graph memory is disabled by default.")
-            print("   To enable: amplihack launch --enable-neo4j-memory")
-            print("   Continuing with basic memory system...\n")
-            return True
-
-        # Neo4j is enabled - proceed with interactive startup
-        print("✓ Neo4j graph memory enabled")
-
         try:
             from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
 
@@ -768,7 +719,6 @@ class ClaudeLauncher:
         except ImportError:
             # Neo4j modules not available - continue without
             method_logger.debug("Neo4j modules not found")
-            print("⚠️  Neo4j modules not available, continuing without graph memory\n")
             return True
         except Exception as e:
             method_logger.error("Neo4j startup failed: %s", e)
@@ -922,9 +872,6 @@ class ClaudeLauncher:
         without receiving signals. Executes stop hook silently.
         """
         try:
-            # Set flag to prevent stdin reads during shutdown (avoids hang + traceback)
-            os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
-
             from amplihack.hooks.manager import execute_stop_hook
 
             execute_stop_hook()
