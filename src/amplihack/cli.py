@@ -542,6 +542,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             conflicting_files=conflict_result.conflicting_files,
         )
 
+        # If backup was created, remove the old .claude directory to make room for fresh staging
+        if copy_strategy.backup_dir and copy_strategy.target_dir.exists():
+            import shutil
+            shutil.rmtree(copy_strategy.target_dir)
+
         temp_claude_dir = str(copy_strategy.target_dir)
 
         # Store original_cwd for auto mode (always set, regardless of conflicts)
@@ -579,13 +584,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")
 
-        # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
-        # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
+        # Create settings.json with relative paths since we stage to working directory
         if copied:
             settings_path = os.path.join(temp_claude_dir, "settings.json")
             import json
 
             # Create minimal settings.json with just amplihack hooks
+            # Use relative paths since .claude is in working directory
             settings = {
                 "hooks": {
                     "SessionStart": [
@@ -593,7 +598,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+                                    "command": ".claude/tools/amplihack/hooks/session_start.py",
                                     "timeout": 10000,
                                 }
                             ]
@@ -604,7 +609,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+                                    "command": ".claude/tools/amplihack/hooks/stop.py",
                                     "timeout": 30000,
                                 }
                             ]
@@ -616,7 +621,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
+                                    "command": ".claude/tools/amplihack/hooks/post_tool_use.py",
                                 }
                             ],
                         }
@@ -626,7 +631,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+                                    "command": ".claude/tools/amplihack/hooks/pre_compact.py",
                                     "timeout": 30000,
                                 }
                             ]

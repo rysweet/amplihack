@@ -48,16 +48,32 @@ project.
 10. Returns None, hook doesn't execute
 ```
 
-### Solution Implemented (Issue #1437)
+### Solution Implemented (Issue #1437, #1439)
 
-**Fixed `_find_stop_hook()` to check `CLAUDE_PROJECT_DIR` first**:
+**ROOT FIX: Stage `.claude` to working directory, not temp directory**
 
-Added Strategy 1 (highest priority) to check the `CLAUDE_PROJECT_DIR` environment variable before searching from current working directory. This ensures UVX deployments find the hook at the staged location.
+Changed UVX staging architecture to ALWAYS stage to working directory:
 
-**Changes**:
-- `src/amplihack/hooks/manager.py` - Added CLAUDE_PROJECT_DIR check as first strategy
-- Added debug logging to show which strategy successfully found the hook
-- Maintains backward compatibility with existing non-UVX deployments
+**SafeCopyStrategy Changes** (`src/amplihack/safety/safe_copy_strategy.py`):
+- **Before**: Create temp directory when conflicts exist
+- **After**: Backup existing `.claude/` to `.claude.backup-<timestamp>`, stage to working directory
+- **Result**: Users see `.claude/` in their working directory, not hidden in /tmp
+
+**CLI Changes** (`src/amplihack/cli.py`):
+- Remove old `.claude/` after backup created
+- Use relative paths in generated settings.json (`.claude/tools/...`)
+- No more `$CLAUDE_PROJECT_DIR` variable needed
+
+**Hook Manager Changes** (`src/amplihack/hooks/manager.py`):
+- Added `CLAUDE_PROJECT_DIR` check for compatibility (future-proofing)
+- Added debug logging to show which strategy found the hook
+
+**Benefits**:
+- ✅ `.claude/` visible in working directory
+- ✅ Hooks work with simple relative paths
+- ✅ No temp directory confusion
+- ✅ User changes backed up safely
+- ✅ Simpler architecture
 
 ### How to Detect This Issue
 
