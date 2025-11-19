@@ -550,6 +550,12 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         temp_claude_dir = str(copy_strategy.target_dir)
 
+        # Set CLAUDE_PROJECT_DIR if using temp directory (needed for hooks to work)
+        if copy_strategy.use_temp:
+            os.environ["CLAUDE_PROJECT_DIR"] = str(copy_strategy.target_dir.parent)
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"Set CLAUDE_PROJECT_DIR={copy_strategy.target_dir.parent}")
+
         # Store original_cwd for auto mode (always set, regardless of conflicts)
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
@@ -585,7 +591,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")
 
-        # Create settings.json with relative paths for working directory staging
+        # Create settings.json with appropriate paths based on staging mode
         if copied:
             settings_path = os.path.join(temp_claude_dir, "settings.json")
             import json
@@ -595,20 +601,42 @@ def main(argv: Optional[List[str]] = None) -> int:
             try:
                 with open(template_path) as f:
                     settings = json.load(f)
-                # Template already uses relative paths (.claude/...) which work in working dir
+
+                # If using temp directory, replace relative paths with $CLAUDE_PROJECT_DIR
+                # Otherwise, keep relative paths (they work in working directory)
+                if copy_strategy.use_temp:
+
+                    def replace_paths(obj):
+                        if isinstance(obj, dict):
+                            for key, value in obj.items():
+                                if key == "command" and isinstance(value, str) and value.startswith(
+                                    ".claude/"
+                                ):
+                                    obj[key] = value.replace(
+                                        ".claude/", "$CLAUDE_PROJECT_DIR/.claude/"
+                                    )
+                                else:
+                                    replace_paths(value)
+                        elif isinstance(obj, list):
+                            for item in obj:
+                                replace_paths(item)
+
+                    replace_paths(settings)
+
             except (FileNotFoundError, json.JSONDecodeError) as e:
                 # Fallback to minimal settings if template not found
                 print(f"Warning: Could not load settings template: {e}", file=sys.stderr)
+                hook_path = (
+                    "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py"
+                    if copy_strategy.use_temp
+                    else ".claude/tools/amplihack/hooks/session_start.py"
+                )
                 settings = {
                     "hooks": {
                         "SessionStart": [
                             {
                                 "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": ".claude/tools/amplihack/hooks/session_start.py",
-                                        "timeout": 10000,
-                                    }
+                                    {"type": "command", "command": hook_path, "timeout": 10000}
                                 ]
                             }
                         ],
@@ -621,8 +649,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 json.dump(settings, f, indent=2)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                path_type = "CLAUDE_PROJECT_DIR" if copy_strategy.use_temp else "relative"
                 print(f"UVX staging completed to {temp_claude_dir}")
-                print("Created settings.json with relative hook paths")
+                print(f"Created settings.json with {path_type} hook paths")
 
     args, claude_args = parse_args_with_passthrough(argv)
 
