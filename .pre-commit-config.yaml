@@ -177,3 +177,11 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
+
+      # Component frontmatter validation
+      - id: validate-frontmatter
+        name: Validate Component Frontmatter
+        entry: python3 .claude/tools/amplihack/validate_frontmatter.py
+        language: system
+        pass_filenames: false
+        always_run: true
