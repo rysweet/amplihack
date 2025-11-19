@@ -26,10 +26,10 @@ YAML frontmatter provides **machine-readable metadata** for all amplihack extens
 
 ```yaml
 ---
-name: command-name              # Kebab-case, matches /command-name
-version: 1.0.0                  # Semantic versioning (MAJOR.MINOR.PATCH)
-description: One-line summary   # Under 80 characters
-triggers:                       # User request patterns
+name: command-name # Kebab-case, matches /command-name
+version: 1.0.0 # Semantic versioning (MAJOR.MINOR.PATCH)
+description: One-line summary # Under 80 characters
+triggers: # User request patterns
   - "Pattern that suggests this command"
 ---
 ```
@@ -37,7 +37,7 @@ triggers:                       # User request patterns
 **Optional Fields:**
 
 ```yaml
-invokes:                        # What this command uses
+invokes: # What this command uses
   - type: workflow
     path: .claude/workflow/WORKFLOW_NAME.md
   - type: command
@@ -54,7 +54,7 @@ dependencies:
     - "Tool or file that must exist"
   optional:
     - "Tool or file that enhances functionality"
-examples:                       # Usage examples
+examples: # Usage examples
   - "/command-name basic usage"
   - "/command-name advanced mode"
 ```
@@ -103,20 +103,20 @@ examples:
 
 ```yaml
 ---
-name: skill-name                # Kebab-case
+name: skill-name # Kebab-case
 version: 1.0.0
-description: One-line purpose   # Under 80 characters
-auto_activates:                 # Patterns triggering auto-load
+description: One-line purpose # Under 80 characters
+auto_activates: # Patterns triggering auto-load
   - "Pattern for auto-activation"
-priority_score: 42.5            # 0-50 scale from evaluation
+priority_score: 42.5 # 0-50 scale from evaluation
 ---
 ```
 
 **Optional Fields:**
 
 ```yaml
-evaluation_criteria:            # How priority_score calculated
-  frequency: HIGH               # HIGH|MEDIUM|LOW
+evaluation_criteria: # How priority_score calculated
+  frequency: HIGH # HIGH|MEDIUM|LOW
   impact: HIGH
   complexity: LOW
   reusability: HIGH
@@ -130,15 +130,15 @@ invokes:
   - type: subagent
     path: .claude/agents/amplihack/agent.md
 dependencies:
-  tools:                        # Claude Code tools needed
+  tools: # Claude Code tools needed
     - Read
     - Edit
-  external:                     # External dependencies
+  external: # External dependencies
     - "GitHub CLI (gh)"
 philosophy:
   - principle: Modular Design
     application: Self-contained with clear interface
-maturity: production            # experimental|production
+maturity: production # experimental|production
 ```
 
 **Complete Example:**
@@ -189,24 +189,24 @@ maturity: production
 
 ```yaml
 ---
-name: WORKFLOW_NAME             # SCREAMING_SNAKE_CASE
+name: WORKFLOW_NAME # SCREAMING_SNAKE_CASE
 version: 1.0.0
 description: What this workflow orchestrates
-steps: 13                       # Total number of steps
+steps: 13 # Total number of steps
 ---
 ```
 
 **Optional Fields:**
 
 ```yaml
-entry_points:                   # Commands/skills using this workflow
+entry_points: # Commands/skills using this workflow
   - /command-name
   - skill-name
-phases:                         # Logical groupings of steps
+phases: # Logical groupings of steps
   - name: Phase Name
     steps: [1, 2, 3]
     description: What this phase accomplishes
-references:                     # What this workflow mentions
+references: # What this workflow mentions
   workflows:
     - OTHER_WORKFLOW.md
   commands:
@@ -218,7 +218,7 @@ references:                     # What this workflow mentions
 philosophy:
   - principle: Trust in Emergence
     application: How workflow enables emergent solutions
-customizable: true              # Can users modify this workflow?
+customizable: true # Can users modify this workflow?
 ```
 
 **Complete Example:**
@@ -269,9 +269,9 @@ customizable: false
 
 ```yaml
 ---
-role: agent-role-name           # Kebab-case
-purpose: Single responsibility  # One clear statement
-triggers:                       # When to use this agent
+role: agent-role-name # Kebab-case
+purpose: Single responsibility # One clear statement
+triggers: # When to use this agent
   - "Situation requiring this agent"
 ---
 ```
@@ -286,20 +286,20 @@ invokes:
     name: skill-name
   - type: subagent
     path: .claude/agents/amplihack/other-agent.md
-boundaries:                     # What agent does NOT do
+boundaries: # What agent does NOT do
   - "Explicitly excluded responsibility"
 philosophy:
   - principle: Single Responsibility
     application: How agent maintains focus
 dependencies:
-  required_context:             # Files to import
+  required_context: # Files to import
     - "@.claude/context/PHILOSOPHY.md"
   tools:
     - Read
     - Bash
-expertise:                      # Domain knowledge
+expertise: # Domain knowledge
   - "Area of deep knowledge"
-delegation_pattern: parallel    # parallel|sequential|adaptive
+delegation_pattern: parallel # parallel|sequential|adaptive
 ```
 
 **Complete Example:**

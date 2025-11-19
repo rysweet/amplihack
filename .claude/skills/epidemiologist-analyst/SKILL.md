@@ -52,6 +52,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Foundation 1: Germ Theory and Infectious Disease Epidemiology
 
 **Core Principles**:
+
 - Specific microorganisms cause specific diseases
 - Transmission requires chain of infection: agent, reservoir, portal of exit, mode of transmission, portal of entry, susceptible host
 - Breaking any link in the chain prevents transmission
@@ -59,6 +60,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Dose-response relationships exist between exposure and disease
 
 **Key Insights**:
+
 - Understanding transmission modes enables targeted interventions
 - Asymptomatic carriers can propagate outbreaks
 - Herd immunity protects populations when sufficient proportion is immune
@@ -66,23 +68,27 @@ Epidemiological analysis rests on several fundamental principles:
 - Antimicrobial resistance evolves under selection pressure
 
 **Founding Thinkers**:
+
 - **John Snow** (1813-1858): Cholera investigation, removed Broad Street pump handle
 - **Louis Pasteur** (1822-1895): Germ theory, vaccination
 - **Robert Koch** (1843-1910): Koch's postulates for proving causation
 
 **When to Apply**:
+
 - Investigating infectious disease outbreaks
 - Designing infection control measures
 - Evaluating vaccination strategies
 - Modeling epidemic spread
 
 **Sources**:
+
 - [CDC Principles of Epidemiology](https://archive.cdc.gov/www_cdc_gov/csels/dsepd/ss1978/lesson1/section7.html)
 - [WHO Outbreak Investigation Toolkit](https://www.who.int/emergencies/outbreak-toolkit/investigating-outbreak-of-unknown-disease)
 
 ### Foundation 2: Chronic Disease Epidemiology
 
 **Core Principles**:
+
 - Chronic diseases have multiple contributing causes (web of causation)
 - Long latency periods between exposure and disease
 - Risk factors operate probabilistically, not deterministically
@@ -90,6 +96,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Prevention possible at primary, secondary, and tertiary levels
 
 **Key Insights**:
+
 - Most chronic diseases are preventable through lifestyle modification
 - Social determinants profoundly affect chronic disease risk
 - Early detection through screening reduces mortality
@@ -97,23 +104,27 @@ Epidemiological analysis rests on several fundamental principles:
 - Chronic disease burden is increasing globally with demographic transition
 
 **Key Thinkers**:
+
 - **Richard Doll & Austin Bradford Hill**: Smoking and lung cancer studies
 - **Framingham Heart Study** researchers: Cardiovascular risk factors
 - **Geoffrey Rose**: Prevention paradox, population strategy
 
 **When to Apply**:
+
 - Analyzing cardiovascular disease, cancer, diabetes patterns
 - Evaluating screening programs
 - Assessing behavioral risk factors
 - Designing prevention interventions
 
 **Sources**:
+
 - [Chronic Disease Epidemiology - CDC](https://www.cdc.gov/chronic-disease/)
 - [WHO Chronic Diseases](https://www.who.int/health-topics/noncommunicable-diseases)
 
 ### Foundation 3: Causal Inference and Bradford Hill Criteria
 
 **Core Principles**:
+
 - Association does not prove causation
 - Multiple criteria strengthen causal inference: strength, consistency, specificity, temporality, biological gradient, plausibility, coherence, experiment, analogy
 - Confounding must be addressed through study design or analysis
@@ -121,6 +132,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Natural experiments and quasi-experimental designs enable causal inference when randomization is infeasible
 
 **Key Insights**:
+
 - Randomized controlled trials provide strongest causal evidence but are often impossible or unethical
 - Observational studies with careful design and analysis can support causal inference
 - Replication across populations and methods strengthens causal claims
@@ -128,22 +140,26 @@ Epidemiological analysis rests on several fundamental principles:
 - Effect modification reveals subgroups with different causal effects
 
 **Founding Thinker**: **Austin Bradford Hill** (1897-1991)
+
 - Work: "The Environment and Disease: Association or Causation?" (1965)
 - Contributions: Established criteria for causal inference, pioneered randomized trials
 
 **When to Apply**:
+
 - Evaluating whether observed associations are causal
 - Designing observational studies to minimize confounding
 - Assessing evidence for public health interventions
 - Distinguishing causation from correlation in complex data
 
 **Sources**:
+
 - [Bradford Hill Criteria - Wikipedia](https://en.wikipedia.org/wiki/Bradford_Hill_criteria)
 - [Causal Inference - Modern Epidemiology](https://academic.oup.com/aje)
 
 ### Foundation 4: Disease Surveillance Systems
 
 **Core Principles**:
+
 - Continuous systematic collection, analysis, and interpretation of health data
 - Early detection of outbreaks and emerging threats
 - Monitoring disease trends and evaluating interventions
@@ -151,6 +167,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Integration of multiple data sources enhances sensitivity and specificity
 
 **Key Insights**:
+
 - Surveillance is not research but ongoing public health practice
 - Syndromic surveillance detects outbreaks before laboratory confirmation
 - Electronic health records enable real-time surveillance
@@ -158,17 +175,20 @@ Epidemiological analysis rests on several fundamental principles:
 - One Health approach integrates human, animal, and environmental surveillance
 
 **Modern Developments (2024-2025)**:
+
 - AI integration with mechanistic epidemiological models for disease forecasting
 - Wastewater-based epidemiology (WBE) coupled with machine learning for predictive health decisions
 - Evolution toward systems integration with multi-source data and improved early warning accuracy
 
 **When to Apply**:
+
 - Designing disease monitoring systems
 - Detecting disease outbreaks early
 - Evaluating public health program effectiveness
 - Tracking health disparities
 
 **Sources**:
+
 - [CDC Surveillance Systems](https://www.cdc.gov/surveillance/)
 - [Wastewater-Based Epidemiology Framework 2025](https://www.sciencedirect.com/science/article/pii/S0048969725005248)
 - [AI Integration in Epidemiological Modeling](https://www.nature.com/articles/s41467-024-55461-x)
@@ -176,6 +196,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Foundation 5: Mathematical Modeling of Disease Spread
 
 **Core Principles**:
+
 - Compartmental models (SIR, SEIR) describe population transitions between disease states
 - Basic reproduction number (R₀) determines epidemic potential
 - Transmission rate, contact patterns, and recovery rate govern dynamics
@@ -183,6 +204,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Uncertainty quantification essential for model credibility
 
 **Key Insights**:
+
 - Small changes in R₀ have large effects on epidemic size
 - Timing of interventions critically affects outcomes
 - Models inform scenario planning, not precise prediction
@@ -190,17 +212,20 @@ Epidemiological analysis rests on several fundamental principles:
 - Data-driven models improve forecasting accuracy
 
 **Key Concepts**:
+
 - **R₀ (Basic Reproduction Number)**: Average number of secondary infections from one infected individual in fully susceptible population
 - **Epidemic Threshold**: R₀ > 1 causes epidemic; R₀ < 1 causes decline
 - **Herd Immunity Threshold**: Proportion immune needed to prevent sustained transmission = 1 - 1/R₀
 
 **When to Apply**:
+
 - Forecasting epidemic trajectories
 - Evaluating intervention strategies
 - Estimating vaccination coverage needs
 - Informing resource allocation during outbreaks
 
 **Sources**:
+
 - [Mathematical Models in Epidemiology - Springer](https://link.springer.com/book/10.1007/978-1-4939-9828-9)
 - [Best Practice Disease Modeling](https://pubmed.ncbi.nlm.nih.gov/29734964/)
 - [Epidemiological Modeling Framework](https://www.nature.com/articles/s41598-024-57488-y)
@@ -214,6 +239,7 @@ Epidemiological analysis rests on several fundamental principles:
 **Definition**: "Systematic process of detecting, investigating, and controlling disease outbreaks to protect public health"
 
 **The 10-Step CDC Approach**:
+
 1. **Prepare for field work** - Assemble team, gather supplies, review background
 2. **Establish the existence of an outbreak** - Compare current incidence to baseline
 3. **Verify the diagnosis** - Confirm through clinical and laboratory methods
@@ -226,12 +252,14 @@ Epidemiological analysis rests on several fundamental principles:
 10. **Communicate findings** - Report to stakeholders and public health community
 
 **Key Components**:
+
 - **Epidemic Curve**: Graphical representation of cases over time revealing outbreak pattern
 - **Case Definition**: Standardized criteria for identifying cases (clinical, laboratory, epidemiologic criteria)
 - **Attack Rate**: Proportion of exposed population that develops disease
 - **Spot Map**: Geographic distribution of cases revealing spatial clustering
 
 **Applications**:
+
 - Foodborne illness outbreaks
 - Healthcare-associated infections
 - Infectious disease clusters
@@ -239,9 +267,11 @@ Epidemiological analysis rests on several fundamental principles:
 - Vaccine-preventable disease resurgence
 
 **Example Analysis**:
+
 - Restaurant outbreak: Epidemic curve shows point-source pattern, case-control study identifies implicated food, environmental sampling confirms contamination, restaurant closure prevents additional cases
 
 **Sources**:
+
 - [CDC Outbreak Investigation Steps](https://archive.cdc.gov/www_cdc_gov/csels/dsepd/ss1978/lesson6/section2.html)
 - [WHO Outbreak Investigation Stages](https://www.who.int/emergencies/outbreak-toolkit/investigating-outbreak-of-unknown-disease)
 - [CDC Field Epidemiology Manual](https://www.cdc.gov/field-epi-manual/)
@@ -251,33 +281,39 @@ Epidemiological analysis rests on several fundamental principles:
 **Definition**: "Analytic epidemiology methods comparing disease occurrence between exposed and unexposed groups to quantify associations"
 
 **Cohort Study Design**:
+
 - **Approach**: Identify exposed and unexposed groups, follow forward in time, compare disease incidence
 - **Measures**: Relative risk (RR), attributable risk, incidence rates
 - **Strengths**: Direct measure of incidence, can assess multiple outcomes, temporality clear
 - **Best for**: Outbreaks in defined populations, common exposures, short latency diseases
 
 **Case-Control Study Design**:
+
 - **Approach**: Identify cases and controls, look backward to assess past exposures, compare exposure odds
 - **Measures**: Odds ratio (OR approximates RR when disease is rare)
 - **Strengths**: Efficient for rare diseases, rapid results, fewer subjects needed
 - **Best for**: Large populations, rare diseases, long latency, multiple exposures
 
 **Study Selection Criteria**:
+
 - Population definition and accessibility
 - Disease frequency and latency period
 - Available resources and timeline
 - Feasibility of exposure assessment
 
 **Applications**:
+
 - Outbreak investigations (cohort for defined populations like weddings, case-control for community outbreaks)
 - Chronic disease etiology research
 - Vaccine safety and effectiveness studies
 - Environmental exposure assessment
 
 **Example Analysis**:
+
 - Hepatitis A outbreak: Case-control study identifies green onions as risk factor (OR = 5.2, 95% CI: 2.1-12.8), traceback investigation finds contaminated supply, recall initiated
 
 **Sources**:
+
 - [CDC Designing Analytic Studies](https://www.cdc.gov/field-epi-manual/php/chapters/design-conduct-analyze-field-studies.html)
 - [Case-Control Studies - PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC1706071/)
 - [Outbreak Analytic Studies](https://outbreaktools.ca/background/analytic-studies/)
@@ -287,6 +323,7 @@ Epidemiological analysis rests on several fundamental principles:
 **Definition**: "Quantitative metrics describing disease occurrence in populations and strength of relationships between exposures and outcomes"
 
 **Measures of Disease Frequency**:
+
 - **Incidence**: Number of new cases per population per time (rate of disease development)
 - **Prevalence**: Proportion of population with disease at specific time (disease burden)
 - **Attack Rate**: Incidence in outbreak setting (proportion of exposed who develop disease)
@@ -294,6 +331,7 @@ Epidemiological analysis rests on several fundamental principles:
 - **Case Fatality Rate**: Proportion of cases who die
 
 **Measures of Association**:
+
 - **Relative Risk (RR)**: Ratio of incidence in exposed vs. unexposed (RR > 1 suggests increased risk)
 - **Odds Ratio (OR)**: Ratio of odds of exposure in cases vs. controls
 - **Attributable Risk**: Absolute difference in incidence between exposed and unexposed
@@ -301,21 +339,25 @@ Epidemiological analysis rests on several fundamental principles:
 - **Number Needed to Treat (NNT)**: Number needed to treat to prevent one adverse outcome
 
 **Key Concepts**:
+
 - Rates have time component; proportions do not
 - Confidence intervals quantify statistical uncertainty
 - P-values test null hypothesis but don't measure effect size
 - Clinical significance differs from statistical significance
 
 **Applications**:
+
 - Comparing disease burden across populations
 - Quantifying strength of risk factor associations
 - Evaluating intervention effectiveness
 - Prioritizing public health interventions based on population impact
 
 **Example Analysis**:
+
 - Smoking and lung cancer: RR = 20 means smokers have 20 times the risk of nonsmokers; attributable risk = 90% means 90% of lung cancer in smokers is due to smoking
 
 **Sources**:
+
 - [Principles of Epidemiology - Lesson 3](https://archive.cdc.gov/www_cdc_gov/csels/dsepd/ss1978/lesson3/)
 - [Measures of Disease Frequency](https://sphweb.bumc.bu.edu/otlt/mph-modules/ep/ep713_diseasefrequency/)
 
@@ -324,6 +366,7 @@ Epidemiological analysis rests on several fundamental principles:
 **Definition**: "Assessment of test performance in identifying disease, balancing sensitivity, specificity, and predictive values"
 
 **Key Performance Metrics**:
+
 - **Sensitivity**: Proportion of true positives correctly identified (1 - false negative rate)
 - **Specificity**: Proportion of true negatives correctly identified (1 - false positive rate)
 - **Positive Predictive Value (PPV)**: Probability disease present given positive test
@@ -331,6 +374,7 @@ Epidemiological analysis rests on several fundamental principles:
 - **ROC Curve**: Plots sensitivity vs. (1-specificity) across test thresholds
 
 **Critical Insights**:
+
 - PPV and NPV depend on disease prevalence (sensitivity and specificity do not)
 - No test is perfect; trade-offs exist between sensitivity and specificity
 - Screening tests should be highly sensitive (few false negatives)
@@ -338,6 +382,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Serial testing increases specificity; parallel testing increases sensitivity
 
 **Wilson-Jungner Screening Criteria** (WHO):
+
 1. Condition is important health problem
 2. Natural history is well understood
 3. Recognizable early stage exists
@@ -350,15 +395,18 @@ Epidemiological analysis rests on several fundamental principles:
 10. Continuous case-finding process
 
 **Applications**:
+
 - Evaluating COVID-19 rapid tests
 - Designing cancer screening programs
 - Assessing syndromic surveillance systems
 - Optimizing diagnostic algorithms
 
 **Example Analysis**:
+
 - COVID-19 rapid antigen test: Sensitivity = 85%, Specificity = 99%, but PPV varies dramatically by prevalence (PPV = 46% at 1% prevalence, PPV = 98% at 50% prevalence)
 
 **Sources**:
+
 - [Screening Principles - CDC](https://www.cdc.gov/screening/)
 - [WHO Screening Principles](https://www.who.int/news-room/questions-and-answers)
 - [Diagnostic Test Accuracy](https://www.bmj.com/content/324/7338/669)
@@ -368,12 +416,14 @@ Epidemiological analysis rests on several fundamental principles:
 **Definition**: "Graphical representation of cases by time of onset revealing outbreak source, transmission pattern, and trajectory"
 
 **Epidemic Curve Types**:
+
 - **Point-Source**: Single exposure, sharp peak, cases within one incubation period
 - **Continuous Common Source**: Ongoing exposure, plateau pattern
 - **Propagated**: Person-to-person spread, successive peaks spaced by incubation period
 - **Mixed**: Combination of patterns (e.g., initial point source followed by secondary transmission)
 
 **Key Features to Analyze**:
+
 - **Shape**: Reveals transmission mode
 - **Peak timing**: Suggests exposure time (working backward by incubation period)
 - **Duration**: Indicates length of exposure or transmission chains
@@ -381,21 +431,25 @@ Epidemiological analysis rests on several fundamental principles:
 - **Magnitude**: Total cases and attack rate
 
 **Additional Descriptive Tools**:
+
 - **Person**: Age, sex, occupation, risk factors
 - **Place**: Geographic distribution (spot maps, cluster detection)
 - **Time**: Trends, seasonality, periodicity
 
 **Applications**:
+
 - Determining outbreak source and timing
 - Distinguishing foodborne from person-to-person transmission
 - Predicting outbreak trajectory
 - Evaluating control measure effectiveness (curve flattening)
 
 **Example Analysis**:
+
 - Food poisoning at picnic: Sharp peak 6-12 hours post-event, all cases within 24 hours → suggests point-source, short incubation toxin like Staph aureus
 - COVID-19: Propagated curves with peaks every 5-7 days indicating serial intervals
 
 **Sources**:
+
 - [Epidemic Curves - CDC](https://archive.cdc.gov/www_cdc_gov/csels/dsepd/ss1978/lesson1/section6.html)
 - [Outbreak Investigation - PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC7187955/)
 
@@ -408,6 +462,7 @@ Epidemiological analysis rests on several fundamental principles:
 **Purpose**: "Ongoing systematic collection, analysis, and interpretation of health data for planning, implementing, and evaluating public health practice"
 
 **Approach**:
+
 1. Define surveillance objectives and case definitions
 2. Establish data collection mechanisms (passive vs. active)
 3. Implement data management and analysis systems
@@ -415,6 +470,7 @@ Epidemiological analysis rests on several fundamental principles:
 5. Evaluate surveillance system attributes (sensitivity, timeliness, acceptability, etc.)
 
 **Types of Surveillance**:
+
 - **Passive**: Healthcare providers report cases to health department
 - **Active**: Health department proactively contacts providers
 - **Syndromic**: Monitors symptoms before diagnosis (e.g., emergency department chief complaints)
@@ -422,12 +478,14 @@ Epidemiological analysis rests on several fundamental principles:
 - **Wastewater-Based**: Monitors pathogens in sewage for population-level signals
 
 **Strengths**:
+
 - Detects outbreaks early
 - Monitors disease trends over time
 - Evaluates intervention impact
 - Identifies emerging health threats
 
 **Applications**:
+
 - Influenza surveillance networks
 - COVID-19 case reporting
 - Foodborne disease surveillance (FoodNet, PulseNet)
@@ -435,6 +493,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Chronic disease tracking (BRFSS)
 
 **Sources**:
+
 - [CDC Surveillance Systems Overview](https://www.cdc.gov/surveillance/)
 - [WHO Disease Surveillance](https://www.who.int/teams/epidemic-and-pandemic-prevention-and-preparedness/surveillance)
 - [Global Infectious Disease Early Warning Models](https://pmc.ncbi.nlm.nih.gov/articles/PMC11731462/)
@@ -444,6 +503,7 @@ Epidemiological analysis rests on several fundamental principles:
 **Purpose**: "Identify source, mode of transmission, and control measures to stop ongoing disease transmission"
 
 **Approach**:
+
 1. Confirm outbreak exists (compare to baseline)
 2. Verify diagnosis through clinical/lab assessment
 3. Define cases using standardized criteria
@@ -455,6 +515,7 @@ Epidemiological analysis rests on several fundamental principles:
 9. Communicate findings
 
 **Key Steps Detail**:
+
 - **Case finding**: Active search beyond passive reporting
 - **Epidemic curve construction**: Reveal temporal pattern
 - **Hypothesis generation**: Environmental assessment, interviews, literature review
@@ -462,18 +523,21 @@ Epidemiological analysis rests on several fundamental principles:
 - **Environmental investigation**: Inspect sites, collect samples
 
 **Strengths**:
+
 - Rapid identification and control of source
 - Prevents additional cases
 - Generates evidence for future prevention
 - Builds public health capacity
 
 **Applications**:
+
 - Foodborne illness investigations
 - Healthcare-associated infection outbreaks
 - Legionnaires' disease cluster investigations
 - Vaccine-preventable disease outbreaks
 
 **Sources**:
+
 - [CDC Outbreak Investigation Steps](https://archive.cdc.gov/www_cdc_gov/csels/dsepd/ss1978/lesson6/section2.html)
 - [CDC Field Epidemiology Manual - Outbreak Investigations](https://www.cdc.gov/field-epi-manual/)
 
@@ -482,6 +546,7 @@ Epidemiological analysis rests on several fundamental principles:
 **Purpose**: "Quantify associations between exposures and health outcomes to establish risk factors and causal relationships"
 
 **Cohort Study Approach**:
+
 1. Define study population and exposure of interest
 2. Classify individuals by exposure status
 3. Follow cohort over time
@@ -490,6 +555,7 @@ Epidemiological analysis rests on several fundamental principles:
 6. Assess confounding and effect modification
 
 **Case-Control Study Approach**:
+
 1. Define cases (people with disease) and controls (people without disease)
 2. Ensure controls representative of population that gave rise to cases
 3. Assess past exposures through interviews, records, biomarkers
@@ -497,18 +563,22 @@ Epidemiological analysis rests on several fundamental principles:
 5. Adjust for confounders through matching or statistical methods
 
 **Strengths**:
+
 - **Cohort**: Direct incidence measures, multiple outcomes, temporality clear, no recall bias
 - **Case-Control**: Efficient for rare diseases, quick results, multiple exposures, less expensive
 
 **Limitations**:
+
 - **Cohort**: Expensive, time-consuming, inefficient for rare diseases, loss to follow-up
 - **Case-Control**: Cannot calculate incidence, recall bias, selection bias, temporality unclear for some exposures
 
 **Applications**:
+
 - Cohort: Framingham Heart Study, Nurses' Health Study, COVID-19 vaccine effectiveness
 - Case-Control: Smoking and lung cancer, Reye syndrome and aspirin, bacterial meningitis outbreak
 
 **Sources**:
+
 - [CDC Analytic Studies Guide](https://www.cdc.gov/field-epi-manual/php/chapters/design-conduct-analyze-field-studies.html)
 - [Case-Control Studies in Practice](https://pmc.ncbi.nlm.nih.gov/articles/PMC1706071/)
 
@@ -517,6 +587,7 @@ Epidemiological analysis rests on several fundamental principles:
 **Purpose**: "Use mathematical representations of disease transmission to forecast epidemics, evaluate interventions, and understand dynamics"
 
 **Approach**:
+
 1. Select model structure (compartmental, agent-based, statistical)
 2. Parameterize model using literature, data, or calibration
 3. Validate model against observed data
@@ -525,12 +596,14 @@ Epidemiological analysis rests on several fundamental principles:
 6. Communicate results with uncertainty quantification
 
 **Model Types**:
+
 - **Compartmental Models**: SIR, SEIR, SEIRS dividing population into disease states
 - **Agent-Based Models**: Simulate individuals with heterogeneous characteristics and contact networks
 - **Statistical Models**: Regression, time series, machine learning for forecasting
 - **Hybrid Models**: Combine mechanistic and data-driven approaches (AI integration)
 
 **Key Parameters**:
+
 - R₀ (basic reproduction number)
 - Generation time / serial interval
 - Infectious period
@@ -538,6 +611,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Intervention effectiveness
 
 **Strengths**:
+
 - Forecasts epidemic trajectory
 - Evaluates interventions before implementation
 - Identifies key drivers of transmission
@@ -545,18 +619,21 @@ Epidemiological analysis rests on several fundamental principles:
 - Integrates diverse data sources
 
 **Limitations**:
+
 - Models simplify complex reality
 - Uncertainty in parameters and structure
 - Quality depends on input data
 - Should inform decisions, not dictate them
 
 **Applications**:
+
 - COVID-19 pandemic projections
 - Influenza vaccination strategy optimization
 - Ebola outbreak response planning
 - Vector-borne disease control evaluation
 
 **Sources**:
+
 - [Best Practice Disease Modeling](https://pubmed.ncbi.nlm.nih.gov/29734964/)
 - [AI Integration with Mechanistic Epidemiology](https://www.nature.com/articles/s41467-024-55461-x)
 - [Institutional Outbreak Modeling](https://www.nature.com/articles/s41598-024-57488-y)
@@ -566,6 +643,7 @@ Epidemiological analysis rests on several fundamental principles:
 **Purpose**: "Detect disease early to enable timely intervention and prevent disease occurrence through primary prevention"
 
 **Screening Program Approach**:
+
 1. Identify target population and screening test
 2. Ensure test meets sensitivity/specificity requirements
 3. Establish diagnostic follow-up for positive screens
@@ -573,11 +651,13 @@ Epidemiological analysis rests on several fundamental principles:
 5. Evaluate program effectiveness and cost-effectiveness
 
 **Prevention Levels**:
+
 - **Primary Prevention**: Prevent disease occurrence (vaccination, behavior change, environmental modification)
 - **Secondary Prevention**: Detect disease early when treatment most effective (screening)
 - **Tertiary Prevention**: Reduce complications and disability in those with disease (disease management)
 
 **Evaluation Metrics**:
+
 - Coverage (proportion of target population screened)
 - Positive predictive value
 - Interval cancers (cases between screens)
@@ -586,18 +666,21 @@ Epidemiological analysis rests on several fundamental principles:
 - Cost per quality-adjusted life year (QALY)
 
 **Strengths**:
+
 - Reduces disease burden through early detection
 - Prevents disease through risk factor modification
 - Cost-effective when well-designed
 - Population-level impact
 
 **Limitations**:
+
 - Overdiagnosis risk (detecting indolent disease)
 - False positives cause anxiety and unnecessary procedures
 - Not all diseases suitable for screening
 - Requires ongoing resources and quality assurance
 
 **Applications**:
+
 - Cancer screening (colorectal, breast, cervical)
 - Newborn screening for metabolic disorders
 - Hypertension and diabetes screening
@@ -605,6 +688,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Vaccination programs
 
 **Sources**:
+
 - [US Preventive Services Task Force](https://www.uspreventiveservicestaskforce.org/)
 - [WHO Screening Principles](https://www.who.int/news-room/questions-and-answers)
 - [CDC Screening Programs](https://www.cdc.gov/screening/)
@@ -616,36 +700,42 @@ Epidemiological analysis rests on several fundamental principles:
 ### What to Examine
 
 **Disease Characteristics**:
+
 - Clinical presentation and severity spectrum
 - Incubation period and infectious period
 - Modes of transmission
 - Case fatality rate and morbidity
 
 **Population Patterns**:
+
 - Who is affected (age, sex, occupation, risk factors)
 - Geographic distribution and clustering
 - Temporal trends and seasonality
 - Attack rates in different groups
 
 **Transmission Dynamics**:
+
 - Epidemic curve pattern (point-source, propagated, mixed)
 - Basic reproduction number (R₀) and effective R
 - Generation time and serial interval
 - Contact patterns and mixing
 
 **Risk Factors and Exposures**:
+
 - Behavioral, environmental, occupational exposures
 - Underlying conditions and immunological status
 - Genetic susceptibility
 - Social determinants of health
 
 **Intervention Opportunities**:
+
 - Primary prevention strategies
 - Early detection and screening potential
 - Treatment availability and effectiveness
 - Control measures feasibility and acceptability
 
 **Surveillance and Data Quality**:
+
 - Case ascertainment methods and completeness
 - Laboratory confirmation availability
 - Timeliness of reporting
@@ -654,6 +744,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Questions to Ask
 
 **About the Disease Pattern**:
+
 - Is this an outbreak or expected variation?
 - What is the source of infection or exposure?
 - How is disease transmitted?
@@ -661,6 +752,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Is the outbreak ongoing or resolved?
 
 **About Causation**:
+
 - What is the strength of association (RR, OR)?
 - Is the association consistent across studies and populations?
 - Does exposure precede disease?
@@ -669,6 +761,7 @@ Epidemiological analysis rests on several fundamental principles:
 - Are there alternative explanations (confounding, bias)?
 
 **About Public Health Response**:
+
 - What control measures are needed immediately?
 - What is the target population for intervention?
 - What resources are required?
@@ -676,6 +769,7 @@ Epidemiological analysis rests on several fundamental principles:
 - What are potential unintended consequences?
 
 **About Health Equity**:
+
 - Which populations bear disproportionate disease burden?
 - What are barriers to prevention and care?
 - How can interventions address disparities?
@@ -684,24 +778,28 @@ Epidemiological analysis rests on several fundamental principles:
 ### Factors to Consider
 
 **Data Quality**:
+
 - Surveillance sensitivity and specificity
 - Case definition appropriateness
 - Completeness of case finding
 - Representativeness of sample
 
 **Study Design Validity**:
+
 - Selection bias (cases/controls not comparable)
 - Information bias (recall bias, measurement error)
 - Confounding (third variable distorts association)
 - Adequate statistical power
 
 **Biological Plausibility**:
+
 - Known mechanisms of disease causation
 - Host susceptibility factors
 - Agent virulence and infectivity
 - Environmental conduciveness to transmission
 
 **Implementation Feasibility**:
+
 - Resource availability (personnel, supplies, funding)
 - Infrastructure capacity (laboratory, healthcare, communication)
 - Political will and community acceptance
@@ -710,6 +808,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Historical Parallels
 
 **Classic Investigations to Reference**:
+
 - **John Snow's Cholera Investigation (1854)**: Mapped cases, identified contaminated water pump, removed handle to stop outbreak
 - **Legionnaires' Disease (1976)**: Identified new pathogen through persistence and collaboration
 - **HIV/AIDS (1980s)**: Recognized new syndrome through surveillance, identified transmission routes
@@ -717,6 +816,7 @@ Epidemiological analysis rests on several fundamental principles:
 - **H1N1 Influenza Pandemic (2009)**: Real-time surveillance, rapid vaccine development, international coordination
 
 **Lessons from History**:
+
 - Shoe-leather epidemiology remains essential despite technology advances
 - Rapid communication and transparency save lives
 - Preparedness systems detect and respond faster
@@ -726,18 +826,21 @@ Epidemiological analysis rests on several fundamental principles:
 ### Implications to Explore
 
 **Public Health Action**:
+
 - Immediate control measures (isolation, quarantine, recalls, closures)
 - Surveillance enhancement for case finding
 - Public communication and risk messaging
 - Healthcare system preparedness
 
 **Policy Considerations**:
+
 - Resource allocation for prevention and control
 - Legal authorities for public health action (mandatory reporting, isolation powers)
 - Equity in intervention access
 - Balance between individual liberty and collective protection
 
 **Research Needs**:
+
 - Pathogen characterization and virulence factors
 - Treatment and vaccine development
 - Risk factor identification through analytic studies
@@ -751,17 +854,20 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 1: Define the Health Event and Context
 
 **Actions**:
+
 - Clearly describe the health event or disease of interest
 - Identify affected population and geographic area
 - Determine whether this is outbreak, trend analysis, or policy evaluation
 - Gather background information on disease natural history, epidemiology, and public health significance
 
 **Tools/Frameworks**:
+
 - Literature review of disease epidemiology
 - Review of previous outbreaks or studies
 - Surveillance data examination
 
 **Outputs**:
+
 - Clear problem statement
 - Understanding of disease characteristics (incubation, transmission, severity)
 - Baseline disease incidence for comparison
@@ -770,6 +876,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 2: Verify and Characterize Cases
 
 **Actions**:
+
 - Confirm diagnosis through clinical evaluation and laboratory testing
 - Develop case definition (clinical, laboratory, and epidemiologic criteria)
 - Classify cases as confirmed, probable, or suspect
@@ -777,11 +884,13 @@ Epidemiological analysis rests on several fundamental principles:
 - Review medical records and laboratory results
 
 **Tools/Frameworks**:
+
 - Standard case definitions (CDC, WHO)
 - Laboratory protocols
 - Medical record abstraction forms
 
 **Outputs**:
+
 - Standardized case definition
 - Complete line listing of cases with key variables
 - Laboratory confirmation results
@@ -790,16 +899,19 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 3: Describe Cases by Person, Place, and Time
 
 **Actions**:
+
 - **Person**: Tabulate cases by age, sex, occupation, risk factors, underlying conditions
 - **Place**: Map case locations (residence, workplace, exposure sites), identify clusters
 - **Time**: Construct epidemic curve showing cases by date of onset, identify trends and patterns
 
 **Tools/Frameworks**:
+
 - Epidemic curves (histograms by onset date)
 - Spot maps and geographic information systems (GIS)
 - Descriptive statistics (frequencies, proportions, rates)
 
 **Outputs**:
+
 - Epidemic curve revealing outbreak pattern (point-source, propagated, mixed)
 - Geographic distribution maps showing clusters
 - Demographic characteristics of cases
@@ -809,6 +921,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 4: Generate Hypotheses About Source and Transmission
 
 **Actions**:
+
 - Develop hypotheses about disease source based on descriptive epidemiology
 - Identify potential exposures from case interviews
 - Consider multiple transmission modes (person-to-person, common source, vector-borne)
@@ -816,12 +929,14 @@ Epidemiological analysis rests on several fundamental principles:
 - Conduct environmental assessment of potential exposure sites
 
 **Tools/Frameworks**:
+
 - Case interviews and questionnaires
 - Environmental inspections
 - Literature review
 - Biological plausibility assessment
 
 **Outputs**:
+
 - List of potential sources and vehicles
 - Exposure timeline relative to epidemic curve
 - Priority hypotheses to test analytically
@@ -830,6 +945,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 5: Test Hypotheses Using Analytic Studies
 
 **Actions**:
+
 - Select appropriate study design (cohort if population defined, case-control if not)
 - Design questionnaire assessing exposures of interest
 - Identify controls (if case-control) or define cohort (if cohort study)
@@ -839,12 +955,14 @@ Epidemiological analysis rests on several fundamental principles:
 - Evaluate confounding and effect modification
 
 **Tools/Frameworks**:
+
 - Cohort study or case-control study design
 - 2x2 tables for calculating RR or OR
 - Statistical software for multivariable analysis
 - Confounding assessment
 
 **Outputs**:
+
 - Quantitative measures of association between exposures and disease
 - Statistical significance testing results
 - Identification of likely source or risk factors
@@ -853,6 +971,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 6: Conduct Environmental and Laboratory Investigations
 
 **Actions**:
+
 - Inspect implicated sites (restaurants, facilities, water systems)
 - Collect environmental samples (food, water, surfaces)
 - Conduct laboratory testing of samples
@@ -860,11 +979,13 @@ Epidemiological analysis rests on several fundamental principles:
 - Trace sources backward through supply chain
 
 **Tools/Frameworks**:
+
 - Environmental health protocols
 - Laboratory methods (culture, PCR, whole genome sequencing)
 - Traceback investigation procedures
 
 **Outputs**:
+
 - Laboratory confirmation of pathogen in environmental samples
 - Molecular match between clinical and environmental isolates
 - Identification of specific contaminated product or site
@@ -873,6 +994,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 7: Implement Control and Prevention Measures
 
 **Actions**:
+
 - Stop exposure source (product recalls, facility closures, contamination remediation)
 - Prevent secondary transmission (isolation, quarantine, prophylaxis)
 - Enhance surveillance for additional cases
@@ -880,12 +1002,14 @@ Epidemiological analysis rests on several fundamental principles:
 - Provide guidance on prevention
 
 **Tools/Frameworks**:
+
 - Public health legal authorities
 - Communication strategies
 - Infection control guidelines
 - Vaccination or prophylaxis protocols
 
 **Outputs**:
+
 - Control measures implemented
 - Outbreak stopped (no new cases)
 - Public awareness of prevention strategies
@@ -894,6 +1018,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 8: Evaluate Intervention Effectiveness
 
 **Actions**:
+
 - Monitor disease incidence after intervention
 - Compare observed trajectory to predicted trajectory
 - Assess intervention coverage and compliance
@@ -901,11 +1026,13 @@ Epidemiological analysis rests on several fundamental principles:
 - Document lessons learned
 
 **Tools/Frameworks**:
+
 - Time series analysis
 - Before-after comparisons
 - Process evaluation methods
 
 **Outputs**:
+
 - Evidence of intervention impact (decline in cases)
 - Identification of successful and unsuccessful components
 - Recommendations for future interventions
@@ -913,6 +1040,7 @@ Epidemiological analysis rests on several fundamental principles:
 ### Step 9: Communicate Findings and Recommendations
 
 **Actions**:
+
 - Prepare outbreak investigation report
 - Present findings to stakeholders (health department, community, facilities)
 - Submit findings to scientific literature if appropriate
@@ -920,11 +1048,13 @@ Epidemiological analysis rests on several fundamental principles:
 - Update public health guidelines if needed
 
 **Tools/Frameworks**:
+
 - MMWR (Morbidity and Mortality Weekly Report) format
 - Scientific manuscript structure
 - Plain-language summaries for public
 
 **Outputs**:
+
 - Comprehensive outbreak report
 - Scientific publications
 - Policy recommendations
@@ -948,6 +1078,7 @@ Wedding reception with 200 guests at hotel ballroom on Saturday 6pm-11pm. Guests
 Case definition: Wedding guest with vomiting or diarrhea beginning 6 hours to 3 days after reception. Active case finding through guest list contacts identifies 62 ill persons (cases) and 138 well persons. Clinical presentation consistent with viral gastroenteritis (short incubation, vomiting, diarrhea, resolution in 1-2 days). Stool specimens from 5 cases test positive for norovirus by PCR.
 
 **Step 3 - Describe Cases**:
+
 - **Person**: Attack rate 31% (62/200). Cases similar to non-cases by age and sex.
 - **Time**: Epidemic curve shows sharp peak at 24 hours post-event, with all cases within 48 hours. Pattern consistent with point-source exposure.
 - **Place**: Cases from multiple geographic areas, linked only by wedding attendance. No secondary cases reported.
@@ -959,6 +1090,7 @@ Point-source epidemic curve suggests common exposure at reception. Short incubat
 Retrospective cohort study of all 200 guests. Questionnaire assesses all food items consumed. Calculate attack rates and relative risks for each food item:
 
 Results:
+
 - **Ate wedding cake**: 58/150 ill (39% attack rate)
 - **Did not eat cake**: 4/50 ill (8% attack rate)
 - **Relative Risk** = 4.8 (95% CI: 1.8-12.7, p<0.001)
@@ -969,6 +1101,7 @@ Other foods not significantly associated. Wedding cake strongly associated with 
 Inspection of hotel kitchen and interview of food handlers. Pastry chef worked while ill with vomiting/diarrhea on Friday (day before wedding), handled cake after baking (no gloves). Stool specimen from chef positive for norovirus, genotype matches cases.
 
 **Step 7 - Control Measures**:
+
 - Hotel chef excluded from work until 48 hours after symptom resolution
 - Hotel staff trained on ill worker exclusion policies and proper handwashing
 - Hotel implements policy requiring gloves for handling ready-to-eat foods
@@ -981,12 +1114,14 @@ No secondary transmission from wedding-associated cases. Hotel implements perman
 Report provided to hotel management with recommendations. Summary provided to wedding hosts. Outbreak report submitted to state health department and published in MMWR. Case study used in food handler training.
 
 **Key Findings**:
+
 - 62 cases of norovirus gastroenteritis linked to wedding reception (attack rate 31%)
 - Wedding cake was vehicle (RR=4.8)
 - Contamination from ill food handler who worked while symptomatic
 - Outbreak prevented future cases through policy changes
 
 **Frameworks Applied**:
+
 - Outbreak investigation (10 steps)
 - Cohort study design
 - Epidemic curve construction
@@ -994,6 +1129,7 @@ Report provided to hotel management with recommendations. Summary provided to we
 - Bradford Hill causality criteria (strength, temporality, consistency, plausibility)
 
 **Sources Referenced**:
+
 - Norovirus incubation period and clinical presentation (CDC)
 - Outbreak investigation methodology (CDC Field Epi Manual)
 - Food handler exclusion policies (FDA Food Code)
@@ -1014,22 +1150,23 @@ Obtain vaccination records for all 7th graders in district (N=5,000) for two yea
 
 **Step 3 - Describe Vaccination Coverage**:
 **Overall coverage**:
+
 - Baseline year: 42% completed series
 - Intervention year: 76% completed series
 - Absolute increase: 34 percentage points
 
 **Stratified by demographics**:
 
-| Subgroup | Baseline | Intervention | Change |
-|----------|----------|--------------|--------|
-| Overall | 42% | 76% | +34% |
-| Female | 58% | 85% | +27% |
-| Male | 26% | 67% | +41% |
-| White | 48% | 81% | +33% |
-| Black | 35% | 68% | +33% |
-| Hispanic | 40% | 74% | +34% |
-| Insured | 45% | 78% | +33% |
-| Uninsured | 28% | 68% | +40% |
+| Subgroup  | Baseline | Intervention | Change |
+| --------- | -------- | ------------ | ------ |
+| Overall   | 42%      | 76%          | +34%   |
+| Female    | 58%      | 85%          | +27%   |
+| Male      | 26%      | 67%          | +41%   |
+| White     | 48%      | 81%          | +33%   |
+| Black     | 35%      | 68%          | +33%   |
+| Hispanic  | 40%      | 74%          | +34%   |
+| Insured   | 45%      | 78%          | +33%   |
+| Uninsured | 28%      | 68%          | +40%   |
 
 **Exemptions**: 8% claimed exemption (5% religious, 3% medical)
 
@@ -1039,6 +1176,7 @@ Intervention year: Gender gap reduced but persists (85% vs 67%). Racial/ethnic g
 
 **Step 5 - Evaluate Access Barriers**:
 Survey sample of parents (n=500) about vaccination experience:
+
 - 82% found it easy to get vaccine
 - 15% reported difficulty getting appointments
 - 8% concerned about cost (mostly uninsured)
@@ -1049,12 +1187,14 @@ School-based clinics particularly effective for uninsured students (62% of unins
 
 **Step 6 - Assess Program Implementation**:
 Review implementation fidelity:
+
 - All schools sent reminder letters: 100%
 - Schools held vaccine clinics: 80% (lower in small schools)
 - Exemption process standardized: Yes
 - Student exclusions for non-compliance: 45 students (0.9%)
 
 Cost analysis:
+
 - Program cost: $250,000 (includes vaccine, staff, clinics)
 - Students newly vaccinated: 1,700
 - Cost per newly vaccinated: $147
@@ -1063,6 +1203,7 @@ Cost analysis:
 
 **Step 7 - Model Long-Term Impact**:
 Using HPV vaccination effectiveness data (90% reduction in HPV 16/18 infections, 70% reduction in cervical cancer), estimate that vaccinating 1,700 additional students will prevent:
+
 - 1,200 HPV infections
 - 17 cervical cancers
 - 5 other HPV-associated cancers
@@ -1071,17 +1212,20 @@ Using HPV vaccination effectiveness data (90% reduction in HPV 16/18 infections,
 
 **Step 8 - Identify Remaining Gaps**:
 Despite success, coverage below goal in several groups:
+
 - Males (67% vs goal of 80%)
 - Students at small schools without clinics (58%)
 - Families claiming exemptions (8%)
 
 Barriers identified:
+
 - Vaccine hesitancy (especially for males)
 - Access challenges in small/rural schools
 - Misinformation about vaccine safety
 
 **Step 9 - Recommendations**:
 **Continue program** with enhancements:
+
 1. **Expand school clinics** to all schools (partner with county health dept for small schools)
 2. **Enhance education** targeting parents of male students
 3. **Address misinformation** through healthcare provider communication
@@ -1089,6 +1233,7 @@ Barriers identified:
 5. **Monitor coverage** annually by subgroup to ensure equity
 
 **Key Findings**:
+
 - School-entry requirement increased HPV vaccination coverage from 42% to 76% (+34 percentage points)
 - Program reduced gender gap and nearly eliminated insurance-related disparities
 - School-based clinics critical for reaching uninsured students
@@ -1097,6 +1242,7 @@ Barriers identified:
 - Remaining gaps in males and small schools require targeted interventions
 
 **Frameworks Applied**:
+
 - Program evaluation methodology
 - Prevalence measures (vaccination coverage)
 - Stratified analysis to assess equity
@@ -1105,6 +1251,7 @@ Barriers identified:
 - Cost-effectiveness analysis
 
 **Sources Referenced**:
+
 - HPV vaccine effectiveness studies (Cochrane Review)
 - Cancer incidence rates (SEER database)
 - Vaccination coverage benchmarks (Healthy People 2030)
@@ -1127,6 +1274,7 @@ LTCF outbreak of COVID-19 detected January 10. Facility has 3 units (A, B, C) wi
 **Active surveillance**: Test all residents and staff immediately (universal testing).
 
 **Results (Day 1 testing)**:
+
 - Residents: 18/120 positive (15%)
 - Staff: 4/80 positive (5%)
 - Total: 22 cases
@@ -1136,6 +1284,7 @@ LTCF outbreak of COVID-19 detected January 10. Facility has 3 units (A, B, C) wi
 **Step 3 - Describe Cases**:
 
 **By Unit**:
+
 - Unit A: 2/40 residents (5%)
 - Unit B: 14/40 residents (35%)
 - Unit C: 2/40 residents (5%)
@@ -1144,6 +1293,7 @@ Outbreak concentrated in Unit B.
 
 **By Time (Epidemic Curve)**:
 Constructed epidemic curve by symptom onset date:
+
 - January 5-7: 3 cases (1 staff, 2 residents Unit B)
 - January 8-10: 8 cases (all residents Unit B)
 - January 11-13: 11 cases (2 staff, 9 residents Unit B and others)
@@ -1151,6 +1301,7 @@ Constructed epidemic curve by symptom onset date:
 Pattern suggests: Initial introduction to Unit B (January 5), followed by rapid spread within Unit B (January 8-10), then spillover to other units (January 11-13).
 
 **Clinical Severity**:
+
 - Asymptomatic: 5 (23%)
 - Mild symptoms: 10 (45%)
 - Hospitalized: 5 (23%)
@@ -1160,6 +1311,7 @@ Pattern suggests: Initial introduction to Unit B (January 5), followed by rapid 
 **Hypothesis**: Staff member introduced virus to Unit B, leading to resident-to-resident and staff-to-resident transmission.
 
 **Evidence**:
+
 - Staff case 1 (Unit B aide) had symptom onset January 5, worked January 5-6 while pre-symptomatic
 - Whole genome sequencing: 20/22 cases have identical variant (Delta)
 - 2 cases (Unit A, Unit C) have different variant → community-acquired, not outbreak-associated
@@ -1169,21 +1321,23 @@ Pattern suggests: Initial introduction to Unit B (January 5), followed by rapid 
 
 **Step 5 - Assess Vaccination Status and Breakthrough Infections**:
 Facility vaccination coverage (baseline):
+
 - Residents: 85% fully vaccinated
 - Staff: 62% fully vaccinated
 
 **Attack rates by vaccination status (Unit B only)**:
 
-| Group | Vaccinated | Unvaccinated |
-|-------|------------|--------------|
-| Residents | 25% (7/28) | 58% (7/12) |
-| Staff | 10% (1/10) | 30% (3/10) |
+| Group     | Vaccinated | Unvaccinated |
+| --------- | ---------- | ------------ |
+| Residents | 25% (7/28) | 58% (7/12)   |
+| Staff     | 10% (1/10) | 30% (3/10)   |
 
 Vaccines providing protection but breakthrough infections occurring. Unvaccinated at much higher risk.
 
 **Step 6 - Implement Control Measures**:
 
 **Immediate actions (Day 1-3)**:
+
 1. **Isolate cases**: Move to isolation rooms or cohort Unit B
 2. **Quarantine exposed**: All Unit B residents quarantined to rooms
 3. **Universal PPE**: N95 respirators, gowns, gloves for all resident contact
@@ -1193,15 +1347,12 @@ Vaccines providing protection but breakthrough infections occurring. Unvaccinate
 7. **Dedicate staff**: Unit B staff do not work other units; no floating
 8. **Enhance cleaning**: Increase frequency, focus on high-touch surfaces
 
-**Additional measures (Day 4-7)**:
-9. **Test frequently**: All residents and staff every 3 days
-10. **Antiviral treatment**: Offer Paxlovid to high-risk residents
-11. **Boost vaccinations**: Offer boosters to all unboosted residents/staff
-12. **Enhance ventilation**: Open windows, use portable HEPA filters
+**Additional measures (Day 4-7)**: 9. **Test frequently**: All residents and staff every 3 days 10. **Antiviral treatment**: Offer Paxlovid to high-risk residents 11. **Boost vaccinations**: Offer boosters to all unboosted residents/staff 12. **Enhance ventilation**: Open windows, use portable HEPA filters
 
 **Step 7 - Monitor Outbreak Trajectory**:
 
 **Serial testing results**:
+
 - **Day 1**: 22 cases
 - **Day 4**: 8 new cases (30 total)
 - **Day 7**: 2 new cases (32 total)
@@ -1211,6 +1362,7 @@ Vaccines providing protection but breakthrough infections occurring. Unvaccinate
 Epidemic curve shows control measures effective. New cases declining after Day 4.
 
 **Final case count**: 32 cases (27 residents, 5 staff)
+
 - Residents: Attack rate 23% overall, 60% in Unit B
 - Staff: Attack rate 6%
 - Hospitalizations: 7 (22%)
@@ -1219,6 +1371,7 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 **Step 8 - Evaluate Contributing Factors**:
 
 **Vulnerability factors**:
+
 - High-risk population (elderly, comorbidities)
 - Congregate setting with shared spaces
 - Close contact during care activities
@@ -1226,6 +1379,7 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 - Suboptimal staff vaccination (62%)
 
 **Protective factors**:
+
 - High resident vaccination reduced attack rates and severity
 - Rapid detection through testing
 - Immediate isolation and cohorting
@@ -1233,6 +1387,7 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 - Antiviral treatment reduced hospitalizations
 
 **Lessons learned**:
+
 - Staff vaccination critical (case introduced by staff)
 - Universal testing enabled early detection
 - Rapid control measures contained outbreak to primarily one unit
@@ -1241,6 +1396,7 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 **Step 9 - Recommendations for Prevention**:
 
 **For this facility**:
+
 1. Require staff vaccination (mandate if needed)
 2. Implement regular staff screening testing (weekly)
 3. Maintain PPE supply and training
@@ -1249,6 +1405,7 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 6. Offer booster doses every 6 months to residents
 
 **For other LTCFs**:
+
 1. Achieve >90% staff vaccination coverage
 2. Implement routine surveillance testing of staff
 3. Prepare outbreak response supplies (isolation capacity, PPE, testing)
@@ -1256,12 +1413,14 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 5. Coordinate with health department for rapid investigation support
 
 **Policy implications**:
+
 - Staff vaccination mandates reduce introduction risk
 - Federal regulations should require regular testing and outbreak response plans
 - Boosters needed for high-risk populations every 6 months
 - Antiviral availability critical for outbreak response
 
 **Key Findings**:
+
 - 32 cases (27 residents, 5 staff) in LTCF COVID-19 outbreak
 - Introduced by staff member, spread rapidly in Unit B
 - Rapid control measures contained outbreak within 2 weeks
@@ -1270,6 +1429,7 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 - Recommendations focus on staff vaccination and surveillance testing
 
 **Frameworks Applied**:
+
 - Outbreak investigation (10 steps)
 - Disease surveillance (universal testing)
 - Epidemic curve construction and interpretation
@@ -1279,6 +1439,7 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 - Intervention evaluation (control measures)
 
 **Sources Referenced**:
+
 - CDC Long-Term Care Facility COVID-19 Guidance
 - CDC Interim Infection Prevention and Control Recommendations
 - COVID-19 vaccine effectiveness studies (MMWR)
@@ -1292,26 +1453,31 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 ### Key Thinkers and Founding Figures
 
 **John Snow (1813-1858)**
+
 - **Contributions**: Father of modern epidemiology, cholera investigation, disease mapping
 - **Work**: Removed Broad Street pump handle to stop 1854 London cholera outbreak; demonstrated waterborne transmission through natural experiment comparing water companies
 - **Legacy**: Established principles of outbreak investigation, environmental epidemiology, and evidence-based public health action
 
 **Louis Pasteur (1822-1895)**
+
 - **Contributions**: Germ theory, vaccination, pasteurization
 - **Work**: Proved microorganisms cause disease; developed rabies and anthrax vaccines
 - **Legacy**: Foundation for infectious disease epidemiology and prevention
 
 **Robert Koch (1843-1910)**
+
 - **Contributions**: Koch's postulates for proving causation, bacteriology
 - **Work**: Identified causative agents of tuberculosis, cholera, anthrax
 - **Legacy**: Established criteria for linking specific microorganisms to specific diseases
 
 **Austin Bradford Hill (1897-1991)**
+
 - **Contributions**: Bradford Hill criteria for causal inference, randomized controlled trials
 - **Work**: Demonstrated smoking causes lung cancer through cohort studies
 - **Legacy**: Framework for evaluating causation from observational data remains standard
 
 **Wade Hampton Frost (1880-1938)**
+
 - **Contributions**: Academic epidemiology, epidemiological methods
 - **Work**: First professor of epidemiology in US (Johns Hopkins), developed quantitative methods
 - **Legacy**: Established epidemiology as academic discipline with rigorous methodology
@@ -1319,29 +1485,34 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 ### Professional Associations
 
 **American Public Health Association (APHA) - Epidemiology Section**
+
 - Website: https://www.apha.org/apha-communities/member-sections/epidemiology
 - Largest public health association; annual meeting features epidemiology sessions
 - Publications: American Journal of Public Health
 
 **Society for Epidemiologic Research (SER)**
+
 - Website: https://epiresearch.org/
 - Professional society for epidemiologists
 - Publications: American Journal of Epidemiology
 - Annual meeting showcases latest epidemiologic research
 
 **American College of Epidemiology (ACE)**
+
 - Website: https://www.acepidemiology.org/
 - Promotes professional development and ethical practice
 - Offers certification in epidemiology
 - Publishes Annals of Epidemiology
 
 **Council of State and Territorial Epidemiologists (CSTE)**
+
 - Website: https://www.cste.org/
 - Applied epidemiologists in state and local health departments
 - Develops standardized case definitions
 - Coordinates surveillance and outbreak response
 
 **International Epidemiological Association (IEA)**
+
 - Website: https://www.ieaweb.org/
 - Global organization promoting epidemiology worldwide
 - Regional groups (North America, Europe, Asia, etc.)
@@ -1350,33 +1521,39 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 ### Leading Journals
 
 **American Journal of Epidemiology**
+
 - Society for Epidemiologic Research flagship journal
 - Methods and applications across all epidemiologic domains
 - Impact factor: 5.0+
 
 **Epidemiology**
+
 - International Society for Environmental Epidemiology
 - Methods, environmental, occupational, and clinical epidemiology
 - Known for rigorous methodological standards
 
 **Morbidity and Mortality Weekly Report (MMWR)**
+
 - CDC publication
 - Timely outbreak reports, surveillance summaries, recommendations
 - Open access, rapid publication
 - Website: https://www.cdc.gov/mmwr/
 
 **Emerging Infectious Diseases**
+
 - CDC journal focused on emerging infections
 - Open access, peer-reviewed
 - Outbreak investigations, surveillance, trends
 - Website: https://wwwnc.cdc.gov/eid/
 
 **The Lancet Infectious Diseases**
+
 - High-impact infectious disease journal
 - Global perspectives on infectious threats
 - Policy-relevant research
 
 **International Journal of Epidemiology**
+
 - International Epidemiological Association journal
 - Methods, theory, and practice
 - Global health focus
@@ -1384,29 +1561,34 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 ### Data Sources
 
 **Centers for Disease Control and Prevention (CDC)**
+
 - Website: https://www.cdc.gov/
 - National surveillance systems (NNDSS, FoodNet, NHANES, BRFSS)
 - WONDER database: https://wonder.cdc.gov/
 - Outbreak reports and investigations
 
 **World Health Organization (WHO)**
+
 - Website: https://www.who.int/
 - Global disease surveillance (GISRS, GLASS)
 - Disease outbreak news
 - International Health Regulations (IHR) reporting
 
 **National Center for Health Statistics (NCHS)**
+
 - Website: https://www.cdc.gov/nchs/
 - Vital statistics (births, deaths)
 - National Health Interview Survey
 - National Health and Nutrition Examination Survey
 
 **State and Local Health Departments**
+
 - Reportable disease data
 - Outbreak investigations
 - Vital records
 
 **Global Burden of Disease (GBD) Study**
+
 - Website: https://www.healthdata.org/research-analysis/gbd
 - Comprehensive disease burden estimates globally
 - Disability-adjusted life years (DALYs) by cause
@@ -1414,24 +1596,29 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 ### Educational Resources
 
 **CDC Principles of Epidemiology in Public Health Practice (Self-Study Course)**
+
 - Website: https://www.cdc.gov/training/publichealth101/epidemiology.html
 - Free online course covering epidemiology fundamentals
 - Lessons on surveillance, outbreak investigation, screening, measures
 
 **CDC Field Epidemiology Manual**
+
 - Website: https://www.cdc.gov/field-epi-manual/
 - Comprehensive guide to field epidemiology
 - Outbreak investigation, study design, data analysis
 
 **Johns Hopkins Bloomberg School of Public Health OpenCourseWare**
+
 - Free epidemiology courses and materials
 - Advanced methods and applications
 
 **Coursera Epidemiology Courses**
+
 - University partnerships offering online epidemiology training
 - Johns Hopkins, Imperial College London, others
 
 **Council of State and Territorial Epidemiologists (CSTE) Resources**
+
 - Website: https://www.cste.org/general/custom.asp?page=Training
 - Applied epidemiology training materials
 - Standardized case definitions
@@ -1439,18 +1626,22 @@ Epidemic curve shows control measures effective. New cases declining after Day 4
 ### Key Textbooks and References
 
 **Modern Epidemiology** (Rothman, Greenland, Lash)
+
 - Comprehensive methods textbook
 - Causal inference, study design, bias, confounding
 
 **Epidemiology: Beyond the Basics** (Szklo, Nieto)
+
 - Intermediate-level textbook
 - Practical applications and interpretation
 
 **Infectious Disease Epidemiology: Theory and Practice** (Nelson, Williams)
+
 - Comprehensive infectious disease epidemiology
 - Methods specific to infectious diseases
 
 **Outbreak Investigations Around the World: Case Studies in Infectious Disease Field Epidemiology** (Greenfield, Rondy, Llanos-Cuentas)
+
 - Real-world case studies
 - Practical guidance for investigators
 
@@ -1638,6 +1829,7 @@ Epidemiologist analysis complements and integrates with other domain experts:
 **With Biologist**: Pathogen biology, host-pathogen interactions, antimicrobial resistance, vector ecology, and zoonotic spillover require biological expertise.
 
 **What Epidemiologist Brings**:
+
 - Quantitative methods for measuring disease occurrence and associations
 - Frameworks for establishing causation from observational data
 - Systematic outbreak investigation methodology

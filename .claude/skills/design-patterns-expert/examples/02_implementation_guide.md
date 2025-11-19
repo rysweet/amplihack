@@ -35,6 +35,7 @@ ConcreteStrategyB : Strategy
 ### Implementation Steps
 
 1. **Define Strategy interface**:
+
    ```python
    class Strategy:
        def execute(self, data):
@@ -42,6 +43,7 @@ ConcreteStrategyB : Strategy
    ```
 
 2. **Create Concrete Strategies**:
+
    ```python
    class ConcreteStrategyA(Strategy):
        def execute(self, data):
@@ -55,6 +57,7 @@ ConcreteStrategyB : Strategy
    ```
 
 3. **Create Context that uses Strategy**:
+
    ```python
    class Context:
        def __init__(self, strategy: Strategy):
@@ -149,12 +152,12 @@ if __name__ == "__main__":
 
 ### Trade-offs
 
-| Benefit | Cost |
-|---------|------|
-| Easy to add new algorithms (Open/Closed) | Extra classes to maintain |
-| Swap algorithms at runtime | More objects in memory |
-| Isolate algorithm implementation details | Indirection makes code less obvious |
-| Eliminate conditional statements | Clients must understand different strategies |
+| Benefit                                  | Cost                                         |
+| ---------------------------------------- | -------------------------------------------- |
+| Easy to add new algorithms (Open/Closed) | Extra classes to maintain                    |
+| Swap algorithms at runtime               | More objects in memory                       |
+| Isolate algorithm implementation details | Indirection makes code less obvious          |
+| Eliminate conditional statements         | Clients must understand different strategies |
 
 **Philosophy Check**: ✅ Good fit when you have ≥3 complex algorithms that vary at runtime. ⚠️ Over-engineering if used for simple function logic.
 

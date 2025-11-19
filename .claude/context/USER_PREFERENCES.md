@@ -92,11 +92,13 @@ Controls automatic updating of .claude/ directory when version mismatch detected
 **Current setting:** always
 
 **Options:**
+
 - `always` - Always auto-update without prompting
 - `never` - Never auto-update (just show warning)
 - `ask` - Prompt user each time (default)
 
 **Usage:**
+
 ```bash
 /amplihack:customize set auto_update always
 /amplihack:customize set auto_update never

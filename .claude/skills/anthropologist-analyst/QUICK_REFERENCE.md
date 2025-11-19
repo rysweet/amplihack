@@ -7,6 +7,7 @@ Analyze through anthropological lenses: cultural meanings and practices (ethnogr
 ## When to Use
 
 **Perfect For:**
+
 - Cross-cultural product or service design
 - Understanding organizational cultures ethnographically
 - User research requiring deep contextual understanding
@@ -17,6 +18,7 @@ Analyze through anthropological lenses: cultural meanings and practices (ethnogr
 - Avoiding Western cultural assumptions
 
 **Skip If:**
+
 - No cultural or cross-cultural dimensions
 - Pure technical or quantitative analysis
 - Looking for rapid, surface-level insights (anthropology is slow)
@@ -26,6 +28,7 @@ Analyze through anthropological lenses: cultural meanings and practices (ethnogr
 ### Cultural Relativism
 
 Understand practices within cultural context before evaluating:
+
 - **Methodological**: Suspend judgment to understand emic (insider) perspective
 - **Ethical**: Respect cultural differences and diversity
 - **Not**: Accepting everything or abandoning values
@@ -36,6 +39,7 @@ Understand practices within cultural context before evaluating:
 ### Emic vs. Etic
 
 Two perspectives in cultural analysis:
+
 - **Emic**: Insider's view, culturally-specific meanings, "phonemic" (meaningful to natives)
 - **Etic**: Outsider's analytical view, cross-culturally comparable, "phonetic" (observed by researchers)
 
@@ -44,6 +48,7 @@ Two perspectives in cultural analysis:
 ### Thick Description (Geertz)
 
 Rich, contextualized description conveying meaning:
+
 - **Thin**: "He closed one eye"
 - **Thick**: "He winked conspiratorially to signal shared understanding of private joke"
 
@@ -52,6 +57,7 @@ Context and meaning matter. Behavior without interpretation is insufficient.
 ### Holism
 
 Study culture as integrated whole:
+
 - Economic practices connect to kinship, religion, politics
 - Change in one domain affects others
 - Don't isolate single traits from cultural context
@@ -78,6 +84,7 @@ Study culture as integrated whole:
 ### Step 3: Ethnographic Observation (10 min)
 
 If possible, observe in natural settings:
+
 - What actually happens? (behavior, not just reported behavior)
 - Who participates? Who doesn't? Why?
 - What's the sequence of events?
@@ -117,6 +124,7 @@ Judging other cultures by one's own standards, assuming one's own culture is sup
 ### Cultural Adaptation
 
 Humans adapt to environments through culture (learned, shared, symbolic):
+
 - **Biological adaptation**: Slow, genetic (takes generations)
 - **Cultural adaptation**: Fast, learned (within lifetimes)
 - Culture allows humans to survive in diverse environments (Arctic to desert)
@@ -124,6 +132,7 @@ Humans adapt to environments through culture (learned, shared, symbolic):
 ### Reciprocity and Exchange
 
 Universal pattern of giving, receiving, and returning:
+
 - **Generalized reciprocity**: Giving without immediate return (family, close friends)
 - **Balanced reciprocity**: Direct exchange of equivalent value (trade)
 - **Negative reciprocity**: Trying to get more than you give (strangers, enemies)
@@ -133,6 +142,7 @@ Gift exchange creates social bonds. Markets are just one form of exchange, not u
 ### Rites of Passage (Van Gennep)
 
 Rituals marking status transitions (birth, adulthood, marriage, death):
+
 1. **Separation**: Leave old status
 2. **Liminal**: Transitional state (betwixt and between)
 3. **Incorporation**: Enter new status
@@ -142,6 +152,7 @@ Liminal phase often has special properties: role reversal, communitas (intense s
 ### Kinship
 
 Social relationships organized around descent and marriage:
+
 - **Descent**: Matrilineal (through mother), patrilineal (through father), bilateral (both)
 - **Marriage**: Exogamy (marry outside group), endogamy (marry within group)
 - **Residence**: Matrilocal, patrilocal, neolocal (new household)
@@ -177,6 +188,7 @@ All cultures have language, kinship, religion, food practices, music, and art. B
 ### Pattern: Meaning in Context
 
 Same behavior can have different meanings in different contexts:
+
 - Silence can mean respect, disagreement, boredom, or contemplation (depends on culture)
 - Direct eye contact can mean honesty or disrespect
 - Personal space varies widely
@@ -184,6 +196,7 @@ Same behavior can have different meanings in different contexts:
 ### Pattern: Explicit vs. Implicit Culture
 
 Much of culture is unconscious:
+
 - Explicit: Consciously known and articulated (national holidays, formal rules)
 - Implicit: Taken-for-granted assumptions (concepts of time, personal space, emotion display)
 
@@ -192,6 +205,7 @@ Anthropology makes implicit culture visible.
 ### Pattern: Culture is Shared but Not Uniform
 
 Culture is shared among group members but not everyone believes/practices identically:
+
 - Intracultural variation (age, gender, class, region, individual differences)
 - Culture is contested and negotiated, not monolithic
 - Avoid stereotyping based on cultural generalizations
@@ -199,6 +213,7 @@ Culture is shared among group members but not everyone believes/practices identi
 ## Red Flags
 
 **Anthropological Warning Signs:**
+
 - Ethnocentrism (our way is the only/best way)
 - Essentializing cultures (all X people are Y)
 - Treating culture as static or timeless
@@ -211,6 +226,7 @@ Culture is shared among group members but not everyone believes/practices identi
 ## Integration Tips
 
 Combine with other skills:
+
 - **Sociologist**: Macro social structures + cultural meanings (micro)
 - **Psychologist**: Individual psychology + cultural shaping
 - **Historian**: Temporal depth for cultural change
@@ -220,6 +236,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Cultural relativism is practiced (understand before judging)
 - Emic (insider) perspectives are centered
 - Thick description reveals meaning and context

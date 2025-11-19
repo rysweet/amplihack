@@ -8,7 +8,6 @@ scenario:
     Verifies that a CLI calculator application can perform addition, subtraction,
     multiplication, and division operations correctly from a user's perspective.
   type: cli
-
   # Complexity level indicator
   level: 1
 
@@ -90,7 +89,6 @@ scenario:
     - action: stop_application
       force: true
       description: "Ensure calculator process is terminated"
-
 # Expected Output:
 # ✓ Scenario: CLI Calculator - Basic Arithmetic Operations
 #   ✓ Step 1: Launched ./calculator --interactive

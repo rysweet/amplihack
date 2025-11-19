@@ -8,7 +8,6 @@ scenario:
     Verifies Electron application can manage multiple windows, coordinate data
     between them, and handle window lifecycle correctly.
   type: electron
-
   level: 2
 
   tags: [electron, multi-window, coordination, intermediate]
@@ -242,7 +241,6 @@ scenario:
   cleanup:
     - action: stop_application
       force: false
-
 # Multi-Window Coordination Patterns:
 
 # Window 1 (General)          Window 2 (General)          Window 3 (Development)

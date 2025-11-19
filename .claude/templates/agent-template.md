@@ -1,16 +1,16 @@
 ---
 # REQUIRED FIELDS - Fill these in for every agent
 
-role: [FILL: agent-role-name]           # Kebab-case (e.g., architect, builder, tester)
+role: [FILL: agent-role-name] # Kebab-case (e.g., architect, builder, tester)
 purpose: [FILL: Single clear responsibility statement - one sentence]
-triggers:                               # When to use this agent
+triggers: # When to use this agent
   - "[FILL: Situation 1 - e.g., 'Design new feature or system']"
   - "[FILL: Situation 2 - e.g., 'Create module specification']"
   - "[FILL: Situation 3 - e.g., 'Problem decomposition needed']"
 
 # OPTIONAL FIELDS - Include based on agent complexity and specialization
 
-invokes:                                # What this agent uses internally
+invokes: # What this agent uses internally
   - type: command
     name: [FILL: /command-name]
   - type: skill
@@ -18,32 +18,35 @@ invokes:                                # What this agent uses internally
   - type: subagent
     path: [FILL: .claude/agents/amplihack/other-agent.md]
 
-boundaries:                             # What this agent explicitly does NOT do
+boundaries: # What this agent explicitly does NOT do
   - "[FILL: Excluded responsibility 1 - e.g., 'Does not implement code (delegates to builder)']"
   - "[FILL: Excluded responsibility 2]"
 
-philosophy:                             # How agent embodies amplihack principles
-  - principle: [FILL: Ruthless Simplicity|Trust in Emergence|Modular Design|Zero-BS Implementation|Analysis First|Single Responsibility]
+philosophy: # How agent embodies amplihack principles
+  - principle:
+      [
+        FILL: Ruthless Simplicity|Trust in Emergence|Modular Design|Zero-BS Implementation|Analysis First|Single Responsibility,
+      ]
     application: [FILL: How this agent embodies the principle]
   - principle: [FILL: Another principle if applicable]
     application: [FILL: Application description]
 
 dependencies:
-  required_context:                     # Files agent should import for context
+  required_context: # Files agent should import for context
     - "[FILL: @.claude/context/PHILOSOPHY.md]"
     - "[FILL: @.claude/context/PATTERNS.md]"
-  tools:                                # Claude Code tools this agent needs
+  tools: # Claude Code tools this agent needs
     - [FILL: Read]
     - [FILL: Write]
     - [FILL: Edit]
     - [FILL: Bash]
 
-expertise:                              # Domain knowledge areas
+expertise: # Domain knowledge areas
   - "[FILL: Area of deep knowledge 1]"
   - "[FILL: Area of deep knowledge 2]"
   - "[FILL: Area of deep knowledge 3]"
 
-delegation_pattern: [FILL: parallel|sequential|adaptive]  # How agent delegates to others
+delegation_pattern: [FILL: parallel|sequential|adaptive] # How agent delegates to others
 ---
 
 # [FILL: Agent Role Name in Title Case]

@@ -8,9 +8,10 @@ project.
 
 ### Problem Discovered
 
-**Power-steering mode is enabled and runs at session stop, but fails with path validation error**. The security check in `power_steering_checker.py` (_validate_path method) rejects Claude Code's transcript location.
+**Power-steering mode is enabled and runs at session stop, but fails with path validation error**. The security check in `power_steering_checker.py` (\_validate_path method) rejects Claude Code's transcript location.
 
 **Error Message**:
+
 ```
 Transcript path /home/azureuser/.claude/projects/.../[session-id].jsonl is outside project root /home/azureuser/src/MicrosoftHackathon2025-AgenticCoding
 ```
@@ -18,6 +19,7 @@ Transcript path /home/azureuser/.claude/projects/.../[session-id].jsonl is outsi
 ### Root Cause
 
 **Path validation is too strict**. The `_validate_path()` method only allows:
+
 1. Paths within project root (e.g., `/home/azureuser/src/MicrosoftHackathon2025-AgenticCoding`)
 2. Common temp directories (`/tmp`, `/var/tmp`, system temp)
 
@@ -36,11 +38,13 @@ But Claude Code stores transcripts in: `/home/azureuser/.claude/projects/-home-a
 ### How to Detect Power-Steering Invocation
 
 **Primary Method**: Check the log file
+
 ```bash
 cat .claude/runtime/power-steering/power_steering.log
 ```
 
 **What to Look For**:
+
 - `"Loaded 21 considerations from YAML"` = Invoked successfully
 - `"Power-steering error (fail-open)"` = Encountered error
 - `"Power-steering blocking stop"` = Blocked session end
@@ -49,6 +53,7 @@ cat .claude/runtime/power-steering/power_steering.log
 **When It Runs**: Only at Stop Hook (session end), not during session
 
 **Disable Methods**:
+
 1. Semaphore file: `.claude/runtime/power-steering/.disabled`
 2. Environment: `export AMPLIHACK_SKIP_POWER_STEERING=1`
 3. Config: Set `"enabled": false` in `.claude/tools/amplihack/.power_steering_config`
@@ -56,6 +61,7 @@ cat .claude/runtime/power-steering/power_steering.log
 ### Solution
 
 **Option 1**: Whitelist `.claude/projects/` directory in path validation
+
 ```python
 # Add to _validate_path() in power_steering_checker.py
 # Check 3: Path is in Claude Code's project transcript directory
@@ -77,6 +83,7 @@ if str(path_resolved).startswith(str(claude_projects_dir)):
 ### Testing/Verification
 
 To verify power-steering is working properly after fix:
+
 1. Check log file has no errors
 2. Verify `"Power-steering approved stop"` or `"blocking stop"` messages appear
 3. Test with incomplete work (open TODOs) - should block session end
@@ -1775,12 +1782,14 @@ User expected "power steering mode stop hook feature" from recent PR to be on by
 **Not a configuration bug - feature was completely missing from branch**. The branch `chore/skill-builder-progressive-disclosure` diverged from `main` at commit `9b0cac42` **BEFORE** the power steering feature was merged in commit `e103a6ca` (PR #1351).
 
 **Timeline**:
+
 - Merge base: `9b0cac42` "fix: Update hooks to use current project directory"
 - Branch diverged: `0df062d1` "feat: Update skill builder to emphasize progressive disclosure"
 - Power steering added: `e103a6ca` "feat: Implement Complete Power-Steering Mode" (6 commits ahead on main)
 - Current main: `c72e80c3` (includes power steering + 5 more commits)
 
 **Missing Components**: 11 files (5,243 lines of code):
+
 - `.claude/tools/amplihack/.power_steering_config` - Main config with `"enabled": true`
 - `.claude/tools/amplihack/considerations.yaml` - All 21 considerations
 - `.claude/tools/amplihack/hooks/power_steering_checker.py` - Core checker (1,875 lines)
@@ -1803,6 +1812,7 @@ git push origin chore/skill-builder-progressive-disclosure --force-with-lease
 ```
 
 **Verification after sync**:
+
 ```bash
 # Confirm config exists with enabled: true
 cat .claude/tools/amplihack/.power_steering_config | grep "enabled"
@@ -1827,18 +1837,21 @@ cat .claude/tools/amplihack/.power_steering_config | grep "enabled"
 ### Prevention
 
 **Before investigating "feature not working"**:
+
 1. Verify feature exists on current branch
 2. Check git history for when feature was added
 3. Compare branch to main: `git log HEAD...origin/main`
 4. Look for missing files that should exist
 
 **Signs of Branch Divergence Issues**:
+
 - Feature exists on main but not current branch
 - Recent PRs mention feature but files don't exist
 - Error messages reference files that aren't present
 - Configuration files are missing entirely
 
 **Debugging Approach**:
+
 ```bash
 # 1. Check if files exist
 ls -la .claude/tools/amplihack/.power_steering_config
@@ -1877,24 +1890,29 @@ git merge-base HEAD origin/main
 ### Files Involved
 
 **Core Implementation**:
+
 - `power_steering_checker.py` (1,875 lines) - Main checker with 21 consideration methods
 - `claude_power_steering.py` (301 lines) - Claude SDK integration
 - `stop.py` (modified) - Integration point in session stop hook
 
 **Configuration**:
+
 - `.power_steering_config` (JSON) - Global enable/disable, version tracking
 - `considerations.yaml` (237 lines) - All 21 considerations with descriptions, severity, enabled flags
 
 **Documentation & Templates**:
+
 - `HOW_TO_CUSTOMIZE_POWER_STEERING.md` (636 lines) - Complete user guide
 - `power_steering_prompt.txt` (74 lines) - Claude SDK prompt template
 
 **Testing**:
+
 - 5 test files with 75 passing tests covering all functionality
 
 ### Verification
 
 **After syncing branch**:
+
 - ✅ Power steering config exists with `"enabled": true`
 - ✅ All 21 considerations loaded from `considerations.yaml`
 - ✅ Integration in `stop.py` active
@@ -1910,6 +1928,7 @@ git merge-base HEAD origin/main
 ### Pattern Recognition
 
 **Workflow Used**: INVESTIGATION_WORKFLOW.md proved highly effective:
+
 - Phase 1: Scope Definition - Clarified what power steering should do
 - Phase 2: Exploration Strategy - Planned agent deployment
 - Phase 3: Parallel Deep Dives - analyzer + integration agents in parallel

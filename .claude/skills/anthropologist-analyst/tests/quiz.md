@@ -400,18 +400,19 @@ Analyze the revitalization movement through anthropological frameworks of cultur
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Corporate Culture Clash | 50 | 35 |
-| 2. Traditional Healing vs. Biomedicine | 50 | 35 |
-| 3. Online Gaming Community | 50 | 35 |
-| 4. Food Taboos | 50 | 35 |
-| 5. Revitalization Movement | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                               | Max Score | Passing Score |
+| -------------------------------------- | --------- | ------------- |
+| 1. Corporate Culture Clash             | 50        | 35            |
+| 2. Traditional Healing vs. Biomedicine | 50        | 35            |
+| 3. Online Gaming Community             | 50        | 35            |
+| 4. Food Taboos                         | 50        | 35            |
+| 5. Revitalization Movement             | 50        | 35            |
+| **Total**                              | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate anthropologist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -419,6 +420,7 @@ To demonstrate anthropologist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of anthropological theories and concepts
 2. **Analytical Depth** (0-10): Thoroughness of cultural analysis and interpretation
 3. **Insight Specificity** (0-10): Clear identification of cultural patterns and meanings
@@ -428,6 +430,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies multiple relevant anthropological theories accurately
 - Provides thick description and cultural interpretation
 - Makes specific predictions about cultural dynamics and meanings
@@ -437,6 +440,7 @@ Each scenario is scored on:
 - Identifies non-obvious symbolic meanings and structural relationships
 
 **Good (35-44 points)**:
+
 - Applies key anthropological frameworks correctly
 - Considers cultural context and meaning systems
 - Makes reasonable cultural interpretations
@@ -445,6 +449,7 @@ Each scenario is scored on:
 - Provides useful anthropological insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies anthropological theory or uses only common sense
 - Ignores cultural meaning and symbolic dimensions
 - Ethnocentric judgments rather than cultural relativism
@@ -457,12 +462,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -480,6 +487,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as cultural phenomena evolve
 - Update expected elements as anthropological theory advances
 - Refine scoring criteria based on analysis quality patterns

@@ -1,26 +1,26 @@
 ---
 # REQUIRED FIELDS - Fill these in for every skill
 
-name: [FILL: skill-name]                # Kebab-case (e.g., test-gap-analyzer, decision-logger)
-version: 1.0.0                          # Semantic versioning (MAJOR.MINOR.PATCH)
+name: [FILL: skill-name] # Kebab-case (e.g., test-gap-analyzer, decision-logger)
+version: 1.0.0 # Semantic versioning (MAJOR.MINOR.PATCH)
 description: [FILL: One-line purpose under 80 characters]
-auto_activates:                         # Patterns that trigger automatic skill loading
+auto_activates: # Patterns that trigger automatic skill loading
   - "[FILL: Pattern 1 - e.g., 'Analyze test coverage']"
   - "[FILL: Pattern 2 - e.g., 'Find missing tests']"
   - "[FILL: Pattern 3 - e.g., 'Test gap analysis']"
-priority_score: [FILL: 0-50]            # Score from evaluation (see criteria below)
+priority_score: [FILL: 0-50] # Score from evaluation (see criteria below)
 
 # OPTIONAL FIELDS - Include based on skill complexity
 
-evaluation_criteria:                    # How priority_score was calculated
-  frequency: [FILL: HIGH|MEDIUM|LOW]    # How often is this skill needed?
-  impact: [FILL: HIGH|MEDIUM|LOW]       # How valuable is this skill?
-  complexity: [FILL: HIGH|MEDIUM|LOW]   # How complex is the skill? (LOW is better)
-  reusability: [FILL: HIGH|MEDIUM|LOW]  # Can it be used in many contexts?
-  philosophy_alignment: [FILL: HIGH|MEDIUM|LOW]  # Follows amplihack principles?
-  uniqueness: [FILL: HIGH|MEDIUM|LOW]   # Does something other tools don't?
+evaluation_criteria: # How priority_score was calculated
+  frequency: [FILL: HIGH|MEDIUM|LOW] # How often is this skill needed?
+  impact: [FILL: HIGH|MEDIUM|LOW] # How valuable is this skill?
+  complexity: [FILL: HIGH|MEDIUM|LOW] # How complex is the skill? (LOW is better)
+  reusability: [FILL: HIGH|MEDIUM|LOW] # Can it be used in many contexts?
+  philosophy_alignment: [FILL: HIGH|MEDIUM|LOW] # Follows amplihack principles?
+  uniqueness: [FILL: HIGH|MEDIUM|LOW] # Does something other tools don't?
 
-invokes:                                # What this skill uses internally
+invokes: # What this skill uses internally
   - type: command
     name: [FILL: /command-name]
   - type: skill
@@ -28,24 +28,27 @@ invokes:                                # What this skill uses internally
   - type: subagent
     path: [FILL: .claude/agents/amplihack/agent-name.md]
 
-dependencies:                           # Required tools and external dependencies
-  tools:                                # Claude Code tools needed
+dependencies: # Required tools and external dependencies
+  tools: # Claude Code tools needed
     - [FILL: Read]
     - [FILL: Edit]
     - [FILL: Write]
     - [FILL: Grep]
     - [FILL: Bash]
-  external:                             # External CLI tools or services
+  external: # External CLI tools or services
     - "[FILL: External dependency 1]"
     - "[FILL: External dependency 2]"
 
-philosophy:                             # How skill embodies amplihack principles
-  - principle: [FILL: Ruthless Simplicity|Trust in Emergence|Modular Design|Zero-BS Implementation|Analysis First]
+philosophy: # How skill embodies amplihack principles
+  - principle:
+      [
+        FILL: Ruthless Simplicity|Trust in Emergence|Modular Design|Zero-BS Implementation|Analysis First,
+      ]
     application: [FILL: How this skill embodies the principle]
   - principle: [FILL: Another principle if applicable]
     application: [FILL: Application description]
 
-maturity: [FILL: experimental|production]  # Current maturity level
+maturity: [FILL: experimental|production] # Current maturity level
 ---
 
 # [FILL: Skill Title in Title Case]

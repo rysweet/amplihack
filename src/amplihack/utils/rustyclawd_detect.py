@@ -20,7 +20,9 @@ def is_rustyclawd_available() -> bool:
         return True
 
     # Check for claude-code in RustyClawd installation
-    rustyclawd_path = Path.home() / "src" / "declawed" / "claude-code-rs" / "target" / "release" / "claude-code"
+    rustyclawd_path = (
+        Path.home() / "src" / "declawed" / "claude-code-rs" / "target" / "release" / "claude-code"
+    )
     if rustyclawd_path.exists() and rustyclawd_path.is_file():
         return True
 
@@ -39,7 +41,9 @@ def get_rustyclawd_path() -> Optional[Path]:
         return Path(path)
 
     # Try claude-code in known RustyClawd location
-    rustyclawd_path = Path.home() / "src" / "declawed" / "claude-code-rs" / "target" / "release" / "claude-code"
+    rustyclawd_path = (
+        Path.home() / "src" / "declawed" / "claude-code-rs" / "target" / "release" / "claude-code"
+    )
     if rustyclawd_path.exists():
         return rustyclawd_path
 
@@ -57,10 +61,18 @@ def install_rustyclawd() -> bool:
     print("Installing/updating RustyClawd...")
     try:
         subprocess.run(
-            ["cargo", "install", "--git", "https://github.com/rysweet/RustyClawd", "--bin", "rusty", "--force"],
+            [
+                "cargo",
+                "install",
+                "--git",
+                "https://github.com/rysweet/RustyClawd",
+                "--bin",
+                "rusty",
+                "--force",
+            ],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
         print("✅ RustyClawd installed successfully")
         return True

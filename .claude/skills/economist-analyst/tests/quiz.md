@@ -73,6 +73,7 @@ Provide comprehensive economic analysis of this policy.
 
 **Event Description**:
 Regulators file antitrust lawsuit against a dominant tech platform (90% market share in online search). Allegations include:
+
 - Preferential treatment of own services in search results
 - Exclusive agreements with device manufacturers
 - Acquisition of potential competitors
@@ -143,6 +144,7 @@ Analyze the economic issues and potential remedies.
 Inflation has risen to 7% (well above the 2% target). Unemployment is 4% (near natural rate). The central bank is considering raising interest rates by 0.25% (dovish), 0.5% (moderate), or 0.75% (hawkish).
 
 Economic context:
+
 - Inflation driven by both supply shocks (energy, supply chain) and demand factors (fiscal stimulus)
 - Housing market is booming, with rapid price appreciation
 - Consumer confidence is declining due to inflation concerns
@@ -208,6 +210,7 @@ Analyze the trade-offs and provide a recommendation with economic justification.
 
 **Event Description**:
 A government proposes implementing Universal Basic Income: $1,000/month to every adult citizen, funded by:
+
 - Elimination of existing welfare programs
 - New 5% value-added tax (VAT)
 - Modest increase in top marginal income tax rates
@@ -275,6 +278,7 @@ Analyze the economic effects and trade-offs of this proposal.
 
 **Event Description**:
 Housing prices have risen 30% over 2 years. Contributing factors:
+
 - Low interest rates (stimulative monetary policy)
 - Supply constraints (zoning, construction bottlenecks)
 - Increased demand (demographic shifts, remote work enabling relocation)
@@ -344,18 +348,19 @@ Analyze whether this is a bubble and what economic effects could result.
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Carbon Tax | 50 | 35 |
-| 2. Tech Antitrust | 50 | 35 |
-| 3. Interest Rate Decision | 50 | 35 |
-| 4. Universal Basic Income | 50 | 35 |
-| 5. Housing Bubble | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                  | Max Score | Passing Score |
+| ------------------------- | --------- | ------------- |
+| 1. Carbon Tax             | 50        | 35            |
+| 2. Tech Antitrust         | 50        | 35            |
+| 3. Interest Rate Decision | 50        | 35            |
+| 4. Universal Basic Income | 50        | 35            |
+| 5. Housing Bubble         | 50        | 35            |
+| **Total**                 | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate economist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -363,6 +368,7 @@ To demonstrate economist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of economic frameworks
 2. **Analytical Depth** (0-10): Thoroughness and sophistication
 3. **Insight Specificity** (0-10): Clear, actionable insights and predictions
@@ -372,6 +378,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies multiple relevant frameworks accurately
 - Considers competing perspectives and synthesizes
 - Makes specific, quantifiable predictions where possible
@@ -381,6 +388,7 @@ Each scenario is scored on:
 - Identifies non-obvious insights
 
 **Good (35-44 points)**:
+
 - Applies key frameworks correctly
 - Considers main effects and trade-offs
 - Makes reasonable qualitative predictions
@@ -389,6 +397,7 @@ Each scenario is scored on:
 - Provides useful insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies economic frameworks
 - Ignores important effects or trade-offs
 - Vague or incorrect predictions
@@ -401,12 +410,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -424,6 +435,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as economic events unfold
 - Update expected elements as economic understanding evolves
 - Refine scoring criteria based on analysis quality patterns

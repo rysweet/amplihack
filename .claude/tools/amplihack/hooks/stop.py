@@ -129,7 +129,10 @@ class StopHook(HookProcessor):
                 # Surface error to user via stderr for visibility
                 print("\n⚠️  Power-Steering Warning", file=sys.stderr)
                 print(f"Power-steering encountered an error and was skipped: {e}", file=sys.stderr)
-                print("Check .claude/runtime/power-steering/power_steering.log for details", file=sys.stderr)
+                print(
+                    "Check .claude/runtime/power-steering/power_steering.log for details",
+                    file=sys.stderr,
+                )
 
         # Check if reflection should run
         if not self._should_run_reflection():

@@ -9,6 +9,7 @@ This test suite validates the Goal-Seeking Agent Pattern Skill across 22 test ca
 **Objective**: Verify skill activates on trigger words
 
 **Trigger Words** (from SKILL.md YAML frontmatter):
+
 - "complex workflow"
 - "autonomous agent"
 - "goal-seeking"
@@ -508,7 +509,7 @@ def test_clear_interfaces():
 
 **Test Cases**:
 
-```python
+````python
 def test_no_todos():
     skill_content = read_skill_content("goal-seeking-agent-pattern")
 
@@ -524,7 +525,7 @@ def test_no_placeholders():
     assert "[INSERT" not in skill_content
     assert "[PLACEHOLDER" not in skill_content
     assert "..." not in skill_content.split("```")[0]  # Not in non-code sections
-```
+````
 
 **Expected**: No TODOs, placeholders, or unfinished sections
 
@@ -536,7 +537,7 @@ def test_no_placeholders():
 
 **Test Cases**:
 
-```python
+````python
 def test_getting_started_section():
     skill_content = read_skill_content("goal-seeking-agent-pattern")
 
@@ -550,7 +551,7 @@ def test_runnable_examples():
     # Should have copy-pasteable examples
     assert "```bash" in skill_content
     assert "amplihack goal-agent-generator create" in skill_content
-```
+````
 
 **Expected**: Clear getting started with runnable examples
 
@@ -643,17 +644,17 @@ def test_skill_file_structure():
 
 ## Test Summary
 
-| Category | Tests | Description |
-|----------|-------|-------------|
-| 1. Auto-Detection | 4 | Trigger words, target agent, priority, allowed tools |
-| 2. Decision Framework | 3 | 5 questions, problem indicators, anti-patterns |
-| 3. Integration Code | 3 | API examples, CLI examples, valid Python |
-| 4. Example References | 3 | Real amplihack examples, scenario files, quality |
-| 5. Content Completeness | 3 | All 13 sections, templates, README |
-| 6. Philosophy Compliance | 3 | Simplicity, modularity, zero-BS |
-| 7. User Experience | 2 | Getting started, progressive complexity |
-| 8. Integration Tests | 1 | End-to-end skill loading |
-| **Total** | **22** | **Complete test coverage** |
+| Category                 | Tests  | Description                                          |
+| ------------------------ | ------ | ---------------------------------------------------- |
+| 1. Auto-Detection        | 4      | Trigger words, target agent, priority, allowed tools |
+| 2. Decision Framework    | 3      | 5 questions, problem indicators, anti-patterns       |
+| 3. Integration Code      | 3      | API examples, CLI examples, valid Python             |
+| 4. Example References    | 3      | Real amplihack examples, scenario files, quality     |
+| 5. Content Completeness  | 3      | All 13 sections, templates, README                   |
+| 6. Philosophy Compliance | 3      | Simplicity, modularity, zero-BS                      |
+| 7. User Experience       | 2      | Getting started, progressive complexity              |
+| 8. Integration Tests     | 1      | End-to-end skill loading                             |
+| **Total**                | **22** | **Complete test coverage**                           |
 
 ## Running Tests
 
@@ -685,7 +686,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
       - name: Install dependencies
         run: pip install pytest pyyaml
       - name: Test goal-seeking-agent-pattern skill

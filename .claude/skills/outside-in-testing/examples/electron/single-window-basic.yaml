@@ -8,7 +8,6 @@ scenario:
     Verifies Electron desktop application launches correctly, displays a single window
     with expected properties, and handles basic menu interactions.
   type: electron
-
   level: 1
 
   tags: [electron, desktop, single-window, basic]
@@ -225,7 +224,6 @@ scenario:
     - action: stop_application
       force: false
       description: "Ensure application is terminated"
-
 # Expected Application Structure:
 
 # ┌─────────────────────────────────────────────────────┐

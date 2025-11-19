@@ -1,18 +1,18 @@
 ---
 # REQUIRED FIELDS - Fill these in for every command
 
-name: [FILL: command-name]              # Kebab-case, matches /command-name (e.g., ultrathink, analyze, fix)
-version: 1.0.0                          # Semantic versioning (MAJOR.MINOR.PATCH)
+name: [FILL: command-name] # Kebab-case, matches /command-name (e.g., ultrathink, analyze, fix)
+version: 1.0.0 # Semantic versioning (MAJOR.MINOR.PATCH)
 description: [FILL: One-line summary under 80 characters describing what this command does]
-triggers:                               # User request patterns that suggest using this command
+triggers: # User request patterns that suggest using this command
   - "[FILL: Pattern 1 - e.g., 'Non-trivial task requiring planning']"
   - "[FILL: Pattern 2 - e.g., 'Multi-step feature implementation']"
   - "[FILL: Pattern 3 - e.g., 'When workflow orchestration needed']"
 
 # OPTIONAL FIELDS - Include if relevant to your command
 
-invokes:                                # What this command uses internally
-  - type: workflow                      # Options: workflow, command, skill, subagent
+invokes: # What this command uses internally
+  - type: workflow # Options: workflow, command, skill, subagent
     path: [FILL: .claude/workflow/WORKFLOW_NAME.md]
   - type: subagent
     path: [FILL: .claude/agents/amplihack/agent-name.md]
@@ -21,20 +21,23 @@ invokes:                                # What this command uses internally
   - type: skill
     name: [FILL: skill-name]
 
-philosophy:                             # How command embodies amplihack principles
-  - principle: [FILL: Ruthless Simplicity|Trust in Emergence|Modular Design|Zero-BS Implementation|Analysis First]
+philosophy: # How command embodies amplihack principles
+  - principle:
+      [
+        FILL: Ruthless Simplicity|Trust in Emergence|Modular Design|Zero-BS Implementation|Analysis First,
+      ]
     application: [FILL: How this command embodies the principle]
   - principle: [FILL: Another principle if applicable]
     application: [FILL: Application description]
 
-dependencies:                           # External tools or files required
+dependencies: # External tools or files required
   required:
     - "[FILL: Required dependency 1]"
     - "[FILL: Required dependency 2]"
   optional:
     - "[FILL: Optional dependency that enhances functionality]"
 
-examples:                               # Usage examples for users
+examples: # Usage examples for users
   - "[FILL: /command-name basic usage example]"
   - "[FILL: /command-name advanced usage with options]"
 ---

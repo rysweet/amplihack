@@ -339,18 +339,19 @@ Analyze the futures implications of the quantum transition and post-encryption s
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. AGI Development | 50 | 35 |
-| 2. Climate Tipping Points | 50 | 35 |
-| 3. DAO Governance | 50 | 35 |
-| 4. Longevity Technology | 50 | 35 |
-| 5. Quantum Internet | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                  | Max Score | Passing Score |
+| ------------------------- | --------- | ------------- |
+| 1. AGI Development        | 50        | 35            |
+| 2. Climate Tipping Points | 50        | 35            |
+| 3. DAO Governance         | 50        | 35            |
+| 4. Longevity Technology   | 50        | 35            |
+| 5. Quantum Internet       | 50        | 35            |
+| **Total**                 | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate futurist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -358,6 +359,7 @@ To demonstrate futurist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of foresight methodologies and futures frameworks
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of scenario development and impact analysis
 3. **Insight Specificity** (0-10): Clear, actionable insights about critical uncertainties and decision points
@@ -367,6 +369,7 @@ Each scenario is scored on:
 ### What High-Quality Futures Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies multiple foresight methodologies appropriately (scenario planning, horizon scanning, backcasting)
 - Develops rich, internally consistent scenarios with clear drivers and dynamics
 - Identifies weak signals and inflection points that others miss
@@ -376,6 +379,7 @@ Each scenario is scored on:
 - Provides actionable strategic foresight for decision-makers
 
 **Good (35-44 points)**:
+
 - Applies core foresight frameworks correctly
 - Develops plausible scenarios with clear logic
 - Identifies major trends and potential disruptions
@@ -384,6 +388,7 @@ Each scenario is scored on:
 - Provides useful strategic insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies futures methodologies or uses none
 - Scenarios lack internal consistency or plausibility
 - Misses obvious trends or weak signals
@@ -397,6 +402,7 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Apply appropriate futures methodologies
 3. Develop multiple scenarios and analyze implications
@@ -405,6 +411,7 @@ Each scenario is scored on:
 6. Identify methodological gaps for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -422,6 +429,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as emerging technologies and trends develop
 - Update methodologies as futures practice evolves
 - Refine scoring criteria based on high-quality futures analysis patterns

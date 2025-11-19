@@ -27,24 +27,28 @@ Unlike general analysis, economist analysis:
 ## Use Cases
 
 ### Market Analysis
+
 - Supply or demand shocks (e.g., oil production disruption)
 - Competitive dynamics (e.g., merger evaluation)
 - Market structure changes (e.g., new entrant, exit)
 - Price movements and quantity adjustments
 
 ### Policy Analysis
+
 - Fiscal policy (e.g., tax changes, government spending)
 - Monetary policy (e.g., interest rate changes, QE)
 - Regulatory changes (e.g., minimum wage, environmental regulations)
 - Trade policy (e.g., tariffs, trade agreements)
 
 ### Financial Analysis
+
 - Financial crises and credit crunches
 - Banking system stability
 - Systemic risk assessment
 - Monetary transmission mechanisms
 
 ### Business Decision Analysis
+
 - Pricing strategies
 - Market entry/exit decisions
 - Investment evaluations
@@ -53,12 +57,14 @@ Unlike general analysis, economist analysis:
 ## Economic Frameworks Available
 
 ### Core Frameworks
+
 - **Supply and Demand Analysis**: Price determination, equilibrium, elasticity
 - **Game Theory**: Strategic interaction, Nash equilibrium, dominant strategies
 - **General Equilibrium**: Economy-wide effects, market interdependencies
 - **Market Structure Analysis**: Perfect competition, monopoly, oligopoly, monopolistic competition
 
 ### Schools of Thought
+
 - **Classical Economics**: Self-regulating markets, invisible hand, division of labor
 - **Keynesian Economics**: Aggregate demand, market failures, stabilization policy
 - **Austrian Economics**: Entrepreneurship, subjective value, knowledge problems
@@ -67,6 +73,7 @@ Unlike general analysis, economist analysis:
 - **Neoclassical Synthesis**: Modern mainstream combining insights from multiple schools
 
 ### Methodological Approaches
+
 - Econometric analysis (statistical estimation)
 - Comparative analysis (cross-country, time-series, panel data)
 - Theoretical modeling (mathematical, simulation, forecasting)
@@ -121,6 +128,7 @@ The economist analyst follows a systematic 9-step process:
 **Event**: Major oil-producing region reduces production by 10%
 
 **Analysis Highlights**:
+
 - Supply curve shifts left → Sharp price increase (inelastic short-run demand)
 - Short-run: Limited adjustment, price spike
 - Long-run: Production from other regions, alternatives, behavioral changes
@@ -133,6 +141,7 @@ The economist analyst follows a systematic 9-step process:
 **Event**: Government increases minimum wage by 20%
 
 **Analysis Highlights**:
+
 - **Classical View**: Labor demand decreases → Unemployment
 - **Monopsony Model**: If market power exists, employment may increase
 - **Keynesian View**: Demand stimulus from higher wages may offset job losses
@@ -144,6 +153,7 @@ The economist analyst follows a systematic 9-step process:
 **Event**: Bank failure triggers runs and credit freeze
 
 **Analysis Highlights**:
+
 - Game theory: Bank run as coordination failure (self-fulfilling)
 - Information asymmetry → Credit rationing
 - Aggregate demand collapse (Keynesian)
@@ -167,6 +177,7 @@ A complete economist analysis includes:
 ## Resources
 
 ### Data Sources
+
 - **FRED** (Federal Reserve Economic Data): https://fred.stlouisfed.org/
 - **Bureau of Economic Analysis**: https://www.bea.gov/
 - **Bureau of Labor Statistics**: https://www.bls.gov/
@@ -174,11 +185,13 @@ A complete economist analysis includes:
 - **IMF**: https://www.imf.org/en/Data
 
 ### Research Resources
+
 - **NBER** (National Bureau of Economic Research): https://www.nber.org/
 - **American Economic Association**: https://www.aeaweb.org/
 - **Federal Reserve Research**: Fed in Print
 
 ### Educational Resources
+
 - **Core-Econ**: https://www.core-econ.org/ (Modern economics textbook)
 - **Marginal Revolution University**: https://mru.org/ (Free videos)
 - **Khan Academy Economics**: https://www.khanacademy.org/economics-finance-domain
@@ -188,6 +201,7 @@ A complete economist analysis includes:
 ### When should I use economist-analyst vs. other analysts?
 
 Use **economist-analyst** when the question involves:
+
 - Market dynamics, prices, quantities
 - Incentives and rational behavior
 - Efficiency and resource allocation
@@ -196,6 +210,7 @@ Use **economist-analyst** when the question involves:
 - Financial markets and crises
 
 Use **other analysts** when the focus is:
+
 - Political power and institutions → Political Scientist
 - Historical context and precedents → Historian
 - Social structures and norms → Sociologist
@@ -204,6 +219,7 @@ Use **other analysts** when the focus is:
 ### Can economist analysis be combined with other perspectives?
 
 Absolutely! Economic analysis is particularly powerful when combined with:
+
 - **Political Science**: Adds political economy, institutional analysis
 - **History**: Provides long-run context and precedents
 - **Sociology**: Adds social structure and culture
@@ -212,6 +228,7 @@ Absolutely! Economic analysis is particularly powerful when combined with:
 ### What if empirical evidence is mixed or limited?
 
 When evidence is unclear:
+
 1. Acknowledge the uncertainty explicitly
 2. Present competing theoretical perspectives
 3. Identify what additional evidence would help
@@ -221,6 +238,7 @@ When evidence is unclear:
 ### How do I handle disagreements between economic schools?
 
 Different schools offer different insights:
+
 1. Recognize the context determines which is most applicable
 2. Synthesize complementary insights where possible
 3. Acknowledge where schools genuinely disagree
@@ -230,6 +248,7 @@ Different schools offer different insights:
 ## Integration with Other Skills
 
 Economist analysis complements:
+
 - **Decision Logger**: Document economic reasoning in decision records
 - **Module Spec Generator**: Specify economic modules with clear contracts
 - **Philosophy Guardian**: Ensure economic analysis follows ruthless simplicity
@@ -239,6 +258,7 @@ Economist analysis complements:
 ## Contributing
 
 This skill improves through use. Share feedback on:
+
 - What frameworks worked well
 - What empirical sources were helpful
 - What analysis patterns emerged

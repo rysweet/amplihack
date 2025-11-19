@@ -332,7 +332,8 @@ MIT. See [LICENSE](LICENSE).
 
 ## RustyClawd Integration
 
-Amplihack now supports RustyClawd, a high-performance Rust implementation of Claude Code.
+Amplihack now supports RustyClawd, a high-performance Rust implementation of
+Claude Code.
 
 ### Installation
 
@@ -355,6 +356,7 @@ amplihack RustyClawd -- -p "your prompt"
 ### Requirements
 
 RustyClawd must be built first:
+
 ```bash
 git clone https://github.com/rysweet/RustyClawd
 cd RustyClawd
@@ -362,6 +364,7 @@ cargo build --release
 ```
 
 Or install via npx:
+
 ```bash
 npx github:rysweet/RustyClawd --help
 ```

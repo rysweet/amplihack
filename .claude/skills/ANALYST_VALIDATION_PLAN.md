@@ -11,6 +11,7 @@ Validate that all 23 domain expert analyst agents perform correctly on their dom
 ### 1. Automated Testing with Claude Agent SDK (Future)
 
 **Pattern** (from economist quiz):
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -33,6 +34,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # 4 of 5 pass
 For each analyst:
 
 **Step 1: Load Skill**
+
 ```
 Claude, use the [discipline]-analyst skill
 ```
@@ -42,6 +44,7 @@ Present one scenario from the quiz and have the analyst analyze it
 
 **Step 3: Evaluate Against Expected Elements**
 Check if analysis includes all expected elements from quiz checklist:
+
 - Domain frameworks applied correctly
 - Appropriate methods used
 - Evidence-based reasoning
@@ -50,6 +53,7 @@ Check if analysis includes all expected elements from quiz checklist:
 
 **Step 4: Score Analysis**
 Rate on 5 criteria (0-10 each):
+
 - Domain Accuracy
 - Analytical Depth
 - Insight Specificity
@@ -58,6 +62,7 @@ Rate on 5 criteria (0-10 each):
 
 **Step 5: If Score < 35/50**
 Identify gaps and enhance SKILL.md:
+
 - Add missing frameworks
 - Strengthen methodological guidance
 - Enhance analysis rubric
@@ -69,6 +74,7 @@ Identify gaps and enhance SKILL.md:
 ## Validation Schedule
 
 ### Phase 1: Core Social Science Analysts (5 agents)
+
 1. **Economist** - Test on Carbon Tax scenario
 2. **Political Scientist** - Test on Coalition Formation scenario
 3. **Historian** - Test on Revolutionary Crisis scenario
@@ -76,12 +82,14 @@ Identify gaps and enhance SKILL.md:
 5. **Anthropologist** - Test on Corporate Culture Clash scenario
 
 ### Phase 2: Humanities & Communication (4 agents)
+
 6. **Novelist** - Test on Character Arc scenario
 7. **Journalist** - Test on Investigative Reporting scenario
 8. **Poet** - Test on Protest Poem scenario
 9. **Futurist** - Test on AGI Development scenario
 
 ### Phase 3: Natural Sciences (5 agents)
+
 10. **Physicist** - Test on Space Debris scenario
 11. **Chemist** - Test on Chemical Plant Explosion scenario
 12. **Psychologist** - Test on Social Media Mental Health scenario
@@ -89,6 +97,7 @@ Identify gaps and enhance SKILL.md:
 14. **Biologist** - Test on Coral Reef scenario (biological focus)
 
 ### Phase 4: Applied Fields (6 agents)
+
 15. **Computer Scientist** - Test on Cryptocurrency Security scenario
 16. **Cybersecurity** - Test on Zero-Day Vulnerability scenario
 17. **Lawyer** - Test on Employment Discrimination scenario
@@ -97,6 +106,7 @@ Identify gaps and enhance SKILL.md:
 20. **Urban Planner** - Test on TOD Proposal scenario
 
 ### Phase 5: Philosophy & Ethics (3 agents)
+
 21. **Ethicist** - Test on Autonomous Vehicle Dilemma
 22. **Philosopher** - Test on Ship of Theseus scenario
 23. **Epidemiologist** - Test on Outbreak Investigation scenario
@@ -108,6 +118,7 @@ Identify gaps and enhance SKILL.md:
 ### Per Scenario (50 points max)
 
 **Domain Accuracy** (0-10):
+
 - 10: Perfect application of frameworks, zero errors
 - 8-9: Correct application with minor imprecision
 - 6-7: Mostly correct with some conceptual gaps
@@ -115,6 +126,7 @@ Identify gaps and enhance SKILL.md:
 - 0-3: Fundamental misunderstanding of domain
 
 **Analytical Depth** (0-10):
+
 - 10: Comprehensive, multi-layered analysis
 - 8-9: Thorough analysis hitting all major points
 - 6-7: Adequate but missing some depth
@@ -122,6 +134,7 @@ Identify gaps and enhance SKILL.md:
 - 0-3: Minimal or no real analysis
 
 **Insight Specificity** (0-10):
+
 - 10: Specific, actionable, non-obvious insights
 - 8-9: Clear, useful insights with some specificity
 - 6-7: General insights, limited specificity
@@ -129,6 +142,7 @@ Identify gaps and enhance SKILL.md:
 - 0-3: No meaningful insights
 
 **Historical Grounding** (0-10):
+
 - 10: Rich historical/empirical evidence, well-cited
 - 8-9: Good use of evidence and precedents
 - 6-7: Some evidence, could be stronger
@@ -136,6 +150,7 @@ Identify gaps and enhance SKILL.md:
 - 0-3: No grounding in evidence
 
 **Reasoning Clarity** (0-10):
+
 - 10: Crystal clear logic, easy to follow
 - 8-9: Clear reasoning with minor gaps
 - 6-7: Mostly clear but some confusion
@@ -145,10 +160,12 @@ Identify gaps and enhance SKILL.md:
 ### Overall Assessment
 
 **Per Scenario**:
+
 - **Passing**: 35-50 (70-100%)
 - **Failing**: 0-34 (<70%)
 
 **Overall (5 scenarios)**:
+
 - **Passing**: 175-250 overall AND 4+ scenarios pass
 - **Failing**: <175 overall OR <4 scenarios pass
 
@@ -159,7 +176,9 @@ Identify gaps and enhance SKILL.md:
 If an analyst scores < 35/50 on any scenario:
 
 ### Step 1: Diagnose Gaps
+
 Identify what was missing:
+
 - [ ] Missing theoretical framework?
 - [ ] Inadequate methodology?
 - [ ] Weak analysis rubric?
@@ -170,29 +189,35 @@ Identify what was missing:
 ### Step 2: Enhance SKILL.md
 
 **Add Missing Frameworks**:
+
 - Research additional theories/methods
 - Add to Theoretical Foundations section
 - Provide examples of application
 
 **Strengthen Analysis Rubric**:
+
 - Add more specific guidance
 - Clarify what to examine
 - Enhance question prompts
 
 **Improve Examples**:
+
 - Add examples showing missing capability
 - Demonstrate framework application
 - Show integration of methods
 
 **Enrich References**:
+
 - Add sources for weak areas
 - Include methodology guides
 - Provide empirical evidence
 
 ### Step 3: Retest
+
 Run the same scenario again and verify improvement
 
 ### Step 4: Document Changes
+
 Track what was improved and why in session logs
 
 ---
@@ -224,6 +249,7 @@ Track what was improved and why in session logs
 ### Success Criteria
 
 All 23 analysts should:
+
 - Apply discipline-specific frameworks correctly
 - Use appropriate methodologies
 - Provide evidence-based analysis
@@ -244,11 +270,13 @@ All 23 analysts should:
 ## Implementation Timeline
 
 ### Phase 1: Preparation (Complete)
+
 - ✅ All 23 test quizzes created
 - ✅ Scoring rubric established
 - ✅ Evaluation criteria defined
 
 ### Phase 2: Testing (Post-Merge)
+
 - [ ] Merge PR #1346
 - [ ] Skills loaded in Claude Code
 - [ ] Run systematic testing
@@ -256,12 +284,14 @@ All 23 analysts should:
 - [ ] Identify gaps
 
 ### Phase 3: Improvement (If Needed)
+
 - [ ] Enhance failing analysts
 - [ ] Retest improved agents
 - [ ] Document changes
 - [ ] Create follow-up PR if significant improvements
 
 ### Phase 4: Documentation
+
 - [ ] Create TESTING_RESULTS.md
 - [ ] Document scores for all agents
 - [ ] Capture lessons learned
@@ -283,21 +313,24 @@ All 23 analysts should:
 **Analysis Output**: [Link or summary]
 
 **Scores**:
+
 - Domain Accuracy: X/10
 - Analytical Depth: X/10
 - Insight Specificity: X/10
 - Historical Grounding: X/10
 - Reasoning Clarity: X/10
-**Total**: X/50 (X%)
+  **Total**: X/50 (X%)
 
 **Result**: PASS/FAIL
 
 **Expected Elements Coverage**:
+
 - [✓] Element 1
 - [✓] Element 2
 - [✗] Element 3 (missing)
 
 **Improvements Made** (if failing):
+
 - Added [framework] to Theoretical Foundations
 - Enhanced Analysis Rubric with [specific guidance]
 - Added example demonstrating [capability]
@@ -310,12 +343,14 @@ All 23 analysts should:
 ## Success Metrics
 
 ### Individual Analyst
+
 - ✅ Scores 35+/50 on quiz scenarios
 - ✅ Applies frameworks correctly
 - ✅ Uses domain-appropriate methods
 - ✅ Provides evidence-based insights
 
 ### Overall System
+
 - ✅ All 23 analysts validated
 - ✅ Consistent quality across domains
 - ✅ Test coverage: 115 scenarios (23 agents × 5 scenarios)

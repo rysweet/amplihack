@@ -275,8 +275,8 @@ Analyze the chemistry of polymer degradation and long-term environmental fate.
 ### Expected Analysis Elements
 
 - [ ] **Polymer Structure and Bonding**:
-  - Polyethylene: -(CH₂-CH₂)_n- (C-C and C-H bonds)
-  - Polypropylene: -(CH₂-CH(CH₃))_n- (similar to PE)
+  - Polyethylene: -(CH₂-CH₂)\_n- (C-C and C-H bonds)
+  - Polypropylene: -(CH₂-CH(CH₃))\_n- (similar to PE)
   - PET: aromatic polyester (ester linkages -COO-)
   - High molecular weight: 10,000-100,000+ repeat units
 
@@ -335,18 +335,19 @@ Analyze the chemistry of polymer degradation and long-term environmental fate.
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Chemical Plant Explosion | 50 | 35 |
-| 2. PFAS Contamination | 50 | 35 |
-| 3. Battery Thermal Runaway | 50 | 35 |
-| 4. Pharmaceutical Enantiomers | 50 | 35 |
-| 5. Microplastic Degradation | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                      | Max Score | Passing Score |
+| ----------------------------- | --------- | ------------- |
+| 1. Chemical Plant Explosion   | 50        | 35            |
+| 2. PFAS Contamination         | 50        | 35            |
+| 3. Battery Thermal Runaway    | 50        | 35            |
+| 4. Pharmaceutical Enantiomers | 50        | 35            |
+| 5. Microplastic Degradation   | 50        | 35            |
+| **Total**                     | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate chemist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -354,6 +355,7 @@ To demonstrate chemist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of chemical principles, reactions, bonding
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of chemical analysis
 3. **Insight Specificity** (0-10): Clear, detailed chemical explanations and predictions
@@ -363,6 +365,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies fundamental chemistry principles correctly (bonding, thermodynamics, kinetics)
 - Provides molecular-level explanations for macroscopic phenomena
 - Uses chemical equations, structures, and mechanisms appropriately
@@ -372,6 +375,7 @@ Each scenario is scored on:
 - Recognizes when chemical principles constrain possibilities
 
 **Good (35-44 points)**:
+
 - Applies key chemical principles correctly
 - Makes reasonable molecular-level explanations
 - Uses appropriate chemical terminology
@@ -380,6 +384,7 @@ Each scenario is scored on:
 - Provides useful chemical insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies chemical principles
 - Lacks molecular-level understanding
 - Incorrect or missing chemical equations
@@ -392,12 +397,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -415,6 +422,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as chemistry-related events unfold
 - Update expected elements as chemical understanding evolves
 - Refine scoring criteria based on analysis quality patterns

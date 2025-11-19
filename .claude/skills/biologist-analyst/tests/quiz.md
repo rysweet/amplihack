@@ -432,18 +432,19 @@ Analyze the CRISPR gene drive proposal from evolutionary biology, ecology, and b
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Coral Reef Bleaching | 50 | 35 |
-| 2. Invasive Species | 50 | 35 |
-| 3. Antibiotic Resistance | 50 | 35 |
-| 4. Pollinator Decline | 50 | 35 |
-| 5. CRISPR Gene Drive | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                 | Max Score | Passing Score |
+| ------------------------ | --------- | ------------- |
+| 1. Coral Reef Bleaching  | 50        | 35            |
+| 2. Invasive Species      | 50        | 35            |
+| 3. Antibiotic Resistance | 50        | 35            |
+| 4. Pollinator Decline    | 50        | 35            |
+| 5. CRISPR Gene Drive     | 50        | 35            |
+| **Total**                | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate biologist analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -451,6 +452,7 @@ To demonstrate biologist analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of biological principles and theories
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of biological analysis
 3. **Insight Specificity** (0-10): Clear, actionable biological recommendations
@@ -460,6 +462,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies biological principles accurately (evolution, ecology, genetics, physiology)
 - Considers multiple levels of organization (molecular, organism, population, ecosystem)
 - Makes specific, evidence-based recommendations with mechanistic understanding
@@ -469,6 +472,7 @@ Each scenario is scored on:
 - Identifies non-obvious interactions and emergent properties
 
 **Good (35-44 points)**:
+
 - Applies key biological concepts correctly
 - Considers main organismal and ecological factors
 - Makes reasonable biological recommendations
@@ -477,6 +481,7 @@ Each scenario is scored on:
 - Provides useful biological insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies biological concepts or principles
 - Ignores critical ecological interactions or evolutionary processes
 - Vague or scientifically incorrect recommendations
@@ -489,12 +494,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -512,6 +519,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as biological issues evolve
 - Update expected elements as research advances
 - Refine scoring criteria based on analyst performance patterns

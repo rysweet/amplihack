@@ -75,7 +75,10 @@ def test_user_customization_workflow():
             "type": "assistant",
             "message": {
                 "content": [
-                    {"type": "text", "text": "Ran security scans, all passed. Code reviewed by team."}
+                    {
+                        "type": "text",
+                        "text": "Ran security scans, all passed. Code reviewed by team.",
+                    }
                 ]
             },
         },
@@ -124,6 +127,7 @@ def test_user_customization_workflow():
 
     # Cleanup
     import shutil
+
     shutil.rmtree(temp_dir)
 
     print("\n✅ User customization workflow test PASSED!")
@@ -140,5 +144,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Test ERROR: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

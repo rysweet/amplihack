@@ -15,6 +15,7 @@ This skill combines scientific rigor (climate science, ecology, conservation bio
 Traces the environmental impact of products, processes, or systems from raw material extraction through manufacturing, use, and end-of-life disposal. This "cradle-to-grave" analysis reveals hidden ecological costs.
 
 **Key Dimensions:**
+
 - Carbon footprint and greenhouse gas emissions
 - Water consumption and pollution
 - Resource depletion (renewable and non-renewable)
@@ -27,6 +28,7 @@ Traces the environmental impact of products, processes, or systems from raw mate
 Applies ecological principles to understand complex system dynamics. Views organizations, technologies, and societies as ecosystems with energy flows, nutrient cycles, and interdependencies.
 
 **Core Concepts:**
+
 - Energy efficiency and entropy
 - Circular flows versus linear extraction
 - Carrying capacity and limits
@@ -39,6 +41,7 @@ Applies ecological principles to understand complex system dynamics. Views organ
 Assesses contribution to climate change and vulnerability to climate impacts. Provides quantitative and qualitative analysis of carbon emissions, climate resilience, and adaptation strategies.
 
 **Analysis Areas:**
+
 - Direct and indirect greenhouse gas emissions (Scope 1, 2, 3)
 - Climate risk and vulnerability assessment
 - Adaptation and mitigation opportunities
@@ -50,6 +53,7 @@ Assesses contribution to climate change and vulnerability to climate impacts. Pr
 Examines how environmental benefits and burdens are distributed across communities. Identifies patterns where marginalized groups bear disproportionate environmental harm while receiving fewer benefits.
 
 **Focus Points:**
+
 - Toxic exposure and pollution burden
 - Access to clean air, water, green space
 - Climate vulnerability and displacement
@@ -61,6 +65,7 @@ Examines how environmental benefits and burdens are distributed across communiti
 Evaluates impacts on species diversity, habitat integrity, and the services ecosystems provide (clean air and water, pollination, climate regulation, food production, flood control).
 
 **Assessment Elements:**
+
 - Habitat destruction and fragmentation
 - Species endangerment and extinction risk
 - Ecosystem function disruption
@@ -157,6 +162,7 @@ Evaluate probability and severity of environmental harm from activities, substan
 ## Best Practices
 
 **Do:**
+
 - Use science-based data and methodologies
 - Consider full system boundaries (scope 3 emissions)
 - Address environmental justice dimensions
@@ -166,6 +172,7 @@ Evaluate probability and severity of environmental harm from activities, substan
 - Quantify impacts where possible
 
 **Don't:**
+
 - Focus only on visible/convenient impacts
 - Ignore indirect and upstream effects
 - Treat environment as separate from social/economic

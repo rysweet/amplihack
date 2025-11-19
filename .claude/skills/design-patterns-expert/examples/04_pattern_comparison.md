@@ -25,11 +25,13 @@ You're trying to: **Create different types of database connections based on data
 **Best when**: Each database type requires a different connection creation process, and you want subclasses to specify which connection to create.
 
 **Pros**:
+
 - Clean separation of connection creation logic per database type
 - Easy to add new database types (Open/Closed Principle)
 - Each creator class can have database-specific initialization logic
 
 **Cons**:
+
 - Requires creating a class for each database type
 - More verbose than simple approaches
 - Inheritance-based (less flexible than composition)
@@ -37,6 +39,7 @@ You're trying to: **Create different types of database connections based on data
 **Complexity**: Medium
 
 **Code overhead**:
+
 - 1 Creator base class (abstract)
 - 1 ConcreteCreator per database type (3 classes)
 - 1 Product interface
@@ -44,6 +47,7 @@ You're trying to: **Create different types of database connections based on data
 - **Total: ~8 classes**
 
 **Example**:
+
 ```python
 class ConnectionCreator(ABC):
     @abstractmethod
@@ -70,11 +74,13 @@ class PostgreSQLCreator(ConnectionCreator):
 **Best when**: You need to create **families** of related objects (e.g., Connection + QueryBuilder + Transaction for each database).
 
 **Pros**:
+
 - Ensures related objects are used together
 - Good for products with multiple related components
 - Complete abstraction of database-specific implementation
 
 **Cons**:
+
 - **OVERKILL if you only need connections** (not families)
 - High complexity (more classes than Factory Method)
 - Harder to add new product types (need to update all factories)
@@ -82,6 +88,7 @@ class PostgreSQLCreator(ConnectionCreator):
 **Complexity**: High
 
 **Code overhead**:
+
 - 1 AbstractFactory interface
 - 1 ConcreteFactory per database type (3 classes)
 - 1 interface per product type (Connection, QueryBuilder, Transaction = 3 interfaces)
@@ -89,6 +96,7 @@ class PostgreSQLCreator(ConnectionCreator):
 - **Total: ~16 classes**
 
 **Example**:
+
 ```python
 class DatabaseFactory(ABC):
     @abstractmethod
@@ -121,12 +129,14 @@ class MySQLFactory(DatabaseFactory):
 **Best when**: You just need to create connections based on type, without needing subclassing flexibility.
 
 **Pros**:
+
 - **Simplest solution** (YAGNI principle)
 - Easy to understand and maintain
 - No inheritance hierarchy
 - One place to add new database types
 
 **Cons**:
+
 - Less extensible (adding new types requires modifying function)
 - No subclass customization points
 - Violates Open/Closed if you add types frequently
@@ -134,11 +144,13 @@ class MySQLFactory(DatabaseFactory):
 **Complexity**: Low
 
 **Code overhead**:
+
 - 1 factory function
 - 1 ConcreteProduct per database type (3 classes)
 - **Total: ~4 classes**
 
 **Example**:
+
 ```python
 def create_connection(db_type: str, config: dict) -> Connection:
     """Simple factory function for database connections."""
@@ -207,6 +219,7 @@ conn = ConnectionFactory.create("mysql", config)
 ```
 
 **Benefits**:
+
 - Simple (1 class + registration)
 - Extensible (register new types without modifying code)
 - No inheritance needed
@@ -221,17 +234,20 @@ Based on your description **"create different types of database connections"**:
 ### Use Simple Factory Function or Registry Pattern
 
 **Reasoning**:
+
 1. You only mentioned creating connections (not families of related objects)
 2. You have 3 concrete types (manageable without pattern complexity)
 3. Connection creation is likely straightforward (no complex logic per type)
 4. Application code benefits from simplicity over extensibility
 
 ### DON'T use Abstract Factory
+
 - **Why**: You don't need families of related objects
 - **Complexity**: 16 classes vs 4 classes
 - **YAGNI**: You aren't gonna need the extra abstraction
 
 ### Consider Factory Method IF:
+
 - You're building a database abstraction library (not application)
 - Each database needs significantly different connection logic
 - You expect users to add custom database types via subclassing
@@ -239,6 +255,7 @@ Based on your description **"create different types of database connections"**:
 ### Upgrade Path
 
 **Start simple**:
+
 1. Begin with factory function or registry pattern
 2. Measure complexity and extensibility needs
 3. Refactor to Factory Method IF you encounter pain points
@@ -257,6 +274,7 @@ Based on your description **"create different types of database connections"**:
    - Neither? → Keep it simple!
 
 **Would you like**:
+
 - Code example of Registry Pattern for your use case?
 - Implementation guide for Factory Method?
 - Deep dive into when Abstract Factory is actually needed?

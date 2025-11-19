@@ -115,8 +115,9 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: analyze this code, check philosophy compliance, review for simplicity, assess architecture
 
 **Invokes**:
-  - subagent: `.claude/agents/amplihack/specialized/analyzer.md`
-  - subagent: `.claude/agents/amplihack/specialized/philosophy-guardian.md`
+
+- subagent: `.claude/agents/amplihack/specialized/analyzer.md`
+- subagent: `.claude/agents/amplihack/specialized/philosophy-guardian.md`
 
 **Location**: `.claude/commands/amplihack/analyze.md`
 
@@ -127,7 +128,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: complex multi-step implementation, iterative refinement needed, path not immediately clear, self-correction required
 
 **Invokes**:
-  - command: `N/A`
+
+- command: `N/A`
 
 **Location**: `.claude/commands/amplihack/auto.md`
 
@@ -138,7 +140,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: need fallback strategy, external API reliability, graceful degradation needed, multiple viable approaches
 
 **Invokes**:
-  - workflow: `.claude/workflow/CASCADE_WORKFLOW.md`
+
+- workflow: `.claude/workflow/CASCADE_WORKFLOW.md`
 
 **Location**: `.claude/commands/amplihack/cascade.md`
 
@@ -149,7 +152,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: change my preferences, customize workflow, set verbosity to
 
 **Invokes**:
-  - file: `.claude/context/USER_PREFERENCES.md`
+
+- file: `.claude/context/USER_PREFERENCES.md`
 
 **Location**: `.claude/commands/amplihack/customize.md`
 
@@ -160,8 +164,9 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: need multiple perspectives, complex decision needed, debate trade-offs, architectural choice
 
 **Invokes**:
-  - workflow: `.claude/workflow/DEBATE_WORKFLOW.md`
-  - command: `N/A`
+
+- workflow: `.claude/workflow/DEBATE_WORKFLOW.md`
+- command: `N/A`
 
 **Location**: `.claude/commands/amplihack/debate.md`
 
@@ -172,7 +177,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: run default workflow, execute standard workflow, follow development workflow
 
 **Invokes**:
-  - workflow: `.claude/workflow/DEFAULT_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DEFAULT_WORKFLOW.md`
 
 **Location**: `.claude/commands/amplihack/default-workflow.md`
 
@@ -183,9 +189,10 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: need multiple expert reviews, code review approval gate, design review board, release decision
 
 **Invokes**:
-  - subagent: `.claude/agents/amplihack/security.md`
-  - subagent: `.claude/agents/amplihack/optimizer.md`
-  - subagent: `.claude/agents/amplihack/specialized/philosophy-guardian.md`
+
+- subagent: `.claude/agents/amplihack/security.md`
+- subagent: `.claude/agents/amplihack/optimizer.md`
+- subagent: `.claude/agents/amplihack/specialized/philosophy-guardian.md`
 
 **Location**: `.claude/commands/amplihack/expert-panel.md`
 
@@ -196,10 +203,11 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: fix this error, CI failing, tests broken, import error, something's broken
 
 **Invokes**:
-  - subagent: `.claude/agents/amplihack/specialized/fix-agent.md`
-  - subagent: `.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
-  - subagent: `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
-  - command: `N/A`
+
+- subagent: `.claude/agents/amplihack/specialized/fix-agent.md`
+- subagent: `.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
+- subagent: `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
+- command: `N/A`
 
 **Location**: `.claude/commands/amplihack/fix.md`
 
@@ -210,10 +218,11 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: improve the system, enhance agents, update patterns, self-improvement
 
 **Invokes**:
-  - subagent: `.claude/agents/amplihack/specialized/improvement-workflow.md`
-  - subagent: `.claude/agents/amplihack/specialized/reviewer.md`
-  - subagent: `.claude/agents/amplihack/security.md`
-  - command: `N/A`
+
+- subagent: `.claude/agents/amplihack/specialized/improvement-workflow.md`
+- subagent: `.claude/agents/amplihack/specialized/reviewer.md`
+- subagent: `.claude/agents/amplihack/security.md`
+- command: `N/A`
 
 **Location**: `.claude/commands/amplihack/improve.md`
 
@@ -240,7 +249,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: run investigation workflow, execute investigation, research workflow
 
 **Invokes**:
-  - workflow: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+
+- workflow: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
 
 **Location**: `.claude/commands/amplihack/investigation-workflow.md`
 
@@ -251,7 +261,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: learn about topic deeply, build knowledge base, research comprehensive understanding, generate question hierarchy
 
 **Invokes**:
-  - command: `N/A`
+
+- command: `N/A`
 
 **Location**: `.claude/commands/amplihack/knowledge-builder.md`
 
@@ -278,7 +289,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: critical security code, mission-critical feature, high-stakes implementation, multiple implementation attempts
 
 **Invokes**:
-  - workflow: `.claude/workflow/N_VERSION_WORKFLOW.md`
+
+- workflow: `.claude/workflow/N_VERSION_WORKFLOW.md`
 
 **Location**: `.claude/commands/amplihack/n-version.md`
 
@@ -289,7 +301,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: run philosophy workflow, check philosophy compliance, validate philosophy
 
 **Invokes**:
-  - workflow: `.claude/workflow/PHILOSOPHY_COMPLIANCE_WORKFLOW.md`
+
+- workflow: `.claude/workflow/PHILOSOPHY_COMPLIANCE_WORKFLOW.md`
 
 **Location**: `.claude/commands/amplihack/philosophy-workflow.md`
 
@@ -308,8 +321,9 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: create a new skill, build a Claude Code skill, generate skill for
 
 **Invokes**:
-  - subagent: `.claude/agents/amplihack/specialized/prompt-writer.md`
-  - subagent: `.claude/agents/amplihack/core/architect.md`
+
+- subagent: `.claude/agents/amplihack/specialized/prompt-writer.md`
+- subagent: `.claude/agents/amplihack/core/architect.md`
 
 **Location**: `.claude/commands/amplihack/skill-builder.md`
 
@@ -320,7 +334,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: challenge this claim, ask probing questions, socratic questioning, explore assumptions
 
 **Invokes**:
-  - command: `N/A`
+
+- command: `N/A`
 
 **Location**: `.claude/commands/amplihack/socratic.md`
 
@@ -339,8 +354,9 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Complex multi-step task, Need deep analysis, Orchestrate workflow, Break down and solve
 
 **Invokes**:
-  - workflow: `.claude/workflow/DEFAULT_WORKFLOW.md`
-  - workflow: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DEFAULT_WORKFLOW.md`
+- workflow: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
 
 **Location**: `.claude/commands/amplihack/ultrathink.md`
 
@@ -375,7 +391,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Need help with DDD, How does document-driven development work, DDD workflow overview
 
 **Invokes**:
-  - workflow: `.claude/workflow/DDD_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DDD_WORKFLOW.md`
 
 **Location**: `.claude/commands/ddd/0-help.md`
 
@@ -386,7 +403,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Start DDD workflow, Plan new feature with DDD, Create DDD plan
 
 **Invokes**:
-  - workflow: `.claude/workflow/DDD_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DDD_WORKFLOW.md`
 
 **Location**: `.claude/commands/ddd/1-plan.md`
 
@@ -397,7 +415,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Update DDD documentation, Phase 2 documentation retcon, Apply retcon writing to docs
 
 **Invokes**:
-  - workflow: `.claude/workflow/DDD_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DDD_WORKFLOW.md`
 
 **Location**: `.claude/commands/ddd/2-docs.md`
 
@@ -408,7 +427,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Plan code implementation for DDD, Create code plan from DDD specs, Phase 3 implementation planning
 
 **Invokes**:
-  - workflow: `.claude/workflow/DDD_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DDD_WORKFLOW.md`
 
 **Location**: `.claude/commands/ddd/3-code-plan.md`
 
@@ -419,7 +439,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Implement DDD code, Phase 4 code implementation, Test as user in DDD
 
 **Invokes**:
-  - workflow: `.claude/workflow/DDD_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DDD_WORKFLOW.md`
 
 **Location**: `.claude/commands/ddd/4-code.md`
 
@@ -430,7 +451,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Finish DDD workflow, Phase 5 cleanup and push, Finalize DDD feature
 
 **Invokes**:
-  - workflow: `.claude/workflow/DDD_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DDD_WORKFLOW.md`
 
 **Location**: `.claude/commands/ddd/5-finish.md`
 
@@ -441,7 +463,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Load DDD context, Prime DDD for session, Initialize DDD understanding
 
 **Invokes**:
-  - workflow: `.claude/workflow/DDD_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DDD_WORKFLOW.md`
 
 **Location**: `.claude/commands/ddd/prime.md`
 
@@ -452,7 +475,8 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
 **Triggers**: Check DDD status, Where am I in DDD workflow, Show DDD progress
 
 **Invokes**:
-  - workflow: `.claude/workflow/DDD_WORKFLOW.md`
+
+- workflow: `.claude/workflow/DDD_WORKFLOW.md`
 
 **Location**: `.claude/commands/ddd/status.md`
 
@@ -512,7 +536,7 @@ Evaluates: Molecular structure, reaction mechanisms, yield, selectivity, safety,
 
 **Description**: Identifies anti-patterns specific to amplihack philosophy.
 Use when reviewing code for quality issues or refactoring.
-Detects: over-abstraction, complex inheritance, large functions (>50 lines), tight coupling, missing __all__ exports.
+Detects: over-abstraction, complex inheritance, large functions (>50 lines), tight coupling, missing **all** exports.
 Provides specific fixes and explanations for each smell.
 
 **Auto-activate**: No
@@ -556,7 +580,6 @@ Evaluates: Confidentiality, integrity, availability, threat actors, attack patte
 **Description**: Comprehensive knowledge of all 23 Gang of Four design patterns with
 progressive disclosure (Quick/Practical/Deep), pattern recognition for
 problem-solving, and philosophy-aligned guidance to prevent over-engineering.
-
 
 **Auto-activate**: No
 
@@ -665,7 +688,6 @@ This skill helps evaluate whether autonomous agents are appropriate for a given
 problem, how to structure their objectives, integrate with goal_agent_generator,
 and reference real amplihack examples like AKS SRE automation, CI diagnostics,
 pre-commit workflows, and fix-agent pattern matching.
-
 
 **Auto-activate**: No
 
@@ -778,7 +800,6 @@ Evaluates: Character development, narrative arc, dramatic tension, thematic dept
 Use when you need behavior-driven tests that verify external interfaces without internal implementation knowledge.
 Creates YAML test scenarios that AI agents execute, observe, and validate against expected outcomes.
 Supports progressive complexity from simple smoke tests to advanced multi-step workflows.
-
 
 **Auto-activate**: No
 

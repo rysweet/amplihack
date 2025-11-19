@@ -44,6 +44,7 @@ Use this command instead of `/analyze` when:
 When this command is invoked, you MUST:
 
 1. **Inform user** which workflow is being used:
+
    ```
    Executing PHILOSOPHY_COMPLIANCE_WORKFLOW.md (5-phase validation workflow)
    Target: [path or "current changes"]
@@ -161,14 +162,14 @@ This workflow integrates with development workflow at specific steps:
 
 ## Comparison to /analyze
 
-| Feature                   | /analyze                   | /amplihack:philosophy-workflow |
-| ------------------------- | -------------------------- | ------------------------------ |
-| **Depth**                 | Quick compliance check     | Deep 5-phase validation        |
-| **Report Detail**         | Summary with key findings  | Comprehensive report + fixes   |
-| **Remediation**           | General guidance           | Specific fixes with examples   |
-| **Agent Orchestration**   | Single agent (reviewer)    | Multi-agent parallel (Phase 3) |
-| **Philosophy Score**      | Optional                   | Mandatory (A/B/C/D/F)          |
-| **Use When**              | Quick pre-commit check     | Deep pre-merge validation      |
+| Feature                 | /analyze                  | /amplihack:philosophy-workflow |
+| ----------------------- | ------------------------- | ------------------------------ |
+| **Depth**               | Quick compliance check    | Deep 5-phase validation        |
+| **Report Detail**       | Summary with key findings | Comprehensive report + fixes   |
+| **Remediation**         | General guidance          | Specific fixes with examples   |
+| **Agent Orchestration** | Single agent (reviewer)   | Multi-agent parallel (Phase 3) |
+| **Philosophy Score**    | Optional                  | Mandatory (A/B/C/D/F)          |
+| **Use When**            | Quick pre-commit check    | Deep pre-merge validation      |
 
 ## Critical: User Requirements Override
 

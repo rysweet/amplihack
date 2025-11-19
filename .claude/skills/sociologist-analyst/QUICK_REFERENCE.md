@@ -7,6 +7,7 @@ Analyze through sociological lenses: social structures and institutions, power a
 ## When to Use
 
 **Perfect For:**
+
 - Technology's social impacts (surveillance, bias, digital divide)
 - Organizational culture and power dynamics
 - Community building and social capital
@@ -17,6 +18,7 @@ Analyze through sociological lenses: social structures and institutions, power a
 - Understanding cultural norms and social change
 
 **Skip If:**
+
 - Focused purely on individual psychology
 - Technical problem with no social dimensions
 - Looking for chemical or physical analysis
@@ -26,6 +28,7 @@ Analyze through sociological lenses: social structures and institutions, power a
 ### Sociological Imagination (C. Wright Mills)
 
 Connect personal troubles to public issues:
+
 - **Personal trouble**: Individual experience and local milieu
 - **Public issue**: Structural phenomenon affecting many people
 - **Example**: One person unemployed = personal trouble. Mass unemployment = public issue requiring structural analysis.
@@ -35,6 +38,7 @@ Apply: When encountering problems, ask "Is this individual or structural?"
 ### Power and Inequality
 
 Three dimensions of power (Lukes):
+
 1. **Decision-making power**: Who makes choices?
 2. **Agenda-setting power**: Who controls what's discussed?
 3. **Ideological power**: Who shapes what's thinkable?
@@ -44,6 +48,7 @@ Three dimensions of power (Lukes):
 ### Social Capital (Putnam, Bourdieu)
 
 Resources accessed through networks:
+
 - **Bridging capital**: Connections across different groups (weak ties, diverse networks)
 - **Bonding capital**: Strong ties within groups (close friends, family)
 - **Linking capital**: Connections to institutional power
@@ -110,6 +115,7 @@ Both types are valuable. Too much bonding creates insularity; too much bridging 
 ### Social Construction
 
 Meanings and categories created through social processes, not discovered as objective facts:
+
 - **Race**: Socially constructed categories, not biological reality
 - **Gender**: Social roles and expectations, distinct from biological sex
 - **Mental illness**: Diagnostic categories shaped by culture and time
@@ -131,6 +137,7 @@ Meanings and categories created through social processes, not discovered as obje
 ### McDonaldization (Ritzer)
 
 Society increasingly organized around:
+
 1. **Efficiency**: Optimal means to ends
 2. **Calculability**: Quantification and measurement
 3. **Predictability**: Standardization
@@ -163,6 +170,7 @@ Society increasingly organized around:
 ### Pattern: Unintended Consequences
 
 Social interventions often produce unexpected outcomes:
+
 - **Perverse incentives**: Measuring teachers by test scores incentivizes teaching to test
 - **Goal displacement**: Means become ends (bureaucracy focused on rules, not mission)
 - **Social dilemmas**: Individual rationality produces collective irrationality (tragedy of commons)
@@ -170,6 +178,7 @@ Social interventions often produce unexpected outcomes:
 ### Pattern: Reproduction of Inequality
 
 Inequality perpetuates itself through institutions that appear neutral:
+
 - **Education**: Merit-based but advantages those with cultural capital
 - **Criminal justice**: Colorblind laws with racially disparate impacts
 - **Technology**: "Neutral" algorithms encode historical biases
@@ -177,6 +186,7 @@ Inequality perpetuates itself through institutions that appear neutral:
 ### Pattern: Digital Divide
 
 Technology access and literacy create new inequalities:
+
 - **First-level divide**: Access to devices and internet
 - **Second-level divide**: Skills and literacies to use effectively
 - **Third-level divide**: Capacity to benefit from technology use
@@ -184,6 +194,7 @@ Technology access and literacy create new inequalities:
 ### Pattern: Moral Panic
 
 Exaggerated social fears about perceived threats (often targeting marginalized groups):
+
 - Media amplification of rare events
 - Scapegoating of "folk devils"
 - Disproportionate social control responses
@@ -192,6 +203,7 @@ Exaggerated social fears about perceived threats (often targeting marginalized g
 ## Red Flags
 
 **Sociological Warning Signs:**
+
 - Blaming individuals for structural problems (poverty as personal failing)
 - Ignoring power and inequality in analysis
 - Treating dominant group as "normal" or default
@@ -204,6 +216,7 @@ Exaggerated social fears about perceived threats (often targeting marginalized g
 ## Integration Tips
 
 Combine with other skills:
+
 - **Anthropologist**: Cultural deep dive complements social structure analysis
 - **Psychologist**: Individual behavior within social context
 - **Economist**: Economic structures with social embeddedness
@@ -213,6 +226,7 @@ Combine with other skills:
 ## Success Metrics
 
 You've done this well when:
+
 - Personal troubles connected to public issues (sociological imagination)
 - Power dynamics and beneficiaries are identified
 - Intersectional analysis applied (multiple identities)

@@ -63,31 +63,37 @@ When starting a session, import these files for context:
 
 Amplihack provides four extensibility mechanisms with clear invocation patterns:
 
-| Mechanism | Purpose | Invoked By | Invocation Method |
-|-----------|---------|------------|-------------------|
-| **Workflow** | Multi-step process blueprint | Commands, Skills, Agents | `Read` workflow file, follow steps |
-| **Command** | User-explicit entry point | User, Commands, Skills, Agents | User types `/cmd` OR `SlashCommand` tool |
-| **Skill** | Auto-discovered capability | Claude auto-discovers | Context triggers OR explicit `Skill` tool |
-| **Subagent** | Specialized delegation | Commands, Skills, Agents | `Task` tool with `subagent_type` |
+| Mechanism    | Purpose                      | Invoked By                     | Invocation Method                         |
+| ------------ | ---------------------------- | ------------------------------ | ----------------------------------------- |
+| **Workflow** | Multi-step process blueprint | Commands, Skills, Agents       | `Read` workflow file, follow steps        |
+| **Command**  | User-explicit entry point    | User, Commands, Skills, Agents | User types `/cmd` OR `SlashCommand` tool  |
+| **Skill**    | Auto-discovered capability   | Claude auto-discovers          | Context triggers OR explicit `Skill` tool |
+| **Subagent** | Specialized delegation       | Commands, Skills, Agents       | `Task` tool with `subagent_type`          |
 
 **Key Invocation Patterns:**
 
-- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked programmatically by commands, skills, and agents. Only built-in commands (`/help`, `/clear`) cannot be invoked programmatically.
+- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked
+  programmatically by commands, skills, and agents. Only built-in commands
+  (`/help`, `/clear`) cannot be invoked programmatically.
+
   ```python
   SlashCommand(command="/ultrathink Analyze architecture")
   ```
 
 - **Skill Tool**: Invoke skills explicitly when auto-discovery isn't sufficient
+
   ```python
   Skill(skill="mermaid-diagram-generator")
   ```
 
 - **Task Tool**: Invoke subagents for specialized perspectives
+
   ```python
   Task(subagent_type="architect", prompt="Design system...")
   ```
 
-- **Workflow Reference**: Commands/skills/agents read workflow files to follow process
+- **Workflow Reference**: Commands/skills/agents read workflow files to follow
+  process
   ```python
   Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
   ```
@@ -99,7 +105,8 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 - Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
 - Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
 
-See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata in frontmatter.
+See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata
+in frontmatter.
 
 ### CRITICAL: User Requirement Priority
 
@@ -149,7 +156,9 @@ dependencies require sequential order.
 
 #### Architect Variants
 
-**Multiple specialized architects** exist for different tasks (see agent frontmatter descriptions for when to use each):
+**Multiple specialized architects** exist for different tasks (see agent
+frontmatter descriptions for when to use each):
+
 - `architect` (core) - General design, problem decomposition, module specs
 - `amplifier-cli-architect` - CLI applications, hybrid code/AI systems
 - `philosophy-guardian` - Philosophy compliance reviews, simplicity validation
@@ -506,7 +515,9 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
 
-**For command selection guidance**, see `docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash commands).
+**For command selection guidance**, see
+`docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash
+commands).
 
 ### Fault Tolerance Patterns
 

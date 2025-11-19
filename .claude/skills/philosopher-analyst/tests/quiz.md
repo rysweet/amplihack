@@ -439,18 +439,19 @@ Analyze the free will debate and its implications for moral responsibility and c
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Personal Identity | 50 | 35 |
-| 2. Trolley Problem & DDE | 50 | 35 |
-| 3. Hard Problem of Consciousness | 50 | 35 |
-| 4. Gettier Problem | 50 | 35 |
-| 5. Free Will & Responsibility | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                         | Max Score | Passing Score |
+| -------------------------------- | --------- | ------------- |
+| 1. Personal Identity             | 50        | 35            |
+| 2. Trolley Problem & DDE         | 50        | 35            |
+| 3. Hard Problem of Consciousness | 50        | 35            |
+| 4. Gettier Problem               | 50        | 35            |
+| 5. Free Will & Responsibility    | 50        | 35            |
+| **Total**                        | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate philosopher analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -458,6 +459,7 @@ To demonstrate philosopher analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of philosophical concepts, theories, distinctions
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of conceptual analysis
 3. **Insight Specificity** (0-10): Clear, well-structured philosophical reasoning
@@ -467,6 +469,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies philosophical concepts and theories accurately (metaphysics, epistemology, ethics, philosophy of mind)
 - Considers multiple philosophical positions and their strengths/weaknesses
 - Makes specific, well-justified philosophical claims with careful argumentation
@@ -476,6 +479,7 @@ Each scenario is scored on:
 - Identifies subtle conceptual distinctions and implications
 
 **Good (35-44 points)**:
+
 - Applies key philosophical concepts correctly
 - Considers main philosophical positions on the issue
 - Makes reasonable philosophical claims with supporting arguments
@@ -484,6 +488,7 @@ Each scenario is scored on:
 - Provides useful philosophical insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies philosophical concepts or theories
 - Ignores major philosophical positions or arguments
 - Vague or poorly justified claims
@@ -496,12 +501,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -519,6 +526,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as philosophical debates evolve
 - Update expected elements as philosophical literature develops
 - Refine scoring criteria based on analyst performance patterns

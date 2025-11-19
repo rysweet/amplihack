@@ -15,6 +15,7 @@ Psychological insights are essential for user experience design, persuasive comm
 Analyzes how people perceive, think, remember, learn, and make decisions. Identifies cognitive biases, heuristics, and limitations that shape behavior.
 
 **Key Concepts:**
+
 - **Attention** - Selective, sustained, divided; attention is limited resource
 - **Memory** - Working memory (7±2 items), long-term memory, encoding/retrieval
 - **Perception** - How we interpret sensory information (Gestalt principles, pattern recognition)
@@ -23,6 +24,7 @@ Analyzes how people perceive, think, remember, learn, and make decisions. Identi
 - **Cognitive load** - Mental effort required; too much impairs performance
 
 **Common Biases:**
+
 - **Confirmation bias** - Seeking information that confirms beliefs
 - **Availability heuristic** - Judging by ease of recall
 - **Anchoring** - Over-relying on first information
@@ -34,6 +36,7 @@ Analyzes how people perceive, think, remember, learn, and make decisions. Identi
 Examines what drives behavior and how to change it through reinforcement, conditioning, and motivational frameworks.
 
 **Behavioral Principles:**
+
 - **Classical conditioning** - Association learning (Pavlov's dogs)
 - **Operant conditioning** - Behavior shaped by consequences (Skinner)
 - **Reinforcement** - Increases behavior (positive: add reward, negative: remove aversive)
@@ -41,6 +44,7 @@ Examines what drives behavior and how to change it through reinforcement, condit
 - **Schedules of reinforcement** - Variable ratio most effective (slot machines)
 
 **Motivational Theories:**
+
 - **Maslow's hierarchy** - Physiological, safety, belonging, esteem, self-actualization
 - **Self-determination theory** - Autonomy, competence, relatedness
 - **Intrinsic vs. extrinsic motivation** - Internal satisfaction vs. external rewards
@@ -52,6 +56,7 @@ Examines what drives behavior and how to change it through reinforcement, condit
 Analyzes how people influence and are influenced by others. Examines conformity, obedience, persuasion, group dynamics, and social cognition.
 
 **Key Phenomena:**
+
 - **Conformity** - Changing behavior to match group (Asch line study)
 - **Obedience** - Following authority (Milgram experiment)
 - **Social facilitation/inhibition** - Performance changes in presence of others
@@ -60,6 +65,7 @@ Analyzes how people influence and are influenced by others. Examines conformity,
 - **Fundamental attribution error** - Overestimate personality, underestimate situation
 
 **Persuasion Principles (Cialdini):**
+
 - **Reciprocity** - We feel obligated to return favors
 - **Commitment/consistency** - We want to appear consistent
 - **Social proof** - We follow what others do
@@ -72,12 +78,14 @@ Analyzes how people influence and are influenced by others. Examines conformity,
 Examines psychological changes across lifespan from infancy through old age. Understands age-appropriate capabilities, challenges, and needs.
 
 **Developmental Stages:**
+
 - **Piaget's cognitive stages** - Sensorimotor, preoperational, concrete operational, formal operational
 - **Erikson's psychosocial stages** - Identity crises across lifespan
 - **Attachment theory** - Early bonds shape later relationships (Bowlby, Ainsworth)
 - **Moral development** - Kohlberg's stages from obedience to universal principles
 
 **Lifespan Considerations:**
+
 - Children's cognitive limitations (egocentrism, conservation)
 - Adolescent identity formation and risk-taking
 - Adult development and generativity
@@ -88,6 +96,7 @@ Examines psychological changes across lifespan from infancy through old age. Und
 Analyzes stable patterns in thinking, feeling, and behaving that distinguish individuals. Recognizes that people vary systematically.
 
 **Personality Frameworks:**
+
 - **Big Five (OCEAN)** - Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism
 - **Trait theory** - Stable characteristics across situations
 - **Person-situation interaction** - Behavior depends on both personality and context
@@ -98,6 +107,7 @@ Analyzes stable patterns in thinking, feeling, and behaving that distinguish ind
 Understands psychological disorders, distress, coping, resilience, and therapeutic approaches. Recognizes mental health as continuum, not binary.
 
 **Key Areas:**
+
 - **Anxiety disorders** - Excessive worry, panic, phobias
 - **Mood disorders** - Depression, bipolar disorder
 - **Trauma and stress** - PTSD, acute stress, adjustment
@@ -106,6 +116,7 @@ Understands psychological disorders, distress, coping, resilience, and therapeut
 - **Resilience factors** - Social support, self-efficacy, meaning-making
 
 **Therapeutic Approaches:**
+
 - **Cognitive-Behavioral Therapy (CBT)** - Change thoughts to change feelings/behaviors
 - **Mindfulness** - Present-moment awareness, acceptance
 - **Positive psychology** - Strengths, wellbeing, flourishing
@@ -137,6 +148,7 @@ Incorporate clinical psychology insights to support user mental health, reduce h
 ### Method 1: Cognitive Task Analysis
 
 Understand mental processes in tasks:
+
 1. Identify task goals and sub-goals
 2. Map decision points and information needs
 3. Assess cognitive load at each step
@@ -146,6 +158,7 @@ Understand mental processes in tasks:
 ### Method 2: Behavior Change Analysis (COM-B)
 
 Design interventions using COM-B model:
+
 - **Capability** - Do they have physical/psychological ability?
 - **Opportunity** - Does environment enable behavior?
 - **Motivation** - Do they want to do it? (reflective and automatic)
@@ -155,6 +168,7 @@ Intervention targets gaps in capability, opportunity, or motivation.
 ### Method 3: Heuristic Evaluation (Cognitive)
 
 Identify usability issues using cognitive principles:
+
 1. Check visibility of system status (feedback)
 2. Assess match between system and real world (mental models)
 3. Evaluate user control and freedom (undo, exit)
@@ -165,6 +179,7 @@ Identify usability issues using cognitive principles:
 ### Method 4: Persona Development (Psychological)
 
 Create psychologically grounded user personas:
+
 1. Research actual users (not assumptions)
 2. Identify goals, motivations, pain points
 3. Include cognitive abilities and limitations
@@ -175,6 +190,7 @@ Create psychologically grounded user personas:
 ### Method 5: Mental Model Mapping
 
 Understand users' conceptual understanding:
+
 1. Interview users about how they think system works
 2. Map their mental model (may be incorrect)
 3. Compare to actual system model
@@ -225,6 +241,7 @@ Understand users' conceptual understanding:
 ## Best Practices
 
 **Do:**
+
 - Ground analysis in empirical psychological research
 - Consider both individual and situational factors
 - Recognize cognitive limitations (attention, memory, processing)
@@ -235,6 +252,7 @@ Understand users' conceptual understanding:
 - Design for diverse psychological profiles
 
 **Don't:**
+
 - Reduce everything to individual psychology (ignore social/cultural factors)
 - Manipulate users unethically
 - Assume all users think like you
@@ -253,6 +271,7 @@ Psychology supports amplihack's user-centered approach and ruthless simplicity. 
 ### Cognitive Load Theory
 
 Three types of cognitive load:
+
 1. **Intrinsic** - Inherent difficulty of material
 2. **Extraneous** - Unnecessary load from poor design
 3. **Germane** - Beneficial load for learning
@@ -262,6 +281,7 @@ Three types of cognitive load:
 ### Dual-Process Theory
 
 Two systems of thinking:
+
 - **System 1**: Fast, automatic, intuitive, effortless (heuristics, habits)
 - **System 2**: Slow, deliberate, logical, effortful (analysis, reasoning)
 
@@ -270,6 +290,7 @@ Most behavior uses System 1. Design should support it, not fight it.
 ### Operant Conditioning
 
 Behavior shaped by consequences:
+
 - **Positive reinforcement**: Add reward → behavior increases
 - **Negative reinforcement**: Remove aversive → behavior increases
 - **Positive punishment**: Add aversive → behavior decreases

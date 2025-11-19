@@ -27,6 +27,7 @@ Unlike general moral reasoning, ethicist analysis:
 ## Use Cases
 
 ### Technology Ethics
+
 - AI bias and fairness in algorithmic decision-making
 - Privacy vs. security trade-offs in surveillance systems
 - Autonomous vehicle crash algorithms and moral programming
@@ -34,6 +35,7 @@ Unlike general moral reasoning, ethicist analysis:
 - Social media content moderation and free speech
 
 ### Professional Ethics
+
 - Healthcare decisions (end-of-life care, resource allocation, informed consent)
 - Research ethics (human subjects, dual-use research, data integrity)
 - Legal ethics (client confidentiality, zealous advocacy limits)
@@ -41,6 +43,7 @@ Unlike general moral reasoning, ethicist analysis:
 - Whistleblowing and organizational loyalty conflicts
 
 ### Policy Analysis
+
 - Healthcare access and resource allocation
 - Criminal justice and punishment philosophy
 - Environmental policy and intergenerational justice
@@ -48,6 +51,7 @@ Unlike general moral reasoning, ethicist analysis:
 - Immigration and refugee rights
 
 ### Organizational Ethics
+
 - Corporate social responsibility and profit maximization
 - Diversity, equity, and inclusion initiatives
 - Labor practices and supply chain ethics
@@ -57,6 +61,7 @@ Unlike general moral reasoning, ethicist analysis:
 ## Ethical Frameworks Available
 
 ### Core Theoretical Approaches
+
 - **Deontological Ethics (Kant)**: Duty-based reasoning, categorical imperative, respect for persons
 - **Consequentialism (Mill, Singer)**: Outcome-based reasoning, utilitarianism, effective altruism
 - **Virtue Ethics (Aristotle)**: Character-based reasoning, moral exemplars, practical wisdom
@@ -64,6 +69,7 @@ Unlike general moral reasoning, ethicist analysis:
 - **Justice Theory (Rawls)**: Fairness, veil of ignorance, distributive justice
 
 ### Applied Frameworks
+
 - **Four Principles (Bioethics)**: Autonomy, beneficence, non-maleficence, justice
 - **Rights Analysis**: Negative/positive rights, human rights, legal vs. moral rights
 - **Stakeholder Analysis**: Identifying affected parties, power dynamics, vulnerability
@@ -71,6 +77,7 @@ Unlike general moral reasoning, ethicist analysis:
 - **Casuistry**: Case-based reasoning from paradigm cases
 
 ### Methodologies
+
 - **Reflective Equilibrium**: Iteratively adjusting principles and case judgments
 - **Veil of Ignorance**: Ensuring impartiality by bracketing self-interest
 - **Universalizability Test**: Consistency across similar cases
@@ -126,6 +133,7 @@ The ethicist analyst follows a systematic 10-step process:
 **Dilemma**: Should self-driving cars prioritize passenger safety or minimize total casualties?
 
 **Analysis Highlights**:
+
 - **Deontology**: Cannot use passenger as mere means; violates Kantian respect for persons
 - **Consequentialism**: Minimize total harm; utilitarian algorithm saves more lives overall
 - **Virtue Ethics**: Depends on context; practical wisdom needed for case-by-case judgment
@@ -137,6 +145,7 @@ The ethicist analyst follows a systematic 10-step process:
 **Dilemma**: Should parents be permitted to genetically enhance children's intelligence, athleticism, appearance?
 
 **Analysis Highlights**:
+
 - **Autonomy**: Child cannot consent to irrevocable changes
 - **Justice**: Only wealthy afford enhancement, creating "genetic divide"
 - **Virtue**: Unconditional parental love vs. treating children as products to design
@@ -148,6 +157,7 @@ The ethicist analyst follows a systematic 10-step process:
 **Dilemma**: Nurse discovers hospital under-reports safety incidents. Whistleblow despite career risk?
 
 **Analysis Highlights**:
+
 - **Professional Duty**: Patient safety is primary obligation in nursing ethics
 - **Deontology**: Cannot use patients as means to institutional reputation goals
 - **Consequentialism**: Weigh patient harm prevented vs. personal career cost
@@ -172,27 +182,32 @@ A complete ethicist analysis includes:
 ## Resources
 
 ### Online Philosophy
+
 - **Stanford Encyclopedia of Philosophy**: https://plato.stanford.edu/ (Comprehensive scholarly articles)
 - **Internet Encyclopedia of Philosophy**: https://iep.utm.edu/ (Accessible content)
 - **1000-Word Philosophy**: https://1000wordphilosophy.com/ (Concise introductions)
 - **PhilPapers**: https://philpapers.org/ (Philosophy paper database)
 
 ### Ethics Centers
+
 - **Markkula Center for Applied Ethics**: https://www.scu.edu/ethics/ (Tools, frameworks, cases)
 - **Prindle Institute for Ethics**: https://www.prindleinstitute.org/ (Blog, podcasts, resources)
 - **Institute for Ethics in AI (Oxford)**: https://www.oxford-aiethics.ox.ac.uk/
 
 ### Professional Organizations
+
 - **American Philosophical Association**: https://www.apaonline.org/
 - **Association for Practical and Professional Ethics**: https://appe.indiana.edu/
 - **Kennedy Institute of Ethics**: https://kennedyinstitute.georgetown.edu/ (Bioethics)
 - **Hastings Center**: https://www.thehastingscenter.org/ (Bioethics and civic life)
 
 ### Case Databases
+
 - **Ethics Unwrapped**: https://ethicsunwrapped.utexas.edu/ (Videos and cases)
 - **Online Ethics Center**: https://onlineethics.org/ (Engineering and research ethics)
 
 ### Key Journals
+
 - **Ethics**: Leading theoretical ethics journal
 - **Journal of Medical Ethics**: Healthcare ethics focus
 - **Business Ethics Quarterly**: Corporate and organizational ethics
@@ -203,6 +218,7 @@ A complete ethicist analysis includes:
 ### When should I use ethicist-analyst vs. other analysts?
 
 Use **ethicist-analyst** when the question involves:
+
 - Moral rights, duties, and obligations
 - Value conflicts and ethical dilemmas
 - Fairness, justice, and equity
@@ -211,6 +227,7 @@ Use **ethicist-analyst** when the question involves:
 - Technology governance and responsible innovation
 
 Use **other analysts** when the focus is:
+
 - Legal requirements and compliance → Lawyer
 - Disease patterns and health outcomes → Epidemiologist
 - Social norms and cultural practices → Sociologist/Anthropologist
@@ -220,12 +237,14 @@ Use **other analysts** when the focus is:
 ### How does ethics differ from law?
 
 **Ethics**:
+
 - What is morally right/wrong
 - Broader than law (many unethical acts are legal)
 - Guides what law should be
 - Personal and professional domains
 
 **Law**:
+
 - What is legally permitted/prohibited
 - Minimum standards enforceable by state
 - Sometimes lags behind ethical consensus
@@ -236,6 +255,7 @@ Many issues have both ethical and legal dimensions that must be analyzed separat
 ### What if ethical frameworks disagree?
 
 This is common and reveals genuine value conflicts:
+
 1. **Acknowledge disagreement** rather than forcing false consensus
 2. **Identify which values are in tension** (e.g., liberty vs. equality, individual vs. collective)
 3. **Assess which framework fits the case** (deontology for rights violations, consequentialism for policy)
@@ -246,6 +266,7 @@ This is common and reveals genuine value conflicts:
 ### Can ethics be objective or is it all subjective?
 
 Ethics involves both objective and subjective elements:
+
 - **Objective**: Logic, consistency, factual accuracy, rational justification required
 - **Subjective**: Ultimate values may differ (liberty vs. equality emphasis)
 - **Intersubjective**: Wide agreement possible through reasoning and shared humanity
@@ -254,6 +275,7 @@ Ethics involves both objective and subjective elements:
 ### How do you balance speed and depth in ethical analysis?
 
 Context determines appropriate depth:
+
 - **Crisis decisions**: Focus on immediate harms, rights violations; act quickly with best available reasoning
 - **Policy design**: Comprehensive multi-framework analysis; time for deliberation and consultation
 - **Routine professional ethics**: Use established guidelines and paradigm cases
@@ -262,6 +284,7 @@ Context determines appropriate depth:
 ## Integration with Other Skills
 
 Ethicist analysis complements:
+
 - **Decision Logger**: Document ethical decisions and moral reasoning
 - **Storytelling Synthesizer**: Communicate ethical arguments through compelling narratives
 - **Module Spec Generator**: Specify ethical requirements for system design
@@ -271,6 +294,7 @@ Ethicist analysis complements:
 ## Contributing
 
 This skill improves through use. Share feedback on:
+
 - What frameworks proved most useful in specific contexts
 - What resources were most valuable
 - What analysis patterns emerged

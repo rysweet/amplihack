@@ -18,7 +18,9 @@ from unittest.mock import patch
 import pytest
 
 # Add .claude/tools/amplihack to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
+sys.path.insert(
+    0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack")
+)
 
 from update_prefs import (
     _get_preference_file_path,

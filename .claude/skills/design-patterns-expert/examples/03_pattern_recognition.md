@@ -17,6 +17,7 @@ This is a classic use case for the **Observer pattern**.
 ### Why Observer Fits Your Problem
 
 **Pattern Match**:
+
 - ✅ One source of change (user profile updates)
 - ✅ Multiple objects need notification (UI, logging, analytics, email)
 - ✅ Number of dependents varies dynamically
@@ -74,12 +75,14 @@ profile.update_profile("John Doe", "john@example.com")
 ### Philosophy Check
 
 **Good fit for your use case because**:
+
 - ✅ You have multiple (≥2) observers NOW (not "might have later")
 - ✅ Observer set is dynamic (varies at runtime)
 - ✅ Subject doesn't need to know about specific observers
 - ✅ Clean separation of concerns
 
 **NOT over-engineering because**:
+
 - You explicitly said number of components varies
 - You have diverse observer types (UI, logging, analytics, email)
 - This is a recurring notification need, not one-off
@@ -87,6 +90,7 @@ profile.update_profile("John Doe", "john@example.com")
 ### Alternatives Considered
 
 **Direct Method Calls**:
+
 ```python
 profile.update_profile()
 ui.refresh()
@@ -94,11 +98,13 @@ logging.log_change()
 analytics.track()
 email.send_notification()
 ```
+
 - **Pros**: Simple, explicit
 - **Cons**: Tight coupling, can't add observers dynamically, violates Open/Closed
 - **When to use**: If you have 1-2 fixed observers that never change
 
 **Event Bus / Message Queue**:
+
 - **Pros**: Complete decoupling, scalable
 - **Cons**: More infrastructure, harder to debug
 - **When to use**: Distributed systems, microservices
@@ -108,6 +114,7 @@ email.send_notification()
 **Use Observer pattern** for your use case.
 
 **Next Steps**:
+
 1. Define UserProfile as Subject
 2. Create observer interface (update method)
 3. Implement concrete observers (UI, Logging, Analytics, Email)
@@ -115,6 +122,7 @@ email.send_notification()
 5. Call notify() after profile updates
 
 **Would you like**:
+
 - Practical guide with complete implementation?
 - Deep dive into Observer with push vs pull variants?
 - Comparison with other notification patterns?

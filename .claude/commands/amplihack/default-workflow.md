@@ -41,6 +41,7 @@ Use this command instead of `/ultrathink` when:
 When this command is invoked, you MUST:
 
 1. **Inform user** which workflow is being used:
+
    ```
    Executing DEFAULT_WORKFLOW.md (15-step development workflow)
    ```
@@ -147,12 +148,12 @@ The cleanup agent:
 
 ## Comparison to /ultrathink
 
-| Feature                   | /ultrathink                        | /amplihack:default-workflow |
-| ------------------------- | ---------------------------------- | --------------------------- |
-| **Task Detection**        | Auto-detects (investigation vs dev)| Skip detection, use DEFAULT |
-| **Workflow Selection**    | Automatic (investigation or dev)   | Always DEFAULT_WORKFLOW     |
-| **Investigation Support** | Yes (switches to INVESTIGATION)    | No (development only)       |
-| **Use When**              | Task type unclear                  | Task clearly development    |
+| Feature                   | /ultrathink                         | /amplihack:default-workflow |
+| ------------------------- | ----------------------------------- | --------------------------- |
+| **Task Detection**        | Auto-detects (investigation vs dev) | Skip detection, use DEFAULT |
+| **Workflow Selection**    | Automatic (investigation or dev)    | Always DEFAULT_WORKFLOW     |
+| **Investigation Support** | Yes (switches to INVESTIGATION)     | No (development only)       |
+| **Use When**              | Task type unclear                   | Task clearly development    |
 
 ## Remember
 

@@ -176,12 +176,7 @@ class FreshnessChecker:
             print()
 
         all_ok = (
-            not self.errors
-            and age_ok
-            and urls_ok
-            and version_ok
-            and changes_ok
-            and schedule_ok
+            not self.errors and age_ok and urls_ok and version_ok and changes_ok and schedule_ok
         )
         if all_ok:
             print("✓ Documentation is current and accessible")

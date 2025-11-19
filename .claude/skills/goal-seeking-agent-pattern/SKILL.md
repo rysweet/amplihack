@@ -51,13 +51,13 @@ Goal-seeking agents are autonomous AI agents that execute multi-phase objectives
 
 ### Distinction from Traditional Agents
 
-| Traditional Agent | Goal-Seeking Agent |
-|------------------|-------------------|
-| Follows fixed workflow | Adapts workflow to context |
-| Prescriptive steps | Outcome-oriented objectives |
-| Human intervention on failure | Autonomous recovery attempts |
-| Single-phase execution | Multi-phase with dependencies |
-| Rigid decision tree | Dynamic strategy adjustment |
+| Traditional Agent             | Goal-Seeking Agent            |
+| ----------------------------- | ----------------------------- |
+| Follows fixed workflow        | Adapts workflow to context    |
+| Prescriptive steps            | Outcome-oriented objectives   |
+| Human intervention on failure | Autonomous recovery attempts  |
+| Single-phase execution        | Multi-phase with dependencies |
+| Rigid decision tree           | Dynamic strategy adjustment   |
 
 ### When Goal-Seeking Makes Sense
 
@@ -88,11 +88,13 @@ Use goal-seeking agents when you observe these patterns:
 #### Pattern 1: Workflow Variability
 
 **Indicators**:
+
 - Same objective requires different approaches based on context
 - Manual decisions needed at multiple points
 - "It depends" answers when mapping workflow
 
 **Example**: Release workflow that varies by:
+
 - Environment (staging vs production)
 - Change type (hotfix vs feature)
 - Current system state (healthy vs degraded)
@@ -102,12 +104,14 @@ Use goal-seeking agents when you observe these patterns:
 #### Pattern 2: Multi-Phase Complexity
 
 **Indicators**:
+
 - Objective requires 3-5+ distinct phases
 - Phases have dependencies (output of phase N feeds phase N+1)
 - Parallel execution opportunities exist
 - Success criteria differ per phase
 
 **Example**: Data pipeline with phases:
+
 1. Data collection (multiple sources, parallel)
 2. Transformation (depends on collection results)
 3. Validation (depends on transformation output)
@@ -118,12 +122,14 @@ Use goal-seeking agents when you observe these patterns:
 #### Pattern 3: Autonomous Recovery Needed
 
 **Indicators**:
+
 - Failures are expected and recoverable
 - Multiple retry/fallback strategies exist
 - Human intervention is expensive or slow
 - Can verify success programmatically
 
 **Example**: CI diagnostic workflow:
+
 - Test failures (retry with different approach)
 - Environment issues (reconfigure and retry)
 - Dependency conflicts (resolve and rerun)
@@ -133,12 +139,14 @@ Use goal-seeking agents when you observe these patterns:
 #### Pattern 4: Adaptive Decision Making
 
 **Indicators**:
+
 - Need to evaluate trade-offs at runtime
 - Multiple valid solutions with different characteristics
 - Optimization objectives (speed vs quality vs cost)
 - Context-dependent best practices
 
 **Example**: Fix agent pattern matching:
+
 - QUICK mode for obvious issues
 - DIAGNOSTIC mode for unclear problems
 - COMPREHENSIVE mode for complex solutions
@@ -148,12 +156,14 @@ Use goal-seeking agents when you observe these patterns:
 #### Pattern 5: Domain Expertise Required
 
 **Indicators**:
+
 - Requires specialized knowledge to execute
 - Multiple domain-specific tools/approaches
 - Best practices vary by domain
 - Coordination of specialized sub-agents
 
 **Example**: AKS SRE automation:
+
 - Azure-specific operations (ARM, CLI)
 - Kubernetes expertise (kubectl, YAML)
 - Networking knowledge (CNI, ingress)
@@ -168,11 +178,13 @@ Use this 5-question framework to evaluate goal-seeking applicability:
 #### Question 1: Is the objective well-defined but path flexible?
 
 **YES if**:
+
 - Clear success criteria exist
 - Multiple valid approaches
 - Runtime context affects optimal path
 
 **NO if**:
+
 - Only one correct approach
 - Path is deterministic
 - Success criteria ambiguous
@@ -183,12 +195,14 @@ Use this 5-question framework to evaluate goal-seeking applicability:
 #### Question 2: Are there multiple phases with dependencies?
 
 **YES if**:
+
 - Objective naturally decomposes into 3-5+ phases
 - Phase outputs feed subsequent phases
 - Some phases can execute in parallel
 - Failures in one phase affect downstream phases
 
 **NO if**:
+
 - Single-phase execution sufficient
 - No inter-phase dependencies
 - Purely sequential with no branching
@@ -199,12 +213,14 @@ Use this 5-question framework to evaluate goal-seeking applicability:
 #### Question 3: Is autonomous recovery valuable?
 
 **YES if**:
+
 - Failures are common and expected
 - Multiple recovery strategies exist
 - Human intervention is expensive/slow
 - Can verify success automatically
 
 **NO if**:
+
 - Failures are rare edge cases
 - Manual investigation always required
 - Safety-critical (human verification needed)
@@ -216,12 +232,14 @@ Use this 5-question framework to evaluate goal-seeking applicability:
 #### Question 4: Does context significantly affect approach?
 
 **YES if**:
+
 - Environment differences change strategy
 - Current system state affects decisions
 - Trade-offs vary by situation (speed vs quality vs cost)
 - Domain-specific best practices apply
 
 **NO if**:
+
 - Same approach works for all contexts
 - No environmental dependencies
 - No trade-off decisions needed
@@ -232,12 +250,14 @@ Use this 5-question framework to evaluate goal-seeking applicability:
 #### Question 5: Is the complexity justified?
 
 **YES if**:
+
 - Problem is repeated frequently (2+ times/week)
 - Manual execution takes 30+ minutes
 - High value from automation
 - Maintenance cost is acceptable
 
 **NO if**:
+
 - One-off or rare problem
 - Quick manual execution (< 5 minutes)
 - Simple script suffices
@@ -362,17 +382,20 @@ class SkillDefinition:
 Phases can have three relationship types:
 
 **Sequential Dependency**: Phase B depends on Phase A completion
+
 ```
 Phase A → Phase B → Phase C
 ```
 
 **Parallel Execution**: Phases can run concurrently
+
 ```
 Phase A ──┬→ Phase B ──┐
           └→ Phase C ──┴→ Phase D
 ```
 
 **Conditional Branching**: Phase selection based on results
+
 ```
 Phase A → [Decision] → Phase B (success path)
                     └→ Phase C (recovery path)
@@ -399,6 +422,7 @@ class AgentState:
 Three error recovery strategies:
 
 **Retry with Backoff**: Same approach, exponential delay
+
 ```python
 for attempt in range(MAX_RETRIES):
     try:
@@ -410,6 +434,7 @@ for attempt in range(MAX_RETRIES):
 ```
 
 **Alternative Strategy**: Different approach to same goal
+
 ```python
 for strategy in STRATEGIES:
     try:
@@ -422,6 +447,7 @@ else:
 ```
 
 **Graceful Degradation**: Accept partial success
+
 ```python
 try:
     result = execute_phase_optimal(phase)
@@ -525,6 +551,7 @@ print(goal_def.context)            # {"priority": "high", "scale": "medium"}
 ```
 
 Domain classification:
+
 - `data-processing`: Data transformation, analysis, ETL
 - `security-analysis`: Vulnerability scanning, audits
 - `automation`: Workflow automation, scheduling
@@ -535,6 +562,7 @@ Domain classification:
 - `reporting`: Dashboards, metrics, summaries
 
 Complexity determination:
+
 - `simple`: Single-phase, < 50 words, basic operations
 - `moderate`: 2-4 phases, 50-150 words, some coordination
 - `complex`: 5+ phases, > 150 words, sophisticated orchestration
@@ -566,6 +594,7 @@ print(f"Risk Factors: {plan.risk_factors}")
 ```
 
 Phase templates by domain:
+
 - **data-processing**: Collection → Transformation → Analysis → Reporting
 - **security-analysis**: Reconnaissance → Vulnerability Detection → Risk Assessment → Reporting
 - **automation**: Setup → Workflow Design → Execution → Validation
@@ -594,6 +623,7 @@ for skill in skills:
 ```
 
 Capability mapping:
+
 - `data-*` → `data-processor` skill
 - `security-*`, `vulnerability-*` → `security-analyzer` skill
 - `test-*` → `tester` skill
@@ -633,6 +663,7 @@ print(config["constraints"])        # From goal definition
 ```
 
 Auto-mode configuration:
+
 - `max_turns`: 5 (simple), 10 (moderate), 15 (complex), +20% per extra phase
 - `initial_prompt`: Full markdown prompt with goal, plan, success criteria
 - `working_dir`: Current directory
@@ -697,6 +728,7 @@ Generate actionable report with recommendations.
 ```
 
 **Key Characteristics**:
+
 - **Autonomous**: Checks multiple systems without step-by-step instructions
 - **Adaptive**: Investigation depth varies by findings
 - **Multi-Phase**: Parallel security/networking/monitoring, sequential reporting
@@ -704,6 +736,7 @@ Generate actionable report with recommendations.
 - **Self-Assessing**: Validates each check, aggregates results
 
 **Implementation**:
+
 ```python
 # Located in: .claude/agents/amplihack/specialized/azure-kubernetes-expert.md
 # Uses knowledge base: .claude/data/azure_aks_expert/
@@ -726,6 +759,7 @@ plan.phases[0].required_capabilities = [
 ```
 
 **Lessons Learned**:
+
 - Domain expertise critical for complex infrastructure
 - Parallel execution significantly reduces total time
 - Actionable recommendations increase agent value
@@ -758,6 +792,7 @@ Stop at mergeable state without auto-merging.
 ```
 
 **Key Characteristics**:
+
 - **Iterative**: Repeats fix cycle until success
 - **Autonomous Recovery**: Tries multiple fix strategies
 - **State Management**: Tracks attempted fixes, avoids repeating failures
@@ -765,6 +800,7 @@ Stop at mergeable state without auto-merging.
 - **Escalation**: Reports to user after max iterations
 
 **Implementation**:
+
 ```python
 # Located in: .claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
 
@@ -803,6 +839,7 @@ if iteration >= MAX_ITERATIONS:
 ```
 
 **Lessons Learned**:
+
 - Iteration limits prevent infinite loops
 - Pattern matching (test/lint/type) enables targeted fixes
 - Smart waiting (exponential backoff) reduces wait time
@@ -832,12 +869,14 @@ Ensure all hooks pass before allowing commit.
 ```
 
 **Key Characteristics**:
+
 - **Pre-Push Focus**: Fixes issues before pushing to CI
 - **Tool Version Management**: Ensures local matches pre-commit config
 - **Hook-Specific Fixes**: Tailored approach per hook type
 - **Fast Iteration**: No wait for CI, immediate feedback
 
 **Implementation**:
+
 ```python
 # Located in: .claude/agents/amplihack/specialized/pre-commit-diagnostic.md
 
@@ -865,6 +904,7 @@ if rerun_result.returncode == 0:
 ```
 
 **Lessons Learned**:
+
 - Pre-commit fixes are faster than CI iteration
 - Tool version mismatches are common culprit
 - Automated fixes for 80% of cases
@@ -893,12 +933,14 @@ Analyze issue and select fix mode:
 ```
 
 **Key Characteristics**:
+
 - **Context-Aware**: Selects strategy based on problem analysis
 - **Multi-Mode**: Three fix modes for different complexity levels
 - **Pattern Recognition**: Learns from past fixes
 - **Adaptive**: Escalates complexity if initial mode fails
 
 **Implementation**:
+
 ```python
 # Located in: .claude/agents/amplihack/specialized/fix-agent.md
 
@@ -932,6 +974,7 @@ elif issue.pattern == "config":
 ```
 
 **Lessons Learned**:
+
 - Pattern matching enables template-based fixes (80% coverage)
 - Mode selection reduces over-engineering (right-sized approach)
 - Diagnostic mode critical for unclear issues (root cause analysis)
@@ -942,6 +985,7 @@ elif issue.pattern == "config":
 Use this checklist when designing goal-seeking agents:
 
 ### Goal Definition
+
 - [ ] Objective is clear and well-defined
 - [ ] Success criteria are measurable and verifiable
 - [ ] Constraints are explicit (time, resources, safety)
@@ -949,6 +993,7 @@ Use this checklist when designing goal-seeking agents:
 - [ ] Complexity is estimated (simple/moderate/complex)
 
 ### Phase Design
+
 - [ ] Decomposed into 3-5 phases (not too granular, not too coarse)
 - [ ] Phase dependencies are explicit
 - [ ] Parallel execution opportunities identified
@@ -956,36 +1001,42 @@ Use this checklist when designing goal-seeking agents:
 - [ ] Phase durations are estimated
 
 ### Skill Mapping
+
 - [ ] Required capabilities identified per phase
 - [ ] Skills mapped to existing agents or tools
 - [ ] Delegation targets specified
 - [ ] No missing capabilities
 
 ### Error Handling
+
 - [ ] Retry strategies defined (max attempts, backoff)
 - [ ] Alternative strategies identified
 - [ ] Escalation criteria clear (when to ask for help)
 - [ ] Graceful degradation options (fallback approaches)
 
 ### State Management
+
 - [ ] State tracked across phases
 - [ ] Phase results stored for downstream use
 - [ ] Failure history maintained
 - [ ] Context shared appropriately
 
 ### Testing
+
 - [ ] Success scenarios tested
 - [ ] Failure recovery tested
 - [ ] Edge cases identified
 - [ ] Performance validated (duration, resource usage)
 
 ### Documentation
+
 - [ ] Goal clearly documented
 - [ ] Phase descriptions complete
 - [ ] Usage examples provided
 - [ ] Integration points specified
 
 ### Philosophy Compliance
+
 - [ ] Ruthless simplicity (no unnecessary complexity)
 - [ ] Single responsibility per phase
 - [ ] No over-engineering (right-sized solution)
@@ -1110,20 +1161,21 @@ result = await agent.execute(bundle.auto_mode_config["initial_prompt"])
 
 ### Goal-Seeking vs Traditional Agents
 
-| Dimension | Goal-Seeking Agent | Traditional Agent |
-|-----------|-------------------|------------------|
-| **Flexibility** | High - adapts to context | Low - fixed workflow |
-| **Development Time** | Moderate - define goals & phases | Low - script steps |
-| **Execution Time** | Higher - decision overhead | Lower - direct execution |
-| **Maintenance** | Lower - self-adapting | Higher - manual updates |
-| **Debuggability** | Harder - dynamic behavior | Easier - predictable flow |
-| **Reusability** | High - same agent, different contexts | Low - context-specific |
-| **Failure Handling** | Autonomous recovery | Manual intervention |
-| **Complexity** | Higher - multi-phase coordination | Lower - linear execution |
+| Dimension            | Goal-Seeking Agent                    | Traditional Agent         |
+| -------------------- | ------------------------------------- | ------------------------- |
+| **Flexibility**      | High - adapts to context              | Low - fixed workflow      |
+| **Development Time** | Moderate - define goals & phases      | Low - script steps        |
+| **Execution Time**   | Higher - decision overhead            | Lower - direct execution  |
+| **Maintenance**      | Lower - self-adapting                 | Higher - manual updates   |
+| **Debuggability**    | Harder - dynamic behavior             | Easier - predictable flow |
+| **Reusability**      | High - same agent, different contexts | Low - context-specific    |
+| **Failure Handling** | Autonomous recovery                   | Manual intervention       |
+| **Complexity**       | Higher - multi-phase coordination     | Lower - linear execution  |
 
 ### When to Choose Each
 
 **Choose Goal-Seeking when**:
+
 - Problem space is large with many valid approaches
 - Context varies significantly across executions
 - Autonomous recovery is valuable
@@ -1131,6 +1183,7 @@ result = await agent.execute(bundle.auto_mode_config["initial_prompt"])
 - Development time investment is justified
 
 **Choose Traditional when**:
+
 - Single deterministic path exists
 - Performance is critical (low latency required)
 - Simplicity is paramount
@@ -1140,18 +1193,21 @@ result = await agent.execute(bundle.auto_mode_config["initial_prompt"])
 ### Cost-Benefit Analysis
 
 **Goal-Seeking Costs**:
+
 - Higher development time (define goals, phases, capabilities)
 - Increased execution time (decision overhead)
 - More complex testing (dynamic behavior)
 - Harder debugging (non-deterministic paths)
 
 **Goal-Seeking Benefits**:
+
 - Autonomous operation (less human intervention)
 - Adaptive to context (works in varied conditions)
 - Reusable across problems (same agent, different goals)
 - Self-recovering (handles failures gracefully)
 
 **Break-Even Point**: Goal-seeking justified when problem is:
+
 - Repeated 2+ times per week, OR
 - Takes 30+ minutes manual execution, OR
 - Requires expert knowledge hard to document, OR
@@ -1164,6 +1220,7 @@ Goal-seeking agents should escalate to humans when:
 ### Hard Limits Reached
 
 **Max Iterations Exceeded**:
+
 ```python
 if iteration_count >= MAX_ITERATIONS:
     escalate(
@@ -1177,6 +1234,7 @@ if iteration_count >= MAX_ITERATIONS:
 ```
 
 **Timeout Exceeded**:
+
 ```python
 if elapsed_time > MAX_DURATION:
     escalate(
@@ -1192,6 +1250,7 @@ if elapsed_time > MAX_DURATION:
 ### Safety Boundaries
 
 **Destructive Operations**:
+
 ```python
 if operation.is_destructive() and not operation.has_approval():
     escalate(
@@ -1202,6 +1261,7 @@ if operation.is_destructive() and not operation.has_approval():
 ```
 
 **Production Changes**:
+
 ```python
 if target_environment == "production":
     escalate(
@@ -1214,6 +1274,7 @@ if target_environment == "production":
 ### Uncertainty Detection
 
 **Low Confidence**:
+
 ```python
 if decision_confidence < CONFIDENCE_THRESHOLD:
     escalate(
@@ -1225,6 +1286,7 @@ if decision_confidence < CONFIDENCE_THRESHOLD:
 ```
 
 **Conflicting Strategies**:
+
 ```python
 if len(viable_strategies) > 1 and not clear_winner:
     escalate(
@@ -1237,6 +1299,7 @@ if len(viable_strategies) > 1 and not clear_winner:
 ### Unexpected Conditions
 
 **Unrecognized Errors**:
+
 ```python
 if error_type not in KNOWN_ERROR_PATTERNS:
     escalate(
@@ -1248,6 +1311,7 @@ if error_type not in KNOWN_ERROR_PATTERNS:
 ```
 
 **Environment Mismatch**:
+
 ```python
 if detected_environment != expected_environment:
     escalate(
@@ -1261,24 +1325,28 @@ if detected_environment != expected_environment:
 ### Escalation Best Practices
 
 **Provide Context**:
+
 - What was attempted
 - What failed and why
 - What alternatives were considered
 - Current system state
 
 **Suggest Actions**:
+
 - Recommend next steps
 - Provide diagnostic commands
 - Offer manual intervention points
 - Suggest rollback if needed
 
 **Enable Recovery**:
+
 - Save execution state
 - Document failures
 - Provide resume capability
 - Offer manual override
 
 **Example Escalation**:
+
 ```python
 escalate(
     reason="CI failure diagnosis unsuccessful after 5 iterations",
@@ -1322,9 +1390,11 @@ Complete example: Building a goal-seeking agent for data pipeline automation
 # Goal: Automate Multi-Source Data Pipeline
 
 ## Objective
+
 Collect data from multiple sources (S3, database, API), transform to common schema, validate quality, publish to data warehouse.
 
 ## Success Criteria
+
 - All sources successfully ingested
 - Data transformed to target schema
 - Quality checks pass (completeness, accuracy)
@@ -1332,12 +1402,14 @@ Collect data from multiple sources (S3, database, API), transform to common sche
 - Pipeline completes within 30 minutes
 
 ## Constraints
+
 - Must handle source unavailability gracefully
 - No data loss (failed records logged)
 - Idempotent (safe to re-run)
 - Resource limits: 8GB RAM, 4 CPU cores
 
 ## Context
+
 - Daily execution (automated schedule)
 - Priority: High (blocking downstream analytics)
 - Scale: Medium (100K-1M records per source)
@@ -1536,6 +1608,7 @@ Total Execution: ✓ SUCCESS (41 minutes, all success criteria met)
 # Pipeline Execution Report
 
 ## Summary
+
 - **Status**: SUCCESS
 - **Duration**: 41 minutes (estimated: 30 minutes)
 - **Records Processed**: 150K ingested, 148K published
@@ -1544,30 +1617,36 @@ Total Execution: ✓ SUCCESS (41 minutes, all success criteria met)
 ## Phase Results
 
 ### Phase 1: Data Collection
+
 - S3: 50K records (5 min)
 - Database: 75K records (8 min)
 - API: 25K records (4 min, 1 retry)
 
 ### Phase 2: Data Transformation
+
 - Successfully transformed: 148K records
 - Failed transformations: 2K records (logged to failed_records.log)
 - Failure reasons: Schema mismatch (1.5K), Invalid data (500)
 
 ### Phase 3: Quality Validation
+
 - Completeness: 98.7% ✓
 - Accuracy: 99.2% ✓
 - Consistency: 100% ✓
 
 ### Phase 4: Data Publishing
+
 - Warehouse load: Success
 - Pipeline run ID: 12345
 - Report: report.html
 
 ## Issues Encountered
+
 1. API timeout (Phase 1): Resolved with retry
 2. 2K transformation failures: Logged for manual review
 
 ## Recommendations
+
 1. Investigate schema mismatches in API data
 2. Add validation for API data format
 3. Consider increasing timeout for API calls
@@ -1607,11 +1686,13 @@ Goal-seeking agents relate to and integrate with other patterns:
 ### Debate Pattern (Multi-Agent Decision Making)
 
 **When to Combine**:
+
 - Goal-seeking agent faces complex decision with trade-offs
 - Multiple valid approaches exist
 - Need consensus from different perspectives
 
 **Example**:
+
 ```python
 # Goal-seeking agent reaches decision point
 if len(viable_strategies) > 1:
@@ -1629,11 +1710,13 @@ if len(viable_strategies) > 1:
 ### N-Version Pattern (Redundant Implementation)
 
 **When to Combine**:
+
 - Goal-seeking agent executing critical phase
 - Error cost is high
 - Multiple independent implementations possible
 
 **Example**:
+
 ```python
 # Critical security validation phase
 if phase.is_critical():
@@ -1651,11 +1734,13 @@ if phase.is_critical():
 ### Cascade Pattern (Fallback Strategies)
 
 **When to Combine**:
+
 - Goal-seeking agent has preferred approach but needs fallbacks
 - Quality/performance trade-offs exist
 - Graceful degradation desired
 
 **Example**:
+
 ```python
 # Data transformation with fallback
 try:
@@ -1673,11 +1758,13 @@ except MLModelUnavailable:
 ### Investigation Workflow (Knowledge Discovery)
 
 **When to Combine**:
+
 - Goal requires understanding existing system
 - Need to discover architecture or patterns
 - Knowledge excavation before execution
 
 **Example**:
+
 ```python
 # Before automating deployment, understand current system
 if goal.requires_system_knowledge():
@@ -1694,11 +1781,13 @@ if goal.requires_system_knowledge():
 ### Document-Driven Development (Specification First)
 
 **When to Combine**:
+
 - Goal-seeking agent generates or modifies code
 - Clear specifications prevent drift
 - Documentation is single source of truth
 
 **Example**:
+
 ```python
 # Goal: Implement new feature
 if goal.involves_code_changes():
@@ -1715,11 +1804,13 @@ if goal.involves_code_changes():
 ### Pre-Commit / CI Diagnostic (Quality Gates)
 
 **When to Combine**:
+
 - Goal-seeking agent makes code changes
 - Need to ensure quality before commit/push
 - Automated validation and fixes
 
 **Example**:
+
 ```python
 # After goal-seeking agent generates code
 if changes_made:
@@ -1745,11 +1836,13 @@ Goal-seeking agents must meet these quality standards:
 ### Correctness
 
 **Success Criteria Verification**:
+
 - [ ] Agent verifies all success criteria before completion
 - [ ] Intermediate phase results validated
 - [ ] No silent failures (all errors logged and handled)
 
 **Testing Coverage**:
+
 - [ ] Happy path tested (all success criteria met)
 - [ ] Failure scenarios tested (phase failures, retries)
 - [ ] Edge cases identified and tested
@@ -1758,12 +1851,14 @@ Goal-seeking agents must meet these quality standards:
 ### Resilience
 
 **Error Handling**:
+
 - [ ] Retry logic with exponential backoff
 - [ ] Alternative strategies for common failures
 - [ ] Graceful degradation when optimal path unavailable
 - [ ] Clear escalation criteria
 
 **State Management**:
+
 - [ ] State persisted across phase boundaries
 - [ ] Resume capability after failures
 - [ ] Idempotent execution (safe to re-run)
@@ -1772,12 +1867,14 @@ Goal-seeking agents must meet these quality standards:
 ### Performance
 
 **Efficiency**:
+
 - [ ] Phases execute in parallel when possible
 - [ ] No unnecessary work (skip completed phases on retry)
 - [ ] Resource usage within limits (memory, CPU, time)
 - [ ] Timeout limits enforced
 
 **Latency**:
+
 - [ ] Decision overhead acceptable for use case
 - [ ] No blocking waits (async where possible)
 - [ ] Progress reported (no black box periods)
@@ -1785,18 +1882,21 @@ Goal-seeking agents must meet these quality standards:
 ### Observability
 
 **Logging**:
+
 - [ ] Phase transitions logged
 - [ ] Decisions logged with reasoning
 - [ ] Errors logged with context
 - [ ] Results logged with metrics
 
 **Metrics**:
+
 - [ ] Duration per phase tracked
 - [ ] Success/failure rates tracked
 - [ ] Resource usage monitored
 - [ ] Quality metrics reported
 
 **Tracing**:
+
 - [ ] Execution flow traceable
 - [ ] Correlations across phases maintained
 - [ ] Debugging information sufficient
@@ -1804,12 +1904,14 @@ Goal-seeking agents must meet these quality standards:
 ### Usability
 
 **Documentation**:
+
 - [ ] Goal clearly stated
 - [ ] Success criteria documented
 - [ ] Usage examples provided
 - [ ] Integration guide complete
 
 **User Experience**:
+
 - [ ] Clear progress reporting
 - [ ] Actionable error messages
 - [ ] Human-readable outputs
@@ -1818,21 +1920,25 @@ Goal-seeking agents must meet these quality standards:
 ### Philosophy Compliance
 
 **Ruthless Simplicity**:
+
 - [ ] No unnecessary phases or complexity
 - [ ] Simplest approach that works
 - [ ] No premature optimization
 
 **Single Responsibility**:
+
 - [ ] Each phase has one clear job
 - [ ] No overlapping responsibilities
 - [ ] Clean phase boundaries
 
 **Modularity**:
+
 - [ ] Skills are reusable across agents
 - [ ] Phases are independent
 - [ ] Clear interfaces (inputs/outputs)
 
 **Regeneratable**:
+
 - [ ] Can be rebuilt from specifications
 - [ ] No hardcoded magic values
 - [ ] Configuration externalized
@@ -1842,11 +1948,13 @@ Goal-seeking agents must meet these quality standards:
 ### Quick Start: Build Your First Goal-Seeking Agent
 
 **Step 1**: Install amplihack (if not already)
+
 ```bash
 pip install amplihack
 ```
 
 **Step 2**: Write a goal prompt
+
 ```bash
 cat > my-goal.md << 'EOF'
 # Goal: Automated Security Audit
@@ -1862,6 +1970,7 @@ EOF
 ```
 
 **Step 3**: Generate agent
+
 ```bash
 amplihack goal-agent-generator create \
   --prompt my-goal.md \
@@ -1869,11 +1978,13 @@ amplihack goal-agent-generator create \
 ```
 
 **Step 4**: Review generated plan
+
 ```bash
 cat .claude/agents/goal-driven/security-auditor/plan.yaml
 ```
 
 **Step 5**: Execute agent
+
 ```bash
 amplihack goal-agent-generator execute \
   --agent-path .claude/agents/goal-driven/security-auditor \
@@ -1883,6 +1994,7 @@ amplihack goal-agent-generator execute \
 ### Common Use Cases
 
 **Use Case 1: Workflow Automation**
+
 ```bash
 # Create release automation agent
 echo "Automate release workflow: tag, build, test, deploy to staging" | \
@@ -1890,6 +2002,7 @@ echo "Automate release workflow: tag, build, test, deploy to staging" | \
 ```
 
 **Use Case 2: Data Pipeline**
+
 ```bash
 # Create ETL pipeline agent
 echo "Extract from sources, transform to schema, validate quality, load to warehouse" | \
@@ -1897,6 +2010,7 @@ echo "Extract from sources, transform to schema, validate quality, load to wareh
 ```
 
 **Use Case 3: Diagnostic Workflow**
+
 ```bash
 # Create performance diagnostic agent
 echo "Diagnose application performance issues, identify bottlenecks, suggest optimizations" | \
@@ -1906,17 +2020,20 @@ echo "Diagnose application performance issues, identify bottlenecks, suggest opt
 ### Learning Resources
 
 **Documentation**:
+
 - Review examples in `.claude/skills/goal-seeking-agent-pattern/examples/`
 - Read real agent implementations in `.claude/agents/amplihack/specialized/`
 - Check integration guide in `.claude/skills/goal-seeking-agent-pattern/templates/integration_guide.md`
 
 **Practice**:
+
 1. Start simple: Build single-phase agent (e.g., file formatter)
 2. Add complexity: Build multi-phase agent (e.g., test generator + runner)
 3. Add autonomy: Build agent with error recovery (e.g., CI fixer)
 4. Build production: Build full goal-seeking agent (e.g., deployment pipeline)
 
 **Get Help**:
+
 - Review decision framework (Section 2)
 - Check design checklist (Section 6)
 - Study real examples (Section 5)
@@ -1933,6 +2050,7 @@ After building your first goal-seeking agent:
 5. **Share patterns**: Add successful approaches to PATTERNS.md
 
 **Success Indicators**:
+
 - Agent completes goal autonomously 80%+ of time
 - Failures escalate with clear context
 - Execution time is acceptable

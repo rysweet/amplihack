@@ -38,6 +38,7 @@ The catalog contains:
 Each component entry includes:
 
 ### Workflows
+
 - Name and version
 - Description
 - Number of steps/phases
@@ -45,6 +46,7 @@ Each component entry includes:
 - File location
 
 ### Commands
+
 - Command name (with proper prefix)
 - Version and description
 - Trigger keywords
@@ -52,6 +54,7 @@ Each component entry includes:
 - File location
 
 ### Skills
+
 - Name and version
 - Description
 - Activation keywords
@@ -59,6 +62,7 @@ Each component entry includes:
 - File location
 
 ### Agents
+
 - Name and version
 - Description
 - Role

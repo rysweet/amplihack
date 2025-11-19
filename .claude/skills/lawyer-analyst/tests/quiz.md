@@ -402,18 +402,19 @@ Analyze the derivative suit and likely outcomes.
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Employment Discrimination | 50 | 35 |
-| 2. Contract Dispute | 50 | 35 |
-| 3. Data Privacy Compliance | 50 | 35 |
-| 4. Patent Infringement | 50 | 35 |
-| 5. Shareholder Derivative Suit | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                       | Max Score | Passing Score |
+| ------------------------------ | --------- | ------------- |
+| 1. Employment Discrimination   | 50        | 35            |
+| 2. Contract Dispute            | 50        | 35            |
+| 3. Data Privacy Compliance     | 50        | 35            |
+| 4. Patent Infringement         | 50        | 35            |
+| 5. Shareholder Derivative Suit | 50        | 35            |
+| **Total**                      | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate lawyer analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -421,6 +422,7 @@ To demonstrate lawyer analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of legal frameworks, statutes, doctrines
 2. **Analytical Depth** (0-10): Thoroughness of legal analysis and issue spotting
 3. **Insight Specificity** (0-10): Clear legal advice, strategic recommendations
@@ -430,6 +432,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Correctly identifies all relevant legal issues and frameworks
 - Applies case law and statutes accurately with proper citations
 - Analyzes both sides of arguments and counter-arguments
@@ -439,6 +442,7 @@ Each scenario is scored on:
 - Identifies non-obvious legal theories or defenses
 
 **Good (35-44 points)**:
+
 - Identifies key legal issues and applies main frameworks
 - Uses relevant case law and statutes
 - Considers primary arguments and defenses
@@ -447,6 +451,7 @@ Each scenario is scored on:
 - Provides useful legal analysis
 
 **Needs Improvement (<35 points)**:
+
 - Misses critical legal issues or misapplies law
 - Ignores relevant precedents or statutes
 - One-sided analysis without considering defenses
@@ -459,12 +464,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -482,6 +489,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as legal landscape evolves
 - Update expected elements as case law develops
 - Refine scoring criteria based on legal analysis quality

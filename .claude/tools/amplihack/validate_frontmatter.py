@@ -12,8 +12,9 @@ REQUIRED_FIELDS = {
     "workflow": ["name", "version", "description", "phases"],
     "command": ["name", "version", "description", "triggers"],
     "skill": ["name", "version", "description"],
-    "agent": ["name", "version", "description", "role"]
+    "agent": ["name", "version", "description", "role"],
 }
+
 
 def validate_file(path: Path, component_type: str) -> List[str]:
     """Validate frontmatter in a single file."""
@@ -49,6 +50,7 @@ def validate_file(path: Path, component_type: str) -> List[str]:
             errors.append(f"Invalid version format: {version} (expected X.Y.Z)")
 
     return errors
+
 
 def main():
     """Run validation on all components."""
@@ -108,6 +110,7 @@ def main():
     print(f"Summary: {len(all_errors)}/{total_files} files with errors")
 
     return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

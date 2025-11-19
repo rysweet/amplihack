@@ -437,18 +437,19 @@ Develop a regional growth management framework.
 
 ### Scoring Summary
 
-| Scenario | Max Score | Passing Score |
-|----------|-----------|---------------|
-| 1. Transit-Oriented Development | 50 | 35 |
-| 2. Climate Adaptation Planning | 50 | 35 |
-| 3. Affordable Housing Crisis | 50 | 35 |
-| 4. Post-Industrial Revitalization | 50 | 35 |
-| 5. Regional Growth Management | 50 | 35 |
-| **Total** | **250** | **175** |
+| Scenario                          | Max Score | Passing Score |
+| --------------------------------- | --------- | ------------- |
+| 1. Transit-Oriented Development   | 50        | 35            |
+| 2. Climate Adaptation Planning    | 50        | 35            |
+| 3. Affordable Housing Crisis      | 50        | 35            |
+| 4. Post-Industrial Revitalization | 50        | 35            |
+| 5. Regional Growth Management     | 50        | 35            |
+| **Total**                         | **250**   | **175**       |
 
 ### Passing Criteria
 
 To demonstrate urban planner analyst competence:
+
 - **Minimum per scenario**: 35/50 (70%)
 - **Overall minimum**: 175/250 (70%)
 - **Must pass at least 4 of 5 scenarios**
@@ -456,6 +457,7 @@ To demonstrate urban planner analyst competence:
 ### Evaluation Dimensions
 
 Each scenario is scored on:
+
 1. **Domain Accuracy** (0-10): Correct application of urban planning frameworks and principles
 2. **Analytical Depth** (0-10): Thoroughness and sophistication of spatial and policy analysis
 3. **Insight Specificity** (0-10): Clear, actionable planning recommendations
@@ -465,6 +467,7 @@ Each scenario is scored on:
 ### What High-Quality Analysis Looks Like
 
 **Excellent (45-50 points)**:
+
 - Applies planning frameworks accurately (comprehensive planning, zoning, TOD, climate adaptation)
 - Considers spatial, economic, social, environmental, and equity dimensions
 - Makes specific, prioritized policy recommendations with implementation pathways
@@ -474,6 +477,7 @@ Each scenario is scored on:
 - Identifies innovative planning tools and approaches
 
 **Good (35-44 points)**:
+
 - Applies key planning concepts correctly
 - Considers main land use, transportation, and equity factors
 - Makes reasonable policy recommendations
@@ -482,6 +486,7 @@ Each scenario is scored on:
 - Provides useful planning insights
 
 **Needs Improvement (<35 points)**:
+
 - Misapplies planning concepts or frameworks
 - Ignores critical spatial patterns or equity concerns
 - Vague or technically incorrect recommendations
@@ -494,12 +499,14 @@ Each scenario is scored on:
 ## Using This Quiz
 
 ### For Self-Assessment
+
 1. Attempt each scenario analysis
 2. Compare your analysis to expected elements
 3. Score yourself honestly on each dimension
 4. Identify areas for improvement
 
 ### For Automated Testing (Claude Agent SDK)
+
 ```python
 from claude_agent_sdk import Agent, TestHarness
 
@@ -517,6 +524,7 @@ assert sum(1 for r in results if r["score"] >= 35) >= 4  # At least 4 scenarios 
 ```
 
 ### For Continuous Improvement
+
 - Add new scenarios as urban challenges evolve
 - Update expected elements as planning practices change
 - Refine scoring criteria based on analyst performance patterns

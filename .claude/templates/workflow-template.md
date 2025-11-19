@@ -1,26 +1,26 @@
 ---
 # REQUIRED FIELDS - Fill these in for every workflow
 
-name: [FILL: WORKFLOW_NAME]             # SCREAMING_SNAKE_CASE (e.g., DEFAULT_WORKFLOW, CI_DIAGNOSTIC_WORKFLOW)
-version: 1.0.0                          # Semantic versioning (MAJOR.MINOR.PATCH)
+name: [FILL: WORKFLOW_NAME] # SCREAMING_SNAKE_CASE (e.g., DEFAULT_WORKFLOW, CI_DIAGNOSTIC_WORKFLOW)
+version: 1.0.0 # Semantic versioning (MAJOR.MINOR.PATCH)
 description: [FILL: What this workflow orchestrates - one line under 80 chars]
-steps: [FILL: number]                   # Total number of steps in this workflow
+steps: [FILL: number] # Total number of steps in this workflow
 
 # OPTIONAL FIELDS - Include for better integration and documentation
 
-entry_points:                           # Commands or skills that use this workflow
+entry_points: # Commands or skills that use this workflow
   - [FILL: /command-name]
   - [FILL: skill-name]
 
-phases:                                 # Logical groupings of steps
+phases: # Logical groupings of steps
   - name: [FILL: Phase 1 Name]
-    steps: [FILL: [1, 2, 3]]           # Array of step numbers in this phase
+    steps: [FILL: [1, 2, 3]] # Array of step numbers in this phase
     description: [FILL: What this phase accomplishes]
   - name: [FILL: Phase 2 Name]
     steps: [FILL: [4, 5, 6]]
     description: [FILL: What this phase accomplishes]
 
-references:                             # Components this workflow mentions
+references: # Components this workflow mentions
   workflows:
     - [FILL: OTHER_WORKFLOW.md]
   commands:
@@ -32,13 +32,16 @@ references:                             # Components this workflow mentions
   tools:
     - "[FILL: .claude/tools/tool-name.py]"
 
-philosophy:                             # How workflow embodies amplihack principles
-  - principle: [FILL: Ruthless Simplicity|Trust in Emergence|Modular Design|Zero-BS Implementation|Analysis First]
+philosophy: # How workflow embodies amplihack principles
+  - principle:
+      [
+        FILL: Ruthless Simplicity|Trust in Emergence|Modular Design|Zero-BS Implementation|Analysis First,
+      ]
     application: [FILL: How this workflow embodies the principle]
   - principle: [FILL: Another principle if applicable]
     application: [FILL: Application description]
 
-customizable: [FILL: true|false]        # Can users modify this workflow for their needs?
+customizable: [FILL: true|false] # Can users modify this workflow for their needs?
 ---
 
 # [FILL: Workflow Title in Title Case]

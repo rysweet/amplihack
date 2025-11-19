@@ -42,6 +42,7 @@ Use this command instead of `/ultrathink` when:
 When this command is invoked, you MUST:
 
 1. **Inform user** which workflow is being used:
+
    ```
    Executing INVESTIGATION_WORKFLOW.md (6-phase research workflow)
    ```
@@ -166,12 +167,12 @@ This workflow targets 30-40% reduction in message count compared to ad-hoc inves
 
 ## Comparison to /ultrathink
 
-| Feature                   | /ultrathink                        | /amplihack:investigation-workflow |
-| ------------------------- | ---------------------------------- | --------------------------------- |
-| **Task Detection**        | Auto-detects (investigation vs dev)| Skip detection, use INVESTIGATION |
-| **Workflow Selection**    | Automatic (investigation or dev)   | Always INVESTIGATION_WORKFLOW     |
-| **Development Support**   | Yes (switches to DEFAULT)          | No (investigation only)           |
-| **Use When**              | Task type unclear                  | Task clearly investigation        |
+| Feature                 | /ultrathink                         | /amplihack:investigation-workflow |
+| ----------------------- | ----------------------------------- | --------------------------------- |
+| **Task Detection**      | Auto-detects (investigation vs dev) | Skip detection, use INVESTIGATION |
+| **Workflow Selection**  | Automatic (investigation or dev)    | Always INVESTIGATION_WORKFLOW     |
+| **Development Support** | Yes (switches to DEFAULT)           | No (investigation only)           |
+| **Use When**            | Task type unclear                   | Task clearly investigation        |
 
 ## Phase Mapping to DEFAULT_WORKFLOW
 
