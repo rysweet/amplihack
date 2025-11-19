@@ -12,10 +12,9 @@ Storage Format:
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 
 def _get_preference_file_path() -> Path:
@@ -88,7 +87,7 @@ def load_update_preference() -> Optional[str]:
         if not pref_file.exists():
             return None
 
-        with open(pref_file, 'r', encoding='utf-8') as f:
+        with open(pref_file, encoding='utf-8') as f:
             data = json.load(f)
 
         auto_update = data.get('auto_update')
@@ -99,7 +98,7 @@ def load_update_preference() -> Optional[str]:
 
         return auto_update
 
-    except (json.JSONDecodeError, OSError, RuntimeError) as e:
+    except (json.JSONDecodeError, OSError, RuntimeError):
         # On any error, return None (ask each time) as safe default
         return None
 
@@ -148,7 +147,7 @@ def save_update_preference(value: str) -> None:
         # Atomic rename
         temp_file.replace(pref_file)
 
-    except Exception as e:
+    except Exception:
         # Clean up temp file on error
         if temp_file.exists():
             temp_file.unlink()
@@ -172,7 +171,7 @@ def get_last_prompted() -> Optional[datetime]:
         if not pref_file.exists():
             return None
 
-        with open(pref_file, 'r', encoding='utf-8') as f:
+        with open(pref_file, encoding='utf-8') as f:
             data = json.load(f)
 
         last_prompted = data.get('last_prompted')

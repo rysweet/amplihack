@@ -10,7 +10,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from power_steering_checker import PowerSteeringChecker, PowerSteeringRedirect
 
 

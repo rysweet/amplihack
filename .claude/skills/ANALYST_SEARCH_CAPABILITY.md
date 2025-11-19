@@ -145,4 +145,3 @@ All analyst skills include WebSearch as an available tool through Claude Code's 
 **Status**: All 23 analyst agents have WebSearch capability
 **Implementation**: Built into Claude Code, available by default
 **Documentation**: This guidance added to analyst ecosystem
-

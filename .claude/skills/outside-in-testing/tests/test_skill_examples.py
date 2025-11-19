@@ -9,11 +9,11 @@ Validates that all example YAML files are:
 - Have consistent structure
 """
 
+from pathlib import Path
+from typing import Any, Dict, List
+
 import pytest
 import yaml
-from pathlib import Path
-from typing import Dict, Any, List
-
 
 # Skill directory paths
 SKILL_DIR = Path(__file__).parent.parent
@@ -27,7 +27,7 @@ def get_all_example_files() -> List[Path]:
 
 def load_yaml_file(file_path: Path) -> Dict[str, Any]:
     """Load and parse a YAML file."""
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         return yaml.safe_load(f)
 
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Validate frontmatter across amplihack components."""
 
-import yaml
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import List
+
+import yaml
 
 # Required fields by type
 REQUIRED_FIELDS = {
@@ -23,11 +24,11 @@ def validate_file(path: Path, component_type: str) -> List[str]:
 
     # Extract frontmatter
     if not content.startswith("---"):
-        return [f"Missing frontmatter delimiter"]
+        return ["Missing frontmatter delimiter"]
 
     parts = content.split("---", 2)
     if len(parts) < 3:
-        return [f"Incomplete frontmatter"]
+        return ["Incomplete frontmatter"]
 
     # Parse YAML
     try:

@@ -461,7 +461,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Smart PROJECT.md initialization for UVX mode
         if copied:
             try:
-                from .utils.project_initializer import initialize_project_md, InitMode
+                from .utils.project_initializer import InitMode, initialize_project_md
 
                 result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:

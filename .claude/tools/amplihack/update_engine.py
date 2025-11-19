@@ -386,7 +386,7 @@ def perform_update(
             preserved_files.append(file_path)
             continue
 
-        elif category == FileCategory.PRESERVE_IF_MODIFIED:
+        if category == FileCategory.PRESERVE_IF_MODIFIED:
             # Preserve if modified, update if unmodified
             if _is_file_modified(dest_file, source_file):
                 preserved_files.append(file_path)

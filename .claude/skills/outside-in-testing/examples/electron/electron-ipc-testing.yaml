@@ -119,7 +119,7 @@ scenario:
     # Send IPC from first window
     - action: window_action
       window: 1
-      action: focus
+      window_action: focus
 
     - action: ipc_send
       channel: "broadcast-message"
@@ -129,7 +129,7 @@ scenario:
     # Verify received in second window
     - action: window_action
       window: 2
-      action: focus
+      window_action: focus
 
     - action: wait_for_element
       selector: ".broadcast-message"

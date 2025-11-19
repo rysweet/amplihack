@@ -361,7 +361,7 @@ class ClaudeLauncher:
 
             return cmd
 
-        elif claude_binary == "claude-trace":
+        if claude_binary == "claude-trace":
             # claude-trace requires --run-with before Claude arguments
             cmd = [claude_binary]
 

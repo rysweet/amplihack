@@ -1265,4 +1265,3 @@ Evaluates: Land use patterns, density, accessibility, environmental impact, comm
   - Other: 3
 
 **Total Components**: 123
-

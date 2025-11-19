@@ -118,4 +118,3 @@ email.send_notification()
 - Practical guide with complete implementation?
 - Deep dive into Observer with push vs pull variants?
 - Comparison with other notification patterns?
-

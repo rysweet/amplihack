@@ -10,18 +10,14 @@ Tests the complete update orchestration:
 - Version file writing
 """
 
-import shutil
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import Mock, patch
 
 # Add .claude/tools/amplihack to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
 
-from file_classifier import FileCategory
 from update_engine import (
     UpdateResult,
     _copy_file_safe,

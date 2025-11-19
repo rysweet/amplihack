@@ -2,18 +2,18 @@
 """
 Generate component catalog from frontmatter metadata.
 """
-import os
 import re
-from pathlib import Path
-from typing import Dict, List, Any
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List
+
 import yaml
 
 
 def extract_frontmatter(file_path: Path) -> Dict[str, Any]:
     """Extract YAML frontmatter from markdown file."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             content = f.read()
 
         # Match frontmatter between --- markers
@@ -267,7 +267,7 @@ This catalog provides a comprehensive reference to all workflows, commands, skil
         f.write(catalog)
 
     print(f"✅ Catalog generated: {catalog_path}")
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  - Workflows: {len(workflow_entries)}")
     print(f"  - Commands: {len(command_entries)}")
     print(f"  - Skills: {len(skill_entries)}")

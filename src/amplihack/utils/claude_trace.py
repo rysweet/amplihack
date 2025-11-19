@@ -34,7 +34,7 @@ def get_claude_command() -> str:
         May attempt to install claude-trace via npm if not found
     """
     # Check for RustyClawd (Rust implementation) first
-    from .rustyclawd_detect import should_use_rustyclawd, get_rustyclawd_path
+    from .rustyclawd_detect import get_rustyclawd_path, should_use_rustyclawd
 
     if should_use_rustyclawd():
         rustyclawd = get_rustyclawd_path()
