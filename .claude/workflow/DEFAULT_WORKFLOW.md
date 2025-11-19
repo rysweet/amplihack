@@ -98,13 +98,15 @@ This step-based structure helps users understand:
 ### Step 1: Rewrite and Clarify Requirements
 
 - [ ] **FIRST: Identify explicit user requirements** that CANNOT be optimized away
-- [ ] **Always use** prompt-writer agent to clarify task requirements
+- [ ] **Always use** prompt-writer agent to clarify task requirements (includes automatic task classification)
+- [ ] **Classification**: prompt-writer automatically classifies as EXECUTABLE, DOCUMENTATION, or AMBIGUOUS
+- [ ] **If AMBIGUOUS**: prompt-writer will ask user to clarify before proceeding
 - [ ] **Use** analyzer agent to understand existing codebase context
 - [ ] **Use** ambiguity agent if requirements are unclear
 - [ ] Remove ambiguity from the task description
 - [ ] Define clear success criteria
 - [ ] Document acceptance criteria
-- [ ] **CRITICAL: Pass explicit requirements to ALL subsequent agents**
+- [ ] **CRITICAL: Pass explicit requirements AND classification to ALL subsequent agents**
 
 ### Step 2: Create GitHub Issue
 
