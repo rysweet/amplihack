@@ -1,6 +1,9 @@
 # Default Coding Workflow
 
 This file defines the default workflow for all non-trivial code changes.
+
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
 You can customize this workflow by editing this file.
 
 ## How This Workflow Works

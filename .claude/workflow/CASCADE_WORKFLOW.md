@@ -2,6 +2,9 @@
 
 This workflow implements graceful degradation through cascading fallback strategies. When optimal approaches fail or timeout, the system automatically falls back to simpler, more reliable alternatives while maintaining acceptable functionality.
 
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
+
 ## Configuration
 
 ### Core Parameters
