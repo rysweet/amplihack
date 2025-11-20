@@ -66,6 +66,17 @@ class PrerequisiteResult:
     available_tools: List[ToolCheckResult] = field(default_factory=list)
 
 
+@dataclass
+class InstallationResult:
+    """Result of attempting to install a tool."""
+
+    tool: str
+    success: bool
+    message: str
+    command_used: Optional[str] = None
+    verification_result: Optional[ToolCheckResult] = None
+
+
 def safe_subprocess_call(
     cmd: List[str],
     context: str,
@@ -173,45 +184,7 @@ class PrerequisiteChecker:
         "npm": "--version",
         "uv": "--version",
         "git": "--version",
-    }
-
-    # Installation commands by platform and tool
-    INSTALL_COMMANDS = {
-        Platform.MACOS: {
-            "node": "brew install node",
-            "npm": "brew install node  # npm comes with Node.js",
-            "uv": "brew install uv",
-            "git": "brew install git",
-            "claude": "npm install -g @anthropic-ai/claude-code",
-        },
-        Platform.LINUX: {
-            "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs\n# Arch:\nsudo pacman -S nodejs",
-            "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm\n# Arch:\nsudo pacman -S npm",
-            "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            "git": "# Ubuntu/Debian:\nsudo apt install git\n# Fedora/RHEL:\nsudo dnf install git\n# Arch:\nsudo pacman -S git",
-            "claude": "npm install -g @anthropic-ai/claude-code",
-        },
-        Platform.WSL: {
-            "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs",
-            "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm",
-            "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            "git": "sudo apt install git  # or your WSL distro's package manager",
-            "claude": "npm install -g @anthropic-ai/claude-code",
-        },
-        Platform.WINDOWS: {
-            "node": "winget install OpenJS.NodeJS\n# Or: choco install nodejs",
-            "npm": "winget install OpenJS.NodeJS  # npm comes with Node.js\n# Or: choco install nodejs",
-            "uv": 'powershell -c "irm https://astral.sh/uv/install.ps1 | iex"',
-            "git": "winget install Git.Git\n# Or: choco install git",
-            "claude": "npm install -g @anthropic-ai/claude-code",
-        },
-        Platform.UNKNOWN: {
-            "node": "Please install Node.js from https://nodejs.org/",
-            "npm": "Please install npm (usually comes with Node.js)",
-            "uv": "Please install uv from https://docs.astral.sh/uv/",
-            "git": "Please install git from https://git-scm.com/",
-            "claude": "npm install -g @anthropic-ai/claude-code",
-        },
+        "rg": "--version",
     }
 
     # Documentation links
@@ -220,6 +193,7 @@ class PrerequisiteChecker:
         "npm": "https://www.npmjs.com/",
         "uv": "https://docs.astral.sh/uv/",
         "git": "https://git-scm.com/",
+        "rg": "https://github.com/BurntSushi/ripgrep",
         "claude": "https://docs.claude.com/en/docs/claude-code/setup",
     }
 
@@ -366,9 +340,8 @@ class PrerequisiteChecker:
         Returns:
             Installation command string
         """
-        platform_commands = self.INSTALL_COMMANDS.get(
-            self.platform, self.INSTALL_COMMANDS[Platform.UNKNOWN]
-        )
+        # Use DependencyInstaller's commands as single source of truth
+        platform_commands = DependencyInstaller.INSTALL_COMMANDS_DISPLAY.get(self.platform, {})
         return platform_commands.get(tool, f"Please install {tool} manually")
 
     def format_missing_prerequisites(self, missing_tools: List[ToolCheckResult]) -> str:
@@ -384,45 +357,29 @@ class PrerequisiteChecker:
             return ""
 
         lines = []
-        lines.append("=" * 70)
-        lines.append("MISSING PREREQUISITES")
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append("The following required tools are not installed:")
-        lines.append("")
+        lines.append("\nMissing Prerequisites")
+        lines.append("-" * 50)
+        lines.append(f"\nPlatform: {self.platform.value}")
+        lines.append("\nRequired tools not installed:")
 
         for result in missing_tools:
-            lines.append(f"  ✗ {result.tool}")
-            if result.error:
-                lines.append(f"    Error: {result.error}")
-            lines.append("")
+            lines.append(f"  - {result.tool}")
 
-        lines.append("=" * 70)
-        lines.append("INSTALLATION INSTRUCTIONS")
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append(f"Platform detected: {self.platform.value}")
-        lines.append("")
+        lines.append("\nInstallation commands:")
 
         for result in missing_tools:
             tool = result.tool
-            lines.append(f"To install {tool}:")
-            lines.append("")
             install_cmd = self.get_install_command(tool)
+            lines.append(f"\n{tool}:")
             # Indent multi-line commands
             for cmd_line in install_cmd.split("\n"):
                 lines.append(f"  {cmd_line}")
-            lines.append("")
 
             # Add documentation link
             if tool in self.DOCUMENTATION_LINKS:
-                lines.append(f"  Documentation: {self.DOCUMENTATION_LINKS[tool]}")
-                lines.append("")
+                lines.append(f"  Docs: {self.DOCUMENTATION_LINKS[tool]}")
 
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append("After installing the missing tools, please run this command again.")
-        lines.append("")
+        lines.append("\nAfter installing, run this command again.\n")
 
         return "\n".join(lines)
 
@@ -443,6 +400,300 @@ class PrerequisiteChecker:
         # Print detailed report
         print(self.format_missing_prerequisites(result.missing_tools))
         return False
+
+    def _prompt_for_installation(self, tool: str, command: str) -> bool:
+        """Prompt user for permission to install a tool.
+
+        Args:
+            tool: Name of the tool to install
+            command: Installation command that will be executed
+
+        Returns:
+            True if user grants permission, False otherwise
+
+        Side Effects:
+            Reads from stdin for user input
+        """
+        print(f"\nInstall {tool}? Command: {command}")
+        print("Proceed? (y/n): ", end="", flush=True)
+
+        try:
+            response = input().strip().lower()
+            return response in ("y", "yes")
+        except (EOFError, KeyboardInterrupt):
+            print("\nCancelled.")
+            return False
+
+    def _install_tools(
+        self, missing_tools: List[ToolCheckResult], installer: "DependencyInstaller"
+    ) -> None:
+        """Install missing tools with user permission.
+
+        Args:
+            missing_tools: List of tools to install
+            installer: DependencyInstaller instance
+
+        Side Effects:
+            Prompts user and installs tools
+        """
+        for tool_result in missing_tools:
+            tool = tool_result.tool
+
+            # Get installation command for display
+            install_cmd = installer.INSTALL_COMMANDS.get(self.platform, {}).get(tool)
+            if not install_cmd:
+                print(f"\n[{tool}] No automatic installation available")
+                continue
+
+            cmd_str = " ".join(install_cmd)
+
+            # Prompt for permission
+            if not self._prompt_for_installation(tool, cmd_str):
+                print(f"[{tool}] Skipped")
+                continue
+
+            # Install tool
+            install_result = installer.install_tool(tool)
+            status = "OK" if install_result.success else "FAILED"
+            print(f"[{tool}] {status}: {install_result.message}")
+
+            if install_result.success and install_result.verification_result:
+                if install_result.verification_result.version:
+                    print(f"[{tool}] Version: {install_result.verification_result.version}")
+
+    def check_and_install(self) -> PrerequisiteResult:
+        """Check prerequisites and offer to install missing tools.
+
+        This method checks all prerequisites and prompts the user to install
+        missing tools one at a time. User must explicitly grant permission
+        for each installation.
+
+        Returns:
+            PrerequisiteResult with updated status after installation attempts
+
+        Side Effects:
+            - Prints status messages to stdout
+            - Prompts user for installation permission
+            - Executes installation commands if permitted
+            - Modifies system by installing tools
+
+        Example:
+            >>> checker = PrerequisiteChecker()
+            >>> result = checker.check_and_install()
+            >>> if result.all_available:
+            ...     print("All prerequisites installed!")
+        """
+        # Initial check
+        result = self.check_all_prerequisites()
+
+        if result.all_available:
+            print("\nAll prerequisites already installed!")
+            return result
+
+        # Show what's missing
+        print(f"\nMissing tools on {self.platform.value}:")
+        for tool_result in result.missing_tools:
+            print(f"  - {tool_result.tool}")
+
+        # Check if automatic installation is supported
+        if self.platform not in DependencyInstaller.INSTALL_COMMANDS:
+            print(f"\nAutomatic installation not supported on {self.platform.value}")
+            print(self.format_missing_prerequisites(result.missing_tools))
+            return result
+
+        # Install tools
+        print("\nAttempting automatic installation...")
+        installer = DependencyInstaller(self.platform)
+        self._install_tools(result.missing_tools, installer)
+
+        # Re-check and report
+        print("\nVerifying installation...")
+        final_result = self.check_all_prerequisites()
+
+        if final_result.all_available:
+            print("All prerequisites now installed!")
+        else:
+            print("\nStill missing:")
+            for tool_result in final_result.missing_tools:
+                print(f"  - {tool_result.tool}")
+            print(self.format_missing_prerequisites(final_result.missing_tools))
+
+        return final_result
+
+
+class DependencyInstaller:
+    """Install missing dependencies with user permission.
+
+    Philosophy:
+    - Security: Whitelist commands, validate inputs, prompt for sudo
+    - User control: Never install without explicit permission
+    - Simplicity: Sequential installation, clear error messages
+    - Fail fast: Verify after each installation
+
+    MVP supports:
+    - macOS with Homebrew only
+    - Sequential installation (one at a time)
+    - Basic verification after installation
+
+    Example:
+        >>> installer = DependencyInstaller(Platform.MACOS)
+        >>> result = installer.install_tool("git")
+        >>> if result.success:
+        ...     print(f"Installed {result.tool}")
+    """
+
+    # Whitelisted installation commands (executable lists for subprocess)
+    INSTALL_COMMANDS = {
+        Platform.MACOS: {
+            "node": ["brew", "install", "node"],
+            "npm": ["brew", "install", "node"],  # npm comes with node
+            "uv": ["brew", "install", "uv"],
+            "git": ["brew", "install", "git"],
+            "rg": ["brew", "install", "ripgrep"],
+        },
+    }
+
+    # Display commands (human-readable strings for documentation)
+    INSTALL_COMMANDS_DISPLAY = {
+        Platform.MACOS: {
+            "node": "brew install node",
+            "npm": "brew install node  # npm comes with Node.js",
+            "uv": "brew install uv",
+            "git": "brew install git",
+            "rg": "brew install ripgrep",
+            "claude": "npm install -g @anthropic-ai/claude-code",
+        },
+        Platform.LINUX: {
+            "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs\n# Arch:\nsudo pacman -S nodejs",
+            "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm\n# Arch:\nsudo pacman -S npm",
+            "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
+            "git": "# Ubuntu/Debian:\nsudo apt install git\n# Fedora/RHEL:\nsudo dnf install git\n# Arch:\nsudo pacman -S git",
+            "rg": "# Ubuntu/Debian:\nsudo apt install ripgrep\n# Fedora/RHEL:\nsudo dnf install ripgrep\n# Arch:\nsudo pacman -S ripgrep",
+            "claude": "npm install -g @anthropic-ai/claude-code",
+        },
+        Platform.WSL: {
+            "node": "# Ubuntu/Debian:\nsudo apt install nodejs\n# Fedora/RHEL:\nsudo dnf install nodejs",
+            "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm",
+            "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
+            "git": "sudo apt install git  # or your WSL distro's package manager",
+            "rg": "sudo apt install ripgrep  # or your WSL distro's package manager",
+            "claude": "npm install -g @anthropic-ai/claude-code",
+        },
+        Platform.WINDOWS: {
+            "node": "winget install OpenJS.NodeJS\n# Or: choco install nodejs",
+            "npm": "winget install OpenJS.NodeJS  # npm comes with Node.js\n# Or: choco install nodejs",
+            "uv": 'powershell -c "irm https://astral.sh/uv/install.ps1 | iex"',
+            "git": "winget install Git.Git\n# Or: choco install git",
+            "rg": "winget install BurntSushi.ripgrep.MSVC\n# Or: choco install ripgrep",
+            "claude": "npm install -g @anthropic-ai/claude-code",
+        },
+        Platform.UNKNOWN: {
+            "node": "Please install Node.js from https://nodejs.org/",
+            "npm": "Please install npm (usually comes with Node.js)",
+            "uv": "Please install uv from https://docs.astral.sh/uv/",
+            "git": "Please install git from https://git-scm.com/",
+            "rg": "Please install ripgrep from https://github.com/BurntSushi/ripgrep",
+            "claude": "npm install -g @anthropic-ai/claude-code",
+        },
+    }
+
+    def __init__(self, platform: Platform):
+        """Initialize installer for the given platform.
+
+        Args:
+            platform: The platform to install for
+        """
+        self.platform = platform
+
+    def install_tool(self, tool: str) -> InstallationResult:
+        """Install a single tool with verification.
+
+        Args:
+            tool: Name of the tool to install
+
+        Returns:
+            InstallationResult with success status and details
+
+        Security:
+            Only whitelisted commands are executed
+            All commands are validated before execution
+        """
+        # Check if platform is supported
+        if self.platform not in self.INSTALL_COMMANDS:
+            return InstallationResult(
+                tool=tool,
+                success=False,
+                message=f"Automatic installation not supported on {self.platform.value}",
+            )
+
+        # Check if tool is supported
+        platform_commands = self.INSTALL_COMMANDS[self.platform]
+        if tool not in platform_commands:
+            return InstallationResult(
+                tool=tool,
+                success=False,
+                message=f"No installation command for {tool} on {self.platform.value}",
+            )
+
+        # Get whitelisted command
+        install_cmd = platform_commands[tool]
+        cmd_str = " ".join(install_cmd)
+
+        # Execute installation
+        print(f"\nInstalling {tool}...")
+        print(f"Running: {cmd_str}")
+
+        returncode, stdout, stderr = safe_subprocess_call(
+            install_cmd,
+            context=f"installing {tool}",
+            timeout=300,  # 5 minutes for installation
+        )
+
+        if returncode != 0:
+            return InstallationResult(
+                tool=tool,
+                success=False,
+                message=f"Installation failed: {stderr}",
+                command_used=cmd_str,
+            )
+
+        # Verify installation using shutil.which (no circular dependency)
+        tool_path = shutil.which(tool)
+
+        if not tool_path:
+            return InstallationResult(
+                tool=tool,
+                success=False,
+                message=f"Installation completed but {tool} still not found in PATH",
+                command_used=cmd_str,
+            )
+
+        # Get version if possible
+        version = None
+        version_arg = PrerequisiteChecker.REQUIRED_TOOLS.get(tool)
+        if version_arg:
+            returncode, stdout, stderr = safe_subprocess_call(
+                [tool, version_arg],
+                context=f"checking {tool} version",
+                timeout=5,
+            )
+            if returncode == 0 and stdout:
+                version = stdout.strip().split("\n")[0]
+
+        verification = ToolCheckResult(
+            tool=tool,
+            available=True,
+            path=tool_path,
+            version=version,
+        )
+
+        return InstallationResult(
+            tool=tool,
+            success=True,
+            message=f"Successfully installed {tool}",
+            command_used=cmd_str,
+            verification_result=verification,
+        )
 
 
 # Convenience function for quick prerequisite checking
@@ -468,6 +719,8 @@ __all__ = [
     "PrerequisiteChecker",
     "PrerequisiteResult",
     "ToolCheckResult",
+    "InstallationResult",
+    "DependencyInstaller",
     "check_prerequisites",
     "safe_subprocess_call",
 ]
