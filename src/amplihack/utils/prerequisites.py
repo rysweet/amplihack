@@ -474,6 +474,7 @@ class PrerequisiteChecker:
         "npm": "--version",
         "uv": "--version",
         "git": "--version",
+        "rg": "--version",  # ripgrep - required for custom slash commands
     }
 
     # Installation commands by platform and tool
@@ -484,6 +485,7 @@ class PrerequisiteChecker:
             "npm": "brew install node  # npm comes with Node.js",
             "uv": "brew install uv",
             "git": "brew install git",
+            "rg": "brew install ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.LINUX: {
@@ -491,6 +493,7 @@ class PrerequisiteChecker:
             "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm\n# Arch:\nsudo pacman -S npm",
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "# Ubuntu/Debian:\nsudo apt install git\n# Fedora/RHEL:\nsudo dnf install git\n# Arch:\nsudo pacman -S git",
+            "rg": "# Ubuntu/Debian:\nsudo apt install ripgrep\n# Fedora/RHEL:\nsudo dnf install ripgrep\n# Arch:\nsudo pacman -S ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.WSL: {
@@ -498,6 +501,7 @@ class PrerequisiteChecker:
             "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm",
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "sudo apt install git  # or your WSL distro's package manager",
+            "rg": "sudo apt install ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.WINDOWS: {
@@ -505,6 +509,7 @@ class PrerequisiteChecker:
             "npm": "winget install OpenJS.NodeJS  # npm comes with Node.js\n# Or: choco install nodejs",
             "uv": 'powershell -c "irm https://astral.sh/uv/install.ps1 | iex"',
             "git": "winget install Git.Git\n# Or: choco install git",
+            "rg": "winget install BurntSushi.ripgrep.MSVC\n# Or: choco install ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.UNKNOWN: {
@@ -512,6 +517,7 @@ class PrerequisiteChecker:
             "npm": "Please install npm (usually comes with Node.js)",
             "uv": "Please install uv from https://docs.astral.sh/uv/",
             "git": "Please install git from https://git-scm.com/",
+            "rg": "Please install ripgrep from https://github.com/BurntSushi/ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
     }
@@ -524,6 +530,7 @@ class PrerequisiteChecker:
             "npm": ["brew", "install", "node"],  # npm comes with node
             "uv": ["brew", "install", "uv"],
             "git": ["brew", "install", "git"],
+            "rg": ["brew", "install", "ripgrep"],
             "claude": ["npm", "install", "-g", "@anthropic-ai/claude-code"],
         },
         Platform.LINUX: {
@@ -531,6 +538,7 @@ class PrerequisiteChecker:
             "npm": ["sudo", "apt", "install", "-y", "npm"],
             "uv": ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
             "git": ["sudo", "apt", "install", "-y", "git"],
+            "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
             "claude": ["npm", "install", "-g", "@anthropic-ai/claude-code"],
         },
         Platform.WSL: {
@@ -538,6 +546,7 @@ class PrerequisiteChecker:
             "npm": ["sudo", "apt", "install", "-y", "npm"],
             "uv": ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
             "git": ["sudo", "apt", "install", "-y", "git"],
+            "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
             "claude": ["npm", "install", "-g", "@anthropic-ai/claude-code"],
         },
         Platform.WINDOWS: {
@@ -545,6 +554,7 @@ class PrerequisiteChecker:
             "npm": ["winget", "install", "OpenJS.NodeJS"],  # npm comes with node
             "uv": ["powershell", "-c", "irm https://astral.sh/uv/install.ps1 | iex"],
             "git": ["winget", "install", "Git.Git"],
+            "rg": ["winget", "install", "BurntSushi.ripgrep.MSVC"],
             "claude": ["npm", "install", "-g", "@anthropic-ai/claude-code"],
         },
         Platform.UNKNOWN: {},  # No automatic commands for unknown platforms
@@ -556,6 +566,7 @@ class PrerequisiteChecker:
         "npm": "https://www.npmjs.com/",
         "uv": "https://docs.astral.sh/uv/",
         "git": "https://git-scm.com/",
+        "rg": "https://github.com/BurntSushi/ripgrep",
         "claude": "https://docs.claude.com/en/docs/claude-code/setup",
     }
 
