@@ -104,11 +104,11 @@ class TestToolChecking:
         checker = PrerequisiteChecker()
         with patch("shutil.which", return_value="/usr/bin/tool"), patch(
             "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
-        ):
+        ), patch("subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")):
             result = checker.check_all_prerequisites()
             assert result.all_available is True
             assert len(result.missing_tools) == 0
-            assert len(result.available_tools) == 5  # node, npm, uv, git, claude
+            assert len(result.available_tools) == 6  # node, npm, uv, git, rg, claude
 
 
 class TestInstallationCommands:
@@ -223,27 +223,31 @@ class TestPrerequisiteIntegration:
     def test_full_check_workflow_all_present(self):
         """Test complete prerequisite check when all tools present."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which") as mock_which:
+        with patch("shutil.which") as mock_which, patch(
+            "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+        ), patch("subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")):
             # Simulate all tools being available
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
             result = checker.check_all_prerequisites()
 
             assert result.all_available is True
-            assert len(result.available_tools) == 5
+            assert len(result.available_tools) == 6
             assert len(result.missing_tools) == 0
 
     def test_full_check_workflow_some_missing(self):
         """Test complete prerequisite check with some tools missing."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which") as mock_which:
-            # node, npm, and claude missing; uv and git present
+        with patch("shutil.which") as mock_which, \
+             patch("subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")):
+            # node, npm, rg, and claude missing; uv and git present
             mock_which.side_effect = lambda x: (f"/usr/bin/{x}" if x in ["uv", "git"] else None)
             result = checker.check_all_prerequisites()
 
             assert result.all_available is False
-            assert len(result.missing_tools) == 3
+            assert len(result.missing_tools) == 4
             assert any(t.tool == "node" for t in result.missing_tools)
             assert any(t.tool == "npm" for t in result.missing_tools)
+            assert any(t.tool == "rg" for t in result.missing_tools)
             assert any(t.tool == "claude" for t in result.missing_tools)
 
     def test_format_and_display_missing(self):
@@ -258,6 +262,7 @@ class TestPrerequisiteIntegration:
             assert "npm" in message.lower()
             assert "uv" in message.lower()
             assert "git" in message.lower()
+            assert "rg" in message.lower()
             assert "claude" in message.lower()
 
     def test_prerequisite_check_with_real_subprocess(self):
@@ -340,7 +345,9 @@ class TestEndToEnd:
     def test_e2e_all_prerequisites_present(self):
         """E2E: Complete workflow when all prerequisites present."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which") as mock_which:
+        with patch("shutil.which") as mock_which, patch(
+            "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+        ):
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
 
             # Full workflow
@@ -367,7 +374,7 @@ class TestEndToEnd:
                 # Message should contain:
                 # 1. All missing tools
                 assert all(
-                    tool in message.lower() for tool in ["node", "npm", "uv", "git", "claude"]
+                    tool in message.lower() for tool in ["node", "npm", "uv", "git", "rg", "claude"]
                 )
                 # 2. Installation commands
                 assert "brew install" in message
@@ -381,19 +388,21 @@ class TestEndToEnd:
         ):
             checker = PrerequisiteChecker()
 
-            with patch("shutil.which") as mock_which:
+            with patch("shutil.which") as mock_which, \
+                 patch("subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")):
                 # Only git and uv present
                 mock_which.side_effect = lambda x: (f"/usr/bin/{x}" if x in ["git", "uv"] else None)
 
                 result = checker.check_all_prerequisites()
                 assert result.all_available is False
-                assert len(result.missing_tools) == 3  # node, npm, and claude
+                assert len(result.missing_tools) == 4  # node, npm, rg, and claude
 
                 message = checker.format_missing_prerequisites(result.missing_tools)
 
                 # Should only mention missing tools
                 assert "node" in message.lower()
                 assert "npm" in message.lower()
+                assert "rg" in message.lower()
                 assert "claude" in message.lower()
                 # Should not mention available tools
                 assert message.count("git") <= 1  # May appear in install command

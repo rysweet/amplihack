@@ -117,6 +117,17 @@ class PrerequisiteResult:
     available_tools: List[ToolCheckResult] = field(default_factory=list)
 
 
+@dataclass
+class InstallationResult:
+    """Result of attempting to install a tool."""
+
+    tool: str
+    success: bool
+    message: str
+    command_used: Optional[str] = None
+    verification_result: Optional[ToolCheckResult] = None
+
+
 def safe_subprocess_call(
     cmd: List[str],
     context: str,
@@ -731,45 +742,29 @@ class PrerequisiteChecker:
             return ""
 
         lines = []
-        lines.append("=" * 70)
-        lines.append("MISSING PREREQUISITES")
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append("The following required tools are not installed:")
-        lines.append("")
+        lines.append("\nMissing Prerequisites")
+        lines.append("-" * 50)
+        lines.append(f"\nPlatform: {self.platform.value}")
+        lines.append("\nRequired tools not installed:")
 
         for result in missing_tools:
-            lines.append(f"  ✗ {result.tool}")
-            if result.error:
-                lines.append(f"    Error: {result.error}")
-            lines.append("")
+            lines.append(f"  - {result.tool}")
 
-        lines.append("=" * 70)
-        lines.append("INSTALLATION INSTRUCTIONS")
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append(f"Platform detected: {self.platform.value}")
-        lines.append("")
+        lines.append("\nInstallation commands:")
 
         for result in missing_tools:
             tool = result.tool
-            lines.append(f"To install {tool}:")
-            lines.append("")
             install_cmd = self.get_install_command(tool)
+            lines.append(f"\n{tool}:")
             # Indent multi-line commands
             for cmd_line in install_cmd.split("\n"):
                 lines.append(f"  {cmd_line}")
-            lines.append("")
 
             # Add documentation link
             if tool in self.DOCUMENTATION_LINKS:
-                lines.append(f"  Documentation: {self.DOCUMENTATION_LINKS[tool]}")
-                lines.append("")
+                lines.append(f"  Docs: {self.DOCUMENTATION_LINKS[tool]}")
 
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append("After installing the missing tools, please run this command again.")
-        lines.append("")
+        lines.append("\nAfter installing, run this command again.\n")
 
         return "\n".join(lines)
 
