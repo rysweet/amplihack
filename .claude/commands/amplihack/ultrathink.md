@@ -10,7 +10,7 @@
 
 ## Purpose
 
-Deep analysis mode for complex tasks. Orchestrates multiple agents to break down, analyze, and solve challenging problems by following the appropriate workflow (investigation or development).
+Deep analysis mode for complex tasks. Invokes workflow skills (default-workflow or investigation-workflow) based on task type. Workflows are now Claude Code skills that auto-activate.
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
@@ -22,9 +22,9 @@ When this command is invoked, you MUST:
    - **If both types detected**: Use hybrid workflow (investigation first, then development)
    - If only investigation keywords found: Use INVESTIGATION_WORKFLOW.md (6 phases)
    - If only development keywords found: Use DEFAULT_WORKFLOW.md (15 steps)
-2. **Read the appropriate workflow file** using the Read tool:
-   - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
-   - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
+2. **Invoke the appropriate workflow skill** using the Skill tool:
+   - Investigation: `Skill(skill="investigation-workflow")`
+   - Development: `Skill(skill="default-workflow")`
 3. **Create a comprehensive todo list** using TodoWrite that includes all workflow steps/phases
 4. **Execute each step systematically**, marking todos as in_progress and completed
 5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
