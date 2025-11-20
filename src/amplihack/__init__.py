@@ -26,6 +26,11 @@ ESSENTIAL_DIRS = [
     "config",  # Configuration files for tools
 ]
 
+# Essential files that must be copied (relative to .claude/)
+ESSENTIAL_FILES = [
+    "tools/statusline.sh",  # StatusLine script for Claude Code status bar
+]
+
 # Runtime directories that need to be created
 RUNTIME_DIRS = [
     "runtime",
@@ -218,6 +223,32 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
             print("  ✅ Copied settings.json")
         except Exception as e:
             print(f"  ⚠️  Could not copy settings.json: {e}")
+
+    # Copy essential files (like statusline.sh)
+    for file_path in ESSENTIAL_FILES:
+        source_file = os.path.join(base, file_path)
+        target_file = os.path.join(dst, file_path)
+
+        if not os.path.exists(source_file):
+            print(f"  ⚠️  Warning: {file_path} not found in source, skipping")
+            continue
+
+        # Create parent directory if needed
+        os.makedirs(os.path.dirname(target_file), exist_ok=True)
+
+        try:
+            shutil.copy2(source_file, target_file)
+            # Set execute permission for shell scripts
+            if file_path.endswith(".sh") and sys.platform != "win32":
+                import stat
+
+                current_perms = os.stat(target_file).st_mode
+                new_perms = current_perms | stat.S_IXUSR | stat.S_IXGRP
+                os.chmod(target_file, new_perms)
+            print(f"  ✅ Copied {file_path}")
+            copied.append(file_path)
+        except Exception as e:
+            print(f"  ⚠️  Could not copy {file_path}: {e}")
 
     return copied
 
