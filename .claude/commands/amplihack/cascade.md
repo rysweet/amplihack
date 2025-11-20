@@ -1,3 +1,8 @@
+---
+description: Execute fallback cascade pattern for resilient operations
+argument-hint: <task-description>
+---
+
 # Fallback Cascade Command
 
 ## Usage

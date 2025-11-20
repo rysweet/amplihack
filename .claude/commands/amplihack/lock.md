@@ -1,3 +1,8 @@
+---
+description: Enable continuous work mode to prevent stops
+argument-hint: [lock-message]
+---
+
 # Lock: Enable Continuous Work Mode
 
 **Purpose**: Enable continuous work mode to prevent Claude from stopping until explicitly unlocked.

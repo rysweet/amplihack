@@ -1,3 +1,8 @@
+---
+description: XPIA security system management and health monitoring
+argument-hint: [subcommand]
+---
+
 # XPIA Security Command
 
 XPIA (Cross-Platform Injection Attack) Defense system management and health monitoring.

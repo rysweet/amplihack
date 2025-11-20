@@ -1,3 +1,8 @@
+---
+description: Build modular components from specifications
+argument-hint: [mode] [target]
+---
+
 # Modular Build Command
 
 ## Input Validation

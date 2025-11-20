@@ -1,3 +1,8 @@
+---
+description: Multi-agent debate for complex decisions
+argument-hint: <question-or-decision>
+---
+
 # Multi-Agent Debate Command
 
 ## Usage

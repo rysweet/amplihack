@@ -1,3 +1,8 @@
+---
+description: Self-improvement and learning capture
+argument-hint: [target]
+---
+
 # Improve Command
 
 ## Input Validation

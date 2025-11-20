@@ -1,3 +1,7 @@
+---
+description: Install amplihack agents and tools to project
+---
+
 # Install the amplihack tools
 
 Amplihack is a collection of claude code customizations designed to enhance productivity and streamline workflows.

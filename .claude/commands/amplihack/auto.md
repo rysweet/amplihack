@@ -1,3 +1,8 @@
+---
+description: Run autonomous agentic mode with iterative loop
+argument-hint: [--max-turns <number>] <prompt>
+---
+
 # Auto Mode - Autonomous Agentic Loop
 
 ## Input Validation

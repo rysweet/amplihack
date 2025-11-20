@@ -1,3 +1,8 @@
+---
+description: Deep analysis mode for complex tasks with multi-agent orchestration
+argument-hint: <task-description>
+---
+
 # Ultra-Think Command
 
 ## Input Validation

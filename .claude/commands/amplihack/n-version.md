@@ -1,3 +1,8 @@
+---
+description: N-version programming for critical implementations
+argument-hint: <task-description>
+---
+
 # N-Version Programming Command
 
 ## Usage

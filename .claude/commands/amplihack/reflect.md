@@ -1,3 +1,8 @@
+---
+description: Session reflection analysis and learning capture
+argument-hint: [session-id]
+---
+
 # /amplihack:reflect - Session Reflection Analysis
 
 ## Input Validation

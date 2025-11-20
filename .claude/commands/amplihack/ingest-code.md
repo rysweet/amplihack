@@ -1,3 +1,8 @@
+---
+description: Ingest code into knowledge base for analysis
+argument-hint: [path]
+---
+
 # Ingest Code Command
 
 ## Input Validation

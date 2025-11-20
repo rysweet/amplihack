@@ -1,3 +1,8 @@
+---
+description: Conversation transcript management and history
+argument-hint: [action] [session-id]
+---
+
 # /transcripts - Conversation Transcript Management
 
 **Purpose**: amplihack-style transcript management for context preservation and restoration.

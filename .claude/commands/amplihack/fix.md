@@ -1,3 +1,8 @@
+---
+description: Intelligent fix workflow for common error patterns
+argument-hint: [pattern] [scope]
+---
+
 # Fix Command
 
 ## Input Validation

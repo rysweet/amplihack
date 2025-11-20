@@ -1,3 +1,8 @@
+---
+description: Comprehensive code review for philosophy compliance
+argument-hint: <path>
+---
+
 # Analyze Command
 
 ## Input Validation

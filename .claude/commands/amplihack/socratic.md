@@ -1,3 +1,8 @@
+---
+description: Generate Socratic questions to challenge claims systematically
+argument-hint: [--domain <domain>] [--audience <level>] <claim>
+---
+
 # /socratic - Socratic Question Generation
 
 Generate deep, probing Socratic questions using the Three-Dimensional Attack pattern to challenge claims and explore assumptions systematically.
