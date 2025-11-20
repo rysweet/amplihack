@@ -2,6 +2,9 @@
 
 This file defines the workflow for investigation and research tasks. Unlike DEFAULT_WORKFLOW.md which is optimized for development (implementation → testing → deployment), this workflow is optimized for exploration and understanding.
 
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
+
 ## How This Workflow Works
 
 **This workflow is the single source of truth for investigation tasks:**

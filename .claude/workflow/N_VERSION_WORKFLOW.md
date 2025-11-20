@@ -2,6 +2,9 @@
 
 This workflow implements N-version programming for critical decisions where multiple independent implementations should be generated and compared to select the best solution.
 
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
+
 ## Configuration
 
 ### Core Parameters

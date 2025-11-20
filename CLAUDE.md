@@ -5,6 +5,30 @@ configures the amplihack agentic coding framework - a development tool that uses
 specialized AI agents to accelerate software development through intelligent
 automation and collaborative problem-solving.
 
+## Extensibility Architecture (3 Mechanisms)
+
+Amplihack uses **3 extensibility mechanisms** (simplified from previous 4):
+
+**1. Skills** - Complex workflows + modular capabilities
+- Multi-step orchestration (default-workflow: 15 steps, investigation-workflow: 6 phases)
+- Modular features (test-gap-analyzer, mermaid-diagram-generator)
+- Auto-discover based on context OR explicit invocation
+- Location: `.claude/skills/<name>/SKILL.md`
+
+**2. Commands** - Explicit user triggers
+- Thin wrappers invoking skills/agents
+- User types `/command-name` for explicit control
+- Examples: `/ultrathink` → invokes default-workflow skill
+- Location: `.claude/commands/<namespace>/<name>.md`
+
+**3. Agents** - Specialized expertise
+- Expert perspectives in orchestration
+- Invoked by skills via Task tool
+- Examples: architect, builder, reviewer
+- Location: `.claude/agents/amplihack/<tier>/<name>.md`
+
+**Key Simplification**: Workflows are now skills (per Claude Code best practice: "Skills excel at complex workflows").
+
 ## Important Files to Import
 
 When starting a session, import these files for context:
