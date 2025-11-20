@@ -181,7 +181,53 @@ def _install_claude_cli() -> bool:
             # Validate the binary is executable
             if not _validate_claude_binary(str(expected_binary)):
                 print(f"❌ Binary exists but failed validation: {expected_binary}")
-                print("The binary may not be executable or is corrupted.")
+
+                # Check if it's a permissions issue
+                import stat
+                try:
+                    file_stat = expected_binary.stat()
+                    is_executable = bool(file_stat.st_mode & stat.S_IXUSR)
+                    if not is_executable:
+                        print("   Issue: Binary is not executable")
+                        print("   Attempting to fix permissions...")
+                        expected_binary.chmod(file_stat.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+                        # Try validation again after fixing permissions
+                        if _validate_claude_binary(str(expected_binary)):
+                            print("✅ Fixed permissions - Claude CLI now working")
+                            return True
+                        else:
+                            print("   Permissions fixed but binary still fails validation")
+                    else:
+                        print("   Binary is executable but validation failed")
+                        print("   The binary may be corrupted (possibly from disk space issues)")
+                        print("   Attempting reinstall...")
+
+                        # Remove corrupted binary and try one more time
+                        expected_binary.unlink(missing_ok=True)
+                        print("   Removed corrupted binary, retrying installation...")
+
+                        # Retry installation
+                        returncode2, stdout2, stderr2 = safe_subprocess_call(
+                            [npm_path, "install", "-g", "--prefix", str(user_npm_dir),
+                             "@anthropic-ai/claude-code", "--ignore-scripts"],
+                            context="reinstalling Claude CLI after corruption",
+                            timeout=120,
+                        )
+
+                        if returncode2 == 0 and expected_binary.exists():
+                            if _validate_claude_binary(str(expected_binary)):
+                                print("✅ Reinstallation successful - Claude CLI working")
+                                return True
+                            else:
+                                print("   Reinstallation failed validation")
+                        else:
+                            print("   Reinstallation failed")
+                except Exception as e:
+                    print(f"   Could not diagnose issue: {e}")
+
+                print("\n   Please reinstall manually:")
+                _print_manual_install_instructions()
                 return False
 
             print("✅ Claude CLI installed and validated successfully")
