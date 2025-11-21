@@ -1087,9 +1087,34 @@ Objective:
                     self.state.update_status("error")
                 return 1
 
+            # INSTRUMENTATION: Log loop entry with range details
+            self.log(f"DIAG: Loop entry - range(3, {self.max_turns + 1}) => turns {3} to {self.max_turns}", level="DEBUG")
+            self.log(f"DIAG: Loop will execute {max(0, self.max_turns - 2)} iterations", level="DEBUG")
+
+            # Safety check: verify loop range is valid
+            if 3 > self.max_turns:
+                self.log(f"DIAG: WARNING - loop range is empty (3 > {self.max_turns})", level="WARNING")
+
+            # INSTRUMENTATION: Check event loop status
+            try:
+                loop = asyncio.get_running_loop()
+                self.log(f"DIAG: Event loop is active and healthy before loop", level="DEBUG")
+            except RuntimeError as e:
+                self.log(f"DIAG: ERROR - no running event loop: {e}", level="ERROR")
+                return 1
+
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+
+                # INSTRUMENTATION: Confirm loop iteration started
+                self.log(f"DIAG: Loop iteration {turn} started (max_turns={self.max_turns})", level="DEBUG")
+                try:
+                    loop = asyncio.get_running_loop()
+                    self.log(f"DIAG: Event loop still active at turn {turn}", level="DEBUG")
+                except RuntimeError as e:
+                    self.log(f"DIAG: CRITICAL - event loop lost at turn {turn}: {e}", level="ERROR")
+                    raise
 
                 # Check if fork needed before turn execution
                 if self.fork_manager.should_fork():
@@ -1144,10 +1169,19 @@ Original Objective:
 
 Current Turn: {turn}/{self.max_turns}"""
 
+                # INSTRUMENTATION: Log execution attempt
+                self.log(f"DIAG: About to execute turn {turn}", level="DEBUG")
+                self.log(f"DIAG: execute_prompt length: {len(execute_prompt)} chars", level="DEBUG")
+
+                execution_start = time.time()
                 code, execution_output = await self._run_turn_with_retry(
                     execute_prompt, max_retries=3
                 )
+                execution_elapsed = time.time() - execution_start
+                self.log(f"DIAG: Execute call returned - code={code}, output_len={len(execution_output)}, elapsed={execution_elapsed:.1f}s", level="DEBUG")
                 if code != 0:
+                    self.log(f"DIAG: Execute failed with code {code}", level="WARNING")
+                    self.log(f"DIAG: Error output: {execution_output[:200]}", level="DEBUG")
                     self.log(f"Warning: Execution returned exit code {code}")
 
                 # Evaluate
@@ -1177,10 +1211,27 @@ Objective:
 
 Current Turn: {turn}/{self.max_turns}"""
 
+                # INSTRUMENTATION: Log evaluation attempt
+                self.log(f"DIAG: About to evaluate turn {turn}", level="DEBUG")
+                self.log(f"DIAG: eval_prompt length: {len(eval_prompt)} chars", level="DEBUG")
+
+                eval_start = time.time()
                 code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
+                eval_elapsed = time.time() - eval_start
+                self.log(f"DIAG: Evaluate call returned - code={code}, result_len={len(eval_result)}, elapsed={eval_elapsed:.1f}s", level="DEBUG")
+                self.log(f"DIAG: Eval result preview: {eval_result[:150]}...", level="DEBUG")
 
                 # Check completion - look for strong completion signals
+                # INSTRUMENTATION: Log completion check
                 eval_lower = eval_result.lower()
+                self.log(f"DIAG: Checking for completion signals in eval", level="DEBUG")
+
+                has_complete = "auto-mode evaluation: complete" in eval_lower
+                has_achieved = "objective achieved" in eval_lower
+                has_criteria = "all criteria met" in eval_lower
+
+                self.log(f"DIAG: Signals found - complete={has_complete}, achieved={has_achieved}, criteria={has_criteria}", level="DEBUG")
+
                 if (
                     "auto-mode evaluation: complete" in eval_lower
                     or "objective achieved" in eval_lower
@@ -1197,6 +1248,9 @@ Current Turn: {turn}/{self.max_turns}"""
                         self.state.update_status("completed")
                     break
 
+            # INSTRUMENTATION: Confirm loop completion
+            self.log(f"DIAG: Loop exited normally after {self.turn} turns", level="DEBUG")
+
             # Summary - display it directly
             self.message_capture.set_phase(
                 "summarizing", self.turn
@@ -1211,6 +1265,14 @@ Current Turn: {turn}/{self.max_turns}"""
             else:
                 self.log(f"Warning: Summary generation failed (exit {code})")
 
+        except Exception as loop_exception:
+            # INSTRUMENTATION: Capture critical exceptions that escape from turns
+            self.log(f"DIAG: CRITICAL EXCEPTION escaped from turns: {type(loop_exception).__name__}", level="ERROR")
+            self.log(f"DIAG: Exception message: {loop_exception}", level="ERROR")
+            import traceback
+            self.log(f"DIAG: Traceback:\n{traceback.format_exc()}", level="ERROR")
+            # Return error code instead of re-raising to allow finally block to run
+            return 1
         finally:
             # Export session transcript before stop hook
             self._export_session_transcript()
