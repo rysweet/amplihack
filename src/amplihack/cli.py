@@ -479,6 +479,16 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
     uvx_parser.add_argument("--info", action="store_true", help="Show UVX staging information")
 
+    # Remote execution command
+    remote_parser = subparsers.add_parser("remote", help="Execute on remote Azure VMs via azlin")
+    remote_parser.add_argument("remote_command", choices=["auto", "ultrathink"], help="Command")
+    remote_parser.add_argument("prompt", help="Task prompt")
+    remote_parser.add_argument("--max-turns", type=int, default=10, help="Max turns (default: 10)")
+    remote_parser.add_argument("--vm-size", default="m", help="VM size: s/m/l/xl (default: m)")
+    remote_parser.add_argument("--region", help="Azure region")
+    remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM after execution")
+    remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout in minutes")
+
     # Goal Agent Generator command
     new_parser = subparsers.add_parser(
         "new", help="Generate a new goal-seeking agent from a prompt file"
