@@ -25,18 +25,23 @@ Design Philosophy:
 """
 
 import json
+import logging
 import os
 import re
 import time
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+# Configure logger for timeout warnings
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
 # Data Structures (Public Contracts)
 # ============================================================================
+
 
 @dataclass
 class Signal:
@@ -47,12 +52,13 @@ class Signal:
     where artifacts should be created. Examples: stub files, test imports,
     directory conventions.
     """
-    signal_type: str              # "stub" | "test" | "convention" | "config" | "pattern"
-    source_file: str              # Absolute path where signal found
-    inferred_location: str        # What location this signal indicates
-    confidence: float             # 0.0-1.0 base confidence for this signal type
-    evidence: str                 # Human-readable explanation of why this is a signal
-    parsed_at: str                # ISO timestamp when signal detected
+
+    signal_type: str  # "stub" | "test" | "convention" | "config" | "pattern"
+    source_file: str  # Absolute path where signal found
+    inferred_location: str  # What location this signal indicates
+    confidence: float  # 0.0-1.0 base confidence for this signal type
+    evidence: str  # Human-readable explanation of why this is a signal
+    parsed_at: str  # ISO timestamp when signal detected
 
 
 @dataclass
@@ -63,11 +69,12 @@ class RankedSignal:
     After signals are found, they're ranked by reliability. This structure
     tracks both the original signal and its ranking information.
     """
+
     signal: Signal
-    priority: int                 # 1-6, lower = higher priority
-    priority_name: str            # "stub" | "test" | "existing" | "convention" | "config" | "fallback"
-    adjusted_confidence: float    # Confidence after consensus boost
-    reasoning: str                # Why this priority assigned
+    priority: int  # 1-6, lower = higher priority
+    priority_name: str  # "stub" | "test" | "existing" | "convention" | "config" | "fallback"
+    adjusted_confidence: float  # Confidence after consensus boost
+    reasoning: str  # Why this priority assigned
 
 
 @dataclass
@@ -78,15 +85,16 @@ class LocationConstraint:
     This is what agents use to determine where files should be created.
     It includes validation requirements and alternative locations.
     """
-    required_location: str          # Absolute path where artifact must go
-    location_exists: bool           # True if directory already exists
-    may_create_directory: bool      # True if allowed to mkdir
-    location_reasoning: str         # Why this location was chosen
-    confidence: float               # 0.0-1.0 confidence in this location
-    validation_required: bool       # True if must validate before building
-    is_ambiguous: bool              # True if conflicting signals detected
-    ambiguity_reason: str           # Explanation of ambiguity
-    alternatives: List[str]         # Other possible locations
+
+    required_location: str  # Absolute path where artifact must go
+    location_exists: bool  # True if directory already exists
+    may_create_directory: bool  # True if allowed to mkdir
+    location_reasoning: str  # Why this location was chosen
+    confidence: float  # 0.0-1.0 confidence in this location
+    validation_required: bool  # True if must validate before building
+    is_ambiguous: bool  # True if conflicting signals detected
+    ambiguity_reason: str  # Explanation of ambiguity
+    alternatives: List[str]  # Other possible locations
 
 
 @dataclass
@@ -98,27 +106,30 @@ class ProjectStructureDetection:
     It includes detection results, confidence scores, warnings, and
     actionable constraints for downstream workflow steps.
     """
+
     # Core results
-    detected_root: Optional[str]            # Primary detected location (None if ambiguous)
-    structure_type: str                     # "tool" | "library" | "plugin" | "scenario" | "custom"
-    detection_method: str                   # HOW detected: "stub" | "test" | "convention" | "config" | "fallback" | "ambiguous"
-    confidence: float                       # 0.0-1.0 overall confidence
+    detected_root: Optional[str]  # Primary detected location (None if ambiguous)
+    structure_type: str  # "tool" | "library" | "plugin" | "scenario" | "custom"
+    detection_method: (
+        str  # HOW detected: "stub" | "test" | "convention" | "config" | "fallback" | "ambiguous"
+    )
+    confidence: float  # 0.0-1.0 overall confidence
 
     # Signal details
-    signals: List[Signal]                   # Raw signals found
-    signals_ranked: List[RankedSignal]      # Signals ranked by priority
+    signals: List[Signal]  # Raw signals found
+    signals_ranked: List[RankedSignal]  # Signals ranked by priority
 
     # Actionable constraint
-    constraints: LocationConstraint         # Where and how to build
+    constraints: LocationConstraint  # Where and how to build
 
     # Edge cases and warnings
-    ambiguity_flags: List[str]              # Conflicting signal warnings
-    warnings: List[str]                     # General structural concerns
-    alternatives: List[Dict[str, Any]]      # Alternative locations with details
+    ambiguity_flags: List[str]  # Conflicting signal warnings
+    warnings: List[str]  # General structural concerns
+    alternatives: List[Dict[str, Any]]  # Alternative locations with details
 
     # Metadata
-    scan_duration_ms: float                 # How long detection took
-    signals_examined: int                   # Total signals checked
+    scan_duration_ms: float  # How long detection took
+    signals_examined: int  # Total signals checked
 
 
 # ============================================================================
@@ -130,44 +141,45 @@ SIGNAL_PRIORITIES = {
         "priority": 1,
         "confidence": 0.90,
         "patterns": ["*.stub.py", "*.stub.js", "*.stub.ts", "@stub", "@TODO"],
-        "reliability": "very high"
+        "reliability": "very high",
     },
     "test": {
         "priority": 2,
         "confidence": 0.85,
         "patterns": ["test_*.py", "*_test.py", "*.test.js", "*.test.ts", "__tests__/"],
-        "reliability": "high"
+        "reliability": "high",
     },
     "existing_implementation": {
         "priority": 3,
         "confidence": 0.80,
         "patterns": ["similar files in same location"],
-        "reliability": "high"
+        "reliability": "high",
     },
     "convention": {
         "priority": 4,
         "confidence": 0.70,
         "patterns": ["directory names", "README hints", "patterns"],
-        "reliability": "moderate"
+        "reliability": "moderate",
     },
     "config": {
         "priority": 5,
         "confidence": 0.60,
         "patterns": ["pyproject.toml", "package.json", "setup.py", "tsconfig.json"],
-        "reliability": "moderate"
+        "reliability": "moderate",
     },
     "fallback": {
         "priority": 6,
         "confidence": 0.30,
         "patterns": ["default locations"],
-        "reliability": "low"
-    }
+        "reliability": "low",
+    },
 }
 
 
 # ============================================================================
 # Signal Scanner
 # ============================================================================
+
 
 class SignalScanner:
     """
@@ -213,20 +225,18 @@ class SignalScanner:
             ("stubs", self.scan_stubs),
             ("tests", self.scan_tests),
             ("conventions", self.scan_conventions),
-            ("config", self.scan_config)
+            ("config", self.scan_config),
         ]
 
         # Execute scans in parallel with timeout
         with ThreadPoolExecutor(max_workers=4) as executor:
-            future_to_scan = {executor.submit(scan_func): name
-                            for name, scan_func in scan_tasks}
+            future_to_scan = {executor.submit(scan_func): name for name, scan_func in scan_tasks}
 
             for future in as_completed(future_to_scan, timeout=timeout_sec):
-                scan_name = future_to_scan[future]
                 try:
                     signals = future.result()
                     all_signals.extend(signals)
-                except Exception as e:
+                except Exception:
                     # Log but don't fail on individual scan errors
                     pass
 
@@ -256,14 +266,16 @@ class SignalScanner:
                 # Infer location from stub file's directory
                 inferred_location = str(stub_file.parent)
 
-                signals.append(Signal(
-                    signal_type="stub",
-                    source_file=str(stub_file),
-                    inferred_location=inferred_location,
-                    confidence=SIGNAL_PRIORITIES["stub"]["confidence"],
-                    evidence=f"Explicit stub file: {stub_file.name}",
-                    parsed_at=timestamp
-                ))
+                signals.append(
+                    Signal(
+                        signal_type="stub",
+                        source_file=str(stub_file),
+                        inferred_location=inferred_location,
+                        confidence=SIGNAL_PRIORITIES["stub"]["confidence"],
+                        evidence=f"Explicit stub file: {stub_file.name}",
+                        parsed_at=timestamp,
+                    )
+                )
 
         return signals
 
@@ -286,10 +298,7 @@ class SignalScanner:
         timestamp = self._get_timestamp()
 
         # Search for test files
-        test_patterns = [
-            "**/test_*.py", "**/*_test.py",
-            "**/*.test.js", "**/*.test.ts"
-        ]
+        test_patterns = ["**/test_*.py", "**/*_test.py", "**/*.test.js", "**/*.test.ts"]
 
         for pattern in test_patterns:
             for test_file in self.project_root.glob(pattern):
@@ -297,14 +306,16 @@ class SignalScanner:
                 inferred_location = self._extract_import_location(test_file)
 
                 if inferred_location:
-                    signals.append(Signal(
-                        signal_type="test",
-                        source_file=str(test_file),
-                        inferred_location=inferred_location,
-                        confidence=SIGNAL_PRIORITIES["test"]["confidence"],
-                        evidence=f"Test file imports from: {inferred_location}",
-                        parsed_at=timestamp
-                    ))
+                    signals.append(
+                        Signal(
+                            signal_type="test",
+                            source_file=str(test_file),
+                            inferred_location=inferred_location,
+                            confidence=SIGNAL_PRIORITIES["test"]["confidence"],
+                            evidence=f"Test file imports from: {inferred_location}",
+                            parsed_at=timestamp,
+                        )
+                    )
 
         return signals
 
@@ -336,14 +347,16 @@ class SignalScanner:
                 has_files = any(dir_path.glob("*.py")) or any(dir_path.glob("*.js"))
 
                 if has_files:
-                    signals.append(Signal(
-                        signal_type="convention",
-                        source_file=str(dir_path),
-                        inferred_location=str(dir_path),
-                        confidence=SIGNAL_PRIORITIES["convention"]["confidence"],
-                        evidence=f"Conventional directory: {dir_name}/ with active files",
-                        parsed_at=timestamp
-                    ))
+                    signals.append(
+                        Signal(
+                            signal_type="convention",
+                            source_file=str(dir_path),
+                            inferred_location=str(dir_path),
+                            confidence=SIGNAL_PRIORITIES["convention"]["confidence"],
+                            evidence=f"Conventional directory: {dir_name}/ with active files",
+                            parsed_at=timestamp,
+                        )
+                    )
 
         return signals
 
@@ -371,28 +384,32 @@ class SignalScanner:
         if pyproject.exists():
             location = self._parse_pyproject_location(pyproject)
             if location:
-                signals.append(Signal(
-                    signal_type="config",
-                    source_file=str(pyproject),
-                    inferred_location=location,
-                    confidence=SIGNAL_PRIORITIES["config"]["confidence"],
-                    evidence="pyproject.toml package directory",
-                    parsed_at=timestamp
-                ))
+                signals.append(
+                    Signal(
+                        signal_type="config",
+                        source_file=str(pyproject),
+                        inferred_location=location,
+                        confidence=SIGNAL_PRIORITIES["config"]["confidence"],
+                        evidence="pyproject.toml package directory",
+                        parsed_at=timestamp,
+                    )
+                )
 
         # Check package.json
         package_json = self.project_root / "package.json"
         if package_json.exists():
             location = self._parse_package_json_location(package_json)
             if location:
-                signals.append(Signal(
-                    signal_type="config",
-                    source_file=str(package_json),
-                    inferred_location=location,
-                    confidence=SIGNAL_PRIORITIES["config"]["confidence"],
-                    evidence="package.json main field",
-                    parsed_at=timestamp
-                ))
+                signals.append(
+                    Signal(
+                        signal_type="config",
+                        source_file=str(package_json),
+                        inferred_location=location,
+                        confidence=SIGNAL_PRIORITIES["config"]["confidence"],
+                        evidence="package.json main field",
+                        parsed_at=timestamp,
+                    )
+                )
 
         return signals
 
@@ -412,27 +429,24 @@ class SignalScanner:
             Inferred module location or None
         """
         try:
-            content = test_file.read_text(encoding='utf-8', errors='ignore')
+            content = test_file.read_text(encoding="utf-8", errors="ignore")
 
             # Match Python imports: from X import Y, import X
-            import_patterns = [
-                r'from\s+([\w\.]+)\s+import',
-                r'import\s+([\w\.]+)'
-            ]
+            import_patterns = [r"from\s+([\w\.]+)\s+import", r"import\s+([\w\.]+)"]
 
             for pattern in import_patterns:
                 matches = re.findall(pattern, content)
                 for match in matches:
                     # Skip standard library and common packages
-                    if match in ['os', 'sys', 'pathlib', 'typing', 'pytest', 'unittest']:
+                    if match in ["os", "sys", "pathlib", "typing", "pytest", "unittest"]:
                         continue
 
                     # Convert import path to file path
                     # e.g., "project.tools.analyzer" -> "project/tools/"
-                    parts = match.split('.')
+                    parts = match.split(".")
                     if len(parts) >= 2:
                         # Build potential path
-                        potential_path = self.project_root / '/'.join(parts[:-1])
+                        potential_path = self.project_root / "/".join(parts[:-1])
                         if potential_path.exists():
                             return str(potential_path)
 
@@ -452,11 +466,11 @@ class SignalScanner:
             Package directory or None
         """
         try:
-            content = pyproject_path.read_text(encoding='utf-8')
+            content = pyproject_path.read_text(encoding="utf-8")
 
             # Simple regex-based parsing (avoid dependencies)
             # Look for: packages = ["src"] or package-dir = {"": "src"}
-            if 'packages' in content or 'package-dir' in content:
+            if "packages" in content or "package-dir" in content:
                 src_match = re.search(r'["\']src["\']', content)
                 if src_match:
                     src_path = self.project_root / "src"
@@ -479,14 +493,14 @@ class SignalScanner:
             Source directory or None
         """
         try:
-            data = json.loads(package_json_path.read_text(encoding='utf-8'))
+            data = json.loads(package_json_path.read_text(encoding="utf-8"))
 
             # Check main field
-            main = data.get('main', '')
+            main = data.get("main", "")
             if main:
                 # Extract directory from main field
                 # e.g., "src/index.js" -> "src"
-                parts = main.split('/')
+                parts = main.split("/")
                 if len(parts) > 1:
                     src_dir = self.project_root / parts[0]
                     if src_dir.exists():
@@ -500,12 +514,14 @@ class SignalScanner:
     def _get_timestamp(self) -> str:
         """Get current ISO timestamp."""
         from datetime import datetime
+
         return datetime.utcnow().isoformat()
 
 
 # ============================================================================
 # Priority Engine
 # ============================================================================
+
 
 class PriorityEngine:
     """
@@ -517,8 +533,7 @@ class PriorityEngine:
 
     def __init__(self):
         self.priority_map = {
-            signal_type: config["priority"]
-            for signal_type, config in SIGNAL_PRIORITIES.items()
+            signal_type: config["priority"] for signal_type, config in SIGNAL_PRIORITIES.items()
         }
 
     def rank_signals(self, signals: List[Signal]) -> List[RankedSignal]:
@@ -546,13 +561,15 @@ class PriorityEngine:
             priority = self.priority_map.get(signal.signal_type, 6)
             priority_name = signal.signal_type
 
-            ranked.append(RankedSignal(
-                signal=signal,
-                priority=priority,
-                priority_name=priority_name,
-                adjusted_confidence=signal.confidence,
-                reasoning=f"Priority {priority}: {signal.signal_type} signal"
-            ))
+            ranked.append(
+                RankedSignal(
+                    signal=signal,
+                    priority=priority,
+                    priority_name=priority_name,
+                    adjusted_confidence=signal.confidence,
+                    reasoning=f"Priority {priority}: {signal.signal_type} signal",
+                )
+            )
 
         # Step 2: Compute consensus boost
         location_groups = self._group_by_location(ranked)
@@ -564,7 +581,7 @@ class PriorityEngine:
                 for ranked_signal in group:
                     ranked_signal.adjusted_confidence = min(
                         ranked_signal.adjusted_confidence + boost,
-                        0.95  # Cap at 95%
+                        0.95,  # Cap at 95%
                     )
                     ranked_signal.reasoning += f" + consensus boost ({len(group)} signals)"
 
@@ -580,11 +597,24 @@ class PriorityEngine:
         Formula: 0.02 * (signal_count - 1)
         Capped at 0.95 total confidence
 
+        The 0.02 (2%) boost per additional signal is empirically calibrated:
+        - Conservative enough to prevent false confidence
+        - Strong enough to reward consensus (3+ signals = 4-6% boost)
+        - Capped to prevent over-confidence (max 95% total)
+
+        This formula balances signal strength with consensus validation,
+        preventing any single signal from dominating while rewarding
+        multi-signal agreement.
+
         Args:
             signal_count: Number of signals pointing to same location
 
         Returns:
             Confidence boost value
+
+        Note:
+            Future enhancement: Consider making the 0.02 boost factor
+            configurable for advanced users who want to tune sensitivity.
         """
         return 0.02 * (signal_count - 1)
 
@@ -621,12 +651,14 @@ class PriorityEngine:
             return {
                 "has_conflicts": True,
                 "conflicts": conflicts,
-                "location_groups": list(location_groups.keys())
+                "location_groups": list(location_groups.keys()),
             }
 
         return {"has_conflicts": False, "conflicts": []}
 
-    def _group_by_location(self, ranked_signals: List[RankedSignal]) -> Dict[str, List[RankedSignal]]:
+    def _group_by_location(
+        self, ranked_signals: List[RankedSignal]
+    ) -> Dict[str, List[RankedSignal]]:
         """Group ranked signals by inferred location."""
         groups = {}
         for rs in ranked_signals:
@@ -641,6 +673,7 @@ class PriorityEngine:
 # Result Classifier
 # ============================================================================
 
+
 class ResultClassifier:
     """
     Converts ranked signals into actionable detection results.
@@ -649,8 +682,9 @@ class ResultClassifier:
     with location constraints, confidence scores, and warnings.
     """
 
-    def classify(self, ranked_signals: List[RankedSignal],
-                 project_root: Path, scan_duration_ms: float) -> ProjectStructureDetection:
+    def classify(
+        self, ranked_signals: List[RankedSignal], project_root: Path, scan_duration_ms: float
+    ) -> ProjectStructureDetection:
         """
         Convert ranked signals into complete detection result.
 
@@ -683,9 +717,7 @@ class ResultClassifier:
 
         # Create location constraint
         constraint = self.create_constraint(
-            dominant,
-            project_root,
-            is_ambiguous=conflicts["has_conflicts"]
+            dominant, project_root, is_ambiguous=conflicts["has_conflicts"]
         )
 
         # Identify alternatives
@@ -693,9 +725,7 @@ class ResultClassifier:
 
         # Compute overall confidence
         overall_confidence = self._compute_overall_confidence(
-            dominant,
-            ranked_signals,
-            conflicts["has_conflicts"]
+            dominant, ranked_signals, conflicts["has_conflicts"]
         )
 
         # Generate warnings
@@ -716,11 +746,12 @@ class ResultClassifier:
             warnings=warnings,
             alternatives=alternatives,
             scan_duration_ms=scan_duration_ms,
-            signals_examined=len(ranked_signals)
+            signals_examined=len(ranked_signals),
         )
 
-    def create_constraint(self, dominant: RankedSignal,
-                         project_root: Path, is_ambiguous: bool) -> LocationConstraint:
+    def create_constraint(
+        self, dominant: RankedSignal, project_root: Path, is_ambiguous: bool
+    ) -> LocationConstraint:
         """
         Build actionable location constraint from dominant signal.
 
@@ -743,11 +774,12 @@ class ResultClassifier:
             validation_required=True,
             is_ambiguous=is_ambiguous,
             ambiguity_reason="Conflicting signals detected" if is_ambiguous else "",
-            alternatives=[]
+            alternatives=[],
         )
 
-    def identify_alternatives(self, ranked_signals: List[RankedSignal],
-                            dominant: RankedSignal) -> List[Dict[str, Any]]:
+    def identify_alternatives(
+        self, ranked_signals: List[RankedSignal], dominant: RankedSignal
+    ) -> List[Dict[str, Any]]:
         """
         Find alternative locations from non-dominant signals.
 
@@ -766,19 +798,21 @@ class ResultClassifier:
         for rs in ranked_signals[1:6]:  # Consider top 5 alternatives
             location = rs.signal.inferred_location
             if location not in seen_locations:
-                alternatives.append({
-                    "location": location,
-                    "confidence": rs.adjusted_confidence,
-                    "reasoning": rs.reasoning,
-                    "signal_type": rs.priority_name
-                })
+                alternatives.append(
+                    {
+                        "location": location,
+                        "confidence": rs.adjusted_confidence,
+                        "reasoning": rs.reasoning,
+                        "signal_type": rs.priority_name,
+                    }
+                )
                 seen_locations.add(location)
 
         return alternatives
 
-    def _compute_overall_confidence(self, dominant: RankedSignal,
-                                   all_signals: List[RankedSignal],
-                                   has_conflicts: bool) -> float:
+    def _compute_overall_confidence(
+        self, dominant: RankedSignal, all_signals: List[RankedSignal], has_conflicts: bool
+    ) -> float:
         """
         Compute overall confidence considering consensus and conflicts.
 
@@ -802,8 +836,9 @@ class ResultClassifier:
 
         return base_confidence
 
-    def _generate_warnings(self, conflicts: Dict[str, Any],
-                         constraint: LocationConstraint) -> List[str]:
+    def _generate_warnings(
+        self, conflicts: Dict[str, Any], constraint: LocationConstraint
+    ) -> List[str]:
         """Generate warnings based on conflicts and constraints."""
         warnings = []
 
@@ -832,19 +867,19 @@ class ResultClassifier:
         """
         location_lower = location.lower()
 
-        if 'tool' in location_lower:
+        if "tool" in location_lower:
             return "tool"
-        elif 'lib' in location_lower or 'src' in location_lower:
+        if "lib" in location_lower or "src" in location_lower:
             return "library"
-        elif 'plugin' in location_lower:
+        if "plugin" in location_lower:
             return "plugin"
-        elif 'scenario' in location_lower:
+        if "scenario" in location_lower:
             return "scenario"
-        else:
-            return "custom"
+        return "custom"
 
-    def _create_ambiguous_result(self, project_root: Path,
-                                scan_duration_ms: float) -> ProjectStructureDetection:
+    def _create_ambiguous_result(
+        self, project_root: Path, scan_duration_ms: float
+    ) -> ProjectStructureDetection:
         """
         Create ambiguous result when no signals found.
 
@@ -871,23 +906,24 @@ class ResultClassifier:
                 validation_required=True,
                 is_ambiguous=True,
                 ambiguity_reason="No stubs, tests, or conventions detected",
-                alternatives=[]
+                alternatives=[],
             ),
             ambiguity_flags=["No structural signals detected"],
             warnings=[
                 "Project structure could not be determined",
                 "Recommend adding stub files or tests",
-                "Manual location specification required"
+                "Manual location specification required",
             ],
             alternatives=[],
             scan_duration_ms=scan_duration_ms,
-            signals_examined=0
+            signals_examined=0,
         )
 
 
 # ============================================================================
 # Fallback Detection Function
 # ============================================================================
+
 
 def _detect_fallback(project_root: Path) -> Optional[str]:
     """
@@ -907,21 +943,22 @@ def _detect_fallback(project_root: Path) -> Optional[str]:
 # Validation Function
 # ============================================================================
 
+
 @dataclass
 class ValidationResult:
     """Result of location validation."""
-    passed: bool                        # All checks passed
-    failures: List[str]                 # What failed
-    reason: str                         # Summary
-    suggestion: str                     # How to fix
-    can_create_directory: bool          # Can mkdir
-    is_writable: bool                   # Can write
-    has_conflicts: bool                 # Existing files
-    is_inside_project: bool             # In project boundary
+
+    passed: bool  # All checks passed
+    failures: List[str]  # What failed
+    reason: str  # Summary
+    suggestion: str  # How to fix
+    can_create_directory: bool  # Can mkdir
+    is_writable: bool  # Can write
+    has_conflicts: bool  # Existing files
+    is_inside_project: bool  # In project boundary
 
 
-def validate_target_location(target_location: Path,
-                            project_root: Path) -> ValidationResult:
+def validate_target_location(target_location: Path, project_root: Path) -> ValidationResult:
     """
     Validate that target location is safe for building.
 
@@ -991,19 +1028,18 @@ def validate_target_location(target_location: Path,
                 can_create_directory=can_create,
                 is_writable=is_writable,
                 has_conflicts=has_conflicts,
-                is_inside_project=is_inside
+                is_inside_project=is_inside,
             )
-        else:
-            return ValidationResult(
-                passed=False,
-                failures=failures,
-                reason=f"{len(failures)} validation check(s) failed",
-                suggestion="Fix issues listed in failures before building",
-                can_create_directory=can_create,
-                is_writable=is_writable,
-                has_conflicts=has_conflicts,
-                is_inside_project=is_inside
-            )
+        return ValidationResult(
+            passed=False,
+            failures=failures,
+            reason=f"{len(failures)} validation check(s) failed",
+            suggestion="Fix issues listed in failures before building",
+            can_create_directory=can_create,
+            is_writable=is_writable,
+            has_conflicts=has_conflicts,
+            is_inside_project=is_inside,
+        )
 
     except Exception as e:
         return ValidationResult(
@@ -1014,7 +1050,7 @@ def validate_target_location(target_location: Path,
             can_create_directory=False,
             is_writable=False,
             has_conflicts=False,
-            is_inside_project=False
+            is_inside_project=False,
         )
 
 
@@ -1022,9 +1058,10 @@ def validate_target_location(target_location: Path,
 # Public API
 # ============================================================================
 
-def detect_project_structure(project_root: str,
-                            requirement: Optional[str] = None,
-                            timeout_ms: int = 100) -> ProjectStructureDetection:
+
+def detect_project_structure(
+    project_root: str, requirement: Optional[str] = None, timeout_ms: int = 100
+) -> ProjectStructureDetection:
     """
     Detect project structure by scanning for signals.
 
@@ -1069,6 +1106,10 @@ def detect_project_structure(project_root: str,
         signals = scanner.scan_all(timeout_ms=timeout_ms)
     except TimeoutError:
         # Timeout reached - use signals found so far
+        logger.warning(
+            f"Structure detection timed out after {timeout_ms}ms at {project_path}. "
+            f"Some scans may have been skipped. Consider increasing timeout_ms if needed."
+        )
         signals = []
 
     # Stage 2: Rank signals
@@ -1086,16 +1127,18 @@ def detect_project_structure(project_root: str,
                 inferred_location=fallback_location,
                 confidence=SIGNAL_PRIORITIES["fallback"]["confidence"],
                 evidence=f"Fallback to existing directory: {fallback_location}",
-                parsed_at=scanner._get_timestamp()
+                parsed_at=scanner._get_timestamp(),
             )
 
-            ranked_signals = [RankedSignal(
-                signal=fallback_signal,
-                priority=6,
-                priority_name="fallback",
-                adjusted_confidence=0.30,
-                reasoning="No signals found - using fallback default"
-            )]
+            ranked_signals = [
+                RankedSignal(
+                    signal=fallback_signal,
+                    priority=6,
+                    priority_name="fallback",
+                    adjusted_confidence=0.30,
+                    reasoning="No signals found - using fallback default",
+                )
+            ]
 
     # Stage 4: Classify into result
     scan_duration_ms = (time.time() - start_time) * 1000
@@ -1110,11 +1153,11 @@ def detect_project_structure(project_root: str,
 # ============================================================================
 
 __all__ = [
-    'detect_project_structure',
-    'validate_target_location',
-    'ProjectStructureDetection',
-    'LocationConstraint',
-    'Signal',
-    'RankedSignal',
-    'ValidationResult',
+    "detect_project_structure",
+    "validate_target_location",
+    "ProjectStructureDetection",
+    "LocationConstraint",
+    "Signal",
+    "RankedSignal",
+    "ValidationResult",
 ]

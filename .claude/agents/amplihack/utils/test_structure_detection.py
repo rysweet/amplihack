@@ -11,30 +11,39 @@ Tests cover:
 - Edge cases
 """
 
-import pytest
-import tempfile
 import shutil
-from pathlib import Path
+import sys
+import tempfile
 import time
+from pathlib import Path
+
+# pytest is optional - only needed for test execution
+try:
+    import pytest
+except ImportError:
+    pytest = None
+    print("Warning: pytest not installed. Tests will not run.")
+
+# Add parent directory to path for imports (supports multiple execution contexts)
+sys.path.insert(0, str(Path(__file__).parent))
 
 from structure_detection import (
-    detect_project_structure,
-    validate_target_location,
-    SignalScanner,
+    SIGNAL_PRIORITIES,
+    LocationConstraint,
     PriorityEngine,
+    ProjectStructureDetection,
+    RankedSignal,
     ResultClassifier,
     Signal,
-    RankedSignal,
-    ProjectStructureDetection,
-    LocationConstraint,
-    ValidationResult,
-    SIGNAL_PRIORITIES
+    SignalScanner,
+    detect_project_structure,
+    validate_target_location,
 )
-
 
 # ============================================================================
 # Test Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def temp_project():
@@ -141,6 +150,7 @@ def empty_project(temp_project):
 # Signal Scanner Tests
 # ============================================================================
 
+
 class TestSignalScanner:
     """Tests for SignalScanner component."""
 
@@ -206,6 +216,7 @@ class TestSignalScanner:
 # ============================================================================
 # Priority Engine Tests
 # ============================================================================
+
 
 class TestPriorityEngine:
     """Tests for PriorityEngine component."""
@@ -285,14 +296,21 @@ class TestPriorityEngine:
 # Result Classifier Tests
 # ============================================================================
 
+
 class TestResultClassifier:
     """Tests for ResultClassifier component."""
 
     def test_classify_with_signals(self, temp_project):
         """Test classification with valid signals."""
         signals = [
-            Signal("stub", str(temp_project / "tools/stub.py"),
-                   str(temp_project / "tools"), 0.90, "stub", "")
+            Signal(
+                "stub",
+                str(temp_project / "tools/stub.py"),
+                str(temp_project / "tools"),
+                0.90,
+                "stub",
+                "",
+            )
         ]
 
         engine = PriorityEngine()
@@ -317,8 +335,7 @@ class TestResultClassifier:
 
     def test_create_constraint_from_signal(self, temp_project):
         """Test location constraint creation."""
-        signal = Signal("stub", "", str(temp_project / "tools"),
-                       0.90, "stub", "")
+        signal = Signal("stub", "", str(temp_project / "tools"), 0.90, "stub", "")
         ranked = RankedSignal(signal, 1, "stub", 0.90, "Priority 1")
 
         classifier = ResultClassifier()
@@ -342,8 +359,7 @@ class TestResultClassifier:
         alternatives = classifier.identify_alternatives(ranked, ranked[0])
 
         assert len(alternatives) >= 1
-        assert any(str(temp_project / "src") in alt["location"]
-                  for alt in alternatives)
+        assert any(str(temp_project / "src") in alt["location"] for alt in alternatives)
 
     def test_detect_structure_type(self):
         """Test structure type classification."""
@@ -357,6 +373,7 @@ class TestResultClassifier:
 # ============================================================================
 # Validation Tests
 # ============================================================================
+
 
 class TestValidation:
     """Tests for validation functionality."""
@@ -402,6 +419,7 @@ class TestValidation:
 # ============================================================================
 # Integration Tests (Full Workflow)
 # ============================================================================
+
 
 class TestFullDetection:
     """Integration tests for complete detection workflow."""
@@ -453,7 +471,14 @@ class TestFullDetection:
         # Check all fields populated
         assert result.detected_root is not None
         assert result.structure_type in ["tool", "library", "plugin", "scenario", "custom"]
-        assert result.detection_method in ["stub", "test", "convention", "config", "fallback", "ambiguous"]
+        assert result.detection_method in [
+            "stub",
+            "test",
+            "convention",
+            "config",
+            "fallback",
+            "ambiguous",
+        ]
         assert 0.0 <= result.confidence <= 1.0
         assert isinstance(result.signals, list)
         assert isinstance(result.warnings, list)
@@ -464,6 +489,7 @@ class TestFullDetection:
 # ============================================================================
 # Edge Case Tests
 # ============================================================================
+
 
 class TestEdgeCases:
     """Tests for edge cases and unusual scenarios."""
@@ -542,6 +568,7 @@ class TestEdgeCases:
 # Data Structure Tests
 # ============================================================================
 
+
 class TestDataStructures:
     """Tests for data structure contracts."""
 
@@ -553,7 +580,7 @@ class TestDataStructures:
             inferred_location="/path/to",
             confidence=0.90,
             evidence="Stub file",
-            parsed_at="2025-11-21T00:00:00"
+            parsed_at="2025-11-21T00:00:00",
         )
 
         assert signal.signal_type == "stub"
@@ -570,7 +597,7 @@ class TestDataStructures:
             validation_required=True,
             is_ambiguous=False,
             ambiguity_reason="",
-            alternatives=[]
+            alternatives=[],
         )
 
         assert constraint.required_location == "/path/to/tools"
@@ -581,18 +608,18 @@ class TestDataStructures:
         result = detect_project_structure(str(project_with_stubs))
 
         # Verify all required fields present
-        assert hasattr(result, 'detected_root')
-        assert hasattr(result, 'structure_type')
-        assert hasattr(result, 'detection_method')
-        assert hasattr(result, 'confidence')
-        assert hasattr(result, 'signals')
-        assert hasattr(result, 'signals_ranked')
-        assert hasattr(result, 'constraints')
-        assert hasattr(result, 'ambiguity_flags')
-        assert hasattr(result, 'warnings')
-        assert hasattr(result, 'alternatives')
-        assert hasattr(result, 'scan_duration_ms')
-        assert hasattr(result, 'signals_examined')
+        assert hasattr(result, "detected_root")
+        assert hasattr(result, "structure_type")
+        assert hasattr(result, "detection_method")
+        assert hasattr(result, "confidence")
+        assert hasattr(result, "signals")
+        assert hasattr(result, "signals_ranked")
+        assert hasattr(result, "constraints")
+        assert hasattr(result, "ambiguity_flags")
+        assert hasattr(result, "warnings")
+        assert hasattr(result, "alternatives")
+        assert hasattr(result, "scan_duration_ms")
+        assert hasattr(result, "signals_examined")
 
 
 # ============================================================================
