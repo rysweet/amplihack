@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Optional, List
 
 from .state import PMStateManager, PMConfig, BacklogItem, WorkstreamState
-from .workstream import WorkstreamManager
+from .workstream import WorkstreamManager, WorkstreamMonitor, CoordinationAnalysis
 from .intelligence import RecommendationEngine, Recommendation, RichDelegationPackage
 
 
@@ -31,6 +31,7 @@ __all__ = [
     "cmd_status",
     "cmd_suggest",
     "cmd_prepare",
+    "cmd_coordinate",
 ]
 
 
@@ -236,8 +237,11 @@ def cmd_start(
         # Validate PM initialized
         validate_initialized(state_manager)
 
-        # Validate no active workstream
-        validate_no_active_workstream(state_manager)
+        # Phase 3: Check capacity instead of single workstream limit
+        can_start, reason = state_manager.can_start_workstream()
+        if not can_start:
+            print(f"❌ Error: {reason}")
+            return 1
 
         # Validate backlog item exists
         item = state_manager.get_backlog_item(backlog_id)
@@ -283,16 +287,19 @@ def cmd_start(
 def cmd_status(
     ws_id: Optional[str] = None,
     project_root: Optional[Path] = None,
+    multi_project: bool = False,
 ) -> int:
     """Implement /pm:status command.
 
-    Two modes:
-    - No args: Project overview (config, active workstream, backlog)
+    Three modes:
+    - No args: Project overview (config, active workstreams, backlog)
     - With ws_id: Detailed workstream status
+    - With multi_project: Aggregate status across multiple projects
 
     Args:
         ws_id: Optional workstream ID
         project_root: Project directory
+        multi_project: Show multi-project dashboard
 
     Returns:
         Exit code
@@ -303,10 +310,14 @@ def cmd_status(
     state_manager = PMStateManager(project_root)
 
     try:
-        # Validate PM initialized
-        validate_initialized(state_manager)
+        # Validate PM initialized (skip for multi-project mode)
+        if not multi_project:
+            validate_initialized(state_manager)
 
-        if ws_id:
+        if multi_project:
+            # Multi-project dashboard mode (Phase 3)
+            print(format_multi_project_dashboard(project_root))
+        elif ws_id:
             # Workstream details mode
             ws_manager = WorkstreamManager(
                 state_manager=state_manager,
@@ -315,11 +326,12 @@ def cmd_status(
             status = ws_manager.get_workstream_status(ws_id)
             print(format_workstream_details(status["workstream"], status))
         else:
-            # Project overview mode
+            # Project overview mode (Phase 3: multiple workstreams)
             config = state_manager.get_config()
-            active_ws = state_manager.get_active_workstream()
+            active_workstreams = state_manager.get_active_workstreams()
             backlog = state_manager.get_backlog_items(status="READY")
-            print(format_project_overview(config, active_ws, backlog))
+            counts = state_manager.get_workstream_count()
+            print(format_project_overview_phase3(config, active_workstreams, backlog, counts))
 
         return 0
 
@@ -458,6 +470,59 @@ def cmd_prepare(
         return 1
 
 
+def cmd_coordinate(
+    project_root: Optional[Path] = None,
+) -> int:
+    """Implement /pm:coordinate command (Phase 3).
+
+    Analyze all active workstreams for:
+    - Cross-workstream dependencies
+    - Conflicts (overlapping areas)
+    - Stalled workstreams
+    - Blockers
+    - Optimal execution order
+
+    Process:
+    1. Validate PM initialized
+    2. Run coordination analysis
+    3. Display analysis results
+    4. Show recommendations
+
+    Args:
+        project_root: Project directory
+
+    Returns:
+        Exit code
+    """
+    if project_root is None:
+        project_root = Path.cwd()
+
+    state_manager = PMStateManager(project_root)
+
+    try:
+        # Validate PM initialized
+        validate_initialized(state_manager)
+
+        # Run coordination analysis
+        monitor = WorkstreamMonitor(state_manager)
+        analysis = monitor.analyze_coordination()
+
+        # Display analysis
+        print("=" * 60)
+        print("🎯 WORKSTREAM COORDINATION ANALYSIS")
+        print("=" * 60)
+        print()
+        print(format_coordination_analysis(analysis))
+        print()
+        print("=" * 60)
+
+        return 0
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
 # =============================================================================
 # Formatting Helpers
 # =============================================================================
@@ -468,13 +533,30 @@ def format_project_overview(
     active_ws: Optional[WorkstreamState],
     backlog: List[BacklogItem],
 ) -> str:
-    """Format project overview for terminal output.
+    """Format project overview for terminal output (Phase 1/2 - backward compatibility).
+
+    Deprecated: Use format_project_overview_phase3 for Phase 3+.
+    """
+    # Convert single workstream to list for Phase 3 formatter
+    active_workstreams = [active_ws] if active_ws else []
+    counts = {"RUNNING": len(active_workstreams), "PAUSED": 0, "COMPLETED": 0, "FAILED": 0}
+    return format_project_overview_phase3(config, active_workstreams, backlog, counts)
+
+
+def format_project_overview_phase3(
+    config: PMConfig,
+    active_workstreams: List[WorkstreamState],
+    backlog: List[BacklogItem],
+    counts: dict,
+) -> str:
+    """Format project overview for terminal output (Phase 3).
 
     Returns formatted string with:
     - Project header
-    - Active workstream (if any)
+    - Active workstreams (up to 5)
     - Backlog summary
     - Health indicator
+    - Capacity status
     """
     output = []
     output.append("=" * 60)
@@ -482,36 +564,51 @@ def format_project_overview(
     output.append("=" * 60)
     output.append("")
 
-    # Active workstreams
-    if active_ws:
-        output.append("⚡ ACTIVE WORKSTREAMS (1):")
-        output.append(f"  • {active_ws.id}: {active_ws.title} [{active_ws.agent}]")
-        output.append(f"    Status: {active_ws.status} ({active_ws.elapsed_minutes} min elapsed)")
-        output.append("")
+    # Active workstreams (Phase 3: multiple)
+    running_count = len(active_workstreams)
+    output.append(f"⚡ ACTIVE WORKSTREAMS ({running_count}/5):")
+    if active_workstreams:
+        for ws in active_workstreams[:5]:  # Show up to 5
+            output.append(f"  • {ws.id}: {ws.title} [{ws.agent}]")
+            output.append(f"    Status: {ws.status} ({ws.elapsed_minutes} min elapsed)")
+        if len(active_workstreams) > 5:
+            output.append(f"  ... and {len(active_workstreams) - 5} more")
     else:
-        output.append("⚡ ACTIVE WORKSTREAMS: None")
-        output.append("")
+        output.append("  (none)")
+    output.append("")
 
     # Backlog
     output.append(f"📋 BACKLOG ({len(backlog)} items ready):")
     for item in backlog[:5]:  # Show first 5
-        output.append(f"  • {item.id}: {item.title} [{item.priority}] - {item.status}")
+        output.append(f"  • {item.id}: {item.title} [{item.priority}]")
     if len(backlog) > 5:
         output.append(f"  ... and {len(backlog) - 5} more")
     if not backlog:
         output.append("  (empty)")
     output.append("")
 
+    # Workstream statistics
+    output.append(f"📊 WORKSTREAM STATS:")
+    output.append(f"   Running: {counts.get('RUNNING', 0)}")
+    output.append(f"   Paused: {counts.get('PAUSED', 0)}")
+    output.append(f"   Completed: {counts.get('COMPLETED', 0)}")
+    output.append(f"   Failed: {counts.get('FAILED', 0)}")
+    output.append("")
+
     # Project health
     health = "🟢 HEALTHY"
-    if active_ws and active_ws.status == "FAILED":
+    if any(ws.status == "FAILED" for ws in active_workstreams):
         health = "🔴 ATTENTION NEEDED"
-    elif len(backlog) == 0 and not active_ws:
+    elif running_count >= 5:
+        health = "🟡 AT CAPACITY"
+    elif len(backlog) == 0 and running_count == 0:
         health = "🟡 IDLE"
 
-    output.append(f"📊 PROJECT HEALTH: {health}")
+    output.append(f"💚 PROJECT HEALTH: {health}")
     output.append(f"   Quality Bar: {config.quality_bar}")
-    output.append(f"   Active: {1 if active_ws else 0} workstream")
+    output.append(f"   Capacity: {running_count}/5 workstreams")
+    output.append("")
+    output.append("💡 TIP: Use /pm:coordinate to analyze workstream coordination")
 
     return "\n".join(output)
 
@@ -654,7 +751,10 @@ def validate_initialized(state_manager: PMStateManager) -> None:
 
 
 def validate_no_active_workstream(state_manager: PMStateManager) -> None:
-    """Raise error if active workstream exists (Phase 1 limit)."""
+    """Raise error if active workstream exists (Phase 1 limit).
+
+    Deprecated in Phase 3 - use can_start_workstream() instead.
+    """
     active = state_manager.get_active_workstream()
     if active:
         raise ValueError(
@@ -662,3 +762,146 @@ def validate_no_active_workstream(state_manager: PMStateManager) -> None:
             f"Phase 1 allows only one workstream at a time.\n"
             f"Complete or stop it with: /pm:status {active.id}"
         )
+
+
+def format_coordination_analysis(analysis: CoordinationAnalysis) -> str:
+    """Format coordination analysis for display (Phase 3)."""
+    output = []
+
+    # Capacity status
+    output.append(f"📊 Capacity: {analysis.capacity_status}")
+    output.append("")
+
+    # Active workstreams
+    output.append(f"⚡ Active Workstreams ({len(analysis.active_workstreams)}):")
+    if analysis.active_workstreams:
+        for ws in analysis.active_workstreams:
+            output.append(f"  • {ws.id}: {ws.title} [{ws.agent}] - {ws.elapsed_minutes} min")
+    else:
+        output.append("  (none)")
+    output.append("")
+
+    # Dependencies
+    if analysis.dependencies:
+        output.append(f"🔗 Dependencies ({len(analysis.dependencies)}):")
+        for dep in analysis.dependencies:
+            output.append(
+                f"  • {dep['workstream']} depends on {dep['depends_on']} "
+                f"[{dep['type']}]"
+            )
+        output.append("")
+
+    # Conflicts
+    if analysis.conflicts:
+        output.append(f"⚠️  Conflicts ({len(analysis.conflicts)}):")
+        for conflict in analysis.conflicts:
+            ws_list = ", ".join(conflict["workstreams"])
+            output.append(f"  • {ws_list}")
+            output.append(f"    Reason: {conflict['reason']}")
+            output.append(f"    Severity: {conflict['severity']}")
+        output.append("")
+
+    # Stalled workstreams
+    if analysis.stalled:
+        output.append(f"⏸️  Stalled Workstreams ({len(analysis.stalled)}):")
+        for ws in analysis.stalled:
+            output.append(f"  • {ws.id}: {ws.title} (no progress > 30 min)")
+        output.append("")
+
+    # Blockers
+    if analysis.blockers:
+        output.append(f"🚫 Blockers ({len(analysis.blockers)}):")
+        for blocker in analysis.blockers:
+            output.append(f"  • {blocker['workstream']}: {blocker['title']}")
+            for issue in blocker["issues"]:
+                output.append(f"    - {issue}")
+        output.append("")
+
+    # Recommended execution order
+    if analysis.execution_order:
+        output.append("📋 Suggested Execution Order:")
+        for i, ws_id in enumerate(analysis.execution_order, 1):
+            output.append(f"  {i}. {ws_id}")
+        output.append("")
+
+    # Recommendations
+    output.append("💡 Recommendations:")
+    for rec in analysis.recommendations:
+        output.append(f"  {rec}")
+
+    return "\n".join(output)
+
+
+def format_multi_project_dashboard(search_root: Path) -> str:
+    """Format multi-project dashboard (Phase 3).
+
+    Searches for all .pm/ directories under search_root and aggregates status.
+    """
+    output = []
+    output.append("=" * 60)
+    output.append("🏢 MULTI-PROJECT DASHBOARD")
+    output.append("=" * 60)
+    output.append("")
+
+    # Find all .pm directories
+    pm_dirs = list(search_root.rglob(".pm"))
+
+    if not pm_dirs:
+        output.append("No PM-managed projects found.")
+        return "\n".join(output)
+
+    # Aggregate stats
+    total_running = 0
+    total_paused = 0
+    total_completed = 0
+    total_failed = 0
+    total_backlog = 0
+
+    projects = []
+
+    for pm_dir in pm_dirs:
+        project_root = pm_dir.parent
+        try:
+            state_manager = PMStateManager(project_root)
+            if not state_manager.is_initialized():
+                continue
+
+            config = state_manager.get_config()
+            counts = state_manager.get_workstream_count()
+            backlog = state_manager.get_backlog_items(status="READY")
+
+            total_running += counts.get("RUNNING", 0)
+            total_paused += counts.get("PAUSED", 0)
+            total_completed += counts.get("COMPLETED", 0)
+            total_failed += counts.get("FAILED", 0)
+            total_backlog += len(backlog)
+
+            projects.append({
+                "name": config.project_name,
+                "path": project_root,
+                "running": counts.get("RUNNING", 0),
+                "backlog": len(backlog),
+                "health": "🟢" if counts.get("RUNNING", 0) > 0 else "🟡",
+            })
+        except Exception:
+            # Skip projects with errors
+            continue
+
+    # Display projects
+    output.append(f"📁 Projects ({len(projects)}):")
+    for proj in projects:
+        output.append(
+            f"  {proj['health']} {proj['name']}: {proj['running']} running, "
+            f"{proj['backlog']} backlog"
+        )
+        output.append(f"     Path: {proj['path']}")
+    output.append("")
+
+    # Aggregate stats
+    output.append("📊 Aggregate Statistics:")
+    output.append(f"   Total Running: {total_running}")
+    output.append(f"   Total Backlog: {total_backlog}")
+    output.append(f"   Total Completed: {total_completed}")
+    output.append(f"   Total Failed: {total_failed}")
+
+    return "\n".join(output)

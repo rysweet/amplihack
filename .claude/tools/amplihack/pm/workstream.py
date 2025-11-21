@@ -48,6 +48,8 @@ except ImportError:
 __all__ = [
     "DelegationPackage",
     "WorkstreamManager",
+    "WorkstreamMonitor",
+    "CoordinationAnalysis",
 ]
 
 
@@ -203,7 +205,7 @@ class WorkstreamManager:
         """Start new workstream for backlog item.
 
         Process:
-        1. Validate no active workstream (Phase 1 limit)
+        1. Check capacity (Phase 3: max 5 concurrent)
         2. Load backlog item
         3. Create delegation package
         4. Create workstream state
@@ -219,15 +221,12 @@ class WorkstreamManager:
             WorkstreamState object
 
         Raises:
-            ValueError: If active workstream exists or item not found
+            ValueError: If at capacity or item not found
         """
-        # Phase 1: Only one active workstream allowed
-        active = self.state_manager.get_active_workstream()
-        if active:
-            raise ValueError(
-                f"Active workstream exists: {active.id} - {active.title}. "
-                "Complete or stop it first."
-            )
+        # Phase 3: Check capacity (max 5 concurrent workstreams)
+        can_start, reason = self.state_manager.can_start_workstream()
+        if not can_start:
+            raise ValueError(f"Cannot start workstream: {reason}")
 
         # Load backlog item
         backlog_item = self.state_manager.get_backlog_item(backlog_id)
@@ -552,3 +551,352 @@ Focus on testing behavior, not implementation details.""",
             context += f"\n**Roadmap**:\n{roadmap_content[:1000]}"  # First 1000 chars
 
         return context
+
+
+# =============================================================================
+# Phase 3: Coordination & Monitoring
+# =============================================================================
+
+
+@dataclass
+class CoordinationAnalysis:
+    """Result of workstream coordination analysis (Phase 3)."""
+
+    active_workstreams: List[WorkstreamState]
+    conflicts: List[Dict[str, Any]]  # Detected conflicts between workstreams
+    dependencies: List[Dict[str, Any]]  # Cross-workstream dependencies
+    stalled: List[WorkstreamState]  # Workstreams with no progress > 30 min
+    blockers: List[Dict[str, Any]]  # Identified blockers
+    recommendations: List[str]  # Coordination recommendations
+    execution_order: List[str]  # Suggested execution order (workstream IDs)
+    capacity_status: str  # e.g., "3/5 concurrent workstreams"
+
+
+class WorkstreamMonitor:
+    """Monitor workstream health and detect issues (Phase 3).
+
+    Responsibilities:
+    - Detect stalled workstreams (no progress > 30 min)
+    - Identify off-track workstreams
+    - Auto-escalate blockers
+    - Health status tracking
+    - Cross-workstream dependency analysis
+    - Conflict detection
+
+    Usage:
+        monitor = WorkstreamMonitor(state_manager)
+
+        # Check for stalls
+        stalled = monitor.detect_stalls()
+
+        # Get health status
+        health = monitor.get_workstream_health("ws-001")
+
+        # Analyze coordination
+        analysis = monitor.analyze_coordination()
+    """
+
+    STALL_THRESHOLD_MINUTES = 30
+
+    def __init__(self, state_manager: PMStateManager):
+        """Initialize workstream monitor.
+
+        Args:
+            state_manager: PM state manager
+        """
+        self.state_manager = state_manager
+
+    def detect_stalls(self) -> List[WorkstreamState]:
+        """Detect stalled workstreams (no progress > 30 min).
+
+        Returns:
+            List of stalled workstreams
+        """
+        from datetime import datetime, timedelta
+
+        active = self.state_manager.get_active_workstreams()
+        stalled = []
+
+        for ws in active:
+            # Check last_activity or fall back to started_at
+            last_activity_str = ws.last_activity or ws.started_at
+
+            try:
+                last_activity = datetime.fromisoformat(last_activity_str.replace("Z", "+00:00"))
+                now = datetime.now(last_activity.tzinfo)
+                elapsed = (now - last_activity).total_seconds() / 60
+
+                if elapsed > self.STALL_THRESHOLD_MINUTES:
+                    stalled.append(ws)
+            except Exception:
+                # If timestamp parsing fails, assume not stalled
+                pass
+
+        return stalled
+
+    def get_workstream_health(self, ws_id: str) -> Dict[str, Any]:
+        """Get health status for workstream.
+
+        Returns:
+            {
+                "status": "HEALTHY" | "STALLED" | "OFF_TRACK" | "BLOCKED",
+                "issues": ["issue1", "issue2"],
+                "recommendations": ["rec1", "rec2"],
+            }
+        """
+        ws = self.state_manager.get_workstream(ws_id)
+        if not ws:
+            return {"status": "NOT_FOUND", "issues": [], "recommendations": []}
+
+        issues = []
+        recommendations = []
+        status = "HEALTHY"
+
+        # Check if stalled
+        stalled_workstreams = self.detect_stalls()
+        if any(w.id == ws_id for w in stalled_workstreams):
+            status = "STALLED"
+            issues.append(f"No progress for > {self.STALL_THRESHOLD_MINUTES} minutes")
+            recommendations.append("Check agent status and consider restarting")
+
+        # Check dependencies
+        if ws.dependencies:
+            unmet_deps = self._check_dependencies(ws)
+            if unmet_deps:
+                status = "BLOCKED"
+                issues.append(f"Blocked by: {', '.join(unmet_deps)}")
+                recommendations.append(f"Complete dependencies: {', '.join(unmet_deps)}")
+
+        # Check for excessive duration
+        backlog_item = self.state_manager.get_backlog_item(ws.backlog_id)
+        if backlog_item and ws.elapsed_minutes > (backlog_item.estimated_hours * 60 * 1.5):
+            status = "OFF_TRACK"
+            issues.append(f"Exceeded estimated time by 50%")
+            recommendations.append("Review scope or re-estimate effort")
+
+        return {
+            "status": status,
+            "issues": issues,
+            "recommendations": recommendations,
+        }
+
+    def analyze_coordination(self) -> CoordinationAnalysis:
+        """Analyze all active workstreams for coordination needs.
+
+        Detects:
+        - Cross-workstream dependencies
+        - Conflicts (same files/areas)
+        - Optimal execution order
+        - Blockers and stalls
+
+        Returns:
+            CoordinationAnalysis object
+        """
+        active = self.state_manager.get_active_workstreams()
+        counts = self.state_manager.get_workstream_count()
+
+        # Detect stalls
+        stalled = self.detect_stalls()
+
+        # Analyze dependencies
+        dependencies = self._analyze_dependencies(active)
+
+        # Detect conflicts (simplified - check for overlapping tags/areas)
+        conflicts = self._detect_conflicts(active)
+
+        # Identify blockers
+        blockers = self._identify_blockers(active)
+
+        # Generate recommendations
+        recommendations = self._generate_recommendations(active, stalled, conflicts, blockers)
+
+        # Suggest execution order
+        execution_order = self._suggest_execution_order(active, dependencies)
+
+        # Capacity status
+        running = counts.get("RUNNING", 0)
+        capacity_status = f"{running}/5 concurrent workstreams"
+
+        return CoordinationAnalysis(
+            active_workstreams=active,
+            conflicts=conflicts,
+            dependencies=dependencies,
+            stalled=stalled,
+            blockers=blockers,
+            recommendations=recommendations,
+            execution_order=execution_order,
+            capacity_status=capacity_status,
+        )
+
+    # =========================================================================
+    # Private Helpers
+    # =========================================================================
+
+    def _check_dependencies(self, ws: WorkstreamState) -> List[str]:
+        """Check unmet dependencies for workstream.
+
+        Returns:
+            List of backlog IDs that are not yet DONE
+        """
+        if not ws.dependencies:
+            return []
+
+        unmet = []
+        for dep_id in ws.dependencies:
+            dep_item = self.state_manager.get_backlog_item(dep_id)
+            if dep_item and dep_item.status != "DONE":
+                unmet.append(dep_id)
+
+        return unmet
+
+    def _analyze_dependencies(self, workstreams: List[WorkstreamState]) -> List[Dict[str, Any]]:
+        """Analyze cross-workstream dependencies.
+
+        Returns:
+            List of dependency relationships
+        """
+        dependencies = []
+
+        for ws in workstreams:
+            if ws.dependencies:
+                for dep_id in ws.dependencies:
+                    # Check if dependency is another active workstream
+                    dep_ws = next((w for w in workstreams if w.backlog_id == dep_id), None)
+                    if dep_ws:
+                        dependencies.append({
+                            "workstream": ws.id,
+                            "depends_on": dep_ws.id,
+                            "type": "workstream",
+                            "blocking": True,
+                        })
+                    else:
+                        # Dependency on backlog item
+                        dep_item = self.state_manager.get_backlog_item(dep_id)
+                        if dep_item and dep_item.status != "DONE":
+                            dependencies.append({
+                                "workstream": ws.id,
+                                "depends_on": dep_id,
+                                "type": "backlog",
+                                "blocking": True,
+                            })
+
+        return dependencies
+
+    def _detect_conflicts(self, workstreams: List[WorkstreamState]) -> List[Dict[str, Any]]:
+        """Detect potential conflicts between workstreams.
+
+        Simplified approach: Check for overlapping tags in backlog items.
+        """
+        conflicts = []
+
+        for i, ws1 in enumerate(workstreams):
+            item1 = self.state_manager.get_backlog_item(ws1.backlog_id)
+            if not item1:
+                continue
+
+            for ws2 in workstreams[i + 1:]:
+                item2 = self.state_manager.get_backlog_item(ws2.backlog_id)
+                if not item2:
+                    continue
+
+                # Check for overlapping tags
+                overlap = set(item1.tags) & set(item2.tags)
+                if overlap:
+                    conflicts.append({
+                        "workstreams": [ws1.id, ws2.id],
+                        "reason": f"Overlapping areas: {', '.join(overlap)}",
+                        "severity": "MEDIUM",
+                    })
+
+        return conflicts
+
+    def _identify_blockers(self, workstreams: List[WorkstreamState]) -> List[Dict[str, Any]]:
+        """Identify blockers across workstreams."""
+        blockers = []
+
+        for ws in workstreams:
+            health = self.get_workstream_health(ws.id)
+            if health["status"] == "BLOCKED":
+                blockers.append({
+                    "workstream": ws.id,
+                    "title": ws.title,
+                    "issues": health["issues"],
+                    "recommendations": health["recommendations"],
+                })
+
+        return blockers
+
+    def _generate_recommendations(
+        self,
+        active: List[WorkstreamState],
+        stalled: List[WorkstreamState],
+        conflicts: List[Dict[str, Any]],
+        blockers: List[Dict[str, Any]],
+    ) -> List[str]:
+        """Generate coordination recommendations."""
+        recommendations = []
+
+        # Stalled workstreams
+        if stalled:
+            stalled_ids = [ws.id for ws in stalled]
+            recommendations.append(
+                f"⚠️  {len(stalled)} stalled workstream(s): {', '.join(stalled_ids)}. "
+                "Check agent status or restart."
+            )
+
+        # Conflicts
+        if conflicts:
+            recommendations.append(
+                f"⚠️  {len(conflicts)} potential conflict(s) detected. "
+                "Consider sequential execution or coordination."
+            )
+
+        # Blockers
+        if blockers:
+            recommendations.append(
+                f"🚫 {len(blockers)} blocked workstream(s). "
+                "Resolve dependencies first."
+            )
+
+        # Capacity
+        if len(active) >= 5:
+            recommendations.append(
+                "⚠️  At maximum capacity (5 workstreams). "
+                "Complete some before starting new ones."
+            )
+
+        # All clear
+        if not recommendations:
+            recommendations.append("✅ All workstreams healthy. No coordination issues detected.")
+
+        return recommendations
+
+    def _suggest_execution_order(
+        self,
+        workstreams: List[WorkstreamState],
+        dependencies: List[Dict[str, Any]],
+    ) -> List[str]:
+        """Suggest optimal execution order based on dependencies.
+
+        Simple topological sort approach.
+        """
+        # Build dependency graph
+        graph = {ws.id: [] for ws in workstreams}
+        for dep in dependencies:
+            if dep["type"] == "workstream":
+                graph[dep["workstream"]].append(dep["depends_on"])
+
+        # Simple ordering: dependencies first, then independent
+        ordered = []
+        remaining = set(ws.id for ws in workstreams)
+
+        # First pass: items with no dependencies
+        for ws_id in list(remaining):
+            if not graph[ws_id]:
+                ordered.append(ws_id)
+                remaining.remove(ws_id)
+
+        # Second pass: items with dependencies (may not be optimal)
+        ordered.extend(list(remaining))
+
+        return ordered

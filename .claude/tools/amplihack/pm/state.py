@@ -108,6 +108,8 @@ class WorkstreamState:
     process_id: Optional[str] = None  # ClaudeProcess ID
     elapsed_minutes: int = 0
     progress_notes: List[str] = field(default_factory=list)
+    dependencies: List[str] = field(default_factory=list)  # Phase 3: List of BL-IDs this depends on
+    last_activity: Optional[str] = None  # Phase 3: ISO timestamp of last progress update
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for YAML serialization."""
@@ -116,9 +118,12 @@ class WorkstreamState:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "WorkstreamState":
         """Create from dictionary loaded from YAML."""
-        # Handle None for lists
+        # Handle None for lists (backward compatibility)
         if data.get("progress_notes") is None:
             data["progress_notes"] = []
+        if data.get("dependencies") is None:
+            data["dependencies"] = []
+        # last_activity is optional, default to None
         return cls(**data)
 
 
@@ -398,18 +403,67 @@ class PMStateManager:
         return workstream
 
     def get_active_workstream(self) -> Optional[WorkstreamState]:
-        """Get currently active workstream (only one allowed in Phase 1)."""
+        """Get currently active workstream (only one allowed in Phase 1).
+
+        Deprecated in Phase 3 - use get_active_workstreams() instead.
+        Returns first active workstream for backward compatibility.
+        """
+        workstreams = self.get_active_workstreams()
+        return workstreams[0] if workstreams else None
+
+    def get_active_workstreams(self) -> List[WorkstreamState]:
+        """Get all currently active workstreams (Phase 3).
+
+        Returns:
+            List of workstreams with status=RUNNING
+        """
         workstreams_dir = self.pm_dir / "workstreams"
         if not workstreams_dir.exists():
-            return None
+            return []
 
+        active = []
         for ws_file in workstreams_dir.glob("ws-*.yaml"):
             data = self._read_yaml(ws_file)
             ws = WorkstreamState.from_dict(data)
             if ws.status == "RUNNING":
-                return ws
+                active.append(ws)
 
-        return None
+        return active
+
+    def get_workstream_count(self) -> Dict[str, int]:
+        """Get count of workstreams by status.
+
+        Returns:
+            {"RUNNING": 2, "PAUSED": 1, "COMPLETED": 5, "FAILED": 0}
+        """
+        workstreams_dir = self.pm_dir / "workstreams"
+        if not workstreams_dir.exists():
+            return {"RUNNING": 0, "PAUSED": 0, "COMPLETED": 0, "FAILED": 0}
+
+        counts = {"RUNNING": 0, "PAUSED": 0, "COMPLETED": 0, "FAILED": 0}
+        for ws_file in workstreams_dir.glob("ws-*.yaml"):
+            data = self._read_yaml(ws_file)
+            ws = WorkstreamState.from_dict(data)
+            counts[ws.status] = counts.get(ws.status, 0) + 1
+
+        return counts
+
+    def can_start_workstream(self, max_concurrent: int = 5) -> tuple[bool, str]:
+        """Check if new workstream can be started (Phase 3).
+
+        Args:
+            max_concurrent: Maximum concurrent workstreams (default: 5)
+
+        Returns:
+            (can_start, reason)
+        """
+        active = self.get_active_workstreams()
+        count = len(active)
+
+        if count >= max_concurrent:
+            return False, f"Maximum {max_concurrent} concurrent workstreams (currently: {count})"
+
+        return True, f"Capacity available ({count}/{max_concurrent})"
 
     def get_workstream(self, ws_id: str) -> Optional[WorkstreamState]:
         """Get workstream by ID."""
