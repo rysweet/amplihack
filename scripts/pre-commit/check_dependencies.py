@@ -15,7 +15,7 @@ Exit Codes:
 import ast
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import List, Set, Tuple
 
 # Known optional dependencies that require try/except handling
 OPTIONAL_DEPENDENCIES = {

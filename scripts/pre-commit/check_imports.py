@@ -130,6 +130,9 @@ def test_import(file_path: Path) -> Tuple[Path, bool, str]:
 
     if rel_path.parts[0] == "src":
         module_parts = rel_path.parts[1:-1] + (rel_path.stem,)
+    elif len(rel_path.parts) >= 2 and rel_path.parts[0:2] == (".claude", "tools"):
+        # Files in .claude/tools/amplihack should import as amplihack.*
+        module_parts = rel_path.parts[2:-1] + (rel_path.stem,)
     else:
         module_parts = rel_path.parts[:-1] + (rel_path.stem,)
 
@@ -141,6 +144,7 @@ def test_import(file_path: Path) -> Tuple[Path, bool, str]:
 import sys
 import json
 sys.path.insert(0, 'src')
+sys.path.insert(0, '.claude/tools')
 module_name = json.loads(sys.argv[1])
 try:
     __import__(module_name)
@@ -155,18 +159,17 @@ except Exception as e:
             [sys.executable, "-c", code, json.dumps(module_name)],
             capture_output=True,
             text=True,
-            timeout=15  # Increased from 5 to 15 seconds
+            timeout=15,  # Increased from 5 to 15 seconds
         )
 
         if result.returncode == 0:
             return file_path, True, ""
-        else:
-            return file_path, False, result.stdout + result.stderr
+        return file_path, False, result.stdout + result.stderr
 
     except subprocess.TimeoutExpired:
         return file_path, False, "Import timeout (>15s)"
     except Exception as e:
-        return file_path, False, f"Test error: {str(e)}"
+        return file_path, False, f"Test error: {e!s}"
 
 
 def main():

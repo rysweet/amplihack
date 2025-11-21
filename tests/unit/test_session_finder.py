@@ -9,7 +9,6 @@ Following TDD approach - these tests should FAIL initially as SessionFinder is n
 import sys
 import tempfile
 import time
-from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,11 +26,9 @@ except ImportError:
     # Define placeholder classes so tests can be written
     class SessionFinder:
         """Placeholder - to be implemented."""
-        pass
 
     class SessionInfo:
         """Placeholder - to be implemented."""
-        pass
 
 
 class TestSessionFinderBasicDiscovery:

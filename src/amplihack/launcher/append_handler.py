@@ -16,13 +16,11 @@ from typing import Optional
 class AppendError(Exception):
     """Error during append operation."""
 
-    pass
 
 
 class ValidationError(Exception):
     """Validation error for instruction content."""
 
-    pass
 
 
 # Security constants
@@ -242,11 +240,10 @@ def append_instructions(instruction: str, session_id: Optional[str] = None) -> A
     if not session_dir:
         if session_id:
             raise AppendError(f"Session not found: {session_id}")
-        else:
-            raise AppendError(
-                f"No active auto mode session found in {workspace}. "
-                "Start an auto mode session first with: amplihack claude --auto -- -p \"your task\""
-            )
+        raise AppendError(
+            f"No active auto mode session found in {workspace}. "
+            "Start an auto mode session first with: amplihack claude --auto -- -p \"your task\""
+        )
 
     # Verify append directory exists
     append_dir = session_dir / "append"
@@ -278,7 +275,7 @@ def append_instructions(instruction: str, session_id: Optional[str] = None) -> A
 
         try:
             # Write content to file descriptor
-            content = f"# Appended Instruction\n\n"
+            content = "# Appended Instruction\n\n"
             content += f"**Timestamp**: {datetime.now().isoformat()}\n\n"
             content += f"{instruction}\n"
 

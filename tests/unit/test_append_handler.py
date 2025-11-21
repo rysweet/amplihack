@@ -11,9 +11,12 @@ import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    pytest = None  # type: ignore
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
@@ -34,11 +37,9 @@ except ImportError:
 
     class AppendResult:
         """Placeholder - to be implemented."""
-        pass
 
     class AppendError(Exception):
         """Placeholder - to be implemented."""
-        pass
 
 
 class TestAppendInstructionsBasic:
@@ -60,10 +61,10 @@ class TestAppendInstructionsBasic:
             (session_dir / "prompt.md").write_text("Original prompt")
 
             yield {
-                'workspace': workspace,
-                'session_id': session_id,
-                'session_dir': session_dir,
-                'append_dir': append_dir,
+                "workspace": workspace,
+                "session_id": session_id,
+                "session_dir": session_dir,
+                "append_dir": append_dir,
             }
 
     def test_append_instructions_creates_file(self, active_session_workspace):
@@ -74,14 +75,14 @@ class TestAppendInstructionsBasic:
         - File should be in append/ directory
         - File should contain the instruction text
         """
-        workspace = active_session_workspace['workspace']
-        append_dir = active_session_workspace['append_dir']
+        workspace = active_session_workspace["workspace"]
+        append_dir = active_session_workspace["append_dir"]
 
         instruction = "Add error handling to authentication module"
 
         # Change to workspace directory
-        with patch('pathlib.Path.cwd', return_value=workspace):
-            result = append_instructions(instruction)
+        with patch("pathlib.Path.cwd", return_value=workspace):
+            _ = append_instructions(instruction)
 
         # Check file was created
         md_files = list(append_dir.glob("*.md"))
@@ -98,16 +99,16 @@ class TestAppendInstructionsBasic:
         - Filename should be in format: YYYYMMDD_HHMMSS.md
         - Timestamp should be close to current time
         """
-        workspace = active_session_workspace['workspace']
-        append_dir = active_session_workspace['append_dir']
+        workspace = active_session_workspace["workspace"]
+        append_dir = active_session_workspace["append_dir"]
 
         instruction = "Test instruction"
 
         # Capture current time
         before_time = datetime.now()
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
-            result = append_instructions(instruction)
+        with patch("pathlib.Path.cwd", return_value=workspace):
+            _ = append_instructions(instruction)
 
         after_time = datetime.now()
 
@@ -120,8 +121,9 @@ class TestAppendInstructionsBasic:
         # Parse timestamp from filename (format: YYYYMMDD_HHMMSS)
         try:
             file_time = datetime.strptime(filename, "%Y%m%d_%H%M%S")
-            assert before_time <= file_time <= after_time, \
+            assert before_time <= file_time <= after_time, (
                 "Timestamp should be within test execution time"
+            )
         except ValueError:
             pytest.fail(f"Filename '{filename}' does not match expected timestamp format")
 
@@ -133,22 +135,23 @@ class TestAppendInstructionsBasic:
         - Result should indicate success
         - Result should include filename and session_id
         """
-        workspace = active_session_workspace['workspace']
-        session_id = active_session_workspace['session_id']
+        workspace = active_session_workspace["workspace"]
+        _ = active_session_workspace["session_id"]  # Used by test assertions
 
         instruction = "Test instruction"
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             result = append_instructions(instruction)
 
         assert result is not None, "Should return result"
-        assert hasattr(result, 'success') or isinstance(result, dict), \
+        assert hasattr(result, "success") or isinstance(result, dict), (
             "Should return result with success indicator"
+        )
 
         if isinstance(result, dict):
-            assert result.get('success') is True, "Should indicate success"
-            assert 'filename' in result, "Should include filename"
-            assert 'session_id' in result, "Should include session_id"
+            assert result.get("success") is True, "Should indicate success"
+            assert "filename" in result, "Should include filename"
+            assert "session_id" in result, "Should include session_id"
 
 
 class TestAppendInstructionsSessionDiscovery:
@@ -181,8 +184,8 @@ class TestAppendInstructionsSessionDiscovery:
 
         instruction = "Auto-discovered session test"
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
-            result = append_instructions(instruction)
+        with patch("pathlib.Path.cwd", return_value=workspace):
+            _ = append_instructions(instruction)
 
         # Verify instruction was written to the session
         append_dir = workspace / ".claude" / "runtime" / "logs" / session_id / "append"
@@ -202,8 +205,8 @@ class TestAppendInstructionsSessionDiscovery:
 
         instruction = "Explicit session test"
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
-            result = append_instructions(instruction, session_id=session_id)
+        with patch("pathlib.Path.cwd", return_value=workspace):
+            _ = append_instructions(instruction, session_id=session_id)
 
         # Verify written to correct session
         append_dir = workspace / ".claude" / "runtime" / "logs" / session_id / "append"
@@ -228,8 +231,8 @@ class TestAppendInstructionsSessionDiscovery:
 
         instruction = "From subdirectory"
 
-        with patch('pathlib.Path.cwd', return_value=subdir):
-            result = append_instructions(instruction)
+        with patch("pathlib.Path.cwd", return_value=subdir):
+            _ = append_instructions(instruction)
 
         # Should still write to workspace session
         append_dir = workspace / ".claude" / "runtime" / "logs" / session_id / "append"
@@ -254,7 +257,7 @@ class TestAppendInstructionsErrorHandling:
 
             instruction = "Test instruction"
 
-            with patch('pathlib.Path.cwd', return_value=workspace):
+            with patch("pathlib.Path.cwd", return_value=workspace):
                 with pytest.raises((AppendError, FileNotFoundError, ValueError)):
                     append_instructions(instruction)
 
@@ -296,8 +299,8 @@ class TestAppendInstructionsErrorHandling:
             instruction = "Test instruction"
 
             # Mock write to raise permission error
-            with patch('pathlib.Path.cwd', return_value=workspace):
-                with patch('builtins.open', side_effect=PermissionError("Access denied")):
+            with patch("pathlib.Path.cwd", return_value=workspace):
+                with patch("builtins.open", side_effect=PermissionError("Access denied")):
                     with pytest.raises((PermissionError, AppendError, OSError)):
                         append_instructions(instruction)
 
@@ -335,7 +338,7 @@ class TestAppendInstructionsConcurrency:
             "Third instruction",
         ]
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             for instruction in instructions:
                 append_instructions(instruction)
                 time.sleep(0.01)  # Small delay to ensure different timestamps
@@ -361,9 +364,9 @@ class TestAppendInstructionsConcurrency:
         """
         workspace, session_id = workspace_with_session
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             # Mock datetime to return same timestamp
-            with patch('datetime.datetime') as mock_dt:
+            with patch("datetime.datetime") as mock_dt:
                 fixed_time = datetime(2024, 10, 23, 12, 0, 0)
                 mock_dt.now.return_value = fixed_time
 
@@ -421,7 +424,7 @@ class TestAppendInstructionsFormatting:
 
 Please implement carefully."""
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             append_instructions(instruction)
 
         # Check content preserved
@@ -452,7 +455,7 @@ def authenticate(user):
 ```
 Use **strong** encryption."""
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             append_instructions(instruction)
 
         # Check special characters preserved
@@ -476,7 +479,7 @@ Use **strong** encryption."""
 
         instruction = "Add tests for thé français function 🚀"
 
-        with patch('pathlib.Path.cwd', return_value=workspace):
+        with patch("pathlib.Path.cwd", return_value=workspace):
             append_instructions(instruction)
 
         # Check unicode preserved
@@ -509,14 +512,14 @@ class TestAppendResult:
                 session_id="auto_claude_1729699200",
                 append_dir=Path("/tmp/append"),
                 timestamp="20241023_120000",
-                message="Instruction added successfully"
+                message="Instruction added successfully",
             )
 
-            assert hasattr(result, 'success')
-            assert hasattr(result, 'filename')
-            assert hasattr(result, 'session_id')
-            assert hasattr(result, 'append_dir')
-            assert hasattr(result, 'timestamp')
+            assert hasattr(result, "success")
+            assert hasattr(result, "filename")
+            assert hasattr(result, "session_id")
+            assert hasattr(result, "append_dir")
+            assert hasattr(result, "timestamp")
 
     def test_append_result_to_dict(self):
         """Test converting AppendResult to dictionary.
@@ -531,15 +534,15 @@ class TestAppendResult:
                 filename="test.md",
                 session_id="auto_claude_123",
                 append_dir=Path("/tmp"),
-                timestamp="20241023_120000"
+                timestamp="20241023_120000",
             )
 
-            result_dict = result.to_dict() if hasattr(result, 'to_dict') else dict(result)
+            result_dict = result.to_dict() if hasattr(result, "to_dict") else dict(result)
 
             assert isinstance(result_dict, dict)
-            assert 'success' in result_dict
-            assert 'filename' in result_dict
-            assert 'session_id' in result_dict
+            assert "success" in result_dict
+            assert "filename" in result_dict
+            assert "session_id" in result_dict
 
 
 class TestCLIIntegration:
