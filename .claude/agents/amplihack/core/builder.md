@@ -41,12 +41,14 @@ Ask these four questions in order:
 #### 1. Is this a single, stateless prompt-response?
 
 **Use Plain API if:**
+
 - Single question, single answer
 - No conversation history needed
 - No tool use required
 - No multi-step reasoning
 
 **Example: Code style checking**
+
 ```python
 # RIGHT - Plain API for simple checks
 def check_code_style(code: str) -> dict:
@@ -75,12 +77,14 @@ def check_code_style(code: str) -> dict:
 #### 2. Does it require multi-turn conversation or state?
 
 **Use Agent SDK if:**
+
 - Conversation history matters
 - Context builds across turns
 - User can refine requests
 - System maintains state
 
 **Example: Interactive code review**
+
 ```python
 # WRONG - Plain API loses context
 def review_code(code: str):
@@ -93,7 +97,7 @@ def review_code(code: str):
     return response.content[0].text
 
 # RIGHT - Agent SDK maintains conversation
-from claude_agent_sdk import Agent, ConversationMemory
+from claude_agent_sdk import Agent, ConversationMemory  # Verify current syntax in SDK docs
 
 def review_code_interactive(code: str):
     """Maintains context for follow-up questions."""
@@ -114,12 +118,14 @@ def review_code_interactive(code: str):
 #### 3. Does it need tool use or function calling?
 
 **Use Agent SDK if:**
+
 - Needs to call functions/APIs
 - Requires file system access
 - Must interact with external services
 - Tool selection is dynamic
 
 **Example: Automated debugging**
+
 ```python
 # WRONG - Manual tool orchestration is fragile
 def debug_code(code: str, error: str):
@@ -150,7 +156,7 @@ def debug_code(code: str, error: str):
     return fix.content[0].text
 
 # RIGHT - Agent SDK handles tool orchestration
-from claude_agent_sdk import Agent, Tool
+from claude_agent_sdk import Agent, Tool  # Verify current syntax in SDK docs
 
 class ImportCheckerTool(Tool):
     def execute(self, code: str) -> str:
@@ -178,12 +184,14 @@ def debug_code(code: str, error: str):
 #### 4. Does it require orchestration across multiple services?
 
 **Use Agent SDK if:**
+
 - Coordinates multiple AI calls
 - Integrates with databases, APIs, file systems
 - Has complex workflow logic
 - Needs retry/fallback mechanisms
 
 **Example: Full system analysis**
+
 ```python
 # WRONG - Manual service orchestration
 def analyze_system(repo_path: str):
@@ -215,7 +223,7 @@ def analyze_system(repo_path: str):
     return synthesis.content[0].text
 
 # RIGHT - Agent SDK orchestrates complex workflows
-from claude_agent_sdk import Agent, Tool
+from claude_agent_sdk import Agent, Tool  # Verify current syntax in SDK docs
 
 class FileSystemTool(Tool):
     def list_files(self, path: str) -> list[str]:
@@ -239,10 +247,10 @@ def analyze_system(repo_path: str):
     return agent.run(f"Analyze the codebase at {repo_path} and provide a comprehensive report")
 ```
 
-
 ### Choosing Your Agent SDK
 
 For this project, use **Claude Agent SDK** for all Agent SDK requirements:
+
 - Official Anthropic support and optimization for Claude models
 - Simple, focused API aligned with our philosophy
 - Best performance with Claude 3.5 Sonnet
@@ -252,17 +260,20 @@ For this project, use **Claude Agent SDK** for all Agent SDK requirements:
 Before implementing AI-powered functionality:
 
 **Use Plain API if:**
+
 - Single prompt-response (no follow-ups)
 - No tools or function calling
 - Can implement in < 20 lines
 
 **Use Agent SDK if:**
+
 - Multi-turn conversation needed OR
 - Tool/function calling required OR
 - Multi-service orchestration
 - Plain API becomes brittle
 
 **Review Red Flags:**
+
 - Agent SDK for simple prompt-response = over-engineering
 - Manual tool orchestration for complex workflows = under-engineering
 - Lost context in multi-turn scenarios = missing Agent SDK
