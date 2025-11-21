@@ -494,10 +494,22 @@ class PMStateManager:
         self,
         ws_id: str,
         success: bool = True,
+        track_outcome: bool = True,
+        outcome_notes: str = "",
     ) -> WorkstreamState:
         """Mark workstream as completed.
 
         Updates backlog item status to DONE or READY (if failed)
+        Optionally records outcome for learning (Phase 4)
+
+        Args:
+            ws_id: Workstream ID to complete
+            success: Whether workstream succeeded
+            track_outcome: Whether to record outcome for learning
+            outcome_notes: Additional notes about outcome
+
+        Returns:
+            Updated workstream state
         """
         ws = self.get_workstream(ws_id)
         if ws is None:
@@ -515,6 +527,16 @@ class PMStateManager:
         # Update backlog item status
         backlog_status = "DONE" if success else "READY"
         self.update_backlog_item(ws.backlog_id, status=backlog_status)
+
+        # Phase 4: Record outcome for learning
+        if track_outcome:
+            try:
+                from .learning import OutcomeTracker
+                tracker = OutcomeTracker(self.project_root)
+                tracker.record_outcome(ws, success, outcome_notes)
+            except Exception:
+                # Don't fail completion if outcome tracking fails
+                pass
 
         return ws
 

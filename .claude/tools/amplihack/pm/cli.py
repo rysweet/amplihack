@@ -22,6 +22,8 @@ from typing import Optional, List
 from .state import PMStateManager, PMConfig, BacklogItem, WorkstreamState
 from .workstream import WorkstreamManager, WorkstreamMonitor, CoordinationAnalysis
 from .intelligence import RecommendationEngine, Recommendation, RichDelegationPackage
+from .autopilot import AutopilotEngine, AutopilotDecision
+from .learning import OutcomeTracker
 
 
 __all__ = [
@@ -32,6 +34,8 @@ __all__ = [
     "cmd_suggest",
     "cmd_prepare",
     "cmd_coordinate",
+    "cmd_autopilot",
+    "cmd_explain",
 ]
 
 
@@ -905,3 +909,259 @@ def format_multi_project_dashboard(search_root: Path) -> str:
     output.append(f"   Total Failed: {total_failed}")
 
     return "\n".join(output)
+
+
+def cmd_autopilot(
+    mode: str = "dry-run",
+    schedule: str = "on-demand",
+    project_root: Optional[Path] = None,
+) -> int:
+    """Implement /pm:autopilot command.
+
+    Autonomous work selection and execution.
+
+    Modes:
+    - dry-run: Show what would be done (default, safe)
+    - execute: Actually take actions
+
+    Schedule:
+    - on-demand: Run once now (default)
+    - hourly: Run every hour
+    - daily: Run once per day
+
+    Process:
+    1. Initialize autopilot engine
+    2. Run decision cycle
+    3. Display decisions with rationale
+    4. Execute if not dry-run
+    5. Update schedule
+
+    Args:
+        mode: dry-run or execute
+        schedule: on-demand, hourly, daily
+        project_root: Project directory (default: cwd)
+
+    Returns:
+        Exit code (0=success, 1=error)
+    """
+    if project_root is None:
+        project_root = Path.cwd()
+
+    try:
+        # Validate PM initialized
+        manager = PMStateManager(project_root)
+        validate_initialized(manager)
+
+        # Validate mode
+        if mode not in ["dry-run", "execute"]:
+            print(f"❌ Error: Mode must be 'dry-run' or 'execute' (got: {mode})")
+            return 1
+
+        # Validate schedule
+        if schedule not in ["on-demand", "hourly", "daily"]:
+            print(f"❌ Error: Schedule must be 'on-demand', 'hourly', or 'daily' (got: {schedule})")
+            return 1
+
+        # Initialize engine
+        engine = AutopilotEngine(project_root)
+
+        # Display header
+        print("\n" + "=" * 60)
+        print(f"🤖 AUTOPILOT - Phase 4 (Autonomy)")
+        print("=" * 60)
+        print(f"Mode: {mode.upper()}")
+        print(f"Schedule: {schedule}")
+        print()
+
+        if mode == "dry-run":
+            print("⚠️  DRY-RUN MODE: Showing decisions, not executing")
+            print()
+
+        # Run autopilot
+        decisions = engine.run(dry_run=(mode == "dry-run"), max_actions=3)
+
+        if not decisions:
+            print("✅ No actions needed")
+            print()
+            print("Current state looks good:")
+            active = manager.get_active_workstreams()
+            print(f"  - {len(active)} workstreams running")
+            print(f"  - No stalls or conflicts detected")
+            return 0
+
+        # Display decisions
+        print(f"📋 Decisions Made: {len(decisions)}")
+        print()
+
+        for i, decision in enumerate(decisions, 1):
+            print(f"{i}. {decision.action_taken}")
+            print(f"   Type: {decision.decision_type}")
+            print(f"   Confidence: {decision.confidence:.0%}")
+            print(f"   Rationale: {decision.rationale}")
+            print()
+            print(f"   Alternatives considered:")
+            for alt in decision.alternatives_considered:
+                print(f"     - {alt}")
+            print()
+
+            if decision.can_override:
+                print(f"   Override: {decision.override_command}")
+            else:
+                print(f"   Override: Not available (requires human judgment)")
+            print()
+
+            if mode == "execute":
+                outcome_symbol = "✅" if decision.outcome == "success" else "❌"
+                print(f"   Outcome: {outcome_symbol} {decision.outcome}")
+                print()
+
+        # Show how to explain decisions
+        print("=" * 60)
+        print("💡 Decision Transparency:")
+        print(f"   View details: /pm:explain <decision-id>")
+        print(f"   Recent decisions: /pm:explain recent")
+        print()
+
+        # Show next steps
+        if mode == "dry-run":
+            print("Next steps:")
+            print(f"  - Review decisions above")
+            print(f"  - Run '/pm:autopilot execute' to take actions")
+        else:
+            print("✅ Actions executed")
+
+        return 0
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
+def cmd_explain(
+    decision_id: Optional[str] = None,
+    project_root: Optional[Path] = None,
+) -> int:
+    """Implement /pm:explain command.
+
+    Explain autopilot decisions with full transparency.
+
+    Args:
+        decision_id: ID of decision to explain (or "recent" for recent list)
+        project_root: Project directory (default: cwd)
+
+    Returns:
+        Exit code (0=success, 1=error)
+    """
+    if project_root is None:
+        project_root = Path.cwd()
+
+    try:
+        # Validate PM initialized
+        manager = PMStateManager(project_root)
+        validate_initialized(manager)
+
+        # Initialize engine
+        engine = AutopilotEngine(project_root)
+
+        # Display header
+        print("\n" + "=" * 60)
+        print("📖 DECISION EXPLANATION")
+        print("=" * 60)
+        print()
+
+        # Handle "recent" special case
+        if decision_id == "recent" or decision_id is None:
+            decisions = engine.get_recent_decisions(hours=24)
+
+            if not decisions:
+                print("No recent decisions (last 24 hours)")
+                return 0
+
+            print(f"Recent Decisions (last 24 hours): {len(decisions)}")
+            print()
+
+            for decision in decisions[:10]:  # Show max 10
+                # Parse timestamp for display
+                try:
+                    from datetime import datetime
+                    ts = datetime.fromisoformat(decision.timestamp.replace("Z", "+00:00"))
+                    time_str = ts.strftime("%Y-%m-%d %H:%M")
+                except Exception:
+                    time_str = decision.timestamp
+
+                outcome_symbol = {
+                    "success": "✅",
+                    "failure": "❌",
+                    "pending": "⏳"
+                }.get(decision.outcome, "❓")
+
+                print(f"{outcome_symbol} {decision.decision_id}")
+                print(f"   Time: {time_str}")
+                print(f"   Action: {decision.action_taken}")
+                print(f"   Confidence: {decision.confidence:.0%}")
+                print()
+
+            print("=" * 60)
+            print("Use '/pm:explain <decision-id>' for full details")
+            return 0
+
+        # Explain specific decision
+        decision = engine.explain_decision(decision_id)
+
+        if decision is None:
+            print(f"❌ Decision not found: {decision_id}")
+            print()
+            print("Use '/pm:explain recent' to see available decisions")
+            return 1
+
+        # Display full decision details
+        print(f"Decision ID: {decision.decision_id}")
+        print(f"Timestamp: {decision.timestamp}")
+        print(f"Type: {decision.decision_type}")
+        print()
+
+        print("Action Taken:")
+        print(f"  {decision.action_taken}")
+        print()
+
+        print("Rationale:")
+        print(f"  {decision.rationale}")
+        print()
+
+        print(f"Confidence: {decision.confidence:.0%}")
+        print()
+
+        print("Alternatives Considered:")
+        for i, alt in enumerate(decision.alternatives_considered, 1):
+            print(f"  {i}. {alt}")
+        print()
+
+        outcome_symbol = {
+            "success": "✅",
+            "failure": "❌",
+            "pending": "⏳"
+        }.get(decision.outcome, "❓")
+        print(f"Outcome: {outcome_symbol} {decision.outcome}")
+        print()
+
+        if decision.can_override:
+            print("Override Available:")
+            print(f"  {decision.override_command}")
+        else:
+            print("Override: Not available (requires human judgment)")
+        print()
+
+        if decision.context:
+            print("Additional Context:")
+            for key, value in decision.context.items():
+                print(f"  {key}: {value}")
+            print()
+
+        print("=" * 60)
+        print("💡 Decision recorded for learning and improvement")
+
+        return 0
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
