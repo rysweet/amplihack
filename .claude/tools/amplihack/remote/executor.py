@@ -207,9 +207,9 @@ amplihack claude --{command} --max-turns {max_turns} -- -p '{escaped_prompt}'
                     timeout=30,
                     capture_output=True,
                 )
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
                 # Non-fatal: process may already be terminated or VM unreachable
-                pass
+                print(f"Warning: Could not terminate remote process: {e}")
 
             return ExecutionResult(
                 exit_code=-1,
