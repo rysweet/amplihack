@@ -21,6 +21,7 @@ from typing import Optional, List
 
 from .state import PMStateManager, PMConfig, BacklogItem, WorkstreamState
 from .workstream import WorkstreamManager
+from .intelligence import RecommendationEngine, Recommendation, RichDelegationPackage
 
 
 __all__ = [
@@ -28,6 +29,8 @@ __all__ = [
     "cmd_add",
     "cmd_start",
     "cmd_status",
+    "cmd_suggest",
+    "cmd_prepare",
 ]
 
 
@@ -325,6 +328,136 @@ def cmd_status(
         return 1
 
 
+def cmd_suggest(
+    project_root: Optional[Path] = None,
+    max_recommendations: int = 3,
+) -> int:
+    """Implement /pm:suggest command (Phase 2).
+
+    Analyze all backlog items and provide smart recommendations for
+    what to work on next, with rationale and confidence scores.
+
+    Process:
+    1. Validate PM initialized
+    2. Run recommendation engine
+    3. Display top N recommendations with details
+    4. Show scoring breakdown
+
+    Args:
+        project_root: Project directory
+        max_recommendations: Number of recommendations (default: 3)
+
+    Returns:
+        Exit code
+    """
+    if project_root is None:
+        project_root = Path.cwd()
+
+    state_manager = PMStateManager(project_root)
+
+    try:
+        # Validate PM initialized
+        validate_initialized(state_manager)
+
+        # Get recommendations
+        engine = RecommendationEngine(state_manager, project_root)
+        recommendations = engine.generate_recommendations(max_recommendations=max_recommendations)
+
+        if not recommendations:
+            print("📋 No backlog items ready for work")
+            print("   Add items with /pm:add or check dependencies")
+            return 0
+
+        # Display recommendations
+        print("=" * 60)
+        print("🤖 PM ARCHITECT RECOMMENDATIONS")
+        print("=" * 60)
+        print()
+
+        for rec in recommendations:
+            print(format_recommendation(rec))
+            print()
+
+        print("=" * 60)
+        print("💡 TIP: Use /pm:prepare <id> to create rich delegation package")
+        print()
+
+        return 0
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
+def cmd_prepare(
+    backlog_id: str,
+    agent: str = "builder",
+    project_root: Optional[Path] = None,
+) -> int:
+    """Implement /pm:prepare command (Phase 2).
+
+    Create rich delegation package with AI-generated context including:
+    - Relevant files to examine
+    - Similar patterns in codebase
+    - Comprehensive test requirements
+    - Architectural notes
+
+    Process:
+    1. Validate PM initialized
+    2. Validate backlog item exists
+    3. Run AI analysis
+    4. Generate rich delegation package
+    5. Display package details
+
+    Args:
+        backlog_id: Backlog item ID (BL-001)
+        agent: Agent role (builder, reviewer, tester)
+        project_root: Project directory
+
+    Returns:
+        Exit code
+    """
+    if project_root is None:
+        project_root = Path.cwd()
+
+    state_manager = PMStateManager(project_root)
+
+    try:
+        # Validate PM initialized
+        validate_initialized(state_manager)
+
+        # Validate backlog item exists
+        item = state_manager.get_backlog_item(backlog_id)
+        if not item:
+            print(f"❌ Error: Backlog item {backlog_id} not found")
+            print("   Use /pm:status to see available items")
+            return 1
+
+        print("\n🤖 Analyzing backlog item and codebase...")
+        print("   This may take a moment...\n")
+
+        # Generate rich delegation package
+        engine = RecommendationEngine(state_manager, project_root)
+        package = engine.create_rich_delegation_package(backlog_id, agent)
+
+        # Display package
+        print("=" * 60)
+        print(f"📦 RICH DELEGATION PACKAGE: {backlog_id}")
+        print("=" * 60)
+        print()
+        print(format_rich_delegation_package(package))
+        print()
+        print("=" * 60)
+        print(f"💡 TIP: Use /pm:start {backlog_id} to begin work with this package")
+        print()
+
+        return 0
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return 1
+
+
 # =============================================================================
 # Formatting Helpers
 # =============================================================================
@@ -427,6 +560,86 @@ def format_backlog_item(item: BacklogItem, verbose: bool = False) -> str:
         output += f"\n  Tags: {', '.join(item.tags) if item.tags else 'none'}"
         output += f"\n  Created: {item.created_at}"
     return output
+
+
+def format_recommendation(rec: Recommendation) -> str:
+    """Format recommendation for display (Phase 2)."""
+    output = []
+
+    # Header
+    output.append(f"#{rec.rank} | {rec.backlog_item.id}: {rec.backlog_item.title}")
+    output.append(f"    Priority: {rec.backlog_item.priority} | Score: {rec.score:.1f}/100")
+    output.append(f"    Complexity: {rec.complexity} | Confidence: {rec.confidence:.0%}")
+
+    # Rationale
+    output.append(f"\n    {rec.rationale}")
+
+    # Additional details
+    details = []
+    if rec.blocking_count > 0:
+        details.append(f"Unblocks {rec.blocking_count} item(s)")
+    if rec.dependencies:
+        details.append(f"Depends on: {', '.join(rec.dependencies)}")
+    if details:
+        output.append(f"    Details: {' | '.join(details)}")
+
+    return "\n".join(output)
+
+
+def format_rich_delegation_package(package: RichDelegationPackage) -> str:
+    """Format rich delegation package for display (Phase 2)."""
+    output = []
+
+    # Item info
+    output.append(f"Item: {package.backlog_item.id} - {package.backlog_item.title}")
+    output.append(f"Agent: {package.agent_role}")
+    output.append(f"Priority: {package.backlog_item.priority}")
+    output.append(f"Complexity: {package.complexity} ({package.estimated_hours}h estimated)")
+    output.append("")
+
+    # Description
+    if package.backlog_item.description:
+        output.append("Description:")
+        output.append(f"  {package.backlog_item.description}")
+        output.append("")
+
+    # Relevant files
+    if package.relevant_files:
+        output.append("📂 Relevant Files to Examine:")
+        for f in package.relevant_files[:10]:  # Limit to 10
+            output.append(f"  • {f}")
+        if len(package.relevant_files) > 10:
+            output.append(f"  ... and {len(package.relevant_files) - 10} more")
+        output.append("")
+
+    # Similar patterns
+    if package.similar_patterns:
+        output.append("🔍 Similar Patterns in Codebase:")
+        for pattern in package.similar_patterns:
+            output.append(f"  • {pattern}")
+        output.append("")
+
+    # Test requirements
+    if package.test_requirements:
+        output.append("✅ Test Requirements:")
+        for req in package.test_requirements:
+            output.append(f"  • {req}")
+        output.append("")
+
+    # Architectural notes
+    if package.architectural_notes:
+        output.append("🏗️  Architectural Notes:")
+        for line in package.architectural_notes.split("\n"):
+            output.append(f"  {line}")
+        output.append("")
+
+    # Dependencies
+    if package.dependencies:
+        output.append("⚠️  Dependencies:")
+        output.append(f"  This item depends on: {', '.join(package.dependencies)}")
+        output.append("")
+
+    return "\n".join(output)
 
 
 # =============================================================================

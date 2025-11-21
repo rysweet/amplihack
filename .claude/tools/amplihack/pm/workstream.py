@@ -34,6 +34,16 @@ except ImportError:
         sys.path.insert(0, str(_tools_dir))
     from orchestration.claude_process import ClaudeProcess, ProcessResult
 
+# Import Phase 2 intelligence module (optional - degrades gracefully)
+try:
+    from .intelligence import (
+        RecommendationEngine,
+        RichDelegationPackage,
+    )
+    INTELLIGENCE_AVAILABLE = True
+except ImportError:
+    INTELLIGENCE_AVAILABLE = False
+
 
 __all__ = [
     "DelegationPackage",
@@ -59,11 +69,14 @@ class DelegationPackage:
     instructions: str  # Generated instructions
     success_criteria: List[str]  # What defines done
     estimated_hours: int
+    rich_context: Optional[Dict[str, Any]] = None  # Phase 2: AI-enhanced context
 
     def to_prompt(self) -> str:
-        """Convert package to Claude prompt string."""
-        return (
-            f"""# Work Assignment: {self.backlog_item.title}
+        """Convert package to Claude prompt string.
+
+        Phase 2: Includes rich context if available.
+        """
+        prompt = f"""# Work Assignment: {self.backlog_item.title}
 
 ## Context
 
@@ -76,12 +89,42 @@ class DelegationPackage:
 **Priority**: {self.backlog_item.priority}
 **Estimated**: {self.estimated_hours} hours
 **Tags**: {", ".join(self.backlog_item.tags) if self.backlog_item.tags else "None"}
-
-## Success Criteria
-
 """
-            + "\n".join(f"- {criterion}" for criterion in self.success_criteria)
-            + f"""
+
+        # Phase 2: Add rich context if available
+        if self.rich_context:
+            prompt += "\n## AI-Enhanced Context\n\n"
+
+            if self.rich_context.get("complexity"):
+                prompt += f"**Complexity**: {self.rich_context['complexity']}\n\n"
+
+            if self.rich_context.get("relevant_files"):
+                prompt += "**Relevant Files to Examine**:\n"
+                for f in self.rich_context["relevant_files"][:10]:
+                    prompt += f"- {f}\n"
+                prompt += "\n"
+
+            if self.rich_context.get("similar_patterns"):
+                prompt += "**Similar Patterns in Codebase**:\n"
+                for pattern in self.rich_context["similar_patterns"]:
+                    prompt += f"- {pattern}\n"
+                prompt += "\n"
+
+            if self.rich_context.get("test_requirements"):
+                prompt += "**Test Requirements**:\n"
+                for req in self.rich_context["test_requirements"]:
+                    prompt += f"- {req}\n"
+                prompt += "\n"
+
+            if self.rich_context.get("architectural_notes"):
+                prompt += f"**Architectural Notes**:\n{self.rich_context['architectural_notes']}\n\n"
+
+        # Success criteria
+        prompt += "## Success Criteria\n\n"
+        prompt += "\n".join(f"- {criterion}" for criterion in self.success_criteria)
+
+        # Instructions
+        prompt += f"""
 
 ## Instructions
 
@@ -99,7 +142,7 @@ class DelegationPackage:
 
 Begin implementation now. Report when complete.
 """
-        )
+        return prompt
 
 
 # =============================================================================
@@ -326,6 +369,13 @@ class WorkstreamManager:
         - Project config
         - Roadmap context
         - Agent-specific instructions (template)
+
+        Phase 2: If intelligence module available, includes AI-enhanced context:
+        - Complexity estimation
+        - Relevant files
+        - Similar patterns
+        - Test requirements
+        - Architectural notes
         """
         # Load project context
         project_context = self._load_project_context()
@@ -342,6 +392,27 @@ class WorkstreamManager:
             "Documentation updated",
         ]
 
+        # Phase 2: Try to generate rich context
+        rich_context = None
+        if INTELLIGENCE_AVAILABLE:
+            try:
+                engine = RecommendationEngine(self.state_manager, self.project_root)
+                rich_package = engine.create_rich_delegation_package(
+                    backlog_item.id,
+                    agent,
+                )
+                # Extract relevant fields for DelegationPackage
+                rich_context = {
+                    "complexity": rich_package.complexity,
+                    "relevant_files": rich_package.relevant_files,
+                    "similar_patterns": rich_package.similar_patterns,
+                    "test_requirements": rich_package.test_requirements,
+                    "architectural_notes": rich_package.architectural_notes,
+                }
+            except Exception:
+                # Degrade gracefully - intelligence is optional
+                pass
+
         return DelegationPackage(
             backlog_item=backlog_item,
             agent_role=agent,
@@ -349,6 +420,7 @@ class WorkstreamManager:
             instructions=instructions,
             success_criteria=success_criteria,
             estimated_hours=backlog_item.estimated_hours,
+            rich_context=rich_context,
         )
 
     # =========================================================================
