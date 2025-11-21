@@ -495,7 +495,6 @@ Document your decisions and reasoning in comments/logs."""
             return self._run_sdk_subprocess(prompt)
 
         try:
-            print("\n[DEBUG] 🚀 START _run_turn_with_sdk", flush=True)
             self.log("Using Claude SDK (streaming mode)")
             output_lines = []
             turn_output_size = 0
@@ -513,15 +512,10 @@ Document your decisions and reasoning in comments/logs."""
             )
 
             # Stream response - messages are typed objects, not dicts
-            print("\n[DEBUG] 🔄 Starting async for message loop", flush=True)
             async for message in query(prompt=prompt, options=options):
-                print("\n[DEBUG] 💬 Got a message from query()", flush=True)
                 # Handle different message types
                 if hasattr(message, "__class__"):
                     msg_type = message.__class__.__name__
-                    print(
-                        f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True
-                    )  # Direct print to bypass log()
                     self.log(f"📨 Received message type: {msg_type}", level="INFO")
 
                     if msg_type == "AssistantMessage":
