@@ -23,6 +23,8 @@ class ProfileParser:
     def parse(self, raw_yaml: str) -> ProfileConfig:
         """Parse YAML and validate against schema.
 
+        Security: Limits YAML size and nesting depth to prevent YAML bomb attacks.
+
         Args:
             raw_yaml: Raw YAML content as string
 
@@ -32,8 +34,16 @@ class ProfileParser:
         Raises:
             yaml.YAMLError: Invalid YAML syntax
             ValidationError: Schema validation failure
-            ValueError: Profile data is invalid or version unsupported
+            ValueError: Profile data is invalid, version unsupported, or YAML too large/nested
         """
+        # Security: Limit YAML size to prevent memory exhaustion
+        MAX_YAML_SIZE = 100_000  # 100KB
+        if len(raw_yaml) > MAX_YAML_SIZE:
+            raise ValueError(
+                f"Profile YAML too large ({len(raw_yaml)} bytes). "
+                f"Maximum allowed: {MAX_YAML_SIZE} bytes"
+            )
+
         # Parse YAML
         try:
             data = yaml.safe_load(raw_yaml)
@@ -57,6 +67,15 @@ class ProfileParser:
                 "version, name, description, components, and metadata fields."
             )
 
+        # Security: Check nesting depth to prevent YAML bombs
+        max_depth = self._check_nesting_depth(data)
+        MAX_ALLOWED_DEPTH = 10
+        if max_depth > MAX_ALLOWED_DEPTH:
+            raise ValueError(
+                f"Profile YAML too deeply nested (depth: {max_depth}). "
+                f"Maximum allowed: {MAX_ALLOWED_DEPTH}"
+            )
+
         # Validate against pydantic schema
         try:
             profile = ProfileConfig(**data)
@@ -73,7 +92,7 @@ class ProfileParser:
                 line_errors=e.errors()
             )
 
-        # Validate version compatibility
+        # Validate version compatibility (redundant check since validator does this)
         if not profile.validate_version_compatibility():
             raise ValueError(
                 f"Unsupported profile version: {profile.version}. "
@@ -81,6 +100,34 @@ class ProfileParser:
             )
 
         return profile
+
+    def _check_nesting_depth(self, obj: any, current_depth: int = 0) -> int:
+        """Check maximum nesting depth of data structure.
+
+        Security: Prevents YAML bomb attacks by detecting deeply nested structures.
+
+        Args:
+            obj: Object to check (dict, list, or primitive)
+            current_depth: Current recursion depth
+
+        Returns:
+            Maximum depth found in the structure
+        """
+        if not isinstance(obj, (dict, list)):
+            return current_depth
+
+        max_depth = current_depth
+
+        if isinstance(obj, dict):
+            for value in obj.values():
+                depth = self._check_nesting_depth(value, current_depth + 1)
+                max_depth = max(max_depth, depth)
+        elif isinstance(obj, list):
+            for item in obj:
+                depth = self._check_nesting_depth(item, current_depth + 1)
+                max_depth = max(max_depth, depth)
+
+        return max_depth
 
     def parse_safe(self, raw_yaml: str) -> tuple[ProfileConfig | None, str | None]:
         """Parse YAML with error handling.

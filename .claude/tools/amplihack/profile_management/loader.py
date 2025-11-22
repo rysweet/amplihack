@@ -77,6 +77,9 @@ class ProfileLoader:
     def _load_file(self, path: str) -> str:
         """Load from local file:// URI.
 
+        Security: Restricts access to ~/.amplihack/ and current directory to
+        prevent path traversal attacks.
+
         Args:
             path: Path component from file:// URI
 
@@ -86,8 +89,23 @@ class ProfileLoader:
         Raises:
             FileNotFoundError: File does not exist
             PermissionError: Cannot read file
+            ValueError: Path is outside allowed directories
         """
         file_path = Path(path).resolve()
+
+        # Define allowed directories for security
+        allowed_dirs = [
+            Path.home() / ".amplihack",
+            Path.cwd(),
+        ]
+
+        # Verify path is within allowed directories to prevent path traversal
+        if not any(file_path.is_relative_to(allowed_dir) for allowed_dir in allowed_dirs):
+            raise ValueError(
+                f"Security: Profile path outside allowed directories.\n"
+                f"Allowed: ~/.amplihack/ or current directory\n"
+                f"Attempted: {file_path}"
+            )
 
         if not file_path.exists():
             raise FileNotFoundError(

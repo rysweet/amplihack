@@ -131,9 +131,22 @@ class ProfileConfig(BaseModel):
     @field_validator('version')
     @classmethod
     def validate_version_format(cls, v: str) -> str:
-        """Ensure version is a valid format."""
+        """Ensure version is valid format and supported.
+
+        Security: Validates version before model construction to prevent
+        processing of unsupported profile versions.
+        """
         if not v or not isinstance(v, str):
             raise ValueError("version must be a non-empty string")
+
+        # Validate version compatibility before construction
+        SUPPORTED_VERSIONS = ["1.0"]
+        if v not in SUPPORTED_VERSIONS:
+            raise ValueError(
+                f"Unsupported profile version: {v}. "
+                f"Supported versions: {', '.join(SUPPORTED_VERSIONS)}"
+            )
+
         return v
 
     @field_validator('name')

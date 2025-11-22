@@ -223,12 +223,18 @@ class ComponentFilter:
         - Wildcards: "ddd:*", "*-analyst"
         - Multiple wildcards: "*test*"
 
+        Security: Validates pattern complexity to prevent catastrophic
+        backtracking and DoS attacks.
+
         Args:
             name: Component name to match
             pattern: Pattern with optional wildcards
 
         Returns:
             True if name matches pattern
+
+        Raises:
+            ValueError: Pattern too complex (too many wildcards)
 
         Examples:
             >>> f = ComponentFilter()
@@ -239,4 +245,13 @@ class ComponentFilter:
             >>> f._match_pattern("economist-analyst", "*-analyst")
             True
         """
+        # Security: Limit pattern complexity to prevent DoS
+        MAX_WILDCARDS = 5
+        wildcard_count = pattern.count('*') + pattern.count('?')
+        if wildcard_count > MAX_WILDCARDS:
+            raise ValueError(
+                f"Pattern too complex ({wildcard_count} wildcards). "
+                f"Maximum allowed: {MAX_WILDCARDS}"
+            )
+
         return fnmatch.fnmatch(name, pattern)
