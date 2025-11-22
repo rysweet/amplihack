@@ -1572,11 +1572,11 @@ Investigation triggered by system reminder messages showing "SessionStart:startu
 
 **Claude Code Internal Bug**: The hook execution engine spawns **two separate Python processes** for each hook invocation, regardless of configuration.
 
-**Incorrect Configuration** (causes duplication):
+**Current Configuration** (CORRECT per schema):
 ```json
 "SessionStart": [
   {
-    "hooks": [  // ❌ Extra wrapper
+    "hooks": [  // ✓ Required by Claude Code schema
       {
         "type": "command",
         "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
@@ -1587,37 +1587,39 @@ Investigation triggered by system reminder messages showing "SessionStart:startu
 ]
 ```
 
-**Correct Configuration**:
-```json
-"SessionStart": [
-  {
-    "type": "command",
-    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-    "timeout": 10000
-  }
-]
+**Schema Requirement**:
+```typescript
+{
+  "required": ["hooks"],  // The "hooks" wrapper is MANDATORY
+  "additionalProperties": false
+}
 ```
 
-### Why This Causes Duplication
+### Initial Hypothesis Was Wrong
 
-The extra `"hooks": [...]` wrapper creates a **hook-within-a-hook** scenario:
+**Initial theory**: Extra `"hooks": []` wrapper was causing duplication.
 
-1. Claude Code processes the outer `SessionStart` array
-2. Finds an object with a `hooks` property
-3. Processes that inner `hooks` array as a separate invocation
-4. Results in the same hook being called twice
+**Reality**: The wrapper is **required by Claude Code schema**. Removing it causes validation errors:
+```
+Settings validation failed:
+- hooks.SessionStart.0.hooks: Expected array, but received undefined
+```
+
+**Actual cause**: Claude Code's hook execution engine has an internal bug that spawns two separate processes for each registered hook.
 
 ### Evidence
+
+**Configuration Analysis**:
+- Only 1 SessionStart hook registered in settings.json
+- No duplicate configurations found
+- Schema validation confirms format is correct
+- **Two separate Python processes** spawn anyway (different PIDs)
 
 **From `.claude/runtime/logs/session_start.log`**:
 ```
 [2025-11-21T13:01:07.113446] INFO: session_start hook starting (Python 3.13.9)
 [2025-11-21T13:01:07.113687] INFO: session_start hook starting (Python 3.13.9)
-[2025-11-21T13:01:07.167228] WARNING: ⚠️ Version mismatch detected: package=afb2d971, project=bff1ce7c
-[2025-11-21T13:01:07.167231] WARNING: ⚠️ Version mismatch detected: package=afb2d971, project=bff1ce7c
 ```
-
-Every log line appears twice with nearly identical timestamps (241μs apart).
 
 **From `.claude/runtime/logs/stop.log`**:
 ```
@@ -1625,13 +1627,13 @@ Every log line appears twice with nearly identical timestamps (241μs apart).
 [2025-11-20T21:37:05.427256] INFO: stop hook starting (Python 3.13.9)
 ```
 
-Confirmed: **Both SessionStart and Stop hooks** execute twice.
+**Pattern**: All hooks (SessionStart, Stop, PostToolUse) show double execution with microsecond-level timing differences, indicating true parallel process spawning.
 
 ### Impact
 
 | Area | Effect |
 |------|--------|
-| **Performance** | 2-4 seconds wasted per session (double execution) |
+| **Performance** | 2-4 seconds wasted per session (double process spawning) |
 | **Context Pollution** | USER_PREFERENCES.md injected twice (~19KB duplicate) |
 | **Side Effects** | File writes, metrics, logs all duplicated |
 | **Log Clarity** | Every entry appears twice, making debugging confusing |
@@ -1639,124 +1641,93 @@ Confirmed: **Both SessionStart and Stop hooks** execute twice.
 
 ### Solution
 
-**File**: `.claude/settings.json`
+**NO CODE FIX AVAILABLE** - This is a Claude Code internal bug.
 
-**Fix**: Remove the extra `"hooks": [...]` wrapper from SessionStart and Stop configurations.
+**Workarounds**:
+1. Accept the duplication (hooks are idempotent, safe but wasteful)
+2. Add process-level deduplication in hook_processor.py (complex)
+3. Wait for upstream Claude Code fix
 
-```diff
- "SessionStart": [
-   {
--    "hooks": [
--      {
--        "type": "command",
--        "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
--        "timeout": 10000
--      }
--    ]
-+    "type": "command",
-+    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-+    "timeout": 10000
-   }
- ],
- "Stop": [
-   {
--    "hooks": [
--      {
--        "type": "command",
--        "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
--        "timeout": 30000
--      }
--    ]
-+    "type": "command",
-+    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
-+    "timeout": 30000
-   }
- ]
-```
+**Tracking**: Claude Code GitHub Issue #10871 "Plugin-registered hooks are executed twice with different PIDs"
 
-### Configuration Format Rules
+### Configuration Format (CORRECT)
 
-Claude Code hook configuration follows these rules:
+Our configuration **matches the official schema exactly**:
 
-**✅ Hooks WITHOUT matchers** (SessionStart, Stop, PreCompact):
 ```json
-"HookName": [
+"SessionStart": [
   {
-    "type": "command",
-    "command": "path/to/hook.py",
-    "timeout": 10000
-  }
-]
-```
-
-**✅ Hooks WITH matchers** (PreToolUse, PostToolUse):
-```json
-"HookName": [
-  {
-    "matcher": "ToolName",
-    "hooks": [
+    "hooks": [  // ✓ REQUIRED by schema
       {
         "type": "command",
-        "command": "path/to/hook.py"
+        "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+        "timeout": 10000
       }
     ]
   }
 ]
 ```
 
-**Key Rule**: The `"hooks": []` wrapper is **only needed when using matchers**. Without a matcher field, the hook configuration should be directly in the event array.
+**Schema requirement**:
+```typescript
+"required": ["hooks"],  // The "hooks" wrapper is MANDATORY
+"additionalProperties": false
+```
+
+Attempting to remove the wrapper causes validation errors.
 
 ### Affected Hooks
 
-| Hook | Status | Fix Required |
-|------|--------|--------------|
-| **SessionStart** | ❌ Runs 2x | YES - Remove wrapper |
-| **Stop** | ❌ Runs 2x | YES - Remove wrapper |
-| PreToolUse | ✅ Correct | NO - Has matcher (correct format) |
-| PostToolUse | ✅ Correct | NO - Has matcher (correct format) |
-| PreCompact | ❓ Not verified | CHECK - Likely needs same fix |
+| Hook | Status | Root Cause |
+|------|--------|------------|
+| **SessionStart** | ❌ Runs 2x | Claude Code bug #10871 |
+| **Stop** | ❌ Runs 2x | Claude Code bug #10871 |
+| **PostToolUse** | ❌ Runs 2x | Claude Code bug #10871 |
+| PreToolUse | ❓ Unknown | Likely affected |
+| PreCompact | ❓ Unknown | Likely affected |
 
 ### Key Learnings
 
-1. **Configuration format matters** - Extra nesting can cause subtle duplication bugs
-2. **Matcher presence determines structure** - Hooks with matchers need the wrapper, hooks without it don't
-3. **Log analysis reveals hidden issues** - Duplicate timestamps exposed the problem
-4. **Both startup and shutdown affected** - Pattern affects all non-matcher hooks
-5. **Performance impact is real** - Doubles execution time for critical initialization
-6. **Template propagation** - Likely affects install.sh and other hook configuration templates
+1. **Configuration was correct all along** - The `"hooks": []` wrapper is required by Claude Code schema
+2. **Schema validation prevents incorrect "fixes"** - Attempted to remove wrapper, got validation errors
+3. **Log analysis reveals issues but not always root cause** - Duplicate execution doesn't always mean duplicate configuration
+4. **Upstream bugs affect downstream projects** - Known Claude Code bug (#10871) causes systematic duplication
+5. **Idempotent design saves us** - Hooks are safe to run twice even though wasteful
+6. **Investigation workflow worked** - Systematic analysis prevented incorrect fix from being deployed
 
-### Prevention
+### No Action Required
 
-**To prevent similar issues**:
+**Decision**: Accept the duplication as a known limitation until Claude Code team fixes #10871.
 
-1. **Verify hook configuration** - Check logs for duplicate execution
-2. **Follow format rules** - Use matcher-appropriate structure
-3. **Update templates** - Fix `.claude/tools/amplihack/install.sh` and `src/amplihack/utils/uvx_settings_template.json`
-4. **Add validation** - Consider adding hook configuration validation to detect duplication
-5. **Document format** - Update docs/HOOK_CONFIGURATION_GUIDE.md with clear examples
+**Rationale**:
+- Configuration is correct per official schema
+- No user-side fix available without breaking schema validation
+- Hooks are idempotent (safe to run twice)
+- Performance impact acceptable (~2 seconds per session)
+- Workarounds (process-level dedup) would add significant complexity
 
-### Verification Steps
+### Monitoring
 
-After fixing:
+Track Claude Code GitHub for fix:
+- **Issue #10871**: "Plugin-registered hooks are executed twice with different PIDs"
+- **Related**: #3523 (hook duplication), #3465 (hooks fired twice from home dir)
 
-1. Check logs show single execution: `tail -20 .claude/runtime/logs/session_start.log`
-2. Verify no duplicate context injection
-3. Confirm startup time reduced by ~2 seconds
-4. Test with both SessionStart and Stop hooks
+### Verification
 
-### Files to Update
+Configuration correctness verified:
+1. ✅ Only 1 hook registered per event type
+2. ✅ Schema validation passes
+3. ✅ Format matches official Claude Code documentation
+4. ✅ Removing wrapper causes validation errors
+5. ✅ Both processes run to completion (not a race condition)
 
-- `.claude/settings.json` (immediate fix)
-- `.claude/tools/amplihack/install.sh` (template fix)
-- `src/amplihack/utils/uvx_settings_template.json` (UVX template fix)
-- `docs/HOOK_CONFIGURATION_GUIDE.md` (documentation)
+### Files Analyzed
 
-### Related Issues
-
-This configuration error may have been present since hook system implementation. Worth checking:
-- When did the extra nesting appear?
-- Are there other projects with the same issue?
-- Does official Claude Code documentation show the correct format?
+- `.claude/settings.json` (1 SessionStart hook, 1 Stop hook)
+- `.claude/tools/amplihack/hooks/session_start.py` (hook implementation)
+- `.claude/runtime/logs/session_start.log` (execution evidence)
+- `.claude/runtime/logs/stop.log` (execution evidence)
+- Claude Code schema (hook format requirements)
 
 ---
 
