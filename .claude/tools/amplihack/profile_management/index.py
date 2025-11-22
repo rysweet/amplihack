@@ -93,8 +93,8 @@ class SkillIndexBuilder:
     def _extract_description(self, skill_file: Path) -> str:
         """Extract brief description from skill file.
 
-        For Phase 2, just use filename. Phase 6 will add frontmatter parsing
-        to extract real descriptions from skill files.
+        Currently uses skill directory name as description.
+        Future enhancement: Parse frontmatter for actual descriptions.
 
         Args:
             skill_file: Path to skill.md or README.md

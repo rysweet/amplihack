@@ -157,11 +157,3 @@ class ProfileConfig(BaseModel):
             raise ValueError("name must be a non-empty string")
         return v
 
-    def validate_version_compatibility(self) -> bool:
-        """Ensure profile version compatible with current amplihack.
-
-        Returns:
-            True if version is supported, False otherwise
-        """
-        supported_versions = ["1.0"]
-        return self.version in supported_versions

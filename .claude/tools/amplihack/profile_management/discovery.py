@@ -165,7 +165,7 @@ class ComponentDiscovery:
                 skills[name] = path
 
             return skills
-        except Exception:
+        except (FileNotFoundError, json.JSONDecodeError, KeyError, PermissionError):
             # If index loading fails, fallback to directory scanning
             return self._scan_skills_directories(index_file.parent)
 
@@ -234,7 +234,7 @@ class ComponentDiscovery:
                 categories[category].append(skill["name"])
 
             return categories
-        except Exception:
+        except (FileNotFoundError, json.JSONDecodeError, KeyError, PermissionError):
             return self._infer_categories_from_structure(index_file.parent)
 
     def _infer_categories_from_structure(self, skills_dir: Path) -> Dict[str, List[str]]:

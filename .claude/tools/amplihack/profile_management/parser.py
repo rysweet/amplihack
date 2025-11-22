@@ -92,13 +92,7 @@ class ProfileParser:
                 line_errors=e.errors()
             )
 
-        # Validate version compatibility (redundant check since validator does this)
-        if not profile.validate_version_compatibility():
-            raise ValueError(
-                f"Unsupported profile version: {profile.version}. "
-                f"This version of amplihack supports profile versions: 1.0"
-            )
-
+        # Version validation happens automatically via @field_validator in ProfileConfig
         return profile
 
     def _check_nesting_depth(self, obj: any, current_depth: int = 0) -> int:

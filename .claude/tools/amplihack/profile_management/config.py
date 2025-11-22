@@ -100,7 +100,7 @@ class ConfigManager:
             with open(self.config_path, encoding="utf-8") as f:
                 config = yaml.safe_load(f)
                 return config if isinstance(config, dict) else {}
-        except Exception:
+        except (FileNotFoundError, yaml.YAMLError, PermissionError):
             # Return empty dict on any error (file not found, invalid YAML, etc.)
             return {}
 
