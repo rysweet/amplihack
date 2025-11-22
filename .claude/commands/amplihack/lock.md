@@ -1,3 +1,7 @@
+---
+description: Enable continuous work mode without stopping
+---
+
 # Lock: Enable Continuous Work Mode
 
 **Purpose**: Enable continuous work mode to prevent Claude from stopping until explicitly unlocked.

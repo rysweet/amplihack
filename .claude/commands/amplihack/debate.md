@@ -1,3 +1,7 @@
+---
+description: Multi-agent debate for complex decisions and trade-offs
+---
+
 # Multi-Agent Debate Command
 
 ## Usage

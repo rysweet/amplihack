@@ -1,3 +1,7 @@
+---
+description: Deep analysis mode with multi-agent orchestration
+---
+
 # Ultra-Think Command
 
 ## Input Validation

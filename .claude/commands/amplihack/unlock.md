@@ -1,3 +1,7 @@
+---
+description: Disable continuous work mode and resume normal behavior
+---
+
 # Unlock: Disable Continuous Work Mode
 
 Disable continuous work mode to allow Claude to stop normally.

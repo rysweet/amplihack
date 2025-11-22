@@ -1,3 +1,7 @@
+---
+description: Cross-Prompt Injection Attack defense and security management
+---
+
 # XPIA Security Command
 
 XPIA (Cross-Platform Injection Attack) Defense system management and health monitoring.
