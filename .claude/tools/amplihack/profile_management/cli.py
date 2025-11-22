@@ -15,7 +15,7 @@ from .loader import ProfileLoader
 from .parser import ProfileParser
 from .config import ConfigManager
 from .discovery import ComponentDiscovery
-from .filter import ComponentFilter
+from .filter import ComponentFilter, estimate_token_count
 
 
 console = Console()
@@ -150,7 +150,7 @@ class ProfileCLI:
             try:
                 inventory = self.discovery.discover_all()
                 filtered = self.filter.filter(profile, inventory)
-                tokens = filtered.token_count_estimate()
+                tokens = estimate_token_count(filtered)
 
                 console.print(f"\n[dim]Estimated token usage: ~{tokens:,} tokens[/dim]")
                 console.print(f"[dim]Components: {len(filtered.commands)} commands, {len(filtered.context)} context, {len(filtered.agents)} agents, {len(filtered.skills)} skills[/dim]")

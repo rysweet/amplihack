@@ -17,6 +17,9 @@ from .discovery import ComponentInventory
 class ComponentSet:
     """Filtered components to load for session.
 
+    Internal data structure - not part of public API.
+    Use ComponentFilter.filter() to create instances.
+
     Attributes:
         commands: List of command file paths to load
         context: List of context file paths to load
@@ -28,21 +31,26 @@ class ComponentSet:
     agents: List[Path]
     skills: List[Path]
 
-    def token_count_estimate(self) -> int:
-        """Estimate token count for filtered components.
 
-        Uses rough heuristic: 1 token per 4 characters of file content.
+def estimate_token_count(component_set: ComponentSet) -> int:
+    """Estimate token count for filtered components.
 
-        Returns:
-            Estimated token count
-        """
-        total_size = 0
-        for paths in [self.commands, self.context, self.agents, self.skills]:
-            for path in paths:
-                if path.exists():
-                    total_size += path.stat().st_size
+    Uses rough heuristic: 1 token per 4 characters of file content.
 
-        return total_size // 4
+    Args:
+        component_set: Filtered component set
+
+    Returns:
+        Estimated token count
+    """
+    total_size = 0
+    for paths in [component_set.commands, component_set.context,
+                  component_set.agents, component_set.skills]:
+        for path in paths:
+            if path.exists():
+                total_size += path.stat().st_size
+
+    return total_size // 4
 
 
 class ComponentFilter:

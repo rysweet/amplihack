@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from ..filter import ComponentFilter, ComponentSet
+from ..filter import ComponentFilter, ComponentSet, estimate_token_count
 from ..models import ProfileConfig, ComponentsConfig, ComponentSpec, SkillSpec
 from ..discovery import ComponentInventory
 
@@ -318,7 +318,7 @@ def test_token_count_estimate(tmp_path):
         skills=[]
     )
 
-    estimate = component_set.token_count_estimate()
+    estimate = estimate_token_count(component_set)
     assert estimate == (100 + 200) // 4  # 75 tokens
 
 

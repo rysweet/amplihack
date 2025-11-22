@@ -25,7 +25,7 @@ from .models import (
 from .loader import ProfileLoader
 from .parser import ProfileParser
 from .discovery import ComponentDiscovery, ComponentInventory
-from .filter import ComponentFilter, ComponentSet
+from .filter import ComponentFilter
 from .index import SkillIndexBuilder
 from .cli import ProfileCLI, main as cli_main
 from .config import ConfigManager
@@ -45,7 +45,6 @@ __all__ = [
     "ComponentDiscovery",
     "ComponentInventory",
     "ComponentFilter",
-    "ComponentSet",
     # Indexing
     "SkillIndexBuilder",
     # CLI & Config

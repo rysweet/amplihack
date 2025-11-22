@@ -91,16 +91,13 @@ class SkillIndexBuilder:
         return index_data
 
     def _extract_description(self, skill_file: Path) -> str:
-        """Extract brief description from skill file.
-
-        Currently uses skill directory name as description.
-        Future enhancement: Parse frontmatter for actual descriptions.
+        """Generate description from skill directory name.
 
         Args:
             skill_file: Path to skill.md or README.md
 
         Returns:
-            Brief description string
+            Description string in format "Skill: {directory_name}"
         """
         return f"Skill: {skill_file.parent.name}"
 

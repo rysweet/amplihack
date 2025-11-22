@@ -5,7 +5,7 @@ from pathlib import Path
 import json
 from ..loader import ProfileLoader
 from ..discovery import ComponentDiscovery
-from ..filter import ComponentFilter
+from ..filter import ComponentFilter, estimate_token_count
 from ..index import SkillIndexBuilder
 
 
@@ -255,7 +255,7 @@ def test_end_to_end_token_estimation(complete_amplihack_env):
     components = filter_instance.filter(profile, inventory)
 
     # Get token estimate
-    token_estimate = components.token_count_estimate()
+    token_estimate = estimate_token_count(components)
 
     # Should be reasonable (not zero, not huge)
     assert token_estimate > 0
@@ -272,12 +272,12 @@ def test_end_to_end_profile_comparison(complete_amplihack_env):
     # Load and filter minimal profile
     minimal_profile = loader.load_profile("minimal")
     minimal_components = filter_instance.filter(minimal_profile, inventory)
-    minimal_tokens = minimal_components.token_count_estimate()
+    minimal_tokens = estimate_token_count(minimal_components)
 
     # Load and filter full profile
     full_profile = loader.load_profile("full")
     full_components = filter_instance.filter(full_profile, inventory)
-    full_tokens = full_components.token_count_estimate()
+    full_tokens = estimate_token_count(full_components)
 
     # Full profile should use more tokens
     assert full_tokens > minimal_tokens
