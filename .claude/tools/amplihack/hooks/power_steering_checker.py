@@ -788,7 +788,6 @@ class PowerSteeringChecker:
 
         return messages
 
-<<<<<<< HEAD
     def _has_development_indicators(
         self,
         code_files_modified: bool,
