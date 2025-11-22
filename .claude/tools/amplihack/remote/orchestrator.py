@@ -177,8 +177,8 @@ class Orchestrator:
 
         print(f"Provisioning new VM: {vm_name} ({options.size})...")
 
-        # Build azlin command with non-interactive mode and skip bastion prompts
-        cmd = ["azlin", "new", "--size", options.size, "--name", vm_name, "--yes", "--no-bastion"]
+        # Build azlin command with non-interactive mode (--yes now works with fixed azlin)
+        cmd = ["azlin", "new", "--size", options.size, "--name", vm_name, "--yes"]
         if options.region:
             cmd.extend(["--region", options.region])
 

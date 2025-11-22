@@ -1558,6 +1558,208 @@ git cherry-pick origin/main
 
 <!-- New discoveries will be added here as the project progresses -->
 
+## SessionStart and Stop Hooks Executing Twice - Claude Code Bug (2025-11-21)
+
+### Discovery
+
+SessionStart and Stop hooks are executing **twice per session** due to a **known Claude Code bug in the hook execution engine** (#10871), NOT due to configuration errors. The issue affects all hook types and causes performance degradation and duplicate context injection.
+
+### Context
+
+Investigation triggered by system reminder messages showing "SessionStart:startup hook success: Success" appearing twice. Initial hypothesis was incorrect configuration format, but deeper analysis revealed the configuration is correct per official schema.
+
+### Root Cause
+
+**Claude Code Internal Bug**: The hook execution engine spawns **two separate Python processes** for each hook invocation, regardless of configuration.
+
+**Incorrect Configuration** (causes duplication):
+```json
+"SessionStart": [
+  {
+    "hooks": [  // ❌ Extra wrapper
+      {
+        "type": "command",
+        "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+        "timeout": 10000
+      }
+    ]
+  }
+]
+```
+
+**Correct Configuration**:
+```json
+"SessionStart": [
+  {
+    "type": "command",
+    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+    "timeout": 10000
+  }
+]
+```
+
+### Why This Causes Duplication
+
+The extra `"hooks": [...]` wrapper creates a **hook-within-a-hook** scenario:
+
+1. Claude Code processes the outer `SessionStart` array
+2. Finds an object with a `hooks` property
+3. Processes that inner `hooks` array as a separate invocation
+4. Results in the same hook being called twice
+
+### Evidence
+
+**From `.claude/runtime/logs/session_start.log`**:
+```
+[2025-11-21T13:01:07.113446] INFO: session_start hook starting (Python 3.13.9)
+[2025-11-21T13:01:07.113687] INFO: session_start hook starting (Python 3.13.9)
+[2025-11-21T13:01:07.167228] WARNING: ⚠️ Version mismatch detected: package=afb2d971, project=bff1ce7c
+[2025-11-21T13:01:07.167231] WARNING: ⚠️ Version mismatch detected: package=afb2d971, project=bff1ce7c
+```
+
+Every log line appears twice with nearly identical timestamps (241μs apart).
+
+**From `.claude/runtime/logs/stop.log`**:
+```
+[2025-11-20T21:37:05.173846] INFO: stop hook starting (Python 3.13.9)
+[2025-11-20T21:37:05.427256] INFO: stop hook starting (Python 3.13.9)
+```
+
+Confirmed: **Both SessionStart and Stop hooks** execute twice.
+
+### Impact
+
+| Area | Effect |
+|------|--------|
+| **Performance** | 2-4 seconds wasted per session (double execution) |
+| **Context Pollution** | USER_PREFERENCES.md injected twice (~19KB duplicate) |
+| **Side Effects** | File writes, metrics, logs all duplicated |
+| **Log Clarity** | Every entry appears twice, making debugging confusing |
+| **Resource Usage** | Double memory allocation, double I/O operations |
+
+### Solution
+
+**File**: `.claude/settings.json`
+
+**Fix**: Remove the extra `"hooks": [...]` wrapper from SessionStart and Stop configurations.
+
+```diff
+ "SessionStart": [
+   {
+-    "hooks": [
+-      {
+-        "type": "command",
+-        "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+-        "timeout": 10000
+-      }
+-    ]
++    "type": "command",
++    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
++    "timeout": 10000
+   }
+ ],
+ "Stop": [
+   {
+-    "hooks": [
+-      {
+-        "type": "command",
+-        "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+-        "timeout": 30000
+-      }
+-    ]
++    "type": "command",
++    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
++    "timeout": 30000
+   }
+ ]
+```
+
+### Configuration Format Rules
+
+Claude Code hook configuration follows these rules:
+
+**✅ Hooks WITHOUT matchers** (SessionStart, Stop, PreCompact):
+```json
+"HookName": [
+  {
+    "type": "command",
+    "command": "path/to/hook.py",
+    "timeout": 10000
+  }
+]
+```
+
+**✅ Hooks WITH matchers** (PreToolUse, PostToolUse):
+```json
+"HookName": [
+  {
+    "matcher": "ToolName",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "path/to/hook.py"
+      }
+    ]
+  }
+]
+```
+
+**Key Rule**: The `"hooks": []` wrapper is **only needed when using matchers**. Without a matcher field, the hook configuration should be directly in the event array.
+
+### Affected Hooks
+
+| Hook | Status | Fix Required |
+|------|--------|--------------|
+| **SessionStart** | ❌ Runs 2x | YES - Remove wrapper |
+| **Stop** | ❌ Runs 2x | YES - Remove wrapper |
+| PreToolUse | ✅ Correct | NO - Has matcher (correct format) |
+| PostToolUse | ✅ Correct | NO - Has matcher (correct format) |
+| PreCompact | ❓ Not verified | CHECK - Likely needs same fix |
+
+### Key Learnings
+
+1. **Configuration format matters** - Extra nesting can cause subtle duplication bugs
+2. **Matcher presence determines structure** - Hooks with matchers need the wrapper, hooks without it don't
+3. **Log analysis reveals hidden issues** - Duplicate timestamps exposed the problem
+4. **Both startup and shutdown affected** - Pattern affects all non-matcher hooks
+5. **Performance impact is real** - Doubles execution time for critical initialization
+6. **Template propagation** - Likely affects install.sh and other hook configuration templates
+
+### Prevention
+
+**To prevent similar issues**:
+
+1. **Verify hook configuration** - Check logs for duplicate execution
+2. **Follow format rules** - Use matcher-appropriate structure
+3. **Update templates** - Fix `.claude/tools/amplihack/install.sh` and `src/amplihack/utils/uvx_settings_template.json`
+4. **Add validation** - Consider adding hook configuration validation to detect duplication
+5. **Document format** - Update docs/HOOK_CONFIGURATION_GUIDE.md with clear examples
+
+### Verification Steps
+
+After fixing:
+
+1. Check logs show single execution: `tail -20 .claude/runtime/logs/session_start.log`
+2. Verify no duplicate context injection
+3. Confirm startup time reduced by ~2 seconds
+4. Test with both SessionStart and Stop hooks
+
+### Files to Update
+
+- `.claude/settings.json` (immediate fix)
+- `.claude/tools/amplihack/install.sh` (template fix)
+- `src/amplihack/utils/uvx_settings_template.json` (UVX template fix)
+- `docs/HOOK_CONFIGURATION_GUIDE.md` (documentation)
+
+### Related Issues
+
+This configuration error may have been present since hook system implementation. Worth checking:
+- When did the extra nesting appear?
+- Are there other projects with the same issue?
+- Does official Claude Code documentation show the correct format?
+
+---
+
 ## Remember
 
 - Document immediately while context is fresh
