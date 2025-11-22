@@ -1,3 +1,7 @@
+---
+description: Fallback cascade pattern for resilient operations
+---
+
 # Fallback Cascade Command
 
 ## Usage

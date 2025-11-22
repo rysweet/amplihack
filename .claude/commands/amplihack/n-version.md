@@ -1,3 +1,7 @@
+---
+description: N-version programming for Byzantine-robust critical implementations
+---
+
 # N-Version Programming Command
 
 ## Usage

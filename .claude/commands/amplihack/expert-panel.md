@@ -1,3 +1,7 @@
+---
+description: Expert panel review with voting and consensus decision-making
+---
+
 # Expert Panel Review Command
 
 Execute the Expert Panel Review orchestration pattern where multiple expert agents independently review a solution, each casting a vote with detailed rationale, and votes are aggregated for a final decision.

@@ -1,3 +1,7 @@
+---
+description: Autonomous multi-turn agentic loop for complex implementations
+---
+
 # Auto Mode - Autonomous Agentic Loop
 
 ## Input Validation

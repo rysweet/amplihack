@@ -1,3 +1,7 @@
+---
+description: Reflection and meta-cognitive analysis of sessions
+---
+
 # /amplihack:reflect - Session Reflection Analysis
 
 ## Input Validation

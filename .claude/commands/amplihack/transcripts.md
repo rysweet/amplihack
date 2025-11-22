@@ -1,3 +1,7 @@
+---
+description: Manage and analyze conversation transcripts
+---
+
 # /transcripts - Conversation Transcript Management
 
 **Purpose**: amplihack-style transcript management for context preservation and restoration.
