@@ -228,7 +228,26 @@ gh pr create --title "..." --body "..." 2>&1 | cat
 
 This ensures you see success messages, error details, and PR URLs.
 
+### ═══════════════════════════════════════════════════════════════════════════
+
 ### Step 11: Review the PR
+
+### ═══════════════════════════════════════════════════════════════════════════
+
+**⚠️ MANDATORY - DO NOT SKIP ⚠️**
+
+**REQUIRED FOR ALL PRs**
+
+**Timing: Within 24 hours of PR creation**
+
+**Consequences of skipping:**
+
+- Violates workflow integrity
+- No PR should merge without thorough review
+- Quality gates exist for a reason - bypassing them introduces risk
+- Pattern of skipping reviews leads to technical debt accumulation
+
+**Review checklist:**
 
 - [ ] **Always use** reviewer agent for comprehensive code review
 - [ ] **Use** security agent for security review
@@ -240,7 +259,27 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
 - [ ] Post the review as a comment on the PR
 
+### ═══════════════════════════════════════════════════════════════════════════
+
 ### Step 12: Implement Review Feedback
+
+### ═══════════════════════════════════════════════════════════════════════════
+
+**⚠️ MANDATORY - DO NOT SKIP ⚠️**
+
+**REQUIRED FOR ALL PRs**
+
+**Timing: Within 48 hours of receiving review feedback**
+
+**Consequences of skipping:**
+
+- Violates workflow integrity
+- Unaddressed feedback means the review process was pointless
+- Creates confusion about whether feedback was considered
+- Indicates disrespect for reviewer's time and expertise
+- May block PR merge indefinitely
+
+**Feedback implementation checklist:**
 
 - [ ] Review all feedback comments, think very carefully about each one and decide how to address it (or if you should disagree, explain why in a comment)
 - [ ] **Always use** builder agent to implement changes
