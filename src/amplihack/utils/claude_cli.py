@@ -7,6 +7,8 @@ Philosophy:
 - User-local npm installation to avoid permission issues
 - Platform-aware path detection (user-local npm paths, homebrew, npm global, system paths)
 - Validate binary execution before use
+- Auto-recovery from validation failures (corrupted/non-executable binaries)
+- Single retry on failure before requiring manual intervention
 - Standard library only (no external dependencies)
 - Supply chain protection via --ignore-scripts flag
 
@@ -110,6 +112,76 @@ def _validate_claude_binary(claude_path: str) -> bool:
     return returncode == 0
 
 
+def _remove_failed_binary(binary_path: Path) -> None:
+    """Remove a failed Claude binary.
+
+    Args:
+        binary_path: Path to the binary to remove
+
+    Note: Uses missing_ok=True for idempotency.
+    """
+    try:
+        binary_path.unlink(missing_ok=True)
+        print(f"   Removed failed binary: {binary_path}")
+    except OSError as e:
+        print(f"   Warning: Could not remove binary: {e}")
+
+
+def _retry_claude_installation(npm_path: str, user_npm_dir: Path, expected_binary: Path) -> bool:
+    """Retry Claude CLI installation after validation failure.
+
+    Handles both permission issues and corrupted binaries by doing a clean reinstall.
+    Only retries ONCE - no loops.
+
+    Args:
+        npm_path: Path to npm executable
+        user_npm_dir: User's npm global directory
+        expected_binary: Expected location of claude binary
+
+    Returns:
+        True if retry succeeded and validation passed, False otherwise
+    """
+    # Import here to avoid circular dependency
+    from .prerequisites import safe_subprocess_call
+
+    print("   Binary validation failed - attempting recovery...")
+
+    # Remove the failed binary (clean slate)
+    _remove_failed_binary(expected_binary)
+
+    # Retry installation
+    print("   Reinstalling Claude CLI...")
+    returncode, stdout, stderr = safe_subprocess_call(
+        [
+            npm_path,
+            "install",
+            "-g",
+            "--prefix",
+            str(user_npm_dir),
+            "@anthropic-ai/claude-code",
+            "--ignore-scripts",
+        ],
+        context="reinstalling Claude CLI after validation failure",
+        timeout=120,
+    )
+
+    if returncode != 0:
+        print(f"   Reinstallation failed: {stderr}")
+        return False
+
+    # Check if binary was created
+    if not expected_binary.exists():
+        print(f"   Binary not created after reinstall: {expected_binary}")
+        return False
+
+    # Validate the reinstalled binary
+    if _validate_claude_binary(str(expected_binary)):
+        print("   ✓ Recovery successful - binary validated")
+        return True
+    print("   Recovery failed - binary still invalid after reinstall")
+    return False
+
+
 def _install_claude_cli() -> bool:
     """Install Claude CLI via npm using user-local installation.
 
@@ -178,57 +250,17 @@ def _install_claude_cli() -> bool:
                 _print_manual_install_instructions()
                 return False
 
-            # Validate the binary is executable
+            # Validate the binary (ensures it actually works)
+            # Recovery: Single retry if validation fails (handles both permissions and corruption)
             if not _validate_claude_binary(str(expected_binary)):
-                print(f"❌ Binary exists but failed validation: {expected_binary}")
-
-                # Check if it's a permissions issue
-                import stat
-                try:
-                    file_stat = expected_binary.stat()
-                    is_executable = bool(file_stat.st_mode & stat.S_IXUSR)
-                    if not is_executable:
-                        print("   Issue: Binary is not executable")
-                        print("   Attempting to fix permissions...")
-                        expected_binary.chmod(file_stat.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-
-                        # Try validation again after fixing permissions
-                        if _validate_claude_binary(str(expected_binary)):
-                            print("✅ Fixed permissions - Claude CLI now working")
-                            return True
-                        else:
-                            print("   Permissions fixed but binary still fails validation")
-                    else:
-                        print("   Binary is executable but validation failed")
-                        print("   The binary may be corrupted (possibly from disk space issues)")
-                        print("   Attempting reinstall...")
-
-                        # Remove corrupted binary and try one more time
-                        expected_binary.unlink(missing_ok=True)
-                        print("   Removed corrupted binary, retrying installation...")
-
-                        # Retry installation
-                        returncode2, stdout2, stderr2 = safe_subprocess_call(
-                            [npm_path, "install", "-g", "--prefix", str(user_npm_dir),
-                             "@anthropic-ai/claude-code", "--ignore-scripts"],
-                            context="reinstalling Claude CLI after corruption",
-                            timeout=120,
-                        )
-
-                        if returncode2 == 0 and expected_binary.exists():
-                            if _validate_claude_binary(str(expected_binary)):
-                                print("✅ Reinstallation successful - Claude CLI working")
-                                return True
-                            else:
-                                print("   Reinstallation failed validation")
-                        else:
-                            print("   Reinstallation failed")
-                except Exception as e:
-                    print(f"   Could not diagnose issue: {e}")
-
-                print("\n   Please reinstall manually:")
-                _print_manual_install_instructions()
-                return False
+                if _retry_claude_installation(npm_path, user_npm_dir, expected_binary):
+                    pass  # Continue to success message below
+                else:
+                    # Recovery failed - provide manual instructions
+                    print("\n⚠️  Automatic recovery failed. Please install manually:")
+                    print("   npm install -g @anthropics/claude-code")
+                    print("   Or download from: https://github.com/anthropics/claude-code")
+                    return False
 
             print("✅ Claude CLI installed and validated successfully")
             print(f"Binary location: {expected_binary}")
