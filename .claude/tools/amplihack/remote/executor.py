@@ -67,10 +67,11 @@ class Executor:
         # Remote destination (azlin uses session:path notation with ~/ for home dir)
         remote_path = f"{self.vm.name}:~/context.tar.gz"
 
-        # Transfer with retry
-        # Note: azlin cp requires relative paths, so we need to run from archive directory
-        archive_dir = archive_path.parent
-        archive_name = archive_path.name
+        # azlin cp only accepts relative paths from ~/
+        # So copy archive to ~/context.tar.gz first, then transfer
+        import shutil
+        home_archive = Path.home() / "context.tar.gz"
+        shutil.copy2(archive_path, home_archive)
 
         max_retries = 2
         for attempt in range(max_retries):
@@ -78,8 +79,7 @@ class Executor:
                 start_time = time.time()
 
                 subprocess.run(
-                    ["azlin", "cp", archive_name, remote_path],
-                    cwd=str(archive_dir),  # Run from archive directory
+                    ["azlin", "cp", "context.tar.gz", remote_path],
                     capture_output=True,
                     text=True,
                     timeout=600,  # 10 minutes for transfer
