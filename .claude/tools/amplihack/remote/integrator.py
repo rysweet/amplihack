@@ -282,8 +282,9 @@ class Integrator:
                 count = int(result.stdout.strip())
                 total_commits += count
 
-            except Exception:
-                pass  # Skip on error
+            except Exception as e:
+                # Log but continue - commit count is for summary only
+                print(f"Warning: Could not count commits for {branch.name}: {e}")
 
         return total_commits
 
@@ -320,8 +321,9 @@ class Integrator:
                 files = result.stdout.strip().split("\n")
                 return len([f for f in files if f])
 
-        except Exception:
-            pass
+        except Exception as e:
+            # Log but continue - file count is for summary only
+            print(f"Warning: Could not count files changed: {e}")
 
         return 0
 

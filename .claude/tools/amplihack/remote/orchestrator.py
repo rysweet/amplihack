@@ -309,24 +309,6 @@ class Orchestrator:
                 return False
             raise CleanupError(error_msg, context={"vm_name": vm.name})
 
-    def _parse_azlin_list_json(self, output: str) -> List[VM]:
-        """Parse JSON output from azlin list."""
-        try:
-            data = json.loads(output)
-            vms = []
-            for item in data:
-                vm = VM(
-                    name=item.get("name", ""),
-                    size=item.get("size", "unknown"),
-                    region=item.get("region", "unknown"),
-                    created_at=self._parse_timestamp(item.get("created_at")),
-                    tags=item.get("tags", {}),
-                )
-                vms.append(vm)
-            return vms
-        except json.JSONDecodeError:
-            return []
-
     def _parse_azlin_list_text(self, output: str) -> List[VM]:
         """Parse text output from azlin list.
 
@@ -349,16 +331,13 @@ class Orchestrator:
         return vms
 
     def _parse_timestamp(self, ts_str: Optional[str]) -> Optional[datetime]:
-        """Parse timestamp string to datetime."""
+        """Parse timestamp string to datetime.
+
+        Parses VM naming format: amplihack-remote-YYYYMMDD-HHMMSS
+        """
         if not ts_str:
             return None
         try:
-            # Try common formats
-            for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y%m%d-%H%M%S"]:
-                try:
-                    return datetime.strptime(ts_str, fmt)
-                except ValueError:
-                    continue
-            return None
-        except Exception:
+            return datetime.strptime(ts_str, "%Y%m%d-%H%M%S")
+        except ValueError:
             return None
