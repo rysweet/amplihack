@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
+from .auth import get_azure_auth
 from .errors import CleanupError, ProvisioningError
 
 
@@ -52,13 +53,32 @@ class Orchestrator:
     for remote amplihack execution.
     """
 
-    def __init__(self, username: Optional[str] = None):
+    def __init__(self, username: Optional[str] = None, debug: bool = False):
         """Initialize orchestrator.
 
         Args:
             username: Username for VM naming (defaults to current user)
+            debug: Enable debug logging for authentication and operations
         """
         self.username = username or os.getenv("USER", "amplihack")
+        self.debug = debug
+
+        # Initialize Azure authentication
+        try:
+            self.credential, self.subscription_id, self.resource_group = get_azure_auth(debug=debug)
+            if self.debug:
+                print(f"Azure auth initialized successfully")
+                print(f"  Subscription ID: {self.subscription_id}")
+                if self.resource_group:
+                    print(f"  Resource Group: {self.resource_group}")
+        except Exception as e:
+            if self.debug:
+                print(f"Warning: Azure Service Principal auth setup failed: {e}")
+            print("Remote execution will rely on Azure CLI login (az login)")
+            self.credential = None
+            self.subscription_id = None
+            self.resource_group = None
+
         self._verify_azlin_installed()
 
     def _verify_azlin_installed(self):
