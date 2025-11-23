@@ -90,10 +90,10 @@ Step 5: Implement the Solution - Use builder agent to implement from specificati
 This step-based structure helps users understand:
 
 - Exactly which workflow step is currently active
-- How many steps remain (e.g., Step 5 of 15 means 10 steps left)
+- How many steps remain (e.g., Step 5 of 16 means 11 steps left)
 - What comes next in the workflow
 
-## The 15-Step Workflow
+## The 16-Step Workflow
 
 ### Step 1: Rewrite and Clarify Requirements
 
@@ -211,20 +211,29 @@ After investigation completes, continue with these tasks:
 - [ ] Push to remote branch
 - [ ] Verify push succeeded
 
-### Step 10: Open Pull Request
+### Step 10: Open Pull Request as Draft
 
-- [ ] Create PR using `gh pr create` (pipe through `| cat` for reliable output)
+- [ ] Create PR as DRAFT using `gh pr create --draft` (pipe through `| cat` for reliable output)
 - [ ] Link to the GitHub issue
 - [ ] Write comprehensive description
 - [ ] Include test plan
 - [ ] Add screenshots if UI changes
-- [ ] Request appropriate reviewers
+- [ ] Add "WIP" or "Draft" context to indicate work in progress
+- [ ] Request appropriate reviewers (optional - they can review draft)
 
 **Important**: When using `gh` commands, always pipe through `cat` to ensure output is displayed:
 
 ```bash
-gh pr create --title "..." --body "..." 2>&1 | cat
+gh pr create --draft --title "..." --body "..." 2>&1 | cat
 ```
+
+**Why Draft First:**
+
+- Allows review and feedback while still iterating
+- Signals the PR is not yet ready to merge
+- Enables CI checks to run early
+- Creates space for philosophy and quality checks before marking ready
+- Prevents premature merge while work continues
 
 This ensures you see success messages, error details, and PR URLs.
 
@@ -301,7 +310,34 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Verify all tests passing
 - [ ] Check documentation completeness
 
-### Step 14: Ensure PR is Mergeable
+### Step 14: Convert PR to Ready for Review
+
+- [ ] Convert draft PR to ready-for-review using `gh pr ready`
+- [ ] Verify all previous steps completed (Steps 11-13)
+- [ ] Ensure all review feedback has been addressed
+- [ ] Confirm philosophy compliance check passed
+- [ ] Add comment summarizing changes and readiness
+- [ ] Tag reviewers for final approval
+
+**Important**: Only convert to ready when:
+
+- All review feedback addressed (Step 12)
+- Philosophy compliance verified (Step 13)
+- You believe the PR is truly ready to merge
+- No known blockers remain
+
+```bash
+gh pr ready 2>&1 | cat
+```
+
+**Why This Step Matters:**
+
+- Signals transition from "work in progress" to "ready to merge"
+- Indicates you've completed all quality checks
+- Requests final approval from reviewers
+- Makes PR eligible for merge queue
+
+### Step 15: Ensure PR is Mergeable
 
 - [ ] Check CI status (all checks passing)
 - [ ] **Always use** ci-diagnostic-workflow agent if CI fails
@@ -311,7 +347,7 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Confirm PR is approved
 - [ ] Notify that PR is ready to merge
 
-### Step 15: Final Cleanup and Verification
+### Step 16: Final Cleanup and Verification
 
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
 - [ ] **Always use** cleanup agent for final quality pass

@@ -1,8 +1,89 @@
 # PM Architect Utility Scripts
 
-These scripts implement complex logic for PM Architect operations. They are called by Claude when using the pm-architect skill.
+These scripts implement complex logic for PM Architect operations. They are called by Claude when using the pm-architect skill or by GitHub Actions workflows.
 
-## Available Scripts
+## Agent SDK Scripts (AI-Powered)
+
+These scripts use the Claude Agent SDK for intelligent analysis and generation.
+
+### generate_daily_status.py
+
+Generate comprehensive daily status reports using Claude Agent SDK.
+
+**Usage:**
+
+```bash
+python generate_daily_status.py [--project-root PATH] [--output FILE]
+```
+
+**Environment Variables:**
+
+- `ANTHROPIC_API_KEY` - Required for Claude SDK
+
+**Returns:** Markdown status report with project health, workstream status, blockers, and recommendations.
+
+**Example:**
+
+```bash
+export ANTHROPIC_API_KEY=sk-...
+python generate_daily_status.py --output status.md
+```
+
+**Used by:** `.github/workflows/pm-daily-status.yml`
+
+### generate_roadmap_review.py
+
+Generate strategic weekly roadmap reviews using Claude Agent SDK.
+
+**Usage:**
+
+```bash
+python generate_roadmap_review.py [--project-root PATH] [--output FILE]
+```
+
+**Environment Variables:**
+
+- `ANTHROPIC_API_KEY` - Required for Claude SDK
+
+**Returns:** Markdown roadmap review with goal progress, velocity analysis, and strategic recommendations.
+
+**Example:**
+
+```bash
+export ANTHROPIC_API_KEY=sk-...
+python generate_roadmap_review.py --output roadmap.md
+```
+
+**Used by:** `.github/workflows/pm-roadmap-review.yml`
+
+### triage_pr.py
+
+Intelligent PR triage using Claude Agent SDK.
+
+**Usage:**
+
+```bash
+python triage_pr.py PR_NUMBER [--project-root PATH] [--output FILE]
+```
+
+**Environment Variables:**
+
+- `ANTHROPIC_API_KEY` - Required for Claude SDK
+
+**Returns:** Markdown triage analysis with priority, complexity, suggested reviewers, and risks.
+
+**Example:**
+
+```bash
+export ANTHROPIC_API_KEY=sk-...
+python triage_pr.py 123 --output triage.md
+```
+
+**Used by:** `.github/workflows/pm-pr-triage.yml`
+
+## Heuristic Scripts (Rule-Based)
+
+These scripts use Python heuristics for deterministic operations.
 
 ### analyze_backlog.py
 
