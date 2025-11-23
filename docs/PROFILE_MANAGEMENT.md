@@ -11,7 +11,6 @@ Comprehensive guide to amplihack's profile system for optimizing token usage and
 5. [Environment Variable Integration](#environment-variable-integration)
 6. [Real-World Examples](#real-world-examples)
 7. [Advanced Features](#advanced-features)
-   - Profile Inheritance (future)
    - Token Usage Estimates
    - UltraThink Integration
 8. [Technical Architecture](#technical-architecture)
@@ -550,22 +549,7 @@ performance:
 
 ## Advanced Features
 
-### 1. Profile Inheritance
-
-Profiles can extend other profiles (future feature):
-
-```yaml
-version: "1.0"
-name: "my-coding-plus"
-extends: "amplihack://profiles/coding"
-
-components:
-  agents:
-    include:
-      - "visualization-architect"  # Add to base coding profile
-```
-
-### 2. Token Usage Estimates
+### 1. Token Usage Estimates
 
 View automatic token usage estimates when showing profile details:
 
@@ -597,7 +581,7 @@ Token estimates are calculated automatically based on:
 - Context files selected
 - Command definitions available
 
-### 3. UltraThink Integration
+### 2. UltraThink Integration
 
 Profiles automatically optimize UltraThink agent orchestration:
 
