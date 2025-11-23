@@ -1,39 +1,30 @@
-version: "1.0"
-name: "research"
-description: "Investigation and analysis profile"
+name: research
+description: "Investigation-focused: analysis and discovery"
+version: "1.0.0"
 
-components:
+includes:
   commands:
-    include:
-      - "amplihack:ultrathink"
-      - "amplihack:knowledge-builder"
-      - "amplihack:expert-panel"
-
-  context:
-    include:
-      - "PHILOSOPHY.md"
-      - "PROJECT.md"
+    - "amplihack/ultrathink.md"
+    - "amplihack/analyze.md"
+    - "amplihack/knowledge-builder.md"
 
   agents:
-    include:
-      - "architect"
-      - "analyzer"
-      - "knowledge-archaeologist"
-      - "patterns"
-      - "*-analyst"
+    - "amplihack/core/architect.md"
+    - "amplihack/specialized/analyzer.md"
+    - "amplihack/specialized/knowledge-archaeologist.md"
 
   skills:
-    include_categories:
-      - "research"
-      - "analysis"
+    - "pdf/*"
+    - "docx/*"
+
+excludes:
+  commands:
+    - "ddd/*"
+  agents:
+    - "amplihack/specialized/fix-agent.md"
+  skills: []
 
 metadata:
   author: "amplihack"
-  version: "1.0.0"
-  tags: ["research", "investigation", "analysis"]
-  created: "2025-11-22T00:00:00Z"
-  updated: "2025-11-22T00:00:00Z"
-
-performance:
-  lazy_load_skills: true
-  cache_ttl: 3600
+  tags: ["research", "analysis"]
+  builtin: true

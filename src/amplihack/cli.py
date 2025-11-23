@@ -448,6 +448,35 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     # Uninstall command (existing)
     subparsers.add_parser("uninstall", help="Remove amplihack agents and tools from ~/.claude")
 
+    # Profile command (profile management)
+    profile_parser = subparsers.add_parser(
+        "profile", help="Manage amplihack profiles (run BEFORE starting Claude Code)"
+    )
+    profile_subparsers = profile_parser.add_subparsers(dest="profile_command", help="Profile operations")
+
+    # Profile subcommands
+    profile_subparsers.add_parser("list", help="List available profiles")
+    profile_subparsers.add_parser("current", help="Show current profile")
+
+    profile_use_parser = profile_subparsers.add_parser("use", help="Switch to a profile")
+    profile_use_parser.add_argument("profile_name", help="Profile name to switch to")
+
+    profile_show_parser = profile_subparsers.add_parser("show", help="Show profile details")
+    profile_show_parser.add_argument("profile_name", help="Profile name to show")
+
+    profile_create_parser = profile_subparsers.add_parser("create", help="Create new profile")
+    profile_create_parser.add_argument("profile_name", help="Name for new profile")
+    profile_create_parser.add_argument("--view", action="store_true", help="View after creation")
+
+    profile_validate_parser = profile_subparsers.add_parser("validate", help="Validate a profile")
+    profile_validate_parser.add_argument("profile_name", help="Profile name to validate")
+
+    profile_subparsers.add_parser("verify", help="Verify current profile integrity")
+
+    profile_inspect_parser = profile_subparsers.add_parser("inspect", help="Inspect profile components")
+    profile_inspect_parser.add_argument("profile_name", help="Profile name to inspect")
+    profile_inspect_parser.add_argument("--components", action="store_true", help="Show component paths")
+
     # Launch command (new)
     launch_parser = subparsers.add_parser(
         "launch", help="Launch Claude Code with optional proxy configuration"
@@ -716,6 +745,53 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif args.command == "uninstall":
         uninstall()
         return 0
+
+    elif args.command == "profile":
+        from .utils.profile_management.cli import (
+            list as profile_list,
+            current as profile_current,
+            use as profile_use,
+            show as profile_show,
+            create as profile_create,
+            validate as profile_validate,
+            verify as profile_verify,
+            inspect as profile_inspect
+        )
+
+        # Map profile subcommands to click commands
+        if not hasattr(args, 'profile_command') or not args.profile_command:
+            # No subcommand provided, show help
+            from .utils.profile_management.cli import profile_cli
+            profile_cli(['--help'])
+            return 1
+
+        try:
+            if args.profile_command == "list":
+                profile_list.callback()
+            elif args.profile_command == "current":
+                profile_current.callback()
+            elif args.profile_command == "use":
+                profile_use.callback(args.profile_name)
+            elif args.profile_command == "show":
+                profile_show.callback(args.profile_name)
+            elif args.profile_command == "create":
+                profile_create.callback(args.profile_name, getattr(args, 'view', False))
+            elif args.profile_command == "validate":
+                profile_validate.callback(args.profile_name)
+            elif args.profile_command == "verify":
+                profile_verify.callback()
+            elif args.profile_command == "inspect":
+                profile_inspect.callback(args.profile_name, getattr(args, 'components', False))
+            else:
+                print(f"Unknown profile command: {args.profile_command}")
+                return 1
+            return 0
+        except SystemExit as e:
+            # Click commands raise SystemExit, catch and return the code
+            return e.code if isinstance(e.code, int) else 1
+        except Exception as e:
+            print(f"Error: {e}")
+            return 1
 
     elif args.command == "_local_install":
         _local_install(args.repo_root)
