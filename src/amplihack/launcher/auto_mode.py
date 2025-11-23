@@ -100,7 +100,13 @@ class AutoMode:
         self.working_dir = working_dir if working_dir is not None else Path.cwd()
         self.ui_enabled = ui_mode
         self.ui = None
-        self.query_timeout_seconds = int(query_timeout_minutes * 60)
+        # Validate timeout value
+        if query_timeout_minutes <= 0:
+            raise ValueError(f"query_timeout_minutes must be positive, got {query_timeout_minutes}")
+        if query_timeout_minutes > 120:  # 2 hours max - warn but allow
+            print(f"Warning: Very long timeout ({query_timeout_minutes} minutes)", file=sys.stderr)
+
+        self.query_timeout_seconds = query_timeout_minutes * 60.0  # Keep as float for precision
         self.log_dir = (
             self.working_dir / ".claude" / "runtime" / "logs" / f"auto_{sdk}_{int(time.time())}"
         )
@@ -518,6 +524,9 @@ Document your decisions and reasoning in comments/logs."""
             # Stream response - messages are typed objects, not dicts
             print("\n[DEBUG] 🔄 Starting async for message loop", flush=True)
 
+            # Track turn start time for accurate timeout reporting
+            turn_start_time = time.time()
+
             # Add timeout wrapper around SDK query
             async with asyncio.timeout(self.query_timeout_seconds):
                 async for message in query(prompt=prompt, options=options):
@@ -625,14 +634,17 @@ Document your decisions and reasoning in comments/logs."""
 
         except asyncio.TimeoutError:
             # Timeout handling with turn context
-            elapsed = time.time() - self.start_time
+            turn_elapsed = time.time() - turn_start_time
+            partial_output = "".join(output_lines)
             error_msg = (
-                f"Turn {self.turn} timed out after {elapsed:.1f}s "
-                f"(limit: {self.query_timeout_seconds}s). "
+                f"Turn {self.turn} timed out after {turn_elapsed:.1f}s "
+                f"(limit: {self.query_timeout_seconds:.1f}s). "
                 f"Try reducing task complexity or increasing --query-timeout-minutes."
             )
             self.log(error_msg, level="ERROR")
-            return (1, error_msg)
+            if partial_output:
+                self.log(f"Partial output captured ({len(partial_output)} chars)", level="INFO")
+            return (1, partial_output if partial_output else error_msg)
 
         except GeneratorExit:
             # Graceful generator cleanup - this is expected during async cleanup
