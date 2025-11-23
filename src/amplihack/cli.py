@@ -456,6 +456,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_auto_mode_args(launch_parser)
     add_neo4j_args(launch_parser)
     add_common_sdk_args(launch_parser)
+    launch_parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help="Profile URI to use for this launch (overrides configured profile)"
+    )
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
@@ -463,6 +469,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_auto_mode_args(claude_parser)
     add_neo4j_args(claude_parser)
     add_common_sdk_args(claude_parser)
+    claude_parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help="Profile URI to use for this launch (overrides configured profile)"
+    )
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
@@ -517,6 +529,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     # Hidden local install command
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
+    local_install_parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help="Profile URI to use for this install (overrides configured profile)"
+    )
 
     return parser
 
@@ -728,7 +746,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "_local_install":
-        _local_install(args.repo_root)
+        profile_uri = getattr(args, "profile", None)
+        _local_install(args.repo_root, profile_uri=profile_uri)
         return 0
 
     elif args.command == "launch":
