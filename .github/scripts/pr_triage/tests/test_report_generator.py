@@ -146,9 +146,5 @@ def test_generate_report_includes_statistics():
 
 
 if __name__ == "__main__":
-    # Run tests
-    test_generate_report_compliant()
-    test_generate_report_non_compliant()
-    test_generate_report_unrelated_changes()
-    test_generate_report_includes_statistics()
-    print("All report generator tests passed!")
+    import pytest
+    pytest.main([__file__, "-v"])

@@ -59,11 +59,14 @@ def main():
         # Handle non-compliance
         if not compliance.get("overall_compliant"):
             validator.log(
-                "PR is non-compliant, returning to draft and spawning auto-fix...",
+                "PR is non-compliant, returning to draft status...",
                 level="WARNING",
             )
             validator.return_to_draft()
-            validator.spawn_auto_fix(compliance)
+            validator.log(
+                "NOTE: Auto-fix requires Claude CLI. Set USE_CLAUDE_ANALYZERS=1 to enable.",
+                level="INFO",
+            )
 
         validator.log("PR triage completed successfully")
 
