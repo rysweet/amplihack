@@ -148,5 +148,15 @@ else
     fi
 fi
 
+# Power-steering counter (if exists)
+power_steering_str=""
+counter_file="$current_dir/.claude/runtime/power-steering/session_count"
+if [ -f "$counter_file" ]; then
+    ps_count=$(cat "$counter_file" 2>/dev/null || echo "0")
+    if [ "$ps_count" -gt 0 ] 2>/dev/null; then
+        power_steering_str=" \033[35m🎯×$ps_count\033[0m"
+    fi
+fi
+
 # Output status line
-echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str"
+echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str$power_steering_str"
