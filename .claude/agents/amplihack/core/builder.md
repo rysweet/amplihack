@@ -191,3 +191,24 @@ async def process_batch(items: list[Item]) -> list[Result]:
 - Make it work, make it right, then (maybe) make it fast
 - Every module should be regeneratable from its README
 - Test the contract, not the implementation details
+
+## When to Use Agent SDK vs Plain API
+
+**Use Agent SDK when:**
+- Multi-role architecture (writer, reviewers, agents)
+- Iterative workflows (generate → review → revise loops)
+- Requirements mention "agents", "autonomous", "self-improving"
+- Tool needs to write/run/debug code
+
+**Agent SDK Options:**
+- Claude Agent SDK (preferred for this project)
+- Microsoft Agent Framework
+- LangChain
+- AutoGen / CrewAI
+
+**Use Plain API when:**
+- Simple single-shot requests
+- No iteration or multi-agent coordination
+- Explicit requirement for direct API usage
+
+This guidance prevents over-engineering (unnecessary Agent SDK) and under-engineering (missing Agent SDK when needed).
