@@ -24,6 +24,8 @@ jobs:
   triage-pr:
     name: Triage Pull Request
     runs-on: ubuntu-latest
+    # TEMPORARY: Disabled until pr_triage.py script is implemented (see issue #1545)
+    if: false
     # SECURITY: Timeout limit prevents runaway execution
     timeout-minutes: 10
 
