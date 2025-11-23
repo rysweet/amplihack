@@ -340,9 +340,9 @@ class Orchestrator:
 
                     # Wait for VM to fully initialize before returning
                     # azlin new with --no-auto-connect exits immediately after provisioning
-                    # but VM needs time for cloud-init and NFS setup
-                    print("Waiting for VM initialization to complete (60s)...")
-                    time.sleep(60)
+                    # but VM needs time for cloud-init (3-5 min) and NFS setup
+                    print("Waiting for VM initialization to complete (240s ~ 4 min)...")
+                    time.sleep(240)
 
                     vm = VM(
                         name=vm_name,
