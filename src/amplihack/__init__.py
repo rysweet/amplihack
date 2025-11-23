@@ -190,10 +190,15 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manife
                         if item_path.is_file():
                             try:
                                 # Call file_filter - errors handled here at boundary
-                                if not file_filter(item_path):
+                                should_copy = file_filter(item_path)
+                                if not should_copy:
                                     ignored.append(item)
-                            except Exception:
+                                    if os.environ.get("AMPLIHACK_DEBUG") == "true":
+                                        print(f"    Excluding: {item}")
+                            except Exception as e:
                                 # Fail-open: Include file on any error
+                                if os.environ.get("AMPLIHACK_DEBUG") == "true":
+                                    print(f"    Filter error for {item}: {e}, including file")
                                 pass
                     return ignored
 
