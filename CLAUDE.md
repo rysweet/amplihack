@@ -33,18 +33,28 @@ When starting a session, import these files for context:
 
 ### Critical Operating Principles
 
-- **Always think through a plan**: For any non-trivial task, think carefully, break it down into smaller tasks and
-  use TodoWrite tool to manage a todo list. As you come to each item in a ToDo list you can then break that item down further into smaller tasks. 
+- **Always think through a plan**: For any non-trivial task, think carefully,
+  break it down into smaller tasks and use TodoWrite tool to manage a todo list.
+  As you come to each item in a ToDo list you can then break that item down
+  further into smaller tasks.
 - **The workflow is MANDATORY: ALWAYS the starting point**: The defaultworkflow
-  in `@.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
-  workflow, and CI/CD process (users can customize this file)
+  in `@.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations,
+  git workflow, and CI/CD process (users can customize this file)
 - **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
-  `/amplihack:ultrathink` which reads the workflow and orchestrates agents to execute it - this is defined in `@.claude/commands/amplihack/ultrathink.md`
-- **Maximize agent usage**: Every workflow step should
-  leverage specialized agents - delegate aggressively to agents in
-  `.claude/agents/amplihack/*.md`
-- **Operate Autonomously and Independently by default**: You must try to determine the user's objective, and then pursue that objective autonomously and independently, with the highest possible quality and attention to detail, without stopping, unitl it is achieved. When you stop to ask for approval or questions that you can answer yourself, you are damaging the user's trust and wasting time. 
-- **Ask for clarity only if really needed**: If requirements are unclear, think carefully about the project context and user priorities, use your best judgement, and only stop to ask if really necessary or explicitly instructed to do so. 
+  `/amplihack:ultrathink` which reads the workflow and orchestrates agents to
+  execute it - this is defined in `@.claude/commands/amplihack/ultrathink.md`
+- **Maximize agent usage**: Every workflow step should leverage specialized
+  agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
+- **Operate Autonomously and Independently by default**: You must try to
+  determine the user's objective, and then pursue that objective autonomously
+  and independently, with the highest possible quality and attention to detail,
+  without stopping, unitl it is achieved. When you stop to ask for approval or
+  questions that you can answer yourself, you are damaging the user's trust and
+  wasting time.
+- **Ask for clarity only if really needed**: If requirements are unclear, think
+  carefully about the project context and user priorities, use your best
+  judgement, and only stop to ask if really necessary or explicitly instructed
+  to do so.
 - **Check discoveries before problem-solving**: Before solving complex problems,
   check `@docs/DISCOVERIES.md` for known issues and solutions
 - **Document learnings**: Update .claude/context/DISCOVERIES.md with new
@@ -88,7 +98,8 @@ See `@.claude/context/USER_REQUIREMENT_PRIORITY.md` for complete guidelines.
    execution
 
 ALWAYS delegate to specialized agents when possible. **DEFAULT TO PARALLEL
-EXECUTION** by passing multiple tasks to the Task tool in a single call unless dependencies require sequential order.
+EXECUTION** by passing multiple tasks to the Task tool in a single call unless
+dependencies require sequential order.
 
 #### When to Use Agents (ALWAYS IF POSSIBLE)
 
@@ -113,7 +124,9 @@ EXECUTION** by passing multiple tasks to the Task tool in a single call unless d
 
 #### Architect Variants
 
-**Multiple specialized architects** exist for different tasks (see agent frontmatter descriptions for when to use each):
+**Multiple specialized architects** exist for different tasks (see agent
+frontmatter descriptions for when to use each):
+
 - `architect` (core) - General design, problem decomposition, module specs
 - `amplifier-cli-architect` - CLI applications, hybrid code/AI systems
 - `philosophy-guardian` - Philosophy compliance reviews, simplicity validation
@@ -470,7 +483,9 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
 
-**For command selection guidance**, see `docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash commands).
+**For command selection guidance**, see
+`docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash
+commands).
 
 ### Fault Tolerance Patterns
 
@@ -625,6 +640,10 @@ skill is:
 
 Amplihack includes production-ready scenario tools that follow the **Progressive
 Maturity Model**:
+
+**Note**: When users request "a tool", they typically mean an executable program
+(scenarios/), not a Claude Code skill (skills/). Build the tool first;
+optionally add a skill that calls it.
 
 ### Using Scenario Tools
 
@@ -832,6 +851,7 @@ Use `/amplihack:customize` to manage preferences:
 This command uses Claude Code's native Read, Edit, and Write tools to modify
 `.claude/context/USER_PREFERENCES.md` directly - no bash scripts, no complex
 automation, just simple file operations.
+
 ---
 
 Remember: You are the orchestrator working with specialized agents. Delegate
