@@ -338,6 +338,12 @@ class Orchestrator:
                     # VM provisioned successfully
                     print(f"VM provisioned successfully in {region}: {vm_name}")
 
+                    # Wait for VM to fully initialize before returning
+                    # azlin new with --no-auto-connect exits immediately after provisioning
+                    # but VM needs time for cloud-init and NFS setup
+                    print("Waiting for VM initialization to complete (60s)...")
+                    time.sleep(60)
+
                     vm = VM(
                         name=vm_name,
                         size=options.size,
