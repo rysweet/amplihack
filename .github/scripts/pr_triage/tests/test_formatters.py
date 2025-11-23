@@ -123,17 +123,5 @@ def test_format_files_limits_count():
 
 
 if __name__ == "__main__":
-    # Run tests
-    test_format_comments_empty()
-    test_format_comments_single()
-    test_format_comments_multiple()
-    test_format_comments_truncates_long()
-    test_format_comments_limits_count()
-    test_format_reviews_empty()
-    test_format_reviews_single()
-    test_format_reviews_multiple_states()
-    test_format_files_empty()
-    test_format_files_single()
-    test_format_files_multiple()
-    test_format_files_limits_count()
-    print("All formatter tests passed!")
+    import pytest
+    pytest.main([__file__, "-v"])

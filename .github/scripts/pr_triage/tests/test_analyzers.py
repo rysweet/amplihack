@@ -107,13 +107,5 @@ def test_detect_unrelated_changes_structure():
 
 
 if __name__ == "__main__":
-    # Run tests
-    test_extract_json_from_code_block()
-    test_extract_json_from_raw()
-    test_extract_json_nested()
-    test_extract_json_no_match()
-    test_extract_json_malformed()
-    test_validate_workflow_compliance_structure()
-    test_detect_priority_complexity_structure()
-    test_detect_unrelated_changes_structure()
-    print("All analyzer tests passed!")
+    import pytest
+    pytest.main([__file__, "-v"])
