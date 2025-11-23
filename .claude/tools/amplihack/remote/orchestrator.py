@@ -84,6 +84,54 @@ class Orchestrator:
         except subprocess.TimeoutExpired:
             raise ProvisioningError("Azlin version check timed out")
 
+    def _get_region_list(self, preferred_region: Optional[str] = None) -> List[str]:
+        """Get prioritized list of Azure regions for provisioning.
+
+        Args:
+            preferred_region: User's preferred region (if specified)
+
+        Returns:
+            List of regions to try in priority order
+        """
+        # Default region list
+        default_regions = ["westus2", "westus3", "eastus", "eastus2", "centralus"]
+
+        # Check for environment override
+        env_regions = os.getenv("AMPLIHACK_AZURE_REGIONS")
+        if env_regions:
+            regions = [r.strip() for r in env_regions.split(",") if r.strip()]
+        else:
+            regions = default_regions.copy()
+
+        # Prioritize preferred region if specified
+        if preferred_region:
+            if preferred_region in regions:
+                regions.remove(preferred_region)
+            regions.insert(0, preferred_region)
+
+        return regions
+
+    def _is_quota_error(self, error_output: str) -> bool:
+        """Detect if error is due to Azure quota/capacity limits.
+
+        Args:
+            error_output: stderr from azlin command
+
+        Returns:
+            True if error is quota-related, False otherwise
+        """
+        quota_indicators = [
+            "quota",
+            "limit",
+            "capacity",
+            "exceeded",
+            "QuotaExceeded",
+            "SkuNotAvailable",
+            "OverconstrainedAllocationRequest",
+        ]
+        error_lower = error_output.lower()
+        return any(indicator.lower() in error_lower for indicator in quota_indicators)
+
     def provision_or_reuse(self, options: VMOptions) -> VM:
         """Get VM for execution (reuse existing or provision new).
 
@@ -160,7 +208,7 @@ class Orchestrator:
         return None
 
     def _provision_new_vm(self, options: VMOptions) -> VM:
-        """Provision new Azure VM via azlin.
+        """Provision new Azure VM via azlin with automatic region fallback.
 
         Args:
             options: VM configuration
@@ -169,7 +217,7 @@ class Orchestrator:
             Provisioned VM instance
 
         Raises:
-            ProvisioningError: If provisioning fails
+            ProvisioningError: If provisioning fails in all regions
         """
         # Generate VM name
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -177,66 +225,97 @@ class Orchestrator:
 
         print(f"Provisioning new VM: {vm_name} ({options.size})...")
 
-        # Build azlin command with non-interactive mode (requires both --yes and --no-bastion per azlin PR #384)
-        cmd = ["azlin", "new", "--size", options.size, "--name", vm_name, "--yes", "--no-bastion"]
-        if options.region:
-            cmd.extend(["--region", options.region])
+        # Get prioritized region list
+        regions = self._get_region_list(options.region)
+        region_failures = {}
 
-        # Pass through any extra azlin arguments
-        if options.azlin_extra_args:
-            cmd.extend(options.azlin_extra_args)
+        # Try each region in order
+        for region_idx, region in enumerate(regions):
+            print(f"Attempting region: {region} ({region_idx + 1}/{len(regions)})")
 
-        # Execute with retries
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=600,  # 10 minutes
-                    check=True,
-                )
+            # Build azlin command with non-interactive mode
+            cmd = [
+                "azlin",
+                "new",
+                "--size",
+                options.size,
+                "--name",
+                vm_name,
+                "--region",
+                region,
+                "--yes",
+                "--no-bastion",
+            ]
 
-                # VM provisioned successfully
-                print(f"VM provisioned successfully: {vm_name}")
+            # Pass through any extra azlin arguments
+            if options.azlin_extra_args:
+                cmd.extend(options.azlin_extra_args)
 
-                return VM(
-                    name=vm_name,
-                    size=options.size,
-                    region=options.region or "default",
-                    created_at=datetime.now(),
-                    tags={"amplihack_workflow": "true"},
-                )
+            # Retry transient errors within this region
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=600,  # 10 minutes
+                        check=True,
+                    )
 
-            except subprocess.TimeoutExpired:
-                if attempt < max_retries - 1:
-                    print(f"Provisioning timeout, retrying ({attempt + 2}/{max_retries})...")
-                    time.sleep(30)  # Wait before retry
-                    continue
-                raise ProvisioningError(
-                    f"VM provisioning timed out after {max_retries} attempts",
-                    context={"vm_name": vm_name, "timeout": "10 minutes"},
-                )
+                    # VM provisioned successfully
+                    print(f"VM provisioned successfully in {region}: {vm_name}")
 
-            except subprocess.CalledProcessError as e:
-                if attempt < max_retries - 1:
-                    # Check if error is retriable
-                    if "quota" in e.stderr.lower() or "limit" in e.stderr.lower():
-                        raise ProvisioningError(
-                            f"Azure quota exceeded: {e.stderr}", context={"vm_name": vm_name}
+                    return VM(
+                        name=vm_name,
+                        size=options.size,
+                        region=region,
+                        created_at=datetime.now(),
+                        tags={"amplihack_workflow": "true"},
+                    )
+
+                except subprocess.TimeoutExpired:
+                    if attempt < max_retries - 1:
+                        print(
+                            f"  Provisioning timeout in {region}, retrying ({attempt + 2}/{max_retries})..."
                         )
-                    print(f"Provisioning failed, retrying ({attempt + 2}/{max_retries})...")
-                    time.sleep(30)
-                    continue
+                        time.sleep(30)  # Wait before retry
+                        continue
+                    # Record timeout as final failure for this region
+                    error_msg = f"Timeout after {max_retries} attempts"
+                    region_failures[region] = error_msg
+                    print(f"  Region {region} exhausted: {error_msg}")
+                    break  # Move to next region
 
-                raise ProvisioningError(
-                    f"Failed to provision VM: {e.stderr}",
-                    context={"vm_name": vm_name, "command": " ".join(cmd)},
-                )
+                except subprocess.CalledProcessError as e:
+                    # Check if this is a quota error (no retry, move to next region)
+                    if self._is_quota_error(e.stderr):
+                        error_msg = f"Quota/capacity error: {e.stderr}"
+                        region_failures[region] = error_msg
+                        print(f"  Region {region} quota exceeded, trying next region")
+                        break  # Skip remaining retries for this region
 
+                    # Transient error - retry
+                    if attempt < max_retries - 1:
+                        print(
+                            f"  Provisioning failed in {region}, retrying ({attempt + 2}/{max_retries})..."
+                        )
+                        time.sleep(30)
+                        continue
+
+                    # Exhausted retries for this region
+                    error_msg = f"Failed after {max_retries} attempts: {e.stderr}"
+                    region_failures[region] = error_msg
+                    print(f"  Region {region} exhausted: {error_msg}")
+                    break  # Move to next region
+
+        # All regions failed - raise comprehensive error
+        failure_summary = "\n".join(
+            [f"  - {region}: {error}" for region, error in region_failures.items()]
+        )
         raise ProvisioningError(
-            f"Failed to provision VM after {max_retries} attempts", context={"vm_name": vm_name}
+            f"Failed to provision VM in any region. Attempted {len(regions)} region(s):\n{failure_summary}",
+            context={"vm_name": vm_name, "regions_tried": list(region_failures.keys())},
         )
 
     def _get_vm_by_name(self, vm_name: str) -> VM:
