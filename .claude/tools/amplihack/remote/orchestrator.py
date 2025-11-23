@@ -328,8 +328,6 @@ class Orchestrator:
                 try:
                     subprocess.run(
                         cmd,
-                        capture_output=True,
-                        text=True,
                         timeout=600,  # 10 minutes
                         check=True,
                         stdin=subprocess.DEVNULL,  # Prevent hanging on prompts
