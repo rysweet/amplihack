@@ -1,5 +1,36 @@
 ---
+name: improve
+version: 2.0.0
 description: Continuous self-improvement with simplicity validation
+triggers:
+  - "improve the system"
+  - "enhance agents"
+  - "update patterns"
+  - "self-improvement"
+invokes:
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/improvement-workflow.md
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/reviewer.md
+  - type: subagent
+    path: .claude/agents/amplihack/security.md
+  - type: command
+    name: /reflect
+philosophy:
+  - principle: Ruthless Simplicity
+    application: Enforces simplicity-first validation before any code
+  - principle: Zero-BS Implementation
+    application: Progressive review prevents complexity accumulation
+dependencies:
+  required:
+    - .claude/context/PHILOSOPHY.md
+    - .claude/context/PATTERNS.md
+    - .claude/context/DISCOVERIES.md
+examples:
+  - "/improve self"
+  - "/improve agents"
+  - "/improve patterns"
+  - "/improve src/module"
 ---
 
 # Improve Command

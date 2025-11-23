@@ -1,5 +1,28 @@
 ---
+name: cascade
+version: 1.0.0
 description: Fallback cascade pattern for resilient operations
+triggers:
+  - "need fallback strategy"
+  - "external API reliability"
+  - "graceful degradation needed"
+  - "multiple viable approaches"
+invokes:
+  - type: workflow
+    path: .claude/workflow/CASCADE_WORKFLOW.md
+philosophy:
+  - principle: Trust in Emergence
+    application: Reliability emerges from layered fallbacks
+  - principle: Ruthless Simplicity
+    application: Simple fallback hierarchy ensures completion
+dependencies:
+  required:
+    - .claude/workflow/CASCADE_WORKFLOW.md
+  optional:
+    - .claude/tools/amplihack/orchestration/patterns/cascade.py
+examples:
+  - "/amplihack:cascade Generate API documentation from codebase"
+  - "/amplihack:cascade Retrieve user data with multiple sources"
 ---
 
 # Fallback Cascade Command

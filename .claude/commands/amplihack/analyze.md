@@ -1,5 +1,29 @@
 ---
+name: analyze
+version: 1.0.0
 description: Comprehensive code analysis and philosophy compliance review
+triggers:
+  - "analyze this code"
+  - "check philosophy compliance"
+  - "review for simplicity"
+  - "assess architecture"
+invokes:
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/analyzer.md
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/philosophy-guardian.md
+philosophy:
+  - principle: Ruthless Simplicity
+    application: Identifies unnecessary complexity for removal
+  - principle: Modular Design
+    application: Assesses brick boundaries and self-containment
+dependencies:
+  required:
+    - .claude/context/PHILOSOPHY.md
+    - .claude/context/PATTERNS.md
+examples:
+  - "/analyze ./src/module"
+  - "/analyze src/api"
 ---
 
 # Analyze Command

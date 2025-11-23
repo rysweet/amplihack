@@ -1,7 +1,16 @@
 ---
-description: DDD Phase 4 - Implement and verify code (project:ddd)
+name: ddd:4-code
+version: 1.0.0
+description: DDD Phase 4 - Implement and verify code
 argument-hint: [optional feedback or instructions]
 allowed-tools: TodoWrite, Read, Write, Edit, MultiEdit, Grep, Glob, Task, Bash(*)
+triggers:
+  - "Implement DDD code"
+  - "Phase 4 code implementation"
+  - "Test as user in DDD"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DDD_WORKFLOW.md
 ---
 
 # DDD Phase 4: Implementation & Verification

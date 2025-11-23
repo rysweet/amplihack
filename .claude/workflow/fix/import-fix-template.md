@@ -1,3 +1,32 @@
+---
+name: IMPORT_FIX_TEMPLATE
+version: 1.0.0
+description: Template for fixing import errors, circular dependencies, and module resolution issues
+usage_frequency: 15%
+steps: 3
+phases:
+  - quick-assessment
+  - solution-application
+  - validation
+success_criteria:
+  - "Import error resolved"
+  - "Module properly imported"
+  - "Tests pass with corrected imports"
+  - "No circular dependencies introduced"
+philosophy_alignment:
+  - principle: Quick Resolution
+    application: Template-based fixes for common patterns
+  - principle: Root Cause Focus
+    application: Fix underlying issue, not just symptoms
+entry_points:
+  - /fix import
+references:
+  workflows:
+    - DEFAULT_WORKFLOW.md
+  commands:
+    - /fix
+---
+
 # Import Fix Template
 
 **Usage**: 15% of all fixes - Missing imports, circular dependencies, path resolution issues, module not found

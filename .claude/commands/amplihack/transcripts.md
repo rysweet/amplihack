@@ -1,5 +1,12 @@
 ---
+name: transcripts
+version: 1.0.0
 description: Manage and analyze conversation transcripts
+triggers:
+  - "View conversation history"
+  - "Restore session context"
+  - "Search past conversations"
+  - "Find original request"
 ---
 
 # /transcripts - Conversation Transcript Management

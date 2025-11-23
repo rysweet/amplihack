@@ -1,10 +1,9 @@
 ---
 name: historian-analyst
+version: 1.0.0
 description: |
   Analyzes events through historical lens using source analysis, comparative history, periodization,
-  causation, continuity/change, and contextualiz
-
-ation frameworks.
+  causation, continuity/change, and contextualization frameworks.
   Provides insights on historical patterns, precedents, path dependency, and long-term trends.
   Use when: Understanding historical context, identifying precedents, analyzing change over time, comparative history.
   Evaluates: Causation, continuity, change, context, historical parallels, long-term patterns.

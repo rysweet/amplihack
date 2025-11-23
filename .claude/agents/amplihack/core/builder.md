@@ -1,6 +1,8 @@
 ---
 name: builder
+version: 1.0.0
 description: Primary implementation agent. Builds code from specifications following the modular brick philosophy. Creates self-contained, regeneratable modules.
+role: "Primary implementation agent and code builder"
 model: inherit
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: philosopher-analyst
+version: 1.0.0
 description: |
   Analyzes fundamental questions and concepts through philosophical lens using logic, epistemology,
   metaphysics, and critical analysis frameworks.

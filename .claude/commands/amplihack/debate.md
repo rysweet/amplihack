@@ -1,5 +1,30 @@
 ---
+name: debate
+version: 1.0.0
 description: Multi-agent debate for complex decisions and trade-offs
+triggers:
+  - "need multiple perspectives"
+  - "complex decision needed"
+  - "debate trade-offs"
+  - "architectural choice"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DEBATE_WORKFLOW.md
+  - type: command
+    name: /fix
+philosophy:
+  - principle: Trust in Emergence
+    application: Best decisions emerge from structured debate
+  - principle: Analysis First
+    application: Explores all perspectives before deciding
+dependencies:
+  required:
+    - .claude/workflow/DEBATE_WORKFLOW.md
+  optional:
+    - .claude/tools/amplihack/orchestration/patterns/debate.py
+examples:
+  - "/amplihack:debate Should we use PostgreSQL or Redis?"
+  - "/amplihack:debate Microservices vs monolith for this service"
 ---
 
 # Multi-Agent Debate Command

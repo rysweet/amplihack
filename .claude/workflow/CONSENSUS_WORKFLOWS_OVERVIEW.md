@@ -1,3 +1,13 @@
+---
+name: CONSENSUS_WORKFLOWS_OVERVIEW
+version: 1.0.0
+description: Documentation explaining the three consensus workflow patterns and when to use each
+phases:
+  - overview
+  - comparison
+  - selection-guidance
+---
+
 # Consensus Workflows Overview
 
 This document explains the three consensus workflow patterns and when to use each.

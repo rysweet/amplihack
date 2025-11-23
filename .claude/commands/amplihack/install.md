@@ -1,5 +1,11 @@
 ---
+name: install
+version: 1.0.0
 description: Install amplihack framework and tools
+triggers:
+  - "Install amplihack"
+  - "Setup amplihack tools"
+  - "Configure amplihack"
 ---
 
 # Install the amplihack tools

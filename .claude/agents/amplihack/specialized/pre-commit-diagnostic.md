@@ -1,6 +1,8 @@
 ---
 name: pre-commit-diagnostic
+version: 1.0.0
 description: Pre-commit failure resolver. Fixes formatting, linting, and type checking issues locally before push. Use when pre-commit hooks fail or code won't commit.
+role: "Pre-commit failure resolver and local code quality specialist"
 model: inherit
 ---
 

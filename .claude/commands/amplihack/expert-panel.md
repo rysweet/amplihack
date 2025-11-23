@@ -1,5 +1,30 @@
 ---
+name: expert-panel
+version: 1.0.0
 description: Expert panel review with voting and consensus decision-making
+triggers:
+  - "need multiple expert reviews"
+  - "code review approval gate"
+  - "design review board"
+  - "release decision"
+invokes:
+  - type: subagent
+    path: .claude/agents/amplihack/security.md
+  - type: subagent
+    path: .claude/agents/amplihack/optimizer.md
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/philosophy-guardian.md
+philosophy:
+  - principle: Analysis First
+    application: Multiple independent expert analyses before decision
+  - principle: Trust in Emergence
+    application: Best decisions emerge from diverse expert perspectives
+dependencies:
+  optional:
+    - .claude/tools/amplihack/orchestration/patterns/expert_panel.py
+examples:
+  - "/amplihack:expert-panel Review authentication implementation"
+  - "/amplihack:expert-panel --unanimous Security-critical code review"
 ---
 
 # Expert Panel Review Command

@@ -1,5 +1,30 @@
 ---
+name: socratic
+version: 1.0.0
 description: Generate Socratic questions for requirements clarification
+triggers:
+  - "challenge this claim"
+  - "ask probing questions"
+  - "socratic questioning"
+  - "explore assumptions"
+invokes:
+  - type: command
+    name: /amplihack:knowledge-builder
+philosophy:
+  - principle: Analysis First
+    application: Deep questioning before accepting claims
+  - principle: Trust in Emergence
+    application: Understanding emerges through systematic questioning
+dependencies:
+  required:
+    - .claude/runtime/logs/20251018_socratic_questioning/SOCRATIC_TEMPLATE.md
+  optional:
+    - .claude/runtime/logs/20251018_socratic_questioning/QUALITY_CHECKER.py
+    - .claude/runtime/logs/20251018_socratic_questioning/DOMAIN_EXAMPLES.md
+examples:
+  - "/socratic Microservices are just distributed objects"
+  - "/socratic --domain security Input validation is sufficient"
+  - "/socratic --audience expert Static typing is just documentation"
 ---
 
 # /socratic - Socratic Question Generation

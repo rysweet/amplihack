@@ -1,6 +1,8 @@
 ---
 name: fix-agent
+version: 1.0.0
 description: Error resolution specialist. Rapidly diagnoses and fixes common issues (imports, CI failures, test errors, config problems). Use when you encounter errors and need quick resolution, or when /fix command is invoked.
+role: "Error resolution and rapid fix specialist"
 model: inherit
 ---
 

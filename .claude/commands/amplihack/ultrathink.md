@@ -1,5 +1,17 @@
 ---
+name: ultrathink
+version: 1.0.0
 description: Deep analysis mode with multi-agent orchestration
+triggers:
+  - "Complex multi-step task"
+  - "Need deep analysis"
+  - "Orchestrate workflow"
+  - "Break down and solve"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DEFAULT_WORKFLOW.md
+  - type: workflow
+    path: .claude/workflow/INVESTIGATION_WORKFLOW.md
 ---
 
 # Ultra-Think Command

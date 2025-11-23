@@ -1,5 +1,28 @@
 ---
+name: n-version
+version: 1.0.0
 description: N-version programming for Byzantine-robust critical implementations
+triggers:
+  - "critical security code"
+  - "mission-critical feature"
+  - "high-stakes implementation"
+  - "multiple implementation attempts"
+invokes:
+  - type: workflow
+    path: .claude/workflow/N_VERSION_WORKFLOW.md
+philosophy:
+  - principle: Zero-BS Implementation
+    application: Multiple working implementations, no stubs
+  - principle: Analysis First
+    application: Compares implementations to select best
+dependencies:
+  required:
+    - .claude/workflow/N_VERSION_WORKFLOW.md
+  optional:
+    - .claude/tools/amplihack/orchestration/patterns/n_version.py
+examples:
+  - "/amplihack:n-version Implement JWT token validation"
+  - "/amplihack:n-version Create password hashing function"
 ---
 
 # N-Version Programming Command

@@ -1,5 +1,27 @@
 ---
+name: auto
+version: 1.0.0
 description: Autonomous multi-turn agentic loop for complex implementations
+triggers:
+  - "complex multi-step implementation"
+  - "iterative refinement needed"
+  - "path not immediately clear"
+  - "self-correction required"
+invokes:
+  - type: command
+    name: /amplihack:analyze
+philosophy:
+  - principle: Trust in Emergence
+    application: Solution emerges through iterative execution
+  - principle: Analysis First
+    application: Clarify and plan before execution
+dependencies:
+  required:
+    - amplihack CLI with --auto mode
+examples:
+  - "/amplihack:auto implement user authentication"
+  - "/amplihack:auto --max-turns 20 refactor the API module"
+  - "/amplihack:auto --max-turns 5 add logging to service"
 ---
 
 # Auto Mode - Autonomous Agentic Loop

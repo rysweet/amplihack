@@ -1,5 +1,6 @@
 ---
 name: storytelling-synthesizer
+version: 1.0.0
 description: |
   Converts technical work into compelling narratives for demos, blog posts, or presentations.
   Use when preparing hackathon demos, writing technical blog posts, or creating marketing content.

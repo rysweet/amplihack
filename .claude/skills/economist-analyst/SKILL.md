@@ -1,5 +1,6 @@
 ---
 name: economist-analyst
+version: 1.0.0
 description: |
   Analyzes events through economic lens using supply/demand, incentive structures, market dynamics,
   and multiple schools of economic thought (Classical, Keynesian, Austrian, Behavioral).

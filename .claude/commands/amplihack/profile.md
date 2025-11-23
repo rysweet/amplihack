@@ -1,3 +1,23 @@
+---
+name: profile
+version: 1.0.0
+description: Manage amplihack profiles (collections of commands, context, agents, and skills)
+triggers:
+  - "manage profiles"
+  - "switch profile"
+  - "list profiles"
+invokes:
+  - type: tool
+    path: .claude/tools/amplihack/profile_management/cli.py
+philosophy:
+  - principle: Modular Design
+    application: Profiles encapsulate related extensibility components as bricks
+examples:
+  - "/amplihack:profile list"
+  - "/amplihack:profile show coding"
+  - "/amplihack:profile load coding"
+---
+
 # Profile Management
 
 Manage amplihack profiles (collections of commands, context, agents, and skills).

@@ -1,3 +1,32 @@
+---
+name: DEFAULT_WORKFLOW
+version: 1.0.0
+description: Standard 15-step workflow for feature development, bug fixes, and refactoring
+steps: 15
+phases:
+  - requirements-clarification
+  - design
+  - implementation
+  - testing
+  - review
+  - merge
+success_criteria:
+  - "All 15 steps completed"
+  - "PR is mergeable"
+  - "CI passes"
+  - "Philosophy compliant"
+philosophy_alignment:
+  - principle: Ruthless Simplicity
+    application: Each step has single clear purpose
+  - principle: Zero-BS Implementation
+    application: No stubs or placeholders in deliverables
+  - principle: Test-Driven Development
+    application: Write tests before implementation
+  - principle: Modular Design
+    application: Clean module boundaries enforced through workflow
+customizable: true
+---
+
 # Default Coding Workflow
 
 This file defines the default workflow for all non-trivial code changes.

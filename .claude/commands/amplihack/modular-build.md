@@ -1,5 +1,12 @@
 ---
+name: modular-build
+version: 1.0.0
 description: Build modular code following brick philosophy
+triggers:
+  - "Build a module"
+  - "Create self-contained component"
+  - "Generate module from spec"
+  - "Progressive module build"
 ---
 
 # Modular Build Command
