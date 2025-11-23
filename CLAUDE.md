@@ -13,8 +13,6 @@ automation and collaborative problem-solving.
 1. Executable tool in `.claude/scenarios/` (the program itself)
 2. Skill in `.claude/skills/` that calls the tool (convenient interface)
 
-**In eval-recipes:** Build tool FIRST (executable required for scoring), skill optional.
-
 ## Important Files to Import
 
 When starting a session, import these files for context:

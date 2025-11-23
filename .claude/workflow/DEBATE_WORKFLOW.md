@@ -38,6 +38,9 @@ customizable: true
 
 This workflow implements structured multi-perspective debate for important architectural decisions, design trade-offs, and complex problems where multiple valid approaches exist.
 
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
+
 ## Configuration
 
 ### Core Parameters

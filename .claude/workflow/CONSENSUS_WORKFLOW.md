@@ -35,6 +35,9 @@ customizable: true
 
 This workflow enhances the default coding workflow with consensus mechanisms at critical decision points. Use this workflow when:
 
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
+
 - Requirements are ambiguous or complex
 - Design decisions have significant architectural impact
 - Multiple valid implementation approaches exist
