@@ -13,7 +13,10 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    raise ImportError("pytest is required for running tests. Install with: pip install pytest")
 
 # Module under test
 from amplihack.utils.claude_cli import (
