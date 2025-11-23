@@ -1,3 +1,7 @@
+---
+description: Ingest and analyze external codebases into Neo4j
+---
+
 # Ingest Code Command
 
 ## Input Validation

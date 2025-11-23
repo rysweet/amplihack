@@ -1,3 +1,7 @@
+---
+description: Generate Socratic questions for requirements clarification
+---
+
 # /socratic - Socratic Question Generation
 
 Generate deep, probing Socratic questions using the Three-Dimensional Attack pattern to challenge claims and explore assumptions systematically.

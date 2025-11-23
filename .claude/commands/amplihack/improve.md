@@ -1,3 +1,7 @@
+---
+description: Continuous self-improvement with simplicity validation
+---
+
 # Improve Command
 
 ## Input Validation

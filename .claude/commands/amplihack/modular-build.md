@@ -1,3 +1,7 @@
+---
+description: Build modular code following brick philosophy
+---
+
 # Modular Build Command
 
 ## Input Validation

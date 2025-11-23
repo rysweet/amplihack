@@ -158,6 +158,31 @@ class PowerSteeringChecker:
     - Fail-open error handling
     """
 
+    # File extension constants for session type detection
+    CODE_FILE_EXTENSIONS = [
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".java",
+        ".go",
+        ".rs",
+        ".c",
+        ".cpp",
+        ".h",
+    ]
+    DOC_FILE_EXTENSIONS = [".md", ".txt", ".rst", "README", "CHANGELOG"]
+    CONFIG_FILE_EXTENSIONS = [".yml", ".yaml", ".json"]
+    TEST_COMMAND_PATTERNS = [
+        "pytest",
+        "npm test",
+        "cargo test",
+        "go test",
+        "python -m pytest",
+        "python -m unittest",
+    ]
+
     # Phase 1 fallback: Hardcoded considerations (top 5 critical)
     # Used when YAML file is missing or invalid
     PHASE1_CONSIDERATIONS = [
@@ -324,14 +349,23 @@ class PowerSteeringChecker:
             List of consideration dictionaries (from YAML or Phase 1 fallback)
         """
         try:
-            # Check if YAML file exists
+            # Check if YAML file exists in project root
             if not self.considerations_path.exists():
-                self._log("Considerations YAML not found, using Phase 1 fallback", "WARNING")
-                return self.PHASE1_CONSIDERATIONS
+                # Try fallback: Look in the same directory as this script (for testing)
+                script_dir = Path(__file__).parent.parent
+                fallback_yaml = script_dir / "considerations.yaml"
 
-            # Load YAML
-            with open(self.considerations_path) as f:
-                yaml_data = yaml.safe_load(f)
+                if fallback_yaml.exists():
+                    self._log(f"Using fallback considerations from {fallback_yaml}", "INFO")
+                    with open(fallback_yaml) as f:
+                        yaml_data = yaml.safe_load(f)
+                else:
+                    self._log("Considerations YAML not found, using Phase 1 fallback", "WARNING")
+                    return self.PHASE1_CONSIDERATIONS
+            else:
+                # Load YAML from project root
+                with open(self.considerations_path) as f:
+                    yaml_data = yaml.safe_load(f)
 
             # Validate YAML structure
             if not isinstance(yaml_data, list):
@@ -384,19 +418,33 @@ class PowerSteeringChecker:
         if not isinstance(consideration["enabled"], bool):
             return False
 
+        # Validate applicable_session_types if present (optional field for backward compatibility)
+        if "applicable_session_types" in consideration:
+            if not isinstance(consideration["applicable_session_types"], list):
+                return False
+
         return True
 
-    def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
+    def check(
+        self,
+        transcript_path: Path,
+        session_id: str,
+        progress_callback: Optional[callable] = None,
+    ) -> PowerSteeringResult:
         """Main entry point - analyze transcript and make decision.
 
         Args:
             transcript_path: Path to session transcript JSONL file
             session_id: Unique session identifier
+            progress_callback: Optional callback for progress events (event_type, message, details)
 
         Returns:
             PowerSteeringResult with decision and prompt/summary
         """
         try:
+            # Emit start event
+            self._emit_progress(progress_callback, "start", "Starting power-steering analysis...")
+
             # 1. Check if disabled
             if self._is_disabled():
                 return PowerSteeringResult(
@@ -415,7 +463,17 @@ class PowerSteeringChecker:
             # 3. Load transcript
             transcript = self._load_transcript(transcript_path)
 
-            # 4. Detect Q&A session (skip if true)
+            # 4. Detect session type for selective consideration application
+            session_type = self.detect_session_type(transcript)
+            self._log(f"Session classified as: {session_type}", "INFO")
+            self._emit_progress(
+                progress_callback,
+                "session_type",
+                f"Session type: {session_type}",
+                {"session_type": session_type},
+            )
+
+            # 4b. Backward compatibility: Also check Q&A session (kept for compatibility)
             if self._is_qa_session(transcript):
                 return PowerSteeringResult(
                     decision="approve",
@@ -424,8 +482,10 @@ class PowerSteeringChecker:
                     summary=None,
                 )
 
-            # 5. Analyze against considerations
-            analysis = self._analyze_considerations(transcript, session_id)
+            # 5. Analyze against considerations (filtered by session type)
+            analysis = self._analyze_considerations(
+                transcript, session_id, session_type, progress_callback
+            )
 
             # 6. Make decision
             if analysis.has_blockers:
@@ -450,6 +510,13 @@ class PowerSteeringChecker:
             summary = self._generate_summary(transcript, analysis, session_id)
             self._mark_complete(session_id)
             self._write_summary(session_id, summary)
+
+            # Emit completion event
+            self._emit_progress(
+                progress_callback,
+                "complete",
+                "Power-steering analysis complete - all checks passed",
+            )
 
             return PowerSteeringResult(
                 decision="approve",
@@ -745,6 +812,237 @@ class PowerSteeringChecker:
 
         return messages
 
+    def _has_development_indicators(
+        self,
+        code_files_modified: bool,
+        test_executions: int,
+        pr_operations: bool,
+    ) -> bool:
+        """Check if transcript shows development indicators.
+
+        Args:
+            code_files_modified: Whether code files were modified
+            test_executions: Number of test executions
+            pr_operations: Whether PR operations were performed
+
+        Returns:
+            True if development indicators present
+        """
+        return code_files_modified or test_executions > 0 or pr_operations
+
+    def _has_informational_indicators(
+        self,
+        write_edit_operations: int,
+        read_grep_operations: int,
+        question_count: int,
+        user_messages: List[Dict],
+    ) -> bool:
+        """Check if transcript shows informational session indicators.
+
+        Args:
+            write_edit_operations: Number of Write/Edit operations
+            read_grep_operations: Number of Read/Grep operations
+            question_count: Number of questions in user messages
+            user_messages: List of user message dicts
+
+        Returns:
+            True if informational indicators present
+        """
+        # No tool usage or only Read tools with high question density
+        if write_edit_operations == 0:
+            if read_grep_operations <= 1 and question_count > 0:
+                # High question density indicates INFORMATIONAL
+                if user_messages and question_count / len(user_messages) > 0.5:
+                    return True
+        return False
+
+    def _has_maintenance_indicators(
+        self,
+        write_edit_operations: int,
+        doc_files_only: bool,
+        git_operations: bool,
+        code_files_modified: bool,
+    ) -> bool:
+        """Check if transcript shows maintenance indicators.
+
+        Args:
+            write_edit_operations: Number of Write/Edit operations
+            doc_files_only: Whether only doc files were modified
+            git_operations: Whether git operations were performed
+            code_files_modified: Whether code files were modified
+
+        Returns:
+            True if maintenance indicators present
+        """
+        # Only doc/config files modified
+        if write_edit_operations > 0 and doc_files_only:
+            return True
+
+        # Git operations without code changes
+        if git_operations and not code_files_modified and write_edit_operations == 0:
+            return True
+
+        return False
+
+    def _has_investigation_indicators(
+        self,
+        read_grep_operations: int,
+        write_edit_operations: int,
+    ) -> bool:
+        """Check if transcript shows investigation indicators.
+
+        Args:
+            read_grep_operations: Number of Read/Grep operations
+            write_edit_operations: Number of Write/Edit operations
+
+        Returns:
+            True if investigation indicators present
+        """
+        # Multiple Read/Grep without modifications
+        return read_grep_operations >= 2 and write_edit_operations == 0
+
+    def detect_session_type(self, transcript: List[Dict]) -> str:
+        """Detect session type for selective consideration application.
+
+        Session Types:
+        - DEVELOPMENT: Code changes, tests, PR operations
+        - INFORMATIONAL: Q&A, help queries, capability questions
+        - MAINTENANCE: Documentation and configuration updates only
+        - INVESTIGATION: Read-only exploration and analysis
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            Session type string: "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", or "INVESTIGATION"
+        """
+        # Check for environment override first
+        env_override = os.getenv("AMPLIHACK_SESSION_TYPE", "").upper()
+        if env_override in ["DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION"]:
+            self._log(f"Session type overridden by environment: {env_override}", "INFO")
+            return env_override
+
+        # Empty transcript defaults to INFORMATIONAL (fail-open)
+        if not transcript:
+            return "INFORMATIONAL"
+
+        # Collect indicators from transcript
+        code_files_modified = False
+        doc_files_only = True
+        write_edit_operations = 0
+        read_grep_operations = 0
+        test_executions = 0
+        pr_operations = False
+        git_operations = False
+
+        # Count questions in user messages for INFORMATIONAL detection
+        user_messages = [m for m in transcript if m.get("type") == "user"]
+        question_count = 0
+        if user_messages:
+            for msg in user_messages:
+                content = str(msg.get("message", {}).get("content", ""))
+                question_count += content.count("?")
+
+        # Analyze tool usage
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if not isinstance(content, list):
+                    content = [content]
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                        tool_name = block.get("name", "")
+                        tool_input = block.get("input", {})
+
+                        # Write/Edit operations
+                        if tool_name in ["Write", "Edit"]:
+                            write_edit_operations += 1
+                            file_path = tool_input.get("file_path", "")
+
+                            # Check if code file using class constant
+                            if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
+                                code_files_modified = True
+                                doc_files_only = False
+
+                            # Check if doc file using class constants
+                            if not any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
+                                if not any(ext in file_path for ext in self.CONFIG_FILE_EXTENSIONS):
+                                    doc_files_only = False
+
+                        # Read/Grep operations (investigation indicators)
+                        elif tool_name in ["Read", "Grep", "Glob"]:
+                            read_grep_operations += 1
+
+                        # Test execution
+                        elif tool_name == "Bash":
+                            command = tool_input.get("command", "")
+                            # Test patterns using class constant
+                            if any(pattern in command for pattern in self.TEST_COMMAND_PATTERNS):
+                                test_executions += 1
+
+                            # PR operations
+                            if "gh pr create" in command or "gh pr" in command:
+                                pr_operations = True
+
+                            # Git operations
+                            if "git commit" in command or "git push" in command:
+                                git_operations = True
+
+        # Decision logic (priority order) using helper methods
+
+        # DEVELOPMENT: Highest priority if code changes detected
+        if self._has_development_indicators(code_files_modified, test_executions, pr_operations):
+            return "DEVELOPMENT"
+
+        # INFORMATIONAL: No tool usage or only Read tools with high question density
+        if self._has_informational_indicators(
+            write_edit_operations, read_grep_operations, question_count, user_messages
+        ):
+            return "INFORMATIONAL"
+
+        # Multiple Read/Grep without modifications = INVESTIGATION
+        if self._has_investigation_indicators(read_grep_operations, write_edit_operations):
+            return "INVESTIGATION"
+
+        # MAINTENANCE: Only doc/config files modified OR git operations without code changes
+        if self._has_maintenance_indicators(
+            write_edit_operations, doc_files_only, git_operations, code_files_modified
+        ):
+            return "MAINTENANCE"
+
+        # Default to INFORMATIONAL if unclear (fail-open, conservative)
+        return "INFORMATIONAL"
+
+    def get_applicable_considerations(self, session_type: str) -> List[Dict[str, Any]]:
+        """Get considerations applicable to a specific session type.
+
+        Args:
+            session_type: Session type ("DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION")
+
+        Returns:
+            List of consideration dictionaries applicable to this session type
+        """
+        # Filter considerations based on session type
+        applicable = []
+
+        for consideration in self.considerations:
+            # Check if consideration has applicable_session_types field
+            applicable_types = consideration.get("applicable_session_types", [])
+
+            # If no field or empty, check if this is Phase 1 fallback
+            if not applicable_types:
+                # Phase 1 considerations (no applicable_session_types field)
+                # Only apply to DEVELOPMENT sessions by default
+                if session_type == "DEVELOPMENT":
+                    applicable.append(consideration)
+                continue
+
+            # Check if this session type is in the list
+            if session_type in applicable_types or "*" in applicable_types:
+                applicable.append(consideration)
+
+        return applicable
+
     def _is_qa_session(self, transcript: List[Dict]) -> bool:
         """Detect if session is interactive Q&A (skip power-steering).
 
@@ -802,23 +1100,42 @@ class PowerSteeringChecker:
         return False
 
     def _analyze_considerations(
-        self, transcript: List[Dict], session_id: str
+        self,
+        transcript: List[Dict],
+        session_id: str,
+        session_type: str = None,
+        progress_callback: Optional[callable] = None,
     ) -> ConsiderationAnalysis:
         """Analyze transcript against all enabled considerations.
 
         Phase 2: Uses Claude SDK for intelligent analysis when available,
         falls back to heuristic checkers if SDK unavailable.
 
+        Phase 3: Filters considerations by session type to prevent false positives.
+
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
+            session_type: Session type for selective consideration application (auto-detected if None)
+            progress_callback: Optional callback for progress events
 
         Returns:
             ConsiderationAnalysis with results
         """
         analysis = ConsiderationAnalysis()
 
-        for consideration in self.considerations:
+        # Auto-detect session type if not provided
+        if session_type is None:
+            session_type = self.detect_session_type(transcript)
+            self._log(f"Auto-detected session type: {session_type}", "DEBUG")
+
+        # Get considerations applicable to this session type
+        applicable_considerations = self.get_applicable_considerations(session_type)
+
+        # Track categories for progress
+        categories_seen = set()
+
+        for consideration in applicable_considerations:
             # Check if enabled in consideration itself
             if not consideration.get("enabled", True):
                 continue
@@ -826,6 +1143,25 @@ class PowerSteeringChecker:
             # Also check config for backward compatibility
             if not self.config.get("checkers_enabled", {}).get(consideration["id"], True):
                 continue
+
+            # Emit category event if first time seeing this category
+            category = consideration.get("category", "Unknown")
+            if category not in categories_seen:
+                categories_seen.add(category)
+                self._emit_progress(
+                    progress_callback,
+                    "category",
+                    f"Checking {category}",
+                    {"category": category},
+                )
+
+            # Emit consideration event
+            self._emit_progress(
+                progress_callback,
+                "consideration",
+                f"Checking: {consideration['question']}",
+                {"consideration_id": consideration["id"], "question": consideration["question"]},
+            )
 
             # Run checker with timeout and error handling
             try:
@@ -1096,18 +1432,10 @@ class PowerSteeringChecker:
                                             tool_name = block.get("name", "")
                                             if tool_name == "Bash":
                                                 command = block.get("input", {}).get("command", "")
-                                                # Look for test commands
-                                                test_patterns = [
-                                                    "pytest",
-                                                    "npm test",
-                                                    "npm run test",
-                                                    "cargo test",
-                                                    "go test",
-                                                    "python -m pytest",
-                                                    "python -m unittest",
-                                                ]
+                                                # Look for test commands using class constant
                                                 if any(
-                                                    pattern in command for pattern in test_patterns
+                                                    pattern in command
+                                                    for pattern in self.TEST_COMMAND_PATTERNS
                                                 ):
                                                     # Check result
                                                     result_content = msg_data.get("content", [])
@@ -1351,18 +1679,12 @@ class PowerSteeringChecker:
                                 tool_input = block.get("input", {})
                                 file_path = tool_input.get("file_path", "")
 
-                                # Check for code files
-                                if any(
-                                    ext in file_path
-                                    for ext in [".py", ".js", ".ts", ".java", ".go", ".rs"]
-                                ):
+                                # Check for code files using class constant
+                                if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
                                     code_files_modified = True
 
-                                # Check for doc files
-                                if any(
-                                    ext in file_path
-                                    for ext in [".md", ".rst", ".txt", "README", "CHANGELOG"]
-                                ):
+                                # Check for doc files using class constant
+                                if any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
                                     doc_files_modified = True
 
         # If code was modified but no docs updated, flag as issue
@@ -1876,6 +2198,36 @@ class PowerSteeringChecker:
             return False
 
         return True
+
+    # ========================================================================
+    # Progress Tracking
+    # ========================================================================
+
+    def _emit_progress(
+        self,
+        progress_callback: Optional[callable],
+        event_type: str,
+        message: str,
+        details: Optional[Dict] = None,
+    ) -> None:
+        """Emit progress event to callback if provided.
+
+        Fail-safe design: Never raises exceptions that would break checker.
+
+        Args:
+            progress_callback: Optional callback function
+            event_type: Event type (start/category/consideration/complete)
+            message: Progress message
+            details: Optional event details
+        """
+        if progress_callback is None:
+            return
+
+        try:
+            progress_callback(event_type, message, details)
+        except Exception as e:
+            # Fail-safe: Log but never raise
+            self._log(f"Progress callback error: {e}", "WARNING")
 
     # ========================================================================
     # Output Generation

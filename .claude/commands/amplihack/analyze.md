@@ -1,3 +1,7 @@
+---
+description: Comprehensive code analysis and philosophy compliance review
+---
+
 # Analyze Command
 
 ## Input Validation
