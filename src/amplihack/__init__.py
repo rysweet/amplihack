@@ -606,13 +606,13 @@ def _local_install(repo_root, profile_uri=None):
         else:
             raise ImportError("Cannot find .claude directory in source repo")
 
-        # Add tools directory to sys.path temporarily
-        tools_dir = os.path.join(claude_source, "tools")
-        if tools_dir not in sys.path:
-            sys.path.insert(0, tools_dir)
+        # Add tools/amplihack directory to sys.path temporarily
+        profile_mgmt_dir = os.path.join(claude_source, "tools", "amplihack")
+        if profile_mgmt_dir not in sys.path:
+            sys.path.insert(0, profile_mgmt_dir)
 
-        # Now import staging module
-        from amplihack.profile_management.staging import create_staging_manifest
+        # Now import staging module (from tools/amplihack/)
+        from profile_management.staging import create_staging_manifest
 
         manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
 
