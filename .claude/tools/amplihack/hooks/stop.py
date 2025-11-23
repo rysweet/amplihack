@@ -93,6 +93,7 @@ class StopHook(HookProcessor):
         if not lock_exists and self._should_run_power_steering():
             try:
                 from power_steering_checker import PowerSteeringChecker
+                from power_steering_progress import ProgressTracker
 
                 ps_checker = PowerSteeringChecker(self.project_root)
                 transcript_path_str = input_data.get("transcript_path")
@@ -109,12 +110,19 @@ class StopHook(HookProcessor):
                     transcript_path = Path(transcript_path_str)
                     session_id = self._get_current_session_id()
 
+                    # Create progress tracker (auto-detects verbosity and pirate mode from preferences)
+                    progress_tracker = ProgressTracker(project_root=self.project_root)
+
                     self.log("Running power-steering analysis...")
-                    ps_result = ps_checker.check(transcript_path, session_id)
+                    ps_result = ps_checker.check(
+                        transcript_path, session_id, progress_callback=progress_tracker.emit
+                    )
 
                     if ps_result.decision == "block":
                         self.log("Power-steering blocking stop - work incomplete")
                         self.save_metric("power_steering_blocks", 1)
+                        # Display final summary
+                        progress_tracker.display_summary()
                         self.log("=== STOP HOOK ENDED (decision: block - power-steering) ===")
                         return {
                             "decision": "block",
@@ -122,6 +130,9 @@ class StopHook(HookProcessor):
                         }
                     self.log(f"Power-steering approved stop: {ps_result.reasons}")
                     self.save_metric("power_steering_approves", 1)
+
+                    # Display final summary
+                    progress_tracker.display_summary()
 
                     # Display summary if available
                     if ps_result.summary:
@@ -136,7 +147,10 @@ class StopHook(HookProcessor):
                 # Surface error to user via stderr for visibility
                 print("\n⚠️  Power-Steering Warning", file=sys.stderr)
                 print(f"Power-steering encountered an error and was skipped: {e}", file=sys.stderr)
-                print("Check .claude/runtime/power-steering/power_steering.log for details", file=sys.stderr)
+                print(
+                    "Check .claude/runtime/power-steering/power_steering.log for details",
+                    file=sys.stderr,
+                )
 
         # Check if reflection should run
         if not self._should_run_reflection():
@@ -247,14 +261,14 @@ class StopHook(HookProcessor):
                 ["docker", "ps", "--filter", "name=neo4j", "--format", "{{.Names}}"],
                 capture_output=True,
                 text=True,
-                timeout=2.0
+                timeout=2.0,
             )
 
             if result.returncode != 0:
                 return False
 
-            containers = result.stdout.strip().split('\n')
-            neo4j_running = any('neo4j' in name.lower() for name in containers if name)
+            containers = result.stdout.strip().split("\n")
+            neo4j_running = any("neo4j" in name.lower() for name in containers if name)
 
             if neo4j_running:
                 self.log("Neo4j container detected - proceeding with cleanup", "DEBUG")

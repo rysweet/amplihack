@@ -425,17 +425,26 @@ class PowerSteeringChecker:
 
         return True
 
-    def check(self, transcript_path: Path, session_id: str) -> PowerSteeringResult:
+    def check(
+        self,
+        transcript_path: Path,
+        session_id: str,
+        progress_callback: Optional[callable] = None,
+    ) -> PowerSteeringResult:
         """Main entry point - analyze transcript and make decision.
 
         Args:
             transcript_path: Path to session transcript JSONL file
             session_id: Unique session identifier
+            progress_callback: Optional callback for progress events (event_type, message, details)
 
         Returns:
             PowerSteeringResult with decision and prompt/summary
         """
         try:
+            # Emit start event
+            self._emit_progress(progress_callback, "start", "Starting power-steering analysis...")
+
             # 1. Check if disabled
             if self._is_disabled():
                 return PowerSteeringResult(
@@ -457,6 +466,12 @@ class PowerSteeringChecker:
             # 4. Detect session type for selective consideration application
             session_type = self.detect_session_type(transcript)
             self._log(f"Session classified as: {session_type}", "INFO")
+            self._emit_progress(
+                progress_callback,
+                "session_type",
+                f"Session type: {session_type}",
+                {"session_type": session_type},
+            )
 
             # 4b. Backward compatibility: Also check Q&A session (kept for compatibility)
             if self._is_qa_session(transcript):
@@ -468,7 +483,9 @@ class PowerSteeringChecker:
                 )
 
             # 5. Analyze against considerations (filtered by session type)
-            analysis = self._analyze_considerations(transcript, session_id, session_type)
+            analysis = self._analyze_considerations(
+                transcript, session_id, session_type, progress_callback
+            )
 
             # 6. Make decision
             if analysis.has_blockers:
@@ -493,6 +510,13 @@ class PowerSteeringChecker:
             summary = self._generate_summary(transcript, analysis, session_id)
             self._mark_complete(session_id)
             self._write_summary(session_id, summary)
+
+            # Emit completion event
+            self._emit_progress(
+                progress_callback,
+                "complete",
+                "Power-steering analysis complete - all checks passed",
+            )
 
             return PowerSteeringResult(
                 decision="approve",
@@ -1076,7 +1100,11 @@ class PowerSteeringChecker:
         return False
 
     def _analyze_considerations(
-        self, transcript: List[Dict], session_id: str, session_type: str = None
+        self,
+        transcript: List[Dict],
+        session_id: str,
+        session_type: str = None,
+        progress_callback: Optional[callable] = None,
     ) -> ConsiderationAnalysis:
         """Analyze transcript against all enabled considerations.
 
@@ -1089,6 +1117,7 @@ class PowerSteeringChecker:
             transcript: List of message dictionaries
             session_id: Session identifier
             session_type: Session type for selective consideration application (auto-detected if None)
+            progress_callback: Optional callback for progress events
 
         Returns:
             ConsiderationAnalysis with results
@@ -1103,6 +1132,9 @@ class PowerSteeringChecker:
         # Get considerations applicable to this session type
         applicable_considerations = self.get_applicable_considerations(session_type)
 
+        # Track categories for progress
+        categories_seen = set()
+
         for consideration in applicable_considerations:
             # Check if enabled in consideration itself
             if not consideration.get("enabled", True):
@@ -1111,6 +1143,25 @@ class PowerSteeringChecker:
             # Also check config for backward compatibility
             if not self.config.get("checkers_enabled", {}).get(consideration["id"], True):
                 continue
+
+            # Emit category event if first time seeing this category
+            category = consideration.get("category", "Unknown")
+            if category not in categories_seen:
+                categories_seen.add(category)
+                self._emit_progress(
+                    progress_callback,
+                    "category",
+                    f"Checking {category}",
+                    {"category": category},
+                )
+
+            # Emit consideration event
+            self._emit_progress(
+                progress_callback,
+                "consideration",
+                f"Checking: {consideration['question']}",
+                {"consideration_id": consideration["id"], "question": consideration["question"]},
+            )
 
             # Run checker with timeout and error handling
             try:
@@ -2147,6 +2198,36 @@ class PowerSteeringChecker:
             return False
 
         return True
+
+    # ========================================================================
+    # Progress Tracking
+    # ========================================================================
+
+    def _emit_progress(
+        self,
+        progress_callback: Optional[callable],
+        event_type: str,
+        message: str,
+        details: Optional[Dict] = None,
+    ) -> None:
+        """Emit progress event to callback if provided.
+
+        Fail-safe design: Never raises exceptions that would break checker.
+
+        Args:
+            progress_callback: Optional callback function
+            event_type: Event type (start/category/consideration/complete)
+            message: Progress message
+            details: Optional event details
+        """
+        if progress_callback is None:
+            return
+
+        try:
+            progress_callback(event_type, message, details)
+        except Exception as e:
+            # Fail-safe: Log but never raise
+            self._log(f"Progress callback error: {e}", "WARNING")
 
     # ========================================================================
     # Output Generation
