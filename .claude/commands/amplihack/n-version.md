@@ -1,7 +1,7 @@
 ---
 name: n-version
 version: 1.0.0
-description: N-version programming for critical implementations with 30-65% error reduction
+description: N-version programming for Byzantine-robust critical implementations
 triggers:
   - "critical security code"
   - "mission-critical feature"

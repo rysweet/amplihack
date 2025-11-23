@@ -1,7 +1,7 @@
 ---
 name: socratic
 version: 1.0.0
-description: Generate deep Socratic questions using Three-Dimensional Attack pattern
+description: Generate Socratic questions for requirements clarification
 triggers:
   - "challenge this claim"
   - "ask probing questions"

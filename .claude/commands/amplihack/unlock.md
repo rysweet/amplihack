@@ -1,7 +1,7 @@
 ---
 name: unlock
 version: 1.0.0
-description: Disable continuous work mode to allow Claude to stop normally
+description: Disable continuous work mode and resume normal behavior
 triggers:
   - "Disable continuous work mode"
   - "Stop working autonomously"

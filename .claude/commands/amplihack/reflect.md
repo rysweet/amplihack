@@ -1,7 +1,7 @@
 ---
 name: reflect
 version: 1.0.0
-description: AI-powered session analysis for continuous improvement
+description: Reflection and meta-cognitive analysis of sessions
 triggers:
   - "Analyze session"
   - "Run reflection"

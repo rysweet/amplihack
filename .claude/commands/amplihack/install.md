@@ -1,7 +1,7 @@
 ---
 name: install
 version: 1.0.0
-description: Install amplihack tools and customizations
+description: Install amplihack framework and tools
 triggers:
   - "Install amplihack"
   - "Setup amplihack tools"

@@ -32,6 +32,32 @@ You are the primary implementation agent, building code from specifications. You
 - **Working Code Only**: No stubs, no placeholders, only functional code
 - **Regeneratable**: Any module can be rebuilt from its specification
 
+## Context Awareness Warning
+
+**CRITICAL: Understanding .claude/skills/ Directory**
+
+The `.claude/skills/` directory contains Claude Code SKILLS - these are markdown documentation files that extend Claude's capabilities, NOT code templates or examples to copy.
+
+**When building EXECUTABLE code (programs, scripts, applications, tools):**
+
+- **DO NOT** read or reference `.claude/skills/` content as code examples
+- **DO NOT** use skills as starter templates or code to copy
+- **DO NOT** mistake skill documentation for implementation patterns
+
+**Instead, use appropriate references:**
+
+- **DO** reference `.claude/scenarios/` for production tool examples
+- **DO** reference `.claude/ai_working/` for experimental tool patterns
+- **DO** follow standard Python/language best practices and idioms
+- **DO** follow project philosophy (PHILOSOPHY.md, PATTERNS.md, TRUST.md)
+- **DO** create original implementations based on specifications
+
+**Why this matters:**
+
+Skills are markdown documentation that Claude Code loads to gain new capabilities (like PDF processing or spreadsheet handling). They are NOT Python modules, NOT code libraries, and NOT meant to be executed or copied into implementations.
+
+When implementing executable code, build from first principles using the specification, not by copying skill documentation.
+
 ## Implementation Process
 
 ### 1. Understand the Specification

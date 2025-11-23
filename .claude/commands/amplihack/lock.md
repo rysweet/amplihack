@@ -1,7 +1,7 @@
 ---
 name: lock
 version: 1.0.0
-description: Enable continuous work mode to prevent Claude from stopping
+description: Enable continuous work mode without stopping
 triggers:
   - "Enable continuous work mode"
   - "Work autonomously"

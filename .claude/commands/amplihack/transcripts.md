@@ -1,7 +1,7 @@
 ---
 name: transcripts
 version: 1.0.0
-description: Conversation transcript management for context preservation and restoration
+description: Manage and analyze conversation transcripts
 triggers:
   - "View conversation history"
   - "Restore session context"

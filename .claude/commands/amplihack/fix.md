@@ -1,7 +1,7 @@
 ---
 name: fix
 version: 1.0.0
-description: Intelligent fix workflow with auto-detection and template-based resolution
+description: Rapid diagnosis and fix for common issues
 triggers:
   - "fix this error"
   - "CI failing"

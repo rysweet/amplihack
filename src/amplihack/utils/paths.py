@@ -15,27 +15,15 @@ class FrameworkPathResolver:
         """Find the framework root directory.
 
         Searches in this order:
-        1. Inside the amplihack package (for UVX and installed packages)
-        2. Current working directory and parents (for local development)
-        3. AMPLIHACK_ROOT environment variable
+        1. Current working directory and parents (for local development) - PRIORITY
+        2. AMPLIHACK_ROOT environment variable
+        3. Inside the amplihack package (for UVX and installed packages) - FALLBACK
         """
         # Return cached result if available
         if FrameworkPathResolver._cached_root is not None:
             return FrameworkPathResolver._cached_root
 
-        # Strategy 1: Check inside the package (works for UVX and installed packages)
-        try:
-            import amplihack
-
-            package_root = Path(amplihack.__file__).parent
-            package_claude = package_root / ".claude"
-            if package_claude.exists():
-                FrameworkPathResolver._cached_root = package_root
-                return package_root
-        except (ImportError, AttributeError):
-            pass
-
-        # Strategy 2: Check current working directory and parents (local development)
+        # Strategy 1: Check current working directory and parents FIRST (local development priority)
         current = Path.cwd()
         while current != current.parent:
             if (current / ".claude").exists():
@@ -48,12 +36,24 @@ class FrameworkPathResolver:
                 return src_amplihack
             current = current.parent
 
-        # Strategy 3: Check environment variable
+        # Strategy 2: Check environment variable
         if "AMPLIHACK_ROOT" in os.environ:
             env_path = Path(os.environ["AMPLIHACK_ROOT"])
             if env_path.exists() and (env_path / ".claude").exists():
                 FrameworkPathResolver._cached_root = env_path
                 return env_path
+
+        # Strategy 3: Check inside the package as LAST RESORT (for UVX and installed packages)
+        try:
+            import amplihack
+
+            package_root = Path(amplihack.__file__).parent
+            package_claude = package_root / ".claude"
+            if package_claude.exists():
+                FrameworkPathResolver._cached_root = package_root
+                return package_root
+        except (ImportError, AttributeError):
+            pass
 
         return None
 

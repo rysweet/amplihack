@@ -1,7 +1,7 @@
 ---
 name: xpia
 version: 1.0.0
-description: XPIA security system management and health monitoring
+description: Cross-Prompt Injection Attack defense and security management
 triggers:
   - "Check XPIA security status"
   - "Run XPIA health check"

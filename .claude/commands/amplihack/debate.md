@@ -1,7 +1,7 @@
 ---
 name: debate
 version: 1.0.0
-description: Multi-agent debate pattern for complex decisions with structured perspectives
+description: Multi-agent debate for complex decisions and trade-offs
 triggers:
   - "need multiple perspectives"
   - "complex decision needed"

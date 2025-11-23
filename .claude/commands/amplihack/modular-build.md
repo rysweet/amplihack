@@ -1,7 +1,7 @@
 ---
 name: modular-build
 version: 1.0.0
-description: Build self-contained modules using progressive validation pipeline
+description: Build modular code following brick philosophy
 triggers:
   - "Build a module"
   - "Create self-contained component"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-/transcripts command - Restore conversation context from transcripts
-Implements amplihack-style context restoration capabilities.
+/transcripts command - Save and restore conversation context from transcripts
+Implements amplihack-style context preservation and restoration capabilities.
 """
 
 import json
@@ -198,6 +198,107 @@ def restore_session_context(session_id: str) -> None:
     print("   Original requirements have been preserved and can be referenced by agents.")
 
 
+def get_current_session_id() -> str:
+    """Get or generate the current session ID.
+
+    Attempts to find the current session ID from:
+    1. Runtime environment variables
+    2. Latest session directory
+    3. Generate new session ID from timestamp
+
+    Returns:
+        Current session ID string in format YYYYMMDD_HHMMSS
+    """
+    import os
+
+    # Try environment variable first (if set by Claude Code)
+    env_session = os.environ.get("AMPLIHACK_SESSION_ID")
+    if env_session:
+        return env_session
+
+    # Try to find most recent session directory
+    logs_dir = project_root / ".claude" / "runtime" / "logs"
+    if logs_dir.exists():
+        session_dirs = [
+            d for d in logs_dir.iterdir() if d.is_dir() and len(d.name) == 15 and "_" in d.name
+        ]
+        if session_dirs:
+            # Return most recent session
+            latest = sorted(session_dirs, reverse=True)[0]
+            return latest.name
+
+    # Generate new session ID from current timestamp
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def save_session_marker() -> None:
+    """Create a session checkpoint marker.
+
+    IMPORTANT: This command creates a session checkpoint/marker, NOT a full
+    conversation transcript. Full transcripts are automatically created by
+    the PreCompact hook before context compaction.
+
+    Use this command to:
+    - Mark important points in your development session
+    - Create a named checkpoint for later reference
+    - Trigger a manual session save point
+
+    Full conversation history is preserved automatically and is available
+    through the PreCompact hook integration.
+    """
+    try:
+        # Get current session ID
+        session_id = get_current_session_id()
+        session_dir = project_root / ".claude" / "runtime" / "logs" / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create a checkpoint marker file
+        checkpoint_file = session_dir / "CHECKPOINTS.jsonl"
+        checkpoint_data = {
+            "timestamp": datetime.now().isoformat(),
+            "type": "manual_checkpoint",
+            "session_id": session_id,
+            "created_via": "/transcripts save command",
+        }
+
+        # Append to checkpoints file (JSONL format)
+        with open(checkpoint_file, "a") as f:
+            f.write(json.dumps(checkpoint_data) + "\n")
+
+        # Count existing checkpoints
+        checkpoint_count = 0
+        if checkpoint_file.exists():
+            with open(checkpoint_file) as f:
+                checkpoint_count = sum(1 for _ in f)
+
+        # Display success message
+        print("✅ Session checkpoint created!")
+        print("━" * 80)
+        print(f"📄 Session ID: {session_id}")
+        print(f"📂 Location: {checkpoint_file}")
+        print(f"🔖 Checkpoint #{checkpoint_count}")
+        print(f"⏰ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print()
+        print("ℹ️  About Transcripts:")
+        print("   • Manual checkpoints mark important points in your session")
+        print("   • Full conversation transcripts are saved automatically")
+        print("   • PreCompact hook preserves complete history before compaction")
+        print("   • Use /transcripts list to see all saved sessions")
+        print()
+        print("💡 Restore this session later with:")
+        print(f"   /transcripts {session_id}")
+
+    except PermissionError as e:
+        print("❌ Permission Error: Could not create checkpoint")
+        print(f"   {e!s}")
+        print("   Check file permissions for .claude/runtime/logs/")
+    except Exception as e:
+        print(f"❌ Error creating session checkpoint: {e!s}")
+        import traceback
+
+        traceback.print_exc()
+
+
 def main():
     """Main entry point for /transcripts command."""
     args = sys.argv[1:] if len(sys.argv) > 1 else []
@@ -212,6 +313,7 @@ def main():
             print("   /transcripts <session_id>  - Restore context from specific session")
             print("   /transcripts latest        - Restore context from most recent session")
             print("   /transcripts list          - Show this list again")
+            print("   /transcripts save          - Create session checkpoint marker")
 
     elif args[0] == "list":
         # Explicit list command
@@ -225,6 +327,10 @@ def main():
             restore_session_context(sessions[0])
         else:
             print("❌ No sessions found")
+
+    elif args[0] == "save":
+        # Create session checkpoint marker
+        save_session_marker()
 
     else:
         # Restore specific session

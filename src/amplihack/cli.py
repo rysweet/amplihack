@@ -479,6 +479,16 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
     uvx_parser.add_argument("--info", action="store_true", help="Show UVX staging information")
 
+    # Remote execution command
+    remote_parser = subparsers.add_parser("remote", help="Execute on remote Azure VMs via azlin")
+    remote_parser.add_argument("remote_command", choices=["auto", "ultrathink"], help="Command")
+    remote_parser.add_argument("prompt", help="Task prompt")
+    remote_parser.add_argument("--max-turns", type=int, default=10, help="Max turns")
+    remote_parser.add_argument("--vm-size", default="m", help="VM size: s/m/l/xl")
+    remote_parser.add_argument("--region", help="Azure region")
+    remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM")
+    remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout")
+
     # Goal Agent Generator command
     new_parser = subparsers.add_parser(
         "new", help="Generate a new goal-seeking agent from a prompt file"
@@ -839,6 +849,38 @@ def main(argv: Optional[List[str]] = None) -> int:
             skills_dir=skills_path,
             verbose=args.verbose,
         )
+
+    elif args.command == "remote":
+        # Execute remote command
+        claude_dir = Path.cwd() / ".claude"
+        if not claude_dir.exists():
+            print("Error: .claude directory not found", file=sys.stderr)
+            return 1
+
+        sys.path.insert(0, str(claude_dir / "tools" / "amplihack"))
+
+        try:
+            from remote.cli import execute_remote_workflow
+            from remote.orchestrator import VMOptions
+
+            vm_options = VMOptions(
+                size=args.vm_size,
+                region=args.region,
+                keep_vm=args.keep_vm,
+            )
+
+            execute_remote_workflow(
+                repo_path=Path.cwd(),
+                command=args.remote_command,
+                prompt=args.prompt,
+                max_turns=args.max_turns,
+                vm_options=vm_options,
+                timeout=args.timeout,
+            )
+            return 0
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
 
     else:
         create_parser().print_help()

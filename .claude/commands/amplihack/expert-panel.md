@@ -1,7 +1,7 @@
 ---
 name: expert-panel
 version: 1.0.0
-description: Byzantine-robust decision-making through parallel expert reviews and voting
+description: Expert panel review with voting and consensus decision-making
 triggers:
   - "need multiple expert reviews"
   - "code review approval gate"

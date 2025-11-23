@@ -1,7 +1,7 @@
 ---
 name: improve
 version: 2.0.0
-description: Self-improvement and learning capture with simplicity validation
+description: Continuous self-improvement with simplicity validation
 triggers:
   - "improve the system"
   - "enhance agents"

@@ -1,7 +1,7 @@
 ---
 name: cascade
 version: 1.0.0
-description: Fallback cascade pattern for resilient operations with graceful degradation
+description: Fallback cascade pattern for resilient operations
 triggers:
   - "need fallback strategy"
   - "external API reliability"

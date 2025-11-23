@@ -1,7 +1,7 @@
 ---
 name: auto
 version: 1.0.0
-description: Autonomous multi-turn agentic loop with clarify-plan-execute-evaluate workflow
+description: Autonomous multi-turn agentic loop for complex implementations
 triggers:
   - "complex multi-step implementation"
   - "iterative refinement needed"
