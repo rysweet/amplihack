@@ -137,7 +137,7 @@ if [ -f "$HOME/.claude/settings.json" ]; then
       echo "  → No statusLine configuration found, adding..."
 
       # Insert statusLine configuration after the opening brace
-      sed -i.tmp '0,/{/s/{/{\n  "statusLine": {\n    "type": "command",\n    "command": "'"$HOME"'\/.claude\/tools\/statusline.sh"\n  },/' "$HOME/.claude/settings.json"
+      sed -i.tmp '0,/{/s/{/{\n  "statusLine": {\n    "type": "command",\n    "command": "'"$HOME"'/.claude/tools/statusline.sh"\n  },/' "$HOME/.claude/settings.json"
 
       if [ $? -eq 0 ] && grep -q '"statusLine"' "$HOME/.claude/settings.json"; then
         rm -f "$HOME/.claude/settings.json.tmp"
