@@ -17,10 +17,10 @@ from power_steering_progress import ProgressTracker
 def test_basic_functionality():
     """Test basic progress tracker functionality."""
     print("=" * 70)
-    print("TEST 1: Basic Functionality (SUMMARY mode, no pirate)")
+    print("TEST 1: Basic Functionality (SUMMARY mode)")
     print("=" * 70)
 
-    tracker = ProgressTracker(verbosity="summary", pirate_mode=False)
+    tracker = ProgressTracker(verbosity="summary")
 
     # Emit events
     tracker.emit("start", "Starting power-steering analysis...")
@@ -45,7 +45,7 @@ def test_detailed_mode():
     print("TEST 2: Detailed Mode (shows all events)")
     print("=" * 70)
 
-    tracker = ProgressTracker(verbosity="detailed", pirate_mode=False)
+    tracker = ProgressTracker(verbosity="detailed")
     tracker.set_total_considerations(5)
 
     # Emit events
@@ -70,33 +70,13 @@ def test_detailed_mode():
     print("\n✓ Test 2 passed\n")
 
 
-def test_pirate_mode():
-    """Test pirate mode transformation."""
-    print("=" * 70)
-    print("TEST 3: Pirate Mode (SUMMARY mode with pirate speak)")
-    print("=" * 70)
-
-    tracker = ProgressTracker(verbosity="summary", pirate_mode=True)
-
-    # Emit events
-    tracker.emit("start", "Starting power-steering analysis...")
-    tracker.emit("category", "Checking Session Completion", {"category": "Session Completion"})
-    tracker.emit("consideration", "Checking TODO items", {"consideration_id": "todos"})
-    tracker.emit("complete", "Power-steering analysis complete - all checks passed")
-
-    # Display summary
-    tracker.display_summary()
-
-    print("\n✓ Test 3 passed\n")
-
-
 def test_off_mode():
     """Test OFF mode (no output)."""
     print("=" * 70)
-    print("TEST 4: OFF Mode (should see no progress output)")
+    print("TEST 3: OFF Mode (should see no progress output)")
     print("=" * 70)
 
-    tracker = ProgressTracker(verbosity="off", pirate_mode=False)
+    tracker = ProgressTracker(verbosity="off")
 
     # Emit events (should produce no output)
     tracker.emit("start", "Starting power-steering analysis...")
@@ -106,25 +86,25 @@ def test_off_mode():
     # Display summary (should produce no output)
     tracker.display_summary()
 
-    print("✓ Test 4 passed (no progress output is expected)\n")
+    print("✓ Test 3 passed (no progress output is expected)\n")
 
 
 def test_fail_safe():
     """Test fail-safe behavior with invalid inputs."""
     print("=" * 70)
-    print("TEST 5: Fail-Safe Behavior")
+    print("TEST 4: Fail-Safe Behavior")
     print("=" * 70)
 
-    tracker = ProgressTracker(verbosity="summary", pirate_mode=False)
+    tracker = ProgressTracker(verbosity="summary")
 
     # Try invalid event types (should not crash)
     try:
         tracker.emit(None, "Test message")
         tracker.emit("invalid_type", None)
         tracker.emit("test", "Test", {"key": None})
-        print("✓ Test 5 passed (no exceptions raised)\n")
+        print("✓ Test 4 passed (no exceptions raised)\n")
     except Exception as e:
-        print(f"✗ Test 5 failed: {e}\n")
+        print(f"✗ Test 4 failed: {e}\n")
         return False
 
     return True
@@ -137,7 +117,6 @@ def main():
     try:
         test_basic_functionality()
         test_detailed_mode()
-        test_pirate_mode()
         test_off_mode()
         test_fail_safe()
 

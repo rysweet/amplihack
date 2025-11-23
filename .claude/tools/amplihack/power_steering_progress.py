@@ -3,7 +3,7 @@
 Power-Steering Progress Visibility Module
 
 Provides real-time progress updates during power-steering analysis with
-pirate mode support and verbosity control.
+verbosity control.
 
 Philosophy:
 - Ruthlessly Simple: Single-purpose progress tracking
@@ -48,7 +48,6 @@ class ProgressTracker:
 
     Features:
     - Three verbosity modes: OFF, SUMMARY, DETAILED
-    - Pirate-style message transformation
     - Preference reading from USER_PREFERENCES.md
     - Fail-safe design (exceptions never break checker)
 
@@ -62,33 +61,26 @@ class ProgressTracker:
         self,
         verbosity: Optional[str] = None,
         project_root: Optional[Path] = None,
-        pirate_mode: Optional[bool] = None,
     ):
         """Initialize progress tracker.
 
         Args:
             verbosity: Verbosity level (off/summary/detailed) or None to auto-detect
             project_root: Project root directory (auto-detected if None)
-            pirate_mode: Enable pirate mode or None to auto-detect from preferences
         """
         self.project_root = project_root or self._detect_project_root()
         self.events: List[ProgressEvent] = []
 
-        # Auto-detect settings from preferences if not provided
-        if verbosity is None or pirate_mode is None:
+        # Auto-detect verbosity from preferences if not provided
+        if verbosity is None:
             prefs = self._read_preferences()
-            if verbosity is None:
-                verbosity = prefs.get("verbosity", "summary")
-            if pirate_mode is None:
-                pirate_mode = prefs.get("communication_style") == "pirate"
+            verbosity = prefs.get("verbosity", "summary")
 
         # Set verbosity mode
         try:
             self.verbosity = VerbosityMode(verbosity)
         except ValueError:
             self.verbosity = VerbosityMode.SUMMARY
-
-        self.pirate_mode = pirate_mode
 
         # Counters for summary
         self.total_considerations = 0
@@ -146,9 +138,6 @@ class ProgressTracker:
                 for line in section.split("\n"):
                     line = line.strip()
                     if line and not line.startswith("#"):
-                        # Look for "pirate" in the line
-                        if "pirate" in line.lower():
-                            prefs["communication_style"] = "pirate"
                         break
 
             return prefs
@@ -202,10 +191,6 @@ class ProgressTracker:
             # Format message
             msg = event.message
 
-            # Apply pirate transformation if enabled
-            if self.pirate_mode:
-                msg = self._piratify(msg)
-
             # Add progress indicator for detailed mode
             if self.verbosity == VerbosityMode.DETAILED and event.event_type == "consideration":
                 if self.total_considerations > 0:
@@ -218,36 +203,6 @@ class ProgressTracker:
         except Exception:
             # Fail-safe: Never raise exceptions
             pass
-
-    def _piratify(self, message: str) -> str:
-        """Transform message to pirate speak.
-
-        Args:
-            message: Original message
-
-        Returns:
-            Pirate-ified message
-        """
-        # Simple pirate transformations
-        replacements = {
-            "Analyzing": "Analyzin'",
-            "Checking": "Checkin'",
-            "Running": "Runnin'",
-            "Starting": "Startin'",
-            "Completing": "Completin'",
-            "power-steering": "power-steerin'",
-            "considerations": "considerations (arr!)",
-            "Complete": "Complete, matey!",
-            "Done": "Done, ye scallywag!",
-            "Testing": "Testin'",
-            "Verifying": "Verifyin'",
-        }
-
-        result = message
-        for old, new in replacements.items():
-            result = result.replace(old, new)
-
-        return result
 
     def set_total_considerations(self, total: int) -> None:
         """Set total number of considerations for progress tracking.

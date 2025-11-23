@@ -116,7 +116,7 @@ def test_integration_with_summary_mode():
 
         # Initialize checker and tracker
         checker = PowerSteeringChecker(project_root=temp_path)
-        tracker = ProgressTracker(verbosity="summary", pirate_mode=False, project_root=temp_path)
+        tracker = ProgressTracker(verbosity="summary", project_root=temp_path)
 
         # Run check with progress callback
         print("\nRunning power-steering check with progress tracking...\n")
@@ -157,7 +157,7 @@ def test_integration_with_detailed_mode():
 
         # Initialize checker and tracker
         checker = PowerSteeringChecker(project_root=temp_path)
-        tracker = ProgressTracker(verbosity="detailed", pirate_mode=False, project_root=temp_path)
+        tracker = ProgressTracker(verbosity="detailed", project_root=temp_path)
 
         # Run check with progress callback
         print("\nRunning power-steering check with detailed progress...\n")
@@ -173,47 +173,6 @@ def test_integration_with_detailed_mode():
         return True
 
 
-def test_integration_with_pirate_mode():
-    """Test integration with pirate mode."""
-    print("=" * 70)
-    print("INTEGRATION TEST 3: PowerSteeringChecker + ProgressTracker (PIRATE)")
-    print("=" * 70)
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_path = Path(temp_dir)
-
-        # Create project structure
-        claude_dir = temp_path / ".claude"
-        claude_dir.mkdir()
-        tools_dir = claude_dir / "tools" / "amplihack"
-        tools_dir.mkdir(parents=True)
-
-        # Create minimal config
-        config = {"enabled": True, "phase": 1, "checkers_enabled": {}}
-        config_path = tools_dir / ".power_steering_config"
-        config_path.write_text(json.dumps(config))
-
-        # Create test transcript
-        transcript_path = create_test_transcript(temp_path)
-
-        # Initialize checker and tracker
-        checker = PowerSteeringChecker(project_root=temp_path)
-        tracker = ProgressTracker(verbosity="summary", pirate_mode=True, project_root=temp_path)
-
-        # Run check with progress callback
-        print("\nRunning power-steering check with pirate mode...\n")
-        result = checker.check(transcript_path, "test_session_003", progress_callback=tracker.emit)
-
-        # Display summary
-        tracker.display_summary()
-
-        print(f"\nResult: {result.decision}")
-        print(f"Reasons: {result.reasons}")
-
-        print("\n✓ Integration Test 3 passed (arr!)\n")
-        return True
-
-
 def main():
     """Run all integration tests."""
     print("\n🧪 POWER STEERING INTEGRATION TESTS\n")
@@ -221,7 +180,6 @@ def main():
     try:
         test_integration_with_summary_mode()
         test_integration_with_detailed_mode()
-        test_integration_with_pirate_mode()
 
         print("=" * 70)
         print("✅ ALL INTEGRATION TESTS PASSED")
