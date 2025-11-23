@@ -241,7 +241,10 @@ def handle_auto_mode(
     # Check if UI mode is enabled
     ui_mode = getattr(args, "ui", False)
 
-    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode)
+    # Extract timeout from args
+    query_timeout = getattr(args, "query_timeout_minutes", 5.0)
+
+    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout)
     return auto.run()
 
 
@@ -346,6 +349,17 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
         "--ui",
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
+    )
+    parser.add_argument(
+        "--query-timeout-minutes",
+        type=float,
+        default=5.0,
+        metavar="MINUTES",
+        help=(
+            "Timeout for each SDK query in minutes (default: 5.0). "
+            "Prevents indefinite hangs in complex sessions. "
+            "Use higher values (10-15) for very long-running operations."
+        ),
     )
 
 
