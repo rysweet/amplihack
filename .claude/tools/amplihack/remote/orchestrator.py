@@ -315,6 +315,7 @@ class Orchestrator:
                 region,
                 "--yes",
                 "--no-bastion",
+                "--no-auto-connect",  # Prevent interactive SSH connection
             ]
 
             # Pass through any extra azlin arguments
