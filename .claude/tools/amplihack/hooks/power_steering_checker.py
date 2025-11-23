@@ -1754,6 +1754,151 @@ class PowerSteeringChecker:
         # Could be enhanced to detect high-impact work patterns
         return True
 
+    def _check_feature_docs_discoverable(self, transcript: List[Dict], session_id: str) -> bool:
+        """Check if feature documentation is discoverable from multiple paths.
+
+        Verifies new features have documentation discoverable from README and docs/ directory.
+        This ensures users can find documentation through:
+        1. README features/documentation section
+        2. docs/ directory listing
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if docs are discoverable or not applicable, False if missing navigation
+        """
+        try:
+            # Phase 1: Detect new features
+            # Look for new commands, agents, skills, scenarios in Write/Edit operations
+            new_features = []
+            docs_file = None
+
+            for msg in transcript:
+                if msg.get("type") == "assistant" and "message" in msg:
+                    content = msg["message"].get("content", [])
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "tool_use":
+                                tool_name = block.get("name", "")
+                                if tool_name in ["Write", "Edit"]:
+                                    file_path = block.get("input", {}).get("file_path", "")
+
+                                    # Detect new feature by file location
+                                    if ".claude/commands/" in file_path and file_path.endswith(".md"):
+                                        new_features.append(("command", file_path))
+                                    elif ".claude/agents/" in file_path and file_path.endswith(".md"):
+                                        new_features.append(("agent", file_path))
+                                    elif ".claude/skills/" in file_path:
+                                        new_features.append(("skill", file_path))
+                                    elif ".claude/scenarios/" in file_path:
+                                        new_features.append(("scenario", file_path))
+
+                                    # Track docs file creation in docs/
+                                    if "docs/" in file_path and file_path.endswith(".md"):
+                                        docs_file = file_path
+
+            # Edge case 1: No new features detected
+            if not new_features:
+                return True
+
+            # Edge case 2: Docs-only session (no code files modified)
+            if self._is_docs_only_session(transcript):
+                return True
+
+            # Edge case 3: Internal changes (tools/, tests/, etc.)
+            # If all features are in internal paths, pass
+            internal_paths = [".claude/tools/", "tests/", ".claude/runtime/"]
+            all_internal = all(
+                any(internal in feature[1] for internal in internal_paths)
+                for feature in new_features
+            )
+            if all_internal:
+                return True
+
+            # Phase 2: Check for docs file in docs/ directory
+            if not docs_file:
+                return False  # New feature but no docs file created
+
+            # Phase 3: Verify 2+ navigation paths in README
+            readme_paths_count = 0
+
+            for msg in transcript:
+                if msg.get("type") == "assistant" and "message" in msg:
+                    content = msg["message"].get("content", [])
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "tool_use":
+                                tool_name = block.get("name", "")
+                                if tool_name in ["Write", "Edit"]:
+                                    file_path = block.get("input", {}).get("file_path", "")
+
+                                    # Check if README was edited
+                                    if "README.md" in file_path.lower():
+                                        # Get the new content to check for documentation links
+                                        new_string = block.get("input", {}).get("new_string", "")
+                                        content_to_check = block.get("input", {}).get("content", "")
+                                        full_content = new_string or content_to_check
+
+                                        # Count references to the docs file
+                                        if docs_file and full_content:
+                                            # Extract just the filename from the path
+                                            doc_filename = docs_file.split("/")[-1]
+                                            # Count occurrences of the doc filename in README content
+                                            readme_paths_count += full_content.count(doc_filename)
+
+            # Need at least 2 navigation paths (e.g., Features section + Documentation section)
+            if readme_paths_count < 2:
+                return False
+
+            # All checks passed
+            return True
+
+        except Exception as e:
+            # Fail-open: Return True on errors to avoid blocking users
+            return True
+
+    def _is_docs_only_session(self, transcript: List[Dict]) -> bool:
+        """Check if session only modified documentation files.
+
+        Helper method to detect docs-only sessions where no code files were touched.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if only .md files were modified, False if code files modified
+        """
+        try:
+            code_modified = False
+            docs_modified = False
+
+            for msg in transcript:
+                if msg.get("type") == "assistant" and "message" in msg:
+                    content = msg["message"].get("content", [])
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "tool_use":
+                                tool_name = block.get("name", "")
+                                if tool_name in ["Write", "Edit"]:
+                                    file_path = block.get("input", {}).get("file_path", "")
+
+                                    # Check for code files using class constant
+                                    if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
+                                        code_modified = True
+
+                                    # Check for doc files using class constant
+                                    if any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
+                                        docs_modified = True
+
+            # Docs-only session if docs modified but no code files
+            return docs_modified and not code_modified
+
+        except Exception:
+            # Fail-open: Return False on errors (assume code might be modified)
+            return False
+
     def _check_next_steps(self, transcript: List[Dict], session_id: str) -> bool:
         """Check if next steps were identified and documented.
 
