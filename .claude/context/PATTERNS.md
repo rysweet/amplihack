@@ -1978,6 +1978,92 @@ tests/
 
 From PR #457: Prerequisites module can be used by any part of the system without worrying about internal implementation details. Clear **all** makes public API obvious.
 
+## Pattern: API Validation Before Implementation
+
+### Challenge
+
+Invalid API calls cause immediate failures. Validate before coding to avoid 20-30 min debug cycles.
+
+Common failures:
+- Wrong model names: `claude-3-5-sonnet-20241022` (invalid) vs `claude-3-sonnet-20241022` (valid)
+- Missing imports: `from eval_recipes.claim_verification` doesn't exist
+- Wrong types: `max_tokens="1024"` (string) vs `max_tokens=1024` (int)
+
+### Solution
+
+Validate APIs before implementation using official documentation.
+
+**Validation Checklist:**
+
+1. **Model/LLM APIs**
+   - Check model name format against official docs
+   - Verify parameters exist and match type (int vs string)
+   - Test with minimal example if possible
+
+2. **Imports/Libraries**
+   - Verify module exists: `python -c "import module_name"`
+   - Check function signatures in documentation
+   - Test import before writing full code
+
+3. **Services/Config**
+   - Verify endpoints, credentials exist
+   - Check response format matches expectations
+   - Document error responses
+
+4. **Error Handling**
+   - Plan for rate limits, timeouts, auth failures
+   - Add try/except with specific error types
+   - Don't swallow exceptions silently
+
+**Example:**
+
+```python
+# WRONG - assumptions without validation
+client = Anthropic()
+message = client.messages.create(
+    model="claude-3-5-sonnet-20241022",  # ❌ Not verified
+    max_tokens="1024",  # ❌ Wrong type
+    messages=[{"role": "user", "content": prompt}]
+)
+
+# RIGHT - validated against docs
+VALID_MODELS = ["claude-3-opus-20240229", "claude-3-sonnet-20241022"]
+model = "claude-3-sonnet-20241022"  # ✓ Verified
+max_tokens = 1024  # ✓ Correct type (int)
+
+if model not in VALID_MODELS:
+    raise ValueError(f"Invalid model: {model}")
+
+client = Anthropic()
+try:
+    message = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}]
+    )
+except Exception as e:
+    # ✓ Handle errors explicitly
+    raise RuntimeError(f"API call failed: {e}")
+```
+
+**When to Use:**
+
+- Before writing any external API call
+- When using new libraries or services
+- During design phase (Step 4 of workflow)
+
+**Key Points:**
+
+- 5-10 min validation prevents 20-30 min debug cycles
+- Use official documentation as source of truth
+- Test imports and minimal examples before full implementation
+- Explicit error handling, never swallow exceptions
+
+**Related Patterns:**
+
+- Zero-BS Implementation - All code must work
+- Fail-Fast Prerequisite Checking - Verify tools exist
+
 ## Remember
 
 These patterns represent hard-won knowledge from real development challenges. When facing similar problems:
