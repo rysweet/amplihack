@@ -94,56 +94,57 @@ def create_staging_manifest(
         def should_copy_file(file_path: Path) -> bool:
             """Determine if a file should be copied based on profile filters.
 
+            Trusts that file_path is valid (internal function, caller responsibility).
+
             Args:
                 file_path: Path to file being considered for staging
 
             Returns:
                 True if file should be copied, False otherwise
             """
-            # Convert to relative path for matching
-            try:
-                # Get the relative path within .claude directory
-                if ".claude" in file_path.parts:
-                    claude_idx = file_path.parts.index(".claude")
-                    rel_path = Path(*file_path.parts[claude_idx:])
-                else:
-                    rel_path = file_path
+            # Get the relative path within .claude directory
+            if ".claude" in file_path.parts:
+                claude_idx = file_path.parts.index(".claude")
+                rel_path = Path(*file_path.parts[claude_idx:])
+            else:
+                rel_path = file_path
 
-                # Check if file is in filtered components
-                # Commands
-                if "commands" in rel_path.parts:
-                    return any(file_path.samefile(cmd_path) or
-                             file_path in cmd_path.parents or
-                             cmd_path in file_path.parents
-                             for cmd_path in filtered.commands)
+            # File matching requires three checks to handle directory hierarchies:
+            # 1. samefile: Direct match
+            # 2. file_path in component.parents: File is inside the component directory
+            # 3. component in file_path.parents: Component is inside the file's directory
 
-                # Context
-                if "context" in rel_path.parts:
-                    return any(file_path.samefile(ctx_path) or
-                             file_path in ctx_path.parents or
-                             ctx_path in file_path.parents
-                             for ctx_path in filtered.context)
+            # Check if file is in filtered components
+            # Commands
+            if "commands" in rel_path.parts:
+                return any(file_path.samefile(cmd_path) or
+                         file_path in cmd_path.parents or
+                         cmd_path in file_path.parents
+                         for cmd_path in filtered.commands)
 
-                # Agents
-                if "agents" in rel_path.parts:
-                    return any(file_path.samefile(agent_path) or
-                             file_path in agent_path.parents or
-                             agent_path in file_path.parents
-                             for agent_path in filtered.agents)
+            # Context
+            if "context" in rel_path.parts:
+                return any(file_path.samefile(ctx_path) or
+                         file_path in ctx_path.parents or
+                         ctx_path in file_path.parents
+                         for ctx_path in filtered.context)
 
-                # Skills
-                if "skills" in rel_path.parts:
-                    return any(file_path.samefile(skill_path) or
-                             file_path in skill_path.parents or
-                             skill_path in file_path.parents
-                             for skill_path in filtered.skills)
+            # Agents
+            if "agents" in rel_path.parts:
+                return any(file_path.samefile(agent_path) or
+                         file_path in agent_path.parents or
+                         agent_path in file_path.parents
+                         for agent_path in filtered.agents)
 
-                # For other files (tools, workflow, etc.), include by default
-                return True
+            # Skills
+            if "skills" in rel_path.parts:
+                return any(file_path.samefile(skill_path) or
+                         file_path in skill_path.parents or
+                         skill_path in file_path.parents
+                         for skill_path in filtered.skills)
 
-            except (ValueError, OSError):
-                # On any error, include the file (fail-open)
-                return True
+            # For other files (tools, workflow, etc.), include by default
+            return True
 
         return StagingManifest(
             dirs_to_stage=base_dirs,

@@ -178,13 +178,23 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manife
             # If file_filter is provided, use it to filter which files to copy
             if file_filter:
                 def ignore_function(directory, contents):
-                    """Filter function for shutil.copytree to skip files based on profile."""
+                    """Filter function for shutil.copytree to skip files based on profile.
+
+                    Error handling at system boundary: Catches any errors from file_filter
+                    and fails open (includes file on error).
+                    """
                     ignored = []
                     for item in contents:
                         item_path = Path(directory) / item
                         # Skip files that don't pass the filter
-                        if item_path.is_file() and not file_filter(item_path):
-                            ignored.append(item)
+                        if item_path.is_file():
+                            try:
+                                # Call file_filter - errors handled here at boundary
+                                if not file_filter(item_path):
+                                    ignored.append(item)
+                            except Exception:
+                                # Fail-open: Include file on any error
+                                pass
                     return ignored
 
                 shutil.copytree(source_dir, target_dir, dirs_exist_ok=True, ignore=ignore_function)
