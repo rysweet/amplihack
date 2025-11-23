@@ -332,6 +332,7 @@ class Orchestrator:
                         text=True,
                         timeout=600,  # 10 minutes
                         check=True,
+                        stdin=subprocess.DEVNULL,  # Prevent hanging on prompts
                     )
 
                     # VM provisioned successfully
