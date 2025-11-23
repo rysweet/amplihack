@@ -127,9 +127,7 @@ def _remove_failed_binary(binary_path: Path) -> None:
         print(f"   Warning: Could not remove binary: {e}")
 
 
-def _retry_claude_installation(
-    npm_path: str, user_npm_dir: Path, expected_binary: Path
-) -> bool:
+def _retry_claude_installation(npm_path: str, user_npm_dir: Path, expected_binary: Path) -> bool:
     """Retry Claude CLI installation after validation failure.
 
     Handles both permission issues and corrupted binaries by doing a clean reinstall.
@@ -180,9 +178,8 @@ def _retry_claude_installation(
     if _validate_claude_binary(str(expected_binary)):
         print("   ✓ Recovery successful - binary validated")
         return True
-    else:
-        print("   Recovery failed - binary still invalid after reinstall")
-        return False
+    print("   Recovery failed - binary still invalid after reinstall")
+    return False
 
 
 def _install_claude_cli() -> bool:
@@ -261,8 +258,8 @@ def _install_claude_cli() -> bool:
                 else:
                     # Recovery failed - provide manual instructions
                     print("\n⚠️  Automatic recovery failed. Please install manually:")
-                    print(f"   npm install -g @anthropics/claude-code")
-                    print(f"   Or download from: https://github.com/anthropics/claude-code")
+                    print("   npm install -g @anthropics/claude-code")
+                    print("   Or download from: https://github.com/anthropics/claude-code")
                     return False
 
             print("✅ Claude CLI installed and validated successfully")
