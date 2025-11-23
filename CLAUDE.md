@@ -630,6 +630,10 @@ skill is:
 Amplihack includes production-ready scenario tools that follow the **Progressive
 Maturity Model**:
 
+**Note**: When users request "a tool", they typically mean an executable program
+(scenarios/), not a Claude Code skill (skills/). Build the tool first;
+optionally add a skill that calls it.
+
 ### Using Scenario Tools
 
 All scenario tools are accessible via Makefile commands:

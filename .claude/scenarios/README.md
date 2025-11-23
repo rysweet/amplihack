@@ -156,6 +156,17 @@ All tools implement security validation:
 - **Maintenance Burden**: Low ongoing maintenance needs
 - **User Satisfaction**: Positive feedback and repeat usage
 
+### Tools vs Skills: The Complementary Pattern
+
+**Most requests for "tools" mean BOTH:**
+
+1. **Executable tool** (this directory) - Working program that can be run standalone
+2. **Claude Code skill** (`.claude/skills/`) - Convenient interface that calls the tool
+
+**Build order**: Tool first (testable, executable), then optional skill (conversational interface).
+
+**Note**: If user says "create a tool", default to building an executable program here in scenarios/.
+
 ---
 
 _This pattern embodies amplihack's philosophy: powerful tools built from simple, reusable components that respect user intent and deliver immediate value._

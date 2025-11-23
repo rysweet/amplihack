@@ -1,7 +1,7 @@
 # Makefile for Scenarios Directory Pattern Tools
 # Provides easy access to production-ready scenario tools
 
-.PHONY: help analyze-codebase scenarios-help list-scenarios
+.PHONY: help analyze-codebase scenarios-help list-scenarios docs-serve docs-build docs-deploy
 
 # Default target - show help
 help:
@@ -14,11 +14,17 @@ help:
 	@echo "  make list-scenarios                                    - List all available scenario tools"
 	@echo "  make scenarios-help                                    - Show detailed help for scenarios"
 	@echo ""
+	@echo "Documentation commands:"
+	@echo "  make docs-serve                                       - Start local documentation server"
+	@echo "  make docs-build                                       - Build documentation site"
+	@echo "  make docs-deploy                                      - Deploy documentation to GitHub Pages"
+	@echo ""
 	@echo "Examples:"
 	@echo "  make analyze-codebase TARGET=./src"
 	@echo "  make analyze-codebase TARGET=./src OPTIONS='--format json --depth deep'"
 	@echo "  make analyze-trace-logs"
 	@echo "  make analyze-trace-logs TARGET=./.claude-trace OPTIONS='--sample-size 30'"
+	@echo "  make docs-serve"
 	@echo ""
 
 # List all available scenario tools
@@ -128,3 +134,24 @@ new-scenario:
 	@mkdir -p .claude/ai_working/$(NAME)/examples
 	@echo "✅ Scenario template created in .claude/ai_working/$(NAME)/"
 	@echo "   Start developing your tool there, then graduate to scenarios/"
+
+# Documentation targets
+# ====================
+
+# Serve documentation locally with live reload
+docs-serve:
+	@echo "📚 Starting documentation server..."
+	@echo "Documentation will be available at http://127.0.0.1:8000"
+	@mkdocs serve
+
+# Build documentation site to site/ directory
+docs-build:
+	@echo "🏗️  Building documentation..."
+	@mkdocs build --strict
+	@echo "✅ Documentation built in site/ directory"
+
+# Deploy documentation to GitHub Pages
+docs-deploy:
+	@echo "🚀 Deploying documentation to GitHub Pages..."
+	@mkdocs gh-deploy --force
+	@echo "✅ Documentation deployed successfully"
