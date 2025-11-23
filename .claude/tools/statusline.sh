@@ -32,6 +32,27 @@ total_cost=$(extract_json "total_cost_usd" "0")
 total_duration=$(extract_json "total_duration_ms" "0")
 transcript_path=$(extract_json "transcript_path" "")
 
+# Extract session ID from transcript path
+extract_session_id() {
+    local transcript_path="$1"
+
+    # Return empty if no transcript path
+    [ -z "$transcript_path" ] && return
+
+    # Extract session_id from path pattern: .../sessions/{session_id}/...
+    local session_id=$(echo "$transcript_path" | sed -n 's|.*/sessions/\([^/]*\)/.*|\1|p')
+
+    # Fallback: Check CLAUDE_SESSION_ID env var
+    if [ -z "$session_id" ] && [ -n "$CLAUDE_SESSION_ID" ]; then
+        session_id="$CLAUDE_SESSION_ID"
+    fi
+
+    echo "$session_id"
+}
+
+# Get session ID
+session_id=$(extract_session_id "$transcript_path")
+
 # Change to directory for git
 cd "$current_dir" 2>/dev/null || cd "$(pwd)"
 
@@ -148,15 +169,37 @@ else
     fi
 fi
 
-# Power-steering counter (if exists)
+# Power-steering counter (per-session)
 power_steering_str=""
-counter_file="$current_dir/.claude/runtime/power-steering/session_count"
-if [ -f "$counter_file" ]; then
-    ps_count=$(cat "$counter_file" 2>/dev/null || echo "0")
-    if [ "$ps_count" -gt 0 ] 2>/dev/null; then
-        power_steering_str=" \033[35m🚦×$ps_count\033[0m"
+if [ -n "$session_id" ]; then
+    redirects_file="$current_dir/.claude/runtime/power-steering/$session_id/redirects.jsonl"
+    if [ -f "$redirects_file" ]; then
+        # Count non-empty lines in redirects file
+        ps_count=$(grep -c . "$redirects_file" 2>/dev/null || echo "0")
+        if [ "$ps_count" -gt 0 ] 2>/dev/null; then
+            power_steering_str=" \033[35m🚦×$ps_count\033[0m"
+        fi
+    fi
+fi
+
+# Lock mode indicator (if active)
+lock_str=""
+lock_flag="$current_dir/.claude/runtime/locks/.lock_active"
+if [ -f "$lock_flag" ] && [ -n "$session_id" ]; then
+    # Lock is active - show counter
+    lock_counter_file="$current_dir/.claude/runtime/locks/$session_id/lock_invocations.txt"
+    if [ -f "$lock_counter_file" ]; then
+        lock_count=$(cat "$lock_counter_file" 2>/dev/null || echo "0")
+        if [ "$lock_count" -gt 0 ] 2>/dev/null; then
+            lock_str=" \033[33m🔒×$lock_count\033[0m"
+        else
+            lock_str=" \033[33m🔒\033[0m"
+        fi
+    else
+        # Lock active but no counter yet (first invocation)
+        lock_str=" \033[33m🔒\033[0m"
     fi
 fi
 
 # Output status line
-echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str$power_steering_str"
+echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str$power_steering_str$lock_str"
