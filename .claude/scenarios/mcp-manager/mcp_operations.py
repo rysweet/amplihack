@@ -5,6 +5,7 @@ All operations return new configuration dictionaries rather than modifying
 the input.
 """
 
+import copy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -139,7 +140,6 @@ def enable_server(config: dict[str, Any], name: str) -> dict[str, Any]:
         ValueError: If server not found
     """
     # Make a deep copy of config
-    import copy
     new_config = copy.deepcopy(config)
 
     # Find and enable the server
@@ -172,7 +172,6 @@ def disable_server(config: dict[str, Any], name: str) -> dict[str, Any]:
         ValueError: If server not found
     """
     # Make a deep copy of config
-    import copy
     new_config = copy.deepcopy(config)
 
     # Find and disable the server

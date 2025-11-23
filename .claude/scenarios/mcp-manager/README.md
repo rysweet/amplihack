@@ -15,6 +15,26 @@ MCP Manager provides safe, atomic operations for managing MCP servers with autom
 - **Rollback on errors** to prevent data loss
 - **Immutable operations** for safety
 
+## ⚠️ Important: Schema Compatibility
+
+**Current Status**: This tool uses an **extended object schema** for MCP server configuration. Claude Code's actual schema may differ and requires verification.
+
+**What this means**:
+- **Current implementation**: Stores full MCP server configs as objects in `.claude/settings.json`
+- **Claude Code standard** (per azure-admin docs): May expect servers defined in global `~/.config/claude-code/mcp.json` with project settings only referencing server names as strings
+
+**Impact**:
+- Tool works for **standalone project-level MCP management**
+- Compatibility with Claude Code's global MCP system **unverified**
+- Full schema refactor may be needed after testing with actual Claude Code
+
+**Next Steps**:
+1. Test with actual Claude Code installation
+2. Verify schema compatibility
+3. Refactor to support global mcp.json if needed (see issue #1547)
+
+This limitation is documented in PR #1550 and will be addressed in a future update.
+
 ## Installation
 
 No installation required. Run directly from the scenarios directory:
