@@ -152,6 +152,56 @@ class Orchestrator:
         error_lower = error_output.lower()
         return any(indicator.lower() in error_lower for indicator in quota_indicators)
 
+    def _apply_vm_tags(self, vm_name: str, tags: dict) -> bool:
+        """Apply tags to Azure VM using Azure CLI.
+
+        Args:
+            vm_name: VM name
+            tags: Dict of tag key-value pairs
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Get resource group from VM name (azlin naming convention)
+            result = subprocess.run(
+                ["az", "vm", "show", "--name", vm_name, "--query", "resourceGroup", "-o", "tsv"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            if result.returncode != 0:
+                print(f"Warning: Could not find resource group for {vm_name}")
+                return False
+
+            resource_group = result.stdout.strip()
+
+            # Build tag arguments
+            tag_args = []
+            for key, value in tags.items():
+                tag_args.extend(["--set", f"tags.{key}={value}"])
+
+            # Apply tags
+            result = subprocess.run(
+                ["az", "vm", "update", "--name", vm_name, "--resource-group", resource_group]
+                + tag_args,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+
+            if result.returncode == 0:
+                print(f"✓ VM tagged: {vm_name}")
+                return True
+            else:
+                print(f"Warning: VM tagging failed (non-fatal): {result.stderr}")
+                return False
+
+        except Exception as e:
+            print(f"Warning: Could not apply tags: {e}")
+            return False
+
     def provision_or_reuse(self, options: VMOptions) -> VM:
         """Get VM for execution (reuse existing or provision new).
 
@@ -286,13 +336,26 @@ class Orchestrator:
                     # VM provisioned successfully
                     print(f"VM provisioned successfully in {region}: {vm_name}")
 
-                    return VM(
+                    vm = VM(
                         name=vm_name,
                         size=options.size,
                         region=region,
                         created_at=datetime.now(),
                         tags={"amplihack_workflow": "true"},
                     )
+
+                    # Apply tags (non-blocking)
+                    try:
+                        tags = {
+                            "amplihack-remote": "true",
+                            "created-by": "amplihack-cli",
+                        }
+                        self._apply_vm_tags(vm.name, tags)
+                    except Exception as e:
+                        # Non-fatal: log but continue
+                        print(f"Note: VM tagging skipped: {e}")
+
+                    return vm
 
                 except subprocess.TimeoutExpired:
                     if attempt < max_retries - 1:
