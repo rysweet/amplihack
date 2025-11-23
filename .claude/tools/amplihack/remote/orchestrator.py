@@ -289,8 +289,8 @@ class Orchestrator:
 
                 except subprocess.CalledProcessError as e:
                     # Check if this is a quota error (no retry, move to next region)
-                    if self._is_quota_error(e.stderr):
-                        error_msg = f"Quota/capacity error: {e.stderr}"
+                    if self._is_quota_error(e.stderr or ""):
+                        error_msg = f"Quota/capacity error: {e.stderr or str(e)}"
                         region_failures[region] = error_msg
                         print(f"  Region {region} quota exceeded, trying next region")
                         break  # Skip remaining retries for this region
@@ -304,7 +304,7 @@ class Orchestrator:
                         continue
 
                     # Exhausted retries for this region
-                    error_msg = f"Failed after {max_retries} attempts: {e.stderr}"
+                    error_msg = f"Failed after {max_retries} attempts: {e.stderr or str(e)}"
                     region_failures[region] = error_msg
                     print(f"  Region {region} exhausted: {error_msg}")
                     break  # Move to next region
