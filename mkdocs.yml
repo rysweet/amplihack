@@ -1,0 +1,53 @@
+site_name: amplihack
+site_url: https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/
+site_description: AI-powered development framework for Claude Code
+repo_url: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
+repo_name: amplihack
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: PREREQUISITES.md
+      - Quick Start: AUTO_MODE.md
+      - Configuration: PROXY_CONFIG_GUIDE.md
+  - Core Concepts:
+      - Philosophy: PHILOSOPHY.md
+      - Workflows: WORKFLOW_COMPLETION.md
+  - Features:
+      - Auto Mode: AUTO_MODE.md
+      - Agent Bundles: agent-bundle-generator-guide.md
+      - Document-Driven Development: document_driven_development/README.md
+  - Development:
+      - Contributing: DEVELOPING_AMPLIHACK.md
+      - Architecture: IMPLEMENTATION_SUMMARY.md
+      - Creating Tools: CREATE_YOUR_OWN_TOOLS.md
+  - Reference:
+      - Benchmarking: BENCHMARKING.md
+      - Discoveries: DISCOVERIES.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+      toc_depth: 3

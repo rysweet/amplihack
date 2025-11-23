@@ -1,3 +1,11 @@
+---
+name: fallback-cascade
+version: 1.0.0
+description: Graceful degradation specialist. Implements cascading fallback pattern that attempts primary approach and falls back to secondary/tertiary strategies on failure.
+role: "Graceful degradation and fallback cascade specialist"
+model: inherit
+---
+
 # Fallback Cascade Agent
 
 ## Purpose

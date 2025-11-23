@@ -1,5 +1,6 @@
 ---
 name: engineer-analyst
+version: 1.0.0
 description: |
   Analyzes technical systems and problems through engineering lens using first principles, systems thinking,
   design methodologies, and optimization frameworks.

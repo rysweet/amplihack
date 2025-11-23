@@ -1,5 +1,6 @@
 ---
 name: computer-scientist-analyst
+version: 1.0.0
 description: |
   Analyzes events through computer science lens using computational complexity, algorithms, data structures,
   systems architecture, information theory, and software engineering principles to evaluate feasibility, scalability, security.

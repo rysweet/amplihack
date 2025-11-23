@@ -1,6 +1,8 @@
 ---
 name: ambiguity
+version: 1.0.0
 description: Requirements clarification specialist. Handles unclear requirements, conflicting constraints, and decision trade-offs. Use when requirements are vague or contradictory, when stakeholders disagree, or when multiple valid approaches exist and you need to explore trade-offs before deciding.
+role: "Requirements clarification and ambiguity resolution specialist"
 model: inherit
 ---
 

@@ -1,6 +1,8 @@
 ---
 name: tester
+version: 1.0.0
 description: Test coverage expert. Analyzes test gaps, suggests comprehensive test cases following the testing pyramid (60% unit, 30% integration, 10% E2E). Use when writing features, fixing bugs, or reviewing tests.
+role: "Test coverage expert and quality specialist"
 model: inherit
 ---
 
