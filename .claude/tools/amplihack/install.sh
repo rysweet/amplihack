@@ -108,6 +108,60 @@ if [ -f "$HOME/.claude/settings.json" ]; then
       echo "  ⚠️  Warning: $MISSING_HOOKS hook files missing"
     fi
 
+    # StatusLine Configuration Management
+    echo "Checking statusLine configuration..."
+
+    # Check if statusLine exists in settings.json
+    if grep -q '"statusLine"' "$HOME/.claude/settings.json"; then
+      echo "  → Found existing statusLine configuration, updating path..."
+
+      # Update all path formats to absolute (matches hook update pattern)
+      sed -i.tmp \
+        -e 's|"\.claude/tools/statusline\.sh"|"'"$HOME"'/.claude/tools/statusline.sh"|g' \
+        -e 's|"\./\.claude/tools/statusline\.sh"|"'"$HOME"'/.claude/tools/statusline.sh"|g' \
+        -e 's|"~/\.claude/tools/statusline\.sh"|"'"$HOME"'/.claude/tools/statusline.sh"|g' \
+        -e 's|"'"$HOME"'/\.claude/tools/statusline\.sh"|"'"$HOME"'/.claude/tools/statusline.sh"|g' \
+        "$HOME/.claude/settings.json"
+
+      if [ $? -eq 0 ]; then
+        rm -f "$HOME/.claude/settings.json.tmp"
+        echo "  ✅ StatusLine path updated to absolute"
+      else
+        echo "  ⚠️  Warning: Failed to update statusLine path"
+        if [ -f "$HOME/.claude/settings.json.tmp" ]; then
+          mv "$HOME/.claude/settings.json.tmp" "$HOME/.claude/settings.json"
+          echo "  → Restored original settings.json"
+        fi
+      fi
+    else
+      echo "  → No statusLine configuration found, adding..."
+
+      # Insert statusLine configuration after the opening brace
+      sed -i.tmp '0,/{/s/{/{\n  "statusLine": {\n    "type": "command",\n    "command": "'"$HOME"'/.claude/tools/statusline.sh"\n  },/' "$HOME/.claude/settings.json"
+
+      if [ $? -eq 0 ] && grep -q '"statusLine"' "$HOME/.claude/settings.json"; then
+        rm -f "$HOME/.claude/settings.json.tmp"
+        echo "  ✅ StatusLine configuration added successfully"
+      else
+        echo "  ⚠️  Warning: Failed to add statusLine configuration"
+        if [ -f "$HOME/.claude/settings.json.tmp" ]; then
+          mv "$HOME/.claude/settings.json.tmp" "$HOME/.claude/settings.json"
+          echo "  → Restored original settings.json"
+        fi
+      fi
+    fi
+
+    # Verify statusline.sh file exists and is executable
+    if [ -f "$HOME/.claude/tools/statusline.sh" ]; then
+      if [ ! -x "$HOME/.claude/tools/statusline.sh" ]; then
+        chmod +x "$HOME/.claude/tools/statusline.sh" 2>/dev/null && \
+          echo "  ✅ Made statusline.sh executable" || \
+          echo "  ⚠️  Warning: Could not make statusline.sh executable"
+      fi
+    else
+      echo "  ⚠️  Warning: statusline.sh not found at $HOME/.claude/tools/statusline.sh"
+    fi
+
   else
     echo "Error: Failed to update hook paths in settings.json"
     # Restore from temp file if sed failed
