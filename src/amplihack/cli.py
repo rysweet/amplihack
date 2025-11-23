@@ -594,16 +594,38 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
-        # Find amplihack package location for .claude files
         import amplihack
 
-        from . import copytree_manifest
+        from . import copytree_manifest, ESSENTIAL_DIRS
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
+        # NEW: Create staging manifest based on profile (if available)
+        manifest = None
+        profile_uri = os.environ.get("AMPLIHACK_PROFILE")
+
+        if profile_uri:
+            try:
+                # Try to load profile for filtering
+                claude_tools_path = os.path.join(amplihack_src, ".claude", "tools", "amplihack")
+                if os.path.exists(claude_tools_path):
+                    sys.path.insert(0, claude_tools_path)
+                    from profile_management.staging import create_staging_manifest
+                    manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
+                    if manifest.profile_name != "all" and not manifest.profile_name.endswith("(fallback)"):
+                        print(f"📦 Using profile: {manifest.profile_name}")
+            except Exception as e:
+                # Fall back to full staging on errors
+                print(f"ℹ️  Profile loading failed ({e}), using full staging")
+
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+        copied = copytree_manifest(
+            amplihack_src,
+            temp_claude_dir,
+            ".claude",
+            manifest=manifest
+        )
 
         # Smart PROJECT.md initialization for UVX mode
         if copied:
