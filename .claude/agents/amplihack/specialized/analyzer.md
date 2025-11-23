@@ -1,6 +1,8 @@
 ---
 name: analyzer
+version: 1.0.0
 description: Code and system analysis specialist. Automatically selects TRIAGE (rapid scanning), DEEP (thorough investigation), or SYNTHESIS (multi-source integration) based on task. Use for understanding existing code, mapping dependencies, analyzing system behavior, or investigating architectural decisions.
+role: "Code and system analysis specialist"
 model: inherit
 ---
 

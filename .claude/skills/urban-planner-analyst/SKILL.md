@@ -1,5 +1,6 @@
 ---
 name: urban-planner-analyst
+version: 1.0.0
 description: |
   Analyzes urban development through planning lens using zoning, land use, comprehensive planning,
   and transit-oriented development frameworks.

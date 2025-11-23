@@ -1,5 +1,6 @@
 ---
 name: lawyer-analyst
+version: 1.0.0
 description: |
   Analyzes events through legal lens using statutory interpretation, case law analysis, legal reasoning,
   constitutional principles, and multiple legal frameworks (common law, civil law, international law).

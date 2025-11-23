@@ -1,5 +1,6 @@
 ---
 name: test-gap-analyzer
+version: 1.0.0
 description: |
   Analyzes code to identify untested functions, low coverage areas, and missing edge cases.
   Use when reviewing test coverage or planning test improvements.

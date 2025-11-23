@@ -1,3 +1,11 @@
+---
+name: prompt-review-workflow
+version: 1.0.0
+description: Integration pattern between PromptWriter and Architect agents for prompt review and refinement.
+role: "Prompt review workflow orchestrator"
+model: inherit
+---
+
 # Prompt Review Workflow
 
 ## Purpose

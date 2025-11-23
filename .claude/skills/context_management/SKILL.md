@@ -1,5 +1,6 @@
 ---
 name: context-management
+version: 1.0.0
 description: |
   Proactive context window management via token monitoring, intelligent extraction, and selective rehydration.
   Use when approaching token limits or needing to preserve essential context.

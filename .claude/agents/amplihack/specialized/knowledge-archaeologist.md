@@ -1,6 +1,8 @@
 ---
 name: knowledge-archaeologist
+version: 1.0.0
 description: Historical codebase researcher. Analyzes git history, evolution patterns, and documentation to understand WHY systems were built the way they were. Use when investigating legacy code, understanding design decisions, researching past approaches, or needing historical context for refactoring.
+role: "Historical codebase researcher and knowledge excavation specialist"
 model: inherit
 ---
 

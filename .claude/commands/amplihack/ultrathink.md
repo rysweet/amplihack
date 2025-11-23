@@ -1,3 +1,19 @@
+---
+name: ultrathink
+version: 1.0.0
+description: Deep analysis mode with multi-agent orchestration
+triggers:
+  - "Complex multi-step task"
+  - "Need deep analysis"
+  - "Orchestrate workflow"
+  - "Break down and solve"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DEFAULT_WORKFLOW.md
+  - type: workflow
+    path: .claude/workflow/INVESTIGATION_WORKFLOW.md
+---
+
 # Ultra-Think Command
 
 ## Input Validation
@@ -31,8 +47,12 @@ When this command is invoked, you MUST:
 3. **Create a comprehensive todo list** using TodoWrite that includes all workflow steps/phases
 4. **Execute each step systematically**, marking todos as in_progress and completed
 5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
-6. **Track decisions** by creating `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
-7. **End with cleanup agent** (development) or knowledge capture (investigation)
+6. **MANDATORY: Enforce Steps 11-12** (Code Review) for all development workflows:
+   - After Step 10, MUST invoke reviewer agent
+   - After Step 11, MUST implement feedback (Step 12)
+   - Do NOT mark workflow complete without Steps 11-12
+7. **Track decisions** by creating `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
+8. **End with cleanup agent** (development) or knowledge capture (investigation)
 
 ## PROMPT-BASED WORKFLOW EXECUTION
 
@@ -59,6 +79,8 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
    - Invoke specified agents via Task tool
    - Log decisions made
    - Mark step as completed
+   - **MANDATORY ENFORCEMENT**: After Step 10 completion, MUST proceed to Steps 11-12 (Code Review)
+   - **Steps 11-12 are NOT optional** - No workflow can be marked complete without code review
 
 3. **Agent Invocation Pattern**:
 
@@ -193,9 +215,47 @@ Some development tasks require investigation first (Step 4 of DEFAULT_WORKFLOW.m
 
 In these cases, pause development workflow at Step 4, run full INVESTIGATION_WORKFLOW.md, then resume development with the knowledge gained.
 
+## Mandatory Code Review (Steps 11-12)
+
+**CRITICAL**: Every development workflow MUST include code review before completion.
+
+**MANDATORY ENFORCEMENT**:
+
+- **After Step 10**: MUST invoke reviewer agent for code review
+- **After Step 11**: MUST implement review feedback (Step 12)
+- **Do NOT mark workflow complete** until Steps 11-12 are done
+- **No PR should be merged without code review**
+
+The reviewer agent (Step 11):
+
+- Reviews code for philosophy compliance (ruthless simplicity)
+- Checks module boundaries and contracts
+- Identifies code smells and anti-patterns
+- Validates test coverage and quality
+- Provides actionable feedback for improvements
+
+Feedback Implementation (Step 12):
+
+- Address ALL review feedback before proceeding
+- Make required changes to meet quality standards
+- Re-run tests after implementing feedback
+- Update documentation if needed
+- Verify philosophy compliance is achieved
+
+**Review Trigger**: Automatically invoke reviewer agent when:
+
+- Step 10 (implementation) is completed
+- Code changes are ready for review
+- Before creating pull request
+- NEVER skip - Steps 11-12 are mandatory workflow steps
+
+**Reminder**: Steps 11-12 are NOT optional. Code quality and philosophy compliance require systematic review.
+
 ## Mandatory Cleanup Phase
 
 **CRITICAL**: Every ultrathink task MUST end with cleanup agent invocation.
+
+**IMPORTANT**: Cleanup happens AFTER mandatory code review (Steps 11-12). Order: Step 10 → Step 11 (Review) → Step 12 (Implement Feedback) → Cleanup.
 
 The cleanup agent:
 
@@ -207,7 +267,8 @@ The cleanup agent:
 
 **Cleanup Trigger**: Automatically invoke cleanup agent when:
 
-- All todo items are completed
+- All todo items are completed (including Steps 11-12)
+- Code review feedback has been implemented
 - Main task objectives are achieved
 - Before reporting task completion to user
 

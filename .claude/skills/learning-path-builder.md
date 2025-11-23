@@ -2,7 +2,7 @@
 name: learning-path-builder
 description: |
   Creates personalized learning paths for technologies, frameworks, or concepts.
-  Use for user-interactive session only for onboarding new technologies, hackathon skill-building, or personal development planning. Not for use in automated development or investigation. 
+  Use for user-interactive session only for onboarding new technologies, hackathon skill-building, or personal development planning. Not for use in automated development or investigation.
   Sequences resources (docs, tutorials, exercises) based on current skill level and learning goals.
   Adapts to learning style: hands-on, theory-first, project-based.
 ---
@@ -28,6 +28,7 @@ This skill creates personalized, structured learning paths that guide users thro
 **Assessment** → **Goal Setting** → **Path Sequencing** → **Resource Curation** → **Progress Tracking** → **Adaptation**
 
 A good learning path:
+
 - Matches current skill level (beginner, intermediate, advanced)
 - Aligns with learning goals and timeline
 - Sequences concepts from simple to complex
@@ -40,6 +41,7 @@ A good learning path:
 Every personalized learning path includes:
 
 ### 1. Skills Assessment
+
 - Current skill level (beginner/intermediate/advanced)
 - Relevant prior knowledge
 - Learning experience preference
@@ -47,6 +49,7 @@ Every personalized learning path includes:
 - Career/project goals
 
 ### 2. Goal Definition
+
 - Primary learning objective
 - Target proficiency level
 - Timeline and milestones
@@ -54,12 +57,14 @@ Every personalized learning path includes:
 - Constraints and dependencies
 
 ### 3. Concept Sequence
+
 - Prerequisite concepts
 - Progressive complexity levels
 - Learning foundations first
 - Builds practical understanding over time
 
 ### 4. Resource Curation
+
 - Official documentation
 - High-quality tutorials
 - Interactive exercises
@@ -67,6 +72,7 @@ Every personalized learning path includes:
 - Community resources
 
 ### 5. Learning Checkpoints
+
 - Milestone assessments
 - Practical exercises
 - Mini-projects
@@ -74,6 +80,7 @@ Every personalized learning path includes:
 - Progress validation
 
 ### 6. Progress Tracking
+
 - Completed modules
 - Assessed skill gains
 - Time investment
@@ -240,12 +247,14 @@ Setup mechanism for tracking:
 ## Assessment
 
 ### Your Profile
+
 - **Current Skill Level**: [Beginner/Intermediate/Advanced]
 - **Learning Style**: [Hands-on/Theory/Project-based/Mix]
 - **Time Available**: [X hours/week]
 - **Prior Experience**: [Relevant technologies]
 
 ### Goals
+
 - **Primary Objective**: [What you'll be able to do]
 - **Target Level**: [Beginner/Intermediate/Advanced proficiency]
 - **Timeline**: [X weeks]
@@ -254,37 +263,44 @@ Setup mechanism for tracking:
 ## Concept Sequence
 
 ### Foundation (Week 1)
+
 **Concepts**: Core terminology, basic architecture, key principles
 
 **Resources**:
+
 1. [Resource Title](link) - X hour read/watch
 2. [Interactive Exercise](link) - X hours hands-on
 3. **Checkpoint**: Take quiz or build minimal example
 
 ### Core Functionality (Week 2-3)
+
 **Concepts**: Main features, common patterns, real-world usage
 
 **Resources**:
+
 1. [Tutorial](link) - X hours
 2. [Project](link) - Build working application
 3. **Checkpoint**: Code review or project demo
 
 ### Advanced Topics (Week 4+)
+
 **Concepts**: Complex scenarios, optimization, production patterns
 
 **Resources**:
+
 1. [Advanced Guide](link) - X hours
 2. [Real Project](link) - Tackle open-source or real problem
 3. **Checkpoint**: Implement advanced feature or optimization
 
 ## Progress Tracking
 
-| Week | Topic | Resource | Status | Time | Notes |
-|------|-------|----------|--------|------|-------|
-| 1 | Foundations | Docs + Tutorial | In Progress | 5h | Good grasp of basics |
-| 2 | Core Feature A | Exercise + Project | Pending | 0h | Not started |
+| Week | Topic          | Resource           | Status      | Time | Notes                |
+| ---- | -------------- | ------------------ | ----------- | ---- | -------------------- |
+| 1    | Foundations    | Docs + Tutorial    | In Progress | 5h   | Good grasp of basics |
+| 2    | Core Feature A | Exercise + Project | Pending     | 0h   | Not started          |
 
 ## Next Steps
+
 - Start Week 1 resources
 - Join community (Discord/Forums)
 - Set up development environment
@@ -503,6 +519,7 @@ Claude:
 ## Assessment Checklist
 
 ### Path Quality Verification
+
 - [ ] Matches stated skill level
 - [ ] Aligns with learning goals
 - [ ] Realistic timeline given available hours
@@ -515,6 +532,7 @@ Claude:
 - [ ] Accounts for learning style preference
 
 ### Resource Quality
+
 - [ ] From authoritative sources
 - [ ] Recently updated (within 6 months)
 - [ ] Accurate and complete
@@ -525,6 +543,7 @@ Claude:
 - [ ] Difficulty level labeled
 
 ### Progress Tracking
+
 - [ ] Clear way to track completion
 - [ ] Checkpoint assessments defined
 - [ ] Adjustment mechanism for struggles
@@ -535,30 +554,35 @@ Claude:
 ## Key Principles
 
 ### 1. Personalization Over Generic
+
 - Paths adapt to individual learning style
 - Respect prior knowledge and background
 - Adjust pace based on feedback
 - Consider time constraints
 
 ### 2. Progressive Complexity
+
 - Foundation before advanced
 - Simple examples before real code
 - Theory before deep dives
 - Repeating concepts in new contexts
 
 ### 3. Multiple Resource Types
+
 - Don't rely on single format
 - Mix reading, video, hands-on, projects
 - Vary authors and perspectives
 - Include community knowledge
 
 ### 4. Measurable Progress
+
 - Clear checkpoints and milestones
 - Self-assessment mechanisms
 - Projects demonstrate learning
 - Tracked time investment
 
 ### 5. Flexibility and Adaptation
+
 - Adjust when struggling
 - Accelerate when ahead
 - Skip prerequisites if known
@@ -578,6 +602,7 @@ Claude:
 ## Success Criteria
 
 A successful learning path:
+
 - [ ] User completes all checkpoints
 - [ ] Skills are applied in real projects
 - [ ] User reports confidence improvement
@@ -595,24 +620,28 @@ A successful learning path:
 ## Advanced Features
 
 ### Learning Style Adaptation
+
 - Adjust resources based on learning preference
 - Mix theory-first for analytical learners
 - Project-first for hands-on learners
 - Visual resources for visual thinkers
 
 ### Prerequisite Chaining
+
 - Identify dependencies between topics
 - Skip if already known
 - Add depth if weak areas identified
 - Create customized starting point
 
 ### Community Integration
+
 - Link to local meetups
 - Suggest Discord communities
 - Open-source projects to contribute to
 - Mentorship opportunities
 
 ### Career Path Integration
+
 - Connect learning to career goals
 - Show progression to next level
 - Identify specialization options

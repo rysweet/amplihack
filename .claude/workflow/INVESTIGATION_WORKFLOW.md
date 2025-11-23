@@ -1,6 +1,41 @@
+---
+name: INVESTIGATION_WORKFLOW
+version: 1.0.0
+description: 6-phase workflow for systematic investigation and knowledge excavation
+steps: 6
+phases:
+  - scope-definition
+  - exploration-strategy
+  - parallel-deep-dives
+  - verification
+  - synthesis
+  - knowledge-capture
+success_criteria:
+  - "All investigation questions answered"
+  - "Understanding verified through testing"
+  - "Knowledge documented in DISCOVERIES.md"
+  - "Findings ready for implementation decisions"
+philosophy_alignment:
+  - principle: Analysis First
+    application: Understand before building
+  - principle: Parallel Execution
+    application: Phase 3 uses parallel agent exploration
+  - principle: Knowledge Capture
+    application: All learnings documented for reuse
+entry_points:
+  - /ultrathink
+references:
+  workflows:
+    - DEFAULT_WORKFLOW.md
+customizable: true
+---
+
 # Investigation Workflow
 
 This file defines the workflow for investigation and research tasks. Unlike DEFAULT_WORKFLOW.md which is optimized for development (implementation → testing → deployment), this workflow is optimized for exploration and understanding.
+
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
 
 ## How This Workflow Works
 
