@@ -1,7 +1,7 @@
 ---
 name: ultrathink-orchestrator
 version: 1.0.0
-description: Auto-invokes ultrathink workflow for any work request (experimental default orchestrator)
+description: Auto-invokes ultrathink workflow for any work request (default orchestrator)
 auto_activate: true
 priority: 5
 triggers:
@@ -13,16 +13,13 @@ triggers:
   - "update"
   - "refactor"
   - "design"
-experimental: true
 ---
 
-# Ultrathink Orchestrator Skill (EXPERIMENTAL)
-
-**⚠️ EXPERIMENTAL FEATURE**: This skill automatically invokes ultrathink workflow for work requests.
+# Ultrathink Orchestrator Skill
 
 ## Purpose
 
-Automatically trigger ultrathink workflow orchestration for development tasks that don't match more specific skills.
+Automatically trigger ultrathink workflow orchestration for development tasks that don't match more specific skills. Invokes workflow skills (default-workflow or investigation-workflow) based on task type.
 
 ## Auto-Activation
 
@@ -33,11 +30,32 @@ Automatically trigger ultrathink workflow orchestration for development tasks th
 
 When activated:
 
-1. **Detect Work Request**: Identify that user is requesting implementation work
-2. **Check Specificity**: Ensure no higher-priority skill matches better
+1. **Detect Task Type**: Identify if task is investigation or development
+   - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
+   - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
+2. **Select Appropriate Workflow**:
+   - Investigation: `investigation-workflow` skill (6 phases)
+   - Development: `default-workflow` skill (15 steps)
+   - Hybrid: Both workflows sequentially
 3. **Estimate Complexity**: Analyze task complexity (simple/moderate/complex)
 4. **Confirm with User**: Ask for confirmation before proceeding
-5. **Invoke Ultrathink**: Execute default-workflow via ultrathink pattern
+5. **Invoke Workflow Skill**: Execute the selected workflow skill
+   - **Fallback**: If skill not found, read markdown workflow file
+
+## Task Type Detection
+
+**Investigation Tasks**:
+- Contain keywords: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
+- Examples: "Investigate authentication", "Explain how routing works", "Understand the database schema"
+
+**Development Tasks**:
+- Contain keywords: implement, build, create, add feature, fix, refactor, deploy
+- Examples: "Implement JWT auth", "Add user registration", "Fix login bug"
+
+**Hybrid Tasks**:
+- Contain both investigation and development keywords
+- Examples: "Investigate auth system, then add OAuth support"
+- Runs investigation workflow first, then development workflow
 
 ## Complexity Estimation
 
@@ -60,11 +78,11 @@ When activated:
 ## Confirmation Pattern
 
 ```
-I detected a [COMPLEXITY] work request: "[USER REQUEST]"
+I detected a [COMPLEXITY] [TASK_TYPE] request: "[USER REQUEST]"
 
 Would you like me to use /ultrathink to orchestrate this work?
+- Workflow: [workflow-name] ([N] steps/phases)
 - Estimated scope: [X] files, [Y] steps
-- Workflow: default-workflow (13 steps)
 - Time estimate: [Z] minutes
 
 [Yes] - Proceed with ultrathink orchestration
@@ -74,19 +92,45 @@ Would you like me to use /ultrathink to orchestrate this work?
 
 ## Implementation
 
-When confirmed, invoke the default-workflow skill:
+When confirmed, invoke the appropriate workflow skill:
 
+### Development Tasks
 ```
 Invoke the `default-workflow` skill to execute this task following
-the 13-step development workflow in DEFAULT_WORKFLOW.md.
+the 15-step development workflow in DEFAULT_WORKFLOW.md.
 ```
+
+### Investigation Tasks
+```
+Invoke the `investigation-workflow` skill to execute this task following
+the 6-phase investigation workflow in INVESTIGATION_WORKFLOW.md.
+```
+
+### Hybrid Tasks
+```
+1. First invoke `investigation-workflow` skill (6 phases)
+2. Then invoke `default-workflow` skill (15 steps), using investigation insights
+```
+
+## Workflow Integration
+
+**Workflow Skills** (preferred):
+- Uses `Skill(skill="default-workflow")` for development
+- Uses `Skill(skill="investigation-workflow")` for investigation
+- Auto-detects task type from keywords
+
+**Fallback** (if skills not available):
+- Reads `.claude/workflow/DEFAULT_WORKFLOW.md`
+- Reads `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+- Provides same functionality via markdown workflows
 
 ## Safeguards
 
 1. **Always confirm**: Never auto-execute without user approval
-2. **Complexity awareness**: Show estimated scope before proceeding
-3. **Escape hatch**: Provide option to work without workflow
-4. **Clarity option**: Allow user to clarify requirements
+2. **Task type awareness**: Automatically select appropriate workflow
+3. **Complexity awareness**: Show estimated scope before proceeding
+4. **Escape hatch**: Provide option to work without workflow
+5. **Clarity option**: Allow user to clarify requirements
 
 ## When NOT to Activate
 
@@ -95,33 +139,59 @@ the 13-step development workflow in DEFAULT_WORKFLOW.md.
 - Higher-priority skill already matched
 - User is asking questions, not requesting work
 
-## Example Activation
+## Example Activations
+
+### Development Task Example
 
 **User**: "Implement JWT authentication for the API"
 
 **This Skill**:
 ```
-I detected a MODERATE work request: "Implement JWT authentication for the API"
+I detected a MODERATE development request: "Implement JWT authentication for the API"
 
 Would you like me to use /ultrathink to orchestrate this work?
+- Workflow: default-workflow (15 steps)
 - Estimated scope: 6-8 files, 8 steps
-- Workflow: default-workflow (13 steps)
 - Time estimate: 45-60 minutes
 
 [Yes] [No] [Custom]
 ```
 
-## Experimental Status
+### Investigation Task Example
 
-**Purpose**: Test viability of ultrathink as default orchestrator
-**Risks**:
-- May activate too aggressively
-- Confirmation prompts may annoy users
-- Complexity estimation may be inaccurate
+**User**: "Investigate how the reflection system works"
 
-**Success Criteria**:
-- 80%+ user acceptance rate
-- Accurate complexity estimates
-- No false positives on non-work requests
+**This Skill**:
+```
+I detected a MODERATE investigation request: "Investigate how the reflection system works"
 
-**Feedback Welcome**: This is an experiment. User feedback determines if it becomes standard.
+Would you like me to use /ultrathink to orchestrate this work?
+- Workflow: investigation-workflow (6 phases)
+- Estimated scope: 10-15 files, deep analysis
+- Time estimate: 30-40 minutes
+
+[Yes] [No] [Custom]
+```
+
+### Hybrid Task Example
+
+**User**: "Investigate auth system, then add OAuth support"
+
+**This Skill**:
+```
+I detected a COMPLEX hybrid request: "Investigate auth system, then add OAuth support"
+
+Would you like me to use /ultrathink to orchestrate this work?
+- Workflow: investigation-workflow (6 phases) → default-workflow (15 steps)
+- Estimated scope: 15+ files, comprehensive work
+- Time estimate: 90-120 minutes
+
+[Yes] [No] [Custom]
+```
+
+## Related
+
+- Default Workflow: `.claude/skills/default-workflow/`
+- Investigation Workflow: `.claude/skills/investigation-workflow/`
+- Ultrathink Command: `.claude/commands/amplihack/ultrathink.md`
+- Workflow Files: `.claude/workflow/DEFAULT_WORKFLOW.md`, `.claude/workflow/INVESTIGATION_WORKFLOW.md`
