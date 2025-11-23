@@ -42,7 +42,7 @@ class Executor:
         """
         self.vm = vm
         self.timeout_seconds = timeout_minutes * 60
-        self.remote_workspace = "/home/amplihack/workspace"
+        self.remote_workspace = "~/amplihack-workspace"  # Use ~/ for azureuser's home
 
     def transfer_context(self, archive_path: Path) -> bool:
         """Transfer context archive to remote VM.
