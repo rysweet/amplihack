@@ -11,6 +11,9 @@ Comprehensive guide to amplihack's profile system for optimizing token usage and
 5. [Environment Variable Integration](#environment-variable-integration)
 6. [Real-World Examples](#real-world-examples)
 7. [Advanced Features](#advanced-features)
+   - Profile Inheritance (future)
+   - Token Usage Estimates
+   - UltraThink Integration
 8. [Technical Architecture](#technical-architecture)
 
 ---
@@ -562,56 +565,39 @@ components:
       - "visualization-architect"  # Add to base coding profile
 ```
 
-### 2. Dynamic Profile Loading
+### 2. Token Usage Estimates
 
-Profiles are loaded dynamically based on context:
-
-```python
-# Profile loader detects task type and suggests optimal profile
-# "Let me analyze this codebase" → suggests research profile
-# "Fix this bug" → suggests coding profile
-```
-
-### 3. Performance Monitoring
-
-Track profile performance:
+View automatic token usage estimates when showing profile details:
 
 ```bash
-/amplihack:profile current --stats
+/amplihack:profile show
+# or
+/amplihack:profile current
 ```
 
 **Output:**
 ```
 Profile: amplihack://profiles/coding
-Token usage: 45,234 (baseline: 98,123) - 54% reduction
-Load time: 1.2s (baseline: 3.4s) - 2.8x faster
-Components loaded: 23 agents, 8 skills, 12 commands
+Description: Development-focused profile for coding tasks
+Version: 1.0
+
+Components:
+  Commands: ultrathink, analyze, fix ... (5 total)
+  Context: PHILOSOPHY.md, PATTERNS.md, TRUST.md, PROJECT.md
+  Agents: architect, builder, reviewer ... (9 total)
+  Skills (categories): coding, testing, development
+
+Estimated token usage: ~45,234 tokens
+Components: 5 commands, 4 context, 9 agents, 2 skills
 ```
 
-### 4. Token Usage Tracking
+Token estimates are calculated automatically based on:
+- Number of agents included/excluded
+- Skills loaded by category
+- Context files selected
+- Command definitions available
 
-Monitor token consumption per profile:
-
-```bash
-# Enable token tracking
-export AMPLIHACK_TRACK_TOKENS=1
-
-# Session logs will include token metrics
-cat .claude/runtime/logs/<session-id>/metrics.json
-```
-
-**Example output:**
-```json
-{
-  "profile": "amplihack://profiles/coding",
-  "tokens_used": 45234,
-  "tokens_saved": 52889,
-  "reduction_percentage": 53.9,
-  "session_duration": "45min"
-}
-```
-
-### 5. UltraThink Integration
+### 3. UltraThink Integration
 
 Profiles automatically optimize UltraThink agent orchestration:
 
