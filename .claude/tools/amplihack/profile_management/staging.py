@@ -109,38 +109,29 @@ def create_staging_manifest(
             else:
                 rel_path = file_path
 
-            # File matching requires three checks to handle directory hierarchies:
-            # 1. samefile: Direct match
-            # 2. file_path in component.parents: File is inside the component directory
-            # 3. component in file_path.parents: Component is inside the file's directory
+            # File matching: Check if file_path matches any filtered component
+            # Use string path comparison since paths may be in different formats
 
-            # Check if file is in filtered components
+            file_path_str = str(file_path)
+
             # Commands
             if "commands" in rel_path.parts:
-                return any(file_path.samefile(cmd_path) or
-                         file_path in cmd_path.parents or
-                         cmd_path in file_path.parents
+                return any(str(cmd_path) in file_path_str or file_path_str in str(cmd_path)
                          for cmd_path in filtered.commands)
 
             # Context
             if "context" in rel_path.parts:
-                return any(file_path.samefile(ctx_path) or
-                         file_path in ctx_path.parents or
-                         ctx_path in file_path.parents
+                return any(str(ctx_path) in file_path_str or file_path_str in str(ctx_path)
                          for ctx_path in filtered.context)
 
             # Agents
             if "agents" in rel_path.parts:
-                return any(file_path.samefile(agent_path) or
-                         file_path in agent_path.parents or
-                         agent_path in file_path.parents
+                return any(str(agent_path) in file_path_str or file_path_str in str(agent_path)
                          for agent_path in filtered.agents)
 
             # Skills
             if "skills" in rel_path.parts:
-                return any(file_path.samefile(skill_path) or
-                         file_path in skill_path.parents or
-                         skill_path in file_path.parents
+                return any(str(skill_path) in file_path_str or file_path_str in str(skill_path)
                          for skill_path in filtered.skills)
 
             # For other files (tools, workflow, etc.), include by default
