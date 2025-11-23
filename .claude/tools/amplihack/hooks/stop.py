@@ -72,6 +72,12 @@ class StopHook(HookProcessor):
             self.log("Lock is active - blocking stop to continue working")
             self.save_metric("lock_blocks", 1)
 
+            # Get session ID for per-session tracking
+            session_id = self._get_current_session_id()
+
+            # Increment lock mode counter
+            lock_count = self._increment_lock_counter(session_id)
+
             # Read custom continuation prompt or use default
             continuation_prompt = self.read_continuation_prompt()
 
@@ -463,6 +469,41 @@ class StopHook(HookProcessor):
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails
             self.log(f"Failed to update power-steering counter: {e}", "DEBUG")
+
+    def _increment_lock_counter(self, session_id: str) -> int:
+        """Increment lock mode invocation counter for session.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            New count value (for logging/metrics)
+        """
+        try:
+            counter_file = (
+                self.project_root / ".claude" / "runtime" / "locks" / session_id / "lock_invocations.txt"
+            )
+            counter_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Read current count (default to 0)
+            current_count = 0
+            if counter_file.exists():
+                try:
+                    current_count = int(counter_file.read_text().strip())
+                except (ValueError, OSError):
+                    current_count = 0
+
+            # Increment and write
+            new_count = current_count + 1
+            counter_file.write_text(str(new_count))
+
+            self.log(f"Lock mode invocation count: {new_count}")
+            return new_count
+
+        except Exception as e:
+            # Fail-safe: Don't break hook if counter write fails
+            self.log(f"Failed to update lock counter: {e}", "DEBUG")
+            return 0
 
     def _should_run_power_steering(self) -> bool:
         """Check if power-steering should run based on config and environment.
