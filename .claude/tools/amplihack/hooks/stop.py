@@ -118,6 +118,9 @@ class StopHook(HookProcessor):
                         transcript_path, session_id, progress_callback=progress_tracker.emit
                     )
 
+                    # Increment counter for statusline display
+                    self._increment_power_steering_counter()
+
                     if ps_result.decision == "block":
                         self.log("Power-steering blocking stop - work incomplete")
                         self.save_metric("power_steering_blocks", 1)
@@ -433,6 +436,33 @@ class StopHook(HookProcessor):
         except (PermissionError, OSError, UnicodeDecodeError) as e:
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
+
+    def _increment_power_steering_counter(self) -> None:
+        """Increment power-steering invocation counter for statusline display.
+
+        Writes counter to .claude/runtime/power-steering/session_count for statusline to read.
+        """
+        try:
+            counter_file = (
+                self.project_root / ".claude" / "runtime" / "power-steering" / "session_count"
+            )
+            counter_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Read current count (default to 0)
+            current_count = 0
+            if counter_file.exists():
+                try:
+                    current_count = int(counter_file.read_text().strip())
+                except (ValueError, OSError):
+                    current_count = 0
+
+            # Increment and write
+            new_count = current_count + 1
+            counter_file.write_text(str(new_count))
+
+        except Exception as e:
+            # Fail-safe: Don't break hook if counter write fails
+            self.log(f"Failed to update power-steering counter: {e}", "DEBUG")
 
     def _should_run_power_steering(self) -> bool:
         """Check if power-steering should run based on config and environment.
