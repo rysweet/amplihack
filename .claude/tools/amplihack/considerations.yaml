@@ -85,6 +85,15 @@
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
 
+- id: feature_docs_discoverable
+  category: Session Completion & Progress
+  question: Is feature documentation discoverable from multiple paths?
+  description: Verifies new features have docs discoverable from README and docs/ directory
+  severity: warning
+  checker: _check_feature_docs_discoverable
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
 - id: presentation_needed
   category: Session Completion & Progress
   question: Does work need presentation deck?

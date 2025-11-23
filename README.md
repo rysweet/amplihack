@@ -166,6 +166,38 @@ python main.py
 
 **Learn more:** [Goal Agent Generator Guide](docs/GOAL_AGENT_GENERATOR_GUIDE.md)
 
+### Profile Management
+
+**Optimize token usage and customize your environment with profiles:**
+
+```bash
+# List available profiles
+/amplihack:profile list
+
+# Switch to coding profile (saves ~50% tokens)
+/amplihack:profile switch amplihack://profiles/coding
+
+# Show current profile
+/amplihack:profile current
+
+# Set default profile via environment variable
+export AMPLIHACK_PROFILE=amplihack://profiles/coding
+amplihack launch
+
+# Create custom profile
+/amplihack:profile validate file:///path/to/custom.yaml
+```
+
+**Features:**
+
+- 40-60% token reduction with focused profiles
+- Built-in profiles: `all`, `coding`, `research`
+- Custom profile support via YAML
+- Environment variable integration
+- Team-shareable profile configurations
+
+**Learn more:** [Profile Management Guide](docs/PROFILE_MANAGEMENT.md)
+
 ---
 
 ## Quick Reference - Commands
@@ -328,6 +360,8 @@ customization instructions.
     formulas and financial modeling
 - [Benchmarking with eval-recipes](docs/BENCHMARKING.md) - Performance
   measurement and comparison
+- [Profile Management](docs/PROFILE_MANAGEMENT.md) - Token optimization and
+  environment customization
 
 ### Patterns
 
