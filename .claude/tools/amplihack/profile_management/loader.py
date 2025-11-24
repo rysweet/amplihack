@@ -3,15 +3,11 @@
 This module provides ProfileLoader for loading profiles from:
 - file:// URIs (local filesystem)
 - amplihack:// URIs (built-in profiles)
-- git+https:// URIs (remote GitHub repositories)
 """
 
-import os
-import subprocess
-import tempfile
+import urllib.parse
 from pathlib import Path
 from typing import Optional
-import urllib.parse
 
 
 class ProfileLoader:
@@ -20,13 +16,11 @@ class ProfileLoader:
     Supports:
     - file:// - Load from local filesystem
     - amplihack:// - Load from built-in profiles directory
-    - git+https:// - Load from GitHub repository
 
     Example:
         >>> loader = ProfileLoader()
         >>> yaml_content = loader.load("amplihack://profiles/coding")
         >>> yaml_content = loader.load("file:///home/user/my-profile.yaml")
-        >>> yaml_content = loader.load("git+https://github.com/user/repo/blob/main/profile.yaml")
     """
 
     def __init__(self, builtin_profiles_dir: Optional[Path] = None):
@@ -45,10 +39,10 @@ class ProfileLoader:
             self.builtin_dir = builtin_profiles_dir
 
     def load(self, uri: str) -> str:
-        """Load profile YAML from URI.
+        """Load profile YAML from URI or simple name.
 
         Args:
-            uri: Profile URI (file://, amplihack://)
+            uri: Profile URI (file://, amplihack://) or simple built-in name
 
         Returns:
             Raw YAML content as string
@@ -58,6 +52,11 @@ class ProfileLoader:
             FileNotFoundError: Local file or built-in profile not found
             PermissionError: Insufficient permissions to read file
         """
+        # Detect if this is a URI (contains "://") or simple name
+        if "://" not in uri:
+            # Simple name - treat as built-in profile
+            return self._load_builtin(uri)
+
         # Parse the URI
         try:
             parsed = urllib.parse.urlparse(uri)
@@ -67,20 +66,16 @@ class ProfileLoader:
         # Route to appropriate loader based on scheme
         if parsed.scheme == "file":
             return self._load_file(parsed.path)
-        elif parsed.scheme == "amplihack":
+        if parsed.scheme == "amplihack":
             # For amplihack://, the profile name might be in netloc or path
             # amplihack://all -> netloc="all", path=""
             # amplihack://profiles/all -> netloc="profiles", path="/all"
             # amplihack:///all -> netloc="", path="/all"
             profile_identifier = parsed.netloc + parsed.path
             return self._load_builtin(profile_identifier)
-        elif uri.startswith("git+https://") or uri.startswith("git+http://"):
-            return self._load_git(uri)
-        else:
-            raise ValueError(
-                f"Unsupported URI scheme: {parsed.scheme}. "
-                f"Supported schemes: file, amplihack, git+https"
-            )
+        raise ValueError(
+            f"Unsupported URI scheme: {parsed.scheme}. Supported schemes: file, amplihack"
+        )
 
     def _load_file(self, path: str) -> str:
         """Load from local file:// URI.
@@ -117,8 +112,7 @@ class ProfileLoader:
 
         if not file_path.exists():
             raise FileNotFoundError(
-                f"Profile not found: {file_path}. "
-                f"Ensure the file exists and the path is correct."
+                f"Profile not found: {file_path}. Ensure the file exists and the path is correct."
             )
 
         if not file_path.is_file():
@@ -127,9 +121,7 @@ class ProfileLoader:
         try:
             return file_path.read_text(encoding="utf-8")
         except PermissionError:
-            raise PermissionError(
-                f"Insufficient permissions to read file: {file_path}"
-            )
+            raise PermissionError(f"Insufficient permissions to read file: {file_path}")
 
     def _load_builtin(self, path: str) -> str:
         """Load from built-in amplihack:// URI.
@@ -169,8 +161,7 @@ class ProfileLoader:
             available = self._list_builtin_profiles()
             available_str = ", ".join(available) if available else "none"
             raise FileNotFoundError(
-                f"Built-in profile not found: {profile_name}. "
-                f"Available profiles: {available_str}"
+                f"Built-in profile not found: {profile_name}. Available profiles: {available_str}"
             )
 
         try:
@@ -194,107 +185,6 @@ class ProfileLoader:
             profiles.append(file_path.stem)
 
         return sorted(profiles)
-
-    def _load_git(self, uri: str) -> str:
-        """Load profile from git repository.
-
-        Supports URLs like:
-        - git+https://github.com/user/repo/blob/main/profiles/custom.yaml
-        - git+https://github.com/user/repo/blob/branch-name/path/to/profile.yaml
-
-        Args:
-            uri: git+https:// URI pointing to profile file
-
-        Returns:
-            File content as string
-
-        Raises:
-            ValueError: Malformed git URL
-            subprocess.CalledProcessError: Git operation failed
-            FileNotFoundError: File not found in repository
-        """
-        # Parse git+https://github.com/user/repo/blob/ref/path/to/file.yaml
-        # Remove git+ prefix
-        if uri.startswith("git+"):
-            https_url = uri[4:]  # Remove "git+"
-        else:
-            https_url = uri
-
-        # Parse GitHub URL format: https://github.com/user/repo/blob/ref/path/to/file
-        parts = https_url.split("/blob/", 1)
-        if len(parts) != 2:
-            raise ValueError(
-                f"Invalid git URL format. Expected: git+https://github.com/user/repo/blob/ref/path/to/file.yaml, got: {uri}"
-            )
-
-        repo_url = parts[0]  # https://github.com/user/repo
-        ref_and_path = parts[1]  # ref/path/to/file.yaml
-
-        # For GitHub blob URLs, the path after /blob/ is: branch/.claude/profiles/file.yaml
-        # We need to extract everything before .claude as the ref
-        if "/.claude/" in ref_and_path:
-            # Split on /.claude/ to separate ref from file path
-            ref_parts = ref_and_path.split("/.claude/", 1)
-            ref = ref_parts[0]  # Could be "main" or "feat/issue-1234"
-            file_path = ".claude/" + ref_parts[1]  # .claude/profiles/coding.yaml
-        else:
-            # Fallback: assume first component is ref, rest is path
-            ref_path_parts = ref_and_path.split("/", 1)
-            if len(ref_path_parts) != 2:
-                raise ValueError(f"Invalid git URL: missing file path after ref. Got: {uri}")
-            ref = ref_path_parts[0]
-            file_path = ref_path_parts[1]
-
-        # Use cache directory for cloned repos
-        cache_dir = Path.home() / ".amplihack" / "cache" / "repos"
-        cache_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create unique directory name from repo URL
-        repo_name = repo_url.split("/")[-1]  # Last part of URL
-        repo_cache = cache_dir / repo_name
-
-        # Clone or update repository
-        if not repo_cache.exists():
-            # Clone repository
-            subprocess.run(
-                ["git", "clone", "--depth", "1", "--branch", ref, repo_url, str(repo_cache)],
-                check=True,
-                capture_output=True,
-                text=True
-            )
-        else:
-            # Update existing clone
-            try:
-                subprocess.run(
-                    ["git", "-C", str(repo_cache), "fetch", "origin", ref],
-                    check=True,
-                    capture_output=True,
-                    text=True
-                )
-                subprocess.run(
-                    ["git", "-C", str(repo_cache), "checkout", ref],
-                    check=True,
-                    capture_output=True,
-                    text=True
-                )
-            except subprocess.CalledProcessError:
-                # If update fails, re-clone
-                import shutil
-                shutil.rmtree(repo_cache)
-                subprocess.run(
-                    ["git", "clone", "--depth", "1", "--branch", ref, repo_url, str(repo_cache)],
-                    check=True,
-                    capture_output=True,
-                    text=True
-                )
-
-        # Read the profile file from cloned repo
-        profile_file = repo_cache / file_path
-        if not profile_file.exists():
-            raise FileNotFoundError(f"Profile file not found in repository: {file_path}")
-
-        with open(profile_file, encoding="utf-8") as f:
-            return f.read()
 
     def validate_uri(self, uri: str) -> bool:
         """Check if URI is valid and accessible.
