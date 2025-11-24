@@ -1,8 +1,7 @@
 """Tests for profile configuration management."""
 
-import os
-import tempfile
 from pathlib import Path
+
 import pytest
 
 from ..config import ConfigManager
@@ -140,6 +139,7 @@ class TestConfigManager:
         # Verify file exists and content is correct
         assert config_path.exists()
         import yaml
+
         with open(config_path) as f:
             saved = yaml.safe_load(f)
         assert saved == {"test_key": "test_value"}

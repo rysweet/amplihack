@@ -4,10 +4,10 @@ Builds and maintains an index of skills for fast filtering. Basic version
 for Phase 2, with scale optimization planned for Phase 6.
 """
 
-from pathlib import Path
-from typing import Dict, Optional
 import json
 from datetime import datetime
+from pathlib import Path
+from typing import Dict
 
 
 class SkillIndexBuilder:
@@ -51,7 +51,7 @@ class SkillIndexBuilder:
         index_data = {
             "version": "1.0",
             "generated": datetime.utcnow().isoformat() + "Z",
-            "skills": []
+            "skills": [],
         }
 
         # Scan skills directory
@@ -78,7 +78,7 @@ class SkillIndexBuilder:
                         "name": skill_name,
                         "category": category,
                         "path": str(skill_file.relative_to(self.skills_dir.parent)),
-                        "description": self._extract_description(skill_file)
+                        "description": self._extract_description(skill_file),
                     }
                     index_data["skills"].append(skill_info)
 
@@ -115,7 +115,7 @@ class SkillIndexBuilder:
                 "version": "1.0",
                 "generated": datetime.utcnow().isoformat() + "Z",
                 "skills": [],
-                "total_skills": 0
+                "total_skills": 0,
             }
 
     def _save_index(self, index_data: Dict):

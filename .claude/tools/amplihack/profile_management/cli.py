@@ -7,16 +7,16 @@ amplihack profiles.
 import sys
 from pathlib import Path
 from typing import Optional
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
 
-from .loader import ProfileLoader
-from .parser import ProfileParser
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
 from .config import ConfigManager
 from .discovery import ComponentDiscovery
 from .filter import ComponentFilter, estimate_token_count
-
+from .loader import ProfileLoader
+from .parser import ProfileParser
 
 console = Console()
 
@@ -67,17 +67,9 @@ class ProfileCLI:
                 yaml_content = self.loader.load(uri)
                 profile = self.parser.parse(yaml_content)
 
-                table.add_row(
-                    profile.name,
-                    profile.description,
-                    uri
-                )
+                table.add_row(profile.name, profile.description, uri)
             except Exception as e:
-                table.add_row(
-                    profile_file.stem,
-                    f"[red]Error: {e}[/red]",
-                    uri
-                )
+                table.add_row(profile_file.stem, f"[red]Error: {e}[/red]", uri)
 
         console.print(table)
 
@@ -144,7 +136,9 @@ class ProfileCLI:
                     info += f" ... ({len(skill_spec.include)} total)"
                 info += "\n"
 
-            console.print(Panel(info.strip(), title=f"Profile: {profile.name}", border_style="cyan"))
+            console.print(
+                Panel(info.strip(), title=f"Profile: {profile.name}", border_style="cyan")
+            )
 
             # Show token estimate if possible
             try:
@@ -153,7 +147,9 @@ class ProfileCLI:
                 tokens = estimate_token_count(filtered)
 
                 console.print(f"\n[dim]Estimated token usage: ~{tokens:,} tokens[/dim]")
-                console.print(f"[dim]Components: {len(filtered.commands)} commands, {len(filtered.context)} context, {len(filtered.agents)} agents, {len(filtered.skills)} skills[/dim]")
+                console.print(
+                    f"[dim]Components: {len(filtered.commands)} commands, {len(filtered.context)} context, {len(filtered.agents)} agents, {len(filtered.skills)} skills[/dim]"
+                )
             except Exception:
                 pass
 
@@ -207,7 +203,10 @@ class ProfileCLI:
             console.print(f"[dim]URI: {uri}[/dim]")
 
             # Show warnings if any
-            if not profile.components.commands.include_all and not profile.components.commands.include:
+            if (
+                not profile.components.commands.include_all
+                and not profile.components.commands.include
+            ):
                 console.print("[yellow]⚠[/yellow] Warning: No commands specified")
 
             if not profile.components.agents.include_all and not profile.components.agents.include:

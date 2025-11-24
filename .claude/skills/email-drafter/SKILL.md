@@ -23,12 +23,14 @@ Generate professional, well-structured emails from bullet points or conversation
 ## How to Use This Skill
 
 Provide Claude with:
+
 1. **Content**: Bullet points, notes, or conversation summary
 2. **Tone**: One of (formal, casual, technical)
 3. **Context**: One of (status_update, request, announcement, follow_up, response, recap)
 4. **Optional**: Recipient name/title, any specific requirements
 
 Claude will transform the input into a polished, professional email with:
+
 - Appropriate greeting and sign-off
 - Clear structure and flow
 - Consistent tone throughout
@@ -38,6 +40,7 @@ Claude will transform the input into a polished, professional email with:
 ## Supported Tones
 
 ### Formal
+
 - Professional business language
 - Complete sentences and formal grammar
 - Respectful and courteous
@@ -45,6 +48,7 @@ Claude will transform the input into a polished, professional email with:
 - Example phrases: "I would like to...", "Thank you for your consideration...", "Please find attached..."
 
 ### Casual
+
 - Friendly and approachable tone
 - Conversational language
 - Professional but relaxed
@@ -52,6 +56,7 @@ Claude will transform the input into a polished, professional email with:
 - Example phrases: "Just wanted to let you know...", "Feel free to reach out...", "Let's connect..."
 
 ### Technical
+
 - Precise and detailed
 - Uses domain-specific terminology
 - Direct and clear
@@ -61,9 +66,11 @@ Claude will transform the input into a polished, professional email with:
 ## Supported Contexts
 
 ### Status Update
+
 **Purpose**: Inform recipients about current progress, completed work, and next steps
 
 **Structure**:
+
 1. Opening: What period/project this covers
 2. Completed items: What was accomplished
 3. In-progress items: Current work
@@ -74,9 +81,11 @@ Claude will transform the input into a polished, professional email with:
 **Best for**: Weekly updates, sprint reviews, project progress reports
 
 ### Request
+
 **Purpose**: Ask for action, approval, resources, or input from recipients
 
 **Structure**:
+
 1. Context: Why this request is important
 2. What's being asked: Clear, specific request
 3. Why it matters: Benefits or urgency
@@ -87,9 +96,11 @@ Claude will transform the input into a polished, professional email with:
 **Best for**: Budget requests, time off, resources, approvals, feedback
 
 ### Announcement
+
 **Purpose**: Communicate news, changes, or information to a team or stakeholder group
 
 **Structure**:
+
 1. Hook: Lead with the announcement
 2. Context: Why this change/news matters
 3. Details: Specific information
@@ -100,9 +111,11 @@ Claude will transform the input into a polished, professional email with:
 **Best for**: Product launches, policy changes, team updates, organizational changes
 
 ### Follow-up
+
 **Purpose**: Continue a conversation, remind about commitments, or move items forward
 
 **Structure**:
+
 1. Reference: What previous conversation/commitment this relates to
 2. Update: What's happened since
 3. Call to action: What's needed next
@@ -112,9 +125,11 @@ Claude will transform the input into a polished, professional email with:
 **Best for**: After meetings, checking on decisions, ensuring progress
 
 ### Response
+
 **Purpose**: Reply to an inquiry, offer, or question
 
 **Structure**:
+
 1. Appreciation: Thank them for reaching out
 2. Answer: Direct response to their question/request
 3. Details: Additional relevant information
@@ -124,9 +139,11 @@ Claude will transform the input into a polished, professional email with:
 **Best for**: Replying to inquiries, addressing questions, responding to proposals
 
 ### Recap
+
 **Purpose**: Summarize a meeting, conversation, or decision for the record
 
 **Structure**:
+
 1. Opening: What was discussed
 2. Key decisions: What was decided
 3. Action items: Who's doing what by when
@@ -140,6 +157,7 @@ Claude will transform the input into a polished, professional email with:
 ### Example 1: Status Update (Formal Tone)
 
 **Input**:
+
 - Tone: formal
 - Context: status_update
 - Bullet points:
@@ -151,6 +169,7 @@ Claude will transform the input into a polished, professional email with:
   - Team meeting scheduled for Thursday
 
 **Output**:
+
 ```
 Dear Team,
 
@@ -174,6 +193,7 @@ Best regards,
 ### Example 2: Request (Casual Tone)
 
 **Input**:
+
 - Tone: casual
 - Context: request
 - Recipient: Engineering Manager
@@ -185,6 +205,7 @@ Best regards,
   - Will share updates with team while there
 
 **Output**:
+
 ```
 Hi [Manager Name],
 
@@ -206,6 +227,7 @@ Thanks,
 ### Example 3: Announcement (Formal Tone)
 
 **Input**:
+
 - Tone: formal
 - Context: announcement
 - Bullet points:
@@ -217,6 +239,7 @@ Thanks,
   - Questions? Contact DevOps team
 
 **Output**:
+
 ```
 Subject: New Deployment Pipeline Now Available
 
@@ -242,6 +265,7 @@ Platform Operations Team
 ### Example 4: Follow-up (Casual Tone)
 
 **Input**:
+
 - Tone: casual
 - Context: follow_up
 - Bullet points:
@@ -253,6 +277,7 @@ Platform Operations Team
   - Next review in two weeks
 
 **Output**:
+
 ```
 Hi everyone,
 
@@ -275,6 +300,7 @@ Thanks for the great collaboration!
 ### Example 5: Response (Technical Tone)
 
 **Input**:
+
 - Tone: technical
 - Context: response
 - Bullet points:
@@ -286,6 +312,7 @@ Thanks for the great collaboration!
   - Code examples available in repository
 
 **Output**:
+
 ```
 Thank you for your inquiry regarding our caching architecture.
 
@@ -318,6 +345,7 @@ Best regards,
 ### Example 6: Recap (Formal Tone)
 
 **Input**:
+
 - Tone: formal
 - Context: recap
 - Meeting: Q4 Planning Session
@@ -331,6 +359,7 @@ Best regards,
   - Action items: vendor proposals due Nov 20, architecture plan due Nov 25
 
 **Output**:
+
 ```
 Subject: Q4 Planning Session - Summary and Action Items
 
@@ -360,18 +389,22 @@ Best regards,
 ## Key Features
 
 ### Tone Consistency
+
 Each email maintains consistent tone throughout, avoiding jarring switches in formality or language level.
 
 ### Contextual Structure
+
 Each context type follows an appropriate structure that guides readers through the information logically.
 
 ### Professional Formatting
+
 - Clear paragraph breaks
 - Appropriate use of lists and bullet points
 - Proper salutations and closings
 - Subject lines when appropriate
 
 ### Grammar and Clarity
+
 - Correct punctuation and spelling
 - Clear, concise language
 - Active voice preferred

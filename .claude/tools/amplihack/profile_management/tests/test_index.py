@@ -1,9 +1,11 @@
 """Tests for skill index building."""
 
-import pytest
-from pathlib import Path
 import json
 from datetime import datetime
+from pathlib import Path
+
+import pytest
+
 from ..index import SkillIndexBuilder
 
 
@@ -99,6 +101,7 @@ def test_build_index_force_rebuild(index_builder):
 
     # Wait a bit to ensure different timestamp
     import time
+
     time.sleep(0.1)
 
     # Force rebuild
@@ -157,10 +160,10 @@ def test_save_index(tmp_path):
             {
                 "name": "test-skill",
                 "category": "test",
-                "path": ".claude/skills/test/test-skill/skill.md"
+                "path": ".claude/skills/test/test-skill/skill.md",
             }
         ],
-        "total_skills": 1
+        "total_skills": 1,
     }
 
     builder._save_index(index_data)

@@ -169,37 +169,37 @@ python main.py
 
 ## Quick Reference - Commands
 
-| Command                        | Description                                        |
-| ------------------------------ | -------------------------------------------------- |
-| `amplihack new`                | **NEW!** Generate goal-seeking agents from prompts |
+| Command                        | Description                                             |
+| ------------------------------ | ------------------------------------------------------- |
+| `amplihack new`                | **NEW!** Generate goal-seeking agents from prompts      |
 | `/amplihack:ultrathink`        | Deep multi-agent analysis (now DEFAULT for all prompts) |
-| `/amplihack:analyze`           | Code analysis and philosophy compliance review     |
-| `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute) |
-| `/amplihack:cascade`           | Fallback cascade for resilient operations          |
-| `/amplihack:debate`            | Multi-agent debate for complex decisions           |
-| `/amplihack:expert-panel`      | Multi-expert review with voting                    |
-| `/amplihack:n-version`         | N-version programming for critical code            |
-| `/amplihack:socratic`          | Generate Socratic questions to challenge claims    |
-| `/amplihack:reflect`           | Session reflection and improvement analysis        |
-| `/amplihack:improve`           | Capture learnings and implement improvements       |
-| `/amplihack:fix`               | Fix common errors and code issues                  |
-| `/amplihack:modular-build`     | Build self-contained modules with clear contracts  |
-| `/amplihack:knowledge-builder` | Build comprehensive knowledge base                 |
-| `/amplihack:transcripts`       | Conversation transcript management                 |
-| `/amplihack:xpia`              | Security analysis and threat detection             |
-| `/amplihack:customize`         | Manage user-specific preferences                   |
-| `/amplihack:ddd:0-help`        | Document-Driven Development help and guidance      |
-| `/amplihack:ddd:1-plan`        | Phase 0: Planning & Alignment                      |
-| `/amplihack:ddd:2-docs`        | Phase 1: Documentation Retcon                      |
-| `/amplihack:ddd:3-code-plan`   | Phase 3: Implementation Planning                   |
-| `/amplihack:ddd:4-code`        | Phase 4: Code Implementation                       |
-| `/amplihack:ddd:5-finish`      | Phase 5: Testing & Phase 6: Cleanup                |
-| `/amplihack:ddd:prime`         | Prime context with DDD overview                    |
-| `/amplihack:ddd:status`        | Check current DDD phase and progress               |
-| `/amplihack:lock`              | Enable continuous work mode                        |
-| `/amplihack:unlock`            | Disable continuous work mode                       |
-| `/amplihack:install`           | Install amplihack tools                            |
-| `/amplihack:uninstall`         | Uninstall amplihack tools                          |
+| `/amplihack:analyze`           | Code analysis and philosophy compliance review          |
+| `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute)      |
+| `/amplihack:cascade`           | Fallback cascade for resilient operations               |
+| `/amplihack:debate`            | Multi-agent debate for complex decisions                |
+| `/amplihack:expert-panel`      | Multi-expert review with voting                         |
+| `/amplihack:n-version`         | N-version programming for critical code                 |
+| `/amplihack:socratic`          | Generate Socratic questions to challenge claims         |
+| `/amplihack:reflect`           | Session reflection and improvement analysis             |
+| `/amplihack:improve`           | Capture learnings and implement improvements            |
+| `/amplihack:fix`               | Fix common errors and code issues                       |
+| `/amplihack:modular-build`     | Build self-contained modules with clear contracts       |
+| `/amplihack:knowledge-builder` | Build comprehensive knowledge base                      |
+| `/amplihack:transcripts`       | Conversation transcript management                      |
+| `/amplihack:xpia`              | Security analysis and threat detection                  |
+| `/amplihack:customize`         | Manage user-specific preferences                        |
+| `/amplihack:ddd:0-help`        | Document-Driven Development help and guidance           |
+| `/amplihack:ddd:1-plan`        | Phase 0: Planning & Alignment                           |
+| `/amplihack:ddd:2-docs`        | Phase 1: Documentation Retcon                           |
+| `/amplihack:ddd:3-code-plan`   | Phase 3: Implementation Planning                        |
+| `/amplihack:ddd:4-code`        | Phase 4: Code Implementation                            |
+| `/amplihack:ddd:5-finish`      | Phase 5: Testing & Phase 6: Cleanup                     |
+| `/amplihack:ddd:prime`         | Prime context with DDD overview                         |
+| `/amplihack:ddd:status`        | Check current DDD phase and progress                    |
+| `/amplihack:lock`              | Enable continuous work mode                             |
+| `/amplihack:unlock`            | Disable continuous work mode                            |
+| `/amplihack:install`           | Install amplihack tools                                 |
+| `/amplihack:uninstall`         | Uninstall amplihack tools                               |
 
 ## Agents Reference
 
@@ -216,30 +216,30 @@ python main.py
 
 ### Specialized Agents (23)
 
-| Agent                       | Purpose                                       |
-| --------------------------- | --------------------------------------------- |
-| **ambiguity**               | Clarify ambiguous requirements                |
-| **amplifier-cli-architect** | CLI tool design and architecture              |
-| **analyzer**                | Deep code analysis                            |
-| **azure-kubernetes-expert** | Azure Kubernetes Service expertise            |
-| **ci-diagnostic-workflow**  | CI/CD pipeline diagnostics                    |
-| **cleanup**                 | Remove artifacts and enforce philosophy       |
-| **database**                | Database design and optimization              |
-| **fallback-cascade**        | Resilient fallback strategies                 |
-| **fix-agent**               | Automated error fixing                        |
-| **integration**             | System integration patterns                   |
-| **knowledge-archaeologist** | Extract and preserve knowledge                |
-| **memory-manager**          | Context and state management                  |
-| **multi-agent-debate**      | Facilitate multi-perspective debates          |
-| **n-version-validator**     | Validate N-version implementations            |
-| **patterns**                | Design pattern recommendations                |
-| **pre-commit-diagnostic**   | Pre-commit hook diagnostics                   |
-| **preference-reviewer**     | User preference validation                    |
-| **prompt-writer**           | Effective prompt engineering                  |
-| **rust-programming-expert** | Rust language expertise                       |
-| **security**                | Security analysis and vulnerability detection |
-| **visualization-architect** | Data visualization design                     |
-| **xpia-defense**            | Advanced threat detection                     |
+| Agent                       | Purpose                                         |
+| --------------------------- | ----------------------------------------------- |
+| **ambiguity**               | Clarify ambiguous requirements                  |
+| **amplifier-cli-architect** | CLI tool design and architecture                |
+| **analyzer**                | Deep code analysis                              |
+| **azure-kubernetes-expert** | Azure Kubernetes Service expertise              |
+| **ci-diagnostic-workflow**  | CI/CD pipeline diagnostics                      |
+| **cleanup**                 | Remove artifacts and enforce philosophy         |
+| **database**                | Database design and optimization                |
+| **fallback-cascade**        | Resilient fallback strategies                   |
+| **fix-agent**               | Automated error fixing                          |
+| **integration**             | System integration patterns                     |
+| **knowledge-archaeologist** | Extract and preserve knowledge                  |
+| **memory-manager**          | Context and state management                    |
+| **multi-agent-debate**      | Facilitate multi-perspective debates            |
+| **n-version-validator**     | Validate N-version implementations              |
+| **patterns**                | Design pattern recommendations                  |
+| **pre-commit-diagnostic**   | Pre-commit hook diagnostics                     |
+| **preference-reviewer**     | User preference validation                      |
+| **prompt-writer**           | Effective prompt engineering                    |
+| **rust-programming-expert** | Rust language expertise                         |
+| **security**                | Security analysis and vulnerability detection   |
+| **visualization-architect** | Data visualization design                       |
+| **xpia-defense**            | Advanced threat detection                       |
 | **philosophy-guardian**     | Philosophy compliance and simplicity validation |
 
 ## Core Concepts

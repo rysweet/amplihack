@@ -1,13 +1,10 @@
 """Tests for CLI functionality."""
 
-import sys
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import pytest
-from io import StringIO
 
 from ..cli import ProfileCLI, main
-from ..models import ProfileConfig
 
 
 class TestProfileCLI:
@@ -16,12 +13,11 @@ class TestProfileCLI:
     @pytest.fixture
     def cli(self, tmp_path):
         """Create ProfileCLI instance with mocked components."""
-        with patch('profile_management.cli.ProfileLoader') as mock_loader, \
-             patch('profile_management.cli.ProfileParser') as mock_parser, \
-             patch('profile_management.cli.ConfigManager') as mock_config, \
-             patch('profile_management.cli.ComponentDiscovery') as mock_discovery, \
-             patch('profile_management.cli.ComponentFilter') as mock_filter:
-
+        with patch("profile_management.cli.ProfileLoader") as mock_loader, patch(
+            "profile_management.cli.ProfileParser"
+        ) as mock_parser, patch("profile_management.cli.ConfigManager") as mock_config, patch(
+            "profile_management.cli.ComponentDiscovery"
+        ) as mock_discovery, patch("profile_management.cli.ComponentFilter") as mock_filter:
             cli = ProfileCLI()
             cli.loader = mock_loader.return_value
             cli.parser = mock_parser.return_value
@@ -49,15 +45,15 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch('profile_management.cli.Path') as mock_path:
+        with patch("profile_management.cli.Path") as mock_path:
             mock_path.return_value.exists.return_value = True
             mock_path.return_value.glob.return_value = [
                 profiles_dir / "test1.yaml",
-                profiles_dir / "test2.yaml"
+                profiles_dir / "test2.yaml",
             ]
 
             # Capture console output
-            with patch('profile_management.cli.console') as mock_console:
+            with patch("profile_management.cli.console") as mock_console:
                 cli.list_profiles()
 
                 # Verify console.print was called
@@ -65,10 +61,10 @@ class TestProfileCLI:
 
     def test_list_profiles_no_profiles(self, cli):
         """Test list_profiles when no profiles directory exists."""
-        with patch('profile_management.cli.Path') as mock_path:
+        with patch("profile_management.cli.Path") as mock_path:
             mock_path.return_value.exists.return_value = False
 
-            with patch('profile_management.cli.console') as mock_console:
+            with patch("profile_management.cli.console") as mock_console:
                 cli.list_profiles()
 
                 # Verify warning message was shown
@@ -91,7 +87,7 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             cli.show_profile("amplihack://profiles/test")
 
             # Verify console output
@@ -113,7 +109,7 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             cli.show_profile()
 
             # Verify it loaded from config
@@ -123,7 +119,7 @@ class TestProfileCLI:
         """Test that show_profile handles loading errors gracefully."""
         cli.loader.load = Mock(side_effect=Exception("Profile not found"))
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             with pytest.raises(SystemExit):
                 cli.show_profile("amplihack://profiles/invalid")
 
@@ -139,7 +135,7 @@ class TestProfileCLI:
         cli.parser.parse = Mock(return_value=mock_profile)
         cli.config.set_current_profile = Mock()
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             cli.switch_profile("amplihack://profiles/coding")
 
             # Verify profile was saved
@@ -152,7 +148,7 @@ class TestProfileCLI:
         """Test that switch validates profile before saving."""
         cli.loader.load = Mock(side_effect=Exception("Invalid profile"))
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             with pytest.raises(SystemExit):
                 cli.switch_profile("amplihack://profiles/invalid")
 
@@ -176,7 +172,7 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             cli.current_profile()
 
             # Verify it loaded current profile
@@ -199,12 +195,14 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             cli.current_profile()
 
             # Verify environment warning was shown
-            assert any("environment variable" in str(call).lower()
-                      for call in mock_console.print.call_args_list)
+            assert any(
+                "environment variable" in str(call).lower()
+                for call in mock_console.print.call_args_list
+            )
 
     def test_validate_profile_success(self, cli):
         """Test successful profile validation."""
@@ -216,7 +214,7 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             cli.validate_profile("amplihack://profiles/test")
 
             # Verify success message
@@ -234,18 +232,17 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             cli.validate_profile("amplihack://profiles/test")
 
             # Verify warnings were shown
-            assert any("Warning" in str(call)
-                      for call in mock_console.print.call_args_list)
+            assert any("Warning" in str(call) for call in mock_console.print.call_args_list)
 
     def test_validate_profile_fails_on_error(self, cli):
         """Test that validate exits on profile error."""
         cli.loader.load = Mock(side_effect=Exception("Invalid YAML"))
 
-        with patch('profile_management.cli.console') as mock_console:
+        with patch("profile_management.cli.console") as mock_console:
             with pytest.raises(SystemExit):
                 cli.validate_profile("amplihack://profiles/invalid")
 
@@ -255,8 +252,8 @@ class TestMainCLI:
 
     def test_main_no_args(self):
         """Test main with no arguments shows usage."""
-        with patch('sys.argv', ['profile']):
-            with patch('profile_management.cli.console') as mock_console:
+        with patch("sys.argv", ["profile"]):
+            with patch("profile_management.cli.console") as mock_console:
                 with pytest.raises(SystemExit):
                     main()
 
@@ -265,8 +262,8 @@ class TestMainCLI:
 
     def test_main_list_command(self):
         """Test main with list command."""
-        with patch('sys.argv', ['profile', 'list']):
-            with patch('profile_management.cli.ProfileCLI') as mock_cli:
+        with patch("sys.argv", ["profile", "list"]):
+            with patch("profile_management.cli.ProfileCLI") as mock_cli:
                 main()
 
                 # Verify list_profiles was called
@@ -274,17 +271,19 @@ class TestMainCLI:
 
     def test_main_show_command(self):
         """Test main with show command."""
-        with patch('sys.argv', ['profile', 'show', 'amplihack://profiles/test']):
-            with patch('profile_management.cli.ProfileCLI') as mock_cli:
+        with patch("sys.argv", ["profile", "show", "amplihack://profiles/test"]):
+            with patch("profile_management.cli.ProfileCLI") as mock_cli:
                 main()
 
                 # Verify show_profile was called with URI
-                mock_cli.return_value.show_profile.assert_called_once_with('amplihack://profiles/test')
+                mock_cli.return_value.show_profile.assert_called_once_with(
+                    "amplihack://profiles/test"
+                )
 
     def test_main_show_command_no_uri(self):
         """Test main with show command but no URI."""
-        with patch('sys.argv', ['profile', 'show']):
-            with patch('profile_management.cli.ProfileCLI') as mock_cli:
+        with patch("sys.argv", ["profile", "show"]):
+            with patch("profile_management.cli.ProfileCLI") as mock_cli:
                 main()
 
                 # Verify show_profile was called without URI
@@ -292,8 +291,8 @@ class TestMainCLI:
 
     def test_main_current_command(self):
         """Test main with current command."""
-        with patch('sys.argv', ['profile', 'current']):
-            with patch('profile_management.cli.ProfileCLI') as mock_cli:
+        with patch("sys.argv", ["profile", "current"]):
+            with patch("profile_management.cli.ProfileCLI") as mock_cli:
                 main()
 
                 # Verify current_profile was called
@@ -301,17 +300,19 @@ class TestMainCLI:
 
     def test_main_switch_command(self):
         """Test main with switch command."""
-        with patch('sys.argv', ['profile', 'switch', 'amplihack://profiles/coding']):
-            with patch('profile_management.cli.ProfileCLI') as mock_cli:
+        with patch("sys.argv", ["profile", "switch", "amplihack://profiles/coding"]):
+            with patch("profile_management.cli.ProfileCLI") as mock_cli:
                 main()
 
                 # Verify switch_profile was called
-                mock_cli.return_value.switch_profile.assert_called_once_with('amplihack://profiles/coding')
+                mock_cli.return_value.switch_profile.assert_called_once_with(
+                    "amplihack://profiles/coding"
+                )
 
     def test_main_switch_command_no_uri(self):
         """Test main with switch command but no URI."""
-        with patch('sys.argv', ['profile', 'switch']):
-            with patch('profile_management.cli.console') as mock_console:
+        with patch("sys.argv", ["profile", "switch"]):
+            with patch("profile_management.cli.console") as mock_console:
                 with pytest.raises(SystemExit):
                     main()
 
@@ -320,17 +321,19 @@ class TestMainCLI:
 
     def test_main_validate_command(self):
         """Test main with validate command."""
-        with patch('sys.argv', ['profile', 'validate', 'amplihack://profiles/test']):
-            with patch('profile_management.cli.ProfileCLI') as mock_cli:
+        with patch("sys.argv", ["profile", "validate", "amplihack://profiles/test"]):
+            with patch("profile_management.cli.ProfileCLI") as mock_cli:
                 main()
 
                 # Verify validate_profile was called
-                mock_cli.return_value.validate_profile.assert_called_once_with('amplihack://profiles/test')
+                mock_cli.return_value.validate_profile.assert_called_once_with(
+                    "amplihack://profiles/test"
+                )
 
     def test_main_validate_command_no_uri(self):
         """Test main with validate command but no URI."""
-        with patch('sys.argv', ['profile', 'validate']):
-            with patch('profile_management.cli.console') as mock_console:
+        with patch("sys.argv", ["profile", "validate"]):
+            with patch("profile_management.cli.console") as mock_console:
                 with pytest.raises(SystemExit):
                     main()
 
@@ -339,8 +342,8 @@ class TestMainCLI:
 
     def test_main_unknown_command(self):
         """Test main with unknown command."""
-        with patch('sys.argv', ['profile', 'unknown']):
-            with patch('profile_management.cli.console') as mock_console:
+        with patch("sys.argv", ["profile", "unknown"]):
+            with patch("profile_management.cli.console") as mock_console:
                 with pytest.raises(SystemExit):
                     main()
 

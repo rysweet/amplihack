@@ -136,7 +136,10 @@ class StopHook(HookProcessor):
                 # Surface error to user via stderr for visibility
                 print("\n⚠️  Power-Steering Warning", file=sys.stderr)
                 print(f"Power-steering encountered an error and was skipped: {e}", file=sys.stderr)
-                print("Check .claude/runtime/power-steering/power_steering.log for details", file=sys.stderr)
+                print(
+                    "Check .claude/runtime/power-steering/power_steering.log for details",
+                    file=sys.stderr,
+                )
 
         # Check if reflection should run
         if not self._should_run_reflection():
@@ -247,14 +250,14 @@ class StopHook(HookProcessor):
                 ["docker", "ps", "--filter", "name=neo4j", "--format", "{{.Names}}"],
                 capture_output=True,
                 text=True,
-                timeout=2.0
+                timeout=2.0,
             )
 
             if result.returncode != 0:
                 return False
 
-            containers = result.stdout.strip().split('\n')
-            neo4j_running = any('neo4j' in name.lower() for name in containers if name)
+            containers = result.stdout.strip().split("\n")
+            neo4j_running = any("neo4j" in name.lower() for name in containers if name)
 
             if neo4j_running:
                 self.log("Neo4j container detected - proceeding with cleanup", "DEBUG")

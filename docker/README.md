@@ -28,6 +28,7 @@ USER claude
 ```
 
 Now:
+
 - Container runs as `claude` user (uid != 0)
 - `--dangerously-skip-permissions` works fine
 - No amplihack code changes needed
@@ -79,10 +80,12 @@ For eval-recipes benchmarking, use the agent configs in `.claude/agents/eval-rec
 ## Troubleshooting
 
 **Error: "--dangerously-skip-permissions cannot be used with root"**
+
 - Check Dockerfile has `USER claude` directive
 - Verify you're not using `--user root` when running container
 
 **Permission denied in workspace**
+
 - Ensure volume mount has correct permissions
 - Container runs as `claude` user (uid 1000 by default)
 

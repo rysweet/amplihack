@@ -4,9 +4,10 @@ This module provides ProfileConfig for managing profile configuration persistenc
 including current profile selection and environment variable support.
 """
 
+import os
 from pathlib import Path
 from typing import Optional
-import os
+
 import yaml
 
 

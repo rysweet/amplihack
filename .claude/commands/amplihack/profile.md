@@ -9,6 +9,7 @@ Manage amplihack profiles (collections of commands, context, agents, and skills)
 ## Commands
 
 ### list
+
 List all available built-in profiles.
 
 ```bash
@@ -16,6 +17,7 @@ List all available built-in profiles.
 ```
 
 ### show [uri]
+
 Show details of a specific profile (or current profile if URI not provided).
 
 ```bash
@@ -25,6 +27,7 @@ Show details of a specific profile (or current profile if URI not provided).
 ```
 
 ### current
+
 Show currently active profile.
 
 ```bash
@@ -32,6 +35,7 @@ Show currently active profile.
 ```
 
 ### switch <uri>
+
 Switch to a different profile.
 
 ```bash
@@ -41,6 +45,7 @@ Switch to a different profile.
 ```
 
 ### validate <uri>
+
 Validate a profile configuration.
 
 ```bash

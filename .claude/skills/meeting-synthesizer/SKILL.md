@@ -51,6 +51,7 @@ The Meeting Synthesizer processes meeting notes or transcripts to produce:
 ### Example Prompts
 
 #### Comprehensive Synthesis
+
 ```
 Synthesize this meeting:
 [paste meeting notes/transcript]
@@ -60,6 +61,7 @@ Organize by priority and due date.
 ```
 
 #### Focused on Action Items
+
 ```
 Extract action items from this meeting:
 [paste meeting notes]
@@ -73,6 +75,7 @@ For each action item, provide:
 ```
 
 #### Decision Extraction
+
 ```
 What decisions were made in this meeting?
 [paste meeting notes]
@@ -86,6 +89,7 @@ For each decision, provide:
 ```
 
 #### Priority Ordering
+
 ```
 Synthesize this meeting with priority ordering:
 [paste meeting notes]
@@ -100,12 +104,14 @@ Flag any decisions that need follow-up or clarification.
 ### 1. Parse Meeting Content
 
 **Input Recognition:**
+
 - Detect format: structured notes, transcript, bullet points, freeform text
 - Identify participants: who attended, who spoke, roles
 - Extract timestamps: when discussed (if available)
 - Recognize context: meeting type, agenda, goals
 
 **Normalization:**
+
 - Clean up formatting inconsistencies
 - Expand abbreviations where possible
 - Clarify ambiguous references
@@ -114,12 +120,14 @@ Flag any decisions that need follow-up or clarification.
 ### 2. Extract Action Items
 
 **Identification:**
+
 - Look for explicit assignments: "Alice will...", "We need to..."
 - Identify implicit tasks: decisions requiring implementation
 - Find time-bound items: "by Friday", "next sprint", "ASAP"
 - Recognize dependencies: "after X is done"
 
 **Structuring:**
+
 ```
 Action Item:
   Description: [Clear, specific task]
@@ -133,12 +141,14 @@ Action Item:
 ### 3. Identify Decisions
 
 **Detection:**
+
 - Explicit decisions: "We decided to...", "We will..."
 - Consensus moments: "Everyone agreed...", "Consensus is..."
 - Choices made: "We chose X over Y"
 - Direction changes: "We're shifting from X to Y"
 
 **Documentation:**
+
 ```
 Decision:
   What: [The decision]
@@ -152,12 +162,14 @@ Decision:
 ### 4. Capture Discussion Points
 
 **Extraction:**
+
 - Main topics discussed
 - Debates or different viewpoints
 - Open questions or uncertainties
 - Agreed-upon principles or approaches
 
 **Organization:**
+
 ```
 Discussion Point:
   Topic: [What was discussed]
@@ -169,12 +181,14 @@ Discussion Point:
 ### 5. Generate Follow-up Tasks
 
 **Identification:**
+
 - Clarification needed: "We should confirm with X"
 - Information gathering: "Research options for Y"
 - Scheduling: "Schedule sync with Z"
 - Communication: "Update stakeholders on decision"
 
 **Prioritization:**
+
 - Critical: Blocks other work, high impact
 - High: Important, needed soon
 - Medium: Should be done, no immediate urgency
@@ -188,18 +202,22 @@ Discussion Point:
 # Meeting Synthesis: [Meeting Title/Date]
 
 ## Participants
+
 - Alice (Product Lead)
 - Bob (Engineering)
 - Carol (Design)
 
 ## Decisions Made
+
 ### Decision 1
+
 - **What**: Adopt Vue 3 for new frontend
 - **Why**: Better TypeScript support, smaller bundle size
 - **Decided**: By consensus
 - **Impact**: Requires training for team members using Vue 2
 
 ### Decision 2
+
 - **What**: Delay launch by 2 weeks
 - **Why**: Need more time for security review
 - **Decided**: Product + Security alignment
@@ -208,21 +226,26 @@ Discussion Point:
 ## Action Items
 
 ### High Priority
+
 - [ ] Complete security audit (Bob, Due: Friday)
 - [ ] Prepare Vue 3 migration plan (Carol, Due: Monday)
 
 ### Medium Priority
+
 - [ ] Schedule team Vue 3 training (Alice, Due: Next week)
 
 ### Low Priority
+
 - [ ] Document decision rationale (Bob, Due: End of sprint)
 
 ## Key Discussion Points
+
 - Concerns about timeline slippage
 - Team enthusiasm for Vue 3 adoption
 - Need for better documentation
 
 ## Follow-up Required
+
 - Confirm security audit scope with CTO
 - Get client approval for 2-week delay
 - Check team training capacity
@@ -256,10 +279,7 @@ Discussion Point:
       "context": "Required before launch"
     }
   ],
-  "followUp": [
-    "Confirm security audit scope",
-    "Get client approval"
-  ]
+  "followUp": ["Confirm security audit scope", "Get client approval"]
 }
 ```
 
@@ -268,6 +288,7 @@ Discussion Point:
 ### Example 1: Product Planning Meeting
 
 **Input Meeting Notes:**
+
 ```
 Meeting: Product Planning - Q1 2025
 Attendees: Sarah (PM), Mike (Lead Dev), Lisa (Designer)
@@ -295,10 +316,12 @@ Issues:
 ```
 
 **Output:**
+
 ```markdown
 # Q1 2025 Product Planning Synthesis
 
 ## Decisions
+
 1. **Implement dark mode as primary Q1 feature**
    - Why: High user demand from feedback analysis
    - Impact: Becomes focus of design/feature work
@@ -314,20 +337,24 @@ Issues:
 ## Action Items
 
 ### Critical Path
+
 - [ ] Performance improvement plan (Mike, Due: Friday)
   - Context: Blocking roadmap
   - Unblocks: Dark mode feature work
 
 ### High Priority
+
 - [ ] Team briefing on user feedback (Sarah, Due: Tomorrow)
 - [ ] Dark mode design exploration (Lisa, Due: Next week)
 
 ### Follow-up Required
+
 - [ ] Executive team meeting on Q1 roadmap
 - [ ] Communication plan for mobile app delay
 - [ ] Capacity planning for parallel work streams
 
 ## Key Concerns
+
 - Tight team capacity with performance + dark mode
 - Mobile app delay needs stakeholder management
 - Performance work timeline might slip
@@ -336,6 +363,7 @@ Issues:
 ### Example 2: Engineering Standup
 
 **Input Transcript:**
+
 ```
 Sarah: OK team, quick standup. Mike, how's the API work?
 
@@ -369,10 +397,12 @@ Sarah: Good. Let's reconvene Thursday to check in.
 ```
 
 **Output:**
+
 ```markdown
 # Engineering Standup - 2024-11-08
 
 ## Current Status
+
 - **Mike**: API auth endpoints complete, rate limiting working
   - On track: EOW completion
   - Blocker: Waiting on DB schema review
@@ -386,6 +416,7 @@ Sarah: Good. Let's reconvene Thursday to check in.
 ## Action Items
 
 ### High Priority
+
 - [ ] DB schema review (Carol, Due: Today afternoon)
   - Unblocks: Mike's user service implementation
 
@@ -393,37 +424,44 @@ Sarah: Good. Let's reconvene Thursday to check in.
   - Context: Modal component issue
 
 ### Medium Priority
+
 - [ ] Coordinate load testing setup (Carol + DevOps, Due: This week)
   - Context: Required before shipping
 
 ## Decisions
+
 - Load testing is required before deployment
 - Don't over-engineer mobile edge cases yet
 
 ## Next Check-in
+
 - Thursday team standup for progress review
 ```
 
 ## Processing Tips
 
 ### Handle Ambiguity
+
 - If owner unclear: Note "TBD" and flag for clarification
 - If timeline unclear: Use phrases like "asap", "this week", "unclear timeline"
 - If decision unclear: List as "discussion item" vs "decision"
 
 ### Identify Hidden Items
+
 - "We should..." often means someone needs to do it
 - "Someone will need to..." is an implicit action item
 - "We need to verify..." is a follow-up task
 - "Can you..." is an action item for the person being asked
 
 ### Prioritize Effectively
+
 - Critical: Blocks other work
 - High: Time-sensitive or important
 - Medium: Should be done soon
 - Low: Nice to have
 
 ### Red Flags
+
 - Vague ownership ("we'll figure it out")
 - No timeline mentioned
 - Conflicting decisions
@@ -433,18 +471,21 @@ Sarah: Good. Let's reconvene Thursday to check in.
 ## Best Practices
 
 ### Input Quality
+
 - More detail is better (full transcript > vague summary)
 - Include speaker names if available
 - Preserve disagreements and concerns
 - Note time-sensitive items
 
 ### Output Quality
+
 - Be specific: "review code" not clear, "review API endpoint authentication code" is clear
 - Include context: Why matters, not just what to do
 - Flag dependencies: What must happen first
 - Highlight urgency: Critical path items
 
 ### Follow-Through
+
 - Share results with team members assigned
 - Create tickets/calendar items for action items
 - Schedule follow-up for open items
@@ -453,6 +494,7 @@ Sarah: Good. Let's reconvene Thursday to check in.
 ## Common Patterns
 
 ### Pattern 1: Decision with Cascading Action Items
+
 ```
 Decision: Use PostgreSQL instead of MongoDB
   ↓
@@ -464,6 +506,7 @@ Action Items:
 ```
 
 ### Pattern 2: Blocking Dependencies
+
 ```
 Task A: Complete security audit (BLOCKING)
   ↓
@@ -473,6 +516,7 @@ Task C: Start Q2 roadmap planning (BLOCKED)
 ```
 
 ### Pattern 3: Decision Reversal or Clarification Needed
+
 ```
 Stated: "We'll use Vue"
 But earlier: "React is better"
@@ -495,16 +539,19 @@ After synthesizing a meeting, verify:
 ## Integration Points
 
 ### With Task Management
+
 - Export action items to Jira, GitHub Issues, Asana
 - Create calendar items for deadlines
 - Set up reminders for owners
 
 ### With Communication
+
 - Share synthesis with team
 - Send to stakeholders who couldn't attend
 - Create meeting summary email
 
 ### With Roadmap Planning
+
 - Decisions impact roadmap/timeline
 - Action items affect capacity planning
 - Follow-up tasks might become next meeting agenda
