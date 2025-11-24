@@ -354,7 +354,7 @@ class TestSafeJsonUpdate:
             data = {"test": "value"}
 
             with patch("builtins.open", mock_open()) as mock_file:
-                with patch("os.replace") as mock_replace:
+                with patch("os.replace"):
                     result = migrator.safe_json_update(target_file, data)
 
                     assert result is True
@@ -411,7 +411,7 @@ class TestSafeJsonUpdate:
 
             with patch("builtins.open", mock_open()):
                 with patch("os.replace", side_effect=OSError("Replace failed")):
-                    with patch("pathlib.Path.unlink") as mock_unlink:
+                    with patch("pathlib.Path.unlink"):
                         result = migrator.safe_json_update(target_file, data)
 
                         assert result is False
@@ -623,7 +623,7 @@ class TestProjectRootDetection:
             side_effect=ValueError("Could not find project root with .claude marker"),
         ):
             with pytest.raises(ValueError, match="Could not find project root"):
-                migrator = SettingsMigrator()
+                SettingsMigrator()
 
 
 # ============================================================================
