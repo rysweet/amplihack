@@ -885,8 +885,9 @@ class ClaudeLauncher:
         Registers handlers for SIGINT (Ctrl-C) and SIGTERM that allow
         process to exit gracefully.
 
-        Note: Stop hooks are executed by Claude Code itself via settings.json.
-        We no longer call execute_stop_hook() here to prevent duplicate execution.
+        Note: Stop hooks are executed by Claude Code itself via settings.json
+        hooks configuration. We no longer call execute_stop_hook() here to
+        prevent duplicate execution (see issue #1571).
         """
 
         def signal_handler(signum: int, frame) -> None:
@@ -906,21 +907,3 @@ class ClaudeLauncher:
         signal.signal(signal.SIGTERM, signal_handler)
 
         logger.debug("Signal handlers registered for graceful shutdown")
-
-    def _cleanup_on_exit(self) -> None:
-        """Fallback cleanup handler for atexit.
-
-        Note: Stop hooks are executed by Claude Code itself via settings.json.
-        This method is kept for potential future cleanup but no longer calls
-        execute_stop_hook() to prevent duplicate execution.
-        """
-        try:
-            # Set flag to prevent stdin reads during shutdown (avoids hang + traceback)
-            os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
-
-            # Stop hooks are handled by Claude Code via settings.json
-            # Removed execute_stop_hook() call to prevent duplicate execution
-
-        except Exception:
-            # Fail silently in atexit - cleanup is best-effort
-            pass
