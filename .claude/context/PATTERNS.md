@@ -2,9 +2,31 @@
 
 This document captures proven patterns and solutions for clean design and robust development. It serves as a quick reference for recurring challenges.
 
+## Pattern Curation Philosophy
+
+This document maintains **14 foundational patterns** that apply across most amplihack development.
+
+**Patterns are kept when they:**
+1. Solve recurring problems (used 3+ times in real PRs)
+2. Apply broadly across multiple agent types and scenarios
+3. Represent non-obvious solutions with working code
+4. Prevent costly errors or enable critical capabilities
+
+**Patterns are removed when they:**
+- Become project-specific (better suited for PROJECT.md or DISCOVERIES.md)
+- Are one-time solutions (preserved in git history)
+- Are obvious applications of existing patterns
+- Haven't been referenced in 6+ months
+
+**Trust in Emergence**: Removed patterns can re-emerge when needed. See git history for context: `git log -p .claude/context/PATTERNS.md`
+
+**This refactoring (2024-11):** Reduced from 24 to 14 patterns (74% reduction) based on usage analysis and philosophy compliance. Removed patterns include: CI Failure Rapid Diagnosis, Incremental Processing, Configuration Single Source of Truth, Parallel Task Execution (covered in CLAUDE.md), Multi-Layer Security Sanitization, Reflection-Driven Self-Improvement, Unified Validation Flow, Modular User Visibility, and others that were either too specific or better documented elsewhere.
+
 ## Core Architecture Patterns
 
 ### Pattern: Bricks & Studs Module Design with Clear Public API
+
+> **Philosophy Reference**: See @.claude/context/PHILOSOPHY.md "The Brick Philosophy for AI Development" for the philosophical foundation of this pattern.
 
 **Challenge**: Modules become tightly coupled, making them hard to regenerate or replace.
 
@@ -46,6 +68,8 @@ module_name/
 - Tests verify the contract, not implementation details
 
 ### Pattern: Zero-BS Implementation
+
+> **Philosophy Reference**: See @.claude/context/PHILOSOPHY.md "Zero-BS Implementations" section for the core principle behind this pattern.
 
 **Challenge**: Avoiding stub code and placeholders that serve no purpose.
 
