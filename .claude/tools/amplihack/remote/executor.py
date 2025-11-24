@@ -153,8 +153,10 @@ tar xzf context.tar.gz
 mkdir -p {self.remote_workspace}
 cd {self.remote_workspace}
 
-# Restore git repository
-git clone ~/repo.bundle .
+# Restore git repository (use init + fetch instead of clone for non-empty dir)
+git init
+git fetch ~/repo.bundle master:master || git fetch ~/repo.bundle main:main
+git checkout master 2>/dev/null || git checkout main
 cp -r ~/.claude .
 
 # Install amplihack if needed
