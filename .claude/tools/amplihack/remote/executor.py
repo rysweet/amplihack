@@ -162,8 +162,10 @@ git init
 git config user.email "remote@amplihack.dev"
 git config user.name "Remote Amplihack"
 
-# Run amplihack via uvx from git (package not in PyPI yet)
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack {command} --max-turns {max_turns} -- -p '{escaped_prompt}'
+# Run claude directly (faster than uvx --from git which takes 60+ min)
+# The .claude directory is already extracted with all agents/commands
+export CLAUDE_PROJECT_DIR=~/
+claude --max-turns {max_turns} -- -p '/amplihack:{command} {escaped_prompt}'
 """
 
         # Get VM IP if not set
