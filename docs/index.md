@@ -87,8 +87,8 @@ Built on the "Bricks & Studs" principle:
 
 ### Features
 
-- [Power-Steering Mode](/features/power-steering/README.md) - Session completion verification
-- [Customization Guide](/features/power-steering/customization-guide.md) - Configure power-steering
+- [Power-Steering Mode](features/power-steering/) - Session completion verification
+- [Customization Guide](features/power-steering/customization-guide.md) - Configure power-steering
 
 ## Philosophy
 
