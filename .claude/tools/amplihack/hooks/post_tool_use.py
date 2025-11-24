@@ -3,7 +3,7 @@
 Claude Code hook for post tool use events.
 Uses unified HookProcessor for common functionality.
 
-Includes automatic context management via context-management skill.
+Uses extensible tool registry system for multiple tool hooks.
 """
 
 # Import the base processor
@@ -14,14 +14,13 @@ from typing import Any, Dict, Optional
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
 
-# Import context automation (will silently fail if not available)
+# Import tool registry for extensible hook system
 try:
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / ".claude" / "skills"))
-    from context_management.automation import run_automation
+    from tool_registry import aggregate_hook_results, get_global_registry
 
-    CONTEXT_AUTOMATION_AVAILABLE = True
+    TOOL_REGISTRY_AVAILABLE = True
 except ImportError:
-    CONTEXT_AUTOMATION_AVAILABLE = False
+    TOOL_REGISTRY_AVAILABLE = False
 
 
 class PostToolUseHook(HookProcessor):
@@ -29,6 +28,27 @@ class PostToolUseHook(HookProcessor):
 
     def __init__(self):
         super().__init__("post_tool_use")
+        self._setup_tool_hooks()
+
+    def _setup_tool_hooks(self):
+        """Setup all tool hooks (context management, etc.)."""
+        if not TOOL_REGISTRY_AVAILABLE:
+            self.log("Tool registry not available - hooks disabled", "DEBUG")
+            return
+
+        # Import and register context management hook
+        try:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from context_automation_hook import register_context_hook
+
+            register_context_hook()  # Registers with global registry
+            self.log("Context management hook registered", "DEBUG")
+        except ImportError as e:
+            self.log(f"Context management hook not available: {e}", "DEBUG")
+
+        # Future: Add more tool hooks here
+        # from other_tool_hook import register_other_hook
+        # register_other_hook()
 
     def save_tool_metric(self, tool_name: str, duration_ms: Optional[int] = None):
         """Save tool usage metric with structured data.
@@ -90,49 +110,39 @@ class PostToolUseHook(HookProcessor):
         elif tool_name in ["Grep", "Glob"]:
             self.save_metric("search_operations", 1)
 
-        # Run context automation if available
-        if CONTEXT_AUTOMATION_AVAILABLE:
+        # Execute registered tool hooks via registry
+        if TOOL_REGISTRY_AVAILABLE:
             try:
-                # Get conversation from transcript_path (this IS available!)
-                transcript_path = input_data.get("transcript_path")
+                registry = get_global_registry()
+                hook_results = registry.execute_hooks(input_data)
 
-                if transcript_path and Path(transcript_path).exists():
-                    # Read conversation transcript
-                    import json
+                # Aggregate results from all hooks
+                aggregated = aggregate_hook_results(hook_results)
 
-                    with open(transcript_path) as f:
-                        conversation_data = json.load(f)
+                # Add warnings and metadata to output
+                if aggregated["warnings"] or aggregated["metadata"]:
+                    if "metadata" not in output:
+                        output["metadata"] = {}
 
-                    # Calculate ACTUAL token count from transcript
-                    # (same method as statusline.sh)
-                    total_tokens = 0
-                    for msg in conversation_data:
-                        if isinstance(msg, dict) and "usage" in msg:
-                            usage = msg["usage"]
-                            total_tokens += usage.get("input_tokens", 0)
-                            total_tokens += usage.get("output_tokens", 0)
-                            total_tokens += usage.get("cache_read_input_tokens", 0)
-                            total_tokens += usage.get("cache_creation_input_tokens", 0)
+                    # Add aggregated metadata
+                    for key, value in aggregated["metadata"].items():
+                        output["metadata"][key] = value
 
-                    # Run automation with real token data
-                    automation_result = run_automation(total_tokens, conversation_data)
+                    # Add warnings list if present
+                    if aggregated["warnings"]:
+                        output["metadata"]["warnings"] = aggregated["warnings"]
 
-                    # Add warnings to output if any
-                    if automation_result.get("warnings"):
-                        if "metadata" not in output:
-                            output["metadata"] = {}
-                        output["metadata"]["context_automation"] = {
-                            "warnings": automation_result["warnings"],
-                            "actions": automation_result["actions_taken"],
-                        }
+                # Log actions taken by hooks
+                for action in aggregated["actions_taken"]:
+                    self.log(f"Tool Hook Action: {action}", "INFO")
 
-                        # Log automation actions
-                        for warning in automation_result["warnings"]:
-                            self.log(f"Context Automation: {warning}", "INFO")
+                # Log warnings
+                for warning in aggregated["warnings"]:
+                    self.log(f"Tool Hook Warning: {warning}", "INFO")
 
             except Exception as e:
                 # Silently fail - don't interrupt user workflow
-                self.log(f"Context automation error: {e}", "DEBUG")
+                self.log(f"Tool registry error: {e}", "DEBUG")
 
         return output
 
