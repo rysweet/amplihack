@@ -162,10 +162,10 @@ git init
 git config user.email "remote@amplihack.dev"
 git config user.name "Remote Amplihack"
 
-# Run claude directly (faster than uvx --from git which takes 60+ min)
+# Run claude-code with the prompt directly
 # The .claude directory is already extracted with all agents/commands
 export CLAUDE_PROJECT_DIR=~/
-claude --max-turns {max_turns} -- -p '/amplihack:{command} {escaped_prompt}'
+claude -- -p '{escaped_prompt}'
 """
 
         # Get VM IP if not set
