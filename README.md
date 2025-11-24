@@ -434,6 +434,8 @@ progress, costs, context usage, and active features.
   - [PDF Skill](.claude/skills/pdf/README.md) - Comprehensive PDF manipulation
   - [XLSX Skill](.claude/skills/xlsx/README.md) - Spreadsheet creation with
     formulas and financial modeling
+- [Azure DevOps CLI Skill](.claude/skills/azure-devops-cli/README.md) - Expert
+  guidance for Azure DevOps automation, pipelines, boards, repos, and artifacts
 - [Benchmarking with eval-recipes](docs/BENCHMARKING.md) - Performance
   measurement and comparison
 - [Profile Management](docs/PROFILE_MANAGEMENT.md) - Token optimization and
