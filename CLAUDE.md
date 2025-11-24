@@ -765,16 +765,6 @@ After code changes:
 3. Verify module boundaries
 4. Update .claude/context/DISCOVERIES.md with learnings
 
-## Common Patterns
-
-See `.claude/context/PATTERNS.md` for:
-
-- Claude Code SDK integration
-- Resilient batch processing
-- File I/O with retries
-- Async context management
-- Module regeneration structure
-
 ## Self-Improvement
 
 The system should continuously improve:
