@@ -5,6 +5,7 @@ which files should be copied during amplihack installation based on the active
 profile configuration.
 """
 
+import os
 from pathlib import Path
 from typing import Callable, List, Optional
 from dataclasses import dataclass
