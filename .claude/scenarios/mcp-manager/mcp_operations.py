@@ -6,7 +6,10 @@ the input.
 """
 
 import copy
+import json
+import shutil
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 
@@ -233,4 +236,195 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         seen_names.add(name)
 
     return errors
+
+
+# Custom exceptions
+class DuplicateServerError(ValueError):
+    """Server with same name already exists."""
+    pass
+
+
+class ServerNotFoundError(ValueError):
+    """Server not found in configuration."""
+    pass
+
+
+def add_server(config: dict[str, Any], server: MCPServer) -> dict[str, Any]:
+    """Add new server to configuration (immutable operation).
+
+    Args:
+        config: Configuration dictionary from settings.json
+        server: Server to add
+
+    Returns:
+        New configuration dictionary with server added
+
+    Raises:
+        DuplicateServerError: If server name already exists
+        ValueError: If server validation fails
+    """
+    # Validate the server first
+    errors = server.validate()
+    if errors:
+        raise ValueError(f"Server validation failed: {', '.join(errors)}")
+
+    # Check for duplicate names
+    existing_servers = list_servers(config)
+    if any(s.name == server.name for s in existing_servers):
+        raise DuplicateServerError(f"Server '{server.name}' already exists")
+
+    # Make a deep copy of config
+    new_config = copy.deepcopy(config)
+
+    # Ensure enabledMcpjsonServers exists
+    if "enabledMcpjsonServers" not in new_config:
+        new_config["enabledMcpjsonServers"] = []
+
+    # Add the server
+    new_config["enabledMcpjsonServers"].append(server.to_dict())
+
+    return new_config
+
+
+def remove_server(config: dict[str, Any], name: str) -> dict[str, Any]:
+    """Remove server from configuration (immutable operation).
+
+    Args:
+        config: Configuration dictionary from settings.json
+        name: Server name to remove
+
+    Returns:
+        New configuration dictionary with server removed
+
+    Raises:
+        ServerNotFoundError: If server not found
+    """
+    # Check if server exists
+    servers = config.get("enabledMcpjsonServers", [])
+    found = any(
+        isinstance(s, dict) and s.get("name") == name
+        for s in servers
+    )
+
+    if not found:
+        raise ServerNotFoundError(f"Server not found: {name}")
+
+    # Make a deep copy of config
+    new_config = copy.deepcopy(config)
+
+    # Filter out the server
+    new_config["enabledMcpjsonServers"] = [
+        s for s in new_config.get("enabledMcpjsonServers", [])
+        if not (isinstance(s, dict) and s.get("name") == name)
+    ]
+
+    return new_config
+
+
+def get_server(config: dict[str, Any], name: str) -> MCPServer | None:
+    """Get server by name.
+
+    Args:
+        config: Configuration dictionary from settings.json
+        name: Server name to find
+
+    Returns:
+        MCPServer instance if found, None otherwise
+    """
+    servers = list_servers(config)
+    for server in servers:
+        if server.name == name:
+            return server
+    return None
+
+
+def export_servers(
+    servers: list[MCPServer],
+    format: str = "json"
+) -> str:
+    """Export servers to string format.
+
+    Args:
+        servers: List of servers to export
+        format: Export format (currently only 'json' supported)
+
+    Returns:
+        Formatted export string
+
+    Raises:
+        ValueError: If format is not supported
+    """
+    if format != "json":
+        raise ValueError(f"Unsupported export format: {format}")
+
+    # Build export structure
+    export_data = {
+        "metadata": {
+            "export_date": datetime.now().isoformat(),
+            "tool_version": "1.0.0",
+            "server_count": len(servers),
+        },
+        "servers": [server.to_dict() for server in servers],
+    }
+
+    return json.dumps(export_data, indent=2, ensure_ascii=False)
+
+
+def import_servers(
+    data: str,
+    format: str = "json"
+) -> list[MCPServer]:
+    """Parse import data into server list.
+
+    Args:
+        data: Import data string
+        format: Import format (currently only 'json' supported)
+
+    Returns:
+        List of MCPServer instances
+
+    Raises:
+        ValueError: If format is not supported or data is invalid
+    """
+    if format != "json":
+        raise ValueError(f"Unsupported import format: {format}")
+
+    try:
+        import_data = json.loads(data)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON data: {e}")
+
+    # Validate structure
+    if not isinstance(import_data, dict):
+        raise ValueError("Import data must be a JSON object")
+
+    if "servers" not in import_data:
+        raise ValueError("Import data missing 'servers' key")
+
+    servers_data = import_data["servers"]
+    if not isinstance(servers_data, list):
+        raise ValueError("'servers' must be a list")
+
+    # Parse servers
+    servers = []
+    for idx, server_data in enumerate(servers_data):
+        if not isinstance(server_data, dict):
+            raise ValueError(f"Server at index {idx} is not a dictionary")
+
+        name = server_data.get("name", "")
+        if not name:
+            raise ValueError(f"Server at index {idx} has no name")
+
+        server = MCPServer.from_dict(name, server_data)
+
+        # Validate the server
+        errors = server.validate()
+        if errors:
+            raise ValueError(
+                f"Server '{name}' validation failed: {', '.join(errors)}"
+            )
+
+        servers.append(server)
+
+    return servers
 

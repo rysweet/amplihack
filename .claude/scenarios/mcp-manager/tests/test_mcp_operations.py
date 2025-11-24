@@ -5,10 +5,17 @@ import copy
 import pytest
 
 from ..mcp_operations import (
+    DuplicateServerError,
     MCPServer,
+    ServerNotFoundError,
+    add_server,
     disable_server,
     enable_server,
+    export_servers,
+    get_server,
+    import_servers,
     list_servers,
+    remove_server,
     validate_config,
 )
 
@@ -356,4 +363,365 @@ def test_validate_config_not_dict():
     errors = validate_config(config)
 
     assert any("not a dictionary" in err for err in errors)
+
+
+# Tests for add_server
+def test_add_server():
+    """Test adding a new server."""
+    config = {"enabledMcpjsonServers": []}
+    server = MCPServer(name="new-server", command="node", args=["server.js"])
+
+    new_config = add_server(config, server)
+
+    # Verify immutability
+    assert config["enabledMcpjsonServers"] == []
+
+    # Verify new server was added
+    assert len(new_config["enabledMcpjsonServers"]) == 1
+    assert new_config["enabledMcpjsonServers"][0]["name"] == "new-server"
+
+
+def test_add_server_to_existing():
+    """Test adding a server to existing configuration."""
+    config = {
+        "enabledMcpjsonServers": [
+            {"name": "existing", "command": "cmd", "args": [], "enabled": True}
+        ]
+    }
+    server = MCPServer(name="new-server", command="node", args=["server.js"])
+
+    new_config = add_server(config, server)
+
+    assert len(new_config["enabledMcpjsonServers"]) == 2
+    assert new_config["enabledMcpjsonServers"][1]["name"] == "new-server"
+
+
+def test_add_server_duplicate_name():
+    """Test adding a server with duplicate name."""
+    config = {
+        "enabledMcpjsonServers": [
+            {"name": "test", "command": "cmd", "args": [], "enabled": True}
+        ]
+    }
+    server = MCPServer(name="test", command="node", args=[])
+
+    with pytest.raises(DuplicateServerError, match="already exists"):
+        add_server(config, server)
+
+
+def test_add_server_invalid():
+    """Test adding invalid server."""
+    config = {"enabledMcpjsonServers": []}
+    server = MCPServer(name="", command="node", args=[])  # Invalid: empty name
+
+    with pytest.raises(ValueError, match="validation failed"):
+        add_server(config, server)
+
+
+def test_add_server_with_env():
+    """Test adding server with environment variables."""
+    config = {"enabledMcpjsonServers": []}
+    server = MCPServer(
+        name="test", command="node", args=[], env={"KEY": "value"}
+    )
+
+    new_config = add_server(config, server)
+
+    assert new_config["enabledMcpjsonServers"][0]["env"] == {"KEY": "value"}
+
+
+def test_add_server_disabled():
+    """Test adding server in disabled state."""
+    config = {"enabledMcpjsonServers": []}
+    server = MCPServer(name="test", command="node", args=[], enabled=False)
+
+    new_config = add_server(config, server)
+
+    assert new_config["enabledMcpjsonServers"][0]["enabled"] is False
+
+
+# Tests for remove_server
+def test_remove_server():
+    """Test removing a server."""
+    config = {
+        "enabledMcpjsonServers": [
+            {"name": "test-server", "command": "node", "args": [], "enabled": True},
+            {"name": "other-server", "command": "python", "args": [], "enabled": True},
+        ]
+    }
+
+    new_config = remove_server(config, "test-server")
+
+    # Verify immutability
+    assert len(config["enabledMcpjsonServers"]) == 2
+
+    # Verify server was removed
+    assert len(new_config["enabledMcpjsonServers"]) == 1
+    assert new_config["enabledMcpjsonServers"][0]["name"] == "other-server"
+
+
+def test_remove_server_not_found():
+    """Test removing non-existent server."""
+    config = {"enabledMcpjsonServers": []}
+
+    with pytest.raises(ServerNotFoundError, match="not found"):
+        remove_server(config, "nonexistent")
+
+
+def test_remove_server_immutability():
+    """Test that remove_server doesn't modify input."""
+    original_config = {
+        "enabledMcpjsonServers": [
+            {"name": "test", "command": "cmd", "args": [], "enabled": True}
+        ]
+    }
+    config_copy = copy.deepcopy(original_config)
+
+    new_config = remove_server(original_config, "test")
+
+    # Original config unchanged
+    assert original_config == config_copy
+
+    # New config is different
+    assert new_config != original_config
+    assert len(new_config["enabledMcpjsonServers"]) == 0
+
+
+# Tests for get_server
+def test_get_server_found():
+    """Test getting existing server."""
+    config = {
+        "enabledMcpjsonServers": [
+            {"name": "test-server", "command": "node", "args": ["s.js"], "enabled": True}
+        ]
+    }
+
+    server = get_server(config, "test-server")
+
+    assert server is not None
+    assert server.name == "test-server"
+    assert server.command == "node"
+    assert server.args == ["s.js"]
+
+
+def test_get_server_not_found():
+    """Test getting non-existent server."""
+    config = {"enabledMcpjsonServers": []}
+
+    server = get_server(config, "nonexistent")
+
+    assert server is None
+
+
+def test_get_server_multiple():
+    """Test getting server from multiple servers."""
+    config = {
+        "enabledMcpjsonServers": [
+            {"name": "server1", "command": "cmd1", "args": [], "enabled": True},
+            {"name": "server2", "command": "cmd2", "args": [], "enabled": True},
+            {"name": "server3", "command": "cmd3", "args": [], "enabled": True},
+        ]
+    }
+
+    server = get_server(config, "server2")
+
+    assert server is not None
+    assert server.name == "server2"
+    assert server.command == "cmd2"
+
+
+# Tests for export_servers
+def test_export_servers():
+    """Test exporting servers to JSON."""
+    servers = [
+        MCPServer(name="server1", command="node", args=["s1.js"]),
+        MCPServer(name="server2", command="python", args=["-m", "s2"]),
+    ]
+
+    export_data = export_servers(servers)
+
+    # Verify it's valid JSON
+    import json
+    data = json.loads(export_data)
+
+    assert "metadata" in data
+    assert data["metadata"]["server_count"] == 2
+    assert "servers" in data
+    assert len(data["servers"]) == 2
+    assert data["servers"][0]["name"] == "server1"
+    assert data["servers"][1]["name"] == "server2"
+
+
+def test_export_servers_empty():
+    """Test exporting empty server list."""
+    servers = []
+
+    export_data = export_servers(servers)
+
+    import json
+    data = json.loads(export_data)
+
+    assert data["metadata"]["server_count"] == 0
+    assert data["servers"] == []
+
+
+def test_export_servers_with_env():
+    """Test exporting server with environment variables."""
+    servers = [
+        MCPServer(
+            name="test", command="node", args=[], env={"KEY": "value"}
+        )
+    ]
+
+    export_data = export_servers(servers)
+
+    import json
+    data = json.loads(export_data)
+
+    assert data["servers"][0]["env"] == {"KEY": "value"}
+
+
+def test_export_servers_unsupported_format():
+    """Test export with unsupported format."""
+    servers = [MCPServer(name="test", command="node", args=[])]
+
+    with pytest.raises(ValueError, match="Unsupported export format"):
+        export_servers(servers, format="yaml")
+
+
+# Tests for import_servers
+def test_import_servers():
+    """Test importing servers from JSON."""
+    import_data = """
+    {
+        "metadata": {
+            "export_date": "2024-01-01T00:00:00",
+            "tool_version": "1.0.0",
+            "server_count": 2
+        },
+        "servers": [
+            {
+                "name": "server1",
+                "command": "node",
+                "args": ["s1.js"],
+                "enabled": true
+            },
+            {
+                "name": "server2",
+                "command": "python",
+                "args": ["-m", "s2"],
+                "enabled": false
+            }
+        ]
+    }
+    """
+
+    servers = import_servers(import_data)
+
+    assert len(servers) == 2
+    assert servers[0].name == "server1"
+    assert servers[0].command == "node"
+    assert servers[0].enabled is True
+    assert servers[1].name == "server2"
+    assert servers[1].enabled is False
+
+
+def test_import_servers_invalid_json():
+    """Test importing invalid JSON."""
+    import_data = "not valid json"
+
+    with pytest.raises(ValueError, match="Invalid JSON"):
+        import_servers(import_data)
+
+
+def test_import_servers_missing_servers_key():
+    """Test importing data without servers key."""
+    import_data = '{"metadata": {}}'
+
+    with pytest.raises(ValueError, match="missing 'servers' key"):
+        import_servers(import_data)
+
+
+def test_import_servers_invalid_structure():
+    """Test importing data with invalid structure."""
+    import_data = '{"servers": "not-a-list"}'
+
+    with pytest.raises(ValueError, match="must be a list"):
+        import_servers(import_data)
+
+
+def test_import_servers_invalid_server():
+    """Test importing data with invalid server."""
+    import_data = """
+    {
+        "servers": [
+            {
+                "name": "invalid name with spaces",
+                "command": "",
+                "args": []
+            }
+        ]
+    }
+    """
+
+    with pytest.raises(ValueError, match="validation failed"):
+        import_servers(import_data)
+
+
+def test_import_servers_no_name():
+    """Test importing server without name."""
+    import_data = """
+    {
+        "servers": [
+            {
+                "command": "node",
+                "args": []
+            }
+        ]
+    }
+    """
+
+    with pytest.raises(ValueError, match="has no name"):
+        import_servers(import_data)
+
+
+def test_import_servers_unsupported_format():
+    """Test import with unsupported format."""
+    with pytest.raises(ValueError, match="Unsupported import format"):
+        import_servers('{"servers": []}', format="yaml")
+
+
+def test_import_export_roundtrip():
+    """Test that export then import preserves data."""
+    original_servers = [
+        MCPServer(
+            name="server1",
+            command="node",
+            args=["s1.js", "--port", "3000"],
+            enabled=True,
+            env={"API_KEY": "test123"},
+        ),
+        MCPServer(
+            name="server2",
+            command="python",
+            args=["-m", "module"],
+            enabled=False,
+        ),
+    ]
+
+    # Export
+    export_data = export_servers(original_servers)
+
+    # Import
+    imported_servers = import_servers(export_data)
+
+    # Verify all data preserved
+    assert len(imported_servers) == len(original_servers)
+
+    for orig, imported in zip(original_servers, imported_servers):
+        assert imported.name == orig.name
+        assert imported.command == orig.command
+        assert imported.args == orig.args
+        assert imported.enabled == orig.enabled
+        assert imported.env == orig.env
 
