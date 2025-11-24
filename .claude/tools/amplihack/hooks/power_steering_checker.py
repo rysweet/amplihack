@@ -1786,9 +1786,13 @@ class PowerSteeringChecker:
                                     file_path = block.get("input", {}).get("file_path", "")
 
                                     # Detect new feature by file location
-                                    if ".claude/commands/" in file_path and file_path.endswith(".md"):
+                                    if ".claude/commands/" in file_path and file_path.endswith(
+                                        ".md"
+                                    ):
                                         new_features.append(("command", file_path))
-                                    elif ".claude/agents/" in file_path and file_path.endswith(".md"):
+                                    elif ".claude/agents/" in file_path and file_path.endswith(
+                                        ".md"
+                                    ):
                                         new_features.append(("agent", file_path))
                                     elif ".claude/skills/" in file_path:
                                         new_features.append(("skill", file_path))
@@ -1855,7 +1859,7 @@ class PowerSteeringChecker:
             # All checks passed
             return True
 
-        except Exception as e:
+        except Exception:
             # Fail-open: Return True on errors to avoid blocking users
             return True
 
@@ -2405,7 +2409,10 @@ class PowerSteeringChecker:
 
         prompt_parts.append("Once these are addressed, you may stop the session.")
         prompt_parts.append("")
-        prompt_parts.append("To disable power-steering: export AMPLIHACK_SKIP_POWER_STEERING=1")
+        prompt_parts.append("To disable power-steering immediately:")
+        prompt_parts.append(
+            "  mkdir -p .claude/runtime/power-steering && touch .claude/runtime/power-steering/.disabled"
+        )
 
         return "\n".join(prompt_parts)
 
