@@ -3,7 +3,7 @@
 ---
 
 name: azure-devops-cli
-description: Expert guidance for Azure DevOps CLI (az devops) - automation, pipelines, repos, boards, and artifacts management
+description: Expert guidance for Azure DevOps CLI (az devops) - automation, pipelines, repos, boards, and artifacts management. Use when working with Azure DevOps, managing pipelines, creating work items, or when user mentions ADO, builds, releases, or Azure repos.
 keywords:
 
 - azure devops
