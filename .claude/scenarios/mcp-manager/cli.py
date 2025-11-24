@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from config_manager import backup_config, read_config, restore_config, write_config
-from mcp_operations import (
+from .config_manager import backup_config, read_config, restore_config, write_config
+from .mcp_operations import (
     MCPServer,
     add_server,
     disable_server,
