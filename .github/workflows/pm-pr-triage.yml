@@ -62,7 +62,7 @@ jobs:
           # NOTE M3.4: PM scripts must validate for prompt injection in PR descriptions
 
           # Run sophisticated PR triage using Claude Agent SDK
-          python .github/scripts/pr_triage.py
+          python .github/scripts/pr_triage_main.py
 
       # SECURITY: Error handling without exposing secrets
       - name: Handle errors
