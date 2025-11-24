@@ -4,12 +4,15 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
+
+if TYPE_CHECKING:
+    pass
 
 
 def ensure_ultrathink_command(prompt: str) -> str:
@@ -618,12 +621,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 def replace_paths(obj):
                     if isinstance(obj, dict):
                         for key, value in obj.items():
-                            if key == "command" and isinstance(value, str) and value.startswith(
-                                ".claude/"
+                            if (
+                                key == "command"
+                                and isinstance(value, str)
+                                and value.startswith(".claude/")
                             ):
-                                obj[key] = value.replace(
-                                    ".claude/", "$CLAUDE_PROJECT_DIR/.claude/"
-                                )
+                                obj[key] = value.replace(".claude/", "$CLAUDE_PROJECT_DIR/.claude/")
                             else:
                                 replace_paths(value)
                     elif isinstance(obj, list):
@@ -707,21 +710,20 @@ def main(argv: Optional[List[str]] = None) -> int:
             # _local_install expects repo root, so pass package_dir (which contains .claude/)
             _local_install(str(package_dir))
             return 0
-        else:
-            # Fallback: Clone from GitHub (for old installations)
-            import subprocess
-            import tempfile
+        # Fallback: Clone from GitHub (for old installations)
+        import subprocess
+        import tempfile
 
-            print("⚠️  Package .claude/ not found, cloning from GitHub...")
-            with tempfile.TemporaryDirectory() as tmp:
-                repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
-                try:
-                    subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-                    _local_install(tmp)
-                    return 0
-                except subprocess.CalledProcessError as e:
-                    print(f"Failed to install: {e}")
-                    return 1
+        print("⚠️  Package .claude/ not found, cloning from GitHub...")
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+            try:
+                subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
+                _local_install(tmp)
+                return 0
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to install: {e}")
+                return 1
 
     elif args.command == "uninstall":
         uninstall()
@@ -857,14 +859,48 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("Error: .claude directory not found", file=sys.stderr)
             return 1
 
-        sys.path.insert(0, str(claude_dir / "tools" / "amplihack"))
+        # Use importlib for dynamic import to satisfy type checkers
+        import importlib.util
+
+        remote_cli_path = claude_dir / "tools" / "amplihack" / "remote" / "cli.py"
+        remote_orch_path = claude_dir / "tools" / "amplihack" / "remote" / "orchestrator.py"
 
         try:
-            from remote.cli import execute_remote_workflow
-            from remote.orchestrator import VMOptions
+            # Load remote.cli module
+            spec_cli = importlib.util.spec_from_file_location("remote.cli", remote_cli_path)
+            if spec_cli is None or spec_cli.loader is None:
+                print("Error: Could not load remote.cli module", file=sys.stderr)
+                return 1
+            remote_cli = importlib.util.module_from_spec(spec_cli)
+            spec_cli.loader.exec_module(remote_cli)
+
+            # Load remote.orchestrator module
+            spec_orch = importlib.util.spec_from_file_location(
+                "remote.orchestrator", remote_orch_path
+            )
+            if spec_orch is None or spec_orch.loader is None:
+                print("Error: Could not load remote.orchestrator module", file=sys.stderr)
+                return 1
+            remote_orch = importlib.util.module_from_spec(spec_orch)
+            spec_orch.loader.exec_module(remote_orch)
+
+            # Get the required functions/classes
+            execute_remote_workflow = remote_cli.execute_remote_workflow
+            VMOptions = remote_orch.VMOptions
+
+            # Map size shortcuts to Azure VM sizes
+            size_mapping = {
+                "s": "Standard_D2s_v3",  # 2 vCPU, 8GB RAM
+                "m": "Standard_D4s_v3",  # 4 vCPU, 16GB RAM
+                "l": "Standard_E16as_v5",  # 16 vCPU, 128GB RAM
+                "xl": "Standard_E32as_v5",  # 32 vCPU, 256GB RAM
+            }
+
+            # Convert shortcut to full size name if needed
+            vm_size = size_mapping.get(args.vm_size.lower(), args.vm_size)
 
             vm_options = VMOptions(
-                size=args.vm_size,
+                size=vm_size,
                 region=args.region,
                 keep_vm=args.keep_vm,
             )
