@@ -11,7 +11,6 @@ When starting a session, import these files for context:
 
 @.claude/context/PHILOSOPHY.md
 @.claude/context/PROJECT.md
-@.claude/context/PATTERNS.md
 @.claude/context/TRUST.md
 @.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
@@ -764,16 +763,6 @@ After code changes:
 2. Check philosophy compliance
 3. Verify module boundaries
 4. Update .claude/context/DISCOVERIES.md with learnings
-
-## Common Patterns
-
-See `.claude/context/PATTERNS.md` for:
-
-- Claude Code SDK integration
-- Resilient batch processing
-- File I/O with retries
-- Async context management
-- Module regeneration structure
 
 ## Self-Improvement
 
