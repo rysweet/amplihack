@@ -274,3 +274,4 @@ def test_main_invalid_command(capsys):
     result = main(["invalid"])
 
     assert result == 1
+

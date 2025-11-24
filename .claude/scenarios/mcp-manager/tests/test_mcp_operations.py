@@ -356,3 +356,4 @@ def test_validate_config_not_dict():
     errors = validate_config(config)
 
     assert any("not a dictionary" in err for err in errors)
+

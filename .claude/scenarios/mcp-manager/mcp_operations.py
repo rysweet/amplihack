@@ -233,3 +233,4 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         seen_names.add(name)
 
     return errors
+
