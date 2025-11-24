@@ -149,14 +149,13 @@ set -e
 cd ~
 tar xzf context.tar.gz
 
-# Setup workspace
+# Setup workspace - clone to temp then move
+TEMP_REPO=$(mktemp -d)
+git clone ~/repo.bundle "$TEMP_REPO"
 mkdir -p {self.remote_workspace}
+cp -r "$TEMP_REPO"/. {self.remote_workspace}/
+rm -rf "$TEMP_REPO"
 cd {self.remote_workspace}
-
-# Restore git repository (use init + fetch instead of clone for non-empty dir)
-git init
-git fetch ~/repo.bundle master:master || git fetch ~/repo.bundle main:main
-git checkout master 2>/dev/null || git checkout main
 cp -r ~/.claude .
 
 # Install amplihack if needed
