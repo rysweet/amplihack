@@ -22,6 +22,7 @@ class VM:
     name: str
     size: str
     region: str
+    public_ip: Optional[str] = None
     created_at: Optional[datetime] = None
     tags: Optional[dict] = None
 

@@ -166,15 +166,33 @@ fi
 export ANTHROPIC_API_KEY='{api_key}'
 
 # Run amplihack command
-amplihack claude --{command} --max-turns {max_turns} -- -p '{escaped_prompt}'
+amplihack {command} --max-turns {max_turns} -- -p '{escaped_prompt}'
 """
 
-        # Execute with timeout
+        # Get VM IP if not set
+        vm_ip = self.vm.public_ip
+        if not vm_ip:
+            # Query Azure for IP
+            try:
+                result = subprocess.run(
+                    ["az", "vm", "show", "-d", "--name", self.vm.name,
+                     "--resource-group", "rysweet-linux-vm-pool",
+                     "--query", "publicIps", "-o", "tsv"],
+                    capture_output=True, text=True, timeout=30
+                )
+                vm_ip = result.stdout.strip()
+            except Exception:
+                vm_ip = self.vm.name  # Fallback to name (azlin will resolve)
+
+        # Execute with timeout using direct SSH
         start_time = time.time()
 
         try:
             result = subprocess.run(
-                ["azlin", "connect", self.vm.name, setup_and_run],
+                ["ssh", "-i", "/home/azureuser/.ssh/azlin_key",
+                 "-o", "StrictHostKeyChecking=no",
+                 f"azureuser@{vm_ip}",
+                 setup_and_run],
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
