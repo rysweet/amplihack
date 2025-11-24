@@ -1,10 +1,9 @@
 ---
 name: context-management
-version: 1.0.0
+version: 2.0.0
 description: |
   Proactive context window management via token monitoring, intelligent extraction, and selective rehydration.
   Use when approaching token limits or needing to preserve essential context.
-  Provides status checks, snapshot creation, and configurable rehydration (essential/standard/comprehensive).
   Complements /transcripts and PreCompact hook with proactive optimization.
 ---
 
@@ -24,197 +23,200 @@ This skill enables proactive management of Claude Code's context window through 
 - **Context switching**: Save state when pausing work
 - **Team handoffs**: Package context for others to continue
 
-## Core Concepts
+## Quick Start
 
-### Proactive vs Reactive Management
+### Check Token Status
 
-**Reactive (existing tools)**:
+```
+User: Check my current token usage
+```
 
-- PreCompact hook: Saves everything when Claude decides to compact
-- /transcripts: Restores full conversation after compaction
+I'll use the `context_manager` tool to check status:
 
-**Proactive (this skill)**:
+```python
+from context_manager import check_context_status
 
-- Monitor usage before hitting limits
-- Extract only essential context (not full dumps)
-- Rehydrate at appropriate detail level
-- User controls when and what to preserve
+status = check_context_status(current_tokens=<current_count>)
+# Returns: ContextStatus with usage percentage and recommendations
+```
 
-### Four Component Bricks
+### Create a Snapshot
 
-1. **TokenMonitor**: Tracks usage against thresholds (50%, 70%, 85%, 95%)
-2. **ContextExtractor**: Intelligently extracts requirements, decisions, state
-3. **ContextRehydrator**: Restores context at configurable detail levels
-4. **Orchestrator**: Coordinates components for skill actions
+```
+User: Create a context snapshot named "auth-implementation"
+```
 
-### Three Detail Levels
+I'll use the `context_manager` tool to create a snapshot:
 
-- **Essential** (smallest): Requirements + current state only
-- **Standard** (balanced): + key decisions + open items
-- **Comprehensive** (complete): + full decisions + tools used + metadata
+```python
+from context_manager import create_context_snapshot
 
-## Skill Actions
+snapshot = create_context_snapshot(
+    conversation_data=<conversation_history>,
+    name="auth-implementation"
+)
+# Returns: ContextSnapshot with snapshot_id, file_path, and token_count
+```
+
+### Restore Context
+
+```
+User: Restore context from snapshot <snapshot_id> at essential level
+```
+
+I'll use the `context_manager` tool to rehydrate:
+
+```python
+from context_manager import rehydrate_from_snapshot
+
+context = rehydrate_from_snapshot(
+    snapshot_id="20251116_143522",
+    level="essential"  # or "standard" or "comprehensive"
+)
+# Returns: Formatted context text ready to process
+```
+
+### List Snapshots
+
+```
+User: List my context snapshots
+```
+
+I'll use the `context_manager` tool to list snapshots:
+
+```python
+from context_manager import list_context_snapshots
+
+snapshots = list_context_snapshots()
+# Returns: List of snapshot metadata dicts
+```
+
+## Detail Levels
+
+When rehydrating context, choose the appropriate detail level:
+
+- **Essential** (smallest): Requirements + current state only (~250 tokens)
+- **Standard** (balanced): + key decisions + open items (~800 tokens)
+- **Comprehensive** (complete): + full decisions + tools used + metadata (~1,250 tokens)
+
+Start with essential and upgrade if more context is needed.
+
+## Actions
 
 ### Action: `status`
 
 Check current token usage and get recommendations.
 
-**Parameters:**
+**Usage:**
 
-- `current_tokens` (int): Current token count
+```python
+from context_manager import check_context_status
+
+status = check_context_status(current_tokens=750000)
+print(f"Usage: {status.percentage}%")
+print(f"Status: {status.threshold_status}")
+print(f"Recommendation: {status.recommendation}")
+```
 
 **Returns:**
 
-```python
-{
-  'status': 'ok' | 'consider' | 'recommended' | 'urgent',
-  'usage': {
-    'current_tokens': 500000,
-    'max_tokens': 1000000,
-    'percentage': 50.0,
-    'threshold_status': 'ok',
-    'recommendation': 'Context is healthy. No action needed.'
-  }
-}
-```
-
-**Example:**
-
-```python
-result = context_management_skill('status', current_tokens=750000)
-# Returns: status='consider', percentage=75.0
-```
+- `ContextStatus` object with usage details
+- `threshold_status`: 'ok', 'consider', 'recommended', or 'urgent'
+- `recommendation`: Human-readable action suggestion
 
 ### Action: `snapshot`
 
 Create intelligent context snapshot.
 
-**Parameters:**
+**Usage:**
 
-- `conversation_data` (list): Conversation messages
-- `name` (str, optional): Human-readable snapshot name
+```python
+from context_manager import create_context_snapshot
+
+snapshot = create_context_snapshot(
+    conversation_data=messages,
+    name="feature-name"  # Optional
+)
+print(f"Snapshot ID: {snapshot.snapshot_id}")
+print(f"Token count: {snapshot.token_count}")
+print(f"Saved to: {snapshot.file_path}")
+```
 
 **Returns:**
 
-```python
-{
-  'status': 'success',
-  'snapshot': {
-    'snapshot_id': '20251116_143522',
-    'name': 'auth-feature',
-    'file_path': '.claude/runtime/context-snapshots/20251116_143522.json',
-    'token_count': 1250,
-    'components': ['requirements', 'decisions', 'state', 'open_items', 'tools_used']
-  },
-  'recommendation': 'Snapshot created successfully...'
-}
-```
-
-**Example:**
-
-```python
-result = context_management_skill(
-    'snapshot',
-    conversation_data=messages,
-    name='auth-implementation'
-)
-```
+- `ContextSnapshot` object with metadata
+- Snapshot saved to `.claude/runtime/context-snapshots/`
 
 ### Action: `rehydrate`
 
 Restore context from snapshot at specified detail level.
 
-**Parameters:**
+**Usage:**
 
-- `snapshot_id` (str): Snapshot ID (format: YYYYMMDD_HHMMSS)
-- `level` (str): 'essential' | 'standard' | 'comprehensive'
+```python
+from context_manager import rehydrate_from_snapshot
+
+context = rehydrate_from_snapshot(
+    snapshot_id="20251116_143522",
+    level="standard"  # essential, standard, or comprehensive
+)
+print(context)  # Display restored context
+```
 
 **Returns:**
 
-```python
-{
-  'status': 'success',
-  'context': '# Restored Context: auth-implementation\n\n...',
-  'snapshot_id': '20251116_143522',
-  'level': 'essential'
-}
-```
-
-**Example:**
-
-```python
-result = context_management_skill(
-    'rehydrate',
-    snapshot_id='20251116_143522',
-    level='essential'
-)
-print(result['context'])
-```
+- Formatted markdown text with restored context
+- Ready to process and continue work
 
 ### Action: `list`
 
 List all available context snapshots.
 
-**Parameters:** None
+**Usage:**
+
+```python
+from context_manager import list_context_snapshots
+
+snapshots = list_context_snapshots()
+for snapshot in snapshots:
+    print(f"{snapshot['id']}: {snapshot['name']} ({snapshot['size']})")
+```
 
 **Returns:**
 
-```python
-{
-  'status': 'success',
-  'snapshots': [
-    {
-      'id': '20251116_143522',
-      'name': 'auth-feature',
-      'timestamp': '2025-11-16 14:35:22',
-      'size': '15KB',
-      'token_count': 1250
-    }
-  ],
-  'count': 1,
-  'total_size': '15KB'
-}
-```
-
-**Example:**
-
-```python
-result = context_management_skill('list')
-for snapshot in result['snapshots']:
-    print(f"{snapshot['name']}: {snapshot['size']}")
-```
+- List of snapshot metadata dicts
+- Includes: id, name, timestamp, size, token_count
 
 ## Proactive Usage Workflow
 
 ### Step 1: Monitor Token Usage
 
-```python
-# Periodically check status
-status = context_management_skill('status', current_tokens=current)
+Periodically check status during long sessions:
 
-if status['status'] == 'consider':
+```python
+status = check_context_status(current_tokens=current)
+
+if status.threshold_status == 'consider':
     # Usage at 70%+ - consider creating snapshot
-    pass
-elif status['status'] == 'recommended':
+    print("Consider creating a snapshot soon")
+elif status.threshold_status == 'recommended':
     # Usage at 85%+ - snapshot recommended
-    create_snapshot(...)
-elif status['status'] == 'urgent':
+    create_context_snapshot(messages, name='current-work')
+elif status.threshold_status == 'urgent':
     # Usage at 95%+ - create snapshot immediately
-    create_snapshot(...)
+    create_context_snapshot(messages, name='urgent-backup')
 ```
 
 ### Step 2: Create Snapshot at Threshold
 
+When 70-85% threshold reached, create a named snapshot:
+
 ```python
-# When 70-85% threshold reached
-result = context_management_skill(
-    'snapshot',
+snapshot = create_context_snapshot(
     conversation_data=messages,
     name='descriptive-name'
 )
-
 # Save snapshot ID for later rehydration
-snapshot_id = result['snapshot']['snapshot_id']
 ```
 
 ### Step 3: Continue Working
@@ -228,33 +230,25 @@ After snapshot creation:
 
 ### Step 4: Rehydrate After Compaction
 
+After compaction, restore essential context:
+
 ```python
-# After compaction, restore essential context
-result = context_management_skill(
-    'rehydrate',
+# Start minimal
+context = rehydrate_from_snapshot(
     snapshot_id='20251116_143522',
-    level='essential'  # Start minimal
+    level='essential'
 )
 
-# Claude now has requirements + current state
-# If more context needed, rehydrate at higher level
-```
-
-### Step 5: Adjust Detail Level as Needed
-
-```python
-# If essential isn't enough, upgrade to standard
-result = context_management_skill(
-    'rehydrate',
+# If more context needed, upgrade to standard
+context = rehydrate_from_snapshot(
     snapshot_id='20251116_143522',
-    level='standard'  # Adds decisions + open items
+    level='standard'
 )
 
 # For complete context, use comprehensive
-result = context_management_skill(
-    'rehydrate',
+context = rehydrate_from_snapshot(
     snapshot_id='20251116_143522',
-    level='comprehensive'  # Everything
+    level='comprehensive'
 )
 ```
 
@@ -302,21 +296,80 @@ result = context_management_skill(
 - **Transcripts**: `.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
 - **No conflicts**: Different directories, different purposes
 
+## Automatic Management
+
+Context management runs automatically via the post_tool_use hook:
+
+- Monitors token usage every Nth tool use (adaptive frequency)
+- Creates snapshots at thresholds (30%, 40%, 50% for 1M models)
+- Detects compaction (token drop > 30%)
+- Auto-rehydrates after compaction at appropriate level
+
+This happens transparently without user intervention.
+
+## Implementation
+
+All context management functionality is provided by:
+
+- **Tool**: `.claude/tools/amplihack/context_manager.py`
+- **Hook Integration**: `.claude/tools/amplihack/context_automation_hook.py`
+- **Hook System**: `.claude/tools/amplihack/hooks/tool_registry.py`
+
+See tool documentation for complete API reference and implementation details.
+
+## Common Patterns
+
+### Pattern 1: Preventive Snapshotting
+
+Check before long operation and create snapshot if needed:
+
+```python
+status = check_context_status(current_tokens=current)
+if status.threshold_status in ['recommended', 'urgent']:
+    create_context_snapshot(messages, name='before-refactoring')
+```
+
+### Pattern 2: Context Switching
+
+Save state when pausing work on one feature to start another:
+
+```python
+# Pausing work on Feature A
+create_context_snapshot(messages, name='feature-a-paused')
+
+# [... work on Feature B ...]
+
+# Resume Feature A later
+context = rehydrate_from_snapshot('feature-a-snapshot-id', level='standard')
+```
+
+### Pattern 3: Team Handoff
+
+Create comprehensive snapshot for teammate:
+
+```python
+snapshot = create_context_snapshot(
+    messages,
+    name='handoff-to-alice-api-work'
+)
+# Share snapshot ID with teammate
+# Alice can rehydrate and continue work
+```
+
 ## Philosophy Alignment
 
 ### Ruthless Simplicity
 
-- Four single-purpose bricks, no complex abstractions
+- Four single-purpose components in one tool
 - On-demand invocation, no background processes
 - Standard library only, no external dependencies
-- Clear contracts between components
+- Clear public API with convenience functions
 
 ### Single Responsibility
 
-- TokenMonitor: ONLY tracks usage and thresholds
-- ContextExtractor: ONLY extracts and snapshots context
-- ContextRehydrator: ONLY restores from snapshots
-- Orchestrator: ONLY coordinates components
+- ContextManager coordinates all operations
+- Token monitoring, extraction, rehydration in one place
+- No duplicate code or scattered logic
 
 ### Zero-BS Implementation
 
@@ -327,167 +380,9 @@ result = context_management_skill(
 
 ### Trust in Emergence
 
-- User decides when to snapshot, not automatic
+- User decides when to snapshot, not automatic (unless via hook)
 - User chooses detail level, not system
-- Proactive choice, not reactive automation
-- Philosophy: empower, don't automate
-
-## Convenience Functions
-
-For simpler invocation:
-
-```python
-from context_management import (
-    check_status,
-    create_snapshot,
-    rehydrate_context,
-    list_snapshots
-)
-
-# Check status
-status = check_status(current_tokens=750000)
-
-# Create snapshot
-snapshot = create_snapshot(
-    conversation_data=messages,
-    name='feature-name'
-)
-
-# Rehydrate context
-context = rehydrate_context(
-    snapshot_id='20251116_143522',
-    level='standard'
-)
-
-# List snapshots
-snapshots = list_snapshots()
-```
-
-## Usage Examples
-
-### Example 1: Basic Proactive Workflow
-
-```
-User: Check my token usage
-Assistant: *checks status*
-Current usage: 720,000 tokens (72%)
-Status: Consider creating snapshot soon
-
-User: Create a snapshot named "api-auth-implementation"
-Assistant: *creates snapshot*
-Snapshot created: 20251116_143522
-Components: requirements, decisions, state, open items, tools
-Token count: 1,250
-You can continue working. I'll manage context naturally.
-
-[... much later, after compaction ...]
-
-User: Restore context from that auth snapshot
-Assistant: *rehydrates at essential level*
-# Restored Context: api-auth-implementation
-
-## Original Requirements
-Implement JWT authentication for API endpoints...
-
-## Current State
-JWT handler created, middleware integration in progress
-Tests: 12/15 passing
-```
-
-### Example 2: Progressive Detail Levels
-
-```
-User: Restore snapshot 20251116_143522 at essential level
-Assistant: *rehydrates essential context*
-Restored requirements and current state (250 tokens)
-
-User: I need more context, upgrade to standard
-Assistant: *rehydrates standard level*
-Now including key decisions and open items (800 tokens)
-
-User: Give me everything, comprehensive level
-Assistant: *rehydrates comprehensive*
-Full context including all decisions, tools, and metadata (1,250 tokens)
-```
-
-### Example 3: Multiple Snapshots
-
-```
-User: List my snapshots
-Assistant:
-1. 20251116_143522 - "api-auth" - 15KB - 2025-11-16 14:35
-2. 20251116_092315 - "database-migration" - 22KB - 2025-11-16 09:23
-3. 20251115_163045 - "frontend-redesign" - 18KB - 2025-11-15 16:30
-
-Total: 3 snapshots, 55KB
-
-User: Restore the database migration one at standard level
-Assistant: *rehydrates database snapshot*
-[... restored context ...]
-```
-
-## Common Patterns
-
-### Pattern 1: Preventive Snapshotting
-
-```python
-# Check before long operation
-status = check_status(current_tokens=current)
-
-if status['status'] in ['recommended', 'urgent']:
-    # Create snapshot before proceeding
-    create_snapshot(messages, name='before-refactoring')
-```
-
-### Pattern 2: Context Switching
-
-```python
-# Pausing work on Feature A
-create_snapshot(messages, name='feature-a-paused')
-
-# Start Feature B
-# [... new conversation ...]
-
-# Resume Feature A later
-context = rehydrate_context('feature-a-snapshot-id', level='standard')
-```
-
-### Pattern 3: Team Handoff
-
-```python
-# Create comprehensive snapshot for teammate
-snapshot = create_snapshot(
-    messages,
-    name='handoff-to-alice-api-work'
-)
-
-# Share snapshot ID with teammate
-# Alice can rehydrate and continue work
-```
-
-## Quality Checks
-
-After using this skill, verify:
-
-- [ ] Token monitoring provides accurate recommendations
-- [ ] Snapshots capture essential context (not full dumps)
-- [ ] Rehydration levels produce appropriate detail
-- [ ] Files stored in `.claude/runtime/context-snapshots/`
-- [ ] Snapshot IDs follow YYYYMMDD_HHMMSS format
-- [ ] Token estimates are reasonable (~1 token per 4 chars)
-- [ ] No conflicts with transcripts or PreCompact hook
-
-## Success Criteria
-
-This skill successfully helps users:
-
-- [ ] Monitor context usage proactively
-- [ ] Create snapshots before hitting limits
-- [ ] Restore context efficiently after compaction
-- [ ] Choose appropriate detail levels
-- [ ] Manage multiple snapshots
-- [ ] Integrate with existing tools seamlessly
-- [ ] Maintain clean context hygiene
+- Proactive choice empowers the user
 
 ## Tips for Effective Context Management
 
@@ -501,12 +396,13 @@ This skill successfully helps users:
 
 ## Resources
 
-- **Specification**: `Specs/context-management-skill.md`
-- **Implementation**: `.claude/skills/context-management/`
-- **Tests**: `.claude/skills/context-management/tests/`
-- **Examples**: `.claude/skills/context-management/examples/`
+- **Tool**: `.claude/tools/amplihack/context_manager.py`
+- **Hook**: `.claude/tools/amplihack/context_automation_hook.py`
 - **Philosophy**: `.claude/context/PHILOSOPHY.md`
+- **Patterns**: `.claude/context/PATTERNS.md`
 
 ## Remember
 
-This skill provides proactive context management without automatic behavior. You control when to snapshot and what detail to restore. It complements existing tools (PreCompact hook, /transcripts) rather than replacing them. Use it to maintain clean, efficient context throughout long sessions.
+This skill provides proactive context management through a clean, reusable tool. The tool can be called from skills, commands, and hooks. It complements existing tools (PreCompact hook, /transcripts) rather than replacing them. Use it to maintain clean, efficient context throughout long sessions.
+
+**Key Takeaway**: Business logic lives in `context_manager.py`, this skill just tells you how to use it.
