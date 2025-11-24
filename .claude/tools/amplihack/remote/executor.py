@@ -162,8 +162,8 @@ git init
 git config user.email "remote@amplihack.dev"
 git config user.name "Remote Amplihack"
 
-# Run amplihack via uvx (no installation needed)
-uvx amplihack {command} --max-turns {max_turns} -- -p '{escaped_prompt}'
+# Run amplihack via uvx from git (package not in PyPI yet)
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack {command} --max-turns {max_turns} -- -p '{escaped_prompt}'
 """
 
         # Get VM IP if not set
