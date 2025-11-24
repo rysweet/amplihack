@@ -34,7 +34,15 @@ from profile_management import ProfileLoader, ProfileParser
 loader = ProfileLoader()
 parser = ProfileParser()
 
-# Load with relative path
+# PREFERRED: Load by simple name (built-in profiles)
+yaml_content = loader.load("coding")
+profile = parser.parse(yaml_content)
+
+# BACKWARD COMPATIBLE: amplihack:// scheme still works
+yaml_content = loader.load("amplihack://profiles/coding")
+profile = parser.parse(yaml_content)
+
+# Load from filesystem with file:// scheme
 yaml_content = loader.load("file://.claude/profiles/coding.yaml")
 profile = parser.parse(yaml_content)
 
@@ -42,6 +50,8 @@ profile = parser.parse(yaml_content)
 yaml_content = loader.load("file:///home/user/.amplihack/profiles/coding.yaml")
 profile = parser.parse(yaml_content)
 ```
+
+**Note**: For built-in profiles, simple names are preferred. The `amplihack://` scheme is deprecated but still supported for backward compatibility.
 
 ### Discover Components
 
@@ -68,11 +78,19 @@ print(f"Token estimate: {filtered.token_count_estimate()} tokens")
 
 ## Built-in Profiles
 
-Built-in profiles are located in `.claude/profiles/` and can be loaded using file:// URIs:
+Built-in profiles are located in `.claude/profiles/` and can be loaded using simple names (preferred) or URIs:
 
-- **all**: Complete environment (default) - `file://.claude/profiles/all.yaml`
-- **coding**: Development-focused - `file://.claude/profiles/coding.yaml`
-- **research**: Investigation-focused - `file://.claude/profiles/research.yaml`
+- **all**: Complete environment (default)
+  - Simple: `"all"`
+  - Legacy: `"amplihack://profiles/all"` or `"file://.claude/profiles/all.yaml"`
+- **coding**: Development-focused
+  - Simple: `"coding"`
+  - Legacy: `"amplihack://profiles/coding"` or `"file://.claude/profiles/coding.yaml"`
+- **research**: Investigation-focused
+  - Simple: `"research"`
+  - Legacy: `"amplihack://profiles/research"` or `"file://.claude/profiles/research.yaml"`
+
+**Recommendation**: Use simple names for built-in profiles. URI schemes are supported for backward compatibility and filesystem access.
 
 ## Security
 
