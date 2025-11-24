@@ -119,7 +119,12 @@ def create_staging_manifest(
 
             # Exact path matching
             if "agents" in rel_path.parts:
-                return rel_path_str in filtered_agents_str
+                result = rel_path_str in filtered_agents_str
+                if os.environ.get("AMPLIHACK_DEBUG") == "true" and file_path.name.endswith('.md'):
+                    print(f"    [FILTER] {file_path.name}: rel_path='{rel_path_str}' in filtered_agents? {result}")
+                    if not result and len(filtered_agents_str) < 15:
+                        print(f"             Filtered paths sample: {list(filtered_agents_str)[:3]}")
+                return result
 
             if "commands" in rel_path.parts:
                 return rel_path_str in filtered_commands_str
