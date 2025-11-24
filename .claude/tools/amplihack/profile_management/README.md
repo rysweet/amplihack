@@ -1,15 +1,27 @@
 # Profile Management System
 
-Comprehensive profile management for amplihack - organize and customize collections of commands, context, agents, and skills.
+Profile management for amplihack - collections of commands, context, agents, and skills.
+
+## Table of Contents
+
+- [Features](#features)
+- [Usage](#usage)
+  - [Load a Profile](#load-a-profile)
+  - [Discover Components](#discover-components)
+  - [Filter Components](#filter-components)
+- [Built-in Profiles](#built-in-profiles)
+- [Security](#security)
+- [Testing](#testing)
+- [Architecture](#architecture)
 
 ## Features
 
 - **YAML-based profiles**: Human-readable configuration
-- **URI support**: file://, amplihack:// schemes
+- **URI support**: file:// scheme for local profiles
 - **Component filtering**: Pattern-based with wildcards
 - **Category filtering**: Scalable to 100k+ skills
 - **CLI commands**: list, show, switch, validate, current
-- **Persistent config**: Saved to ~/.amplihack/config.yaml
+- **Persistent config**: ~/.amplihack/config.yaml
 - **Environment override**: AMPLIHACK_PROFILE variable
 
 ## Usage
@@ -22,7 +34,12 @@ from profile_management import ProfileLoader, ProfileParser
 loader = ProfileLoader()
 parser = ProfileParser()
 
-yaml_content = loader.load("amplihack://profiles/coding")
+# Load with relative path
+yaml_content = loader.load("file://.claude/profiles/coding.yaml")
+profile = parser.parse(yaml_content)
+
+# Or load with absolute path
+yaml_content = loader.load("file:///home/user/.amplihack/profiles/coding.yaml")
 profile = parser.parse(yaml_content)
 ```
 
@@ -51,23 +68,15 @@ print(f"Token estimate: {filtered.token_count_estimate()} tokens")
 
 ## Built-in Profiles
 
-- **all**: Complete environment (default)
-- **coding**: Development-focused
-- **research**: Investigation-focused
+Built-in profiles are located in `.claude/profiles/` and can be loaded using file:// URIs:
 
-## CLI Commands
-
-```bash
-/amplihack:profile list              # List available profiles
-/amplihack:profile show [uri]        # Show profile details
-/amplihack:profile current           # Show active profile
-/amplihack:profile switch <uri>      # Switch profile
-/amplihack:profile validate <uri>    # Validate profile
-```
+- **all**: Complete environment (default) - `file://.claude/profiles/all.yaml`
+- **coding**: Development-focused - `file://.claude/profiles/coding.yaml`
+- **research**: Investigation-focused - `file://.claude/profiles/research.yaml`
 
 ## Security
 
-- Path traversal protection for file:// URIs
+- Path traversal protection for all file:// URIs
 - YAML bomb protection (size + depth limits)
 - Version validation before parsing
 - Pattern complexity limits
@@ -82,11 +91,11 @@ python -m pytest tests/ -v
 
 ## Architecture
 
-- **models.py**: Pydantic data models
-- **loader.py**: URI-based loading
+- **models.py**: Pydantic data models (Profile, ComponentSet)
+- **loader.py**: URI-based loading (file://)
 - **parser.py**: YAML parsing + validation
-- **discovery.py**: Component discovery
-- **filter.py**: Pattern matching
-- **index.py**: Skill indexing
-- **config.py**: Configuration persistence
-- **cli.py**: Rich console interface
+- **discovery.py**: Component discovery (filesystem scanning)
+- **filter.py**: Pattern matching (wildcards)
+- **index.py**: Skill indexing (category-based)
+- **config.py**: Configuration persistence (~/.amplihack)
+- **cli.py**: Rich console interface (list, show, switch)
