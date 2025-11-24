@@ -24,9 +24,12 @@ keywords:
 - pull requests
 - git repos
 - artifacts feed
-  auto_activate: true
-  version: 1.0.0
-  token_budget: 1800
+
+<!-- prettier-ignore-start -->
+auto_activate: true
+version: 1.0.0
+token_budget: 1800
+<!-- prettier-ignore-end -->
 
 ---
 
