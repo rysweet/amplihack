@@ -15,12 +15,12 @@ Public API:
 
 import json
 import sys
-from pathlib import Path
 from collections import Counter
-from typing import Dict, Tuple
+from pathlib import Path
+from typing import Tuple
 
 # Public API
-__all__ = ['detect_language', 'get_debugger_for_language']
+__all__ = ["detect_language", "get_debugger_for_language"]
 
 # Manifest file → language mapping
 MANIFEST_MAP = {
@@ -62,6 +62,7 @@ EXTENSION_MAP = {
     ".vb": "csharp",
 }
 
+
 def detect_language(project_dir: str = ".") -> Tuple[str, float]:
     """Detect project language with confidence score.
 
@@ -72,7 +73,7 @@ def detect_language(project_dir: str = ".") -> Tuple[str, float]:
 
     if not path.exists():
         print(f"ERROR: Project directory not found: {path}", file=sys.stderr)
-        print(f"Please verify the path exists and try again.", file=sys.stderr)
+        print("Please verify the path exists and try again.", file=sys.stderr)
         return ("unknown", 0.0)
 
     # Check manifest files (highest confidence)
@@ -84,7 +85,7 @@ def detect_language(project_dir: str = ".") -> Tuple[str, float]:
     extensions = Counter()
 
     # Exclude common non-source directories
-    exclude_dirs = {'.git', '.venv', 'node_modules', 'target', 'build', 'dist', '__pycache__'}
+    exclude_dirs = {".git", ".venv", "node_modules", "target", "build", "dist", "__pycache__"}
 
     for ext, lang in EXTENSION_MAP.items():
         count = 0
@@ -110,39 +111,39 @@ def detect_language(project_dir: str = ".") -> Tuple[str, float]:
     # No detection possible
     return ("unknown", 0.0)
 
+
 def get_debugger_for_language(language: str) -> str:
-    """Get recommended debugger for language."""
+    """Get recommended debugger for language (dap-mcp supported only).
+
+    Currently supported by dap-mcp:
+    - python: debugpy
+    - c/cpp/rust: lldb
+
+    See issue #1570 for planned language support.
+    """
     debugger_map = {
         "python": "debugpy",
-        "javascript": "node",
-        "typescript": "node",
-        "c": "gdb",
-        "cpp": "gdb",
-        "go": "delve",
-        "rust": "rust-gdb",
-        "java": "jdwp",
-        "csharp": "vsdbg",
+        "c": "lldb",
+        "cpp": "lldb",
+        "rust": "lldb",
     }
-    return debugger_map.get(language, "unknown")
+    return debugger_map.get(language, "unsupported")
+
 
 if __name__ == "__main__":
-    import sys
     import argparse
+    import sys
 
-    parser = argparse.ArgumentParser(description='Detect project language')
-    parser.add_argument('--path', default='.', help='Project path to analyze')
-    parser.add_argument('--json', action='store_true', help='Output JSON format')
+    parser = argparse.ArgumentParser(description="Detect project language")
+    parser.add_argument("--path", default=".", help="Project path to analyze")
+    parser.add_argument("--json", action="store_true", help="Output JSON format")
     args = parser.parse_args()
 
     lang, conf = detect_language(args.path)
     debugger = get_debugger_for_language(lang)
 
     if args.json:
-        result = {
-            "language": lang,
-            "confidence": round(conf, 2),
-            "debugger": debugger
-        }
+        result = {"language": lang, "confidence": round(conf, 2), "debugger": debugger}
         print(json.dumps(result, indent=2))
     else:
         print(f"Language: {lang}")

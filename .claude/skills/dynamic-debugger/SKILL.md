@@ -16,7 +16,8 @@ activation_conditions:
       ]
   - confidence_threshold: 0.8
   - ask_confirmation_below: 0.8
-supported_languages: [python, javascript, typescript, c, cpp, go, rust, java, csharp]
+supported_languages: [python, c, cpp, rust]
+planned_languages: [javascript, typescript, go, java, csharp]
 dependencies:
   external: [dap-mcp]
   internal: [claude-code-sdk]
@@ -41,7 +42,8 @@ This skill enables interactive debuggin' through the Debug Adapter Protocol (DAP
 **What ye get:**
 
 - Natural language debugging commands ("set breakpoint at line 42")
-- Multi-language support (Python, JS/TS, C/C++, Go, Rust, Java, .NET)
+- **Current support:** Python (debugpy), C/C++/Rust (lldb)
+- **Planned support:** JavaScript/TypeScript, Go, Java, .NET (see configs/future/)
 - Automatic intent and language detection
 - Session management with resource limits
 - Graceful error handling and recovery
@@ -51,14 +53,9 @@ This skill enables interactive debuggin' through the Debug Adapter Protocol (DAP
 **Required:**
 
 - dap-mcp server installed (`pip install dap-mcp` or `uv pip install dap-mcp`)
-- Language-specific debuggers:
+- Language-specific debuggers (current support):
   - Python: debugpy (`pip install debugpy`)
-  - JavaScript/TypeScript: Built-in Node debugger
-  - C/C++: gdb or lldb
-  - Go: delve (`go install github.com/go-delve/delve/cmd/dlv@latest`)
-  - Rust: rust-gdb (included with Rust)
-  - Java: jdwp (included with JDK)
-  - .NET: vsdbg (`dotnet tool install -g vsdbg`)
+  - C/C++/Rust: lldb-dap (install lldb with DAP support)
 
 **Verification:**
 

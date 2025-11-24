@@ -5,9 +5,11 @@
   "manifest_files": ["requirements.txt", "pyproject.toml", "setup.py", "Pipfile"],
   "description": "Python debugger using debugpy (Debug Adapter Protocol)",
   "config": {
-    "name": "Python: Debug Current File",
-    "type": "python",
-    "request": "launch",
+    "type": "debugpy",
+    "debuggerPath": "python3",
+    "debuggerArgs": ["-m", "debugpy.adapter"],
+    "sourceDirs": ["${project_dir}"],
+    "python": ["python3"],
     "program": "${project_dir}/${entry_point}.py",
     "cwd": "${project_dir}"
   },
