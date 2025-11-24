@@ -59,17 +59,29 @@ amplihack launch
 ### Set Profile via Environment Variable
 
 ```bash
-# In ~/.bashrc or ~/.zshrc
+# Built-in profile
 export AMPLIHACK_PROFILE=amplihack://profiles/coding
 
-# Or for single session
-AMPLIHACK_PROFILE=amplihack://profiles/coding amplihack install
+# Local file
+export AMPLIHACK_PROFILE=file:///home/user/.amplihack/my-profile.yaml
+
+# GitHub repository
+export AMPLIHACK_PROFILE=git+https://github.com/myteam/profiles/blob/main/custom.yaml
+
+# Then install or launch
+amplihack install
 ```
 
-###Profile Priority
+### Profile Priority
 
 1. **AMPLIHACK_PROFILE environment variable** (highest)
 2. **No profile set** = "all" profile (copy everything)
+
+### Supported URI Schemes
+
+- `amplihack://profiles/name` - Built-in profiles (.claude/profiles/*.yaml)
+- `file:///path/to/profile.yaml` - Local filesystem
+- `git+https://github.com/user/repo/blob/ref/path/to/profile.yaml` - GitHub repository
 
 ### Workflow
 
@@ -125,9 +137,19 @@ components:
 
 ### Use Custom Profile
 
+**Local file:**
 ```bash
-export AMPLIHACK_PROFILE=amplihack://profiles/minimal
+export AMPLIHACK_PROFILE=file://$HOME/.amplihack/profiles/minimal.yaml
 amplihack install
+```
+
+**From GitHub:**
+```bash
+# Use profile from your team's repo
+export AMPLIHACK_PROFILE=git+https://github.com/myteam/amplihack-profiles/blob/main/minimal.yaml
+amplihack install
+
+# Profile is cloned to ~/.amplihack/cache/repos/ and cached for reuse
 ```
 
 ## Profile YAML Schema
