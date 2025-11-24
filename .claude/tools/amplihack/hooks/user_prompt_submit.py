@@ -266,6 +266,33 @@ class UserPromptSubmitHook(HookProcessor):
         else:
             self.log("No USER_PREFERENCES.md found - skipping preference injection")
 
+        # 3. Auto-ultrathink detection and recommendation
+        try:
+            sys.path.insert(0, str(Path(__file__).parent / "auto_ultrathink"))
+            from hook_integration import process_request
+
+            # Process request for auto-ultrathink
+            auto_result = process_request(
+                user_prompt,
+                context={
+                    "session_id": self.get_session_id(),
+                    "preferences": preferences if pref_file else {},
+                },
+            )
+
+            # If auto-ultrathink returned modified prompt or recommendation, add it
+            if auto_result and auto_result != user_prompt:
+                # Extract any additional context that was added
+                if len(auto_result) > len(user_prompt):
+                    auto_context = auto_result.replace(user_prompt, "").strip()
+                    if auto_context:
+                        context_parts.append(auto_context)
+                        self.log("Auto-ultrathink recommendation added")
+                        self.save_metric("auto_ultrathink_triggered", 1)
+
+        except Exception as e:
+            self.log(f"Auto-ultrathink failed (non-fatal): {e}", "WARNING")
+
         # Combine all context parts
         full_context = "\n\n".join(context_parts)
 

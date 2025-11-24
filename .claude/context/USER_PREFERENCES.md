@@ -94,11 +94,13 @@ Controls automatic updating of .claude/ directory when version mismatch detected
 **Current setting:** always (set at line 43)
 
 **Options:**
+
 - `always` - Always auto-update without prompting
 - `never` - Never auto-update (just show warning)
 - `ask` - Prompt user each time (default)
 
 **Usage:**
+
 ```bash
 /amplihack:customize set auto_update always
 /amplihack:customize set auto_update never
@@ -126,6 +128,28 @@ Controls whether Neo4j database shuts down automatically on session exit.
 /amplihack:customize set neo4j_auto_shutdown never
 /amplihack:customize set neo4j_auto_shutdown ask
 ```
+
+### Auto Ultrathink
+
+Controls automatic invocation of /ultrathink for code/repository change requests.
+
+**Current setting:** enabled
+
+**Options:**
+
+- `enabled` - Automatically recommend /ultrathink for code changes
+- `disabled` - Never auto-recommend (manual invocation only)
+- `ask` - Show recommendation, let user decide (default)
+
+**Usage:**
+
+```bash
+/amplihack:customize set auto_ultrathink enabled
+/amplihack:customize set auto_ultrathink disabled
+/amplihack:customize set auto_ultrathink ask
+```
+
+**Note:** Even when enabled, you can skip ultrathink by saying "quick fix" or "skip workflow".
 
 **Management Commands**:
 

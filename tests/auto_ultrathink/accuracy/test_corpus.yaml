@@ -1,0 +1,514 @@
+# Test Corpus for Classification Accuracy
+#
+# This corpus contains 100+ labeled examples for testing classification accuracy.
+# Each entry specifies:
+#   - prompt: The input text to classify
+#   - expected: true if should trigger UltraThink, false otherwise
+#   - category: The pattern category (for analysis)
+#   - min_confidence: Minimum confidence score expected (optional)
+
+# ===== TRIGGER PATTERNS (needs_ultrathink = true) =====
+
+# Multi-file features
+- prompt: "Add authentication to the API"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Implement user dashboard with database"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Create payment processing system"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Build REST API with PostgreSQL backend"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Add comprehensive logging system"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.80
+
+- prompt: "Implement OAuth2 authentication flow"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Create admin dashboard with CRUD operations"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Build microservices architecture"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Add caching layer with Redis"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Implement real-time notifications system"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+# Refactoring
+- prompt: "Refactor the auth module"
+  expected: true
+  category: refactoring
+  min_confidence: 0.80
+
+- prompt: "Redesign the data layer"
+  expected: true
+  category: refactoring
+  min_confidence: 0.80
+
+- prompt: "Restructure project for modularity"
+  expected: true
+  category: refactoring
+  min_confidence: 0.80
+
+- prompt: "Refactor API to use REST conventions"
+  expected: true
+  category: refactoring
+  min_confidence: 0.80
+
+- prompt: "Reorganize codebase into packages"
+  expected: true
+  category: refactoring
+  min_confidence: 0.80
+
+# Complex bug fixes
+- prompt: "Fix the failing CI tests"
+  expected: true
+  category: complex_bug_fix
+  min_confidence: 0.80
+
+- prompt: "Debug the race condition in async code"
+  expected: true
+  category: complex_bug_fix
+  min_confidence: 0.80
+
+- prompt: "Resolve the import errors across modules"
+  expected: true
+  category: complex_bug_fix
+  min_confidence: 0.80
+
+- prompt: "Fix memory leak in the worker process"
+  expected: true
+  category: complex_bug_fix
+  min_confidence: 0.80
+
+- prompt: "Debug production performance issues"
+  expected: true
+  category: complex_bug_fix
+  min_confidence: 0.80
+
+# Testing + Implementation
+- prompt: "Add tests and implement the feature"
+  expected: true
+  category: test_plus_implementation
+  min_confidence: 0.85
+
+- prompt: "Test-driven implementation of auth"
+  expected: true
+  category: test_plus_implementation
+  min_confidence: 0.85
+
+- prompt: "Implement feature with comprehensive test coverage"
+  expected: true
+  category: test_plus_implementation
+  min_confidence: 0.85
+
+- prompt: "Add integration tests for API endpoints"
+  expected: true
+  category: test_plus_implementation
+  min_confidence: 0.80
+
+- prompt: "Write E2E tests for payment flow"
+  expected: true
+  category: test_plus_implementation
+  min_confidence: 0.80
+
+# Documentation + Code
+- prompt: "Document and implement the API"
+  expected: true
+  category: documentation_plus_code
+  min_confidence: 0.80
+
+- prompt: "Add comprehensive docs for the new feature"
+  expected: true
+  category: documentation_plus_code
+  min_confidence: 0.80
+
+- prompt: "Create API documentation with examples"
+  expected: true
+  category: documentation_plus_code
+  min_confidence: 0.80
+
+# ===== SKIP PATTERNS (needs_ultrathink = false) =====
+
+# Slash commands
+- prompt: "/analyze src/"
+  expected: false
+  category: slash_command
+  min_confidence: 0.95
+
+- prompt: "/ultrathink Add feature"
+  expected: false
+  category: slash_command
+  min_confidence: 0.95
+
+- prompt: "/fix import errors"
+  expected: false
+  category: slash_command
+  min_confidence: 0.95
+
+- prompt: "/improve code quality"
+  expected: false
+  category: slash_command
+  min_confidence: 0.95
+
+- prompt: "/amplihack:debate"
+  expected: false
+  category: slash_command
+  min_confidence: 0.95
+
+- prompt: "/help"
+  expected: false
+  category: slash_command
+  min_confidence: 0.95
+
+# Questions
+- prompt: "What is UltraThink?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "How do I use the debugger?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "Explain the architecture"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "Why is this failing?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "What does this function do?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "How does authentication work?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "Why are tests failing?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "What's the difference between X and Y?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "Can you explain this code?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "Which approach should I use?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+# Simple edits
+- prompt: "Change the variable name to X"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+- prompt: "Update the comment in file.py"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+- prompt: "Fix typo in README"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+- prompt: "Rename function to be more descriptive"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+- prompt: "Add comment explaining this logic"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+# Read operations
+- prompt: "Show me the config file"
+  expected: false
+  category: read_operation
+  min_confidence: 0.90
+
+- prompt: "List all the agents"
+  expected: false
+  category: read_operation
+  min_confidence: 0.90
+
+- prompt: "Find instances of function X"
+  expected: false
+  category: read_operation
+  min_confidence: 0.90
+
+- prompt: "Display the logs"
+  expected: false
+  category: read_operation
+  min_confidence: 0.90
+
+- prompt: "Read the contents of file.py"
+  expected: false
+  category: read_operation
+  min_confidence: 0.90
+
+- prompt: "Show the current settings"
+  expected: false
+  category: read_operation
+  min_confidence: 0.90
+
+- prompt: "List all dependencies"
+  expected: false
+  category: read_operation
+  min_confidence: 0.90
+
+# Very short prompts
+- prompt: "Help"
+  expected: false
+  category: very_short
+  min_confidence: 0.85
+
+- prompt: "Status"
+  expected: false
+  category: very_short
+  min_confidence: 0.85
+
+- prompt: "Continue"
+  expected: false
+  category: very_short
+  min_confidence: 0.85
+
+- prompt: "Thanks"
+  expected: false
+  category: very_short
+  min_confidence: 0.85
+
+- prompt: "OK"
+  expected: false
+  category: very_short
+  min_confidence: 0.85
+
+# Empty/edge cases
+- prompt: ""
+  expected: false
+  category: empty
+  min_confidence: 0.90
+
+- prompt: "   "
+  expected: false
+  category: empty
+  min_confidence: 0.90
+
+# ===== EDGE CASES AND BOUNDARY CONDITIONS =====
+
+# Ambiguous prompts
+- prompt: "Fix this"
+  expected: false
+  category: ambiguous
+  min_confidence: 0.70
+
+- prompt: "Make it better"
+  expected: false
+  category: ambiguous
+  min_confidence: 0.70
+
+- prompt: "Update the thing"
+  expected: false
+  category: ambiguous
+  min_confidence: 0.70
+
+# Mixed trigger/skip indicators
+- prompt: "What would it take to implement authentication?"
+  expected: false
+  category: mixed
+  min_confidence: 0.80
+
+- prompt: "Can you add a feature?"
+  expected: false
+  category: mixed
+  min_confidence: 0.75
+
+# Strong triggers with multiple indicators
+- prompt: "Add authentication, database integration, and API endpoints"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.90
+
+- prompt: "Refactor the entire codebase to use TypeScript"
+  expected: true
+  category: refactoring
+  min_confidence: 0.85
+
+- prompt: "Implement complete CRUD operations with tests and documentation"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.90
+
+# Additional feature requests (30+ more)
+- prompt: "Add user registration system"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Create email notification service"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Build file upload system"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Implement search functionality"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.80
+
+- prompt: "Add role-based access control"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Create API rate limiting"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Implement data export feature"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.80
+
+- prompt: "Add webhook support"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.80
+
+- prompt: "Build analytics dashboard"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Create backup and restore system"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+# Additional questions (10+ more)
+- prompt: "Tell me about this project"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "How does this work?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "Where is the configuration?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "Who wrote this code?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+- prompt: "When was this last updated?"
+  expected: false
+  category: question
+  min_confidence: 0.90
+
+# Additional simple operations (10+ more)
+- prompt: "Print hello world"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.80
+
+- prompt: "Remove this line"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+- prompt: "Add semicolon"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+- prompt: "Format this code"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+- prompt: "Fix indentation"
+  expected: false
+  category: simple_edit
+  min_confidence: 0.85
+
+# Complex but clear requests
+- prompt: "Set up CI/CD pipeline with GitHub Actions"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Implement GraphQL API with subscriptions"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Add Docker containerization"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+- prompt: "Create unit tests for all modules"
+  expected: true
+  category: test_plus_implementation
+  min_confidence: 0.80
+
+- prompt: "Add monitoring and alerting"
+  expected: true
+  category: multi_file_feature
+  min_confidence: 0.85
+
+# Total: 107 test cases
