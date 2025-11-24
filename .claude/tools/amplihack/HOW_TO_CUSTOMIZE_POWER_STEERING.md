@@ -522,16 +522,32 @@ Look for:
 
 (Future enhancement - not yet implemented)
 
-### Disable Temporarily
+### Disable Power-Steering
 
-If power-steering is causing issues:
+Power-steering can be disabled using three control mechanisms (in priority order):
 
 ```bash
-# Disable for current session
+# Method 1: Runtime disable (highest priority)
+# Creates semaphore file to disable power-steering immediately
+mkdir -p .claude/runtime/power-steering && touch .claude/runtime/power-steering/.disabled
+
+# Method 2: Session disable (medium priority)
+# Affects sessions started after setting this variable
 export AMPLIHACK_SKIP_POWER_STEERING=1
 
-# Disable permanently
-echo "enabled: false" > .claude/tools/amplihack/.power_steering_config
+# Method 3: Startup disable (lowest priority)
+# Sets default behavior at startup - config file should be JSON
+echo '{"enabled": false}' > .claude/tools/amplihack/.power_steering_config
+```
+
+**To re-enable power-steering:**
+
+```bash
+# Remove the semaphore file
+rm .claude/runtime/power-steering/.disabled
+
+# Or unset the environment variable
+unset AMPLIHACK_SKIP_POWER_STEERING
 ```
 
 ### Report Issues
