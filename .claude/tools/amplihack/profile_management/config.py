@@ -4,9 +4,10 @@ This module provides ProfileConfig for managing profile configuration persistenc
 including current profile selection and environment variable support.
 """
 
+import os
 from pathlib import Path
 from typing import Optional
-import os
+
 import yaml
 
 
@@ -21,7 +22,7 @@ class ConfigManager:
     Priority for current profile:
     1. AMPLIHACK_PROFILE environment variable
     2. Saved config file
-    3. Default: amplihack://profiles/all
+    3. Default: all
 
     Example:
         >>> config = ConfigManager()
@@ -49,7 +50,7 @@ class ConfigManager:
         Priority:
         1. AMPLIHACK_PROFILE environment variable
         2. Saved config file
-        3. Default: amplihack://profiles/all
+        3. Default: all
 
         Returns:
             Profile URI
@@ -58,7 +59,7 @@ class ConfigManager:
             >>> config = ConfigManager()
             >>> uri = config.get_current_profile()
             >>> print(uri)
-            amplihack://profiles/all
+            all
         """
         # Check environment variable first (highest priority)
         env_profile = os.environ.get("AMPLIHACK_PROFILE")
@@ -68,10 +69,10 @@ class ConfigManager:
         # Check config file
         if self.config_path.exists():
             config = self._load_config()
-            return config.get("current_profile", "amplihack://profiles/all")
+            return config.get("current_profile", "all")
 
         # Default profile
-        return "amplihack://profiles/all"
+        return "all"
 
     def set_current_profile(self, uri: str):
         """Set current profile URI.

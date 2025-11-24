@@ -9,8 +9,6 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 Launches Claude Code with preconfigured agents. No installation needed.
 
-## Quick Setup
-
 ### Create Alias for Easy Access
 
 Instead of typing the full uvx command, create an alias:
@@ -168,33 +166,27 @@ python main.py
 
 ### Profile Management
 
-**Optimize token usage and customize your environment with profiles:**
+**Reduce token usage by 72% with profile-based component filtering:**
 
 ```bash
-# List available profiles
-/amplihack:profile list
-
-# Switch to coding profile (saves ~50% tokens)
-/amplihack:profile switch amplihack://profiles/coding
-
-# Show current profile
-/amplihack:profile current
-
-# Set default profile via environment variable
+# Set profile (outside Claude Code)
 export AMPLIHACK_PROFILE=amplihack://profiles/coding
-amplihack launch
 
-# Create custom profile
-/amplihack:profile validate file:///path/to/custom.yaml
+# Install with filtering
+amplihack install
+# Result: Only 9/32 agents staged (72% reduction)
+
+# Launch with filtering
+amplihack launch
+# Result: Focused environment for coding tasks
+
+# To switch profiles: exit Claude, set new profile, restart
 ```
 
-**Features:**
-
-- 40-60% token reduction with focused profiles
-- Built-in profiles: `all`, `coding`, `research`
-- Custom profile support via YAML
-- Environment variable integration
-- Team-shareable profile configurations
+**Built-in Profiles:**
+- `all`: Full environment (32 agents, default)
+- `coding`: Development-focused (9 agents)
+- `research`: Investigation-focused (7 agents)
 
 **Learn more:** [Profile Management Guide](docs/PROFILE_MANAGEMENT.md)
 
@@ -330,6 +322,88 @@ changes apply immediately to `/ultrathink` and other commands. See
 [docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed
 customization instructions.
 
+## Statusline
+
+### Overview
+
+Real-time session information bar at the bottom of Claude Code interface showing
+progress, costs, context usage, and active features.
+
+### Indicators Reference
+
+| Indicator             | Shows                     | Format                                      | Notes                                                   |
+| --------------------- | ------------------------- | ------------------------------------------- | ------------------------------------------------------- |
+| **Directory**         | Current working directory | `~/path`                                    | `~` = home directory                                    |
+| **Git Branch**        | Branch name and status    | `(branch → remote)` or `(branch* → remote)` | `*` = uncommitted changes, Cyan = clean, Yellow = dirty |
+| **Model**             | Active Claude model       | `Opus`, `Sonnet`, `Haiku`                   | Red=Opus, Green=Sonnet, Blue=Haiku                      |
+| **Tokens** 🎫         | Total token usage         | `234K`, `1.2M`, or raw number               | M=millions, K=thousands                                 |
+| **Cost** 💰           | Total session cost        | `$1.23`                                     | USD                                                     |
+| **Duration** ⏱       | Session elapsed time      | `15m`, `1h`, `30s`                          | s/m/h format                                            |
+| **Power-Steering** 🚦 | Redirect count            | `🚦×3`                                      | Only when active (purple)                               |
+| **Lock Mode** 🔒      | Lock invocation count     | `🔒×5`                                      | Only when active (yellow)                               |
+
+### Color Coding
+
+**Git Status:**
+
+- Cyan: Clean working tree (no uncommitted changes)
+- Yellow with `*`: Dirty working tree (uncommitted changes)
+
+**Model Type:**
+
+- Red: Opus models
+- Green: Sonnet models
+- Blue: Haiku models
+- Gray: Unknown/other models
+
+**Feature Indicators:**
+
+- Purple (🚦): Power-steering active
+- Yellow (🔒): Lock mode active
+
+### Examples
+
+**Example 1: Clean Development Session**
+
+```
+~/src/amplihack4 (main → origin) Sonnet 🎫 234K 💰$1.23 ⏱12m
+```
+
+- Directory: `~/src/amplihack4` (~= home shorthand)
+- Git: `(main → origin)` cyan = clean branch
+- Model: `Sonnet` green = Sonnet family
+- Tokens: `🎫 234K` 234,000 tokens
+- Cost: `💰$1.23` $1.23 USD
+- Duration: `⏱12m` 12 minutes
+
+**Example 2: Active Development with Features**
+
+```
+~/projects/api (feature/auth* → origin) Opus 🎫 1.2M 💰$15.67 ⏱1h 🚦×3 🔒×5
+```
+
+- Directory: `~/projects/api`
+- Git: `(feature/auth* → origin)` yellow = dirty, `*` = uncommitted changes
+- Model: `Opus` red = Opus family
+- Tokens: `🎫 1.2M` 1.2 million tokens
+- Cost: `💰$15.67` $15.67 USD
+- Duration: `⏱1h` 1 hour
+- Power-Steering: `🚦×3` 3 redirects (purple indicator)
+- Lock Mode: `🔒×5` 5 lock invocations (yellow indicator)
+
+### Configuration
+
+`.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/statusline.sh"
+  }
+}
+```
+
 ### Project Structure
 
 ```
@@ -358,6 +432,8 @@ customization instructions.
   - [PDF Skill](.claude/skills/pdf/README.md) - Comprehensive PDF manipulation
   - [XLSX Skill](.claude/skills/xlsx/README.md) - Spreadsheet creation with
     formulas and financial modeling
+- [Azure DevOps CLI Skill](.claude/skills/azure-devops-cli/README.md) - Expert
+  guidance for Azure DevOps automation, pipelines, boards, repos, and artifacts
 - [Benchmarking with eval-recipes](docs/BENCHMARKING.md) - Performance
   measurement and comparison
 - [Profile Management](docs/PROFILE_MANAGEMENT.md) - Token optimization and

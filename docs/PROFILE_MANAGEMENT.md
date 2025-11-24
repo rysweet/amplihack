@@ -1,507 +1,124 @@
 # Profile Management
 
-Comprehensive guide to amplihack's profile system for optimizing token usage and customizing your development environment.
+Amplihack's profile system filters which components get staged during installation, reducing token usage and focusing your environment for specific workflows.
 
-## Table of Contents
+## How It Works
 
-1. [Overview](#overview)
-2. [Core Concepts](#core-concepts)
-3. [Basic Usage](#basic-usage)
-4. [Creating Custom Profiles](#creating-custom-profiles)
-5. [Environment Variable Integration](#environment-variable-integration)
-6. [Real-World Examples](#real-world-examples)
-7. [Advanced Features](#advanced-features)
-8. [Technical Architecture](#technical-architecture)
+Profiles control **file staging** - which files get copied to `.claude/` when you run `amplihack install` or `amplihack launch`. Claude Code sees only the filtered files (no runtime awareness needed).
 
----
+**Key Principle**: Profile switching happens OUTSIDE Claude Code. To change profiles, you must exit Claude, set a new profile, and restart.
 
-## Overview
-
-### What Are Profiles?
-
-Profiles are **declarative configurations** that control which commands, context files, agents, and skills are loaded into Claude Code sessions. They enable you to:
-
-- **Reduce token consumption** by 40-60% by loading only what you need
-- **Speed up session initialization** by skipping irrelevant components
-- **Focus your environment** for specific tasks (coding, research, analysis)
-- **Create reproducible workflows** that others can use
-
-### Benefits
-
-| Benefit | Description | Impact |
-|---------|-------------|--------|
-| **Token Efficiency** | Load only relevant components | 40-60% reduction |
-| **Faster Startup** | Skip parsing unnecessary files | 2-3x faster init |
-| **Focused Context** | Eliminate noise from irrelevant agents/skills | Better AI responses |
-| **Reproducibility** | Share profiles for consistent environments | Team alignment |
-
-### Quick Win
-
-Switch to the `coding` profile and save ~50% tokens immediately:
+## Quick Start
 
 ```bash
-/amplihack:profile switch amplihack://profiles/coding
+# Set profile via environment variable
+export AMPLIHACK_PROFILE=amplihack://profiles/coding
+
+# Install with profile filtering
+amplihack install
+# Result: Only 9/32 agents copied (72% reduction)
+
+# Or launch with profile filtering
+amplihack launch
+# Result: Only 9/32 agents staged to working directory
 ```
 
-This loads only development-focused agents (architect, builder, reviewer, tester) and excludes research-oriented components like knowledge-archaeologist and analyst agents.
+## Built-in Profiles
 
----
+| Profile | Agents | Use Case |
+|---------|--------|----------|
+| **all** (default) | 32 agents | General use, full capabilities |
+| **coding** | 9 agents | Feature development, bug fixes |
+| **research** | 7 agents | Code analysis, investigation |
 
-## Core Concepts
+### Coding Profile
 
-### 1. Profile Definition
+**Included agents** (9):
+- architect, builder, reviewer, tester
+- api-designer, optimizer
+- database, security, cleanup
 
-A profile is a YAML file that declares which components to include/exclude:
+**Excluded agents** (23):
+- knowledge-archaeologist
+- All *-analyst agents (economist, biologist, etc.)
+- PM architect
+- Specialized workflow agents
 
-```yaml
-version: "1.0"
-name: "my-profile"
-description: "Custom profile for my workflow"
+### Research Profile
 
-components:
-  commands:
-    include: ["ultrathink", "analyze", "fix"]
-  agents:
-    include: ["architect", "builder", "reviewer"]
-  skills:
-    include_categories: ["coding", "testing"]
-  context:
-    include: ["PHILOSOPHY.md", "PATTERNS.md"]
-```
+**Included agents** (7):
+- architect, analyzer
+- knowledge-archaeologist, patterns
+- All *-analyst agents
 
-### 2. Built-in Profiles
+**Excluded agents**:
+- builder, tester (coding-focused)
 
-amplihack ships with 3 built-in profiles:
-
-| Profile | Purpose | Token Savings | Use Case |
-|---------|---------|---------------|----------|
-| **all** | Complete environment (everything) | 0% (baseline) | General use, exploration |
-| **coding** | Development-focused | ~50% | Feature development, bug fixes |
-| **research** | Investigation-focused | ~45% | Code analysis, learning |
-
-### 3. File Mapping
-
-Profiles map to physical YAML files:
-
-```
-amplihack://profiles/coding  → .claude/profiles/coding.yaml
-amplihack://profiles/research → .claude/profiles/research.yaml
-file:///path/to/custom.yaml   → /path/to/custom.yaml
-```
-
-The `amplihack://` scheme resolves to `.claude/profiles/` in your project.
-
-### 4. Profile Activation
-
-Profiles can be activated in 3 ways (priority order):
-
-1. **Environment variable** (highest priority): `AMPLIHACK_PROFILE=amplihack://profiles/coding`
-2. **Explicit switch**: `/amplihack:profile switch amplihack://profiles/coding`
-3. **Default**: Falls back to `all` profile if none specified
-
-### 5. Token Optimization
-
-Profiles reduce token usage by:
-
-- **Skipping agent definitions** not included in the profile
-- **Excluding skill documentation** for unused skills
-- **Limiting context files** to only what's needed for the task
-- **Filtering commands** to reduce slash command reference bloat
-
-**Example**: The `coding` profile excludes 15+ analyst agents, saving ~12K tokens per session.
-
----
-
-## Basic Usage
-
-### List Available Profiles
-
-See all built-in profiles:
-
-```bash
-/amplihack:profile list
-```
-
-**Output:**
-```
-Available profiles:
-  - amplihack://profiles/all (Complete environment)
-  - amplihack://profiles/coding (Development-focused)
-  - amplihack://profiles/research (Investigation-focused)
-```
-
-### Show Current Profile
-
-Check which profile is active:
-
-```bash
-/amplihack:profile current
-```
-
-**Output:**
-```
-Current profile: amplihack://profiles/all
-Description: Complete amplihack environment - all components loaded
-```
-
-### Switch Profiles
-
-Change to a different profile:
-
-```bash
-# Switch to coding profile
-/amplihack:profile switch amplihack://profiles/coding
-
-# Switch to research profile
-/amplihack:profile switch amplihack://profiles/research
-
-# Switch to custom profile
-/amplihack:profile switch file:///home/user/.amplihack/my-profile.yaml
-```
+## Usage
 
 ### Set Profile via Environment Variable
 
-Override the default profile for all sessions:
-
 ```bash
-# In your ~/.bashrc or ~/.zshrc
+# Built-in profile
 export AMPLIHACK_PROFILE=amplihack://profiles/coding
 
-# Or set for a single session
-AMPLIHACK_PROFILE=amplihack://profiles/research amplihack launch
+# Local file
+export AMPLIHACK_PROFILE=file:///home/user/.amplihack/my-profile.yaml
+
+# GitHub repository
+export AMPLIHACK_PROFILE=git+https://github.com/myteam/profiles/blob/main/custom.yaml
+
+# Then install or launch
+amplihack install
 ```
 
----
+### Profile Priority
 
-## Creating Custom Profiles
+1. **AMPLIHACK_PROFILE environment variable** (highest)
+2. **No profile set** = "all" profile (copy everything)
 
-### Step-by-Step Tutorial
+### Supported URI Schemes
 
-#### Step 1: Create Profile Directory
+- `amplihack://profiles/name` - Built-in profiles (.claude/profiles/*.yaml)
+- `file:///path/to/profile.yaml` - Local filesystem
+- `git+https://github.com/user/repo/blob/ref/path/to/profile.yaml` - GitHub repository
+
+### Workflow
 
 ```bash
-mkdir -p ~/.amplihack/profiles
-```
-
-#### Step 2: Create Profile YAML
-
-Create `~/.amplihack/profiles/minimal.yaml`:
-
-```yaml
-version: "1.0"
-name: "minimal"
-description: "Minimal profile for quick tasks (max token efficiency)"
-
-components:
-  commands:
-    include:
-      - "analyze"
-      - "fix"
-    exclude:
-      - "amplihack:n-version"
-      - "amplihack:debate"
-      - "amplihack:expert-panel"
-
-  context:
-    include:
-      - "PHILOSOPHY.md"
-      - "PROJECT.md"
-
-  agents:
-    include:
-      - "builder"
-      - "reviewer"
-    exclude:
-      - "*-analyst"
-      - "knowledge-archaeologist"
-      - "visualization-architect"
-
-  skills:
-    include_categories:
-      - "coding"
-    exclude_categories:
-      - "creative"
-      - "research"
-      - "analysis"
-
-metadata:
-  author: "your-name"
-  version: "1.0.0"
-  tags: ["minimal", "fast", "tokens"]
-  created: "2025-11-23T00:00:00Z"
-  updated: "2025-11-23T00:00:00Z"
-
-performance:
-  lazy_load_skills: true
-  cache_ttl: 3600
-```
-
-#### Step 3: Validate Profile
-
-```bash
-/amplihack:profile validate file:///home/user/.amplihack/profiles/minimal.yaml
-```
-
-#### Step 4: Test Profile
-
-```bash
-/amplihack:profile switch file:///home/user/.amplihack/profiles/minimal.yaml
-/amplihack:profile current
-```
-
-#### Step 5: Compare Token Usage
-
-Check token savings:
-
-```bash
-# Before (all profile)
-/amplihack:profile switch amplihack://profiles/all
-# Note starting token count from Claude Code UI
-
-# After (minimal profile)
-/amplihack:profile switch file:///home/user/.amplihack/profiles/minimal.yaml
-# Compare token count reduction
-```
-
-#### Step 6: Iterate and Refine
-
-Add/remove components based on your workflow:
-
-```yaml
-# Add a specific agent you need
-agents:
-  include:
-    - "builder"
-    - "reviewer"
-    - "security"  # Added for security reviews
-
-# Include only specific commands
-commands:
-  include:
-    - "analyze"
-    - "fix"
-    - "amplihack:modular-build"  # Added for modular development
-```
-
-#### Step 7: Share Profile
-
-Commit profile to your project:
-
-```bash
-cp ~/.amplihack/profiles/minimal.yaml .claude/profiles/team-minimal.yaml
-git add .claude/profiles/team-minimal.yaml
-git commit -m "Add team minimal profile"
-```
-
-Now team members can use:
-
-```bash
-/amplihack:profile switch amplihack://profiles/team-minimal
-```
-
----
-
-## Environment Variable Integration
-
-### Use Case 1: Default Profile for All Sessions
-
-Set a global default profile:
-
-```bash
-# Add to ~/.bashrc or ~/.zshrc
+# 1. Set profile (BEFORE launching Claude)
 export AMPLIHACK_PROFILE=amplihack://profiles/coding
 
-# All sessions now use coding profile by default
+# 2. Install or launch
+amplihack install  # Stages to ~/.claude/
+# OR
+amplihack launch   # Stages to ./claude/ in working directory
+
+# 3. Claude Code sees only filtered components
+# (no profile awareness - just sees what files exist)
+
+# 4. To switch profiles: Exit Claude, change profile, restart
+exit  # Exit Claude
+export AMPLIHACK_PROFILE=amplihack://profiles/research
 amplihack launch
 ```
 
-### Use Case 2: Project-Specific Profiles
+## Creating Custom Profiles
 
-Use different profiles per project:
+### Example: Minimal Profile
 
-```bash
-# In project1/.envrc (using direnv)
-export AMPLIHACK_PROFILE=amplihack://profiles/coding
-
-# In project2/.envrc
-export AMPLIHACK_PROFILE=file://$(pwd)/.claude/profiles/custom.yaml
-```
-
-### Use Case 3: Task-Specific Override
-
-Override profile for a single task:
-
-```bash
-# Use research profile just for this analysis
-AMPLIHACK_PROFILE=amplihack://profiles/research amplihack launch -- -p "analyze this codebase"
-```
-
-### Use Case 4: CI/CD Integration
-
-Set profile in CI environment:
-
-```yaml
-# .github/workflows/analyze.yml
-env:
-  AMPLIHACK_PROFILE: amplihack://profiles/coding
-
-steps:
-  - name: Run amplihack analysis
-    run: amplihack launch -- -p "/analyze src/"
-```
-
----
-
-## Real-World Examples
-
-### Example 1: Coding Profile (Built-in)
-
-**Purpose**: Feature development, bug fixes, code implementation
-
-**File**: `.claude/profiles/coding.yaml`
-
-```yaml
-version: "1.0"
-name: "coding"
-description: "Development-focused profile for coding tasks"
-
-components:
-  commands:
-    include:
-      - "ultrathink"
-      - "analyze"
-      - "fix"
-      - "amplihack:modular-build"
-      - "ddd:*"  # All DDD commands
-
-  context:
-    include:
-      - "PHILOSOPHY.md"
-      - "PATTERNS.md"
-      - "TRUST.md"
-      - "PROJECT.md"
-
-  agents:
-    include:
-      - "architect"
-      - "builder"
-      - "reviewer"
-      - "tester"
-      - "api-designer"
-      - "database"
-      - "security"
-      - "cleanup"
-      - "optimizer"
-    exclude:
-      - "knowledge-archaeologist"
-      - "*-analyst"  # Exclude all analyst agents
-
-  skills:
-    include_categories:
-      - "coding"
-      - "testing"
-      - "development"
-    exclude_categories:
-      - "creative"
-      - "research"
-    include:
-      - "outside-in-testing"
-      - "design-patterns-expert"
-
-metadata:
-  author: "amplihack"
-  version: "1.0.0"
-  tags: ["development", "coding", "focused"]
-
-performance:
-  lazy_load_skills: true
-  cache_ttl: 3600
-```
-
-**Token Savings**: ~50% (excludes 15+ analyst agents, creative skills)
-
-**When to Use**:
-- Implementing new features
-- Fixing bugs
-- Refactoring code
-- Running tests
-
-### Example 2: Research Profile (Built-in)
-
-**Purpose**: Codebase analysis, investigation, learning
-
-**File**: `.claude/profiles/research.yaml`
-
-```yaml
-version: "1.0"
-name: "research"
-description: "Investigation and analysis profile"
-
-components:
-  commands:
-    include:
-      - "amplihack:ultrathink"
-      - "amplihack:knowledge-builder"
-      - "amplihack:expert-panel"
-
-  context:
-    include:
-      - "PHILOSOPHY.md"
-      - "PROJECT.md"
-
-  agents:
-    include:
-      - "architect"
-      - "analyzer"
-      - "knowledge-archaeologist"
-      - "patterns"
-      - "*-analyst"  # Include ALL analyst agents
-
-  skills:
-    include_categories:
-      - "research"
-      - "analysis"
-
-metadata:
-  author: "amplihack"
-  version: "1.0.0"
-  tags: ["research", "investigation", "analysis"]
-
-performance:
-  lazy_load_skills: true
-  cache_ttl: 3600
-```
-
-**Token Savings**: ~45% (excludes builder, tester, coding-focused agents)
-
-**When to Use**:
-- Understanding unfamiliar codebases
-- Investigating bugs
-- Research and learning
-- Architecture reviews
-
-### Example 3: Minimal Profile (Custom)
-
-**Purpose**: Quick fixes, minimal token usage, fast responses
-
-**File**: `~/.amplihack/profiles/minimal.yaml`
+Create `.claude/profiles/minimal.yaml`:
 
 ```yaml
 version: "1.0"
 name: "minimal"
-description: "Ultra-minimal profile for maximum token efficiency"
+description: "Ultra-minimal for quick tasks"
 
 components:
   commands:
     include:
-      - "fix"
       - "analyze"
-    exclude:
-      - "amplihack:n-version"
-      - "amplihack:debate"
-      - "amplihack:expert-panel"
-      - "amplihack:knowledge-builder"
-      - "ddd:*"
+      - "fix"
 
   context:
     include:
@@ -515,278 +132,150 @@ components:
       - "*"  # Exclude all except explicitly included
 
   skills:
-    include: []  # No skills loaded
-    exclude_categories:
-      - "*"  # Exclude all categories
-
-metadata:
-  author: "custom"
-  version: "1.0.0"
-  tags: ["minimal", "fast", "tokens"]
-
-performance:
-  lazy_load_skills: false  # Don't even prepare skill loading
-  cache_ttl: 600  # Short cache for minimal footprint
+    include: []  # No skills
 ```
 
-**Token Savings**: ~70% (most aggressive reduction)
+### Use Custom Profile
 
-**When to Use**:
-- Quick bug fixes
-- Small code changes
-- Low-complexity tasks
-- Token-constrained environments
-
-**Trade-offs**:
-- No specialized agents
-- No skills available
-- Limited command set
-- Best for simple, well-defined tasks
-
----
-
-## Advanced Features
-
-### 1. Profile Inheritance
-
-Profiles can extend other profiles (future feature):
-
-```yaml
-version: "1.0"
-name: "my-coding-plus"
-extends: "amplihack://profiles/coding"
-
-components:
-  agents:
-    include:
-      - "visualization-architect"  # Add to base coding profile
-```
-
-### 2. Dynamic Profile Loading
-
-Profiles are loaded dynamically based on context:
-
-```python
-# Profile loader detects task type and suggests optimal profile
-# "Let me analyze this codebase" → suggests research profile
-# "Fix this bug" → suggests coding profile
-```
-
-### 3. Performance Monitoring
-
-Track profile performance:
-
+**Local file:**
 ```bash
-/amplihack:profile current --stats
+export AMPLIHACK_PROFILE=file://$HOME/.amplihack/profiles/minimal.yaml
+amplihack install
 ```
 
-**Output:**
-```
-Profile: amplihack://profiles/coding
-Token usage: 45,234 (baseline: 98,123) - 54% reduction
-Load time: 1.2s (baseline: 3.4s) - 2.8x faster
-Components loaded: 23 agents, 8 skills, 12 commands
-```
-
-### 4. Token Usage Tracking
-
-Monitor token consumption per profile:
-
+**From GitHub:**
 ```bash
-# Enable token tracking
-export AMPLIHACK_TRACK_TOKENS=1
+# Use profile from your team's repo
+export AMPLIHACK_PROFILE=git+https://github.com/myteam/amplihack-profiles/blob/main/minimal.yaml
+amplihack install
 
-# Session logs will include token metrics
-cat .claude/runtime/logs/<session-id>/metrics.json
+# Profile is cloned to ~/.amplihack/cache/repos/ and cached for reuse
 ```
 
-**Example output:**
-```json
-{
-  "profile": "amplihack://profiles/coding",
-  "tokens_used": 45234,
-  "tokens_saved": 52889,
-  "reduction_percentage": 53.9,
-  "session_duration": "45min"
-}
-```
-
-### 5. UltraThink Integration
-
-Profiles automatically optimize UltraThink agent orchestration:
+## Profile YAML Schema
 
 ```yaml
-# coding profile
-agents:
-  include:
-    - "architect"
-    - "builder"
-    - "reviewer"
+version: "1.0"           # Required
+name: "profile-name"     # Required
+description: "..."       # Required
 
-# UltraThink will ONLY orchestrate these 3 agents
-# Skips loading/coordinating knowledge-archaeologist, analyst agents, etc.
-```
-
-This reduces orchestration complexity and improves response quality by eliminating irrelevant agent context.
-
----
-
-## Technical Architecture
-
-### 1. File Locations
-
-```
-.claude/profiles/          # Built-in profiles
-├── all.yaml               # Complete environment
-├── coding.yaml            # Development profile
-└── research.yaml          # Investigation profile
-
-~/.amplihack/profiles/     # User custom profiles
-└── *.yaml                 # Your custom profiles
-
-/path/to/project/.claude/profiles/  # Project-specific profiles
-└── *.yaml                          # Team-shared profiles
-```
-
-### 2. YAML Schema
-
-Complete profile schema:
-
-```yaml
-version: "1.0"              # Required: schema version
-name: "profile-name"        # Required: unique identifier
-description: "..."          # Required: human-readable description
-
-components:                 # Required: what to load
+components:              # Required
   commands:
-    include: [...]          # List of command names
-    exclude: [...]          # List to exclude
-    include_all: bool       # Load everything (overrides include/exclude)
+    include: [...]       # List of command names
+    exclude: [...]       # Optional exclude patterns
+    include_all: false   # Or true to include everything
+
+  agents:
+    include: [...]       # List of agent names (without .md)
+    exclude: [...]       # Patterns like "*-analyst"
+    include_all: false
 
   context:
-    include: [...]          # List of .md filenames
-    exclude: [...]
-    include_all: bool
-
-  agents:
-    include: [...]          # List of agent names
-    exclude: [...]          # Supports wildcards: "*-analyst"
-    include_all: bool
+    include: [...]       # Context file names
+    include_all: false
 
   skills:
-    include: [...]          # List of skill names
-    exclude: [...]
-    include_categories: [...] # Categories like "coding", "research"
-    exclude_categories: [...]
-    include_all: bool
+    include_categories: [...]  # Skill categories
+    include: [...]            # Individual skills
+    include_all: false
 
-metadata:                   # Optional: documentation
-  author: "name"
+metadata:                # Optional
+  author: "..."
   version: "1.0.0"
-  tags: ["tag1", "tag2"]
-  created: "ISO8601"
-  updated: "ISO8601"
+  tags: [...]
 
-performance:                # Optional: optimization hints
-  lazy_load_skills: bool    # Load skills on-demand (default: true)
-  cache_ttl: int            # Seconds to cache profile (default: 3600)
+performance:             # Optional
+  lazy_load_skills: true
+  cache_ttl: 3600
 ```
 
-### 3. Profile Loader
+## Pattern Matching
 
-**Implementation**: `.claude/tools/amplihack/profile_management/loader.py`
+Patterns support wildcards:
 
-**Responsibilities**:
-- Parse YAML profiles
-- Resolve `amplihack://` URIs to file paths
-- Validate profile schema
-- Merge include/exclude rules
-- Return filtered component lists
+- `"architect"` matches `architect.md`
+- `"*-analyst"` matches `economist-analyst.md`, `biologist-analyst.md`, etc.
+- `"ddd:*"` matches `ddd:1-plan.md`, `ddd:2-docs.md`, etc.
 
-**Key Methods**:
-```python
-class ProfileLoader:
-    def load(uri: str) -> Profile
-    def validate(profile: Profile) -> List[ValidationError]
-    def resolve_uri(uri: str) -> Path
-    def filter_components(profile: Profile, all_components: Dict) -> Dict
+## Technical Details
+
+### File Staging Flow
+
+```
+User sets: AMPLIHACK_PROFILE=amplihack://profiles/coding
+     ↓
+amplihack install/launch runs
+     ↓
+Load profile YAML from .claude/profiles/coding.yaml
+     ↓
+Create file filter based on include/exclude patterns
+     ↓
+Copy only files matching profile to .claude/
+     ↓
+Claude Code launches, sees filtered environment
 ```
 
-### 4. Hook Integration
+### Module Location
 
-**Implementation**: `.claude/tools/amplihack/hooks/claude_power_steering.py`
+- **Profile YAML files**: `.claude/profiles/*.yaml`
+- **Implementation**: `.claude/tools/amplihack/profile_management/`
+  - `staging.py` - File staging logic
+  - `loader.py` - Profile loading
+  - `parser.py` - YAML parsing
+  - `config.py` - Configuration management
+- **Integration**: `src/amplihack/__init__.py` (install), `src/amplihack/cli.py` (launch)
 
-The power steering hook intercepts session initialization and applies profile filtering:
+### Error Handling
 
-```python
-def initialize_session():
-    profile_uri = os.getenv("AMPLIHACK_PROFILE", "amplihack://profiles/all")
-    profile = ProfileLoader.load(profile_uri)
+Profile loading uses fail-open design:
+- Invalid profile → Falls back to "all" profile (full installation)
+- Missing profile file → Uses "all" profile
+- Parse errors → Uses "all" profile
+- Filter errors → Includes file (fail-open)
 
-    # Filter components before loading into context
-    filtered_agents = profile.filter_agents(all_agents)
-    filtered_skills = profile.filter_skills(all_skills)
-    filtered_commands = profile.filter_commands(all_commands)
+This ensures `amplihack install` never fails due to profile issues.
 
-    return SessionContext(agents=filtered_agents, skills=filtered_skills, ...)
+## Testing
+
+Verify profile filtering works:
+
+```bash
+# Install with coding profile
+export AMPLIHACK_PROFILE=amplihack://profiles/coding
+amplihack install
+
+# Check agent count (should be 9, not 32)
+find ~/.claude/agents/amplihack -name "*.md" | wc -l
+
+# Verify specific agents
+ls ~/.claude/agents/amplihack/core/architect.md  # Should exist
+ls ~/.claude/agents/amplihack/specialized/knowledge-archaeologist.md  # Should NOT exist
 ```
 
-### 5. Command Handler
+## Troubleshooting
 
-**Implementation**: `.claude/commands/amplihack/profile.md`
+### Profile not being used
 
-Slash commands delegate to ProfileCLI:
-
-```python
-# /amplihack:profile list
-from profile_management.cli import ProfileCLI
-cli = ProfileCLI()
-cli.list_profiles()
-
-# /amplihack:profile switch amplihack://profiles/coding
-cli.switch_profile("amplihack://profiles/coding")
+Check environment variable:
+```bash
+echo $AMPLIHACK_PROFILE
+# Should show: amplihack://profiles/coding
 ```
 
-### 6. Workflow Integration
+### All files still copied
 
-Profiles integrate with `DEFAULT_WORKFLOW.md`:
+- Profile name might be "all" (default)
+- Check: `cat ~/.claude/profiles/coding.yaml` exists
+- Verify: Profile YAML is valid
 
-- **Step 1 (Clarify)**: Profile affects which clarification agents are available
-- **Step 4 (Design)**: Profile determines which architecture agents to use
-- **Step 13 (Cleanup)**: Profile controls which review agents run final checks
+### Wrong files copied
 
-UltraThink automatically adapts agent orchestration based on active profile.
+- Check profile include/exclude patterns
+- Remember: patterns match against file stem (without .md extension)
+- Use wildcards carefully: `"*-analyst"` excludes ALL analyst agents
 
----
+## Related
 
-## Related Documentation
-
-- [Profile Command Reference](.claude/commands/amplihack/profile.md) - Slash command usage
-- [Built-in Profiles](.claude/profiles/) - Source YAML files
-- [UltraThink Integration](.claude/commands/amplihack/ultrathink.md) - Agent orchestration
-- [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Power steering setup
-- [Token Optimization](../CLAUDE.md#profile-management) - Main documentation reference
-
----
-
-## Quick Reference
-
-| Task | Command |
-|------|---------|
-| List profiles | `/amplihack:profile list` |
-| Show current | `/amplihack:profile current` |
-| Switch profile | `/amplihack:profile switch <uri>` |
-| Validate profile | `/amplihack:profile validate <uri>` |
-| Set default | `export AMPLIHACK_PROFILE=<uri>` |
-
-| Profile | Token Savings | Use Case |
-|---------|---------------|----------|
-| all | 0% (baseline) | General use |
-| coding | ~50% | Development |
-| research | ~45% | Investigation |
-| minimal (custom) | ~70% | Quick fixes |
-
-**URIs**:
-- Built-in: `amplihack://profiles/<name>`
-- Custom: `file:///path/to/profile.yaml`
-- Project: `amplihack://profiles/<name>` (if in `.claude/profiles/`)
+- Issue #1537: Profile staging implementation
+- `.claude/profiles/`: Built-in profile configurations
+- `.claude/tools/amplihack/profile_management/`: Implementation modules

@@ -169,15 +169,14 @@ else
     fi
 fi
 
-# Power-steering counter (per-session)
+# Power-steering global counter (total invocations across all sessions)
 power_steering_str=""
 if [ -n "$session_id" ]; then
-    redirects_file="$current_dir/.claude/runtime/power-steering/$session_id/redirects.jsonl"
-    if [ -f "$redirects_file" ]; then
-        # Count non-empty lines in redirects file
-        ps_count=$(grep -c . "$redirects_file" 2>/dev/null || echo "0")
+    ps_count_file="$current_dir/.claude/runtime/power-steering/session_count"
+    if [ -f "$ps_count_file" ]; then
+        ps_count=$(cat "$ps_count_file" 2>/dev/null || echo "0")
         if [ "$ps_count" -gt 0 ] 2>/dev/null; then
-            power_steering_str=" \033[35m🚦×$ps_count\033[0m"
+            power_steering_str=" \033[35m🎯×$ps_count\033[0m"
         fi
     fi
 fi

@@ -14,239 +14,73 @@ skip_confirmation_if_explicit: true
 token_budget: 4500
 ---
 
-# Default Coding Workflow
+# Default Workflow Skill
 
-This skill defines the default workflow for all non-trivial code changes.
-You can customize this workflow by editing this file.
+## Purpose
 
-## How This Workflow Works
+This skill provides the standard development workflow for all non-trivial code changes in amplihack. It auto-activates when detecting multi-file implementations, complex integrations, or significant refactoring work.
 
-**This workflow is the single source of truth for:**
+The workflow defines the canonical execution process: from requirements clarification through design, implementation, testing, review, and merge. It ensures consistent quality by orchestrating specialized agents at each step and enforcing philosophy compliance throughout.
 
-- The order of operations (steps must be followed sequentially)
-- Git workflow (branch, commit, push, PR process)
-- CI/CD integration points
-- Review and merge requirements
+This is a thin wrapper that references the complete workflow definition stored in a single canonical location, ensuring no duplication or drift between the skill interface and the workflow specification.
 
-**Execution approach:**
+## Canonical Source
 
-- Start with `/ultrathink` for any non-trivial task
-- UltraThink reads this workflow and orchestrates agents to execute it
-- Each step leverages specialized agents for maximum effectiveness
-- The workflow defines the process; agents execute the work
+**This skill is a thin wrapper that references the canonical workflow:**
 
-## Default Execution with UltraThink
+**Source**: `.claude/workflow/DEFAULT_WORKFLOW.md` (471+ lines)
 
-**For all non-trivial tasks, start with `/ultrathink` to orchestrate the workflow:**
+The canonical workflow contains the complete 15-step development process with all details, agent specifications, and execution guidance.
 
-- `/ultrathink` reads this workflow and executes it with multi-agent coordination
-- Each step below leverages specialized agents whenever possible
-- UltraThink orchestrates parallel agent execution for maximum efficiency
-- When you customize this workflow, UltraThink adapts automatically
+## Execution Instructions
 
-**TodoWrite Usage During Workflow Execution:**
+When this skill is activated, you MUST:
 
-When creating todos during workflow execution, reference the workflow steps directly:
+1. **Read the canonical workflow** immediately:
 
-- Format: `Step N: [Step Name] - [Specific Action]`
-- Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
-- This helps users track exactly which workflow step is active (Step X of 15)
+   ```
+   Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
+   ```
 
-## When This Workflow Applies
+   Note: Path is relative to project root. Claude Code resolves this automatically.
 
-This workflow should be followed for:
+2. **Follow all 15 steps** exactly as specified in the canonical workflow
 
-- New features
-- Bug fixes
-- Refactoring
-- Any non-trivial code changes
+3. **Use TodoWrite** to track progress through workflow steps with format:
+   - `Step N: [Step Name] - [Specific Action]`
+   - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
+   - This helps users track exactly which workflow step is active (Step X of 15)
 
-## TodoWrite Best Practices
+4. **Invoke specialized agents** as specified in each workflow step:
+   - Step 1: prompt-writer, analyzer, ambiguity agents
+   - Step 4: architect, api-designer, database, tester, security agents
+   - Step 5: builder, integration agents
+   - Step 6: cleanup, optimizer agents
+   - Step 7: pre-commit-diagnostic agent
+   - Step 9-15: Review and merge agents
 
-When using TodoWrite during workflow execution:
+## Why This Pattern
 
-- **Reference Step Numbers**: Include the workflow step number in todo content
-  - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
-  - Example: `Step 4: Research and Design - Use architect agent for solution design`
+**Benefits:**
 
-- **Workstream Prefixes** (Optional): When running multiple workflows in parallel, prefix todos with workstream name
-  - Format: `[WORKSTREAM] Step N: Description`
-  - Example: `[PR1090 TASK] Step 1: Rewrite and Clarify Requirements`
-  - Example: `[FEATURE-X] Step 4: Research and Design - Use architect agent`
-  - This helps track which todos belong to which parallel workstream
+- Single source of truth for workflow definition
+- No content duplication or drift
+- Changes to workflow made once in canonical location
+- Clear delegation contract between skill and workflow
+- Reduced token usage (skill is ~60 lines vs 471+ in canonical source)
 
-- **Be Specific**: Include the specific agent or action for each step
-  - Example: `Step 5: Implement the Solution - Use builder agent from specifications`
+## Auto-Activation Triggers
 
-- **Track Progress**: Users can see exactly which step is active (e.g., "Step 5 of 15")
+This skill auto-activates for:
 
-**Example Todo Structure (Single Workflow):**
+- Features spanning multiple files (5+)
+- Complex integrations across components
+- Refactoring affecting 5+ files
+- Any non-trivial code changes requiring structured workflow
 
-```
-Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent to clarify task
-Step 2: Create GitHub Issue - Define requirements and constraints using gh issue create
-Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch in worktrees/
-Step 4: Research and Design - Use architect agent for solution design
-Step 5: Implement the Solution - Use builder agent to implement from specifications
-...
-```
+## Related Files
 
-**Example Todo Structure (Multiple Parallel Workflows):**
-
-```
-[PR1090 TASK] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
-[PR1090 TASK] Step 2: Create GitHub Issue - Define requirements using gh issue create
-[PR1090 TASK] Step 4: Research and Design - Use architect agent for solution design
-[FEATURE-X] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
-[FEATURE-X] Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch
-[BUGFIX-Y] Step 5: Implement the Solution - Use builder agent from specifications
-...
-```
-
-This step-based structure helps users understand:
-
-- Exactly which workflow step is currently active
-- How many steps remain (e.g., Step 5 of 15 means 10 steps left)
-- What comes next in the workflow
-
-## The 15-Step Workflow (Part 1: Implementation)
-
-This file contains **Steps 1-8** (Requirements through Testing). For the review and merge phases, see [reference/REVIEW_PHASES.md](reference/REVIEW_PHASES.md).
-
-### Step 1: Rewrite and Clarify Requirements
-
-- [ ] **FIRST: Identify explicit user requirements** that CANNOT be optimized away
-- [ ] **Always use** prompt-writer agent to clarify task requirements
-- [ ] **Use** analyzer agent to understand existing codebase context
-- [ ] **Use** ambiguity agent if requirements are unclear
-- [ ] Remove ambiguity from the task description
-- [ ] Define clear success criteria
-- [ ] Document acceptance criteria
-- [ ] **CRITICAL: Pass explicit requirements to ALL subsequent agents**
-
-### Step 2: Create GitHub Issue
-
-- [ ] **Use** GitHub issue creation tool via agent
-- [ ] Create issue using `gh issue create`
-- [ ] Include clear problem description
-- [ ] Define requirements and constraints
-- [ ] Add success criteria
-- [ ] Assign appropriate labels
-
-### Step 3: Setup Worktree and Branch
-
-- [ ] **Always use** worktree-manager agent for worktree operations
-- [ ] Create new git worktree in `./worktrees/{branch-name}` for isolated development
-- [ ] Create branch with format: `feat/issue-{number}-{brief-description}`
-- [ ] Command: `git worktree add ./worktrees/{branch-name} -b {branch-name}`
-- [ ] Push branch to remote with tracking: `git push -u origin {branch-name}`
-- [ ] Switch to new worktree directory: `cd ./worktrees/{branch-name}`
-
-### Step 4: Research and Design with TDD
-
-**⚠️ INVESTIGATION-FIRST PATTERN**: If the existing codebase or system is unfamiliar/complex, consider running the **INVESTIGATION_WORKFLOW.md** (6 phases) FIRST, then return here to continue development. This is especially valuable when:
-
-- The codebase area is unfamiliar or poorly documented
-- The feature touches multiple complex subsystems
-- You need to understand existing patterns before designing new ones
-- The architecture or integration points are unclear
-
-After investigation completes, continue with these tasks:
-
-- [ ] **Use** architect agent to design solution architecture
-- [ ] **Use** api-designer agent for API contracts (if applicable)
-- [ ] **Use** database agent for data model design (if applicable)
-- [ ] **Use** tester agent to write failing tests (TDD approach)
-- [ ] **Use** security agent to identify security requirements
-- [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy)
-- [ ] Document module specifications
-- [ ] Create detailed implementation plan
-- [ ] Identify risks and dependencies
-
-### Step 5: Implement the Solution
-
-- [ ] **Always use** builder agent to implement from specifications
-- [ ] **Use** integration agent for external service connections
-- [ ] Follow the architecture design
-- [ ] Make failing tests pass iteratively
-- [ ] Ensure all requirements are met
-- [ ] Add inline documentation
-
-### Step 6: Refactor and Simplify
-
-- [ ] **CRITICAL: Provide cleanup agent with original user requirements**
-- [ ] **Always use** cleanup agent for ruthless simplification WITHIN user constraints
-- [ ] **Use** optimizer agent for performance improvements
-- [ ] Remove unnecessary abstractions (that weren't explicitly requested)
-- [ ] Eliminate dead code (unless user explicitly wanted it)
-- [ ] Simplify complex logic (without violating user specifications)
-- [ ] Ensure single responsibility principle
-- [ ] Verify no placeholders remain - no stubs, no TODOs, no swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] **VALIDATE: All explicit user requirements still preserved**
-
-### Step 7: Run Tests and Pre-commit Hooks
-
-- [ ] **Use** pre-commit-diagnostic agent if hooks fail
-- [ ] **💡 TIP**: For test failures, use [parallel investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
-- [ ] Run all unit tests
-- [ ] Execute `pre-commit run --all-files`
-- [ ] Fix any linting issues
-- [ ] Fix any formatting issues
-- [ ] Resolve type checking errors
-- [ ] Iterate until all checks pass
-
-### Step 8: Mandatory Local Testing (NOT in CI)
-
-**CRITICAL: Test all changes locally in realistic scenarios BEFORE committing.**
-
-- [ ] **Test simple use cases** - Basic functionality verification
-- [ ] **Test complex use cases** - Edge cases and longer operations
-- [ ] **Test integration points** - External dependencies and APIs
-- [ ] **Verify no regressions** - Ensure existing functionality still works
-- [ ] **Document test results** - What was tested and results
-- [ ] **RULE: Never commit without local testing**
-
-**Examples of required tests:**
-
-- If proxy changes: Test simple and long requests locally
-- If API changes: Test with real client requests
-- If CLI changes: Run actual commands with various options
-- If database changes: Test with actual data operations
-
-**Why this matters:**
-
-- CI checks can't catch all real-world issues
-- Local testing catches problems before they reach users
-- Faster feedback loop than waiting for CI
-- Prevents embarrassing failures after merge
-
----
-
-## Next Steps: Review and Merge Phases
-
-After completing Steps 1-8, continue with **Steps 9-15** in [reference/REVIEW_PHASES.md](reference/REVIEW_PHASES.md):
-
-- Step 9: Commit and Push
-- Step 10: Open Pull Request
-- Step 11: Review the PR
-- Step 12: Implement Review Feedback
-- Step 13: Philosophy Compliance Check
-- Step 14: Ensure PR is Mergeable
-- Step 15: Final Cleanup and Verification
-
-## Customization
-
-To customize this workflow:
-
-1. Edit this file to modify, add, or remove steps
-2. Save your changes
-3. The updated workflow will be used for future tasks
-
-## Philosophy Notes
-
-This workflow enforces our core principles:
-
-- **Ruthless Simplicity**: Each step has one clear purpose
-- **Test-Driven Development**: Write tests before implementation
-- **Quality Gates**: Multiple review and validation steps
-- **Documentation**: Clear commits and PR descriptions
+- **Canonical Workflow**: `.claude/workflow/DEFAULT_WORKFLOW.md`
+- **Command Interface**: `.claude/commands/amplihack/ultrathink.md`
+- **Orchestrator Skill**: `.claude/skills/ultrathink-orchestrator/`
+- **Investigation Workflow**: `.claude/skills/investigation-workflow/`

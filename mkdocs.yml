@@ -30,6 +30,8 @@ nav:
       - Auto Mode: AUTO_MODE.md
       - Agent Bundles: agent-bundle-generator-guide.md
       - Document-Driven Development: document_driven_development/README.md
+      - Power-Steering Mode: features/power-steering/README.md
+      - Power-Steering Customization: features/power-steering/customization-guide.md
   - Development:
       - Contributing: DEVELOPING_AMPLIHACK.md
       - Architecture: IMPLEMENTATION_SUMMARY.md
