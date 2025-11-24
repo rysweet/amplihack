@@ -9,8 +9,6 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 Launches Claude Code with preconfigured agents. No installation needed.
 
-## Quick Setup
-
 ### Create Alias for Easy Access
 
 Instead of typing the full uvx command, create an alias:
