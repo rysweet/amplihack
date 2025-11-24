@@ -317,6 +317,7 @@ class Orchestrator:
                 "--yes",
                 "--no-bastion",
                 "--no-auto-connect",  # Prevent interactive SSH connection
+                "--no-nfs",  # Skip NFS mounting (can cause slowness)
             ]
 
             # Pass through any extra azlin arguments
