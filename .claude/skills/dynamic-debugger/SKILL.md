@@ -2,6 +2,7 @@
 name: dynamic-debugger
 description: Interactive debugging via DAP-MCP for multiple languages with natural language commands
 version: 1.0.0
+disableModelInvocation: true
 activation_conditions:
   - intent_keywords:
       [
@@ -47,6 +48,30 @@ This skill enables interactive debuggin' through the Debug Adapter Protocol (DAP
 - Automatic intent and language detection
 - Session management with resource limits
 - Graceful error handling and recovery
+
+## Activation (Opt-In)
+
+**This skill is DISABLED by default** (`disableModelInvocation: true`).
+
+**To enable:**
+
+1. **Explicit invocation** (recommended):
+
+   ```
+   "Use the dynamic-debugger skill to debug this function"
+   ```
+
+2. **Auto-activation** (edit SKILL.md frontmatter):
+   ```yaml
+   disableModelInvocation: false # or remove this line
+   ```
+
+**Why opt-in?**
+
+- Requires external dap-mcp server installation
+- Starts debugger processes (resource intensive)
+- Full filesystem access needed
+- Best enabled only when actively debugging
 
 ## Prerequisites
 
