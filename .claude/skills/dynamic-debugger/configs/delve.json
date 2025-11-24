@@ -1,0 +1,20 @@
+{
+  "debugger": "delve",
+  "default_port": 2345,
+  "file_extensions": [".go"],
+  "manifest_files": ["go.mod", "go.sum"],
+  "description": "Delve debugger for Go programs with full goroutine support",
+  "config": {
+    "name": "Delve: Debug Go Program",
+    "type": "go",
+    "request": "launch",
+    "mode": "auto",
+    "program": "${project_dir}",
+    "cwd": "${project_dir}"
+  },
+  "commands": {
+    "install": "go install github.com/go-delve/delve/cmd/dlv@latest",
+    "verify": "dlv version"
+  },
+  "notes": "Delve provides full Go debugging support including goroutines, channels, and Go-specific data structures."
+}

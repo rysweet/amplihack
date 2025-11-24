@@ -1,0 +1,18 @@
+{
+  "debugger": "jdwp",
+  "default_port": 5005,
+  "file_extensions": [".java"],
+  "manifest_files": ["pom.xml", "build.gradle", "build.gradle.kts"],
+  "description": "Java Debug Wire Protocol debugger for Java applications",
+  "config": {
+    "name": "Java: Debug Current Class",
+    "type": "java",
+    "request": "launch",
+    "mainClass": "${entry_point}",
+    "cwd": "${project_dir}"
+  },
+  "commands": {
+    "install": "# Java debugger is built into JDK",
+    "verify": "java -version"
+  }
+}
