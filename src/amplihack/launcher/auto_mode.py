@@ -577,7 +577,9 @@ Document your decisions and reasoning in comments/logs."""
                                 # Handle tool_use blocks (TodoWrite)
                                 elif hasattr(block, "type") and block.type == "tool_use":
                                     tool_name = getattr(block, "name", None)
-                                    self.log(f"🔍 Detected tool_use block: {tool_name}", level="INFO")
+                                    self.log(
+                                        f"🔍 Detected tool_use block: {tool_name}", level="INFO"
+                                    )
 
                                     if tool_name == "TodoWrite":
                                         self.log("🎯 TodoWrite tool detected!", level="INFO")
@@ -599,7 +601,10 @@ Document your decisions and reasoning in comments/logs."""
                                                 )
                                                 self._handle_todo_write(todos)
                                             # Fallback: try dict-style access for backwards compatibility
-                                            elif isinstance(tool_input, dict) and "todos" in tool_input:
+                                            elif (
+                                                isinstance(tool_input, dict)
+                                                and "todos" in tool_input
+                                            ):
                                                 todos = tool_input["todos"]
                                                 self.log(
                                                     f"✓ Input is dict with todos key ({len(todos)} items)",
@@ -612,7 +617,9 @@ Document your decisions and reasoning in comments/logs."""
                                                     level="WARNING",
                                                 )
                                         else:
-                                            self.log("⚠️  Block has no input attribute", level="WARNING")
+                                            self.log(
+                                                "⚠️  Block has no input attribute", level="WARNING"
+                                            )
 
                         elif msg_type == "ResultMessage":
                             # Check if there was an error
@@ -1334,7 +1341,9 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("Transcript builder not found, skipping export", level="INFO")
                 return
 
-            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
+            builder = ClaudeTranscriptBuilder(
+                session_id=self.log_dir.name, working_dir=self.working_dir
+            )
             messages = self.message_capture.get_messages()
 
             if not messages:
