@@ -131,6 +131,8 @@ def main():
     """Main entry point."""
     import argparse
 
+    global MAX_MEMORY_MB, SESSION_TIMEOUT_MIN
+
     parser = argparse.ArgumentParser(description='Monitor debugging session')
     parser.add_argument('--pid-file', default='.dap_mcp.pid',
                        help='Path to PID file (default: .dap_mcp.pid)')
@@ -143,7 +145,6 @@ def main():
     args = parser.parse_args()
 
     # Update global limits
-    global MAX_MEMORY_MB, SESSION_TIMEOUT_MIN
     MAX_MEMORY_MB = args.max_memory
     SESSION_TIMEOUT_MIN = args.timeout
 
