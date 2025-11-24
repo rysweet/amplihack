@@ -1,8 +1,10 @@
-# Claude Code Skills for Amplihack
+# Claude Code Skills Catalog
 
-This directory contains production-ready Claude Code Skills that extend amplihack's capabilities across coding, creative work, and knowledge management.
+**Last Updated**: November 24, 2025
 
-## 📚 About Claude Code Skills
+This document provides a comprehensive catalog of all Claude Code skills available in amplihack.
+
+## About Claude Code Skills
 
 Claude Code Skills are modular, reusable capabilities that extend Claude's functionality. They consist of folders containing a `SKILL.md` file with YAML frontmatter and Markdown instructions, along with optional supporting scripts and resources.
 
@@ -14,11 +16,11 @@ Claude Code Skills are modular, reusable capabilities that extend Claude's funct
 - **Portable**: Work across Claude.ai, API, and Claude Code environments
 - **Self-Contained**: Each skill is independently usable and testable
 
-## 🎯 Skill Types
+## Skill Types
 
-Amplihack has **TWO types of skills** that work together:
+Amplihack has **THREE types of skills** that work together:
 
-### Type 1: Capability Skills (13 skills)
+### Type 1: Capability Skills (13+ skills)
 
 **Purpose**: Provide specific new functionality for tasks beyond coding.
 
@@ -41,7 +43,7 @@ These skills add NEW capabilities like decision recording, email drafting, meeti
 | **context-management**        | 48.5  | Proactive context window management via token monitoring and intelligent snapshots  | [#1347](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1347) | -                                                                                  |
 | **dynamic-debugger** 🆕       | 92.0  | Interactive debugging for Python/C++/Rust via DAP-MCP (opt-in, disabled by default) | [#1552](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1552) | [#1553](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1553) |
 
-### Type 2: Domain Expert Analyst Skills (23 skills) 🆕
+### Type 2: Domain Expert Analyst Skills (23 skills)
 
 **Purpose**: Analyze events through specialized disciplinary lenses using rigorous academic frameworks.
 
@@ -88,7 +90,7 @@ These skills provide deep domain expertise for multi-perspective analysis of eve
 **Key Features**:
 
 - All 23 analysts have comprehensive test suites (tests/quiz.md with 5 scenarios each)
-- Domain-specific search capability (see ANALYST_SEARCH_CAPABILITY.md)
+- Domain-specific search capability
 - Progressive disclosure structure (SKILL.md + README.md + QUICK_REFERENCE.md)
 - 100+ scholarly sources preserved across all agents
 - Consistent 16-section template pattern
@@ -100,27 +102,27 @@ These skills provide deep domain expertise for multi-perspective analysis of eve
 
 These skills are thin coordination layers that automatically trigger amplihack's existing agents based on conversation context.
 
-| Skill                         | Auto-Triggers                                              | Invokes                        | Location                                                                       |
-| ----------------------------- | ---------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------ |
-| **Architecting Solutions**    | Design questions, "how should I", architecture discussions | Architect agent                | [development/architecting-solutions/](development/architecting-solutions/)     |
-| **Reviewing Code**            | "review this", before PR, quality checks                   | Reviewer agent                 | [quality/reviewing-code/](quality/reviewing-code/)                             |
-| **Testing Code**              | New features, "add tests", test gaps                       | Tester agent                   | [quality/testing-code/](quality/testing-code/)                                 |
-| **Researching Topics**        | "how does X work", unfamiliar terms                        | Web search + knowledge builder | [research/researching-topics/](research/researching-topics/)                   |
-| **Analyzing Problems Deeply** | Complex problems, "I'm not sure", ambiguity                | Ultrathink workflow            | [meta-cognitive/analyzing-deeply/](meta-cognitive/analyzing-deeply/)           |
-| **Setting Up Projects**       | New projects, missing configs, pre-commit setup            | Builder agent + templates      | [development/setting-up-projects/](development/setting-up-projects/)           |
-| **Creating Pull Requests**    | "create PR", ready to merge                                | Smart PR generation            | [collaboration/creating-pull-requests/](collaboration/creating-pull-requests/) |
+| Skill                         | Auto-Triggers                                              | Invokes                        | Location                                                                                            |
+| ----------------------------- | ---------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------- |
+| **Architecting Solutions**    | Design questions, "how should I", architecture discussions | Architect agent                | [development/architecting-solutions/](../../.claude/skills/development/architecting-solutions/)     |
+| **Reviewing Code**            | "review this", before PR, quality checks                   | Reviewer agent                 | [quality/reviewing-code/](../../.claude/skills/quality/reviewing-code/)                             |
+| **Testing Code**              | New features, "add tests", test gaps                       | Tester agent                   | [quality/testing-code/](../../.claude/skills/quality/testing-code/)                                 |
+| **Researching Topics**        | "how does X work", unfamiliar terms                        | Web search + knowledge builder | [research/researching-topics/](../../.claude/skills/research/researching-topics/)                   |
+| **Analyzing Problems Deeply** | Complex problems, "I'm not sure", ambiguity                | Ultrathink workflow            | [meta-cognitive/analyzing-deeply/](../../.claude/skills/meta-cognitive/analyzing-deeply/)           |
+| **Setting Up Projects**       | New projects, missing configs, pre-commit setup            | Builder agent + templates      | [development/setting-up-projects/](../../.claude/skills/development/setting-up-projects/)           |
+| **Creating Pull Requests**    | "create PR", ready to merge                                | Smart PR generation            | [collaboration/creating-pull-requests/](../../.claude/skills/collaboration/creating-pull-requests/) |
 
-## 📖 Research & Documentation
+## Research & Documentation
 
 ### Research Reports
 
-- **[Complete Research Report](../runtime/logs/20251108_skills_research/RESEARCH.md)** (357 lines)
+- **[Complete Research Report](../../.claude/runtime/logs/20251108_skills_research/RESEARCH.md)** (357 lines)
   - Comprehensive analysis of Claude Code Skills ecosystem
   - Comparison with MCP (Model Context Protocol)
   - 23+ documented skills from Anthropic and community
   - Key insights from Simon Willison and other experts
 
-- **[Evaluation Matrix & Ideas](../runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** (842 lines)
+- **[Evaluation Matrix & Ideas](../../.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** (842 lines)
   - 6-criteria evaluation framework aligned with amplihack philosophy
   - 20 brainstormed skill ideas with priority scores
   - Implementation phases and effort estimates
@@ -145,9 +147,9 @@ Priority = (Simplicity * 2) + (Modular * 2) + (Zero-BS * 1.5) +
 Max Score: 50 points
 ```
 
-All 12 capability skills scored 40.0-50.0 (HIGH priority).
+All capability skills scored 40.0-50.0 (HIGH priority).
 
-## 🔍 Using Skills
+## Using Skills
 
 Skills are automatically discovered from:
 
@@ -185,7 +187,7 @@ User: "Can you review this code?"
 /reload-skills         # Reload after modifications
 ```
 
-## 🏗️ Skill Structure
+## Skill Structure
 
 Each skill follows this structure:
 
@@ -215,7 +217,7 @@ Detailed instructions for Claude on how to use this skill...
 Concrete examples with input/output...
 ```
 
-## 📊 Quality Standards
+## Quality Standards
 
 All skills meet these quality standards:
 
@@ -225,7 +227,7 @@ All skills meet these quality standards:
 - ✅ **Tested**: Quality review completed
 - ✅ **Production Ready**: No stubs, TODOs, or placeholders
 
-## 🚀 Creating New Skills
+## Creating New Skills
 
 ### For Capability Skills
 
@@ -238,7 +240,7 @@ To create a new capability skill:
 5. **Test**: Validate with real usage
 6. **Review**: Ensure philosophy compliance
 
-See [Evaluation Matrix](../runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md) for guidance on prioritization.
+See [Evaluation Matrix](../../.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md) for guidance on prioritization.
 
 ### For Agent-Wrapper Skills
 
@@ -250,14 +252,14 @@ To create an agent-wrapper skill:
 4. **No Logic Duplication**: All real work stays in agents
 5. **Test Auto-Detection**: Verify skill activates appropriately
 
-## 📚 Related Documentation
+## Related Documentation
 
 - [CLAUDE.md](../../CLAUDE.md) - Project overview and agent system
-- [PHILOSOPHY.md](../context/PHILOSOPHY.md) - Ruthless simplicity principles
-- [PATTERNS.md](../context/PATTERNS.md) - Reusable solution patterns
-- [Agent Catalog](../agents/CATALOG.md) - Specialized agents
+- [PHILOSOPHY.md](../../.claude/context/PHILOSOPHY.md) - Ruthless simplicity principles
+- [PATTERNS.md](../../.claude/context/PATTERNS.md) - Reusable solution patterns
+- [Agent Catalog](../../.claude/agents/CATALOG.md) - Specialized agents
 
-## 🤝 Contributing
+## Contributing
 
 When adding new skills:
 
@@ -271,8 +273,7 @@ When adding new skills:
 
 ---
 
-**Last Updated**: November 10, 2025
-**Total Skills**: 19 (12 capability + 7 agent-wrapper)
+**Total Skills**: 43 (14 capability + 23 analyst + 7 agent-wrapper - 1 deprecated)
 **Status**: Production Ready
 
 🤖 Skills documentation maintained as part of amplihack project
