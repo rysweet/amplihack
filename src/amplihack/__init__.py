@@ -123,13 +123,14 @@ def ensure_dirs() -> None:
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 
-def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> list[str]:
+def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manifest=None) -> list[str]:
     """Copy all essential directories from repo to destination.
 
     Args:
         repo_root: Path to the repository root or package directory
         dst: Destination directory (usually ~/.claude)
         rel_top: Relative path to .claude directory
+        manifest: Optional StagingManifest for profile-based filtering
 
     Returns:
         List of copied directory paths relative to dst
@@ -151,7 +152,11 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
 
     copied = []
 
-    for dir_path in ESSENTIAL_DIRS:
+    # Use manifest dirs if provided, otherwise use ESSENTIAL_DIRS
+    dirs_to_copy = manifest.dirs_to_stage if manifest else ESSENTIAL_DIRS
+    file_filter = manifest.file_filter if manifest else None
+
+    for dir_path in dirs_to_copy:
         source_dir = os.path.join(base, dir_path)
 
         # Skip if source doesn't exist
@@ -168,9 +173,34 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude") -> lis
         if os.path.exists(target_dir):
             shutil.rmtree(target_dir)
 
-        # Copy the directory
+        # Copy the directory with optional file filtering
         try:
-            shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
+            # If file_filter is provided, use it to filter which files to copy
+            if file_filter:
+                def ignore_function(directory, contents):
+                    """Filter function for shutil.copytree to skip files based on profile.
+
+                    Error handling at system boundary: Catches any errors from file_filter
+                    and fails open (includes file on error).
+                    """
+                    ignored = []
+                    for item in contents:
+                        item_path = Path(directory) / item
+                        # Skip files that don't pass the filter
+                        if item_path.is_file():
+                            try:
+                                # Call file_filter - errors handled here at boundary
+                                should_copy = file_filter(item_path)
+                                if not should_copy:
+                                    ignored.append(item)
+                            except Exception:
+                                # Fail-open: Include file on any error
+                                pass
+                    return ignored
+
+                shutil.copytree(source_dir, target_dir, dirs_exist_ok=True, ignore=ignore_function)
+            else:
+                shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
 
             # Fix: Set execute permissions on hook Python files
             # This fixes the "Permission denied" error when hooks are copied
@@ -548,14 +578,64 @@ def create_runtime_dirs():
             print(f"  ❌ Error creating {dir_path}: {e}")
 
 
-def _local_install(repo_root):
+def _local_install(repo_root, profile_uri=None):
     """
     Install amplihack files from the given repo_root directory.
     This provides a comprehensive installation that mirrors the shell script.
+
+    Args:
+        repo_root: Path to the repository root or package directory
+        profile_uri: Optional profile URI to use for filtering (None = use configured profile)
     """
     print("\n🚀 Starting amplihack installation...")
     print(f"   Source: {repo_root}")
     print(f"   Target: {CLAUDE_DIR}\n")
+
+    # NEW: Create staging manifest based on profile
+    try:
+        # Import staging module from source repo during installation
+        import sys
+
+        # Find .claude directory in repo_root
+        direct_path = os.path.join(repo_root, ".claude")
+        parent_path = os.path.join(repo_root, "..", ".claude")
+
+        if os.path.exists(direct_path):
+            claude_source = direct_path
+        elif os.path.exists(parent_path):
+            claude_source = parent_path
+        else:
+            raise ImportError("Cannot find .claude directory in source repo")
+
+        # Add tools/amplihack directory to sys.path temporarily
+        profile_mgmt_dir = os.path.join(claude_source, "tools", "amplihack")
+        if profile_mgmt_dir not in sys.path:
+            sys.path.insert(0, profile_mgmt_dir)
+
+        # Now import staging module (from tools/amplihack/)
+        from profile_management.staging import create_staging_manifest
+
+        manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
+
+        if manifest.profile_name != "all" and not manifest.profile_name.endswith("(fallback)"):
+            print(f"📦 Using profile: {manifest.profile_name}\n")
+    except Exception as e:
+        # If profile management isn't available, use full installation
+        print(f"ℹ️  Profile management unavailable ({e}), using full installation\n")
+        from dataclasses import dataclass
+        from typing import Callable, List, Optional
+
+        @dataclass
+        class StagingManifest:
+            dirs_to_stage: List[str]
+            file_filter: Optional[Callable]
+            profile_name: str
+
+        manifest = StagingManifest(
+            dirs_to_stage=ESSENTIAL_DIRS,
+            file_filter=None,
+            profile_name="all"
+        )
 
     # Step 1: Ensure base directory exists
     ensure_dirs()
@@ -563,9 +643,9 @@ def _local_install(repo_root):
     # Step 2: Track existing directories for manifest
     pre_dirs = all_rel_dirs(CLAUDE_DIR)
 
-    # Step 3: Copy all essential directories
+    # Step 3: Copy all essential directories (filtered by profile)
     print("📁 Copying essential directories:")
-    copied_dirs = copytree_manifest(repo_root, CLAUDE_DIR)
+    copied_dirs = copytree_manifest(repo_root, CLAUDE_DIR, manifest=manifest)
 
     if not copied_dirs:
         print("\n❌ No directories were copied. Installation may be incomplete.")
