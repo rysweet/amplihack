@@ -5,17 +5,17 @@ on:
     branches:
       - main
     paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'requirements-docs.txt'
-      - '.claude/context/**'
-      - '.claude/workflow/**'
-      - '.claude/agents/**'
-      - '.claude/commands/**'
-      - '.claude/skills/**'
-      - '.claude/scenarios/**'
-      - 'README.md'
-      - 'PREREQUISITES.md'
+      - "docs/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
+      - ".claude/context/**"
+      - ".claude/workflow/**"
+      - ".claude/agents/**"
+      - ".claude/commands/**"
+      - ".claude/skills/**"
+      - ".claude/scenarios/**"
+      - "README.md"
+      - "PREREQUISITES.md"
   workflow_dispatch:
 
 permissions:
@@ -30,13 +30,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for git-revision-date-localized plugin
+          fetch-depth: 0 # Fetch all history for git-revision-date-localized plugin
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |

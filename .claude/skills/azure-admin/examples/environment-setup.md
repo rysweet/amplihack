@@ -5,6 +5,7 @@ Automated deployment of a complete Azure environment for a production web applic
 ## Scenario
 
 Deploy a production-ready environment for a Node.js web application with:
+
 - Resource group with proper naming and tagging
 - Virtual Network with subnets
 - App Service Plan and App Service

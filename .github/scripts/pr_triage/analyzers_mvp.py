@@ -4,10 +4,7 @@ This MVP version uses simple heuristics instead of Claude AI for faster,
 deterministic validation. Suitable for initial deployment and testing.
 """
 
-import re
 from typing import Any, Dict
-
-from .formatters import format_comments, format_files, format_reviews
 
 
 def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -64,8 +61,7 @@ def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
     if review_score >= 5:
         step11_completed = True
         step11_evidence = (
-            f"Found {len(reviews)} reviews with review indicators. "
-            f"Review score: {review_score}"
+            f"Found {len(reviews)} reviews with review indicators. Review score: {review_score}"
         )
     else:
         step11_evidence = (
@@ -116,15 +112,11 @@ def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
             "quality, and philosophy checks"
         )
     if not step12_completed:
-        blocking_issues.append(
-            "Step 12 incomplete: Need to address and respond to review feedback"
-        )
+        blocking_issues.append("Step 12 incomplete: Need to address and respond to review feedback")
 
     recommendations = []
     if not overall_compliant:
-        recommendations.append(
-            "Complete workflow steps 11-12 before marking PR as ready"
-        )
+        recommendations.append("Complete workflow steps 11-12 before marking PR as ready")
     if len(reviews) == 0:
         recommendations.append("Add at least one formal code review")
 
@@ -193,13 +185,13 @@ def detect_priority_complexity(pr_data: Dict[str, Any]) -> Dict[str, str]:
     else:
         complexity = "VERY_COMPLEX"
         complexity_reasoning = (
-            f"{num_files} files with {total_changes} lines changed - "
-            f"system-wide changes"
+            f"{num_files} files with {total_changes} lines changed - system-wide changes"
         )
 
     # Check for architectural changes
     architectural_files = [
-        f for f in files
+        f
+        for f in files
         if any(
             pattern in f.get("path", "").lower()
             for pattern in ["architecture", "design", "workflow", "config", "settings"]
@@ -301,16 +293,10 @@ def detect_unrelated_changes(pr_data: Dict[str, Any]) -> Dict[str, Any]:
             unrelated_purposes.append("Configuration changes")
             unrelated_files.extend(file_categories["config"])
 
-        recommendation = (
-            "Consider splitting this PR into separate focused PRs for each concern"
-        )
+        recommendation = "Consider splitting this PR into separate focused PRs for each concern"
 
     # Special case: Large refactoring with feature work
-    if (
-        "refactor" in title
-        and ("feat" in title or "add" in title)
-        and len(files) > 5
-    ):
+    if "refactor" in title and ("feat" in title or "add" in title) and len(files) > 5:
         has_unrelated_changes = True
         unrelated_purposes.append("Mixed refactoring and feature work")
         recommendation = "Separate refactoring from new features into different PRs"
@@ -321,7 +307,5 @@ def detect_unrelated_changes(pr_data: Dict[str, Any]) -> Dict[str, Any]:
         "primary_purpose": primary_purpose,
         "unrelated_purposes": unrelated_purposes,
         "recommendation": recommendation,
-        "file_categories": {
-            k: len(v) for k, v in file_categories.items() if v
-        },  # Statistics
+        "file_categories": {k: len(v) for k, v in file_categories.items() if v},  # Statistics
     }

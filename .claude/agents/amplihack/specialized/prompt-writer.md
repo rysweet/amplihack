@@ -70,10 +70,12 @@ Before analyzing requirements, classify the task to prevent confusion between EX
 **Classification Actions:**
 
 **For EXECUTABLE requests:**
+
 ```markdown
 Task Classification: EXECUTABLE
 
 WARNING: User wants working code/program, NOT documentation.
+
 - Target location: .claude/scenarios/ (for production tools)
 - Target location: .claude/ai_working/ (for experimental tools)
 - NEVER create markdown skill files (.claude/skills/) for this request
@@ -81,16 +83,19 @@ WARNING: User wants working code/program, NOT documentation.
 ```
 
 **For DOCUMENTATION requests:**
+
 ```markdown
 Task Classification: DOCUMENTATION
 
 User wants documentation/skill/guide, NOT executable code.
+
 - Target location: .claude/skills/ (for Claude Code skills)
 - Target location: docs/ (for general documentation)
 - Create markdown files with clear structure and examples
 ```
 
 **For AMBIGUOUS requests:**
+
 ```markdown
 Task Classification: AMBIGUOUS
 
@@ -99,10 +104,10 @@ The request is unclear. Ask user to clarify:
 "I need clarification on your request. Are you asking for:
 
 A) EXECUTABLE CODE - A working program/script/application that runs and performs actions
-   Example: A CLI tool that analyzes files, an API server, a Python script
+Example: A CLI tool that analyzes files, an API server, a Python script
 
 B) DOCUMENTATION - A guide, skill, or template for Claude Code or users
-   Example: A Claude Code skill, a how-to guide, documentation
+Example: A Claude Code skill, a how-to guide, documentation
 
 Please specify which type you need, and I'll proceed with the appropriate approach."
 ```
@@ -110,6 +115,7 @@ Please specify which type you need, and I'll proceed with the appropriate approa
 **Context Warning Generation:**
 
 When classifying as EXECUTABLE and .claude/skills/ directory exists:
+
 ```markdown
 CONTEXT WARNING FOR BUILDER AGENT:
 
@@ -117,6 +123,7 @@ The .claude/skills/ directory contains Claude Code SKILLS (documentation for ext
 NOT code templates or examples to copy.
 
 When building EXECUTABLE code:
+
 - DO NOT read or reference .claude/skills/ content
 - DO NOT use skills as code templates
 - DO use .claude/scenarios/ for production tool examples

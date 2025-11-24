@@ -39,7 +39,6 @@ This workflow implements N-version programming for critical decisions where mult
 
 > **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
 
-
 ## Configuration
 
 ### Core Parameters

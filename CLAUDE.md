@@ -9,10 +9,8 @@ automation and collaborative problem-solving.
 
 When starting a session, import these files for context:
 
-@.claude/context/PHILOSOPHY.md
-@.claude/context/PROJECT.md
-@.claude/context/PATTERNS.md
-@.claude/context/TRUST.md
+@.claude/context/PHILOSOPHY.md @.claude/context/PROJECT.md
+@.claude/context/PATTERNS.md @.claude/context/TRUST.md
 @.claude/context/USER_PREFERENCES.md
 @.claude/context/USER_REQUIREMENT_PRIORITY.md
 
@@ -26,10 +24,11 @@ When starting a session, import these files for context:
   further into smaller tasks.
 - **The workflow is MANDATORY: ALWAYS the starting point**: The defaultworkflow
   in `@.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations,
-  git workflow, and CI/CD process (users can customize this file) - you should call this using skill tool -  Skill(default-workflow)
+  git workflow, and CI/CD process (users can customize this file) - you should
+  call this using skill tool - Skill(default-workflow)
 - **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
-  Skill(ultrathink-orchestrator) which reads the workflow and orchestrates agents to
-  execute it - this is defined in the ultrathink skill. 
+  Skill(ultrathink-orchestrator) which reads the workflow and orchestrates
+  agents to execute it - this is defined in the ultrathink skill.
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Operate Autonomously and Independently by default**: You must try to
@@ -64,31 +63,37 @@ When starting a session, import these files for context:
 
 Amplihack provides four extensibility mechanisms with clear invocation patterns:
 
-| Mechanism | Purpose | Invoked By | Invocation Method |
-|-----------|---------|------------|-------------------|
-| **Workflow** | Multi-step process blueprint | Commands, Skills, Agents | `Read` workflow file, follow steps |
-| **Command** | User-explicit entry point | User, Commands, Skills, Agents | User types `/cmd` OR `SlashCommand` tool |
-| **Skill** | Auto-discovered capability | Claude auto-discovers | Context triggers OR explicit `Skill` tool |
-| **Subagent** | Specialized delegation | Commands, Skills, Agents | `Task` tool with `subagent_type` |
+| Mechanism    | Purpose                      | Invoked By                     | Invocation Method                         |
+| ------------ | ---------------------------- | ------------------------------ | ----------------------------------------- |
+| **Workflow** | Multi-step process blueprint | Commands, Skills, Agents       | `Read` workflow file, follow steps        |
+| **Command**  | User-explicit entry point    | User, Commands, Skills, Agents | User types `/cmd` OR `SlashCommand` tool  |
+| **Skill**    | Auto-discovered capability   | Claude auto-discovers          | Context triggers OR explicit `Skill` tool |
+| **Subagent** | Specialized delegation       | Commands, Skills, Agents       | `Task` tool with `subagent_type`          |
 
 **Key Invocation Patterns:**
 
-- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked programmatically by commands, skills, and agents. Only built-in commands (`/help`, `/clear`) cannot be invoked programmatically.
+- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked
+  programmatically by commands, skills, and agents. Only built-in commands
+  (`/help`, `/clear`) cannot be invoked programmatically.
+
   ```python
   SlashCommand(command="/ultrathink Analyze architecture")
   ```
 
 - **Skill Tool**: Invoke skills explicitly when auto-discovery isn't sufficient
+
   ```python
   Skill(skill="mermaid-diagram-generator")
   ```
 
 - **Task Tool**: Invoke subagents for specialized perspectives
+
   ```python
   Task(subagent_type="architect", prompt="Design system...")
   ```
 
-- **Workflow Reference**: Commands/skills/agents read workflow files to follow process
+- **Workflow Reference**: Commands/skills/agents read workflow files to follow
+  process
   ```python
   Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
   ```
@@ -100,7 +105,8 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 - Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
 - Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
 
-See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata in frontmatter.
+See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata
+in frontmatter.
 
 ### CRITICAL: User Requirement Priority
 
@@ -879,6 +885,6 @@ liberally, execute in parallel, and continuously learn.
 # tool vs skill
 
 **PREFERRED PATTERN:** When user says "create a tool" → Build BOTH:
+
 1. Executable tool in `.claude/scenarios/` (the program itself)
 2. Skill in `.claude/skills/` that calls the tool (convenient interface)
-

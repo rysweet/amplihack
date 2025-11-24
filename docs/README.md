@@ -132,11 +132,13 @@ The navigation is organized into 9 main sections:
 ### Adding a New Page
 
 1. **Create markdown file**:
+
    ```bash
    touch docs/new-page.md
    ```
 
 2. **Add to navigation** in `mkdocs.yml`:
+
    ```yaml
    nav:
      - Section Name:
@@ -166,13 +168,13 @@ The documentation supports enhanced markdown:
 
 ```markdown
 !!! note "Custom Title"
-    This is a note admonition.
+This is a note admonition.
 
 !!! warning
-    This is a warning.
+This is a warning.
 
 !!! tip
-    This is a tip.
+This is a tip.
 ```
 
 #### Code Blocks with Syntax Highlighting
@@ -205,10 +207,10 @@ graph LR
 
 ```markdown
 === "Tab 1"
-    Content for tab 1
+Content for tab 1
 
 === "Tab 2"
-    Content for tab 2
+Content for tab 2
 ```
 
 ## Continuous Integration
@@ -256,6 +258,7 @@ Trigger manual deployment via GitHub Actions:
 **Problem**: Plugin fails to load
 
 **Solution**: Reinstall documentation dependencies:
+
 ```bash
 pip install -r requirements-docs.txt --force-reinstall
 ```
@@ -265,6 +268,7 @@ pip install -r requirements-docs.txt --force-reinstall
 **Problem**: Changes not visible on GitHub Pages
 
 **Solution**:
+
 1. Check GitHub Actions logs
 2. Ensure `gh-pages` branch exists
 3. Verify GitHub Pages settings in repository

@@ -19,6 +19,7 @@ This skill enables Claude Code to assist with:
 
 1. **Azure Subscription**: Active Azure subscription with appropriate permissions
 2. **Azure CLI**: Installed and authenticated
+
    ```bash
    # Install (macOS)
    brew install azure-cli
@@ -40,6 +41,7 @@ This skill enables Claude Code to assist with:
 ### Optional (Enhanced Capabilities)
 
 1. **Azure Developer CLI (azd)**:
+
    ```bash
    # Install (macOS)
    brew tap azure/azd && brew install azd
@@ -52,6 +54,7 @@ This skill enables Claude Code to assist with:
    ```
 
 2. **Azure MCP Server** (for AI-powered workflows):
+
    ```bash
    # Install globally
    npm install -g @modelcontextprotocol/server-azure
@@ -71,6 +74,7 @@ This skill enables Claude Code to assist with:
    ```
 
 3. **Bicep CLI** (for infrastructure as code):
+
    ```bash
    # Bicep is included with Azure CLI 2.20.0+
    az bicep install
@@ -86,17 +90,20 @@ This skill enables Claude Code to assist with:
 ## Installation
 
 1. **Verify Azure CLI authentication**:
+
    ```bash
    az login
    az account show
    ```
 
 2. **Set default subscription** (if you have multiple):
+
    ```bash
    az account set --subscription "My Subscription Name"
    ```
 
 3. **Test access**:
+
    ```bash
    # List resource groups
    az group list --output table
@@ -114,16 +121,19 @@ This skill enables Claude Code to assist with:
 ### Basic Operations
 
 **List resources:**
+
 ```
 Show me all VMs in my subscription
 ```
 
 **Create resource group:**
+
 ```
 Create a resource group named 'my-app-rg' in East US
 ```
 
 **Deploy infrastructure:**
+
 ```
 Deploy the Bicep template in ./infra/main.bicep to resource group 'my-app-rg'
 ```
@@ -131,16 +141,19 @@ Deploy the Bicep template in ./infra/main.bicep to resource group 'my-app-rg'
 ### Identity Management
 
 **Create user:**
+
 ```
 Create a new Entra ID user named Jane Doe with email jane@contoso.com
 ```
 
 **Assign RBAC role:**
+
 ```
 Give jane@contoso.com Reader access to resource group 'my-app-rg'
 ```
 
 **Create service principal:**
+
 ```
 Create a service principal with Contributor role for my CI/CD pipeline
 ```
@@ -148,11 +161,13 @@ Create a service principal with Contributor role for my CI/CD pipeline
 ### DevOps Workflows
 
 **Setup environment:**
+
 ```
 Use azd to create a new development environment for a Node.js app
 ```
 
 **Run deployment:**
+
 ```
 Deploy my application to Azure using the existing Bicep templates
 ```
@@ -247,6 +262,7 @@ Use examples/role-audit.md workflow
 **Problem**: `az login` fails or credentials expired
 
 **Solution**:
+
 ```bash
 # Clear cached credentials
 az logout
@@ -264,6 +280,7 @@ az account show
 **Problem**: "Insufficient privileges" or "Forbidden" errors
 
 **Solution**:
+
 ```bash
 # Check your current role assignments
 az role assignment list --assignee $(az ad signed-in-user show --query id -o tsv)
@@ -279,6 +296,7 @@ az account show
 **Problem**: Azure MCP tools not available in Claude Code
 
 **Solution**:
+
 1. Verify Node.js 18+ installed: `node --version`
 2. Reinstall MCP server: `npm install -g @modelcontextprotocol/server-azure`
 3. Check MCP configuration in `~/.config/claude-code/mcp.json`
@@ -290,6 +308,7 @@ az account show
 **Problem**: Can't find expected Azure resources
 
 **Solution**:
+
 ```bash
 # Verify subscription context
 az account show
@@ -316,17 +335,20 @@ az resource list --name "myResourceName"
 ## Support and Resources
 
 ### Official Microsoft Resources
+
 - Azure Documentation: https://docs.microsoft.com/azure
 - Azure CLI Reference: https://docs.microsoft.com/cli/azure
 - Microsoft Learn: https://learn.microsoft.com/azure
 - Azure Updates: https://azure.microsoft.com/updates
 
 ### Community Resources
+
 - Azure Tech Community: https://techcommunity.microsoft.com/azure
 - Stack Overflow: https://stackoverflow.com/questions/tagged/azure
 - GitHub Issues: https://github.com/Azure/azure-cli/issues
 
 ### Skill-Specific Resources
+
 - See references/ directory for curated learning paths
 - Check examples/ for real-world workflow templates
 - Review docs/ for deep technical content

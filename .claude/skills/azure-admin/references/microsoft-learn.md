@@ -7,6 +7,7 @@ Curated learning paths and resources from Microsoft Learn for Azure administrato
 ### Azure Administrator (AZ-104)
 
 **Prerequisites and Fundamentals:**
+
 - Azure Fundamentals (AZ-900)
   - https://learn.microsoft.com/training/paths/az-900-describe-cloud-concepts/
   - https://learn.microsoft.com/training/paths/az-900-describe-azure-architecture-services/
@@ -51,6 +52,7 @@ Curated learning paths and resources from Microsoft Learn for Azure administrato
 ### Security
 
 **Azure Security Engineer (AZ-500):**
+
 - Manage identity and access
   - https://learn.microsoft.com/training/paths/manage-identity-access/
 - Implement platform protection
@@ -61,6 +63,7 @@ Curated learning paths and resources from Microsoft Learn for Azure administrato
 ### Architecture
 
 **Azure Solutions Architect (AZ-305):**
+
 - Design identity, governance, and monitoring solutions
   - https://learn.microsoft.com/training/paths/design-identity-governance-monitor-solutions/
 - Design data storage solutions
@@ -71,6 +74,7 @@ Curated learning paths and resources from Microsoft Learn for Azure administrato
 ### DevOps
 
 **Azure DevOps Engineer (AZ-400):**
+
 - Implement CI with Azure Pipelines
   - https://learn.microsoft.com/training/paths/az-400-implement-ci-azure-pipelines/
 - Design and implement infrastructure as code
@@ -147,11 +151,13 @@ Curated learning paths and resources from Microsoft Learn for Azure administrato
 ### Azure Sandbox
 
 Free Azure sandbox environment (no Azure subscription required):
+
 - https://learn.microsoft.com/training/support/faq?pivots=sandbox
 
 ### Microsoft Learn Lab Environment
 
 Interactive labs with step-by-step guidance:
+
 - Browse all labs: https://learn.microsoft.com/training/browse/?products=azure&resource_type=learning%20path
 
 ## Certification Exam Study Guides
@@ -159,9 +165,11 @@ Interactive labs with step-by-step guidance:
 ### AZ-104: Azure Administrator
 
 **Official Study Guide:**
+
 - https://learn.microsoft.com/certifications/exams/az-104
 
 **Exam Skills Outline:**
+
 - Manage Azure identities and governance (15-20%)
 - Implement and manage storage (15-20%)
 - Deploy and manage Azure compute resources (20-25%)
@@ -169,20 +177,25 @@ Interactive labs with step-by-step guidance:
 - Monitor and maintain Azure resources (10-15%)
 
 **Practice Assessment:**
+
 - https://learn.microsoft.com/certifications/exams/az-104/practice/assessment
 
 **Exam Prep Video:**
+
 - https://learn.microsoft.com/shows/exam-readiness-zone/
 
 ### Additional Certifications
 
 **AZ-305: Azure Solutions Architect Expert:**
+
 - https://learn.microsoft.com/certifications/exams/az-305
 
 **AZ-400: Azure DevOps Engineer Expert:**
+
 - https://learn.microsoft.com/certifications/exams/az-400
 
 **AZ-500: Azure Security Engineer Associate:**
+
 - https://learn.microsoft.com/certifications/exams/az-500
 
 ## Documentation
@@ -230,24 +243,28 @@ Interactive labs with step-by-step guidance:
 ## Learning Path Recommendations by Role
 
 ### Cloud Administrator (Entry Level)
+
 1. Start with AZ-900 (Azure Fundamentals)
 2. Progress to AZ-104 (Azure Administrator)
 3. Practice with sandbox environments
 4. Gain 6-12 months hands-on experience
 
 ### DevOps Engineer
+
 1. Complete AZ-104 (foundation)
 2. Focus on IaC modules (Bicep, ARM templates)
 3. Complete AZ-400 (DevOps Engineer)
 4. Practice CI/CD pipeline creation
 
 ### Security Specialist
+
 1. Complete AZ-104 (foundation)
 2. Focus on identity and RBAC modules
 3. Complete AZ-500 (Security Engineer)
 4. Learn Azure Policy and compliance tools
 
 ### Solutions Architect
+
 1. Complete AZ-104 (foundation)
 2. Gain multi-service experience
 3. Complete AZ-305 (Solutions Architect)

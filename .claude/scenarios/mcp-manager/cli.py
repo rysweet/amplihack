@@ -63,7 +63,7 @@ def format_table(headers: list[str], rows: list[list[str]]) -> str:
     # Build data rows
     data_lines = []
     for row in rows:
-        cells = [f" {str(cell):<{col_widths[i]}} " for i, cell in enumerate(row)]
+        cells = [f" {cell!s:<{col_widths[i]}} " for i, cell in enumerate(row)]
         data_lines.append("|" + "|".join(cells) + "|")
 
     # Assemble table
@@ -97,13 +97,15 @@ def cmd_list(args: argparse.Namespace) -> int:
             enabled_str = "Yes" if server.enabled else "No"
             env_str = ", ".join(server.env.keys()) if server.env else "(none)"
 
-            rows.append([
-                server.name,
-                server.command,
-                args_str[:40] + "..." if len(args_str) > 40 else args_str,
-                enabled_str,
-                env_str[:30] + "..." if len(env_str) > 30 else env_str,
-            ])
+            rows.append(
+                [
+                    server.name,
+                    server.command,
+                    args_str[:40] + "..." if len(args_str) > 40 else args_str,
+                    enabled_str,
+                    env_str[:30] + "..." if len(env_str) > 30 else env_str,
+                ]
+            )
 
         print(format_table(headers, rows))
         return 0
@@ -225,11 +227,10 @@ def cmd_validate(args: argparse.Namespace) -> int:
         if not errors:
             print("✓ Configuration is valid")
             return 0
-        else:
-            print("Configuration validation errors:", file=sys.stderr)
-            for error in errors:
-                print(f"  - {error}", file=sys.stderr)
-            return 1
+        print("Configuration validation errors:", file=sys.stderr)
+        for error in errors:
+            print(f"  - {error}", file=sys.stderr)
+        return 1
 
     except Exception as e:
         print(f"Error validating configuration: {e}", file=sys.stderr)
@@ -346,7 +347,7 @@ def cmd_remove(args: argparse.Namespace) -> int:
             print(f"  Command: {server.command}")
             print(f"  Args: {' '.join(server.args) if server.args else '(none)'}")
             response = input("\nAre you sure you want to remove this server? (y/N): ")
-            if response.lower() not in ('y', 'yes'):
+            if response.lower() not in ("y", "yes"):
                 print("Cancelled")
                 return 0
 
@@ -448,7 +449,7 @@ def cmd_export(args: argparse.Namespace) -> int:
         # Write to file or stdout
         if args.output:
             output_path = Path(args.output)
-            output_path.write_text(export_data, encoding='utf-8')
+            output_path.write_text(export_data, encoding="utf-8")
             print(f"Exported {len(servers)} server(s) to: {output_path}")
         else:
             print(export_data)
@@ -476,7 +477,7 @@ def cmd_import(args: argparse.Namespace) -> int:
             print(f"Import file not found: {import_path}", file=sys.stderr)
             return 1
 
-        import_data = import_path.read_text(encoding='utf-8')
+        import_data = import_path.read_text(encoding="utf-8")
 
         # Parse servers
         imported_servers = import_servers(import_data, format=args.format)
@@ -621,27 +622,25 @@ def main(argv: Optional[list[str]] = None) -> int:
     # Dispatch to command handler
     if args.command == "list":
         return cmd_list(args)
-    elif args.command == "enable":
+    if args.command == "enable":
         return cmd_enable(args)
-    elif args.command == "disable":
+    if args.command == "disable":
         return cmd_disable(args)
-    elif args.command == "validate":
+    if args.command == "validate":
         return cmd_validate(args)
-    elif args.command == "add":
+    if args.command == "add":
         return cmd_add(args)
-    elif args.command == "remove":
+    if args.command == "remove":
         return cmd_remove(args)
-    elif args.command == "show":
+    if args.command == "show":
         return cmd_show(args)
-    elif args.command == "export":
+    if args.command == "export":
         return cmd_export(args)
-    elif args.command == "import":
+    if args.command == "import":
         return cmd_import(args)
-    else:
-        parser.print_help()
-        return 1
+    parser.print_help()
+    return 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

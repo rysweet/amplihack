@@ -5,6 +5,7 @@ Complete automated workflow for onboarding multiple users to Azure with proper a
 ## Scenario
 
 Onboard 15 new engineers to the Azure environment with:
+
 - Entra ID user accounts
 - Security group membership (Engineering Team)
 - RBAC role assignments (Contributor on dev resource groups, Reader on prod)
@@ -23,6 +24,7 @@ Onboard 15 new engineers to the Azure environment with:
 ## Step 1: Prepare User Data
 
 Create `users.csv`:
+
 ```csv
 DisplayName,UserPrincipalName,Password,GivenName,Surname,Department,JobTitle,ManagerEmail
 Jane Doe,jane.doe@contoso.com,TempPass123!,Jane,Doe,Engineering,Senior Software Engineer,john.smith@contoso.com
@@ -237,6 +239,7 @@ az role assignment list --assignee "$ENG_GROUP_ID" --all --output table
 MFA enforcement requires Azure AD Premium P1 or P2 and must be configured through Azure Portal or Microsoft Graph API.
 
 **Manual Steps:**
+
 1. Navigate to Azure Portal > Entra ID > Security > Conditional Access
 2. Create new policy: "Require MFA for Engineering Team"
 3. Assignments:
@@ -247,6 +250,7 @@ MFA enforcement requires Azure AD Premium P1 or P2 and must be configured throug
 5. Enable policy
 
 **Automated via Microsoft Graph API:**
+
 ```bash
 # Requires Microsoft Graph permissions
 # This is a simplified example - full implementation requires complex JSON policy definition

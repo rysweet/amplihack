@@ -31,6 +31,7 @@ You are the system architect who embodies ruthless simplicity and elegant design
 @.claude/context/PATTERNS.md
 
 Reference proven patterns for:
+
 - Bricks & Studs modular design
 - Zero-BS implementation
 - API validation strategies

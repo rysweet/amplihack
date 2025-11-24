@@ -10,12 +10,13 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack" / "hooks"))
 sys.path.insert(0, str(project_root / ".claude" / "skills"))
 
+
 def test_with_real_transcript():
     """Test automation using actual Claude Code transcript."""
 
-    print("="*70)
+    print("=" * 70)
     print("🧪 Testing Context Automation with REAL Transcript Data")
-    print("="*70)
+    print("=" * 70)
 
     # Create a sample transcript with token usage data
     sample_transcript = [
@@ -26,8 +27,8 @@ def test_with_real_transcript():
                 "input_tokens": 50000,
                 "output_tokens": 0,
                 "cache_read_input_tokens": 0,
-                "cache_creation_input_tokens": 0
-            }
+                "cache_creation_input_tokens": 0,
+            },
         },
         {
             "role": "assistant",
@@ -36,8 +37,8 @@ def test_with_real_transcript():
                 "input_tokens": 1000,
                 "output_tokens": 45000,
                 "cache_read_input_tokens": 10000,
-                "cache_creation_input_tokens": 5000
-            }
+                "cache_creation_input_tokens": 5000,
+            },
         },
         {
             "role": "user",
@@ -46,8 +47,8 @@ def test_with_real_transcript():
                 "input_tokens": 60000,
                 "output_tokens": 0,
                 "cache_read_input_tokens": 20000,
-                "cache_creation_input_tokens": 0
-            }
+                "cache_creation_input_tokens": 0,
+            },
         },
         {
             "role": "assistant",
@@ -56,14 +57,15 @@ def test_with_real_transcript():
                 "input_tokens": 2000,
                 "output_tokens": 150000,
                 "cache_read_input_tokens": 50000,
-                "cache_creation_input_tokens": 10000
-            }
+                "cache_creation_input_tokens": 10000,
+            },
         },
     ]
 
     # Save to temp file
     import tempfile
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(sample_transcript, f)
         transcript_path = f.name
 
@@ -79,7 +81,7 @@ def test_with_real_transcript():
                 expected_tokens += u.get("cache_creation_input_tokens", 0)
 
         print(f"\n📊 Expected Token Count: {expected_tokens:,}")
-        print(f"   Percentage: {(expected_tokens/1_000_000)*100:.1f}%")
+        print(f"   Percentage: {(expected_tokens / 1_000_000) * 100:.1f}%")
 
         # Simulate PostToolUse hook input (REAL FORMAT)
         hook_input = {
@@ -90,20 +92,21 @@ def test_with_real_transcript():
             "hook_event_name": "PostToolUse",
             "toolUse": {
                 "name": "Write",
-                "input": {"file_path": "test.py", "content": "print('hello')"}
+                "input": {"file_path": "test.py", "content": "print('hello')"},
             },
-            "result": {"status": "success"}
+            "result": {"status": "success"},
         }
 
         print("\n🔧 Running PostToolUse Hook with Real Data...")
 
         # Test the hook
         from post_tool_use import PostToolUseHook
+
         hook = PostToolUseHook()
         output = hook.process(hook_input)
 
         print("\n✅ Hook Executed Successfully!")
-        print(f"\nHook Output:")
+        print("\nHook Output:")
         print(json.dumps(output, indent=2))
 
         # Check if automation ran
@@ -114,12 +117,10 @@ def test_with_real_transcript():
             print(f"  Warnings: {auto_data.get('warnings', [])}")
 
             # Verify token count was calculated correctly
-            print(f"\n✅ Token calculation working correctly!")
+            print("\n✅ Token calculation working correctly!")
             print(f"   Expected: {expected_tokens:,}")
-            print(f"   Threshold: {(expected_tokens/1_000_000)*100:.1f}% = ", end="")
-            if expected_tokens < 400000:
-                print("'ok' (no action)")
-            elif expected_tokens < 550000:
+            print(f"   Threshold: {(expected_tokens / 1_000_000) * 100:.1f}% = ", end="")
+            if expected_tokens < 400000 or expected_tokens < 550000:
                 print("'ok' (no action)")
             elif expected_tokens < 700000:
                 print("'consider' (auto-snapshot)")
@@ -131,15 +132,16 @@ def test_with_real_transcript():
         else:
             print("\n⚠️  Automation did not add metadata (might be below threshold or error)")
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("🎉 Real Transcript Test Complete!")
-        print("="*70)
+        print("=" * 70)
 
         return True
 
     finally:
         # Cleanup
         Path(transcript_path).unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     try:
@@ -148,5 +150,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

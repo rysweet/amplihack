@@ -19,6 +19,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ### Domain 1: Manage Azure Identities and Governance (15-20%)
 
 **Manage Azure Active Directory (Azure AD) objects**
+
 - Create users and groups
 - Manage licenses in Azure AD
 - Create administrative units
@@ -29,6 +30,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Configure self-service password reset (SSPR)
 
 **Manage access control**
+
 - Manage built-in Azure roles
 - Assign roles at different scopes
 - Interpret access assignments
@@ -36,6 +38,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Manage access reviews
 
 **Manage Azure subscriptions and governance**
+
 - Configure and manage Azure Policy
 - Configure resource locks
 - Apply and manage tags on resources
@@ -47,6 +50,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ### Domain 2: Implement and Manage Storage (15-20%)
 
 **Configure access to storage**
+
 - Configure network access to storage accounts
 - Create and configure storage accounts
 - Generate shared access signature (SAS) tokens
@@ -55,12 +59,14 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Configure storage account encryption
 
 **Manage data in Azure storage accounts**
+
 - Create import and export jobs
 - Manage data by using Azure Storage Explorer and AzCopy
 - Implement Azure Storage replication
 - Configure blob object replication
 
 **Configure Azure Files and Azure Blob Storage**
+
 - Create an Azure file share
 - Configure Azure Blob Storage
 - Configure storage tiers
@@ -69,6 +75,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ### Domain 3: Deploy and Manage Azure Compute Resources (20-25%)
 
 **Automate deployment of resources by using ARM templates or Bicep files**
+
 - Interpret an ARM template or Bicep file
 - Modify an existing ARM template
 - Modify an existing Bicep file
@@ -76,6 +83,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Export a deployment as an ARM template or convert an ARM template to a Bicep file
 
 **Create and configure virtual machines**
+
 - Create a virtual machine
 - Configure Azure Disk Encryption
 - Move a VM to another resource group, subscription, or region
@@ -85,12 +93,14 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Deploy and configure Azure Virtual Machine Scale Sets
 
 **Provision and manage containers in the Azure portal**
+
 - Create and manage an Azure container registry
 - Provision a container by using Azure Container Instances
 - Provision a container by using Azure Container Apps
 - Manage sizing and scaling for containers, including Azure Container Instances and Azure Container Apps
 
 **Create and configure Azure App Service**
+
 - Provision an App Service plan
 - Configure scaling for an App Service plan
 - Create an App Service
@@ -103,6 +113,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ### Domain 4: Configure and Manage Virtual Networking (25-30%)
 
 **Configure virtual networks**
+
 - Create and configure virtual networks and subnets
 - Create and configure virtual network peering
 - Configure public IP addresses
@@ -110,6 +121,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Troubleshoot network connectivity
 
 **Configure secure access to virtual networks**
+
 - Create and configure network security groups (NSGs) and application security groups (ASGs)
 - Evaluate effective security rules in NSGs
 - Implement Azure Bastion
@@ -117,11 +129,13 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Configure private endpoints for Azure PaaS
 
 **Configure name resolution**
+
 - Configure Azure DNS
 - Configure custom DNS settings
 - Configure a private DNS zone
 
 **Configure load balancing**
+
 - Configure Azure Application Gateway
 - Configure an internal or public load balancer
 - Troubleshoot load balancing
@@ -129,6 +143,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ### Domain 5: Monitor and Maintain Azure Resources (10-15%)
 
 **Monitor resources by using Azure Monitor**
+
 - Configure and interpret metrics
 - Configure Azure Monitor Logs
 - Query and analyze logs
@@ -136,6 +151,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Configure and manage Azure Monitor Application Insights
 
 **Implement backup and recovery**
+
 - Create an Azure Recovery Services vault
 - Create an Azure Backup vault
 - Create and configure a backup policy
@@ -149,11 +165,13 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ### Phase 1: Foundation (2-4 weeks)
 
 **Week 1-2: Azure Fundamentals**
+
 - Complete AZ-900 learning path if not already certified
 - Understand cloud concepts and Azure basics
 - Familiarize with Azure Portal
 
 **Week 3-4: Identity and Governance**
+
 - Study Azure AD (Entra ID) thoroughly
 - Practice RBAC assignments
 - Learn Azure Policy and management groups
@@ -162,18 +180,21 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ### Phase 2: Core Services (4-6 weeks)
 
 **Week 5-6: Storage**
+
 - Study all storage account types
 - Practice with Azure Storage Explorer and AzCopy
 - Learn blob lifecycle management
 - Hands-on: Create storage accounts, configure access
 
 **Week 7-8: Compute**
+
 - Master VM creation and management
 - Learn ARM templates and Bicep
 - Understand containers (ACI, AKS basics, App Service)
 - Hands-on: Deploy VMs, containers, App Services
 
 **Week 9-10: Networking**
+
 - Deep dive into VNets, subnets, NSGs
 - Study load balancing (Azure LB, App Gateway)
 - Learn DNS configuration
@@ -182,12 +203,14 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ### Phase 3: Advanced Topics (2-3 weeks)
 
 **Week 11-12: Monitoring and Backup**
+
 - Master Azure Monitor and Log Analytics
 - Learn backup strategies
 - Understand Site Recovery
 - Hands-on: Configure monitoring, backups
 
 **Week 13: Practice and Review**
+
 - Complete practice exams
 - Review weak areas
 - Hands-on labs for all domains
@@ -195,23 +218,28 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ## Key Resources
 
 **Official Microsoft Learn Paths:**
+
 - https://learn.microsoft.com/certifications/exams/az-104
 
 **Practice Exams:**
+
 - Microsoft Official Practice Assessment
 - MeasureUp practice tests
 - Whizlabs AZ-104 practice tests
 
 **Hands-On Labs:**
+
 - Microsoft Learn sandbox
 - Free Azure trial ($200 credit)
 - Azure Pass (if available through study groups)
 
 **Books:**
+
 - "Exam Ref AZ-104 Microsoft Azure Administrator" by Microsoft Press
 - "Microsoft Azure Administrator Exam Guide AZ-104" by Packt
 
 **Video Courses:**
+
 - Microsoft Learn video content
 - Pluralsight "Microsoft Azure Administrator" path
 - A Cloud Guru AZ-104 course
@@ -220,6 +248,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ## Hands-On Lab Suggestions
 
 ### Identity Labs
+
 ```bash
 # Lab 1: User and Group Management
 - Create 10 users via CSV import
@@ -241,6 +270,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ```
 
 ### Storage Labs
+
 ```bash
 # Lab 4: Storage Account Configuration
 - Create storage accounts (Standard, Premium)
@@ -256,6 +286,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ```
 
 ### Compute Labs
+
 ```bash
 # Lab 6: Virtual Machine Deployment
 - Deploy VM from portal
@@ -278,6 +309,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ```
 
 ### Networking Labs
+
 ```bash
 # Lab 9: Virtual Network Configuration
 - Create VNet with multiple subnets
@@ -299,6 +331,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ```
 
 ### Monitoring Labs
+
 ```bash
 # Lab 12: Azure Monitor
 - Configure Log Analytics workspace
@@ -316,12 +349,14 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ## Exam Day Tips
 
 **Before the Exam:**
+
 1. Review all learning paths one final time
 2. Take final practice exam
 3. Get good sleep night before
 4. Arrive 15 minutes early (or prepare testing space if online)
 
 **During the Exam:**
+
 1. Read questions carefully (watch for "NOT", "EXCEPT")
 2. Mark difficult questions for review
 3. Eliminate obviously wrong answers
@@ -329,6 +364,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 5. Review all marked questions before submitting
 
 **Question Types:**
+
 - Multiple choice (single answer)
 - Multiple choice (multiple answers)
 - Drag and drop
@@ -337,6 +373,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 - Labs (hands-on in Azure Portal)
 
 **Common Traps:**
+
 - Questions asking for "least administrative effort" → choose managed services
 - Questions about "most cost-effective" → consider reserved instances, right-sizing
 - Always choose solutions with high availability when not specified otherwise
@@ -345,12 +382,14 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ## Post-Exam
 
 **If You Pass:**
+
 - Digital badge available immediately
 - Certificate available in 5-10 business days
 - Update LinkedIn, resume
 - Schedule renewal reminder (1 year)
 
 **If You Don't Pass:**
+
 - Review score report to identify weak areas
 - Wait 24 hours before retaking
 - No limit on retakes (but cost applies each time)
@@ -359,6 +398,7 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 ## Renewal
 
 **Annual Renewal:**
+
 - Free renewal assessment on Microsoft Learn
 - Complete 6 months after certification
 - Must pass to maintain certification
@@ -369,10 +409,12 @@ Complete study guide for passing the AZ-104 Microsoft Azure Administrator certif
 After AZ-104, consider:
 
 **Expert Level:**
+
 - AZ-305: Azure Solutions Architect Expert
 - AZ-400: Azure DevOps Engineer Expert
 
 **Specialty:**
+
 - AZ-500: Azure Security Engineer Associate
 - AZ-700: Azure Network Engineer Associate
 - DP-900: Azure Data Fundamentals
@@ -381,6 +423,7 @@ After AZ-104, consider:
 ## Practice Questions
 
 ### Sample Question 1
+
 You need to ensure that all resources in a resource group are tagged with a cost center value. What should you implement?
 
 A. Azure Policy
@@ -392,6 +435,7 @@ D. Management group
 Explanation: Azure Policy can enforce tag requirements.
 
 ### Sample Question 2
+
 You have a VM running in Azure. You need to encrypt the VM disks. Which service should you use?
 
 A. Azure Key Vault
@@ -403,6 +447,7 @@ D. Azure Security Center
 Explanation: Azure Disk Encryption encrypts VM disks using BitLocker (Windows) or DM-Crypt (Linux).
 
 ### Sample Question 3
+
 You need to allow your on-premises network to communicate with Azure VNet. The connection must be encrypted. What should you implement?
 
 A. ExpressRoute
@@ -416,11 +461,13 @@ Explanation: VPN Gateway provides encrypted connection between on-premises and A
 ## Additional Practice Resources
 
 **GitHub Repositories:**
+
 - Azure Samples: https://github.com/Azure-Samples
 - Bicep Examples: https://github.com/Azure/bicep
 - ARM Templates: https://github.com/Azure/azure-quickstart-templates
 
 **Community Study Groups:**
+
 - Reddit: r/AzureCertification
 - Microsoft Tech Community
 - LinkedIn Azure study groups

@@ -74,7 +74,7 @@ def sanitize_markdown(text: str) -> str:
 
     # Remove all HTML tags except safe ones
     text = re.sub(
-        r"<(?!/?({})\b)[^>]*>".format(safe_pattern),
+        rf"<(?!/?({safe_pattern})\b)[^>]*>",
         "",
         text,
         flags=re.IGNORECASE,
@@ -138,9 +138,7 @@ def validate_allowed_labels(labels: List[str]) -> None:
 
         # Check if label starts with allowed prefix
         if not any(label.startswith(prefix) for prefix in allowed_prefixes):
-            raise ValueError(
-                f"Label '{label}' not allowed. Must start with: {allowed_prefixes}"
-            )
+            raise ValueError(f"Label '{label}' not allowed. Must start with: {allowed_prefixes}")
 
 
 def validate_pr_data(pr_data: Dict[str, Any]) -> None:

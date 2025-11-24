@@ -4,10 +4,10 @@ Discovers available commands, context files, agents, and skills from the
 amplihack directory structure to enable profile-based filtering.
 """
 
-from pathlib import Path
-from dataclasses import dataclass
-from typing import Dict, List
 import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List
 
 
 @dataclass
@@ -21,6 +21,7 @@ class ComponentInventory:
         skills: Mapping of skill name to file path
         skill_categories: Mapping of category name to list of skill names
     """
+
     commands: Dict[str, Path]
     context: Dict[str, Path]
     agents: Dict[str, Path]
@@ -54,7 +55,7 @@ class ComponentDiscovery:
             context=self._discover_context(),
             agents=self._discover_agents(),
             skills=self._discover_skills(),
-            skill_categories=self._discover_skill_categories()
+            skill_categories=self._discover_skill_categories(),
         )
 
     def _discover_commands(self) -> Dict[str, Path]:

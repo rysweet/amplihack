@@ -5,6 +5,7 @@ This document contains test cases to verify the email-drafter skill produces cor
 ## Test Case Format
 
 Each test case includes:
+
 - **Test ID**: Unique identifier
 - **Tone**: One of (formal, casual, technical)
 - **Context**: One of (status_update, request, announcement, follow_up, response, recap)
@@ -21,6 +22,7 @@ Each test case includes:
 **Test**: Formal tone is consistently applied across all contexts
 
 **Characteristics to Verify**:
+
 - Complete sentences with proper punctuation
 - Formal salutations ("Dear", "Sincerely")
 - Respectful language ("I would like", "Thank you for")
@@ -33,6 +35,7 @@ Each test case includes:
 **Test**: Casual tone is consistently applied across all contexts
 
 **Characteristics to Verify**:
+
 - Conversational language
 - Informal salutations ("Hi", "Hey")
 - Can use contractions (doesn't, can't, we'll)
@@ -45,6 +48,7 @@ Each test case includes:
 **Test**: Technical tone is consistently applied across all contexts
 
 **Characteristics to Verify**:
+
 - Precise terminology
 - Specific technical details
 - Direct, unambiguous language
@@ -61,12 +65,14 @@ Each test case includes:
 **Test**: Status update context produces appropriate structure
 
 **Input Elements**:
+
 - Completed work items
 - In-progress items
 - Upcoming tasks
 - Potential blockers
 
 **Expected Structure**:
+
 1. Opening statement about what period/project
 2. Completed section with accomplishments
 3. In-progress section
@@ -79,12 +85,14 @@ Each test case includes:
 **Test**: Request context produces appropriate structure
 
 **Input Elements**:
+
 - What is being asked
 - Why it matters
 - Timeline/deadline
 - Resource needs
 
 **Expected Structure**:
+
 1. Context/background
 2. Clear specific request
 3. Rationale/importance
@@ -97,12 +105,14 @@ Each test case includes:
 **Test**: Announcement context produces appropriate structure
 
 **Input Elements**:
+
 - The announcement/news
 - Why it matters
 - How it affects recipients
 - Any actions needed
 
 **Expected Structure**:
+
 1. Lead with the announcement
 2. Context and rationale
 3. Details and specifics
@@ -115,12 +125,14 @@ Each test case includes:
 **Test**: Follow-up context produces appropriate structure
 
 **Input Elements**:
+
 - Previous conversation reference
 - Updates since conversation
 - Actions needed next
 - Items for confirmation
 
 **Expected Structure**:
+
 1. Reference previous conversation
 2. Summary of decisions made
 3. Update on progress
@@ -133,12 +145,14 @@ Each test case includes:
 **Test**: Response context produces appropriate structure
 
 **Input Elements**:
+
 - Question/inquiry being answered
 - Direct answer
 - Supporting details
 - Next steps if applicable
 
 **Expected Structure**:
+
 1. Appreciation for reaching out
 2. Direct answer to question
 3. Supporting details/explanation
@@ -151,6 +165,7 @@ Each test case includes:
 **Test**: Recap context produces appropriate structure
 
 **Input Elements**:
+
 - What was discussed
 - Decisions made
 - Action items with owners
@@ -158,6 +173,7 @@ Each test case includes:
 - Outstanding items
 
 **Expected Structure**:
+
 1. Opening (what was discussed)
 2. Decisions section
 3. Action items (who, what, when)
@@ -172,11 +188,13 @@ Each test case includes:
 ### TC1: Formal Status Update
 
 **Input**:
+
 - Tone: formal
 - Context: status_update
 - Content: Weekly project progress
 
 **Verification**:
+
 - Uses formal greeting/closing
 - Clear section headers (Completed Items, In Progress, Upcoming)
 - Professional language throughout
@@ -185,11 +203,13 @@ Each test case includes:
 ### TC2: Casual Request
 
 **Input**:
+
 - Tone: casual
 - Context: request
 - Content: Budget request for training
 
 **Verification**:
+
 - Friendly but professional tone
 - Conversational language
 - Clear what's being requested
@@ -198,11 +218,13 @@ Each test case includes:
 ### TC3: Technical Announcement
 
 **Input**:
+
 - Tone: technical
 - Context: announcement
 - Content: System architecture change
 
 **Verification**:
+
 - Technical terminology appropriate
 - Precise specifications included
 - Direct language
@@ -211,11 +233,13 @@ Each test case includes:
 ### TC4: Formal Follow-up
 
 **Input**:
+
 - Tone: formal
 - Context: follow_up
 - Content: Post-meeting confirmation
 
 **Verification**:
+
 - Formal language throughout
 - References previous meeting
 - Clear action items with ownership
@@ -224,11 +248,13 @@ Each test case includes:
 ### TC5: Casual Response
 
 **Input**:
+
 - Tone: casual
 - Context: response
 - Content: Answer to technical question
 
 **Verification**:
+
 - Casual, friendly tone
 - Direct answer to question
 - Helpful without being overly formal
@@ -237,11 +263,13 @@ Each test case includes:
 ### TC6: Technical Recap
 
 **Input**:
+
 - Tone: technical
 - Context: recap
 - Content: Architecture review summary
 
 **Verification**:
+
 - Technical precision
 - Clear decisions documented
 - Specific action items
@@ -256,6 +284,7 @@ Each test case includes:
 **Test**: Generated emails have no grammar or punctuation errors
 
 **Verification Steps**:
+
 - Check all sentences have proper punctuation
 - Verify subject-verb agreement
 - Confirm proper comma usage
@@ -266,6 +295,7 @@ Each test case includes:
 **Test**: Tone remains consistent throughout email
 
 **Verification Steps**:
+
 - Opening tone matches closing
 - No unexpected shifts in formality
 - Language level consistent
@@ -276,6 +306,7 @@ Each test case includes:
 **Test**: Email is clear and easy to understand
 
 **Verification Steps**:
+
 - Main point is obvious
 - Key information is highlighted
 - Logical flow from section to section
@@ -286,6 +317,7 @@ Each test case includes:
 **Test**: Email length is appropriate for context
 
 **Verification Steps**:
+
 - Concise but complete (not too short, not too long)
 - All important information included
 - No unnecessary repetition
@@ -296,6 +328,7 @@ Each test case includes:
 **Test**: Email follows professional formatting standards
 
 **Verification Steps**:
+
 - Appropriate paragraph breaks
 - Lists properly formatted (bullets/numbers)
 - Headers/sections clearly labeled

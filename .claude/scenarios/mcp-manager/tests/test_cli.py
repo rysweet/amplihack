@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-
 from cli import (
     cmd_add,
     cmd_disable,
@@ -283,6 +282,7 @@ def test_main_invalid_command(capsys):
 
 
 # Tests for new commands (add, remove, show, export, import)
+
 
 def test_cmd_add(mock_config_path, capsys):
     """Test add command."""
@@ -747,4 +747,3 @@ def test_main_import(capsys):
 
         assert result == 0
         mock_import.assert_called_once()
-

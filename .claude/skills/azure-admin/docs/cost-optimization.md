@@ -16,6 +16,7 @@ Comprehensive guide to managing and optimizing Azure costs through monitoring, r
 ### Understanding Azure Costs
 
 Azure costs consist of:
+
 - **Compute**: VMs, App Services, Functions, Containers
 - **Storage**: Blob, Files, Disks, managed disks
 - **Networking**: Data transfer, VPN Gateway, Load Balancer
@@ -124,6 +125,7 @@ az costmanagement forecast \
 ### 1. Right-Size Virtual Machines
 
 **Identify Oversized VMs:**
+
 ```bash
 # List VMs with CPU < 10% average utilization
 az monitor metrics list \
@@ -137,6 +139,7 @@ az monitor metrics list \
 ```
 
 **Resize VM:**
+
 ```bash
 # List available sizes
 az vm list-sizes --location eastus --output table
@@ -195,6 +198,7 @@ az vm auto-shutdown --resource-group myRG --name myVM --location eastus --time "
 ### 5. Delete Unused Resources
 
 **Find Orphaned Disks:**
+
 ```bash
 # List unattached managed disks
 az disk list --query "[?diskState=='Unattached'].{Name:name, RG:resourceGroup, Size:diskSizeGb, SKU:sku.name}" --output table
@@ -205,6 +209,7 @@ az disk list --query "[?diskState=='Unattached'].id" -o tsv | \
 ```
 
 **Find Orphaned NICs:**
+
 ```bash
 # List unattached network interfaces
 az network nic list --query "[?virtualMachine==null].{Name:name, RG:resourceGroup}" --output table
@@ -215,6 +220,7 @@ az network nic list --query "[?virtualMachine==null].id" -o tsv | \
 ```
 
 **Find Orphaned Public IPs:**
+
 ```bash
 # List unassociated public IPs
 az network public-ip list --query "[?ipConfiguration==null].{Name:name, RG:resourceGroup}" --output table
@@ -227,6 +233,7 @@ az network public-ip list --query "[?ipConfiguration==null].id" -o tsv | \
 ### 6. Storage Cost Optimization
 
 **Move to Cool/Archive Tiers:**
+
 ```bash
 # Set blob access tier to Cool
 az storage blob set-tier \
@@ -381,12 +388,7 @@ az monitor metrics alert create \
           {
             "not": {
               "field": "Microsoft.Compute/virtualMachines/sku.name",
-              "in": [
-                "Standard_B2s",
-                "Standard_B2ms",
-                "Standard_D2s_v3",
-                "Standard_D4s_v3"
-              ]
+              "in": ["Standard_B2s", "Standard_B2ms", "Standard_D2s_v3", "Standard_D4s_v3"]
             }
           }
         ]

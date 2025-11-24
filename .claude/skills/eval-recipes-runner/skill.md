@@ -14,6 +14,7 @@ Run Microsoft's eval-recipes benchmarks to validate amplihack improvements again
 ## Capabilities
 
 I can run eval-recipes benchmarks to:
+
 1. Test specific amplihack branches
 2. Compare against baseline agents (codex, claude_code)
 3. Run specific tasks (linkedin_drafting, email_drafting, etc.)
@@ -39,6 +40,7 @@ uv sync
 ### Running Benchmarks
 
 **Test a specific branch:**
+
 ```bash
 # Update install.dockerfile to use specific branch
 # Then run benchmark
@@ -47,6 +49,7 @@ uv run eval_recipes/main.py --agent amplihack --task linkedin_drafting --trials 
 ```
 
 **Compare before/after:**
+
 ```bash
 # Test baseline (main)
 uv run eval_recipes/main.py --agent amplihack --task linkedin_drafting
@@ -60,6 +63,7 @@ uv run eval_recipes/main.py --agent amplihack_pr1443 --task linkedin_drafting
 ### Available Tasks
 
 Common tasks from eval-recipes:
+
 - `linkedin_drafting` - Create tool for LinkedIn posts (scored 6.5/100 before PR #1443)
 - `email_drafting` - Create CLI tool for emails (scored 26/100 before)
 - `arxiv_paper_summarizer` - Research tool
@@ -93,11 +97,13 @@ When user says "test this change with eval-recipes":
 ### Expected Scores
 
 **Baseline (main branch):**
+
 - Overall: 40.6/100
 - LinkedIn: 6.5/100
 - Email: 26/100
 
 **With PR #1443 (task classification):**
+
 - Expected: 55-60/100 (+15-20 points)
 - LinkedIn: 30-40/100 (creates actual tool)
 - Email: 45/100 (consistent execution)
@@ -107,6 +113,7 @@ When user says "test this change with eval-recipes":
 **User says:** "Test PR #1443 with eval-recipes on the LinkedIn task"
 
 **I do:**
+
 1. Update install.dockerfile to checkout `feat/issue-1435-task-classification`
 2. Copy to eval-recipes: `cp -r .claude/agents/eval-recipes/* ~/eval-recipes/data/agents/`
 3. Run: `cd ~/eval-recipes && uv run eval_recipes/main.py --agent amplihack --task linkedin_drafting --trials 3`
@@ -129,6 +136,7 @@ When user says "test this change with eval-recipes":
 ## Automation
 
 For fully autonomous testing:
+
 ```bash
 # Test suite for a PR
 tasks="linkedin_drafting email_drafting arxiv_paper_summarizer"

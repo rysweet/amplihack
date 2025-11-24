@@ -31,54 +31,54 @@ trigger:
       - README.md
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: "ubuntu-latest"
 
 variables:
-  azureSubscription: 'MyServiceConnection'
-  resourceGroup: 'myapp-prod-rg'
-  location: 'eastus'
+  azureSubscription: "MyServiceConnection"
+  resourceGroup: "myapp-prod-rg"
+  location: "eastus"
 
 stages:
   - stage: Build
-    displayName: 'Build and Test'
+    displayName: "Build and Test"
     jobs:
       - job: BuildJob
         steps:
           - task: AzureCLI@2
-            displayName: 'Validate Bicep Templates'
+            displayName: "Validate Bicep Templates"
             inputs:
               azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
               inlineScript: |
                 az bicep build --file infra/main.bicep
 
           - task: PublishBuildArtifacts@1
             inputs:
-              pathToPublish: 'infra'
-              artifactName: 'infrastructure'
+              pathToPublish: "infra"
+              artifactName: "infrastructure"
 
   - stage: Deploy
-    displayName: 'Deploy to Azure'
+    displayName: "Deploy to Azure"
     dependsOn: Build
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
     jobs:
       - deployment: DeployInfrastructure
-        environment: 'production'
+        environment: "production"
         strategy:
           runOnce:
             deploy:
               steps:
                 - task: AzureResourceManagerTemplateDeployment@3
-                  displayName: 'Deploy Infrastructure'
+                  displayName: "Deploy Infrastructure"
                   inputs:
                     azureResourceManagerConnection: $(azureSubscription)
                     subscriptionId: $(subscriptionId)
                     resourceGroupName: $(resourceGroup)
                     location: $(location)
-                    templateLocation: 'Linked artifact'
-                    csmFile: '$(Pipeline.Workspace)/infrastructure/main.bicep'
-                    deploymentMode: 'Incremental'
+                    templateLocation: "Linked artifact"
+                    csmFile: "$(Pipeline.Workspace)/infrastructure/main.bicep"
+                    deploymentMode: "Incremental"
 ```
 
 ### Multi-Stage Pipeline with Approvals
@@ -95,20 +95,20 @@ stages:
           - task: PublishBuildArtifacts@1
 
   - stage: DeployDev
-    displayName: 'Deploy to Development'
+    displayName: "Deploy to Development"
     dependsOn: Build
     jobs:
       - deployment: DeployDev
-        environment: 'development'
+        environment: "development"
         strategy:
           runOnce:
             deploy:
               steps:
                 - task: AzureCLI@2
                   inputs:
-                    azureSubscription: 'DevServiceConnection'
-                    scriptType: 'bash'
-                    scriptLocation: 'inlineScript'
+                    azureSubscription: "DevServiceConnection"
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
                     inlineScript: |
                       az deployment group create \
                         --resource-group dev-rg \
@@ -116,20 +116,20 @@ stages:
                         --parameters environment=dev
 
   - stage: DeployProd
-    displayName: 'Deploy to Production'
+    displayName: "Deploy to Production"
     dependsOn: DeployDev
     jobs:
       - deployment: DeployProd
-        environment: 'production'  # Requires manual approval
+        environment: "production" # Requires manual approval
         strategy:
           runOnce:
             deploy:
               steps:
                 - task: AzureCLI@2
                   inputs:
-                    azureSubscription: 'ProdServiceConnection'
-                    scriptType: 'bash'
-                    scriptLocation: 'inlineScript'
+                    azureSubscription: "ProdServiceConnection"
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
                     inlineScript: |
                       az deployment group create \
                         --resource-group prod-rg \
@@ -146,21 +146,21 @@ stages:
       - job: InfrastructureTests
         steps:
           - task: AzureCLI@2
-            displayName: 'Run Bicep Linting'
+            displayName: "Run Bicep Linting"
             inputs:
               azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
               inlineScript: |
                 # Install bicep linter
                 az bicep build --file infra/main.bicep
 
           - task: AzureCLI@2
-            displayName: 'Validate Templates'
+            displayName: "Validate Templates"
             inputs:
               azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
               inlineScript: |
                 az deployment group validate \
                   --resource-group test-rg \
@@ -168,11 +168,11 @@ stages:
                   --parameters environment=test
 
           - task: AzureCLI@2
-            displayName: 'Run What-If Analysis'
+            displayName: "Run What-If Analysis"
             inputs:
               azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
               inlineScript: |
                 az deployment group what-if \
                   --resource-group test-rg \
@@ -182,11 +182,11 @@ stages:
       - job: SecurityScanning
         steps:
           - task: AzureCLI@2
-            displayName: 'Check for Sensitive Data'
+            displayName: "Check for Sensitive Data"
             inputs:
               azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
               inlineScript: |
                 # Check for hardcoded secrets
                 if grep -r "password\|secret\|apikey" infra/; then
@@ -211,7 +211,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch: # Manual trigger
 
 env:
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -345,6 +345,7 @@ jobs:
 ```
 
 **Usage:**
+
 ```yaml
 # .github/workflows/deploy-prod.yml
 
@@ -377,21 +378,21 @@ stages:
       - job: ValidateBicep
         steps:
           - task: AzureCLI@2
-            displayName: 'Bicep Build'
+            displayName: "Bicep Build"
             inputs:
               azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
               inlineScript: |
                 cd infra
                 az bicep build --file main.bicep
 
           - task: AzureCLI@2
-            displayName: 'Validate Template'
+            displayName: "Validate Template"
             inputs:
               azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
               inlineScript: |
                 az deployment sub validate \
                   --location $(location) \
@@ -399,11 +400,11 @@ stages:
                   --parameters @infra/parameters/$(environment).json
 
           - task: AzureCLI@2
-            displayName: 'What-If Analysis'
+            displayName: "What-If Analysis"
             inputs:
               azureSubscription: $(azureSubscription)
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
               inlineScript: |
                 az deployment sub what-if \
                   --location $(location) \
@@ -420,11 +421,11 @@ stages:
             deploy:
               steps:
                 - task: AzureCLI@2
-                  displayName: 'Deploy Bicep Template'
+                  displayName: "Deploy Bicep Template"
                   inputs:
                     azureSubscription: $(azureSubscription)
-                    scriptType: 'bash'
-                    scriptLocation: 'inlineScript'
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
                     inlineScript: |
                       az deployment sub create \
                         --name $(Build.BuildNumber) \
@@ -433,11 +434,11 @@ stages:
                         --parameters @$(Pipeline.Workspace)/infra/parameters/$(environment).json
 
                 - task: AzureCLI@2
-                  displayName: 'Verify Deployment'
+                  displayName: "Verify Deployment"
                   inputs:
                     azureSubscription: $(azureSubscription)
-                    scriptType: 'bash'
-                    scriptLocation: 'inlineScript'
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
                     inlineScript: |
                       # Check deployment status
                       STATUS=$(az deployment sub show \
@@ -463,11 +464,11 @@ jobs:
   - job: BlueGreenDeploy
     steps:
       - task: AzureCLI@2
-        displayName: 'Deploy to Staging Slot (Green)'
+        displayName: "Deploy to Staging Slot (Green)"
         inputs:
           azureSubscription: $(azureSubscription)
-          scriptType: 'bash'
-          scriptLocation: 'inlineScript'
+          scriptType: "bash"
+          scriptLocation: "inlineScript"
           inlineScript: |
             # Deploy to staging slot
             az webapp deployment source config-zip \
@@ -477,11 +478,11 @@ jobs:
               --src $(Build.ArtifactStagingDirectory)/app.zip
 
       - task: AzureCLI@2
-        displayName: 'Warm Up Staging Slot'
+        displayName: "Warm Up Staging Slot"
         inputs:
           azureSubscription: $(azureSubscription)
-          scriptType: 'bash'
-          scriptLocation: 'inlineScript'
+          scriptType: "bash"
+          scriptLocation: "inlineScript"
           inlineScript: |
             STAGING_URL="https://$(webAppName)-staging.azurewebsites.net"
             echo "Warming up $STAGING_URL"
@@ -494,11 +495,11 @@ jobs:
             echo "✓ Staging slot is healthy"
 
       - task: AzureCLI@2
-        displayName: 'Swap Slots (Blue ↔ Green)'
+        displayName: "Swap Slots (Blue ↔ Green)"
         inputs:
           azureSubscription: $(azureSubscription)
-          scriptType: 'bash'
-          scriptLocation: 'inlineScript'
+          scriptType: "bash"
+          scriptLocation: "inlineScript"
           inlineScript: |
             az webapp deployment slot swap \
               --resource-group $(resourceGroup) \
@@ -509,11 +510,11 @@ jobs:
             echo "✓ Swap completed - Staging is now Production"
 
       - task: AzureCLI@2
-        displayName: 'Verify Production'
+        displayName: "Verify Production"
         inputs:
           azureSubscription: $(azureSubscription)
-          scriptType: 'bash'
-          scriptLocation: 'inlineScript'
+          scriptType: "bash"
+          scriptLocation: "inlineScript"
           inlineScript: |
             PROD_URL="https://$(webAppName).azurewebsites.net"
             curl -f "$PROD_URL" || {
@@ -538,11 +539,11 @@ jobs:
   - job: CanaryDeploy
     steps:
       - task: AzureCLI@2
-        displayName: 'Deploy Canary Version'
+        displayName: "Deploy Canary Version"
         inputs:
           azureSubscription: $(azureSubscription)
-          scriptType: 'bash'
-          scriptLocation: 'inlineScript'
+          scriptType: "bash"
+          scriptLocation: "inlineScript"
           inlineScript: |
             # Deploy to canary slot
             az webapp deployment source config-zip \
@@ -552,11 +553,11 @@ jobs:
               --src $(Build.ArtifactStagingDirectory)/app.zip
 
       - task: AzureCLI@2
-        displayName: 'Route 10% Traffic to Canary'
+        displayName: "Route 10% Traffic to Canary"
         inputs:
           azureSubscription: $(azureSubscription)
-          scriptType: 'bash'
-          scriptLocation: 'inlineScript'
+          scriptType: "bash"
+          scriptLocation: "inlineScript"
           inlineScript: |
             az webapp traffic-routing set \
               --resource-group $(resourceGroup) \
@@ -566,16 +567,16 @@ jobs:
             echo "✓ 10% traffic routed to canary"
 
       - task: ManualValidation@0
-        displayName: 'Validate Canary Metrics'
+        displayName: "Validate Canary Metrics"
         inputs:
-          instructions: 'Check monitoring dashboards for canary performance and errors'
+          instructions: "Check monitoring dashboards for canary performance and errors"
 
       - task: AzureCLI@2
-        displayName: 'Increase to 50% Traffic'
+        displayName: "Increase to 50% Traffic"
         inputs:
           azureSubscription: $(azureSubscription)
-          scriptType: 'bash'
-          scriptLocation: 'inlineScript'
+          scriptType: "bash"
+          scriptLocation: "inlineScript"
           inlineScript: |
             az webapp traffic-routing set \
               --resource-group $(resourceGroup) \
@@ -583,14 +584,14 @@ jobs:
               --distribution canary=50
 
       - task: ManualValidation@0
-        displayName: 'Final Validation'
+        displayName: "Final Validation"
 
       - task: AzureCLI@2
-        displayName: 'Complete Canary Rollout'
+        displayName: "Complete Canary Rollout"
         inputs:
           azureSubscription: $(azureSubscription)
-          scriptType: 'bash'
-          scriptLocation: 'inlineScript'
+          scriptType: "bash"
+          scriptLocation: "inlineScript"
           inlineScript: |
             # Swap canary to production
             az webapp deployment slot swap \
@@ -640,19 +641,19 @@ spec:
 ```yaml
 steps:
   - task: AzureKeyVault@2
-    displayName: 'Retrieve Secrets from Key Vault'
+    displayName: "Retrieve Secrets from Key Vault"
     inputs:
       azureSubscription: $(azureSubscription)
-      keyVaultName: 'myapp-keyvault'
-      secretsFilter: '*'
+      keyVaultName: "myapp-keyvault"
+      secretsFilter: "*"
       runAsPreJob: true
 
   - task: AzureCLI@2
-    displayName: 'Use Secrets in Deployment'
+    displayName: "Use Secrets in Deployment"
     inputs:
       azureSubscription: $(azureSubscription)
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
+      scriptType: "bash"
+      scriptLocation: "inlineScript"
       inlineScript: |
         # Secrets available as pipeline variables
         az webapp config appsettings set \
@@ -673,8 +674,8 @@ steps:
   - name: Get Secrets from Key Vault
     uses: azure/get-keyvault-secrets@v1
     with:
-      keyvault: 'myapp-keyvault'
-      secrets: 'DatabasePassword, ApiKey'
+      keyvault: "myapp-keyvault"
+      secrets: "DatabasePassword, ApiKey"
     id: keyvault
 
   - name: Use Secrets

@@ -15,6 +15,7 @@ AI-powered Azure operations using Claude Code with Azure MCP integration.
 5. Calculates potential cost savings
 
 **Example Interaction:**
+
 ```
 User: Show me all my VMs and tell me which ones are oversized
 
@@ -57,6 +58,7 @@ Would you like me to resize these VMs?
 4. Offers to remediate
 
 **Example:**
+
 ```
 User: Find all storage accounts without encryption enabled
 
@@ -90,6 +92,7 @@ Would you like me to enable encryption for the non-compliant accounts?
 3. Provides breakdown with recommendations
 
 **Example:**
+
 ```
 User: What are my top 5 most expensive resources this month?
 
@@ -144,6 +147,7 @@ Would you like detailed optimization recommendations?
 4. Provides summary
 
 **Example:**
+
 ```
 User: Delete all dev resources older than 30 days
 
@@ -204,6 +208,7 @@ Summary:
 3. Highlights stale access
 
 **Example:**
+
 ```
 User: Show me all users with Owner access and when they last logged in
 
@@ -260,6 +265,7 @@ Would you like me to generate a detailed access review report?
 4. Provides connection information
 
 **Example:**
+
 ```
 User: Create a complete dev environment for a Node.js app
 

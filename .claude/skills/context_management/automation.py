@@ -114,9 +114,9 @@ class ContextAutomation:
         elif percentage < 55:
             check_every = 10  # Warming up - occasional checks
         elif percentage < 70:
-            check_every = 3   # Close to threshold - frequent checks
+            check_every = 3  # Close to threshold - frequent checks
         else:
-            check_every = 1   # Critical zone - check every time
+            check_every = 1  # Critical zone - check every time
 
         # Skip if not time to check yet
         if tool_count % check_every != 0:

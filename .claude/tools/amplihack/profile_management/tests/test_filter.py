@@ -1,10 +1,12 @@
 """Tests for component filtering with pattern matching."""
 
-import pytest
 from pathlib import Path
-from ..filter import ComponentFilter, ComponentSet, estimate_token_count
-from ..models import ProfileConfig, ComponentsConfig, ComponentSpec, SkillSpec
+
+import pytest
+
 from ..discovery import ComponentInventory
+from ..filter import ComponentFilter, ComponentSet, estimate_token_count
+from ..models import ComponentsConfig, ComponentSpec, ProfileConfig, SkillSpec
 
 
 @pytest.fixture
@@ -36,7 +38,7 @@ def sample_inventory():
         skill_categories={
             "office": ["pdf", "xlsx"],
             "analysis": ["economist-analyst"],
-        }
+        },
     )
 
 
@@ -80,7 +82,7 @@ def test_filter_commands_include_all(filter_instance, sample_inventory):
         description="Test",
         components=ComponentsConfig(
             commands=ComponentSpec(include_all=True, include=[], exclude=[])
-        )
+        ),
     )
 
     result = filter_instance._filter_commands(profile, sample_inventory)
@@ -94,7 +96,7 @@ def test_filter_commands_include_specific(filter_instance, sample_inventory):
         description="Test",
         components=ComponentsConfig(
             commands=ComponentSpec(include_all=False, include=["ultrathink", "analyze"], exclude=[])
-        )
+        ),
     )
 
     result = filter_instance._filter_commands(profile, sample_inventory)
@@ -110,7 +112,7 @@ def test_filter_commands_exclude(filter_instance, sample_inventory):
         description="Test",
         components=ComponentsConfig(
             commands=ComponentSpec(include_all=True, include=[], exclude=["ddd:*"])
-        )
+        ),
     )
 
     result = filter_instance._filter_commands(profile, sample_inventory)
@@ -125,7 +127,7 @@ def test_filter_context_include_all(filter_instance, sample_inventory):
         description="Test",
         components=ComponentsConfig(
             context=ComponentSpec(include_all=True, include=[], exclude=[])
-        )
+        ),
     )
 
     result = filter_instance._filter_context(profile, sample_inventory)
@@ -138,8 +140,10 @@ def test_filter_context_specific(filter_instance, sample_inventory):
         name="test",
         description="Test",
         components=ComponentsConfig(
-            context=ComponentSpec(include_all=False, include=["PHILOSOPHY.md", "PATTERNS.md"], exclude=[])
-        )
+            context=ComponentSpec(
+                include_all=False, include=["PHILOSOPHY.md", "PATTERNS.md"], exclude=[]
+            )
+        ),
     )
 
     result = filter_instance._filter_context(profile, sample_inventory)
@@ -153,7 +157,7 @@ def test_filter_agents_wildcard(filter_instance, sample_inventory):
         description="Test",
         components=ComponentsConfig(
             agents=ComponentSpec(include_all=False, include=["*-analyst"], exclude=[])
-        )
+        ),
     )
 
     result = filter_instance._filter_agents(profile, sample_inventory)
@@ -172,9 +176,9 @@ def test_filter_skills_by_category(filter_instance, sample_inventory):
                 include=[],
                 exclude=[],
                 include_categories=["office"],
-                exclude_categories=[]
+                exclude_categories=[],
             )
-        )
+        ),
     )
 
     result = filter_instance._filter_skills(profile, sample_inventory)
@@ -194,9 +198,9 @@ def test_filter_skills_exclude_category(filter_instance, sample_inventory):
                 include=[],
                 exclude=[],
                 include_categories=[],
-                exclude_categories=["office"]
+                exclude_categories=["office"],
             )
-        )
+        ),
     )
 
     result = filter_instance._filter_skills(profile, sample_inventory)
@@ -215,9 +219,9 @@ def test_filter_skills_mixed_rules(filter_instance, sample_inventory):
                 include=["pdf"],
                 exclude=[],
                 include_categories=["analysis"],
-                exclude_categories=[]
+                exclude_categories=[],
             )
-        )
+        ),
     )
 
     result = filter_instance._filter_skills(profile, sample_inventory)
@@ -237,9 +241,9 @@ def test_filter_skills_exclude_takes_precedence(filter_instance, sample_inventor
                 include=[],
                 exclude=["pdf"],
                 include_categories=[],
-                exclude_categories=[]
+                exclude_categories=[],
             )
-        )
+        ),
     )
 
     result = filter_instance._filter_skills(profile, sample_inventory)
@@ -261,9 +265,9 @@ def test_filter_complete_profile(filter_instance, sample_inventory):
                 include=["pdf"],
                 exclude=[],
                 include_categories=[],
-                exclude_categories=[]
-            )
-        )
+                exclude_categories=[],
+            ),
+        ),
     )
 
     result = filter_instance.filter(profile, sample_inventory)
@@ -289,9 +293,9 @@ def test_filter_empty_result(filter_instance, sample_inventory):
                 include=[],
                 exclude=[],
                 include_categories=[],
-                exclude_categories=[]
-            )
-        )
+                exclude_categories=[],
+            ),
+        ),
     )
 
     result = filter_instance.filter(profile, sample_inventory)
@@ -311,12 +315,7 @@ def test_token_count_estimate(tmp_path):
     file2 = tmp_path / "file2.md"
     file2.write_text("x" * 200)  # 200 bytes
 
-    component_set = ComponentSet(
-        commands=[file1],
-        context=[file2],
-        agents=[],
-        skills=[]
-    )
+    component_set = ComponentSet(commands=[file1], context=[file2], agents=[], skills=[])
 
     estimate = estimate_token_count(component_set)
     assert estimate == (100 + 200) // 4  # 75 tokens
@@ -335,7 +334,7 @@ def test_apply_filters_complex(filter_instance):
         include=["architect", "*-analyst"],
         exclude=["philosopher-*"],
         include_all=False,
-        components=components
+        components=components,
     )
 
     assert len(result) == 2

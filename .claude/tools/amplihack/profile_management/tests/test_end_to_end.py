@@ -1,12 +1,14 @@
 """End-to-end tests for complete profile management workflow."""
 
-import pytest
-from pathlib import Path
 import json
-from ..loader import ProfileLoader
+from pathlib import Path
+
+import pytest
+
 from ..discovery import ComponentDiscovery
 from ..filter import ComponentFilter, estimate_token_count
 from ..index import SkillIndexBuilder
+from ..loader import ProfileLoader
 
 
 @pytest.fixture
@@ -23,29 +25,17 @@ def complete_amplihack_env(tmp_path):
         "name": "minimal",
         "description": "Minimal profile for quick tasks",
         "components": {
-            "commands": {
-                "include_all": False,
-                "include": ["ultrathink"],
-                "exclude": []
-            },
-            "context": {
-                "include_all": False,
-                "include": ["PHILOSOPHY.md"],
-                "exclude": []
-            },
-            "agents": {
-                "include_all": False,
-                "include": ["architect"],
-                "exclude": []
-            },
+            "commands": {"include_all": False, "include": ["ultrathink"], "exclude": []},
+            "context": {"include_all": False, "include": ["PHILOSOPHY.md"], "exclude": []},
+            "agents": {"include_all": False, "include": ["architect"], "exclude": []},
             "skills": {
                 "include_all": False,
                 "include": ["pdf"],
                 "exclude": [],
                 "include_categories": [],
-                "exclude_categories": []
-            }
-        }
+                "exclude_categories": [],
+            },
+        },
     }
     (profiles_dir / "minimal.yaml").write_text(json.dumps(minimal_profile))
 
@@ -62,9 +52,9 @@ def complete_amplihack_env(tmp_path):
                 "include": [],
                 "exclude": [],
                 "include_categories": [],
-                "exclude_categories": []
-            }
-        }
+                "exclude_categories": [],
+            },
+        },
     }
     (profiles_dir / "full.yaml").write_text(json.dumps(full_profile))
 
@@ -73,29 +63,17 @@ def complete_amplihack_env(tmp_path):
         "name": "office",
         "description": "Office productivity profile",
         "components": {
-            "commands": {
-                "include_all": False,
-                "include": ["ultrathink"],
-                "exclude": []
-            },
-            "context": {
-                "include_all": False,
-                "include": ["PHILOSOPHY.md"],
-                "exclude": []
-            },
-            "agents": {
-                "include_all": False,
-                "include": ["architect"],
-                "exclude": []
-            },
+            "commands": {"include_all": False, "include": ["ultrathink"], "exclude": []},
+            "context": {"include_all": False, "include": ["PHILOSOPHY.md"], "exclude": []},
+            "agents": {"include_all": False, "include": ["architect"], "exclude": []},
             "skills": {
                 "include_all": False,
                 "include": [],
                 "exclude": [],
                 "include_categories": ["office"],
-                "exclude_categories": []
-            }
-        }
+                "exclude_categories": [],
+            },
+        },
     }
     (profiles_dir / "office.yaml").write_text(json.dumps(office_profile))
 
@@ -302,7 +280,7 @@ def test_end_to_end_empty_inventory():
     inventory = discovery.discover_all()
 
     # Create minimal profile
-    from ..models import ProfileConfig, ComponentsConfig, ComponentSpec, SkillSpec
+    from ..models import ComponentsConfig, ComponentSpec, ProfileConfig, SkillSpec
 
     profile = ProfileConfig(
         name="test",
@@ -316,9 +294,9 @@ def test_end_to_end_empty_inventory():
                 include=[],
                 exclude=[],
                 include_categories=[],
-                exclude_categories=[]
-            )
-        )
+                exclude_categories=[],
+            ),
+        ),
     )
 
     # Filter (will be empty)
@@ -356,7 +334,12 @@ def test_end_to_end_component_verification(complete_amplihack_env):
     components = filter_instance.filter(profile, inventory)
 
     # Verify all filtered components exist
-    for component_list in [components.commands, components.context, components.agents, components.skills]:
+    for component_list in [
+        components.commands,
+        components.context,
+        components.agents,
+        components.skills,
+    ]:
         for path in component_list:
             assert path.exists(), f"Component does not exist: {path}"
 

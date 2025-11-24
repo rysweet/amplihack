@@ -1,7 +1,5 @@
 """Tests for MVP heuristic-based analyzers."""
 
-import pytest
-
 from pr_triage import analyzers_mvp
 
 
@@ -100,10 +98,7 @@ def test_detect_priority_complexity_very_complex():
     pr_data = {
         "title": "Major refactoring of core system",
         "body": "Large architectural changes",
-        "files": [
-            {"path": f"file{i}.py", "additions": 50, "deletions": 30}
-            for i in range(15)
-        ],
+        "files": [{"path": f"file{i}.py", "additions": 50, "deletions": 30} for i in range(15)],
         "diff": "test diff",
     }
 

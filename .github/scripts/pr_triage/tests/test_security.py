@@ -1,6 +1,5 @@
 """Tests for security validation module."""
 
-import os
 import pytest
 
 from pr_triage import security
@@ -112,12 +111,14 @@ def test_validate_pr_data_invalid():
         security.validate_pr_data({})
 
     with pytest.raises(ValueError, match="author data malformed"):
-        security.validate_pr_data({
-            "title": "Test",
-            "body": "Body",
-            "author": "notadict",
-            "files": [],
-        })
+        security.validate_pr_data(
+            {
+                "title": "Test",
+                "body": "Body",
+                "author": "notadict",
+                "files": [],
+            }
+        )
 
 
 def test_validate_file_paths_valid():

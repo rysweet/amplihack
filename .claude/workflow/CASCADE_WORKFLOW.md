@@ -37,7 +37,6 @@ This workflow implements graceful degradation through cascading fallback strateg
 
 > **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
 
-
 ## Configuration
 
 ### Core Parameters

@@ -20,6 +20,7 @@ Execute amplihack tasks on remote Azure VMs using the `/amplihack:remote` comman
 ## When to Use
 
 Use this skill when you want to:
+
 - Run long-running tasks on remote VMs
 - Leverage more powerful Azure compute
 - Distribute work across multiple machines
@@ -29,12 +30,14 @@ Use this skill when you want to:
 ## How It Works
 
 When you say things like:
+
 - "Run this remotely"
 - "Execute on an eastus VM"
 - "Offload this to Azure"
 - "Use a remote machine for this"
 
 I will:
+
 1. Extract your task description
 2. Detect region preferences (if mentioned)
 3. Recommend appropriate VM size based on task complexity
@@ -44,6 +47,7 @@ I will:
 ## Region Detection
 
 I automatically detect Azure regions from your request:
+
 - "eastus", "east us" → --region eastus
 - "westus", "west us" → --region westus
 - "centralus" → --region centralus
@@ -54,18 +58,22 @@ I automatically detect Azure regions from your request:
 Based on your task complexity keywords:
 
 **Small (size s)**: Quick analysis, simple fixes
+
 - Keywords: "quick", "simple", "small", "analyze"
 - Size: s (8GB RAM)
 
 **Medium (size m)**: Standard development work
+
 - Keywords: "implement", "feature", "refactor"
 - Size: m (64GB RAM) - **default**
 
 **Large (size l)**: Complex refactoring, large codebases
+
 - Keywords: "large", "comprehensive", "complex", "entire codebase"
 - Size: l (128GB RAM)
 
 **Extra Large (size xl)**: Intensive compute tasks
+
 - Keywords: "intensive", "heavy", "massive"
 - Size: xl (256GB RAM)
 
@@ -85,6 +93,7 @@ When activated:
    - Use "xl" for intensive/massive tasks
 
 3. **Construct the command**:
+
    ```
    /amplihack:remote --region {region} --vm-size {size} auto "{task}"
    ```
@@ -105,6 +114,7 @@ When activated:
 **User**: "Run this analysis remotely on an eastus VM"
 
 **Your Response**:
+
 ```
 I'll execute this analysis on a remote Azure VM in eastus.
 
@@ -123,6 +133,7 @@ Then use SlashCommand tool to execute it.
 **User**: "I need to offload this comprehensive refactoring to Azure, use westus2"
 
 **Your Response**:
+
 ```
 I'll execute this comprehensive refactoring on a remote Azure VM in westus2.
 
@@ -139,6 +150,7 @@ Executing: /amplihack:remote --region westus2 --vm-size l auto "comprehensive re
 **User**: "Run this remotely"
 
 **Your Response**:
+
 ```
 I'll execute this task on a remote Azure VM using your default region.
 
@@ -186,6 +198,7 @@ If the command fails, explain common issues:
 ## Best Practices
 
 Remind users:
+
 - Keep git state clean before remote execution
 - Use `.env` for secrets (never hardcode)
 - Monitor Azure costs with `azlin list`

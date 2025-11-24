@@ -27,7 +27,7 @@ def read_config(config_path: Path) -> dict[str, Any]:
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -48,15 +48,15 @@ def write_config(config_path: Path, data: dict[str, Any]) -> None:
     config_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Write to temporary file first
-    temp_path = config_path.with_suffix('.tmp')
+    temp_path = config_path.with_suffix(".tmp")
 
     try:
         # Preserve original file permissions if it exists
         mode = config_path.stat().st_mode if config_path.exists() else 0o644
 
-        with open(temp_path, 'w', encoding='utf-8') as f:
+        with open(temp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-            f.write('\n')  # Add trailing newline
+            f.write("\n")  # Add trailing newline
 
         # Set permissions on temp file
         temp_path.chmod(mode)
@@ -139,4 +139,3 @@ def _cleanup_old_backups(backup_dir: Path, keep_count: int = 3) -> None:
         except OSError:
             # Ignore errors during cleanup
             pass
-

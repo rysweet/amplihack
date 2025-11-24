@@ -244,7 +244,9 @@ def handle_auto_mode(
     # Extract timeout from args
     query_timeout = getattr(args, "query_timeout_minutes", 5.0)
 
-    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout)
+    auto = AutoMode(
+        sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout
+    )
     return auto.run()
 
 
@@ -632,12 +634,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 def replace_paths(obj):
                     if isinstance(obj, dict):
                         for key, value in obj.items():
-                            if key == "command" and isinstance(value, str) and value.startswith(
-                                ".claude/"
+                            if (
+                                key == "command"
+                                and isinstance(value, str)
+                                and value.startswith(".claude/")
                             ):
-                                obj[key] = value.replace(
-                                    ".claude/", "$CLAUDE_PROJECT_DIR/.claude/"
-                                )
+                                obj[key] = value.replace(".claude/", "$CLAUDE_PROJECT_DIR/.claude/")
                             else:
                                 replace_paths(value)
                     elif isinstance(obj, list):
@@ -721,21 +723,20 @@ def main(argv: Optional[List[str]] = None) -> int:
             # _local_install expects repo root, so pass package_dir (which contains .claude/)
             _local_install(str(package_dir))
             return 0
-        else:
-            # Fallback: Clone from GitHub (for old installations)
-            import subprocess
-            import tempfile
+        # Fallback: Clone from GitHub (for old installations)
+        import subprocess
+        import tempfile
 
-            print("⚠️  Package .claude/ not found, cloning from GitHub...")
-            with tempfile.TemporaryDirectory() as tmp:
-                repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
-                try:
-                    subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-                    _local_install(tmp)
-                    return 0
-                except subprocess.CalledProcessError as e:
-                    print(f"Failed to install: {e}")
-                    return 1
+        print("⚠️  Package .claude/ not found, cloning from GitHub...")
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+            try:
+                subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
+                _local_install(tmp)
+                return 0
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to install: {e}")
+                return 1
 
     elif args.command == "uninstall":
         uninstall()

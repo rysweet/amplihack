@@ -147,4 +147,5 @@ def test_generate_report_includes_statistics():
 
 if __name__ == "__main__":
     import pytest
+
     pytest.main([__file__, "-v"])

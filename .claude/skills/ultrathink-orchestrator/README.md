@@ -25,14 +25,17 @@ Provide default orchestration for non-trivial development tasks by automatically
 ## Task Type Detection
 
 **Investigation Tasks**:
+
 - Keywords: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
 - Examples: "Investigate authentication", "Explain routing", "Understand database schema"
 
 **Development Tasks**:
+
 - Keywords: implement, build, create, add feature, fix, refactor, deploy
 - Examples: "Implement JWT auth", "Add user registration", "Fix login bug"
 
 **Hybrid Tasks**:
+
 - Contains both investigation and development keywords
 - Examples: "Investigate auth system, then add OAuth support"
 
@@ -51,6 +54,7 @@ Provide default orchestration for non-trivial development tasks by automatically
 **User**: "Add user authentication to the API"
 
 **Skill Response**:
+
 ```
 I detected a MODERATE development request: "Add user authentication to the API"
 
@@ -67,6 +71,7 @@ Would you like me to use /ultrathink to orchestrate this work?
 **User**: "Investigate how the reflection system works"
 
 **Skill Response**:
+
 ```
 I detected a MODERATE investigation request: "Investigate how the reflection system works"
 
@@ -83,6 +88,7 @@ Would you like me to use /ultrathink to orchestrate this work?
 **User**: "Investigate auth system, then add OAuth support"
 
 **Skill Response**:
+
 ```
 I detected a COMPLEX hybrid request: "Investigate auth system, then add OAuth support"
 
@@ -97,11 +103,13 @@ Would you like me to use /ultrathink to orchestrate this work?
 ## Workflow Integration
 
 **Preferred Approach** (workflow skills):
+
 - Uses `Skill(skill="default-workflow")` for development tasks
 - Uses `Skill(skill="investigation-workflow")` for investigation tasks
 - Automatic task type detection from keywords
 
 **Fallback** (if skills not available):
+
 - Reads `.claude/workflow/DEFAULT_WORKFLOW.md`
 - Reads `.claude/workflow/INVESTIGATION_WORKFLOW.md`
 - Provides same functionality via markdown workflows

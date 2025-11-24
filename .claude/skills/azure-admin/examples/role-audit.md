@@ -5,6 +5,7 @@ Comprehensive audit of Azure RBAC role assignments for compliance, security, and
 ## Scenario
 
 Perform quarterly access review to:
+
 - List all Owner and Contributor role assignments
 - Identify direct user assignments (should use groups)
 - Find stale assignments (users without recent sign-ins)

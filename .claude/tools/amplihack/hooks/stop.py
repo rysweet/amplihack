@@ -481,7 +481,12 @@ class StopHook(HookProcessor):
         """
         try:
             counter_file = (
-                self.project_root / ".claude" / "runtime" / "locks" / session_id / "lock_invocations.txt"
+                self.project_root
+                / ".claude"
+                / "runtime"
+                / "locks"
+                / session_id
+                / "lock_invocations.txt"
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 

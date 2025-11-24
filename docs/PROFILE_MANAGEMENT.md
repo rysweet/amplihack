@@ -28,12 +28,12 @@ Profiles are **declarative configurations** that control which commands, context
 
 ### Benefits
 
-| Benefit | Description | Impact |
-|---------|-------------|--------|
-| **Token Efficiency** | Load only relevant components | 40-60% reduction |
-| **Faster Startup** | Skip parsing unnecessary files | 2-3x faster init |
-| **Focused Context** | Eliminate noise from irrelevant agents/skills | Better AI responses |
-| **Reproducibility** | Share profiles for consistent environments | Team alignment |
+| Benefit              | Description                                   | Impact              |
+| -------------------- | --------------------------------------------- | ------------------- |
+| **Token Efficiency** | Load only relevant components                 | 40-60% reduction    |
+| **Faster Startup**   | Skip parsing unnecessary files                | 2-3x faster init    |
+| **Focused Context**  | Eliminate noise from irrelevant agents/skills | Better AI responses |
+| **Reproducibility**  | Share profiles for consistent environments    | Team alignment      |
 
 ### Quick Win
 
@@ -73,11 +73,11 @@ components:
 
 amplihack ships with 3 built-in profiles:
 
-| Profile | Purpose | Token Savings | Use Case |
-|---------|---------|---------------|----------|
-| **all** | Complete environment (everything) | 0% (baseline) | General use, exploration |
-| **coding** | Development-focused | ~50% | Feature development, bug fixes |
-| **research** | Investigation-focused | ~45% | Code analysis, learning |
+| Profile      | Purpose                           | Token Savings | Use Case                       |
+| ------------ | --------------------------------- | ------------- | ------------------------------ |
+| **all**      | Complete environment (everything) | 0% (baseline) | General use, exploration       |
+| **coding**   | Development-focused               | ~50%          | Feature development, bug fixes |
+| **research** | Investigation-focused             | ~45%          | Code analysis, learning        |
 
 ### 3. File Mapping
 
@@ -123,6 +123,7 @@ See all built-in profiles:
 ```
 
 **Output:**
+
 ```
 Available profiles:
   - amplihack://profiles/all (Complete environment)
@@ -139,6 +140,7 @@ Check which profile is active:
 ```
 
 **Output:**
+
 ```
 Current profile: amplihack://profiles/all
 Description: Complete amplihack environment - all components loaded
@@ -273,14 +275,14 @@ agents:
   include:
     - "builder"
     - "reviewer"
-    - "security"  # Added for security reviews
+    - "security" # Added for security reviews
 
 # Include only specific commands
 commands:
   include:
     - "analyze"
     - "fix"
-    - "amplihack:modular-build"  # Added for modular development
+    - "amplihack:modular-build" # Added for modular development
 ```
 
 #### Step 7: Share Profile
@@ -372,7 +374,7 @@ components:
       - "analyze"
       - "fix"
       - "amplihack:modular-build"
-      - "ddd:*"  # All DDD commands
+      - "ddd:*" # All DDD commands
 
   context:
     include:
@@ -394,7 +396,7 @@ components:
       - "optimizer"
     exclude:
       - "knowledge-archaeologist"
-      - "*-analyst"  # Exclude all analyst agents
+      - "*-analyst" # Exclude all analyst agents
 
   skills:
     include_categories:
@@ -421,6 +423,7 @@ performance:
 **Token Savings**: ~50% (excludes 15+ analyst agents, creative skills)
 
 **When to Use**:
+
 - Implementing new features
 - Fixing bugs
 - Refactoring code
@@ -455,7 +458,7 @@ components:
       - "analyzer"
       - "knowledge-archaeologist"
       - "patterns"
-      - "*-analyst"  # Include ALL analyst agents
+      - "*-analyst" # Include ALL analyst agents
 
   skills:
     include_categories:
@@ -475,6 +478,7 @@ performance:
 **Token Savings**: ~45% (excludes builder, tester, coding-focused agents)
 
 **When to Use**:
+
 - Understanding unfamiliar codebases
 - Investigating bugs
 - Research and learning
@@ -512,12 +516,12 @@ components:
       - "builder"
       - "reviewer"
     exclude:
-      - "*"  # Exclude all except explicitly included
+      - "*" # Exclude all except explicitly included
 
   skills:
-    include: []  # No skills loaded
+    include: [] # No skills loaded
     exclude_categories:
-      - "*"  # Exclude all categories
+      - "*" # Exclude all categories
 
 metadata:
   author: "custom"
@@ -525,19 +529,21 @@ metadata:
   tags: ["minimal", "fast", "tokens"]
 
 performance:
-  lazy_load_skills: false  # Don't even prepare skill loading
-  cache_ttl: 600  # Short cache for minimal footprint
+  lazy_load_skills: false # Don't even prepare skill loading
+  cache_ttl: 600 # Short cache for minimal footprint
 ```
 
 **Token Savings**: ~70% (most aggressive reduction)
 
 **When to Use**:
+
 - Quick bug fixes
 - Small code changes
 - Low-complexity tasks
 - Token-constrained environments
 
 **Trade-offs**:
+
 - No specialized agents
 - No skills available
 - Limited command set
@@ -559,7 +565,7 @@ extends: "amplihack://profiles/coding"
 components:
   agents:
     include:
-      - "visualization-architect"  # Add to base coding profile
+      - "visualization-architect" # Add to base coding profile
 ```
 
 ### 2. Dynamic Profile Loading
@@ -581,6 +587,7 @@ Track profile performance:
 ```
 
 **Output:**
+
 ```
 Profile: amplihack://profiles/coding
 Token usage: 45,234 (baseline: 98,123) - 54% reduction
@@ -601,6 +608,7 @@ cat .claude/runtime/logs/<session-id>/metrics.json
 ```
 
 **Example output:**
+
 ```json
 {
   "profile": "amplihack://profiles/coding",
@@ -622,7 +630,6 @@ agents:
     - "architect"
     - "builder"
     - "reviewer"
-
 # UltraThink will ONLY orchestrate these 3 agents
 # Skips loading/coordinating knowledge-archaeologist, analyst agents, etc.
 ```
@@ -653,43 +660,43 @@ This reduces orchestration complexity and improves response quality by eliminati
 Complete profile schema:
 
 ```yaml
-version: "1.0"              # Required: schema version
-name: "profile-name"        # Required: unique identifier
-description: "..."          # Required: human-readable description
+version: "1.0" # Required: schema version
+name: "profile-name" # Required: unique identifier
+description: "..." # Required: human-readable description
 
-components:                 # Required: what to load
+components: # Required: what to load
   commands:
-    include: [...]          # List of command names
-    exclude: [...]          # List to exclude
-    include_all: bool       # Load everything (overrides include/exclude)
+    include: [...] # List of command names
+    exclude: [...] # List to exclude
+    include_all: bool # Load everything (overrides include/exclude)
 
   context:
-    include: [...]          # List of .md filenames
+    include: [...] # List of .md filenames
     exclude: [...]
     include_all: bool
 
   agents:
-    include: [...]          # List of agent names
-    exclude: [...]          # Supports wildcards: "*-analyst"
+    include: [...] # List of agent names
+    exclude: [...] # Supports wildcards: "*-analyst"
     include_all: bool
 
   skills:
-    include: [...]          # List of skill names
+    include: [...] # List of skill names
     exclude: [...]
     include_categories: [...] # Categories like "coding", "research"
     exclude_categories: [...]
     include_all: bool
 
-metadata:                   # Optional: documentation
+metadata: # Optional: documentation
   author: "name"
   version: "1.0.0"
   tags: ["tag1", "tag2"]
   created: "ISO8601"
   updated: "ISO8601"
 
-performance:                # Optional: optimization hints
-  lazy_load_skills: bool    # Load skills on-demand (default: true)
-  cache_ttl: int            # Seconds to cache profile (default: 3600)
+performance: # Optional: optimization hints
+  lazy_load_skills: bool # Load skills on-demand (default: true)
+  cache_ttl: int # Seconds to cache profile (default: 3600)
 ```
 
 ### 3. Profile Loader
@@ -697,6 +704,7 @@ performance:                # Optional: optimization hints
 **Implementation**: `.claude/tools/amplihack/profile_management/loader.py`
 
 **Responsibilities**:
+
 - Parse YAML profiles
 - Resolve `amplihack://` URIs to file paths
 - Validate profile schema
@@ -704,6 +712,7 @@ performance:                # Optional: optimization hints
 - Return filtered component lists
 
 **Key Methods**:
+
 ```python
 class ProfileLoader:
     def load(uri: str) -> Profile
@@ -771,22 +780,23 @@ UltraThink automatically adapts agent orchestration based on active profile.
 
 ## Quick Reference
 
-| Task | Command |
-|------|---------|
-| List profiles | `/amplihack:profile list` |
-| Show current | `/amplihack:profile current` |
-| Switch profile | `/amplihack:profile switch <uri>` |
+| Task             | Command                             |
+| ---------------- | ----------------------------------- |
+| List profiles    | `/amplihack:profile list`           |
+| Show current     | `/amplihack:profile current`        |
+| Switch profile   | `/amplihack:profile switch <uri>`   |
 | Validate profile | `/amplihack:profile validate <uri>` |
-| Set default | `export AMPLIHACK_PROFILE=<uri>` |
+| Set default      | `export AMPLIHACK_PROFILE=<uri>`    |
 
-| Profile | Token Savings | Use Case |
-|---------|---------------|----------|
-| all | 0% (baseline) | General use |
-| coding | ~50% | Development |
-| research | ~45% | Investigation |
-| minimal (custom) | ~70% | Quick fixes |
+| Profile          | Token Savings | Use Case      |
+| ---------------- | ------------- | ------------- |
+| all              | 0% (baseline) | General use   |
+| coding           | ~50%          | Development   |
+| research         | ~45%          | Investigation |
+| minimal (custom) | ~70%          | Quick fixes   |
 
 **URIs**:
+
 - Built-in: `amplihack://profiles/<name>`
 - Custom: `file:///path/to/profile.yaml`
 - Project: `amplihack://profiles/<name>` (if in `.claude/profiles/`)

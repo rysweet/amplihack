@@ -233,7 +233,9 @@ class InteractiveInstaller:
             platform: Target platform for installation
         """
         self.platform = platform
-        self.audit_log_path = Path.home() / ".claude" / "runtime" / "logs" / "installation_audit.jsonl"
+        self.audit_log_path = (
+            Path.home() / ".claude" / "runtime" / "logs" / "installation_audit.jsonl"
+        )
 
     def is_interactive_environment(self) -> bool:
         """Check if running in an interactive environment.
@@ -274,7 +276,9 @@ class InteractiveInstaller:
         print(f"\n{'=' * 70}\n")
 
         while True:
-            response = input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
+            response = (
+                input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
+            )
             if response in ["y", "yes"]:
                 return True
             if response in ["n", "no", ""]:

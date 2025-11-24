@@ -19,16 +19,19 @@ Azure RBAC is an authorization system that provides fine-grained access manageme
 ### Core Components
 
 **Security Principal** (Who):
+
 - User: Individual with Entra ID account
 - Group: Collection of users
 - Service Principal: Identity for applications/services
 - Managed Identity: Azure-managed service principal
 
 **Role Definition** (What):
+
 - Collection of permissions (actions and data actions)
 - Examples: Owner, Contributor, Reader, custom roles
 
 **Scope** (Where):
+
 - Management Group: Multiple subscriptions
 - Subscription: Billing boundary
 - Resource Group: Logical container
@@ -41,6 +44,7 @@ Security Principal + Role Definition + Scope = Role Assignment
 ```
 
 Example:
+
 ```
 jane@contoso.com + Contributor + /subscriptions/{sub}/resourceGroups/myRG
 = Jane has Contributor access to myRG resource group
@@ -49,6 +53,7 @@ jane@contoso.com + Contributor + /subscriptions/{sub}/resourceGroups/myRG
 ### Permission Model
 
 **Actions**: Control plane operations (management operations)
+
 ```
 Microsoft.Compute/virtualMachines/read
 Microsoft.Compute/virtualMachines/write
@@ -56,6 +61,7 @@ Microsoft.Compute/virtualMachines/delete
 ```
 
 **DataActions**: Data plane operations (data access)
+
 ```
 Microsoft.Storage/storageAccounts/blobServices/containers/blobs/read
 Microsoft.Storage/storageAccounts/blobServices/containers/blobs/write
@@ -71,9 +77,11 @@ Azure provides 100+ built-in roles. Here are the most commonly used:
 ### Fundamental Roles
 
 **Owner**
+
 - Full access to all resources
 - Can assign roles to others
 - Scope: All levels
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -82,9 +90,11 @@ az role assignment create \
 ```
 
 **Contributor**
+
 - Create and manage all types of resources
 - Cannot assign roles
 - Cannot manage Microsoft Entra directory
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -93,8 +103,10 @@ az role assignment create \
 ```
 
 **Reader**
+
 - View all resources
 - No modification permissions
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -103,8 +115,10 @@ az role assignment create \
 ```
 
 **User Access Administrator**
+
 - Manage user access to Azure resources
 - Cannot manage resources themselves
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -115,8 +129,10 @@ az role assignment create \
 ### Compute Roles
 
 **Virtual Machine Contributor**
+
 - Manage VMs but not access to them
 - Cannot manage virtual network or storage account
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -125,7 +141,9 @@ az role assignment create \
 ```
 
 **Virtual Machine Administrator Login**
+
 - View VMs in portal and login as administrator
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -134,7 +152,9 @@ az role assignment create \
 ```
 
 **Virtual Machine User Login**
+
 - View VMs and login as regular user
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -145,8 +165,10 @@ az role assignment create \
 ### Storage Roles
 
 **Storage Account Contributor**
+
 - Manage storage accounts (control plane)
 - Cannot access data
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -155,7 +177,9 @@ az role assignment create \
 ```
 
 **Storage Blob Data Contributor**
+
 - Read, write, delete blob containers and data
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -164,7 +188,9 @@ az role assignment create \
 ```
 
 **Storage Blob Data Reader**
+
 - Read blob containers and data
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -175,7 +201,9 @@ az role assignment create \
 ### Networking Roles
 
 **Network Contributor**
+
 - Manage networks but not access to them
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -186,8 +214,10 @@ az role assignment create \
 ### Database Roles
 
 **SQL DB Contributor**
+
 - Manage SQL databases but not access to them
 - Cannot manage security policies
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -196,7 +226,9 @@ az role assignment create \
 ```
 
 **SQL Security Manager**
+
 - Manage security policies of SQL servers and databases
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -207,8 +239,10 @@ az role assignment create \
 ### Security Roles
 
 **Security Admin**
+
 - View and update security policies
 - View security alerts and recommendations
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -217,8 +251,10 @@ az role assignment create \
 ```
 
 **Security Reader**
+
 - View security recommendations and alerts
 - Cannot update security policies
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -229,7 +265,9 @@ az role assignment create \
 ### Key Vault Roles
 
 **Key Vault Administrator**
+
 - Perform all data plane operations (keys, secrets, certificates)
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -238,7 +276,9 @@ az role assignment create \
 ```
 
 **Key Vault Secrets User**
+
 - Read secret contents
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -251,6 +291,7 @@ az role assignment create \
 ### Creating Role Assignments
 
 **Assign to user:**
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -259,6 +300,7 @@ az role assignment create \
 ```
 
 **Assign to group:**
+
 ```bash
 # Get group object ID
 GROUP_ID=$(az ad group show --group "Engineering Team" --query id -o tsv)
@@ -270,6 +312,7 @@ az role assignment create \
 ```
 
 **Assign to service principal:**
+
 ```bash
 az role assignment create \
   --assignee {app-id} \
@@ -278,6 +321,7 @@ az role assignment create \
 ```
 
 **Assign to managed identity:**
+
 ```bash
 # Get managed identity principal ID
 PRINCIPAL_ID=$(az vm show --name myVM --resource-group myRG --query identity.principalId -o tsv)
@@ -291,16 +335,19 @@ az role assignment create \
 ### Listing Role Assignments
 
 **List all assignments for a user:**
+
 ```bash
 az role assignment list --assignee jane@contoso.com --all --output table
 ```
 
 **List assignments at specific scope:**
+
 ```bash
 az role assignment list --scope /subscriptions/{sub}/resourceGroups/myRG --output table
 ```
 
 **List assignments for a resource:**
+
 ```bash
 az role assignment list \
   --scope /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines/myVM \
@@ -308,6 +355,7 @@ az role assignment list \
 ```
 
 **List assignments including inherited:**
+
 ```bash
 az role assignment list \
   --scope /subscriptions/{sub}/resourceGroups/myRG \
@@ -316,6 +364,7 @@ az role assignment list \
 ```
 
 **Query specific role:**
+
 ```bash
 az role assignment list \
   --role Contributor \
@@ -324,6 +373,7 @@ az role assignment list \
 ```
 
 **List with classic administrators:**
+
 ```bash
 az role assignment list --all --include-classic-administrators --output table
 ```
@@ -331,6 +381,7 @@ az role assignment list --all --include-classic-administrators --output table
 ### Deleting Role Assignments
 
 **Delete specific assignment:**
+
 ```bash
 az role assignment delete \
   --assignee jane@contoso.com \
@@ -339,6 +390,7 @@ az role assignment delete \
 ```
 
 **Delete by assignment ID:**
+
 ```bash
 # Get assignment ID
 ASSIGNMENT_ID=$(az role assignment list \
@@ -351,6 +403,7 @@ az role assignment delete --ids "$ASSIGNMENT_ID"
 ```
 
 **Bulk delete (remove user from all roles):**
+
 ```bash
 az role assignment list --assignee jane@contoso.com --all --query "[].id" -o tsv | \
   xargs -I {} az role assignment delete --ids {}
@@ -363,6 +416,7 @@ Create custom roles when built-in roles don't meet your specific requirements.
 ### Creating Custom Roles
 
 **Define role in JSON file** (`custom-role.json`):
+
 ```json
 {
   "Name": "Virtual Machine Operator",
@@ -379,13 +433,12 @@ Create custom roles when built-in roles don't meet your specific requirements.
   "NotActions": [],
   "DataActions": [],
   "NotDataActions": [],
-  "AssignableScopes": [
-    "/subscriptions/{subscription-id}"
-  ]
+  "AssignableScopes": ["/subscriptions/{subscription-id}"]
 }
 ```
 
 **Create role:**
+
 ```bash
 az role definition create --role-definition custom-role.json
 ```
@@ -393,6 +446,7 @@ az role definition create --role-definition custom-role.json
 ### Custom Role Examples
 
 **Storage Account Key Reader:**
+
 ```json
 {
   "Name": "Storage Account Key Reader",
@@ -403,13 +457,12 @@ az role definition create --role-definition custom-role.json
     "Microsoft.Storage/storageAccounts/listkeys/action"
   ],
   "NotActions": [],
-  "AssignableScopes": [
-    "/subscriptions/{subscription-id}"
-  ]
+  "AssignableScopes": ["/subscriptions/{subscription-id}"]
 }
 ```
 
 **VM Snapshot Creator:**
+
 ```json
 {
   "Name": "VM Snapshot Creator",
@@ -421,13 +474,12 @@ az role definition create --role-definition custom-role.json
     "Microsoft.Resources/subscriptions/resourceGroups/read"
   ],
   "NotActions": [],
-  "AssignableScopes": [
-    "/subscriptions/{subscription-id}/resourceGroups/production-rg"
-  ]
+  "AssignableScopes": ["/subscriptions/{subscription-id}/resourceGroups/production-rg"]
 }
 ```
 
 **Cost Reader with Export:**
+
 ```json
 {
   "Name": "Cost Management Analyst",
@@ -439,31 +491,33 @@ az role definition create --role-definition custom-role.json
     "Microsoft.Consumption/*/read"
   ],
   "NotActions": [],
-  "AssignableScopes": [
-    "/subscriptions/{subscription-id}"
-  ]
+  "AssignableScopes": ["/subscriptions/{subscription-id}"]
 }
 ```
 
 ### Managing Custom Roles
 
 **List custom roles:**
+
 ```bash
 az role definition list --custom-role-only true --output table
 ```
 
 **Show role definition:**
+
 ```bash
 az role definition list --name "Virtual Machine Operator"
 ```
 
 **Update custom role:**
+
 ```bash
 # Modify the JSON file, then:
 az role definition update --role-definition custom-role.json
 ```
 
 **Delete custom role:**
+
 ```bash
 az role definition delete --name "Virtual Machine Operator"
 ```
@@ -494,6 +548,7 @@ Permissions inherit down the hierarchy. Assignment at higher scope automatically
 ### Scope Patterns
 
 **Subscription-wide access:**
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -502,6 +557,7 @@ az role assignment create \
 ```
 
 **Resource group access:**
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -510,6 +566,7 @@ az role assignment create \
 ```
 
 **Specific resource access:**
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -518,6 +575,7 @@ az role assignment create \
 ```
 
 **Management group access:**
+
 ```bash
 az role assignment create \
   --assignee jane@contoso.com \
@@ -528,6 +586,7 @@ az role assignment create \
 ### Multi-Scope Strategies
 
 **Environment-based:**
+
 ```bash
 # Development - full access
 az role assignment create \
@@ -543,6 +602,7 @@ az role assignment create \
 ```
 
 **Application-based:**
+
 ```bash
 # Frontend team - web resources only
 az role assignment create \
@@ -562,11 +622,13 @@ az role assignment create \
 ### Regular Access Reviews
 
 **List all role assignments:**
+
 ```bash
 az role assignment list --all --output table > access-review-$(date +%Y%m%d).txt
 ```
 
 **Find high-privilege assignments:**
+
 ```bash
 az role assignment list \
   --role Owner \
@@ -576,6 +638,7 @@ az role assignment list \
 ```
 
 **Find assignments for specific resource type:**
+
 ```bash
 az role assignment list \
   --all \
@@ -584,6 +647,7 @@ az role assignment list \
 ```
 
 **Identify stale assignments** (combine with Entra ID sign-in logs):
+
 ```bash
 # Get users without sign-in in last 90 days
 az rest --method GET \
@@ -593,6 +657,7 @@ az rest --method GET \
 ### Compliance Reporting
 
 **Generate role assignment report:**
+
 ```bash
 #!/bin/bash
 # role-assignment-report.sh
@@ -609,6 +674,7 @@ echo "Report generated: $OUTPUT_FILE"
 ```
 
 **Find role assignments without groups:**
+
 ```bash
 # List direct user assignments (anti-pattern)
 az role assignment list \
@@ -618,6 +684,7 @@ az role assignment list \
 ```
 
 **Audit administrative roles:**
+
 ```bash
 # Find all Owner and Contributor assignments
 for role in Owner Contributor "User Access Administrator"; do
@@ -633,6 +700,7 @@ done
 ### Automated Compliance Checks
 
 **Check for policy violations:**
+
 ```bash
 #!/bin/bash
 # compliance-check.sh
@@ -669,26 +737,31 @@ fi
 ### Common Issues
 
 **Insufficient privileges to assign roles:**
+
 ```
 Error: The client does not have authorization to perform action
 'Microsoft.Authorization/roleAssignments/write'
 ```
 
 **Solution:**
+
 - Verify you have Owner or User Access Administrator role at the target scope
 - Check: `az role assignment list --assignee $(az ad signed-in-user show --query id -o tsv) --all`
 
 **Role assignment not taking effect:**
+
 - Wait 5-10 minutes for propagation
 - Have user re-authenticate: `az logout && az login`
 - Check for deny assignments: `az deny assignment list`
 
 **Cannot delete role assignment:**
+
 ```
 Error: Role assignment does not exist
 ```
 
 **Solution:**
+
 ```bash
 # List to find exact assignment
 az role assignment list --assignee jane@contoso.com --all
@@ -698,17 +771,20 @@ az role assignment delete --ids {assignment-id}
 ```
 
 **Custom role scope issues:**
+
 ```
 Error: The role definition has invalid assignable scopes
 ```
 
 **Solution:**
+
 - Ensure AssignableScopes includes the target subscription
 - Cannot be more restrictive than role definition allows
 
 ### Verification Commands
 
 **Check effective permissions:**
+
 ```bash
 # What can I do at this scope?
 az role assignment list \
@@ -718,12 +794,14 @@ az role assignment list \
 ```
 
 **Test specific action:**
+
 ```bash
 # Try the action - will show permission error if not allowed
 az vm list --resource-group myRG
 ```
 
 **List deny assignments:**
+
 ```bash
 az deny assignment list --scope /subscriptions/{subscription-id}
 ```

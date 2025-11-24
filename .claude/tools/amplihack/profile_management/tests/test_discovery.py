@@ -1,8 +1,10 @@
 """Tests for component discovery from filesystem."""
 
-import pytest
-from pathlib import Path
 import json
+from pathlib import Path
+
+import pytest
+
 from ..discovery import ComponentDiscovery, ComponentInventory
 
 
@@ -141,17 +143,9 @@ def test_discover_with_index(discovery):
     index_data = {
         "version": "1.0",
         "skills": [
-            {
-                "name": "pdf",
-                "category": "office",
-                "path": ".claude/skills/office/pdf/skill.md"
-            },
-            {
-                "name": "xlsx",
-                "category": "office",
-                "path": ".claude/skills/office/xlsx/README.md"
-            }
-        ]
+            {"name": "pdf", "category": "office", "path": ".claude/skills/office/pdf/skill.md"},
+            {"name": "xlsx", "category": "office", "path": ".claude/skills/office/xlsx/README.md"},
+        ],
     }
 
     skills_dir = discovery.root_dir / "skills"
@@ -175,8 +169,8 @@ def test_discover_categories_with_index(discovery):
         "skills": [
             {"name": "pdf", "category": "office"},
             {"name": "xlsx", "category": "office"},
-            {"name": "economist-analyst", "category": "analysis"}
-        ]
+            {"name": "economist-analyst", "category": "analysis"},
+        ],
     }
 
     skills_dir = discovery.root_dir / "skills"
