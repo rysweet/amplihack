@@ -156,6 +156,13 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manife
     dirs_to_copy = manifest.dirs_to_stage if manifest else ESSENTIAL_DIRS
     file_filter = manifest.file_filter if manifest else None
 
+    if os.environ.get("AMPLIHACK_DEBUG") == "true":
+        if manifest:
+            print(f"  [DEBUG] Using manifest: profile='{manifest.profile_name}', filter={'Yes' if file_filter else 'No'}")
+            print(f"  [DEBUG] Dirs to copy: {len(dirs_to_copy)}")
+        else:
+            print(f"  [DEBUG] No manifest, copying all {len(ESSENTIAL_DIRS)} dirs")
+
     for dir_path in dirs_to_copy:
         source_dir = os.path.join(base, dir_path)
 
