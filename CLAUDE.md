@@ -26,10 +26,10 @@ When starting a session, import these files for context:
   further into smaller tasks.
 - **The workflow is MANDATORY: ALWAYS the starting point**: The defaultworkflow
   in `@.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations,
-  git workflow, and CI/CD process (users can customize this file)
+  git workflow, and CI/CD process (users can customize this file) - you should call this using skill tool -  Skill(default-workflow)
 - **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
-  `/amplihack:ultrathink` which reads the workflow and orchestrates agents to
-  execute it - this is defined in `@.claude/commands/amplihack/ultrathink.md`
+  Skill(ultrathink-orchestrator) which reads the workflow and orchestrates agents to
+  execute it - this is defined in the ultrathink skill. 
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Operate Autonomously and Independently by default**: You must try to
