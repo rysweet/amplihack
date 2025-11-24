@@ -21,6 +21,7 @@ import json
 import os
 import shutil
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -139,8 +140,11 @@ class SettingsMigrator:
 
             return False
 
-        except (OSError, json.JSONDecodeError) as e:
-            self.log(f"Error reading global settings: {e}")
+        except OSError as e:
+            self.log(f"Could not read global settings file: {e}")
+            return False
+        except json.JSONDecodeError as e:
+            self.log(f"Global settings file has invalid JSON: {e}")
             return False
 
     def migrate_to_project_local(self) -> HookMigrationResult:
@@ -232,8 +236,6 @@ class SettingsMigrator:
 
         try:
             # Create timestamped backup
-            import time
-
             timestamp = int(time.time())
             backup_path = self.global_settings_path.parent / f"settings.json.backup.{timestamp}"
 
