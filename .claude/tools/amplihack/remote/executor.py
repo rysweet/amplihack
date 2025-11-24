@@ -162,10 +162,10 @@ git init
 git config user.email "remote@amplihack.dev"
 git config user.name "Remote Amplihack"
 
-# Run claude-code with the prompt directly
-# The .claude directory is already extracted with all agents/commands
+# Run amplihack in one-shot mode (non-interactive)
+# Use uvx to run from git (pre-downloaded in NFS home or will download)
 export CLAUDE_PROJECT_DIR=~/
-claude -- -p '{escaped_prompt}'
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch -- -p '{escaped_prompt}'
 """
 
         # Get VM IP if not set
