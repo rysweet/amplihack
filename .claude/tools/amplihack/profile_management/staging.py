@@ -94,7 +94,7 @@ def create_staging_manifest(
         def should_copy_file(file_path: Path) -> bool:
             """Determine if a file should be copied based on profile filters.
 
-            Trusts that file_path is valid (internal function, caller responsibility).
+            Simple filename-based matching - checks if filename appears in filtered component paths.
 
             Args:
                 file_path: Path to file being considered for staging
@@ -102,50 +102,27 @@ def create_staging_manifest(
             Returns:
                 True if file should be copied, False otherwise
             """
-            # Get the relative path within .claude directory
-            if ".claude" in file_path.parts:
-                claude_idx = file_path.parts.index(".claude")
-                rel_path = Path(*file_path.parts[claude_idx:])
-            else:
-                rel_path = file_path
+            filename = file_path.name
+            file_path_str = str(file_path).replace(os.sep, '/')
 
-            # File matching: Compare relative paths (rel_path vs filtered paths)
-            # filtered.agents etc. contain paths like ".claude/agents/amplihack/core/architect.md"
-            # rel_path is like ".claude/agents/amplihack/core/architect.md" (after normalization above)
-
-            rel_path_str = str(rel_path)
-
-            # Commands
-            if "commands" in rel_path.parts:
-                return any(rel_path_str.endswith(Path(cmd_path).name) or
-                         str(cmd_path).endswith(rel_path_str) or
-                         rel_path_str in str(cmd_path) or
-                         str(cmd_path) in rel_path_str
-                         for cmd_path in filtered.commands)
-
-            # Context
-            if "context" in rel_path.parts:
-                return any(rel_path_str.endswith(Path(ctx_path).name) or
-                         str(ctx_path).endswith(rel_path_str) or
-                         rel_path_str in str(ctx_path) or
-                         str(ctx_path) in rel_path_str
-                         for ctx_path in filtered.context)
+            # For agents, commands, context, skills: check if filename appears in filtered paths
+            # For other files (tools, workflow, etc.): include by default
 
             # Agents
-            if "agents" in rel_path.parts:
-                return any(rel_path_str.endswith(Path(agent_path).name) or
-                         str(agent_path).endswith(rel_path_str) or
-                         rel_path_str in str(agent_path) or
-                         str(agent_path) in rel_path_str
-                         for agent_path in filtered.agents)
+            if "/agents/" in file_path_str:
+                return any(filename in str(agent_path) for agent_path in filtered.agents)
+
+            # Commands
+            if "/commands/" in file_path_str:
+                return any(filename in str(cmd_path) for cmd_path in filtered.commands)
+
+            # Context
+            if "/context/" in file_path_str:
+                return any(filename in str(ctx_path) for ctx_path in filtered.context)
 
             # Skills
-            if "skills" in rel_path.parts:
-                return any(rel_path_str.endswith(Path(skill_path).name) or
-                         str(skill_path).endswith(rel_path_str) or
-                         rel_path_str in str(skill_path) or
-                         str(skill_path) in rel_path_str
-                         for skill_path in filtered.skills)
+            if "/skills/" in file_path_str:
+                return any(filename in str(skill_path) for skill_path in filtered.skills)
 
             # For other files (tools, workflow, etc.), include by default
             return True
