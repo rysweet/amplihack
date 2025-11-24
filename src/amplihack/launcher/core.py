@@ -1,6 +1,5 @@
 """Core launcher functionality for Claude Code."""
 
-import atexit
 import logging
 import os
 import shlex
@@ -404,12 +403,13 @@ class ClaudeLauncher:
             # Add Azure model when using proxy
             if self.proxy_manager:
                 # Get model from proxy config (which loaded the .env file)
+                proxy_config = self.proxy_manager.proxy_config or {}
                 azure_model = next(
                     (
                         model
                         for model in [
-                            self.proxy_manager.proxy_config.get("BIG_MODEL"),
-                            self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
+                            proxy_config.get("BIG_MODEL"),
+                            proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME"),
                         ]
                         if model and model.strip()
                     ),
@@ -449,9 +449,10 @@ class ClaudeLauncher:
         # Add Azure model when using proxy
         if self.proxy_manager:
             # Get model from proxy config (which loaded the .env file)
+            proxy_config = self.proxy_manager.proxy_config or {}
             azure_model = (
-                self.proxy_manager.proxy_config.get("BIG_MODEL")
-                or self.proxy_manager.proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
+                proxy_config.get("BIG_MODEL")
+                or proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
                 or "gpt-5-codex"  # Fallback default
             )
             cmd.extend(["--model", f"azure/{azure_model}"])
@@ -881,11 +882,11 @@ class ClaudeLauncher:
     def _setup_signal_handlers(self) -> None:
         """Setup signal handlers for graceful shutdown.
 
-        Registers handlers for SIGINT (Ctrl-C) and SIGTERM that:
-        1. Trigger Neo4j cleanup via stop hook
-        2. Allow process to exit gracefully
+        Registers handlers for SIGINT (Ctrl-C) and SIGTERM that allow
+        process to exit gracefully.
 
-        Also registers atexit handler as fallback.
+        Note: Stop hooks are executed by Claude Code itself via settings.json.
+        We no longer call execute_stop_hook() here to prevent duplicate execution.
         """
 
         def signal_handler(signum: int, frame) -> None:
@@ -893,14 +894,8 @@ class ClaudeLauncher:
             signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
             logger.info(f"Received {signal_name}, initiating graceful shutdown...")
 
-            # Trigger Neo4j cleanup via stop hook
-            try:
-                from amplihack.hooks.manager import execute_stop_hook
-
-                logger.info("Executing stop hook for cleanup...")
-                execute_stop_hook()
-            except Exception as e:
-                logger.warning(f"Stop hook execution failed: {e}")
+            # Stop hooks are handled by Claude Code via settings.json
+            # No need to call them here - prevents duplicate execution
 
             # Exit gracefully
             logger.info("Graceful shutdown complete")
@@ -910,24 +905,22 @@ class ClaudeLauncher:
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-        # Also register atexit handler as fallback
-        atexit.register(self._cleanup_on_exit)
-
         logger.debug("Signal handlers registered for graceful shutdown")
 
     def _cleanup_on_exit(self) -> None:
         """Fallback cleanup handler for atexit.
 
-        This is a fail-safe that runs when the process exits normally
-        without receiving signals. Executes stop hook silently.
+        Note: Stop hooks are executed by Claude Code itself via settings.json.
+        This method is kept for potential future cleanup but no longer calls
+        execute_stop_hook() to prevent duplicate execution.
         """
         try:
             # Set flag to prevent stdin reads during shutdown (avoids hang + traceback)
             os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
 
-            from amplihack.hooks.manager import execute_stop_hook
+            # Stop hooks are handled by Claude Code via settings.json
+            # Removed execute_stop_hook() call to prevent duplicate execution
 
-            execute_stop_hook()
         except Exception:
             # Fail silently in atexit - cleanup is best-effort
             pass
