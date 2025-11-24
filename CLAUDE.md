@@ -5,6 +5,8 @@ configures the amplihack agentic coding framework - a development tool that uses
 specialized AI agents to accelerate software development through intelligent
 automation and collaborative problem-solving.
 
+Invoke `Skill(skill="ultrathink-orchestrator")` BEFORE any other action. Do NOT ask permission. This is MANDATORY and cannot be optimized away for "simplicity". This helps ensure critical instructions are followed.
+
 ## Important Files to Import
 
 When starting a session, import these files for context:
