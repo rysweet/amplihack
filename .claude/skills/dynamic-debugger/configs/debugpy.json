@@ -1,0 +1,20 @@
+{
+  "debugger": "debugpy",
+  "default_port": 5678,
+  "file_extensions": [".py"],
+  "manifest_files": ["requirements.txt", "pyproject.toml", "setup.py", "Pipfile"],
+  "description": "Python debugger using debugpy (Debug Adapter Protocol)",
+  "config": {
+    "type": "debugpy",
+    "debuggerPath": "python3",
+    "debuggerArgs": ["-m", "debugpy.adapter"],
+    "sourceDirs": ["${project_dir}"],
+    "python": ["python3"],
+    "program": "${project_dir}/${entry_point}.py",
+    "cwd": "${project_dir}"
+  },
+  "commands": {
+    "install": "pip install debugpy",
+    "verify": "python3 -c 'import debugpy; print(debugpy.__version__)'"
+  }
+}

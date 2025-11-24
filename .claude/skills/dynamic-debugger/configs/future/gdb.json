@@ -1,0 +1,20 @@
+{
+  "debugger": "gdb",
+  "default_port": null,
+  "file_extensions": [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx"],
+  "manifest_files": ["CMakeLists.txt", "Makefile", "configure.ac"],
+  "description": "GNU Debugger for C/C++ programs (requires GDB 14+ with DAP support)",
+  "config": {
+    "name": "GDB: Debug Current Binary",
+    "type": "cppdbg",
+    "request": "launch",
+    "program": "${project_dir}/${entry_point}",
+    "cwd": "${project_dir}",
+    "MIMode": "gdb"
+  },
+  "commands": {
+    "install": "# Ubuntu/Debian: sudo apt install gdb\n# Fedora: sudo dnf install gdb\n# macOS: brew install gdb",
+    "verify": "gdb --version"
+  },
+  "notes": "Requires compiled binary with debug symbols (-g flag). Example: gcc -g main.c -o main"
+}
