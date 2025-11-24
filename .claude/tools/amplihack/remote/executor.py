@@ -142,21 +142,13 @@ class Executor:
         escaped_prompt = prompt.replace("'", "'\"'\"'")
 
         # Build remote command
-        # First extract and setup context, then run amplihack
-        # Note: azlin cp puts files in ~/, so extract from there
+        # Simplest possible approach: run amplihack from ~ with context
         setup_and_run = f"""
-set -e
+set -ex
 cd ~
-tar xzf context.tar.gz
 
-# Setup workspace - clone to temp then move
-TEMP_REPO=$(mktemp -d)
-git clone ~/repo.bundle "$TEMP_REPO"
-mkdir -p {self.remote_workspace}
-cp -r "$TEMP_REPO"/. {self.remote_workspace}/
-rm -rf "$TEMP_REPO"
-cd {self.remote_workspace}
-cp -r ~/.claude .
+# Extract context
+tar xzf context.tar.gz
 
 # Install amplihack if needed
 if ! command -v amplihack &> /dev/null; then
@@ -166,7 +158,12 @@ fi
 # Export API key
 export ANTHROPIC_API_KEY='{api_key}'
 
-# Run amplihack command
+# Initialize minimal git repo for amplihack to work
+git init
+git config user.email "remote@amplihack.dev"
+git config user.name "Remote Amplihack"
+
+# Run amplihack command (will create files in current dir)
 amplihack {command} --max-turns {max_turns} -- -p '{escaped_prompt}'
 """
 
