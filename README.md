@@ -168,33 +168,27 @@ python main.py
 
 ### Profile Management
 
-**Optimize token usage and customize your environment with profiles:**
+**Reduce token usage by 72% with profile-based component filtering:**
 
 ```bash
-# List available profiles
-/amplihack:profile list
-
-# Switch to coding profile (saves ~50% tokens)
-/amplihack:profile switch amplihack://profiles/coding
-
-# Show current profile
-/amplihack:profile current
-
-# Set default profile via environment variable
+# Set profile (outside Claude Code)
 export AMPLIHACK_PROFILE=amplihack://profiles/coding
-amplihack launch
 
-# Create custom profile
-/amplihack:profile validate file:///path/to/custom.yaml
+# Install with filtering
+amplihack install
+# Result: Only 9/32 agents staged (72% reduction)
+
+# Launch with filtering
+amplihack launch
+# Result: Focused environment for coding tasks
+
+# To switch profiles: exit Claude, set new profile, restart
 ```
 
-**Features:**
-
-- 40-60% token reduction with focused profiles
-- Built-in profiles: `all`, `coding`, `research`
-- Custom profile support via YAML
-- Environment variable integration
-- Team-shareable profile configurations
+**Built-in Profiles:**
+- `all`: Full environment (32 agents, default)
+- `coding`: Development-focused (9 agents)
+- `research`: Investigation-focused (7 agents)
 
 **Learn more:** [Profile Management Guide](docs/PROFILE_MANAGEMENT.md)
 
