@@ -230,13 +230,20 @@ class ProfileLoader:
         repo_url = parts[0]  # https://github.com/user/repo
         ref_and_path = parts[1]  # ref/path/to/file.yaml
 
-        # Split ref and file path (ref is first component)
-        ref_path_parts = ref_and_path.split("/", 1)
-        if len(ref_path_parts) != 2:
-            raise ValueError(f"Invalid git URL: missing file path after ref. Got: {uri}")
-
-        ref = ref_path_parts[0]  # main, branch-name, commit-hash
-        file_path = ref_path_parts[1]  # path/to/file.yaml
+        # For GitHub blob URLs, the path after /blob/ is: branch/.claude/profiles/file.yaml
+        # We need to extract everything before .claude as the ref
+        if "/.claude/" in ref_and_path:
+            # Split on /.claude/ to separate ref from file path
+            ref_parts = ref_and_path.split("/.claude/", 1)
+            ref = ref_parts[0]  # Could be "main" or "feat/issue-1234"
+            file_path = ".claude/" + ref_parts[1]  # .claude/profiles/coding.yaml
+        else:
+            # Fallback: assume first component is ref, rest is path
+            ref_path_parts = ref_and_path.split("/", 1)
+            if len(ref_path_parts) != 2:
+                raise ValueError(f"Invalid git URL: missing file path after ref. Got: {uri}")
+            ref = ref_path_parts[0]
+            file_path = ref_path_parts[1]
 
         # Use cache directory for cloned repos
         cache_dir = Path.home() / ".amplihack" / "cache" / "repos"
