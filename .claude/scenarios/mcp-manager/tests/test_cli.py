@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from ..cli import (
+from cli import (
     cmd_add,
     cmd_disable,
     cmd_enable,
@@ -78,7 +78,7 @@ def mock_config_path(tmp_path, monkeypatch):
     def mock_get_config():
         return config_path
 
-    monkeypatch.setattr("mcp_manager.cli.get_config_path", mock_get_config)
+    monkeypatch.setattr("cli.get_config_path", mock_get_config)
     return config_path
 
 
@@ -102,7 +102,7 @@ def test_cmd_list_empty(tmp_path, monkeypatch, capsys):
     def mock_get_config():
         return config_path
 
-    monkeypatch.setattr("mcp_manager.cli.get_config_path", mock_get_config)
+    monkeypatch.setattr("cli.get_config_path", mock_get_config)
 
     args = Mock()
     result = cmd_list(args)
@@ -217,7 +217,7 @@ def test_cmd_validate_invalid(tmp_path, monkeypatch, capsys):
     def mock_get_config():
         return config_path
 
-    monkeypatch.setattr("mcp_manager.cli.get_config_path", mock_get_config)
+    monkeypatch.setattr("cli.get_config_path", mock_get_config)
 
     args = Mock()
     result = cmd_validate(args)
@@ -230,7 +230,7 @@ def test_cmd_validate_invalid(tmp_path, monkeypatch, capsys):
 
 def test_main_list(capsys):
     """Test main function with list command."""
-    with patch("mcp_manager.cli.cmd_list", return_value=0) as mock_list:
+    with patch("cli.cmd_list", return_value=0) as mock_list:
         result = main(["list"])
 
         assert result == 0
@@ -239,7 +239,7 @@ def test_main_list(capsys):
 
 def test_main_enable(capsys):
     """Test main function with enable command."""
-    with patch("mcp_manager.cli.cmd_enable", return_value=0) as mock_enable:
+    with patch("cli.cmd_enable", return_value=0) as mock_enable:
         result = main(["enable", "test-server"])
 
         assert result == 0
@@ -248,7 +248,7 @@ def test_main_enable(capsys):
 
 def test_main_disable(capsys):
     """Test main function with disable command."""
-    with patch("mcp_manager.cli.cmd_disable", return_value=0) as mock_disable:
+    with patch("cli.cmd_disable", return_value=0) as mock_disable:
         result = main(["disable", "test-server"])
 
         assert result == 0
@@ -257,7 +257,7 @@ def test_main_disable(capsys):
 
 def test_main_validate(capsys):
     """Test main function with validate command."""
-    with patch("mcp_manager.cli.cmd_validate", return_value=0) as mock_validate:
+    with patch("cli.cmd_validate", return_value=0) as mock_validate:
         result = main(["validate"])
 
         assert result == 0
@@ -542,7 +542,7 @@ def test_cmd_export_empty(tmp_path, monkeypatch, capsys):
     def mock_get_config():
         return config_path
 
-    monkeypatch.setattr("mcp_manager.cli.get_config_path", mock_get_config)
+    monkeypatch.setattr("cli.get_config_path", mock_get_config)
 
     args = Mock()
     args.output = None
@@ -705,7 +705,7 @@ def test_cmd_import_creates_backup(mock_config_path, tmp_path):
 
 def test_main_add(capsys):
     """Test main function with add command."""
-    with patch("mcp_manager.cli.cmd_add", return_value=0) as mock_add:
+    with patch("cli.cmd_add", return_value=0) as mock_add:
         # Test requires at least name and command arguments
         result = main(["add", "test-server", "node"])
 
@@ -715,7 +715,7 @@ def test_main_add(capsys):
 
 def test_main_remove(capsys):
     """Test main function with remove command."""
-    with patch("mcp_manager.cli.cmd_remove", return_value=0) as mock_remove:
+    with patch("cli.cmd_remove", return_value=0) as mock_remove:
         result = main(["remove", "test-server"])
 
         assert result == 0
@@ -724,7 +724,7 @@ def test_main_remove(capsys):
 
 def test_main_show(capsys):
     """Test main function with show command."""
-    with patch("mcp_manager.cli.cmd_show", return_value=0) as mock_show:
+    with patch("cli.cmd_show", return_value=0) as mock_show:
         result = main(["show", "test-server"])
 
         assert result == 0
@@ -733,7 +733,7 @@ def test_main_show(capsys):
 
 def test_main_export(capsys):
     """Test main function with export command."""
-    with patch("mcp_manager.cli.cmd_export", return_value=0) as mock_export:
+    with patch("cli.cmd_export", return_value=0) as mock_export:
         result = main(["export"])
 
         assert result == 0
@@ -742,7 +742,7 @@ def test_main_export(capsys):
 
 def test_main_import(capsys):
     """Test main function with import command."""
-    with patch("mcp_manager.cli.cmd_import", return_value=0) as mock_import:
+    with patch("cli.cmd_import", return_value=0) as mock_import:
         result = main(["import", "file.json"])
 
         assert result == 0

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from ..config_manager import backup_config, read_config, restore_config, write_config
+from config_manager import backup_config, read_config, restore_config, write_config
 
 
 @pytest.fixture
@@ -126,19 +126,20 @@ def test_backup_config_not_found(tmp_path):
 def test_backup_cleanup(temp_config):
     """Test that old backups are cleaned up."""
     # Create 12 backups (should keep only 10 most recent)
+    # Timestamps include microseconds for uniqueness
     backups = []
     for i in range(12):
         backup_path = backup_config(temp_config)
         backups.append(backup_path)
 
-    # Check that only 10 backups remain
+    # Check that only 3 backups remain (reduced from 10 per philosophy)
     backup_dir = temp_config.parent
     backup_files = list(backup_dir.glob("settings_backup_*.json"))
-    assert len(backup_files) == 10
+    assert len(backup_files) == 3
 
-    # Verify oldest backups were removed
+    # Verify oldest backups were removed (12 created, 3 kept = 9 removed)
     remaining_backups = [b.name for b in backup_files]
-    for old_backup in backups[:2]:
+    for old_backup in backups[:9]:
         assert old_backup.name not in remaining_backups
 
 

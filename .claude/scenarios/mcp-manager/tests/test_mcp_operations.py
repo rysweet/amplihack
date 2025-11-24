@@ -4,10 +4,8 @@ import copy
 
 import pytest
 
-from ..mcp_operations import (
-    DuplicateServerError,
+from mcp_operations import (
     MCPServer,
-    ServerNotFoundError,
     add_server,
     disable_server,
     enable_server,
@@ -405,7 +403,7 @@ def test_add_server_duplicate_name():
     }
     server = MCPServer(name="test", command="node", args=[])
 
-    with pytest.raises(DuplicateServerError, match="already exists"):
+    with pytest.raises(ValueError, match="already exists"):
         add_server(config, server)
 
 
@@ -464,7 +462,7 @@ def test_remove_server_not_found():
     """Test removing non-existent server."""
     config = {"enabledMcpjsonServers": []}
 
-    with pytest.raises(ServerNotFoundError, match="not found"):
+    with pytest.raises(ValueError, match="not found"):
         remove_server(config, "nonexistent")
 
 

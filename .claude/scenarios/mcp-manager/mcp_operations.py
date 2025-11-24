@@ -238,15 +238,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
     return errors
 
 
-# Custom exceptions
-class DuplicateServerError(ValueError):
-    """Server with same name already exists."""
-    pass
-
-
-class ServerNotFoundError(ValueError):
-    """Server not found in configuration."""
-    pass
+# Note: This module uses ValueError for all errors (no custom exceptions per philosophy)
 
 
 def add_server(config: dict[str, Any], server: MCPServer) -> dict[str, Any]:
@@ -260,7 +252,7 @@ def add_server(config: dict[str, Any], server: MCPServer) -> dict[str, Any]:
         New configuration dictionary with server added
 
     Raises:
-        DuplicateServerError: If server name already exists
+        ValueError: If server name already exists
         ValueError: If server validation fails
     """
     # Validate the server first
@@ -271,7 +263,7 @@ def add_server(config: dict[str, Any], server: MCPServer) -> dict[str, Any]:
     # Check for duplicate names
     existing_servers = list_servers(config)
     if any(s.name == server.name for s in existing_servers):
-        raise DuplicateServerError(f"Server '{server.name}' already exists")
+        raise ValueError(f"Server '{server.name}' already exists")
 
     # Make a deep copy of config
     new_config = copy.deepcopy(config)
@@ -297,7 +289,7 @@ def remove_server(config: dict[str, Any], name: str) -> dict[str, Any]:
         New configuration dictionary with server removed
 
     Raises:
-        ServerNotFoundError: If server not found
+        ValueError: If server not found
     """
     # Check if server exists
     servers = config.get("enabledMcpjsonServers", [])
@@ -307,7 +299,7 @@ def remove_server(config: dict[str, Any], name: str) -> dict[str, Any]:
     )
 
     if not found:
-        raise ServerNotFoundError(f"Server not found: {name}")
+        raise ValueError(f"Server not found: {name}")
 
     # Make a deep copy of config
     new_config = copy.deepcopy(config)

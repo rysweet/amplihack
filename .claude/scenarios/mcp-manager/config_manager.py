@@ -90,8 +90,8 @@ def backup_config(config_path: Path) -> Path:
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-    # Generate timestamp-based backup filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Generate timestamp-based backup filename with microseconds for uniqueness
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     backup_path = config_path.parent / f"settings_backup_{timestamp}.json"
 
     # Copy file preserving metadata
@@ -121,12 +121,12 @@ def restore_config(backup_path: Path, config_path: Path) -> None:
     shutil.copy2(backup_path, config_path)
 
 
-def _cleanup_old_backups(backup_dir: Path, keep_count: int = 10) -> None:
+def _cleanup_old_backups(backup_dir: Path, keep_count: int = 3) -> None:
     """Remove old backup files, keeping only the most recent ones.
 
     Args:
         backup_dir: Directory containing backup files
-        keep_count: Number of most recent backups to keep
+        keep_count: Number of most recent backups to keep (default: 3)
     """
     # Find all backup files
     backup_pattern = "settings_backup_*.json"

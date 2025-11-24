@@ -8,11 +8,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .config_manager import backup_config, read_config, restore_config, write_config
-from .mcp_operations import (
-    DuplicateServerError,
+from config_manager import backup_config, read_config, restore_config, write_config
+from mcp_operations import (
     MCPServer,
-    ServerNotFoundError,
     add_server,
     disable_server,
     enable_server,
@@ -309,7 +307,7 @@ def cmd_add(args: argparse.Namespace) -> int:
             print(f"Successfully added server: {name} ({status})")
             return 0
 
-        except DuplicateServerError as e:
+        except ValueError as e:
             restore_config(backup_path, config_path)
             print(f"Error: {e}", file=sys.stderr)
             return 1
@@ -373,7 +371,7 @@ def cmd_remove(args: argparse.Namespace) -> int:
             print(f"Successfully removed server: {args.name}")
             return 0
 
-        except ServerNotFoundError as e:
+        except ValueError as e:
             restore_config(backup_path, config_path)
             print(f"Error: {e}", file=sys.stderr)
             return 1
