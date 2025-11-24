@@ -39,8 +39,10 @@ When this skill is activated, you MUST:
 1. **Read the canonical workflow** immediately:
 
    ```
-   Read(file_path="/home/azureuser/src/amplihack3/.claude/workflow/DEFAULT_WORKFLOW.md")
+   Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
    ```
+
+   Note: Path is relative to project root. Claude Code resolves this automatically.
 
 2. **Follow all 15 steps** exactly as specified in the canonical workflow
 

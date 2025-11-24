@@ -43,8 +43,10 @@ When this skill is activated, you MUST:
 1. **Read the canonical command** for task detection logic:
 
    ```
-   Read(file_path="/home/azureuser/src/amplihack3/.claude/commands/amplihack/ultrathink.md")
+   Read(file_path=".claude/commands/amplihack/ultrathink.md")
    ```
+
+   Note: Path is relative to project root. Claude Code resolves this automatically.
 
 2. **Detect task type** using keywords from the canonical command:
    - **Investigation keywords**: investigate, explain, understand, analyze, research, explore
