@@ -3,7 +3,17 @@ name: dynamic-debugger
 description: Interactive debugging via DAP-MCP for multiple languages with natural language commands
 version: 1.0.0
 activation_conditions:
-  - intent_keywords: ["debug", "breakpoint", "step through", "step into", "step over", "inspect", "trace execution", "call stack"]
+  - intent_keywords:
+      [
+        "debug",
+        "breakpoint",
+        "step through",
+        "step into",
+        "step over",
+        "inspect",
+        "trace execution",
+        "call stack",
+      ]
   - confidence_threshold: 0.8
   - ask_confirmation_below: 0.8
 supported_languages: [python, javascript, typescript, c, cpp, go, rust, java, csharp]
@@ -29,6 +39,7 @@ Interactive debugging capability fer Claude Code via DAP-MCP integration. Debug 
 This skill enables interactive debuggin' through the Debug Adapter Protocol (DAP) via MCP server integration. Set breakpoints, step through code, inspect variables, and control execution flow across multiple programming languages using natural language commands.
 
 **What ye get:**
+
 - Natural language debugging commands ("set breakpoint at line 42")
 - Multi-language support (Python, JS/TS, C/C++, Go, Rust, Java, .NET)
 - Automatic intent and language detection
@@ -38,7 +49,8 @@ This skill enables interactive debuggin' through the Debug Adapter Protocol (DAP
 ## Prerequisites
 
 **Required:**
-- dap-mcp server installed (`npm install -g dap-mcp`)
+
+- dap-mcp server installed (`pip install dap-mcp` or `uv pip install dap-mcp`)
 - Language-specific debuggers:
   - Python: debugpy (`pip install debugpy`)
   - JavaScript/TypeScript: Built-in Node debugger
@@ -49,9 +61,10 @@ This skill enables interactive debuggin' through the Debug Adapter Protocol (DAP
   - .NET: vsdbg (`dotnet tool install -g vsdbg`)
 
 **Verification:**
+
 ```bash
 # Check dap-mcp installation
-npx dap-mcp --version
+python3 -m dap_mcp --help
 
 # Check language debuggers
 python -c "import debugpy; print('debugpy ready')"
@@ -66,6 +79,7 @@ dlv version
 **User:** "This async function isn't awaiting properly. Debug it."
 
 **Skill activates automatically:**
+
 1. Detects debugging intent (high confidence)
 2. Identifies Python from file extensions
 3. Starts debugpy session
@@ -77,6 +91,7 @@ dlv version
 **User:** "Getting segfault in malloc. Set a breakpoint."
 
 **Skill response:**
+
 1. Explicit trigger detected ("set a breakpoint")
 2. Identifies C++ from file extensions
 3. Starts gdb session
@@ -88,6 +103,7 @@ dlv version
 **User:** "Why is this Promise chain not resolving?"
 
 **Skill response:**
+
 1. Implicit trigger detected ("why is")
 2. Asks confirmation (medium confidence)
 3. Identifies JavaScript from package.json
@@ -99,12 +115,14 @@ dlv version
 ### Starting a Debug Session
 
 Explicit triggers (auto-start):
+
 - "debug this"
 - "set a breakpoint at line X"
 - "step through this function"
 - "inspect variable X"
 
 Implicit triggers (may ask confirmation):
+
 - "Why is X wrong?"
 - "This isn't working"
 - "Trace execution of X"
@@ -113,22 +131,26 @@ Implicit triggers (may ask confirmation):
 ### Debugging Commands
 
 **Breakpoint management:**
+
 - "Set breakpoint at line 42"
 - "Remove breakpoint at line 42"
 - "List all breakpoints"
 
 **Execution control:**
+
 - "Step over" (execute current line)
 - "Step into" (enter function call)
 - "Step out" (exit current function)
 - "Continue" (run until next breakpoint)
 
 **Variable inspection:**
+
 - "What's the value of userId?"
 - "Show all local variables"
 - "Evaluate expression: x + y"
 
 **Session management:**
+
 - "Show call stack"
 - "List threads/goroutines"
 - "Stop debugging"
@@ -138,18 +160,21 @@ Implicit triggers (may ask confirmation):
 **Load these files on demand based on context:**
 
 ### When to Load reference.md
+
 **Trigger:** User needs specific API details, configuration syntax, or error codes
 **Contains:** Complete API reference, language configurations, session management API, error handling details, resource limits
 **Size:** 3,000-4,000 tokens
 **Example queries:** "How do I configure the Go debugger?", "What are the resource limits?", "Show me all error codes"
 
 ### When to Load examples.md
+
 **Trigger:** User wants working code examples or specific debugging scenarios
 **Contains:** Production-ready debugging examples for all 6 languages with complete workflows
 **Size:** 2,000-3,000 tokens
 **Example queries:** "Show me a Python async debugging example", "How do I debug a Rust panic?", "Example of goroutine deadlock debugging"
 
 ### When to Load patterns.md
+
 **Trigger:** User asks about best practices, architectural patterns, or debugging strategies
 **Contains:** Production debugging patterns, performance techniques, security best practices, common pitfalls
 **Size:** 1,500-2,000 tokens
@@ -161,11 +186,13 @@ Implicit triggers (may ask confirmation):
 
 **Single concurrent session:** Only one debugging session per user at a time
 **Timeouts:**
+
 - Session idle: 30 minutes
 - Connection idle: 5 minutes
 - Startup: 10 seconds max
 
 **Resource limits:**
+
 - Memory: 4GB max for debugged process
 - No CPU limits (debugging is resource-intensive)
 - Automatic cleanup on session end
@@ -173,11 +200,13 @@ Implicit triggers (may ask confirmation):
 ## Language Detection
 
 **Automatic detection** via:
+
 1. File extensions (primary signal)
 2. Manifest files (package.json, Cargo.toml, go.mod)
 3. Project structure analysis
 
 **Confidence thresholds:**
+
 - High (>90%): Auto-select language
 - Medium (70-90%): Ask user confirmation
 - Low (<70%): Prompt user to specify
@@ -190,6 +219,7 @@ Implicit triggers (may ask confirmation):
 
 **Symptom:** "dap-mcp server not available"
 **Solution:**
+
 ```bash
 npm install -g dap-mcp
 npx dap-mcp --version
@@ -218,6 +248,7 @@ npx dap-mcp --version
 ## Error Recovery
 
 All errors provide:
+
 1. Clear description of what failed
 2. Actionable recovery steps
 3. Manual fallback commands if needed
@@ -244,6 +275,7 @@ All errors provide:
 - **Sensitive Data:** Debugger can access memory, environment variables, credentials in running processes
 
 **Best Practices:**
+
 - Only debug code you trust
 - Review debugger configurations before use
 - Be cautious with production credentials in environment
@@ -251,6 +283,7 @@ All errors provide:
 - Never debug untrusted binaries
 
 **Process Isolation:**
+
 - Debugger runs in separate process from Claude Code
 - Cleanup script terminates all debugger processes on exit
 

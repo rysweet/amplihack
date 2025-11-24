@@ -41,14 +41,14 @@ start_server() {
     fi
 
     # Check if dap-mcp is available
-    if ! command -v npx &> /dev/null; then
-        log_message "ERROR: npx not found. Please install Node.js and npm"
+    if ! python3 -m dap_mcp --help &> /dev/null; then
+        log_message "ERROR: dap-mcp not found. Please install it with: pip install dap-mcp"
         return 1
     fi
 
     # Start dap-mcp server in background
     log_message "Starting dap-mcp server with config: $config_file"
-    nohup npx @modelcontextprotocol/server-dap --config "$config_file" \
+    nohup python3 -m dap_mcp --config "$config_file" \
         > "$LOG_FILE" 2>&1 &
 
     local pid=$!
