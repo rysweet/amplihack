@@ -83,19 +83,12 @@ def create_staging_manifest(
                 profile_name="all"
             )
 
-        # Discover available components
-        discovery = ComponentDiscovery()
-        inventory = discovery.discover_all()
-
-        # Apply profile filters
-        component_filter = ComponentFilter()
-        filtered = component_filter.filter(profile, inventory)
-
-        # Create file filter function based on filtered components
+        # Create file filter function using profile configuration directly
+        # Don't use ComponentDiscovery - it requires .claude to exist already
         def should_copy_file(file_path: Path) -> bool:
             """Determine if a file should be copied based on profile filters.
 
-            Normalizes paths to relative-from-.claude format and does exact matching.
+            Uses profile.components include/exclude lists directly.
 
             Args:
                 file_path: Path to file being considered for staging
@@ -103,40 +96,74 @@ def create_staging_manifest(
             Returns:
                 True if file should be copied, False otherwise
             """
-            # Normalize to relative path from .claude
-            if ".claude" in file_path.parts:
-                claude_idx = file_path.parts.index(".claude")
-                rel_path = Path(*file_path.parts[claude_idx:])
-            else:
-                rel_path = file_path
+            import fnmatch
 
-            rel_path_str = str(rel_path)
+            filename = file_path.name
+            file_path_str = str(file_path).replace(os.sep, '/')
 
-            # Convert filtered paths to strings for comparison
-            filtered_agents_str = {str(p) for p in filtered.agents}
-            filtered_commands_str = {str(p) for p in filtered.commands}
-            filtered_context_str = {str(p) for p in filtered.context}
-            filtered_skills_str = {str(p) for p in filtered.skills}
+            # Helper to check include/exclude patterns
+            def matches_pattern(filename: str, patterns: List[str]) -> bool:
+                """Check if filename matches any pattern in list.
 
-            # Exact path matching
-            if "agents" in rel_path.parts:
-                result = rel_path_str in filtered_agents_str
-                if os.environ.get("AMPLIHACK_DEBUG") == "true" and file_path.name.endswith('.md'):
-                    print(f"    [FILTER] Agent {file_path.name}:")
-                    print(f"             File rel_path: '{rel_path_str}'")
-                    print(f"             In filtered set? {result}")
-                    if len(filtered_agents_str) < 15:
-                        print(f"             Filtered agents ({len(filtered_agents_str)}): {sorted(list(filtered_agents_str))[:3]}")
-                return result
+                Handles patterns like "architect" matching "architect.md"
+                and "*-analyst" matching "economist-analyst.md"
+                """
+                if not patterns:
+                    return False
 
-            if "commands" in rel_path.parts:
-                return rel_path_str in filtered_commands_str
+                # Get stem (without extension) for matching
+                stem = Path(filename).stem
 
-            if "context" in rel_path.parts:
-                return rel_path_str in filtered_context_str
+                for pattern in patterns:
+                    # Extract just the filename part if pattern has path
+                    pattern_name = pattern.split('/')[-1]
+                    # Try matching against both full filename and stem
+                    if fnmatch.fnmatch(filename, pattern_name) or fnmatch.fnmatch(stem, pattern_name):
+                        return True
+                return False
 
-            if "skills" in rel_path.parts:
-                return rel_path_str in filtered_skills_str
+            # Agents
+            if "/agents/" in file_path_str:
+                agents_spec = profile.components.agents
+                if agents_spec.include_all:
+                    return True
+                # Check excludes first
+                if agents_spec.exclude and matches_pattern(filename, agents_spec.exclude):
+                    return False
+                # Then check includes
+                if agents_spec.include:
+                    return matches_pattern(filename, agents_spec.include)
+                return False
+
+            # Commands
+            if "/commands/" in file_path_str:
+                commands_spec = profile.components.commands
+                if commands_spec.include_all:
+                    return True
+                if commands_spec.exclude and matches_pattern(filename, commands_spec.exclude):
+                    return False
+                if commands_spec.include:
+                    return matches_pattern(filename, commands_spec.include)
+                return False
+
+            # Context
+            if "/context/" in file_path_str:
+                context_spec = profile.components.context
+                if context_spec.include_all:
+                    return True
+                if context_spec.exclude and matches_pattern(filename, context_spec.exclude):
+                    return False
+                if context_spec.include:
+                    return matches_pattern(filename, context_spec.include)
+                return False
+
+            # Skills
+            if "/skills/" in file_path_str:
+                skills_spec = profile.components.skills
+                if skills_spec.include_all:
+                    return True
+                # Skills filtering is more complex (categories), for now include all
+                return True
 
             # For other files (tools, workflow, etc.), include by default
             return True
