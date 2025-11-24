@@ -152,7 +152,7 @@ tar xzf context.tar.gz
 
 # Install amplihack if needed
 if ! command -v amplihack &> /dev/null; then
-    pip install amplihack --quiet
+    python3 -m pip install amplihack --quiet || pipx install amplihack
 fi
 
 # Export API key
