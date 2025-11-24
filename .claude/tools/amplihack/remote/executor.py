@@ -162,10 +162,10 @@ git init
 git config user.email "remote@amplihack.dev"
 git config user.name "Remote Amplihack"
 
-# Run amplihack in one-shot mode (non-interactive)
-# Use uvx to run from git (pre-downloaded in NFS home or will download)
+# Run amplihack in auto mode (autonomous multi-turn execution)
+# Use uvx to run from git
 export CLAUDE_PROJECT_DIR=~/
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch -- -p '{escaped_prompt}'
+uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --auto --max-turns {max_turns} -- -p '{escaped_prompt}'
 """
 
         # Get VM IP if not set
