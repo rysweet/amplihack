@@ -139,29 +139,40 @@ def create_test_preference():
 
 
 @pytest.fixture
-def create_test_decision():
+def create_test_decision(create_test_classification, create_test_preference):
     """Factory fixture to create Decision objects for testing."""
-    from dataclasses import dataclass
-    from enum import Enum
+    # Import real Action and Decision from decision_engine
+    try:
+        from decision_engine import Action, Decision
+    except ImportError:
+        # Fallback for when imports fail
+        from dataclasses import dataclass
+        from enum import Enum
 
-    class Action(Enum):
-        INVOKE = "invoke"
-        ASK = "ask"
-        SKIP = "skip"
+        class Action(Enum):
+            INVOKE = "invoke"
+            ASK = "ask"
+            SKIP = "skip"
 
-    @dataclass
-    class Decision:
-        action: Action
-        reason: str
-        classification: Any
-        preference: Any
+        @dataclass
+        class Decision:
+            action: Action
+            reason: str
+            classification: Any
+            preference: Any
 
     def _create(
         action: str = "skip",
         reason: str = "Test reason",
         classification: Any = None,
         preference: Any = None,
-    ) -> Decision:
+    ):
+        # Create default classification and preference if not provided
+        if classification is None:
+            classification = create_test_classification()
+        if preference is None:
+            preference = create_test_preference()
+
         return Decision(
             action=Action[action.upper()],
             reason=reason,
@@ -175,28 +186,41 @@ def create_test_decision():
 @pytest.fixture
 def create_test_result():
     """Factory fixture to create ExecutionResult objects for testing."""
-    from dataclasses import dataclass
+    # Import real ExecutionResult and Action from action_executor
+    try:
+        from action_executor import ExecutionResult, Action
+    except ImportError:
+        # Fallback for when imports fail
+        from dataclasses import dataclass
+        from enum import Enum
 
-    class Action:
-        INVOKE = "invoke"
-        ASK = "ask"
-        SKIP = "skip"
+        class Action(Enum):
+            INVOKE = "invoke"
+            ASK = "ask"
+            SKIP = "skip"
 
-    @dataclass
-    class ExecutionResult:
-        modified_prompt: str
-        action_taken: str
-        user_choice: Any
-        metadata: dict
+        @dataclass
+        class ExecutionResult:
+            modified_prompt: str
+            action_taken: Any
+            user_choice: Any
+            metadata: dict
 
     def _create(
         modified_prompt: str = "test prompt",
         action_taken: str = "skip",
         user_choice: Any = None,
         metadata: dict = None,
-    ) -> ExecutionResult:
+    ):
         if metadata is None:
             metadata = {}
+
+        # Convert string to Action enum if needed
+        if isinstance(action_taken, str):
+            try:
+                action_taken = Action[action_taken.upper()]
+            except (KeyError, AttributeError):
+                pass
 
         return ExecutionResult(
             modified_prompt=modified_prompt,

@@ -25,7 +25,7 @@ class TestLogger:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Log
         log_auto_ultrathink(
@@ -55,7 +55,7 @@ class TestLogger:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Log
         log_auto_ultrathink(
@@ -87,7 +87,7 @@ class TestLogger:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Log
         log_auto_ultrathink(
@@ -119,7 +119,7 @@ class TestLogger:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Log error
         log_error(
@@ -142,7 +142,7 @@ class TestLogger:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Create error with traceback
         try:
@@ -171,7 +171,7 @@ class TestLogger:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Log multiple times
         for i in range(10):
@@ -231,7 +231,7 @@ class TestMetricsSummary:
         """Test metrics with no log entries."""
         from logger import get_metrics_summary
 
-        monkeypatch.setattr("logger.find_all_log_files", lambda: [])
+        monkeypatch.setattr("logger._find_all_log_files", lambda: [])
 
         metrics = get_metrics_summary()
 
@@ -251,8 +251,8 @@ class TestMetricsSummary:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
-        monkeypatch.setattr("logger.find_all_log_files", lambda: [log_file])
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
+        monkeypatch.setattr("logger._find_all_log_files", lambda: [log_file])
 
         # Log multiple entries with different actions
         for action in ["skip", "invoke", "ask", "skip", "invoke"]:
@@ -290,8 +290,8 @@ class TestMetricsSummary:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
-        monkeypatch.setattr("logger.find_all_log_files", lambda: [log_file])
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
+        monkeypatch.setattr("logger._find_all_log_files", lambda: [log_file])
 
         # Log entries with known confidences
         confidences = [0.80, 0.85, 0.90, 0.95]
@@ -329,8 +329,8 @@ class TestMetricsSummary:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
-        monkeypatch.setattr("logger.find_all_log_files", lambda: [log_file])
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
+        monkeypatch.setattr("logger._find_all_log_files", lambda: [log_file])
 
         # Log entries with known execution times
         times = [50.0, 100.0, 150.0, 200.0]
@@ -361,7 +361,7 @@ class TestLogFilePath:
         from logger import get_log_file_path
 
         # Mock project root
-        monkeypatch.setattr("logger.find_project_root", lambda x: tmp_path)
+        monkeypatch.setattr("logger._find_project_root", lambda x: tmp_path)
 
         # Get log path
         log_path = get_log_file_path("test_session")
@@ -506,7 +506,7 @@ class TestErrorHandling:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Log with None execution_time_ms
         try:
@@ -533,7 +533,7 @@ class TestErrorHandling:
         log_file.write_text("")
         log_file.chmod(0o000)  # No permissions
 
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         try:
             # Should not crash
@@ -567,7 +567,7 @@ class TestPerformance:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Time logging
         start = time.time()
@@ -600,7 +600,7 @@ class TestPerformance:
 
         # Setup
         log_file = tmp_path / "test.jsonl"
-        monkeypatch.setattr("logger.get_log_file_path", lambda x: log_file)
+        monkeypatch.setattr("logger._test_log_file_override", log_file)
 
         # Log 100 entries
         for i in range(100):

@@ -61,14 +61,20 @@ def execute_action(prompt: str, decision: Decision) -> ExecutionResult:
 
 def _execute_skip(prompt: str, decision: Decision) -> ExecutionResult:
     """Execute SKIP action."""
+    # Build metadata with safe defaults for None values
+    metadata = {
+        "reason": decision.reason if decision else "Unknown",
+    }
+
+    # Add classification reason if available
+    if decision and decision.classification:
+        metadata["classification"] = decision.classification.reason
+
     return ExecutionResult(
         modified_prompt=prompt,
         action_taken=Action.SKIP,
         user_choice=None,
-        metadata={
-            "reason": decision.reason,
-            "classification": decision.classification.reason,
-        },
+        metadata=metadata,
     )
 
 
@@ -76,15 +82,21 @@ def _execute_invoke(prompt: str, decision: Decision) -> ExecutionResult:
     """Execute INVOKE action."""
     modified_prompt = _modify_prompt_for_ultrathink(prompt)
 
+    # Build metadata with safe defaults for None values
+    metadata = {
+        "reason": decision.reason if decision else "Unknown",
+    }
+
+    # Add classification details if available
+    if decision and decision.classification:
+        metadata["confidence"] = decision.classification.confidence
+        metadata["patterns"] = decision.classification.matched_patterns
+
     return ExecutionResult(
         modified_prompt=modified_prompt,
         action_taken=Action.INVOKE,
         user_choice=None,
-        metadata={
-            "reason": decision.reason,
-            "confidence": decision.classification.confidence,
-            "patterns": decision.classification.matched_patterns,
-        },
+        metadata=metadata,
     )
 
 
@@ -97,15 +109,21 @@ def _execute_ask(prompt: str, decision: Decision) -> ExecutionResult:
     # Claude will ask user and then process based on response
     modified_prompt = f"{question}\n\nOriginal request: {prompt}"
 
+    # Build metadata with safe defaults for None values
+    metadata = {
+        "reason": decision.reason if decision else "Unknown",
+        "question_injected": True,
+    }
+
+    # Add confidence if available
+    if decision and decision.classification:
+        metadata["confidence"] = decision.classification.confidence
+
     return ExecutionResult(
         modified_prompt=modified_prompt,
         action_taken=Action.ASK,
         user_choice=None,  # Will be determined in conversation
-        metadata={
-            "reason": decision.reason,
-            "confidence": decision.classification.confidence,
-            "question_injected": True,
-        },
+        metadata=metadata,
     )
 
 
@@ -125,14 +143,27 @@ def _modify_prompt_for_ultrathink(prompt: str) -> str:
 
 def _format_user_question(decision: Decision) -> str:
     """Format question for user."""
-    confidence_pct = int(decision.classification.confidence * 100)
-    patterns = ", ".join(decision.classification.matched_patterns)
+    # Safe defaults for None values
+    reason = decision.reason if decision else "Unknown reason"
+    confidence_pct = 0
+    patterns = "unknown"
+
+    # Extract classification details if available
+    if decision and decision.classification:
+        confidence_pct = int(decision.classification.confidence * 100)
+        if decision.classification.matched_patterns:
+            patterns = ", ".join(decision.classification.matched_patterns)
 
     return f"""🤖 **UltraThink Recommendation**
 
-{decision.reason}
+{reason}
 
 - **Classification**: {patterns}
 - **Confidence**: {confidence_pct}%
 
 Would you like to use UltraThink for this request?"""
+
+
+# Public API for testing
+modify_prompt_for_ultrathink = _modify_prompt_for_ultrathink
+format_user_question = _format_user_question

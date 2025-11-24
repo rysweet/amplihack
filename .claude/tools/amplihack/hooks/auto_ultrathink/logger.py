@@ -18,6 +18,9 @@ from decision_engine import Decision
 from preference_manager import AutoUltraThinkPreference
 from request_classifier import Classification
 
+# Test override for log file path (set by tests via monkeypatch)
+_test_log_file_override = None
+
 
 def log_auto_ultrathink(
     session_id: str,
@@ -130,6 +133,11 @@ def _get_log_file_path(session_id: str) -> Path:
     Creates directory structure if needed:
     .claude/runtime/logs/<session_id>/auto_ultrathink.jsonl
     """
+    # Check for test override first
+    global _test_log_file_override
+    if _test_log_file_override is not None:
+        return _test_log_file_override
+
     # Check for environment variable override (for testing)
     log_dir_override = os.getenv("AMPLIHACK_LOG_DIR")
     if log_dir_override:
@@ -296,3 +304,18 @@ def _compute_error_breakdown(error_entries: list[dict]) -> dict:
         breakdown[key] = breakdown.get(key, 0) + 1
 
     return breakdown
+
+
+def _set_test_log_file(path: Optional[Path]) -> None:
+    """Set test override for log file path (for testing only)."""
+    global _test_log_file_override
+    _test_log_file_override = path
+
+
+# Public API for testing
+get_log_file_path = _get_log_file_path
+find_project_root = _find_project_root
+parse_log_file = _parse_log_file
+hash_prompt = _hash_prompt
+find_all_log_files = _find_all_log_files
+set_test_log_file = _set_test_log_file
