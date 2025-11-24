@@ -94,7 +94,7 @@ def create_staging_manifest(
         def should_copy_file(file_path: Path) -> bool:
             """Determine if a file should be copied based on profile filters.
 
-            Simple filename-based matching - checks if filename appears in filtered component paths.
+            Normalizes paths to relative-from-.claude format and does exact matching.
 
             Args:
                 file_path: Path to file being considered for staging
@@ -102,27 +102,33 @@ def create_staging_manifest(
             Returns:
                 True if file should be copied, False otherwise
             """
-            filename = file_path.name
-            file_path_str = str(file_path).replace(os.sep, '/')
+            # Normalize to relative path from .claude
+            if ".claude" in file_path.parts:
+                claude_idx = file_path.parts.index(".claude")
+                rel_path = Path(*file_path.parts[claude_idx:])
+            else:
+                rel_path = file_path
 
-            # For agents, commands, context, skills: check if filename appears in filtered paths
-            # For other files (tools, workflow, etc.): include by default
+            rel_path_str = str(rel_path)
 
-            # Agents
-            if "/agents/" in file_path_str:
-                return any(filename in str(agent_path) for agent_path in filtered.agents)
+            # Convert filtered paths to strings for comparison
+            filtered_agents_str = {str(p) for p in filtered.agents}
+            filtered_commands_str = {str(p) for p in filtered.commands}
+            filtered_context_str = {str(p) for p in filtered.context}
+            filtered_skills_str = {str(p) for p in filtered.skills}
 
-            # Commands
-            if "/commands/" in file_path_str:
-                return any(filename in str(cmd_path) for cmd_path in filtered.commands)
+            # Exact path matching
+            if "agents" in rel_path.parts:
+                return rel_path_str in filtered_agents_str
 
-            # Context
-            if "/context/" in file_path_str:
-                return any(filename in str(ctx_path) for ctx_path in filtered.context)
+            if "commands" in rel_path.parts:
+                return rel_path_str in filtered_commands_str
 
-            # Skills
-            if "/skills/" in file_path_str:
-                return any(filename in str(skill_path) for skill_path in filtered.skills)
+            if "context" in rel_path.parts:
+                return rel_path_str in filtered_context_str
+
+            if "skills" in rel_path.parts:
+                return rel_path_str in filtered_skills_str
 
             # For other files (tools, workflow, etc.), include by default
             return True
