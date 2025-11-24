@@ -150,10 +150,9 @@ cd ~
 # Extract context
 tar xzf context.tar.gz
 
-# Install amplihack if needed
-if ! command -v amplihack &> /dev/null; then
-    python3 -m pip install amplihack --quiet || pipx install amplihack
-fi
+# Install amplihack using uvx (always available on azlin VMs)
+# uvx runs packages without system install - perfect for one-off commands
+export PATH="/home/azureuser/.local/bin:$PATH"
 
 # Export API key
 export ANTHROPIC_API_KEY='{api_key}'
@@ -163,8 +162,8 @@ git init
 git config user.email "remote@amplihack.dev"
 git config user.name "Remote Amplihack"
 
-# Run amplihack command (will create files in current dir)
-amplihack {command} --max-turns {max_turns} -- -p '{escaped_prompt}'
+# Run amplihack via uvx (no installation needed)
+uvx amplihack {command} --max-turns {max_turns} -- -p '{escaped_prompt}'
 """
 
         # Get VM IP if not set
