@@ -6,7 +6,7 @@ Amplihack is a development tool that extends Claude Code with specialized AI age
 
 ## Purpose
 
-Amplihack enables intelligent delegation to specialized agents, workflow orchestration through customizable 13-step processes, autonomous operation via multi-turn agentic loops, continuous learning by capturing patterns, and philosophy enforcement to maintain ruthless simplicity.
+Amplihack enables intelligent delegation to specialized agents, workflow orchestration through customizable multi-step processes, autonomous operation via multi-turn agentic loops, continuous learning by capturing patterns, and philosophy enforcement to maintain ruthless simplicity.
 
 ## Architecture
 
@@ -29,7 +29,7 @@ amplihack/
 .claude/
 ├── agents/           # 29 specialized agents (6 core + 23 specialized)
 ├── commands/         # Slash commands (/ultrathink, /analyze, /fix)
-├── workflow/         # DEFAULT_WORKFLOW.md (customizable 13 steps)
+├── workflow/         # DEFAULT_WORKFLOW.md (customizable workflow)
 ├── tools/            # Session hooks (SessionStart, Stop, PostToolUse, PreCompact)
 ├── context/          # Philosophy, patterns, discoveries
 └── runtime/          # Logs, metrics, analysis
@@ -46,7 +46,7 @@ Characteristics: Single responsibility, clear delegation triggers, parallel exec
 
 ### Workflow Engine
 
-13-step default workflow: Clarify → Issue → Branch → Test → Implement → Simplify → Test → Commit → PR → Review → Feedback → Philosophy → Merge
+Multi-step default workflow: Clarify → Issue → Branch → Test → Implement → Simplify → Test → Commit → PR → Review → Feedback → Philosophy → Merge
 
 Customizable via DEFAULT_WORKFLOW.md, orchestrated by UltraThink, integrates with git/CI/CD/hooks
 

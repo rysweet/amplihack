@@ -31,6 +31,7 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 ## When to Use This Skill
 
 **Investigation Tasks** (use this workflow):
+
 - "Investigate how the authentication system works"
 - "Explain the neo4j memory integration"
 - "Understand why CI is failing consistently"
@@ -38,6 +39,7 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 - "Research what hooks are triggered during session start"
 
 **Development Tasks** (use DEFAULT_WORKFLOW.md instead):
+
 - "Implement OAuth support"
 - "Build a new API endpoint"
 - "Add feature X"
@@ -57,6 +59,7 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 **Purpose**: Define investigation boundaries and success criteria before any exploration.
 
 **Tasks**:
+
 - **FIRST**: Identify explicit user requirements - What specific questions must be answered?
 - **Use** prompt-writer agent to clarify investigation scope
 - **Use** ambiguity agent if questions are unclear
@@ -66,11 +69,13 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 - Estimate investigation depth needed (surface-level vs. deep dive)
 
 **Success Criteria**:
+
 - Clear list of questions to answer
 - Defined scope boundaries
 - Measurable success criteria (e.g., "can explain system flow", "can diagram architecture")
 
 **Deliverables**:
+
 - Investigation scope document with:
   - Core questions to answer
   - Success criteria
@@ -82,6 +87,7 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 **Purpose**: Plan which agents to deploy and what to investigate, preventing inefficient random exploration.
 
 **Tasks**:
+
 - **Use** architect agent to design exploration strategy
 - **Use** patterns agent to check for similar past investigations
 - Identify key areas to explore (code paths, configurations, documentation)
@@ -91,6 +97,7 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 - Plan verification approach (how to test understanding)
 
 **Agent Selection Guidelines**:
+
 - **For code understanding**: analyzer, patterns agents
 - **For system architecture**: architect, api-designer agents
 - **For performance issues**: optimizer, analyzer agents
@@ -98,11 +105,13 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 - **For integration flows**: integration, database agents
 
 **Success Criteria**:
+
 - Clear exploration roadmap
 - List of agents to deploy in Phase 3
 - Prioritized investigation areas
 
 **Deliverables**:
+
 - Exploration strategy document with:
   - Investigation roadmap
   - Agent deployment plan for Phase 3
@@ -116,6 +125,7 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 **CRITICAL**: This phase uses PARALLEL EXECUTION by default.
 
 **Tasks**:
+
 - **Deploy selected agents in PARALLEL** based on Phase 2 strategy
 - **Common parallel patterns**:
   - `[analyzer(module1), analyzer(module2), analyzer(module3)]` - Multiple code areas
@@ -140,11 +150,13 @@ Investigation: "Understand authentication flow"
 ```
 
 **Success Criteria**:
+
 - All planned agents deployed and completed
 - Findings from each exploration collected
 - Connections between findings identified
 
 **Deliverables**:
+
 - Findings report with:
   - Summary from each parallel exploration
   - Code paths and flow diagrams
@@ -157,6 +169,7 @@ Investigation: "Understand authentication flow"
 **Purpose**: Test and validate understanding through practical application.
 
 **Tasks**:
+
 - Create hypotheses based on Phase 3 findings
 - **Design practical tests** to verify understanding:
   - Trace specific code paths manually
@@ -183,11 +196,13 @@ Verification: Examine reflection logs, trace message processing
 ```
 
 **Success Criteria**:
+
 - All hypotheses tested
 - Understanding verified through practical tests
 - Gaps in understanding identified and filled
 
 **Deliverables**:
+
 - Verification report with:
   - Tests performed
   - Results and observations
@@ -199,6 +214,7 @@ Verification: Examine reflection logs, trace message processing
 **Purpose**: Compile findings into coherent explanation that answers original questions.
 
 **Tasks**:
+
 - **Use** reviewer agent to check completeness of findings
 - **Use** patterns agent to identify reusable patterns discovered
 - Synthesize findings from Phases 3-4 into coherent explanation
@@ -217,12 +233,14 @@ Verification: Examine reflection logs, trace message processing
 5. **Remaining Unknowns**: What's still unclear or uncertain
 
 **Success Criteria**:
+
 - All Phase 1 questions answered
 - Explanation is clear and complete
 - Findings supported by evidence from verification
 - Visual aids clarify complex areas
 
 **Deliverables**:
+
 - Investigation report with all 5 synthesis outputs
 - Ready for knowledge capture in Phase 6
 
@@ -231,6 +249,7 @@ Verification: Examine reflection logs, trace message processing
 **Purpose**: Create durable documentation so this investigation never needs to be repeated.
 
 **Tasks**:
+
 - **Update .claude/context/DISCOVERIES.md** with key insights
 - **Update .claude/context/PATTERNS.md** if reusable patterns found
 - Create or update relevant documentation files
@@ -246,6 +265,7 @@ Verification: Examine reflection logs, trace message processing
 
 **Context**: What was investigated and why
 **Key Findings**:
+
 - Main insight 1
 - Main insight 2
   - **Supporting Evidence**: Links to code, logs, or verification tests
@@ -254,12 +274,14 @@ Verification: Examine reflection logs, trace message processing
 ```
 
 **Success Criteria**:
+
 - DISCOVERIES.md updated with investigation results
 - Relevant documentation files updated
 - Knowledge is discoverable by future investigators
 - No information loss
 
 **Deliverables**:
+
 - Updated DISCOVERIES.md
 - Updated PATTERNS.md (if applicable)
 - Updated project documentation
@@ -292,6 +314,7 @@ Phase 2: Development
 ```
 
 **When to Transition**:
+
 - Investigation reveals implementation is needed
 - User explicitly requested both investigation + development
 - Follow-up work identified during knowledge capture
@@ -322,6 +345,7 @@ Phase 2: Development
 ### Similarities (Structural Consistency)
 
 Both workflows share core principles:
+
 - Explicit phases with clear deliverables
 - Agent-driven execution at each phase
 - Quality gates preventing premature progression
@@ -333,7 +357,7 @@ Both workflows share core principles:
 | Aspect             | Investigation Workflow     | DEFAULT_WORKFLOW.md      |
 | ------------------ | -------------------------- | ------------------------ |
 | **Goal**           | Understanding              | Implementation           |
-| **Phases**         | 6 phases                   | 15 steps                 |
+| **Phases**         | 6 phases                   | Multi-step workflow      |
 | **Execution**      | Exploration-first          | Implementation-first     |
 | **Parallel Focus** | Phase 3 (Deep Dives)       | Various steps            |
 | **Testing**        | Understanding verification | Code validation          |
@@ -396,6 +420,7 @@ Track these metrics to validate workflow effectiveness:
 - **This workflow optimizes for understanding, not implementation**
 
 When in doubt about investigation vs. development:
+
 - **Investigation**: "I need to understand X"
 - **Development**: "I need to build/fix/implement X"
 

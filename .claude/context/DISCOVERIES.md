@@ -526,7 +526,7 @@ priority in session context to ensure all agents receive them.
 
 ### Integration Success
 
-**Workflow Integration**: Seamlessly integrated with existing 14-step workflow:
+**Workflow Integration**: Seamlessly integrated with existing multi-step workflow:
 
 - Step 1: Automatic requirement extraction
 - Steps 4-5: All agents receive requirements
@@ -1383,7 +1383,7 @@ Successfully executed 13 parallel full-workflow tasks simultaneously, converting
 
 ### Discovery
 
-**Parallel Execution at Scale Works**: Successfully managed 13 concurrent feature implementations (issues #1089-#1101) using worktree isolation, each following the complete 13-step workflow from planning through PR creation.
+**Parallel Execution at Scale Works**: Successfully managed 13 concurrent feature implementations (issues #1089-#1101) using worktree isolation, each following the complete multi-step workflow from planning through PR creation.
 
 **Key Metrics:**
 

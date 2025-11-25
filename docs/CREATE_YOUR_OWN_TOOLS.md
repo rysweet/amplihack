@@ -402,7 +402,7 @@ To deepen your understanding and improve your tool-creation skills, make sure to
 - **THIS_IS_THE_WAY.md** - Effective strategies and patterns for AI-agent development
 - **DISCOVERIES.md** - Non-obvious problems and solutions from real development
 - **PHILOSOPHY.md** - Core principles including the Brick Philosophy and zero-BS implementation
-- **DEFAULT_WORKFLOW.md** - The 15-step workflow for development tasks
+- **DEFAULT_WORKFLOW.md** - The multi-step workflow for development tasks
 - **Existing Agents** - Browse `.claude/agents/` for examples of specialized agents
 
 ### Tool Creation Checklist
