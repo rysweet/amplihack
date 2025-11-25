@@ -27,62 +27,39 @@ invokes:
 ## Purpose
 
 Deep analysis mode for complex tasks. Invokes workflow skills (default-workflow or investigation-workflow) based on task type, with automatic fallback to markdown workflows if skills are not yet available.
+You MUST use one of the workflow skills - either default-workflow or investigation-workflow or both or its possible the user could pass in additional workflow skills like cascade or debate. 
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
 When this command is invoked, you MUST:
+Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
 
 1. **First, detect task type** - Check if task is investigation or development
    - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
    - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
    - **If both types detected**: Use hybrid workflow (investigation first, then development)
-   - If only investigation keywords found: Use INVESTIGATION_WORKFLOW.md
-   - If only development keywords found: Use DEFAULT_WORKFLOW.md
-2. **Invoke the appropriate workflow skill** using the Skill tool:
-   - Investigation: `Skill(skill="investigation-workflow")`
+   - If only investigation keywords found: Use @.claude/workflow/INVESTIGATION_WORKFLOW.md
+   - If only development keywords found: Use @.claude/workflow/DEFAULT_WORKFLOW.md
+2. Mandatory - not doing this wil require rework **Invoke the appropriate workflow skill** using the Skill tool:
+   - Investigation: Skill(skill="investigation-workflow")`
    - Development: `Skill(skill="default-workflow")`
    - **FALLBACK**: If skill invocation fails (skill not found), fall back to reading markdown workflows:
-     - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
-     - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
-3. **Create a comprehensive todo list** using TodoWrite that includes all workflow steps/phases
-4. **Execute each step systematically**, marking todos as in_progress and completed
-5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
-6. **MANDATORY: Enforce Steps 11-12** (Code Review) for all development workflows:
-   - After Step 10, MUST invoke reviewer agent
-   - After Step 11, MUST implement feedback (Step 12)
-   - Do NOT mark workflow complete without Steps 11-12
-7. **Track decisions** by creating `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
-8. **End with cleanup agent** (development) or knowledge capture (investigation)
+     - Investigation: @.claude/workflow/INVESTIGATION_WORKFLOW.md
+     - Development: @.claude/workflow/DEFAULT_WORKFLOW.md
+3. ALWAYS **Create a comprehensive todo list** using TodoWrite tool that includes all workflow steps/phases
+4. ALWAYS **Execute each step systematically**, marking todos as in_progress and completed
+   
+THERE IS NO VALUE in SKIPPING STEPS - DO NOT TAKE SHORTCUTS. 
 
-## PROMPT-BASED WORKFLOW EXECUTION
-
-Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
-
-### Step-by-Step Execution:
-
-1. **Initialize**:
-   - Detect task type (investigation vs. development)
-   - Select appropriate workflow:
-     - Investigation: investigation-workflow skill
-     - Development: default-workflow skill
-   - Inform user which workflow is being used
-   - Try to invoke the selected workflow skill using Skill tool
-   - **FALLBACK**: If skill not found, read the markdown workflow file using Read tool:
-     - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
-     - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
-   - Create TodoWrite list with all workflow steps/phases
-   - Create session directory for decision logging
-
-2. **For Each Workflow Step**:
+- **For Each Workflow Step**:
    - Mark step as in_progress in TodoWrite
+   - Break down the step into smaller tasks if needed
    - Read the step requirements from workflow
    - Invoke specified agents via Task tool
    - Log decisions made
    - Mark step as completed
-   - **MANDATORY ENFORCEMENT**: After Step 10 completion, MUST proceed to Steps 11-12 (Code Review)
-   - **Steps 11-12 are NOT optional** - No workflow can be marked complete without code review
-
-3. **Agent Invocation Pattern**:
+   - No steps are optional - all steps must be followed in sequence. 
+- **Agent Invocation Pattern**:
 
    ```
    For step requiring "**Use** architect agent":
@@ -91,50 +68,34 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
    For step requiring multiple agents:
    → Invoke multiple Task calls in parallel
    ```
+### Agent Orchestration
 
-4. **Decision Logging**:
-   After each major decision, append to DECISIONS.md:
-   - What was decided
-   - Why this approach
-   - Alternatives considered
-
-5. **Mandatory Cleanup**:
-   Always end with Task(subagent_type="cleanup")
-
-## ACTUAL IMPLEMENTATION PROMPT
-
-When `/ultrathink` is called, execute this:
-
-## Agent Orchestration
-
-### When to Use Sequential
+#### When to Use Sequential
 
 - Architecture → Implementation → Review
 - Each step depends on previous
 - Building progressive context
 
-### When to Use Parallel
+#### When to Use Parallel
 
 - Multiple independent analyses
 - Different perspectives needed
 - Gathering diverse solutions
 
-## When to Use UltraThink
+- **Decision Logging**:
 
-### Use UltraThink When:
+   After each major decision, append to DECISIONS.md:
+   - What was decided
+   - Why this approach
+   - Alternatives considered
 
-- Task complexity requires deep multi-agent analysis
-- Architecture decisions need careful decomposition
-- Requirements are vague and need exploration
-- Multiple solution paths need evaluation
-- Cross-cutting concerns need coordination
-
-### Follow Workflow Directly When:
-
-- Requirements are clear and straightforward
-- Solution approach is well-defined
-- Standard implementation patterns apply
-- Single agent can handle the task
+- **Mandatory Cleanup**:
+   Always end with Task(subagent_type="cleanup")
+  
+5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
+6. **MANDATORY: Enforce all steps. 
+7. **Track decisions** by creating and writing important decisions to `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
+8. **End with cleanup agent** (development) or knowledge capture (investigation)
 
 ## Task Management
 
@@ -215,63 +176,9 @@ Some development tasks require investigation first (Step 4 of DEFAULT_WORKFLOW.m
 
 In these cases, pause development workflow at Step 4, run full INVESTIGATION_WORKFLOW.md, then resume development with the knowledge gained.
 
-## Mandatory Code Review (Steps 11-12)
+# ALWAYS PICK A WORKFLOW OR FOLLOW THE ONE THE USER TOLD YOU TO USE
 
-**CRITICAL**: Every development workflow MUST include code review before completion.
-
-**MANDATORY ENFORCEMENT**:
-
-- **After Step 10**: MUST invoke reviewer agent for code review
-- **After Step 11**: MUST implement review feedback (Step 12)
-- **Do NOT mark workflow complete** until Steps 11-12 are done
-- **No PR should be merged without code review**
-
-The reviewer agent (Step 11):
-
-- Reviews code for philosophy compliance (ruthless simplicity)
-- Checks module boundaries and contracts
-- Identifies code smells and anti-patterns
-- Validates test coverage and quality
-- Provides actionable feedback for improvements
-
-Feedback Implementation (Step 12):
-
-- Address ALL review feedback before proceeding
-- Make required changes to meet quality standards
-- Re-run tests after implementing feedback
-- Update documentation if needed
-- Verify philosophy compliance is achieved
-
-**Review Trigger**: Automatically invoke reviewer agent when:
-
-- Step 10 (implementation) is completed
-- Code changes are ready for review
-- Before creating pull request
-- NEVER skip - Steps 11-12 are mandatory workflow steps
-
-**Reminder**: Steps 11-12 are NOT optional. Code quality and philosophy compliance require systematic review.
-
-## Mandatory Cleanup Phase
-
-**CRITICAL**: Every ultrathink task MUST end with cleanup agent invocation.
-
-**IMPORTANT**: Cleanup happens AFTER mandatory code review (Steps 11-12). Order: Step 10 → Step 11 (Review) → Step 12 (Implement Feedback) → Cleanup.
-
-The cleanup agent:
-
-- Reviews git status and file changes
-- Removes temporary artifacts and planning documents
-- Ensures philosophy compliance (ruthless simplicity)
-- Provides final report on codebase state
-- Guards against technical debt accumulation
-
-**Cleanup Trigger**: Automatically invoke cleanup agent when:
-
-- All todo items are completed (including Steps 11-12)
-- Code review feedback has been implemented
-- Main task objectives are achieved
-- Before reporting task completion to user
-
+YOU MAY NOT SKIP STEPS in the workflow. 
 UltraThink enhances the workflow with deep multi-agent analysis while respecting user customizations.
 
 Remember: Ultra-thinking means thorough analysis before action, followed by ruthless cleanup.
