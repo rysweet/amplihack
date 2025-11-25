@@ -9,8 +9,8 @@
 #     "command": "$CLAUDE_PROJECT_DIR/.claude/tools/statusline.sh"
 #   }
 
-# Read JSON from Claude Code and normalize (remove newlines for reliable parsing)
-input=$(cat | tr -d '\n\r')
+# Read JSON from Claude Code
+input=$(cat)
 
 # Extract values without jq (portable)
 extract_json() {
