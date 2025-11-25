@@ -42,7 +42,7 @@ class Executor:
         """
         self.vm = vm
         self.timeout_seconds = timeout_minutes * 60
-        self.remote_workspace = "~/amplihack-workspace"  # Use ~/ for azureuser's home
+        self.remote_workspace = "/home/amplihack/workspace"
 
     def transfer_context(self, archive_path: Path) -> bool:
         """Transfer context archive to remote VM.
@@ -67,11 +67,10 @@ class Executor:
         # Remote destination (azlin uses session:path notation with ~/ for home dir)
         remote_path = f"{self.vm.name}:~/context.tar.gz"
 
-        # azlin cp only accepts relative paths from ~/
-        # So copy archive to ~/context.tar.gz first, then transfer
-        import shutil
-        home_archive = Path.home() / "context.tar.gz"
-        shutil.copy2(archive_path, home_archive)
+        # Transfer with retry
+        # Note: azlin cp requires relative paths, so we need to run from archive directory
+        archive_dir = archive_path.parent
+        archive_name = archive_path.name
 
         max_retries = 2
         for attempt in range(max_retries):
@@ -79,7 +78,8 @@ class Executor:
                 start_time = time.time()
 
                 subprocess.run(
-                    ["azlin", "cp", "context.tar.gz", remote_path],
+                    ["azlin", "cp", archive_name, remote_path],
+                    cwd=str(archive_dir),  # Run from archive directory
                     capture_output=True,
                     text=True,
                     timeout=600,  # 10 minutes for transfer
@@ -108,6 +108,9 @@ class Executor:
                     f"Failed to transfer file: {e.stderr}",
                     context={"vm_name": self.vm.name, "error": e.stderr},
                 )
+
+        # Should never reach here, but satisfy linter
+        raise TransferError("Transfer failed after all retries", context={"vm_name": self.vm.name})
 
     def execute_remote(
         self, command: str, prompt: str, max_turns: int = 10, api_key: Optional[str] = None
@@ -142,56 +145,38 @@ class Executor:
         escaped_prompt = prompt.replace("'", "'\"'\"'")
 
         # Build remote command
-        # Simplest possible approach: run amplihack from ~ with context
+        # First extract and setup context, then run amplihack
+        # Note: azlin cp puts files in ~/, so extract from there
         setup_and_run = f"""
-set -ex
+set -e
 cd ~
-
-# Extract context
 tar xzf context.tar.gz
 
-# Install amplihack using uvx (always available on azlin VMs)
-# uvx runs packages without system install - perfect for one-off commands
-export PATH="/home/azureuser/.local/bin:$PATH"
+# Setup workspace
+mkdir -p {self.remote_workspace}
+cd {self.remote_workspace}
+
+# Restore git repository
+git clone ~/repo.bundle .
+cp -r ~/.claude .
+
+# Install amplihack from the transferred repository
+# This ensures we run the exact same version as locally
+pip install -e . --quiet
 
 # Export API key
 export ANTHROPIC_API_KEY='{api_key}'
 
-# Initialize minimal git repo for amplihack to work
-git init
-git config user.email "remote@amplihack.dev"
-git config user.name "Remote Amplihack"
-
-# Run amplihack in auto mode (autonomous multi-turn execution)
-# Use uvx to run from git
-export CLAUDE_PROJECT_DIR=~/
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch --auto --max-turns {max_turns} -- -p '{escaped_prompt}'
+# Run amplihack command
+amplihack claude --{command} --max-turns {max_turns} -- -p '{escaped_prompt}'
 """
 
-        # Get VM IP if not set
-        vm_ip = self.vm.public_ip
-        if not vm_ip:
-            # Query Azure for IP
-            try:
-                result = subprocess.run(
-                    ["az", "vm", "show", "-d", "--name", self.vm.name,
-                     "--resource-group", "rysweet-linux-vm-pool",
-                     "--query", "publicIps", "-o", "tsv"],
-                    capture_output=True, text=True, timeout=30
-                )
-                vm_ip = result.stdout.strip()
-            except Exception:
-                vm_ip = self.vm.name  # Fallback to name (azlin will resolve)
-
-        # Execute with timeout using direct SSH
+        # Execute with timeout
         start_time = time.time()
 
         try:
             result = subprocess.run(
-                ["ssh", "-i", "/home/azureuser/.ssh/azlin_key",
-                 "-o", "StrictHostKeyChecking=no",
-                 f"azureuser@{vm_ip}",
-                 setup_and_run],
+                ["azlin", "connect", self.vm.name, setup_and_run],
                 capture_output=True,
                 text=True,
                 timeout=self.timeout_seconds,
@@ -224,9 +209,9 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
                     timeout=30,
                     capture_output=True,
                 )
-            except (subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+            except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
                 # Non-fatal: process may already be terminated or VM unreachable
-                print(f"Warning: Could not terminate remote process: {e}")
+                pass
 
             return ExecutionResult(
                 exit_code=-1,
@@ -267,7 +252,7 @@ fi
 
         try:
             # Create archive
-            result = subprocess.run(
+            subprocess.run(
                 ["azlin", "connect", self.vm.name, create_archive],
                 capture_output=True,
                 text=True,
@@ -330,7 +315,7 @@ echo "Bundle created"
 
         try:
             # Create bundle
-            result = subprocess.run(
+            subprocess.run(
                 ["azlin", "connect", self.vm.name, create_bundle],
                 capture_output=True,
                 text=True,
