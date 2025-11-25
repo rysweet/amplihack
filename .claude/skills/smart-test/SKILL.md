@@ -399,7 +399,7 @@ Recommend: Quarantine these tests or fix root cause.
 
 ## Limitations
 
-- Python-only import analysis (JS/TS support planned)
+- Python-only import analysis
 - Single-level transitive analysis (deeper chains excluded)
 - Reliability data requires initial seeding from test runs
 - Does not detect dynamic imports or string-based imports
