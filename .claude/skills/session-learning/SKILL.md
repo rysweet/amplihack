@@ -132,7 +132,7 @@ For each learning category:
 
 1. Load learnings from YAML
 2. Calculate keyword overlap with task
-3. Rank by (overlap*score * confidence \_ recency_weight)
+3. Rank by `overlap_score * confidence * recency_weight`
 4. Select top 3 most relevant learnings
 
 ### Step 3: Inject Context
