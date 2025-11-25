@@ -360,11 +360,10 @@ flowchart TD
 ```
 ````
 
-```
-
 ## Success Criteria
 
 A good visualization:
+
 - [ ] Shows all current modules
 - [ ] Reflects actual import relationships
 - [ ] Uses appropriate diagram type
@@ -375,9 +374,9 @@ A good visualization:
 ## Remember
 
 This skill automates what developers often forget:
+
 - Keeping diagrams in sync with code
 - Documenting architecture changes
 - Understanding dependency impacts
 
 The goal is diagrams that stay fresh automatically.
-```
