@@ -144,20 +144,22 @@ def validate_bash_command(command: str, context: Dict[str, Any]) -> Dict[str, An
 
 
 def process_tool_use_request(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """Process pre-tool-use validation"""
+    """Process pre-tool-use validation.
+
+    Returns Claude Code hook protocol format:
+    - {} for allow (default behavior)
+    - {"permissionDecision": "deny", "message": "..."} for block
+    """
     try:
         # Only validate Bash tool usage
         if tool_name != "Bash":
-            return {
-                "status": "success",
-                "action": "allow",
-                "message": f"No XPIA validation needed for tool: {tool_name}",
-            }
+            # Return empty dict to allow - this is the correct Claude Code protocol
+            return {}
 
         # Extract command from parameters
         command = parameters.get("command", "")
         if not command:
-            return {"status": "success", "action": "allow", "message": "No command to validate"}
+            return {}  # Allow - no command to validate
 
         # Validate the command
         validation_result = validate_bash_command(command, parameters)
@@ -171,20 +173,18 @@ def process_tool_use_request(tool_name: str, parameters: Dict[str, Any]) -> Dict
         }
         log_security_event("pre_tool_validation", log_data)
 
-        # Determine action
+        # Determine action using correct Claude Code hook protocol
         if validation_result["should_block"]:
+            # CORRECT FORMAT: Use permissionDecision for PreToolUse hooks
             return {
-                "status": "blocked",
-                "action": "deny",
-                "message": f"Command blocked due to security risk: {validation_result['risk_level']}",
-                "validation": validation_result,
+                "permissionDecision": "deny",
+                "message": f"🚫 XPIA Security Block: Command blocked due to security risk ({validation_result['risk_level']})\n"
+                f"Threats detected: {validation_result.get('threats', [])}\n"
+                f"Recommendations: {validation_result.get('recommendations', [])}",
             }
-        return {
-            "status": "success",
-            "action": "allow",
-            "message": f"Command validated (risk: {validation_result['risk_level']})",
-            "validation": validation_result,
-        }
+
+        # Allow - return empty dict (correct Claude Code protocol)
+        return {}
 
     except Exception as e:
         # Log error but allow command execution
@@ -192,20 +192,21 @@ def process_tool_use_request(tool_name: str, parameters: Dict[str, Any]) -> Dict
             "pre_tool_error",
             {"error": str(e), "tool": tool_name, "parameters": str(parameters)[:200]},
         )
-
-        return {
-            "status": "error",
-            "action": "allow",
-            "message": f"XPIA validation error: {e}",
-            "error": str(e),
-        }
+        # Return empty dict to allow on error (fail-open)
+        return {}
 
 
 def main():
-    """Main hook execution"""
+    """Main hook execution.
+
+    Claude Code PreToolUse hook protocol:
+    - Input: JSON with toolUse.name and toolUse.input
+    - Output: {} to allow, {"permissionDecision": "deny", "message": "..."} to block
+    - Exit 0 always (hook doesn't control exit code, output controls behavior)
+    """
     try:
         # Parse input from Claude Code
-        # Input format: JSON with tool name and parameters
+        # Input format: JSON with toolUse object containing name and input
         input_data = {}
         if len(sys.argv) > 1:
             # Command line argument
@@ -216,30 +217,24 @@ def main():
             if input_line:
                 input_data = json.loads(input_line)
 
-        tool_name = input_data.get("tool", "unknown")
-        parameters = input_data.get("parameters", {})
+        # Extract tool information using correct Claude Code protocol
+        tool_use = input_data.get("toolUse", {})
+        tool_name = tool_use.get("name", "unknown")
+        parameters = tool_use.get("input", {})
 
         # Process the validation
         result = process_tool_use_request(tool_name, parameters)
 
-        # Output result
+        # Output result using correct protocol
         print(json.dumps(result))
 
-        # Exit based on result
-        if result.get("action") == "deny":
-            sys.exit(1)  # Block execution
-        else:
-            sys.exit(0)  # Allow execution
+        # Always exit 0 - the output JSON controls behavior, not exit code
+        sys.exit(0)
 
-    except Exception as e:
-        # Output error but don't block tool execution
-        error_result = {
-            "status": "error",
-            "action": "allow",
-            "message": f"XPIA pre-tool hook failed: {e}",
-            "error": str(e),
-        }
-        print(json.dumps(error_result))
+    except Exception:
+        # Output empty dict to allow on error (fail-open)
+        # This follows Claude Code protocol for graceful degradation
+        print(json.dumps({}))
         sys.exit(0)
 
 
