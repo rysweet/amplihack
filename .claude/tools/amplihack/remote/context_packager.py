@@ -205,8 +205,11 @@ class ContextPackager:
 
         return bundle_path
 
-    def package(self) -> Path:
+    def package(self, skip_secret_scan: bool = False) -> Path:
         """Create complete context archive.
+
+        Args:
+            skip_secret_scan: Skip secret scanning (for development with ephemeral VMs)
 
         Returns:
             Path to context.tar.gz archive
@@ -214,24 +217,26 @@ class ContextPackager:
         Raises:
             PackagingError: If packaging fails or secrets detected
         """
-        # Step 1: Scan for secrets
-        secrets = self.scan_secrets()
-        if secrets:
-            error_details = "\n".join(
-                f"  - {s.file_path}:{s.line_number} ({s.pattern_name}): {s.line_content}"
-                for s in secrets[:10]  # Show first 10
-            )
-            if len(secrets) > 10:
-                error_details += f"\n  ... and {len(secrets) - 10} more"
+        # Step 1: Scan for secrets (unless skipped)
+        if not skip_secret_scan:
+            secrets = self.scan_secrets()
+            if secrets:
+                error_details = "\n".join(
+                    f"  - {s.file_path}:{s.line_number} ({s.pattern_name}): {s.line_content}"
+                    for s in secrets[:10]  # Show first 10
+                )
+                if len(secrets) > 10:
+                    error_details += f"\n  ... and {len(secrets) - 10} more"
 
-            raise PackagingError(
-                f"Detected {len(secrets)} potential secret(s) in repository:\n{error_details}\n\n"
-                "Action required:\n"
-                "  1. Remove hardcoded secrets from source files\n"
-                "  2. Add secrets to .env file (automatically excluded)\n"
-                "  3. Retry remote execution\n",
-                context={"secret_count": len(secrets)},
-            )
+                raise PackagingError(
+                    f"Detected {len(secrets)} potential secret(s) in repository:\n{error_details}\n\n"
+                    "Action required:\n"
+                    "  1. Remove hardcoded secrets from source files\n"
+                    "  2. Add secrets to .env file (automatically excluded)\n"
+                    "  3. Retry remote execution\n"
+                    "  4. Or use --skip-secret-scan flag (ephemeral VMs only)\n",
+                    context={"secret_count": len(secrets)},
+                )
 
         # Step 2: Create git bundle
         bundle_path = self.create_bundle()

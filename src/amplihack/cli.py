@@ -491,6 +491,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     remote_parser.add_argument("--region", help="Azure region")
     remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM after execution")
     remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout in minutes")
+    remote_parser.add_argument(
+        "--skip-secret-scan",
+        action="store_true",
+        help="Skip secret scanning (use with caution - for development with ephemeral VMs)",
+    )
 
     # Goal Agent Generator command
     new_parser = subparsers.add_parser(
@@ -859,34 +864,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("Error: .claude directory not found", file=sys.stderr)
             return 1
 
-        # Use importlib for dynamic import to satisfy type checkers
-        import importlib.util
-
-        remote_cli_path = claude_dir / "tools" / "amplihack" / "remote" / "cli.py"
-        remote_orch_path = claude_dir / "tools" / "amplihack" / "remote" / "orchestrator.py"
+        # Add remote module to path for import
+        # Using sys.path approach - simpler and works with relative imports
+        remote_tools_path = claude_dir / "tools" / "amplihack"
+        if remote_tools_path not in [Path(p) for p in sys.path]:
+            sys.path.insert(0, str(remote_tools_path))
 
         try:
-            # Load remote.cli module
-            spec_cli = importlib.util.spec_from_file_location("remote.cli", remote_cli_path)
-            if spec_cli is None or spec_cli.loader is None:
-                print("Error: Could not load remote.cli module", file=sys.stderr)
-                return 1
-            remote_cli = importlib.util.module_from_spec(spec_cli)
-            spec_cli.loader.exec_module(remote_cli)
-
-            # Load remote.orchestrator module
-            spec_orch = importlib.util.spec_from_file_location(
-                "remote.orchestrator", remote_orch_path
-            )
-            if spec_orch is None or spec_orch.loader is None:
-                print("Error: Could not load remote.orchestrator module", file=sys.stderr)
-                return 1
-            remote_orch = importlib.util.module_from_spec(spec_orch)
-            spec_orch.loader.exec_module(remote_orch)
-
-            # Get the required functions/classes
-            execute_remote_workflow = remote_cli.execute_remote_workflow
-            VMOptions = remote_orch.VMOptions
+            # Import using standard import (works because we added to sys.path)
+            # pyright: ignore[reportMissingImports] - dynamic path, module exists at runtime
+            from remote.cli import execute_remote_workflow  # type: ignore[import-not-found]
+            from remote.orchestrator import VMOptions  # type: ignore[import-not-found]
 
             # Map size shortcuts to Azure VM sizes
             size_mapping = {
@@ -912,10 +900,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                 max_turns=args.max_turns,
                 vm_options=vm_options,
                 timeout=args.timeout,
+                skip_secret_scan=args.skip_secret_scan,
             )
             return 0
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
             return 1
 
     else:
