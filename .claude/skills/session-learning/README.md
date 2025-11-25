@@ -130,7 +130,7 @@ Simple keyword overlap scoring:
 1. Extract keywords from your task description
 2. Compare against learning keywords
 3. Calculate overlap score (0-1)
-4. Rank by: overlap _ confidence _ recency
+4. Rank by: overlap \* confidence \* recency
 5. Return top 3 matches
 
 No complex ML - just effective text matching.
