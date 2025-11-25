@@ -495,6 +495,10 @@ class PowerSteeringChecker:
             # 7. Make decision based on first/subsequent stop
             if analysis.has_blockers:
                 # Actual failures - always block
+                # Mark results shown on first stop to prevent race condition
+                if is_first_stop:
+                    self._mark_results_shown(session_id)
+
                 prompt = self._generate_continuation_prompt(analysis)
 
                 # Save redirect record for session reflection
@@ -518,7 +522,8 @@ class PowerSteeringChecker:
             # All checks passed
             if is_first_stop:
                 # FIRST STOP: Block to show results (visibility feature)
-                # stop.py will display all results and then call _mark_results_shown()
+                # Mark results shown immediately to prevent race condition
+                self._mark_results_shown(session_id)
                 self._log("First stop - blocking to display all results for visibility", "INFO")
                 self._emit_progress(
                     progress_callback,

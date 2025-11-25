@@ -131,6 +131,7 @@ class StopHook(HookProcessor):
                         # Check if this is first stop (visibility feature)
                         if ps_result.is_first_stop and ps_result.analysis:
                             # FIRST STOP: Display all results for visibility
+                            # Note: Semaphore marking already done in checker to prevent race condition
                             self.log(
                                 "First stop - displaying all consideration results for visibility"
                             )
@@ -139,8 +140,6 @@ class StopHook(HookProcessor):
                                 considerations=ps_checker.considerations,
                                 is_first_stop=True,
                             )
-                            # Mark results as shown so next stop won't block (if all pass)
-                            ps_checker._mark_results_shown(session_id)
                             self.save_metric("power_steering_first_stop_visibility", 1)
                         else:
                             # Subsequent stop with failures OR first stop with failures

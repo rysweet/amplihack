@@ -245,7 +245,7 @@ class ProgressTracker:
     ) -> None:
         """Display all consideration results for visibility (first stop feature).
 
-        Shows all 22 considerations grouped by category with ✓/✗ indicators.
+        Shows all considerations grouped by category with ✓/✗ indicators.
 
         Args:
             analysis: ConsiderationAnalysis with results
