@@ -241,14 +241,21 @@ class Neo4jContainerManager:
                 logger.info("○ Container %s is stopped, restarting...", self.config.container_name)
                 if not self._restart_container_only():
                     return False
-                # Wait for container to be ready before detecting credentials
-                import time
+                # Wait for Docker container to initialize before credential detection.
+                # 2 seconds is empirically determined: allows Docker to complete startup
+                # and populate environment variables accessible via `docker inspect`.
+                # Shorter waits cause intermittent credential detection failures on
+                # slower systems or under load.
                 time.sleep(2)
+                # Update status to reflect the restart
+                status = ContainerStatus.RUNNING
 
             elif status == ContainerStatus.UNHEALTHY:
                 logger.warning("⚠ Container %s is unhealthy, attempting restart...", self.config.container_name)
                 if not self._handle_unhealthy_container():
                     return False
+                # Container is now running after unhealthy recovery
+                status = ContainerStatus.RUNNING
 
             # Step 4: NOW detect credentials (container is running)
             logger.info("Detecting credentials from running container...")
@@ -263,7 +270,8 @@ class Neo4jContainerManager:
                 logger.info("No credentials detected, using environment password")
 
             # Step 6: Final status check - container should be running now
-            if status == ContainerStatus.RUNNING or self.get_status() == ContainerStatus.RUNNING:
+            # Note: status was updated in Step 3 if container was restarted
+            if status == ContainerStatus.RUNNING:
                 logger.info("✓ Container %s is running", self.config.container_name)
                 if wait_for_ready:
                     return self.wait_for_healthy()
