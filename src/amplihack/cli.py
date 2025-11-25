@@ -241,35 +241,10 @@ def handle_auto_mode(
     # Check if UI mode is enabled
     ui_mode = getattr(args, "ui", False)
 
-    # Determine timeout based on flags and model detection
-    no_timeout = getattr(args, "no_timeout", False)
-    explicit_timeout = getattr(args, "query_timeout_minutes", None)
+    # Extract timeout from args
+    query_timeout = getattr(args, "query_timeout_minutes", 5.0)
 
-    if no_timeout:
-        # Effectively unlimited (24 hours)
-        query_timeout = 1440.0
-    elif explicit_timeout is not None:
-        # User explicitly set timeout
-        query_timeout = explicit_timeout
-    else:
-        # Auto-detect based on model
-        # Check for --model in passthrough args
-        model_name = ""
-        if cmd_args and "--model" in cmd_args:
-            idx = cmd_args.index("--model")
-            if idx + 1 < len(cmd_args):
-                model_name = cmd_args[idx + 1].lower()
-
-        # Opus models need longer timeout (more thorough per-turn work)
-        if "opus" in model_name:
-            query_timeout = 60.0  # 60 minutes for Opus
-            print("[AUTO] Detected Opus model - using 60 minute per-turn timeout")
-        else:
-            query_timeout = 30.0  # 30 minutes default (was 5)
-
-    auto = AutoMode(
-        sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout
-    )
+    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout)
     return auto.run()
 
 
@@ -378,18 +353,13 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--query-timeout-minutes",
         type=float,
-        default=None,  # None means auto-detect based on model
+        default=5.0,
         metavar="MINUTES",
         help=(
-            "Timeout for each SDK query in minutes. "
-            "Defaults: 30 min (sonnet/haiku), 60 min (opus). "
-            "Use --no-timeout for unlimited."
+            "Timeout for each SDK query in minutes (default: 5.0). "
+            "Prevents indefinite hangs in complex sessions. "
+            "Use higher values (10-15) for very long-running operations."
         ),
-    )
-    parser.add_argument(
-        "--no-timeout",
-        action="store_true",
-        help="Disable per-turn timeout entirely. Useful for very long-running Opus tasks.",
     )
 
 
@@ -504,7 +474,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--profile",
         type=str,
         default=None,
-        help="Profile URI to use for this launch (overrides configured profile)",
+        help="Profile URI to use for this launch (overrides configured profile)"
     )
 
     # Claude command (alias for launch)
@@ -517,7 +487,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--profile",
         type=str,
         default=None,
-        help="Profile URI to use for this launch (overrides configured profile)",
+        help="Profile URI to use for this launch (overrides configured profile)"
     )
 
     # Copilot command
@@ -577,7 +547,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--profile",
         type=str,
         default=None,
-        help="Profile URI to use for this install (overrides configured profile)",
+        help="Profile URI to use for this install (overrides configured profile)"
     )
 
     return parser
@@ -640,7 +610,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Find the amplihack package location
         import amplihack
 
-        from . import ESSENTIAL_DIRS, copytree_manifest
+        from . import copytree_manifest, ESSENTIAL_DIRS
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
@@ -655,11 +625,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if os.path.exists(claude_tools_path):
                     sys.path.insert(0, claude_tools_path)
                     from profile_management.staging import create_staging_manifest
-
                     manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
-                    if manifest.profile_name != "all" and not manifest.profile_name.endswith(
-                        "(fallback)"
-                    ):
+                    if manifest.profile_name != "all" and not manifest.profile_name.endswith("(fallback)"):
                         print(f"📦 Using profile: {manifest.profile_name}")
             except Exception as e:
                 # Fall back to full staging on errors
@@ -667,7 +634,12 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude", manifest=manifest)
+        copied = copytree_manifest(
+            amplihack_src,
+            temp_claude_dir,
+            ".claude",
+            manifest=manifest
+        )
 
         # Smart PROJECT.md initialization for UVX mode
         if copied:
@@ -700,12 +672,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 def replace_paths(obj):
                     if isinstance(obj, dict):
                         for key, value in obj.items():
-                            if (
-                                key == "command"
-                                and isinstance(value, str)
-                                and value.startswith(".claude/")
+                            if key == "command" and isinstance(value, str) and value.startswith(
+                                ".claude/"
                             ):
-                                obj[key] = value.replace(".claude/", "$CLAUDE_PROJECT_DIR/.claude/")
+                                obj[key] = value.replace(
+                                    ".claude/", "$CLAUDE_PROJECT_DIR/.claude/"
+                                )
                             else:
                                 replace_paths(value)
                     elif isinstance(obj, list):
@@ -789,20 +761,21 @@ def main(argv: Optional[List[str]] = None) -> int:
             # _local_install expects repo root, so pass package_dir (which contains .claude/)
             _local_install(str(package_dir))
             return 0
-        # Fallback: Clone from GitHub (for old installations)
-        import subprocess
-        import tempfile
+        else:
+            # Fallback: Clone from GitHub (for old installations)
+            import subprocess
+            import tempfile
 
-        print("⚠️  Package .claude/ not found, cloning from GitHub...")
-        with tempfile.TemporaryDirectory() as tmp:
-            repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
-            try:
-                subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-                _local_install(tmp)
-                return 0
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to install: {e}")
-                return 1
+            print("⚠️  Package .claude/ not found, cloning from GitHub...")
+            with tempfile.TemporaryDirectory() as tmp:
+                repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+                try:
+                    subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
+                    _local_install(tmp)
+                    return 0
+                except subprocess.CalledProcessError as e:
+                    print(f"Failed to install: {e}")
+                    return 1
 
     elif args.command == "uninstall":
         uninstall()
