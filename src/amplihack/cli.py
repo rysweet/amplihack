@@ -488,6 +488,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     remote_parser.add_argument("prompt", help="Task prompt")
     remote_parser.add_argument("--max-turns", type=int, default=10, help="Max turns (default: 10)")
     remote_parser.add_argument("--vm-size", default="m", help="VM size: s/m/l/xl (default: m)")
+    remote_parser.add_argument("--vm-name", help="Use specific existing VM (skips provisioning)")
     remote_parser.add_argument("--region", help="Azure region")
     remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM after execution")
     remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout in minutes")
@@ -881,6 +882,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             vm_options = VMOptions(
                 size=args.vm_size,
                 region=args.region,
+                vm_name=args.vm_name,
                 keep_vm=args.keep_vm,
             )
 

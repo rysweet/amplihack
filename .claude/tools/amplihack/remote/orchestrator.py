@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
-from .auth import get_azure_auth
 from .errors import CleanupError, ProvisioningError
 
 
@@ -22,7 +21,6 @@ class VM:
     name: str
     size: str
     region: str
-    public_ip: Optional[str] = None
     created_at: Optional[datetime] = None
     tags: Optional[dict] = None
 
@@ -54,32 +52,13 @@ class Orchestrator:
     for remote amplihack execution.
     """
 
-    def __init__(self, username: Optional[str] = None, debug: bool = False):
+    def __init__(self, username: Optional[str] = None):
         """Initialize orchestrator.
 
         Args:
             username: Username for VM naming (defaults to current user)
-            debug: Enable debug logging for authentication and operations
         """
         self.username = username or os.getenv("USER", "amplihack")
-        self.debug = debug
-
-        # Initialize Azure authentication
-        try:
-            self.credential, self.subscription_id, self.resource_group = get_azure_auth(debug=debug)
-            if self.debug:
-                print(f"Azure auth initialized successfully")
-                print(f"  Subscription ID: {self.subscription_id}")
-                if self.resource_group:
-                    print(f"  Resource Group: {self.resource_group}")
-        except Exception as e:
-            if self.debug:
-                print(f"Warning: Azure Service Principal auth setup failed: {e}")
-            print("Remote execution will rely on Azure CLI login (az login)")
-            self.credential = None
-            self.subscription_id = None
-            self.resource_group = None
-
         self._verify_azlin_installed()
 
     def _verify_azlin_installed(self):
@@ -104,104 +83,6 @@ class Orchestrator:
             )
         except subprocess.TimeoutExpired:
             raise ProvisioningError("Azlin version check timed out")
-
-    def _get_region_list(self, preferred_region: Optional[str] = None) -> List[str]:
-        """Get prioritized list of Azure regions for provisioning.
-
-        Args:
-            preferred_region: User's preferred region (if specified)
-
-        Returns:
-            List of regions to try in priority order
-        """
-        # Default region list
-        default_regions = ["westus2", "westus3", "eastus", "eastus2", "centralus"]
-
-        # Check for environment override
-        env_regions = os.getenv("AMPLIHACK_AZURE_REGIONS")
-        if env_regions:
-            regions = [r.strip() for r in env_regions.split(",") if r.strip()]
-        else:
-            regions = default_regions.copy()
-
-        # Prioritize preferred region if specified
-        if preferred_region:
-            if preferred_region in regions:
-                regions.remove(preferred_region)
-            regions.insert(0, preferred_region)
-
-        return regions
-
-    def _is_quota_error(self, error_output: str) -> bool:
-        """Detect if error is due to Azure quota/capacity limits.
-
-        Args:
-            error_output: stderr from azlin command
-
-        Returns:
-            True if error is quota-related, False otherwise
-        """
-        quota_indicators = [
-            "quota",
-            "limit",
-            "capacity",
-            "exceeded",
-            "QuotaExceeded",
-            "SkuNotAvailable",
-            "OverconstrainedAllocationRequest",
-        ]
-        error_lower = error_output.lower()
-        return any(indicator.lower() in error_lower for indicator in quota_indicators)
-
-    def _apply_vm_tags(self, vm_name: str, tags: dict) -> bool:
-        """Apply tags to Azure VM using Azure CLI.
-
-        Args:
-            vm_name: VM name
-            tags: Dict of tag key-value pairs
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Get resource group from VM name (azlin naming convention)
-            result = subprocess.run(
-                ["az", "vm", "show", "--name", vm_name, "--query", "resourceGroup", "-o", "tsv"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-
-            if result.returncode != 0:
-                print(f"Warning: Could not find resource group for {vm_name}")
-                return False
-
-            resource_group = result.stdout.strip()
-
-            # Build tag arguments
-            tag_args = []
-            for key, value in tags.items():
-                tag_args.extend(["--set", f"tags.{key}={value}"])
-
-            # Apply tags
-            result = subprocess.run(
-                ["az", "vm", "update", "--name", vm_name, "--resource-group", resource_group]
-                + tag_args,
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-
-            if result.returncode == 0:
-                print(f"✓ VM tagged: {vm_name}")
-                return True
-            else:
-                print(f"Warning: VM tagging failed (non-fatal): {result.stderr}")
-                return False
-
-        except Exception as e:
-            print(f"Warning: Could not apply tags: {e}")
-            return False
 
     def provision_or_reuse(self, options: VMOptions) -> VM:
         """Get VM for execution (reuse existing or provision new).
@@ -279,7 +160,7 @@ class Orchestrator:
         return None
 
     def _provision_new_vm(self, options: VMOptions) -> VM:
-        """Provision new Azure VM via azlin with automatic region fallback.
+        """Provision new Azure VM via azlin.
 
         Args:
             options: VM configuration
@@ -288,7 +169,7 @@ class Orchestrator:
             Provisioned VM instance
 
         Raises:
-            ProvisioningError: If provisioning fails in all regions
+            ProvisioningError: If provisioning fails
         """
         # Generate VM name
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -296,117 +177,66 @@ class Orchestrator:
 
         print(f"Provisioning new VM: {vm_name} ({options.size})...")
 
-        # Get prioritized region list
-        regions = self._get_region_list(options.region)
-        region_failures = {}
+        # Build azlin command with non-interactive mode (--yes now works with fixed azlin)
+        cmd = ["azlin", "new", "--size", options.size, "--name", vm_name, "--yes"]
+        if options.region:
+            cmd.extend(["--region", options.region])
 
-        # Try each region in order
-        for region_idx, region in enumerate(regions):
-            print(f"Attempting region: {region} ({region_idx + 1}/{len(regions)})")
+        # Pass through any extra azlin arguments
+        if options.azlin_extra_args:
+            cmd.extend(options.azlin_extra_args)
 
-            # Build azlin command with non-interactive mode
-            cmd = [
-                "azlin",
-                "new",
-                "--size",
-                options.size,
-                "--name",
-                vm_name,
-                "--region",
-                region,
-                "--yes",
-                "--no-bastion",
-                "--no-auto-connect",  # Prevent interactive SSH connection
-                "--no-nfs",  # Skip NFS for faster setup (user confirmed this works)
-            ]
+        # Execute with retries
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=600,  # 10 minutes
+                    check=True,
+                )
 
-            # Pass through any extra azlin arguments
-            if options.azlin_extra_args:
-                cmd.extend(options.azlin_extra_args)
+                # VM provisioned successfully
+                print(f"VM provisioned successfully: {vm_name}")
 
-            # Retry transient errors within this region
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    subprocess.run(
-                        cmd,
-                        timeout=600,  # 10 minutes
-                        check=True,
-                        stdin=subprocess.DEVNULL,  # Prevent hanging on prompts
-                    )
+                return VM(
+                    name=vm_name,
+                    size=options.size,
+                    region=options.region or "default",
+                    created_at=datetime.now(),
+                    tags={"amplihack_workflow": "true"},
+                )
 
-                    # VM provisioned successfully
-                    print(f"VM provisioned successfully in {region}: {vm_name}")
+            except subprocess.TimeoutExpired:
+                if attempt < max_retries - 1:
+                    print(f"Provisioning timeout, retrying ({attempt + 2}/{max_retries})...")
+                    time.sleep(30)  # Wait before retry
+                    continue
+                raise ProvisioningError(
+                    f"VM provisioning timed out after {max_retries} attempts",
+                    context={"vm_name": vm_name, "timeout": "10 minutes"},
+                )
 
-                    # Wait for VM to fully initialize before returning
-                    # azlin new with --no-auto-connect exits immediately after provisioning
-                    # but VM needs time for cloud-init (3-5 min) and NFS setup
-                    print("Waiting for VM initialization to complete (240s ~ 4 min)...")
-                    time.sleep(240)
-
-                    vm = VM(
-                        name=vm_name,
-                        size=options.size,
-                        region=region,
-                        created_at=datetime.now(),
-                        tags={"amplihack_workflow": "true"},
-                    )
-
-                    # Apply tags (non-blocking)
-                    try:
-                        tags = {
-                            "amplihack-remote": "true",
-                            "created-by": "amplihack-cli",
-                        }
-                        self._apply_vm_tags(vm.name, tags)
-                    except Exception as e:
-                        # Non-fatal: log but continue
-                        print(f"Note: VM tagging skipped: {e}")
-
-                    return vm
-
-                except subprocess.TimeoutExpired:
-                    if attempt < max_retries - 1:
-                        print(
-                            f"  Provisioning timeout in {region}, retrying ({attempt + 2}/{max_retries})..."
+            except subprocess.CalledProcessError as e:
+                if attempt < max_retries - 1:
+                    # Check if error is retriable
+                    if "quota" in e.stderr.lower() or "limit" in e.stderr.lower():
+                        raise ProvisioningError(
+                            f"Azure quota exceeded: {e.stderr}", context={"vm_name": vm_name}
                         )
-                        time.sleep(30)  # Wait before retry
-                        continue
-                    # Record timeout as final failure for this region
-                    error_msg = f"Timeout after {max_retries} attempts"
-                    region_failures[region] = error_msg
-                    print(f"  Region {region} exhausted: {error_msg}")
-                    break  # Move to next region
+                    print(f"Provisioning failed, retrying ({attempt + 2}/{max_retries})...")
+                    time.sleep(30)
+                    continue
 
-                except subprocess.CalledProcessError as e:
-                    # Check if this is a quota error (no retry, move to next region)
-                    if self._is_quota_error(e.stderr or ""):
-                        error_msg = f"Quota/capacity error: {e.stderr or str(e)}"
-                        region_failures[region] = error_msg
-                        print(f"  Region {region} quota exceeded, trying next region")
-                        break  # Skip remaining retries for this region
+                raise ProvisioningError(
+                    f"Failed to provision VM: {e.stderr}",
+                    context={"vm_name": vm_name, "command": " ".join(cmd)},
+                )
 
-                    # Transient error - retry
-                    if attempt < max_retries - 1:
-                        print(
-                            f"  Provisioning failed in {region}, retrying ({attempt + 2}/{max_retries})..."
-                        )
-                        time.sleep(30)
-                        continue
-
-                    # Exhausted retries for this region
-                    error_msg = f"Failed after {max_retries} attempts: {e.stderr or str(e)}"
-                    region_failures[region] = error_msg
-                    print(f"  Region {region} exhausted: {error_msg}")
-                    break  # Move to next region
-
-        # All regions failed - raise comprehensive error
-        failure_summary = "\n".join(
-            [f"  - {region}: {error}" for region, error in region_failures.items()]
-        )
         raise ProvisioningError(
-            f"Failed to provision VM in any region. Attempted {len(regions)} region(s):\n{failure_summary}",
-            context={"vm_name": vm_name, "regions_tried": list(region_failures.keys())},
+            f"Failed to provision VM after {max_retries} attempts", context={"vm_name": vm_name}
         )
 
     def _get_vm_by_name(self, vm_name: str) -> VM:
@@ -422,18 +252,52 @@ class Orchestrator:
             ProvisioningError: If VM not found
         """
         try:
-            # Try to connect to verify VM exists
+            # First try azlin list
             result = subprocess.run(["azlin", "list"], capture_output=True, text=True, timeout=30)
 
-            if vm_name not in result.stdout:
-                raise ProvisioningError(f"VM not found: {vm_name}", context={"vm_name": vm_name})
+            if vm_name in result.stdout:
+                # VM found in azlin list
+                return VM(
+                    name=vm_name,
+                    size="unknown",
+                    region="unknown",
+                )
 
-            return VM(
-                name=vm_name,
-                size="unknown",  # Would need to parse from list
-                region="unknown",
+            # VM not in azlin list - try Azure CLI directly
+            print(f"VM '{vm_name}' not in azlin list, checking Azure directly...")
+            result = subprocess.run(
+                [
+                    "az",
+                    "vm",
+                    "show",
+                    "--resource-group",
+                    "rysweet-linux-vm-pool",
+                    "--name",
+                    vm_name,
+                    "--query",
+                    "{name:name, size:hardwareProfile.vmSize, location:location}",
+                    "-o",
+                    "json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=True,
             )
 
+            import json
+
+            vm_info = json.loads(result.stdout)
+            print(f"Found VM in Azure: {vm_info['name']} ({vm_info['size']})")
+
+            return VM(
+                name=vm_info["name"],
+                size=vm_info.get("size", "unknown"),
+                region=vm_info.get("location", "unknown"),
+            )
+
+        except subprocess.CalledProcessError:
+            raise ProvisioningError(f"VM not found: {vm_name}", context={"vm_name": vm_name})
         except subprocess.TimeoutExpired:
             raise ProvisioningError(
                 "Timeout while verifying VM existence", context={"vm_name": vm_name}
@@ -479,6 +343,24 @@ class Orchestrator:
                 return False
             raise CleanupError(error_msg, context={"vm_name": vm.name})
 
+    def _parse_azlin_list_json(self, output: str) -> List[VM]:
+        """Parse JSON output from azlin list."""
+        try:
+            data = json.loads(output)
+            vms = []
+            for item in data:
+                vm = VM(
+                    name=item.get("name", ""),
+                    size=item.get("size", "unknown"),
+                    region=item.get("region", "unknown"),
+                    created_at=self._parse_timestamp(item.get("created_at")),
+                    tags=item.get("tags", {}),
+                )
+                vms.append(vm)
+            return vms
+        except json.JSONDecodeError:
+            return []
+
     def _parse_azlin_list_text(self, output: str) -> List[VM]:
         """Parse text output from azlin list.
 
@@ -501,13 +383,16 @@ class Orchestrator:
         return vms
 
     def _parse_timestamp(self, ts_str: Optional[str]) -> Optional[datetime]:
-        """Parse timestamp string to datetime.
-
-        Parses VM naming format: amplihack-remote-YYYYMMDD-HHMMSS
-        """
+        """Parse timestamp string to datetime."""
         if not ts_str:
             return None
         try:
-            return datetime.strptime(ts_str, "%Y%m%d-%H%M%S")
-        except ValueError:
+            # Try common formats
+            for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y%m%d-%H%M%S"]:
+                try:
+                    return datetime.strptime(ts_str, fmt)
+                except ValueError:
+                    continue
+            return None
+        except Exception:
             return None
