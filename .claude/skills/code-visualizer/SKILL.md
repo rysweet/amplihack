@@ -537,7 +537,6 @@ flowchart LR
     api --> auth
     api --> db
 ```
-````
 
 ### Impact Summary
 
@@ -545,7 +544,6 @@ flowchart LR
 - **Modified modules**: 2 (auth/service.py, api/routes.py)
 - **New dependencies**: oauth.py -> auth/service.py
 - **Diagrams to update**: README.md (STALE)
-
 ````
 
 ### CI Integration Example
@@ -558,7 +556,7 @@ Add to `.github/workflows/pr-review.yml`:
     # Claude Code analyzes and reports
     # Outputs: STALE diagrams that need updating
     # Generates: Suggested diagram updates
-````
+```
 
 ### Reviewer Workflow
 
