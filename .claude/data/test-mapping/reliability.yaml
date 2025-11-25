@@ -1,0 +1,27 @@
+# Test Reliability Tracking
+# Updated by smart-test skill after test runs
+# Tests with reliability < 0.8 are excluded from Tier 1 (fast) runs
+
+version: 1
+last_updated: null # Will be set on first update
+
+# Reliability structure:
+# tests:
+#   tests/path/test_file.py::test_name:
+#     passes: 95
+#     failures: 5
+#     reliability: 0.95
+#     last_failure: "2025-11-20"
+#     flaky_reason: null  # or description of why it's flaky
+
+tests: {}
+# Thresholds:
+# - 1.0: Perfect (always passes)
+# - 0.8-0.99: Stable (included in Tier 1)
+# - 0.5-0.79: Flaky (excluded from Tier 1, investigate)
+# - < 0.5: Unreliable (consider quarantine)
+
+# To update reliability:
+# 1. Run tests and capture results
+# 2. Tell Claude: "Update test reliability with these results"
+# 3. Skill will increment pass/failure counts
