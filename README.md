@@ -195,31 +195,6 @@ amplihack launch
 
 **Generate professional documentation sites automatically:**
 
-```python
-from claude.skills.documentation_writing.github_pages import (
-    SiteConfig,
-    generate_site,
-    validate_site,
-    deploy_site,
-)
-
-# Generate site from docs/, README, and commands
-config = SiteConfig(
-    project_name="My Project",
-    project_url="https://github.com/user/repo",
-)
-result = generate_site(config)
-
-# Three-pass validation (coverage, clarity, reality)
-validation = validate_site(site_dir="site")
-print(f"Quality scores: {validation.pass1_coverage}% / {validation.pass2_clarity_score}% / {validation.pass3_grounded_pct}%")
-
-# Deploy to GitHub Pages
-deploy_site(site_dir="site", branch="gh-pages")
-```
-
-**Features:**
-
 - Auto-discovers content from `docs/`, `README.md`, and `.claude/commands/`
 - Three-pass validation ensures quality documentation
 - Safe gh-pages deployment with rollback support
