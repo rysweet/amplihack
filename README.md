@@ -15,11 +15,6 @@ Launches Claude Code with preconfigured agents. No installation needed.
   - [Prerequisites](#prerequisites)
   - [Basic Usage](#basic-usage)
   - [Create Alias for Easy Access](#create-alias-for-easy-access)
-- [Features](#features)
-  - [Workflow Orchestration by Default](#workflow-orchestration-by-default)
-  - [Goal-Seeking Agent Generator](#goal-seeking-agent-generator)
-  - [Profile Management](#profile-management)
-  - [GitHub Pages Documentation Generation](#github-pages-documentation-generation)
 - [Core Concepts](#core-concepts)
   - [Workflow](#workflow)
   - [Philosophy](#philosophy)
@@ -32,7 +27,13 @@ Launches Claude Code with preconfigured agents. No installation needed.
 - [Agents Reference](#agents-reference)
   - [Core Agents](#core-agents-6)
   - [Specialized Agents](#specialized-agents-23)
-- [Statusline](#statusline)
+- [Features](#features)
+  - [Workflow Orchestration by Default](#workflow-orchestration-by-default)
+  - [Goal-Seeking Agent Generator](#goal-seeking-agent-generator)
+  - [Profile Management](#profile-management)
+  - [GitHub Pages Documentation Generation](#github-pages-documentation-generation)
+  - [Additional Features](#additional-features)
+  - [Statusline](#statusline)
 - [Documentation](#documentation)
   - [Getting Started](#getting-started)
   - [Features](#features-1)
@@ -96,113 +97,6 @@ amplihack launch
 amplihack launch --with-proxy-config ./azure.env
 amplihack launch --checkout-repo owner/repo
 ```
-
-## Features
-
-### Workflow Orchestration by Default
-
-All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
-effectiveness. This enables:
-
-- Multi-agent workflow orchestration
-- 13-step development workflow
-- Automated architecture, building, and testing
-- Philosophy compliance checking
-
-**Benchmark results:** Amplihack without orchestration = vanilla Claude. The
-orchestration IS the value! See [benchmarking guide](docs/BENCHMARKING.md) for
-measuring performance.
-
-**Opt-out for simple tasks:**
-
-```sh
-# Skip orchestration with --no-ultrathink flag
-amplihack launch --no-ultrathink -- -p "simple prompt"
-
-# Or use slash commands directly
-amplihack launch -- -p "/analyze src/file.py"
-```
-
-**How it works:**
-
-```sh
-# Before: Manual orchestration required
-amplihack launch -- -p "/amplihack:ultrathink implement feature"
-
-# Now: Automatic orchestration (same result)
-amplihack launch -- -p "implement feature"
-```
-
-### Goal-Seeking Agent Generator
-
-**Create autonomous agents from simple prompts:**
-
-```bash
-# Write your goal
-cat > my_goal.md <<'EOF'
-# Goal: Automated Code Review
-Review Python code and suggest improvements.
-EOF
-
-# Generate agent
-amplihack new --file my_goal.md
-
-# Run agent
-cd goal_agents/automated-code-review-agent
-python main.py
-```
-
-**Features:**
-
-- Generate agents in < 0.1 seconds
-- Automatic skill matching
-- Multi-phase execution planning
-- Standalone, distributable agents
-
-**Learn more:** [Goal Agent Generator Guide](docs/GOAL_AGENT_GENERATOR_GUIDE.md)
-
-### Profile Management
-
-**Reduce token usage by 72% with profile-based component filtering:**
-
-```bash
-# Set profile (outside Claude Code)
-export AMPLIHACK_PROFILE=amplihack://profiles/coding
-
-# Install with filtering
-amplihack install
-# Result: Only 9/32 agents staged (72% reduction)
-
-# Launch with filtering
-amplihack launch
-# Result: Focused environment for coding tasks
-
-# To switch profiles: exit Claude, set new profile, restart
-```
-
-**Built-in Profiles:**
-
-- `all`: Full environment (32 agents, default)
-- `coding`: Development-focused (9 agents)
-- `research`: Investigation-focused (7 agents)
-
-**Learn more:** [Profile Management Guide](docs/PROFILE_MANAGEMENT.md)
-
-### GitHub Pages Documentation Generation
-
-**Generate professional documentation sites automatically:**
-
-- Auto-discovers content from `docs/`, `README.md`, and `.claude/commands/`
-- Three-pass validation ensures quality documentation
-- Safe gh-pages deployment with rollback support
-- Local preview server for testing
-- MkDocs + Material theme integration
-
-**Learn more:**
-
-- [Tutorial: Your First Documentation Site](docs/tutorials/first-docs-site.md)
-- [How-To: Generate GitHub Pages Sites](docs/howto/github-pages-generation.md)
-- [API Reference: GitHub Pages Module](docs/reference/github-pages-api.md)
 
 ## Core Concepts
 
@@ -363,7 +257,159 @@ customization instructions.
 | **xpia-defense**            | Advanced threat detection                       |
 | **philosophy-guardian**     | Philosophy compliance and simplicity validation |
 
-## Statusline
+## Features
+
+### Workflow Orchestration by Default
+
+All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
+effectiveness. This enables:
+
+- Multi-agent workflow orchestration
+- 13-step development workflow
+- Automated architecture, building, and testing
+- Philosophy compliance checking
+
+**Benchmark results:** Amplihack without orchestration = vanilla Claude. The
+orchestration IS the value! See [benchmarking guide](docs/BENCHMARKING.md) for
+measuring performance.
+
+**Opt-out for simple tasks:**
+
+```sh
+# Skip orchestration with --no-ultrathink flag
+amplihack launch --no-ultrathink -- -p "simple prompt"
+
+# Or use slash commands directly
+amplihack launch -- -p "/analyze src/file.py"
+```
+
+**How it works:**
+
+```sh
+# Before: Manual orchestration required
+amplihack launch -- -p "/amplihack:ultrathink implement feature"
+
+# Now: Automatic orchestration (same result)
+amplihack launch -- -p "implement feature"
+```
+
+### Goal-Seeking Agent Generator
+
+**Create autonomous agents from simple prompts:**
+
+```bash
+# Write your goal
+cat > my_goal.md <<'EOF'
+# Goal: Automated Code Review
+Review Python code and suggest improvements.
+EOF
+
+# Generate agent
+amplihack new --file my_goal.md
+
+# Run agent
+cd goal_agents/automated-code-review-agent
+python main.py
+```
+
+**Features:**
+
+- Generate agents in < 0.1 seconds
+- Automatic skill matching
+- Multi-phase execution planning
+- Standalone, distributable agents
+
+**Learn more:** [Goal Agent Generator Guide](docs/GOAL_AGENT_GENERATOR_GUIDE.md)
+
+### Profile Management
+
+**Reduce token usage by 72% with profile-based component filtering:**
+
+```bash
+# Set profile (outside Claude Code)
+export AMPLIHACK_PROFILE=amplihack://profiles/coding
+
+# Install with filtering
+amplihack install
+# Result: Only 9/32 agents staged (72% reduction)
+
+# Launch with filtering
+amplihack launch
+# Result: Focused environment for coding tasks
+
+# To switch profiles: exit Claude, set new profile, restart
+```
+
+**Built-in Profiles:**
+
+- `all`: Full environment (32 agents, default)
+- `coding`: Development-focused (9 agents)
+- `research`: Investigation-focused (7 agents)
+
+**Learn more:** [Profile Management Guide](docs/PROFILE_MANAGEMENT.md)
+
+### GitHub Pages Documentation Generation
+
+**Generate professional documentation sites automatically:**
+
+- Auto-discovers content from `docs/`, `README.md`, and `.claude/commands/`
+- Three-pass validation ensures quality documentation
+- Safe gh-pages deployment with rollback support
+- Local preview server for testing
+- MkDocs + Material theme integration
+
+**Learn more:**
+
+- [Tutorial: Your First Documentation Site](docs/tutorials/first-docs-site.md)
+- [How-To: Generate GitHub Pages Sites](docs/howto/github-pages-generation.md)
+- [API Reference: GitHub Pages Module](docs/reference/github-pages-api.md)
+
+### Additional Features
+
+- **[Power-Steering](docs/reference/STATUSLINE.md#power-steering)** - AI-powered
+  session guidance with intelligent redirect detection (🚦 indicator)
+- **[Auto Mode](docs/AUTO_MODE.md)** - Autonomous agentic loops for multi-turn
+  workflows (`/amplihack:auto`)
+- **[Lock Mode](docs/reference/STATUSLINE.md#lock-mode)** - Continuous work mode
+  without stopping (`/amplihack:lock`, `/amplihack:unlock`) (🔒 indicator)
+- **[Document-Driven Development](docs/document_driven_development/README.md)** -
+  Systematic methodology for large features with documentation-first approach
+- **[Fault-Tolerant Workflows](CLAUDE.md#fault-tolerance-patterns)** - N-version
+  programming, multi-agent debate, and cascade fallback patterns
+- **[Security Analysis](CLAUDE.md#key-commands)** - XPIA cross-prompt injection
+  defense (`/amplihack:xpia`)
+- **[Neo4j Memory System](docs/AGENT_MEMORY_QUICKSTART.md)** - Persistent memory
+  and knowledge graphs across sessions
+- **[Investigation Workflow](CLAUDE.md#investigation-workflow)** - Deep
+  knowledge excavation with historical context
+- **[Skills System](.claude/skills/README.md)** - 54+ skills including PDF,
+  XLSX, DOCX, PPTX, analysts, and workflow patterns
+- **[Fix Workflow](CLAUDE.md#key-commands)** - Rapid resolution of common error
+  patterns (`/amplihack:fix`)
+- **[Reflection & Improvement](CLAUDE.md#key-commands)** - Session analysis and
+  learning capture (`/amplihack:reflect`, `/amplihack:improve`)
+- **[Socratic Questioning](CLAUDE.md#key-commands)** - Challenge claims and
+  clarify requirements (`/amplihack:socratic`)
+- **[Expert Panel](CLAUDE.md#key-commands)** - Multi-expert review with voting
+  (`/amplihack:expert-panel`)
+- **[Knowledge Builder](CLAUDE.md#key-commands)** - Build comprehensive
+  knowledge base (`/amplihack:knowledge-builder`)
+- **[Transcripts Management](CLAUDE.md#key-commands)** - Conversation transcript
+  tracking (`/amplihack:transcripts`)
+- **[Modular Build](CLAUDE.md#key-commands)** - Self-contained modules with
+  clear contracts (`/amplihack:modular-build`)
+- **[Pre-commit Diagnostics](CLAUDE.md#development-workflow-agents)** - Fix
+  formatting, linting, type checking before push
+- **[CI Diagnostics](CLAUDE.md#development-workflow-agents)** - Monitor CI,
+  diagnose failures, iterate until mergeable
+- **[Worktree Management](.claude/agents/amplihack/specialized/worktree-manager.md)** -
+  Git worktree automation for parallel development
+- **[Session Logs](CLAUDE.md#working-philosophy)** - Comprehensive logging and
+  decision records
+- **[Customization System](CLAUDE.md#key-commands)** - Manage user preferences
+  (`/amplihack:customize`)
+
+### Statusline
 
 Real-time session information displayed at the bottom of Claude Code showing:
 
