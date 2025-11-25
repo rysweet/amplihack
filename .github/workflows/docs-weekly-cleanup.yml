@@ -1,0 +1,111 @@
+name: Docs - Weekly Documentation Cleanup
+
+# Purpose: Automated weekly cleanup of PATTERNS.md and DISCOVERIES.md
+# Features:
+#   - Archives old DISCOVERIES.md entries (6+ months)
+#   - Promotes validated patterns from DISCOVERIES to PATTERNS
+#   - Removes stale or superseded patterns
+#   - Creates PR with cleanup recommendations
+# Security: Implements all 9 mandatory mitigations from SECURITY_ASSESSMENT.md
+# Type: Active maintenance with automated PR creation
+
+on:
+  schedule:
+    # Run weekly on Sunday at 6 AM UTC (before Monday work starts)
+    - cron: "0 6 * * 0"
+  workflow_dispatch: # Allow manual triggering for testing
+
+# SECURITY M2.1: Minimal permissions with what's needed for PR creation
+permissions:
+  contents: write # Create branch and commit changes
+  pull-requests: write # Create PR with cleanup changes
+
+jobs:
+  docs-cleanup:
+    name: Weekly Documentation Cleanup
+    runs-on: ubuntu-latest
+    # SECURITY: Timeout limit prevents runaway execution
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history for branch creation
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install anthropic
+
+      # SECURITY M1.2: Mask API key to prevent exposure in logs
+      - name: Mask API key
+        run: echo "::add-mask::${{ secrets.ANTHROPIC_API_KEY }}"
+
+      # SECURITY M3.2: Use environment variables, never string interpolation
+      - name: Run documentation cleanup with Claude
+        id: cleanup
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +x  # Disable command echoing to prevent accidental exposure
+
+          # Run documentation cleanup using Claude
+          python .github/scripts/docs_cleanup.py
+
+          # Check if changes were made
+          if [ -f "cleanup_changes.md" ]; then
+            echo "changes_made=true" >> $GITHUB_OUTPUT
+            echo "## Documentation Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+            cat cleanup_changes.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "changes_made=false" >> $GITHUB_OUTPUT
+            echo "## No Changes Needed" >> $GITHUB_STEP_SUMMARY
+            echo "Documentation is already in good shape!" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create cleanup branch
+        if: steps.cleanup.outputs.changes_made == 'true'
+        run: |
+          BRANCH_NAME="chore/docs-cleanup-$(date +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b $BRANCH_NAME
+          git add .claude/context/PATTERNS.md .claude/context/DISCOVERIES.md .claude/context/DISCOVERIES_ARCHIVE.md
+          git commit -m "chore(docs): Weekly documentation cleanup
+
+          - Archive old DISCOVERIES entries (6+ months)
+          - Promote validated patterns to PATTERNS.md
+          - Remove stale entries
+          - Update Table of Contents
+
+          🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+          Co-Authored-By: Claude <noreply@anthropic.com>"
+          git push origin $BRANCH_NAME
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        if: steps.cleanup.outputs.changes_made == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "chore(docs): Weekly documentation cleanup $(date +%Y-%m-%d)" \
+            --body-file cleanup_changes.md \
+            --label "documentation" \
+            --base main \
+            --head $BRANCH_NAME
+
+      # SECURITY: Error handling without exposing secrets
+      - name: Handle errors
+        if: failure()
+        run: |
+          echo "::error::Documentation cleanup workflow failed. Check logs for details."
+          echo "Note: Check that ANTHROPIC_API_KEY secret is configured."
