@@ -103,7 +103,9 @@ class AutoMode:
         # Validate timeout value
         if query_timeout_minutes <= 0:
             raise ValueError(f"query_timeout_minutes must be positive, got {query_timeout_minutes}")
-        if query_timeout_minutes > 120:  # 2 hours max - warn but allow
+        # Allow very long timeouts (up to 24 hours for --no-timeout mode)
+        # Only warn for values between 2-24 hours that aren't the special 1440 (--no-timeout)
+        if 120 < query_timeout_minutes < 1440:
             print(f"Warning: Very long timeout ({query_timeout_minutes} minutes)", file=sys.stderr)
 
         self.query_timeout_seconds = query_timeout_minutes * 60.0  # Keep as float for precision
