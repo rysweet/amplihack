@@ -92,5 +92,5 @@ This skill follows amplihack principles:
 ## See Also
 
 - [SKILL.md](./SKILL.md) - Full skill specification
-- [.claude-trace/](../../..) - Trace file location
-- [/transcripts command](../../commands/amplihack/transcripts.md)
+- `.claude-trace/` - Trace file location (project root)
+- `/transcripts` - Conversation transcript management command

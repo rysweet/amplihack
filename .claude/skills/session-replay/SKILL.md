@@ -4,13 +4,27 @@ version: 1.0.0
 description: |
   Analyze claude-trace JSONL files for session health, patterns, and actionable insights.
   Use when debugging session issues, understanding token usage, or identifying failure patterns.
-triggers:
+auto_activates:
   - "analyze session"
   - "session health"
   - "trace analysis"
   - "debug session"
   - "token usage patterns"
   - "session failures"
+priority_score: 38.0
+evaluation_criteria:
+  frequency: MEDIUM
+  impact: HIGH
+  complexity: LOW
+  reusability: HIGH
+  philosophy_alignment: HIGH
+  uniqueness: MEDIUM
+dependencies:
+  tools:
+    - Read
+    - Glob
+  external: []
+maturity: production
 ---
 
 # Session Replay Skill
