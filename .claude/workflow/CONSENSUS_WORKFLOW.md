@@ -1,8 +1,8 @@
 ---
 name: CONSENSUS_WORKFLOW
 version: 1.0.0
-description: Enhanced 15-step workflow with multi-agent consensus at critical decision points
-steps: 15
+description: Enhanced workflow with multi-agent consensus at critical decision points
+steps: 21
 phases:
   - requirements-with-debate
   - design-with-consensus
@@ -11,7 +11,7 @@ phases:
   - expert-panel-review
   - final-consensus-validation
 success_criteria:
-  - "All 15 steps completed with consensus validation"
+  - "All steps completed with consensus validation"
   - "Multi-agent debate for ambiguous requirements"
   - "Expert panel approval at critical gates"
   - "N-version programming for critical code"
@@ -36,7 +36,6 @@ customizable: true
 This workflow enhances the default coding workflow with consensus mechanisms at critical decision points. Use this workflow when:
 
 > **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
-
 
 - Requirements are ambiguous or complex
 - Design decisions have significant architectural impact
@@ -71,7 +70,7 @@ Use this workflow for:
 - Performance-critical components
 - Public APIs with long-term commitments
 
-## The 15-Step Consensus-Augmented Workflow
+## The Consensus-Augmented Workflow
 
 ### Step 1: Rewrite and Clarify Requirements with Consensus
 

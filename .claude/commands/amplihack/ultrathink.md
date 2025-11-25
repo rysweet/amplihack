@@ -36,8 +36,8 @@ When this command is invoked, you MUST:
    - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
    - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
    - **If both types detected**: Use hybrid workflow (investigation first, then development)
-   - If only investigation keywords found: Use INVESTIGATION_WORKFLOW.md (6 phases)
-   - If only development keywords found: Use DEFAULT_WORKFLOW.md (15 steps)
+   - If only investigation keywords found: Use INVESTIGATION_WORKFLOW.md
+   - If only development keywords found: Use DEFAULT_WORKFLOW.md
 2. **Invoke the appropriate workflow skill** using the Skill tool:
    - Investigation: `Skill(skill="investigation-workflow")`
    - Development: `Skill(skill="default-workflow")`
@@ -63,8 +63,8 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
 1. **Initialize**:
    - Detect task type (investigation vs. development)
    - Select appropriate workflow:
-     - Investigation: investigation-workflow skill (6 phases)
-     - Development: default-workflow skill (15 steps)
+     - Investigation: investigation-workflow skill
+     - Development: default-workflow skill
    - Inform user which workflow is being used
    - Try to invoke the selected workflow skill using Skill tool
    - **FALLBACK**: If skill not found, read the markdown workflow file using Read tool:
@@ -154,7 +154,7 @@ Always use TodoWrite to:
 User: "/ultrathink implement JWT authentication"
 
 1. Detect: Development task (contains "implement")
-2. Select: default-workflow skill (15 steps)
+2. Select: default-workflow skill
 3. Try: Skill(skill="default-workflow")
 4. Fallback if needed: Read `.claude/workflow/DEFAULT_WORKFLOW.md`
 5. Begin executing workflow steps with deep analysis

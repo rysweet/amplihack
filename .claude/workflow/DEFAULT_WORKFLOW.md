@@ -1,8 +1,8 @@
 ---
 name: DEFAULT_WORKFLOW
 version: 1.0.0
-description: Standard 15-step workflow for feature development, bug fixes, and refactoring
-steps: 15
+description: Standard 21-step workflow for feature development, bug fixes, and refactoring
+steps: 21
 phases:
   - requirements-clarification
   - design
@@ -11,7 +11,7 @@ phases:
   - review
   - merge
 success_criteria:
-  - "All 15 steps completed"
+  - "All steps completed"
   - "PR is mergeable"
   - "CI passes"
   - "Philosophy compliant"
@@ -31,8 +31,6 @@ customizable: true
 
 This file defines the default workflow for all non-trivial code changes.
 
-> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
-
 You can customize this workflow by editing this file.
 
 ## How This Workflow Works
@@ -44,30 +42,6 @@ You can customize this workflow by editing this file.
 - CI/CD integration points
 - Review and merge requirements
 
-**Execution approach:**
-
-- Start with `/ultrathink` for any non-trivial task
-- UltraThink reads this workflow and orchestrates agents to execute it
-- Each step leverages specialized agents for maximum effectiveness
-- The workflow defines the process; agents execute the work
-
-## Default Execution with UltraThink
-
-**For all non-trivial tasks, start with `/ultrathink` to orchestrate the workflow:**
-
-- `/ultrathink` reads this workflow and executes it with multi-agent coordination
-- Each step below leverages specialized agents whenever possible
-- UltraThink orchestrates parallel agent execution for maximum efficiency
-- When you customize this workflow, UltraThink adapts automatically
-
-**TodoWrite Usage During Workflow Execution:**
-
-When creating todos during workflow execution, reference the workflow steps directly:
-
-- Format: `Step N: [Step Name] - [Specific Action]`
-- Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
-- This helps users track exactly which workflow step is active (Step X of 15)
-
 ## When This Workflow Applies
 
 This workflow should be followed for:
@@ -77,9 +51,22 @@ This workflow should be followed for:
 - Refactoring
 - Any non-trivial code changes
 
+**Execution approach:**
+
+- Start with using the SlashCommand(amplihack:ultrathink) for any non-trivial task
+- The workflow defines the process; agents execute the work
+- Each step below leverages specialized agents whenever possible
+- UltraThink orchestrates parallel agent execution for maximum efficiency
+- When you customize this workflow, UltraThink adapts automatically
+
 ## TodoWrite Best Practices
 
-When using TodoWrite during workflow execution:
+When creating todos during workflow execution, reference the workflow steps directly:
+
+- Format: `Step N: [Step Name] - [Specific Action]`
+- This helps users track exactly which workflow step is active
+- Always show your full ToDo list
+- When you get to a particular step, you may always decide to break it down into smaller steps - this is preferred.
 
 - **Reference Step Numbers**: Include the workflow step number in todo content
   - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
@@ -122,25 +109,27 @@ Step 5: Implement the Solution - Use builder agent to implement from specificati
 This step-based structure helps users understand:
 
 - Exactly which workflow step is currently active
-- How many steps remain (e.g., Step 5 of 16 means 11 steps left)
+- How many steps remain
 - What comes next in the workflow
 
-## The 16-Step Workflow
+## The Workflow
 
-### Step 1: Rewrite and Clarify Requirements
+### Step 1: Prepare the Workspace
+
+- [ ] start with a clean local environment and make sure it is up to date (no unstashed changes, git fetch)
+
+### Step 2: Rewrite and Clarify Requirements
 
 - [ ] **FIRST: Identify explicit user requirements** that CANNOT be optimized away
 - [ ] **Always use** prompt-writer agent to clarify task requirements (includes automatic task classification)
-- [ ] **Classification**: prompt-writer automatically classifies as EXECUTABLE, DOCUMENTATION, or AMBIGUOUS
-- [ ] **If AMBIGUOUS**: prompt-writer will ask user to clarify before proceeding
 - [ ] **Use** analyzer agent to understand existing codebase context
-- [ ] **Use** ambiguity agent if requirements are unclear
-- [ ] Remove ambiguity from the task description
+- [ ] **Use** ambiguity agent if requirements are unclear - employ other agents using Task() tool or Skills() using Skill tool as needed
+- [ ] Remove ambiguity from the task description - using your own best judgement to work autonomously and independently
 - [ ] Define clear success criteria
 - [ ] Document acceptance criteria
-- [ ] **CRITICAL: Pass explicit requirements AND classification to ALL subsequent agents**
+- [ ] **CRITICAL: Pass explicit requirements to ALL subsequent agents**
 
-### Step 2: Create GitHub Issue
+### Step 3: Create GitHub Issue
 
 - [ ] **Use** GitHub issue creation tool via agent
 - [ ] Create issue using `gh issue create`
@@ -149,18 +138,18 @@ This step-based structure helps users understand:
 - [ ] Add success criteria
 - [ ] Assign appropriate labels
 
-### Step 3: Setup Worktree and Branch
+### Step 4: Setup Worktree and Branch
 
 - [ ] **Always use** worktree-manager agent for worktree operations
 - [ ] Create new git worktree in `./worktrees/{branch-name}` for isolated development
-- [ ] Create branch with format: `feat/issue-{number}-{brief-description}`
+- [ ] Create branch with format: `feat/issue-{number}-{brief-description}` always branch from an up to date main unless specifically instructed otherwise.
 - [ ] Command: `git worktree add ./worktrees/{branch-name} -b {branch-name}`
 - [ ] Push branch to remote with tracking: `git push -u origin {branch-name}`
 - [ ] Switch to new worktree directory: `cd ./worktrees/{branch-name}`
 
-### Step 4: Research and Design with TDD
+### Step 5: Research and Design
 
-**⚠️ INVESTIGATION-FIRST PATTERN**: If the existing codebase or system is unfamiliar/complex, consider running the **INVESTIGATION_WORKFLOW.md** (6 phases) FIRST, then return here to continue development. This is especially valuable when:
+**⚠️ INVESTIGATION-FIRST PATTERN**: If the existing codebase or system is unfamiliar/complex, consider running the Skills tool Skill(investigation-workflow) or ~.claude/workflow/INVESTIGATION_WORKFLOW.md FIRST, then return here to continue development. This is especially valuable when:
 
 - The codebase area is unfamiliar or poorly documented
 - The feature touches multiple complex subsystems
@@ -169,26 +158,39 @@ This step-based structure helps users understand:
 
 After investigation completes, continue with these tasks:
 
+- [ ] check for any Skill tool Skills() that are applicable to this task and employ them
 - [ ] **Use** architect agent to design solution architecture
 - [ ] **Use** api-designer agent for API contracts (if applicable)
 - [ ] **Use** database agent for data model design (if applicable)
-- [ ] **Use** tester agent to write failing tests (TDD approach)
 - [ ] **Use** security agent to identify security requirements
+- [ ] use other subagents as appropriate if their expertise is applicable to the problem
 - [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy)
+- [ ] ask @zen-architect agent to review everything done so far and provide feedback
+- [ ] ask @architect agent to consider the feedback
 - [ ] Document module specifications
 - [ ] Create detailed implementation plan
 - [ ] Identify risks and dependencies
 
-### Step 5: Implement the Solution
+### Step 6: Retcon Documentation Writing
 
-- [ ] **Always use** builder agent to implement from specifications
+- [ ] ask @documentation-writer agent to retcon write the documentation for the finished feature as if it already exists - ie the documentation for the feature as we want it to be. Write ONLY the documentation, not the code.
+- [ ] ask the @architect agent to review the documentation to see if it aligns with their vision correctly or if it highlights any changes that should be made
+- [ ] ask @documentation-writer to make revisions based ont he architect's review
+
+### Step 7: Test Driven Development - Writing Tests First
+
+- [ ] Followingg the Test Driven Development methodology - use the tester agent to write failing tests (TDD approach) based upon the work done so far.
+
+### Step 8: Implement the Solution
+
+- [ ] **Always use** builder agent to implement from specifications, including considering the retcon'd documentation
 - [ ] **Use** integration agent for external service connections
-- [ ] Follow the architecture design
+- [ ] Follow the architecture design, leverage appropriate skills with the Skill() tool as needed, handoff to other subagents if appropriate
 - [ ] Make failing tests pass iteratively
 - [ ] Ensure all requirements are met
-- [ ] Add inline documentation
+- [ ] Update documentation as needed
 
-### Step 6: Refactor and Simplify
+### Step 9: Refactor and Simplify
 
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements**
 - [ ] **Always use** cleanup agent for ruthless simplification WITHIN user constraints
@@ -198,9 +200,24 @@ After investigation completes, continue with these tasks:
 - [ ] Simplify complex logic (without violating user specifications)
 - [ ] Ensure single responsibility principle
 - [ ] Verify no placeholders remain - no stubs, no TODOs, no swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] **VALIDATE: All explicit user requirements still preserved**
+- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @.claude/context/PHILOSOPHY.md
 
-### Step 7: Run Tests and Pre-commit Hooks
+### Step 10: Review Pass Before Commit
+
+- [ ] **Always use** reviewer agent for comprehensive code review
+- [ ] **Use** security agent for security review
+- [ ] Check code quality and standards
+- [ ] Verify philosophy compliance with the philosophy-guardian agent
+- [ ] Ensure adequate test coverage
+- [ ] Identify potential improvements
+- [ ] Ensure there are no TODOs, faked apis or faked data, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
+
+### Step 11: Incorporate Any Review Feedback
+
+- [ ] Use the architect agent to assess the reviewer feedback and then handoff to the builder agent to implement any changes
+- [ ] Update documentation as needed
+
+### Step 12: Run Tests and Pre-commit Hooks
 
 - [ ] **Use** pre-commit-diagnostic agent if hooks fail
 - [ ] **💡 TIP**: For test failures, use [parallel investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
@@ -211,15 +228,16 @@ After investigation completes, continue with these tasks:
 - [ ] Resolve type checking errors
 - [ ] Iterate until all checks pass
 
-### Step 8: Mandatory Local Testing (NOT in CI)
+### Step 13: Mandatory Local Testing (NOT in CI)
 
 **CRITICAL: Test all changes locally in realistic scenarios BEFORE committing.**
+Test like a user would use the feature - outside-in - not just unit tests.
 
 - [ ] **Test simple use cases** - Basic functionality verification
 - [ ] **Test complex use cases** - Edge cases and longer operations
 - [ ] **Test integration points** - External dependencies and APIs
 - [ ] **Verify no regressions** - Ensure existing functionality still works
-- [ ] **Document test results** - What was tested and results
+- [ ] **Document test results** - What was tested and results for the PR description (to be used in a moment) not in the repo
 - [ ] **RULE: Never commit without local testing**
 
 **Examples of required tests:**
@@ -236,7 +254,7 @@ After investigation completes, continue with these tasks:
 - Faster feedback loop than waiting for CI
 - Prevents embarrassing failures after merge
 
-### Step 9: Commit and Push
+### Step 14: Commit and Push
 
 - [ ] Stage all changes
 - [ ] Write detailed commit message
@@ -245,12 +263,12 @@ After investigation completes, continue with these tasks:
 - [ ] Push to remote branch
 - [ ] Verify push succeeded
 
-### Step 10: Open Pull Request as Draft
+### Step 15: Open Pull Request as Draft
 
 - [ ] Create PR as DRAFT using `gh pr create --draft` (pipe through `| cat` for reliable output)
 - [ ] Link to the GitHub issue
 - [ ] Write comprehensive description
-- [ ] Include test plan
+- [ ] Include test plan and the rsults of any testing that you have already captured
 - [ ] Add screenshots if UI changes
 - [ ] Add "WIP" or "Draft" context to indicate work in progress
 - [ ] Request appropriate reviewers (optional - they can review draft)
@@ -271,22 +289,12 @@ gh pr create --draft --title "..." --body "..." 2>&1 | cat
 
 This ensures you see success messages, error details, and PR URLs.
 
-### ═══════════════════════════════════════════════════════════════════════════
-
-### Step 11: Review the PR
-
-### ═══════════════════════════════════════════════════════════════════════════
+### Step 16: Review the PR
 
 **⚠️ MANDATORY - DO NOT SKIP ⚠️**
 
 **REQUIRED FOR ALL PRs**
 
-**Timing: Within 24 hours of PR creation**
-
-**Consequences of skipping:**
-
-- Violates workflow integrity
-- No PR should merge without thorough review
 - Quality gates exist for a reason - bypassing them introduces risk
 - Pattern of skipping reviews leads to technical debt accumulation
 
@@ -300,25 +308,15 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Post review comments on PR
 - [ ] Identify potential improvements
 - [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] Post the review as a comment on the PR
+- [ ] Always Post the review as a comment on the PR
 
-### ═══════════════════════════════════════════════════════════════════════════
-
-### Step 12: Implement Review Feedback
-
-### ═══════════════════════════════════════════════════════════════════════════
+### Step 17: Implement Review Feedback
 
 **⚠️ MANDATORY - DO NOT SKIP ⚠️**
 
 **REQUIRED FOR ALL PRs**
 
-**Timing: Within 48 hours of receiving review feedback**
-
-**Consequences of skipping:**
-
-- Violates workflow integrity
-- Unaddressed feedback means the review process was pointless
-- Creates confusion about whether feedback was considered
+- Unaddressed feedback means the review process was pointless and creates confusion about whether feedback was considered
 - Indicates disrespect for reviewer's time and expertise
 - May block PR merge indefinitely
 
@@ -329,25 +327,38 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] **Use** relevant specialized agents for specific feedback
 - [ ] Address each review comment
 - [ ] Push updates to PR
-- [ ] Respond to review comments by posting replies
+- [ ] Respond to review comments by posting replies as coments on the PR
 - [ ] Ensure all tests still pass
 - [ ] Ensure PR is still mergeable
 - [ ] Request re-review if needed
 
-### Step 13: Philosophy Compliance Check
+### Step 18: Philosophy Compliance Check
 
 - [ ] **Always use** reviewer agent for final philosophy check
 - [ ] **Use** patterns agent to verify pattern compliance
 - [ ] Verify ruthless simplicity achieved
 - [ ] Confirm bricks & studs pattern followed
-- [ ] Ensure zero-BS implementation (no stubs)
+- [ ] Ensure zero-BS implementation (no stubs, faked apis, swalloed exceptions, etc)
 - [ ] Verify all tests passing
-- [ ] Check documentation completeness
+- [ ] Check documentation completeness and accuracy
 
-### Step 14: Convert PR to Ready for Review
+### Step 19: Final Cleanup and Verification
+
+- [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
+- [ ] **Always use** cleanup agent for final quality pass
+- [ ] Review all changes for philosophy compliance WITHIN user constraints
+- [ ] Remove any temporary artifacts or test files (unless user wanted them)
+- [ ] Eliminate unnecessary complexity (that doesn't violate user requirements)
+- [ ] Verify module boundaries remain clean
+- [ ] Ensure zero dead code or stub implementations (unless explicitly requested)
+- [ ] **FINAL CHECK: All explicit user requirements preserved**
+- [ ] Ensure any cleanup agent changes get committed, validated by pre-commit, pushed to remote
+- [ ] Add a comment to the PR about any work the Cleanup agent did
+
+### Step 20: Convert PR to Ready for Review
 
 - [ ] Convert draft PR to ready-for-review using `gh pr ready`
-- [ ] Verify all previous steps completed (Steps 11-13)
+- [ ] Verify all previous steps completed
 - [ ] Ensure all review feedback has been addressed
 - [ ] Confirm philosophy compliance check passed
 - [ ] Add comment summarizing changes and readiness
@@ -355,8 +366,8 @@ This ensures you see success messages, error details, and PR URLs.
 
 **Important**: Only convert to ready when:
 
-- All review feedback addressed (Step 12)
-- Philosophy compliance verified (Step 13)
+- All review feedback addressed
+- Philosophy compliance verified
 - You believe the PR is truly ready to merge
 - No known blockers remain
 
@@ -371,27 +382,15 @@ gh pr ready 2>&1 | cat
 - Requests final approval from reviewers
 - Makes PR eligible for merge queue
 
-### Step 15: Ensure PR is Mergeable
+### Step 21: Ensure PR is Mergeable
 
 - [ ] Check CI status (all checks passing)
 - [ ] **Always use** ci-diagnostic-workflow agent if CI fails
 - [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
 - [ ] Resolve any merge conflicts
-- [ ] Verify all review comments addressed
+- [ ] Verify all review comments addressed, including check for any that showed up after marking the PR as ready
 - [ ] Confirm PR is approved
 - [ ] Notify that PR is ready to merge
-
-### Step 16: Final Cleanup and Verification
-
-- [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
-- [ ] **Always use** cleanup agent for final quality pass
-- [ ] Review all changes for philosophy compliance WITHIN user constraints
-- [ ] Remove any temporary artifacts or test files (unless user wanted them)
-- [ ] Eliminate unnecessary complexity (that doesn't violate user requirements)
-- [ ] Verify module boundaries remain clean
-- [ ] Ensure zero dead code or stub implementations (unless explicitly requested)
-- [ ] **FINAL CHECK: All explicit user requirements preserved**
-- [ ] Confirm PR remains mergeable after cleanup
 
 ## Customization
 
@@ -400,12 +399,3 @@ To customize this workflow:
 1. Edit this file to modify, add, or remove steps
 2. Save your changes
 3. The updated workflow will be used for future tasks
-
-## Philosophy Notes
-
-This workflow enforces our core principles:
-
-- **Ruthless Simplicity**: Each step has one clear purpose
-- **Test-Driven Development**: Write tests before implementation
-- **Quality Gates**: Multiple review and validation steps
-- **Documentation**: Clear commits and PR descriptions

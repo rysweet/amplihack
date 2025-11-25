@@ -21,7 +21,7 @@ triggers:
 
 This skill provides automatic orchestration for development and investigation tasks. It detects the task type from keywords and delegates to the appropriate workflow skill (investigation-workflow or default-workflow).
 
-Auto-activation priority is LOW (5) to allow more specific skills to match first. When activated, this orchestrator selects between investigation-workflow (6 phases) and default-workflow (15 steps) based on the user's request keywords.
+Auto-activation priority is LOW (5) to allow more specific skills to match first. When activated, this orchestrator selects between investigation-workflow and default-workflow based on the user's request keywords.
 
 This skill acts as a thin wrapper around the canonical ultrathink command, following the amplihack pattern of single-source-of-truth for command logic.
 
@@ -31,8 +31,8 @@ This skill acts as a thin wrapper around the canonical ultrathink command, follo
 
 - **Primary Command**: `.claude/commands/amplihack/ultrathink.md` (278 lines)
 - **Workflow Sources**:
-  - Development: `.claude/workflow/DEFAULT_WORKFLOW.md` (15 steps)
-  - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md` (6 phases)
+  - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
+  - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
 
 The canonical command contains complete task detection logic, complexity estimation, and orchestration patterns for both investigation and development workflows.
 

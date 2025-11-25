@@ -1,7 +1,7 @@
 ---
 name: default-workflow
 version: 1.0.0
-description: 15-step development workflow for features, bugs, refactoring. Auto-activates for multi-file implementations.
+description: Development workflow for features, bugs, refactoring. Auto-activates for multi-file implementations.
 auto_activates:
   - "implement feature spanning multiple files"
   - "complex integration across components"
@@ -30,7 +30,7 @@ This is a thin wrapper that references the complete workflow definition stored i
 
 **Source**: `.claude/workflow/DEFAULT_WORKFLOW.md` (471+ lines)
 
-The canonical workflow contains the complete 15-step development process with all details, agent specifications, and execution guidance.
+The canonical workflow contains the complete development process with all details, agent specifications, and execution guidance.
 
 ## Execution Instructions
 
@@ -44,12 +44,12 @@ When this skill is activated, you MUST:
 
    Note: Path is relative to project root. Claude Code resolves this automatically.
 
-2. **Follow all 15 steps** exactly as specified in the canonical workflow
+2. **Follow all steps** exactly as specified in the canonical workflow
 
 3. **Use TodoWrite** to track progress through workflow steps with format:
    - `Step N: [Step Name] - [Specific Action]`
    - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
-   - This helps users track exactly which workflow step is active (Step X of 15)
+   - This helps users track exactly which workflow step is active
 
 4. **Invoke specialized agents** as specified in each workflow step:
    - Step 1: prompt-writer, analyzer, ambiguity agents

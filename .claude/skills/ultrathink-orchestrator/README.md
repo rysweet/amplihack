@@ -18,21 +18,24 @@ Provide default orchestration for non-trivial development tasks by automatically
 3. Estimates task complexity (simple/moderate/complex)
 4. Asks user for confirmation before proceeding
 5. Invokes the appropriate workflow skill:
-   - **Investigation**: `investigation-workflow` skill (6 phases)
-   - **Development**: `default-workflow` skill (15 steps)
+   - **Investigation**: `investigation-workflow` skill
+   - **Development**: `default-workflow` skill
    - **Hybrid**: Both workflows sequentially
 
 ## Task Type Detection
 
 **Investigation Tasks**:
+
 - Keywords: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
 - Examples: "Investigate authentication", "Explain routing", "Understand database schema"
 
 **Development Tasks**:
+
 - Keywords: implement, build, create, add feature, fix, refactor, deploy
 - Examples: "Implement JWT auth", "Add user registration", "Fix login bug"
 
 **Hybrid Tasks**:
+
 - Contains both investigation and development keywords
 - Examples: "Investigate auth system, then add OAuth support"
 
@@ -51,12 +54,13 @@ Provide default orchestration for non-trivial development tasks by automatically
 **User**: "Add user authentication to the API"
 
 **Skill Response**:
+
 ```
 I detected a MODERATE development request: "Add user authentication to the API"
 
 Would you like me to use /ultrathink to orchestrate this work?
-- Workflow: default-workflow (15 steps)
-- Estimated scope: 6-8 files, 8 steps
+- Workflow: default-workflow
+- Estimated scope: 6-8 files
 - Time estimate: 45-60 minutes
 
 [Yes] [No] [Custom]
@@ -67,11 +71,12 @@ Would you like me to use /ultrathink to orchestrate this work?
 **User**: "Investigate how the reflection system works"
 
 **Skill Response**:
+
 ```
 I detected a MODERATE investigation request: "Investigate how the reflection system works"
 
 Would you like me to use /ultrathink to orchestrate this work?
-- Workflow: investigation-workflow (6 phases)
+- Workflow: investigation-workflow
 - Estimated scope: 10-15 files, deep analysis
 - Time estimate: 30-40 minutes
 
@@ -83,11 +88,12 @@ Would you like me to use /ultrathink to orchestrate this work?
 **User**: "Investigate auth system, then add OAuth support"
 
 **Skill Response**:
+
 ```
 I detected a COMPLEX hybrid request: "Investigate auth system, then add OAuth support"
 
 Would you like me to use /ultrathink to orchestrate this work?
-- Workflow: investigation-workflow (6 phases) → default-workflow (15 steps)
+- Workflow: investigation-workflow → default-workflow
 - Estimated scope: 15+ files, comprehensive work
 - Time estimate: 90-120 minutes
 
@@ -97,11 +103,13 @@ Would you like me to use /ultrathink to orchestrate this work?
 ## Workflow Integration
 
 **Preferred Approach** (workflow skills):
+
 - Uses `Skill(skill="default-workflow")` for development tasks
 - Uses `Skill(skill="investigation-workflow")` for investigation tasks
 - Automatic task type detection from keywords
 
 **Fallback** (if skills not available):
+
 - Reads `.claude/workflow/DEFAULT_WORKFLOW.md`
 - Reads `.claude/workflow/INVESTIGATION_WORKFLOW.md`
 - Provides same functionality via markdown workflows
