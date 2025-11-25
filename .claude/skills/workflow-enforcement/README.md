@@ -1,6 +1,8 @@
 # Workflow Enforcement Skill
 
-Prevents workflow step skipping by tracking completion state and blocking on mandatory steps.
+Guides Claude to complete all workflow steps by providing tracking patterns and emphasizing mandatory steps.
+
+**Implementation Status**: This is a SPECIFICATION skill that provides guidance for Claude self-compliance. Actual blocking requires Claude to follow this guidance.
 
 ## Problem Statement
 
@@ -17,10 +19,10 @@ Claude: *loads skill, creates workflow_state.yaml, displays progress*
 
 ## Key Features
 
-1. **State Tracking**: Persists workflow progress to `.claude/runtime/workflow_state.yaml`
+1. **State Tracking Pattern**: Recommends tracking in TodoWrite or `.claude/runtime/workflow_state.yaml`
 2. **Visual Progress**: Shows `[######............] 6/22 Steps Complete` after each step
-3. **Mandatory Gates**: Blocks Step 15 (PR creation) until Step 10 (review) is complete
-4. **Completion Validation**: Requires Steps 10, 16, 17 before Step 21 (mergeable)
+3. **Mandatory Gates (Guidance)**: Reminds Claude to complete Step 10 before Step 15 (PR creation)
+4. **Completion Validation (Guidance)**: Reminds Claude that Steps 10, 16, 17 are required before Step 21
 
 ## Mandatory Steps
 
@@ -56,9 +58,15 @@ mandatory_steps: [10, 16, 17]
 ## Design Philosophy
 
 - **Ruthless Simplicity**: Single YAML state file
-- **Zero-BS**: Actually blocks skipped steps (not just warnings)
+- **Guidance over Enforcement**: Provides patterns; Claude self-compliance determines effectiveness
 - **Fail-Open**: On errors, log and continue (never block users on bugs)
 - **Modular**: Self-contained with clear integration points
+
+## Limitations
+
+- This is guidance, not automated enforcement
+- Relies on Claude reading and following the skill
+- For hard enforcement, implement pre-commit or CI checks
 
 ## Related Files
 

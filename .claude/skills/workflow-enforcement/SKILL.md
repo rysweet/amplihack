@@ -1,7 +1,7 @@
 ---
 name: workflow-enforcement
 version: 1.0.0
-description: Workflow step compliance enforcement with mandatory step validation and visual progress tracking. Prevents step skipping and ensures complete workflow execution before PR creation.
+description: Workflow step compliance guidance with mandatory step reminders and visual progress tracking. Reminds Claude to complete all workflow steps before PR creation.
 auto_activates:
   - "start workflow"
   - "beginning DEFAULT_WORKFLOW"
@@ -11,19 +11,24 @@ explicit_triggers:
 related_files:
   - .claude/workflow/DEFAULT_WORKFLOW.md
   - .claude/tools/amplihack/hooks/workflow_tracker.py
-  - .claude/runtime/workflow_state.yaml
+implementation_status: specification
 ---
 
 # Workflow Enforcement Skill
 
 ## Purpose
 
-Prevents workflow step skipping by:
+Guides Claude to complete all workflow steps by:
 
-1. Tracking step completion state in `.claude/runtime/workflow_state.yaml`
-2. Validating mandatory steps (10, 16-17) before PR creation
-3. Providing visual progress indicator
-4. Blocking workflow completion when mandatory steps are skipped
+1. Reminding about step completion tracking (use TodoWrite or `.claude/runtime/workflow_state.yaml`)
+2. Emphasizing mandatory steps (10, 16-17) that must not be skipped
+3. Providing visual progress indicator format
+4. Defining expected blocking behavior at checkpoints
+
+**Implementation Status**: This skill is currently a SPECIFICATION that guides Claude behavior. Actual blocking enforcement requires either:
+
+- Claude self-compliance (current state)
+- Future: Pre-commit hooks or CI checks (not yet implemented)
 
 ## The Problem (Issue #1607)
 
@@ -41,9 +46,14 @@ Root causes:
 
 ## How It Works
 
-### 1. State Tracking
+### 1. State Tracking (Recommended Pattern)
 
-When activated, track workflow state in `.claude/runtime/workflow_state.yaml`:
+When activated, Claude SHOULD track workflow state. Options:
+
+- **TodoWrite**: Use step-numbered todos (built-in, always available)
+- **YAML state file**: Create `.claude/runtime/workflow_state.yaml` for persistent tracking
+
+Example YAML state format:
 
 ```yaml
 workflow_id: "session_20251125_143022"
@@ -74,7 +84,9 @@ WORKFLOW PROGRESS [5/22] [#####.................] Step 5: Research and Design
 Mandatory gates remaining: Step 10 (Review), Step 16 (PR Review), Step 17 (Feedback)
 ```
 
-### 3. Mandatory Step Enforcement
+### 3. Mandatory Step Enforcement (Self-Compliance)
+
+**Note**: This is guidance for Claude self-compliance, not automated enforcement.
 
 Before Step 15 (Open PR):
 
@@ -134,7 +146,7 @@ When this skill activates:
 
 ## Integration with TodoWrite
 
-When you use TodoWrite, ensure step numbers match this skill's tracking:
+When you use TodoWrite, ensure step numbers match workflow tracking:
 
 ```python
 TodoWrite(todos=[
@@ -144,11 +156,11 @@ TodoWrite(todos=[
 ])
 ```
 
-This skill validates that TodoWrite step numbers align with workflow_state.yaml.
+TodoWrite is the primary tracking mechanism. YAML state file is optional for additional persistence.
 
-## Blocking Behavior
+## Blocking Behavior (Self-Compliance Pattern)
 
-When mandatory steps are skipped:
+When mandatory steps are skipped, Claude SHOULD display and follow this pattern:
 
 ```
 WORKFLOW ENFORCEMENT: BLOCKED
@@ -217,9 +229,18 @@ If state file is missing or corrupt:
 ## Philosophy Alignment
 
 - **Ruthless Simplicity**: Single YAML file for state, no complex infrastructure
-- **Zero-BS**: Actually blocks skipped steps, not just logs warnings
+- **Guidance over Enforcement**: Provides clear guidance; Claude self-compliance determines effectiveness
 - **Modular**: Self-contained skill with clear integration points
-- **Fail-Open for Errors**: If enforcement fails, log and continue (never block users on bugs)
+- **Fail-Open for Errors**: If tracking fails, log and continue (never block users on bugs)
+
+## Limitations
+
+This skill is a **specification**, not automated enforcement:
+
+- Relies on Claude reading and following this skill's guidance
+- No pre-commit hooks or CI checks currently enforce compliance
+- The same cognitive patterns that cause step-skipping can also skip this skill's guidance
+- For hard enforcement, consider implementing pre-commit or CI-based checks
 
 ## Related Components
 
