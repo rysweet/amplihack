@@ -22,7 +22,6 @@ Public API (the "studs"):
 
 import json
 import os
-import re
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -246,23 +245,19 @@ class DeltaAnalyzer:
     looking at the ENTIRE transcript each time, we look ONLY at
     the delta (new content) and see if it addresses previous failures.
 
+    NOTE: This class provides FALLBACK analysis using simple heuristics.
+    The primary path uses LLM-based analysis via claude_power_steering.py:
+    - analyze_claims_sync() for completion claim detection
+    - analyze_if_addressed_sync() for failure address checking
+
+    This fallback exists for when Claude SDK is unavailable.
+
     Philosophy:
     - Standard library only (no external deps)
     - Fail-open (errors don't block user)
     - Single responsibility (delta analysis only)
+    - LLM-first, heuristics as fallback
     """
-
-    # Claim detection patterns (what users/agents say when they think they're done)
-    CLAIM_PATTERNS = [
-        r"i'?ve\s+(completed|finished|done)",
-        r"(all\s+)?(tests?|todos?|tasks?)\s+(are\s+)?(complete|passing|finished|done)",
-        r"ci\s+(is\s+)?(green|passing|successful)",
-        r"everything\s+(is\s+)?done",
-        r"finished\s+(all\s+)?",
-        r"implemented\s+(all\s+)?",
-        r"pr\s+(is\s+)?(ready|mergeable)",
-        r"workflow\s+(is\s+)?complete",
-    ]
 
     def __init__(self, log: Optional[Callable[[str], None]] = None):
         """Initialize delta analyzer.
@@ -352,7 +347,10 @@ class DeltaAnalyzer:
         return " ".join(texts)
 
     def _detect_claims(self, text: str) -> List[str]:
-        """Detect completion claims in text.
+        """Detect completion claims in text (FALLBACK - simple keyword matching).
+
+        NOTE: This is a fallback method. The primary path uses LLM-based
+        analysis via analyze_claims_sync() in claude_power_steering.py.
 
         Args:
             text: Text to search
@@ -363,22 +361,30 @@ class DeltaAnalyzer:
         claims = []
         text_lower = text.lower()
 
-        for pattern in self.CLAIM_PATTERNS:
-            try:
-                matches = re.finditer(pattern, text_lower, re.IGNORECASE)
-                for match in matches:
-                    # Get surrounding context (50 chars before/after)
-                    start = max(0, match.start() - 50)
-                    end = min(len(text), match.end() + 50)
-                    context = text[start:end].strip()
-                    claim_text = f"...{context}..."
-                    if claim_text not in claims:
-                        claims.append(claim_text)
-            except re.error:
-                continue  # Fail-open on regex errors
+        # Simple keyword-based fallback (not regex)
+        claim_keywords = [
+            "completed",
+            "finished",
+            "all done",
+            "tests passing",
+            "ci green",
+            "pr ready",
+            "workflow complete",
+        ]
+
+        for keyword in claim_keywords:
+            if keyword in text_lower:
+                # Find keyword position and extract context
+                idx = text_lower.find(keyword)
+                start = max(0, idx - 50)
+                end = min(len(text), idx + len(keyword) + 50)
+                context = text[start:end].strip()
+                claim_text = f"...{context}..."
+                if claim_text not in claims:
+                    claims.append(claim_text)
 
         if claims:
-            self.log(f"Detected {len(claims)} completion claims in delta")
+            self.log(f"[Fallback] Detected {len(claims)} completion claims in delta")
 
         return claims
 

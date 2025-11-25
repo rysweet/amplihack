@@ -44,7 +44,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Try to import Claude SDK integration
 try:
-    from claude_power_steering import analyze_consideration
+    from claude_power_steering import (
+        analyze_claims_sync,
+        analyze_consideration,
+        analyze_if_addressed_sync,
+    )
 
     SDK_AVAILABLE = True
 except ImportError:
@@ -598,7 +602,7 @@ class PowerSteeringChecker:
                 # Get previous block's failures for delta analysis
                 previous_block = turn_state.get_previous_block()
                 if previous_block and previous_block.failed_evidence:
-                    # Initialize delta analyzer
+                    # Initialize delta analyzer for text extraction
                     delta_analyzer = DeltaAnalyzer(log=lambda msg: self._log(msg, "INFO"))
 
                     # Get delta transcript (new messages since last block)
@@ -612,13 +616,36 @@ class PowerSteeringChecker:
                         "INFO",
                     )
 
-                    # Analyze delta against previous failures
-                    delta_result = delta_analyzer.analyze_delta(
-                        delta_messages, previous_block.failed_evidence
-                    )
+                    # Extract delta text for LLM analysis
+                    delta_text = delta_analyzer._extract_all_text(delta_messages)
 
-                    addressed_concerns = delta_result.new_content_addresses_failures
-                    user_claims = delta_result.new_claims_detected
+                    # Use LLM-based claim detection (replaces regex patterns)
+                    if SDK_AVAILABLE and delta_text:
+                        self._log("Using LLM-based claim detection", "DEBUG")
+                        user_claims = analyze_claims_sync(delta_text, self.project_root)
+                    else:
+                        user_claims = []
+
+                    # Use LLM-based address checking for each previous failure
+                    if SDK_AVAILABLE and delta_text:
+                        self._log("Using LLM-based address checking", "DEBUG")
+                        for failure in previous_block.failed_evidence:
+                            evidence = analyze_if_addressed_sync(
+                                failure.consideration_id,
+                                failure.reason,
+                                delta_text,
+                                self.project_root,
+                            )
+                            if evidence:
+                                addressed_concerns[failure.consideration_id] = evidence
+                    else:
+                        # Fallback to simple DeltaAnalyzer (heuristics) if SDK unavailable
+                        delta_result = delta_analyzer.analyze_delta(
+                            delta_messages, previous_block.failed_evidence
+                        )
+                        addressed_concerns = delta_result.new_content_addresses_failures
+                        if not user_claims:
+                            user_claims = delta_result.new_claims_detected
 
                     if addressed_concerns:
                         self._log(
