@@ -17,8 +17,15 @@ Phase 1 (MVP) Implementation:
 - Basic semaphore mechanism
 - Simple configuration
 - Fail-open error handling
+
+Phase 4 (Performance) Implementation:
+- Parallel SDK calls using asyncio.gather()
+- Transcript loaded ONCE, shared across parallel workers
+- All checks run (no early exit) for comprehensive feedback
+- No caching (not applicable to session-specific analysis)
 """
 
+import asyncio
 import json
 import os
 import re
@@ -37,7 +44,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Try to import Claude SDK integration
 try:
-    from claude_power_steering import analyze_consideration_sync
+    from claude_power_steering import analyze_consideration
 
     SDK_AVAILABLE = True
 except ImportError:
@@ -48,6 +55,10 @@ MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
 
 # Timeout for individual checker execution (seconds)
 CHECKER_TIMEOUT = 10
+
+# Timeout for parallel execution of all checkers (seconds)
+# With parallel execution, all 22 checks should complete in ~15-20s instead of 220s
+PARALLEL_TIMEOUT = 60
 
 
 @contextmanager
@@ -1175,24 +1186,26 @@ class PowerSteeringChecker:
         session_type: str = None,
         progress_callback: Optional[callable] = None,
     ) -> ConsiderationAnalysis:
-        """Analyze transcript against all enabled considerations.
+        """Analyze transcript against all enabled considerations IN PARALLEL.
 
-        Phase 2: Uses Claude SDK for intelligent analysis when available,
-        falls back to heuristic checkers if SDK unavailable.
+        Phase 4 (Performance): Uses asyncio.gather() to run ALL SDK checks in parallel,
+        reducing total time from ~220s (sequential) to ~15-20s (parallel).
 
-        Phase 3: Filters considerations by session type to prevent false positives.
+        Key design decisions:
+        - Transcript is loaded ONCE upfront, shared across all parallel workers
+        - ALL checks run - no early exit - for comprehensive feedback
+        - No caching - session-specific analysis doesn't benefit from caching
+        - Fail-open: Any errors result in "satisfied" to never block users
 
         Args:
-            transcript: List of message dictionaries
+            transcript: List of message dictionaries (PRE-LOADED, not fetched by workers)
             session_id: Session identifier
             session_type: Session type for selective consideration application (auto-detected if None)
             progress_callback: Optional callback for progress events
 
         Returns:
-            ConsiderationAnalysis with results
+            ConsiderationAnalysis with results from ALL considerations
         """
-        analysis = ConsiderationAnalysis()
-
         # Auto-detect session type if not provided
         if session_type is None:
             session_type = self.detect_session_type(transcript)
@@ -1201,103 +1214,245 @@ class PowerSteeringChecker:
         # Get considerations applicable to this session type
         applicable_considerations = self.get_applicable_considerations(session_type)
 
-        # Track categories for progress
-        categories_seen = set()
-
+        # Filter to enabled considerations only
+        enabled_considerations = []
         for consideration in applicable_considerations:
             # Check if enabled in consideration itself
             if not consideration.get("enabled", True):
                 continue
-
             # Also check config for backward compatibility
             if not self.config.get("checkers_enabled", {}).get(consideration["id"], True):
                 continue
+            enabled_considerations.append(consideration)
 
-            # Emit category event if first time seeing this category
-            category = consideration.get("category", "Unknown")
-            if category not in categories_seen:
-                categories_seen.add(category)
-                self._emit_progress(
-                    progress_callback,
-                    "category",
-                    f"Checking {category}",
-                    {"category": category},
-                )
-
-            # Emit consideration event
+        # Emit progress for all categories upfront
+        categories = set(c.get("category", "Unknown") for c in enabled_considerations)
+        for category in categories:
             self._emit_progress(
                 progress_callback,
-                "consideration",
-                f"Checking: {consideration['question']}",
-                {"consideration_id": consideration["id"], "question": consideration["question"]},
+                "category",
+                f"Checking {category}",
+                {"category": category},
             )
 
-            # Run checker with timeout and error handling
-            try:
-                with _timeout(CHECKER_TIMEOUT):
-                    # Determine if we should use SDK analysis
-                    checker_name = consideration["checker"]
-                    use_sdk = (
-                        SDK_AVAILABLE
-                        and checker_name != "generic"  # Skip SDK for generic checkers
-                        and checker_name.startswith("_check_")  # Only use SDK for specific checkers
-                    )
+        # Emit progress for parallel execution start
+        self._emit_progress(
+            progress_callback,
+            "parallel_start",
+            f"Running {len(enabled_considerations)} checks in parallel...",
+            {"count": len(enabled_considerations)},
+        )
 
-                    if use_sdk:
-                        try:
-                            satisfied = analyze_consideration_sync(
-                                conversation=transcript,
-                                consideration=consideration,
-                                project_root=self.project_root,
-                            )
-                            self._log(
-                                f"SDK analysis for '{consideration['id']}': {'satisfied' if satisfied else 'not satisfied'}",
-                                "DEBUG",
-                            )
-                        except Exception as e:
-                            # SDK failed, fall back to heuristic checker
-                            self._log(
-                                f"SDK analysis failed for '{consideration['id']}': {e}, using heuristic",
-                                "WARNING",
-                            )
-                            satisfied = self._run_heuristic_checker(
-                                consideration, transcript, session_id
-                            )
-                    else:
-                        # SDK not available or not applicable, use heuristic checker
-                        satisfied = self._run_heuristic_checker(
-                            consideration, transcript, session_id
-                        )
+        # Run all considerations in parallel using asyncio
+        try:
+            # Use asyncio.run() to execute the parallel async method
+            # This is the single event loop for all parallel checks
+            start_time = datetime.now()
 
-                result = CheckerResult(
-                    consideration_id=consideration["id"],
-                    satisfied=satisfied,
-                    reason=consideration["question"],
-                    severity=consideration["severity"],
+            analysis = asyncio.run(
+                self._analyze_considerations_parallel_async(
+                    transcript=transcript,
+                    session_id=session_id,
+                    enabled_considerations=enabled_considerations,
+                    progress_callback=progress_callback,
                 )
-                analysis.add_result(result)
-            except TimeoutError:
-                # Fail-open: Treat as satisfied on timeout
-                self._log(f"Checker timed out ({CHECKER_TIMEOUT}s)", "WARNING")
-                result = CheckerResult(
+            )
+
+            elapsed = (datetime.now() - start_time).total_seconds()
+            self._log(
+                f"Parallel analysis completed: {len(enabled_considerations)} checks in {elapsed:.1f}s",
+                "INFO",
+            )
+            self._emit_progress(
+                progress_callback,
+                "parallel_complete",
+                f"Completed {len(enabled_considerations)} checks in {elapsed:.1f}s",
+                {"count": len(enabled_considerations), "elapsed_seconds": elapsed},
+            )
+
+            return analysis
+
+        except Exception as e:
+            # Fail-open: On any error with parallel execution, return empty analysis
+            self._log(f"Parallel analysis failed (fail-open): {e}", "ERROR")
+            return ConsiderationAnalysis()
+
+    async def _analyze_considerations_parallel_async(
+        self,
+        transcript: List[Dict],
+        session_id: str,
+        enabled_considerations: List[Dict[str, Any]],
+        progress_callback: Optional[callable] = None,
+    ) -> ConsiderationAnalysis:
+        """Async implementation that runs ALL considerations in parallel.
+
+        Args:
+            transcript: Pre-loaded transcript (shared across all workers)
+            session_id: Session identifier
+            enabled_considerations: List of enabled consideration dictionaries
+            progress_callback: Optional callback for progress events
+
+        Returns:
+            ConsiderationAnalysis with results from all considerations
+        """
+        analysis = ConsiderationAnalysis()
+
+        # Create async tasks for ALL considerations
+        # Each task receives the SAME transcript (no re-fetching)
+        tasks = [
+            self._check_single_consideration_async(
+                consideration=consideration,
+                transcript=transcript,
+                session_id=session_id,
+            )
+            for consideration in enabled_considerations
+        ]
+
+        # Run ALL tasks in parallel with overall timeout
+        # return_exceptions=True ensures all tasks complete even if some fail
+        try:
+            async with asyncio.timeout(PARALLEL_TIMEOUT):
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+        except asyncio.TimeoutError:
+            self._log(f"Parallel execution timed out after {PARALLEL_TIMEOUT}s", "WARNING")
+            # Fail-open: Return empty analysis on timeout
+            return analysis
+
+        # Process results from all parallel tasks
+        for consideration, result in zip(enabled_considerations, results):
+            if isinstance(result, Exception):
+                # Task raised an exception - fail-open
+                self._log(
+                    f"Check '{consideration['id']}' failed with exception: {result}",
+                    "WARNING",
+                )
+                checker_result = CheckerResult(
                     consideration_id=consideration["id"],
                     satisfied=True,  # Fail-open
-                    reason=f"Timeout after {CHECKER_TIMEOUT}s",
+                    reason=f"Error: {result}",
                     severity=consideration["severity"],
                 )
-                analysis.add_result(result)
-            except Exception as e:
-                # Fail-open: Treat as satisfied on error
-                self._log(f"Checker failed: {e}", "ERROR")
-                result = CheckerResult(
+            elif isinstance(result, CheckerResult):
+                # Normal result
+                checker_result = result
+            else:
+                # Unexpected result type - fail-open
+                self._log(
+                    f"Check '{consideration['id']}' returned unexpected type: {type(result)}",
+                    "WARNING",
+                )
+                checker_result = CheckerResult(
                     consideration_id=consideration["id"],
                     satisfied=True,  # Fail-open
-                    reason=f"Error: {e}",
+                    reason="Unexpected result type",
                     severity=consideration["severity"],
                 )
-                analysis.add_result(result)
+
+            analysis.add_result(checker_result)
+
+            # Emit individual result progress
+            self._emit_progress(
+                progress_callback,
+                "consideration_result",
+                f"{'✓' if checker_result.satisfied else '✗'} {consideration['question']}",
+                {
+                    "consideration_id": consideration["id"],
+                    "satisfied": checker_result.satisfied,
+                    "question": consideration["question"],
+                },
+            )
 
         return analysis
+
+    async def _check_single_consideration_async(
+        self,
+        consideration: Dict[str, Any],
+        transcript: List[Dict],
+        session_id: str,
+    ) -> CheckerResult:
+        """Check a single consideration asynchronously.
+
+        This is the parallel worker that handles one consideration.
+        The transcript is already loaded - this method does NOT fetch it.
+
+        Args:
+            consideration: Consideration dictionary
+            transcript: Pre-loaded transcript (shared, not fetched)
+            session_id: Session identifier
+
+        Returns:
+            CheckerResult with satisfaction status
+        """
+        try:
+            # Determine if we should use SDK analysis
+            checker_name = consideration["checker"]
+            use_sdk = (
+                SDK_AVAILABLE
+                and checker_name != "generic"  # Skip SDK for generic checkers
+                and checker_name.startswith("_check_")  # Only use SDK for specific checkers
+            )
+
+            if use_sdk:
+                try:
+                    # Use the async SDK function directly (no asyncio.run())
+                    satisfied = await analyze_consideration(
+                        conversation=transcript,
+                        consideration=consideration,
+                        project_root=self.project_root,
+                    )
+                    self._log(
+                        f"SDK analysis for '{consideration['id']}': "
+                        f"{'satisfied' if satisfied else 'not satisfied'}",
+                        "DEBUG",
+                    )
+                except Exception as e:
+                    # SDK failed, fall back to heuristic checker
+                    self._log(
+                        f"SDK analysis failed for '{consideration['id']}': {e}, using heuristic",
+                        "WARNING",
+                    )
+                    # Run heuristic in thread pool to not block event loop
+                    satisfied = await asyncio.to_thread(
+                        self._run_heuristic_checker,
+                        consideration,
+                        transcript,
+                        session_id,
+                    )
+            else:
+                # SDK not available or not applicable, use heuristic checker
+                # Run heuristic in thread pool to not block event loop
+                satisfied = await asyncio.to_thread(
+                    self._run_heuristic_checker,
+                    consideration,
+                    transcript,
+                    session_id,
+                )
+
+            return CheckerResult(
+                consideration_id=consideration["id"],
+                satisfied=satisfied,
+                reason=consideration["question"],
+                severity=consideration["severity"],
+            )
+
+        except asyncio.TimeoutError:
+            # Individual task timeout - fail-open
+            self._log(f"Check '{consideration['id']}' timed out", "WARNING")
+            return CheckerResult(
+                consideration_id=consideration["id"],
+                satisfied=True,  # Fail-open
+                reason="Timeout",
+                severity=consideration["severity"],
+            )
+        except Exception as e:
+            # Any other error - fail-open
+            self._log(f"Check '{consideration['id']}' failed: {e}", "ERROR")
+            return CheckerResult(
+                consideration_id=consideration["id"],
+                satisfied=True,  # Fail-open
+                reason=f"Error: {e}",
+                severity=consideration["severity"],
+            )
 
     def _run_heuristic_checker(
         self, consideration: Dict[str, Any], transcript: List[Dict], session_id: str
