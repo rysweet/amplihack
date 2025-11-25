@@ -23,10 +23,21 @@ logger = logging.getLogger(__name__)
 def _install_kuzu() -> bool:
     """Install Kùzu package automatically.
 
+    This enables a zero-config experience by installing Kùzu when needed.
+    The installation can be disabled by setting AMPLIHACK_NO_AUTO_INSTALL=1.
+
     Returns:
         True if installation succeeded, False otherwise.
     """
+    import os
+
+    # Allow users to disable auto-install for security-conscious environments
+    if os.getenv("AMPLIHACK_NO_AUTO_INSTALL", "").lower() in ("1", "true", "yes"):
+        logger.info("Auto-install disabled via AMPLIHACK_NO_AUTO_INSTALL")
+        return False
+
     print("📦 Installing Kùzu embedded database (one-time setup)...")
+    print("   (Set AMPLIHACK_NO_AUTO_INSTALL=1 to disable)")
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "kuzu>=0.11.0"],
@@ -37,15 +48,19 @@ def _install_kuzu() -> bool:
         if result.returncode == 0:
             print("✓ Kùzu installed successfully")
             return True
-        logger.warning(f"Kùzu installation failed: {result.stderr}")
-        print(f"⚠️  Kùzu installation failed: {result.stderr[:200]}")
+        error_msg = result.stderr or result.stdout or "Unknown error"
+        logger.warning(f"Kùzu installation failed:\n{error_msg}")
+        print("⚠️  Kùzu installation failed. See logs for details or install manually:")
+        print("   pip install kuzu")
         return False
     except subprocess.TimeoutExpired:
-        print("⚠️  Kùzu installation timed out")
+        logger.warning("Kùzu installation timed out after 120 seconds")
+        print("⚠️  Kùzu installation timed out. Install manually: pip install kuzu")
         return False
     except Exception as e:
         logger.warning(f"Kùzu installation error: {e}")
         print(f"⚠️  Kùzu installation error: {e}")
+        print("   Install manually: pip install kuzu")
         return False
 
 
@@ -120,16 +135,24 @@ class BackendDetector:
         return self._neo4j_container_running
 
     def _try_install_kuzu(self) -> bool:
-        """Attempt to install Kùzu and update availability cache.
+        """Attempt to install Kùzu and verify it imports successfully.
 
         Returns:
             True if Kùzu is now available, False otherwise.
         """
-        if _install_kuzu():
-            # Reset cached value to re-check
-            self._kuzu_available = None
-            return self.kuzu_available
-        return False
+        if not _install_kuzu():
+            return False
+
+        # Reset cache and verify import
+        self._kuzu_available = None
+        if not self.kuzu_available:
+            # Installation completed but import failed - likely corrupted or incompatible
+            logger.error("Kùzu installed but failed to import. Package may be corrupted.")
+            print("⚠️  Kùzu installed but failed to import. Try reinstalling:")
+            print("   pip uninstall kuzu && pip install kuzu")
+            return False
+
+        return True
 
     def detect_best_backend(self, auto_install: bool = True) -> BackendType:
         """Detect and return the best available backend.
