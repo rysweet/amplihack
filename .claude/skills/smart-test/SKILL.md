@@ -5,6 +5,49 @@ description: |
   Intelligent test selection based on code changes. Maps source files to tests via import analysis,
   implements tiered testing (fast < 1 min, impacted < 5 min, full suite), and tracks test reliability.
   Use when running tests after code changes to optimize feedback loops and CI time.
+auto_activates:
+  - "run affected tests"
+  - "run impacted tests"
+  - "smart test"
+  - "intelligent testing"
+  - "which tests to run"
+  - "test selection"
+  - "fast tests"
+  - "quick tests"
+  - "tests for changes"
+  - "tests for this PR"
+priority_score: 42.0
+evaluation_criteria:
+  frequency: HIGH
+  impact: HIGH
+  complexity: MEDIUM
+  reusability: HIGH
+  philosophy_alignment: HIGH
+  uniqueness: MEDIUM
+invokes:
+  - type: skill
+    name: test-gap-analyzer
+  - type: skill
+    name: outside-in-testing
+  - type: skill
+    name: pre-commit-diagnostic
+dependencies:
+  tools:
+    - Read
+    - Bash
+    - Grep
+    - Glob
+  external:
+    - "pytest"
+    - "git"
+philosophy:
+  - principle: Ruthless Simplicity
+    application: Three-tier system (Fast/Impacted/Full) avoids over-engineering
+  - principle: Zero-BS Implementation
+    application: Real pytest commands ready to copy-paste
+  - principle: Modular Design
+    application: YAML storage enables cache regeneration
+maturity: production
 ---
 
 # Smart Test Selection Skill
