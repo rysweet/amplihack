@@ -12,8 +12,11 @@ This JWT (JSON Web Token) authentication system provides secure user authenticat
 - ✅ Protected route middleware
 - ✅ Role-based access control (Admin support)
 - ✅ Token refresh mechanism
+- ✅ Token blacklisting for logout
+- ✅ Rate limiting on authentication endpoints
 - ✅ Optional authentication for public routes
 - ✅ User profile management
+- ✅ Comprehensive logging for security events
 - ✅ Comprehensive test suite
 
 ## Installation
@@ -152,6 +155,24 @@ POST /auth/refresh?refresh_token=your-refresh-token
   "token_type": "bearer"
 }
 ```
+
+#### Logout
+
+```http
+POST /auth/logout
+Authorization: Bearer your-access-token
+```
+
+**Response:**
+
+```json
+{
+  "message": "Successfully logged out",
+  "detail": "Token has been invalidated"
+}
+```
+
+**Note:** The logout endpoint blacklists the current access token, making it invalid for future requests even if it hasn't expired yet.
 
 #### Get Current User
 
@@ -315,14 +336,22 @@ def test_protected():
 
 - Keep access tokens short-lived (15-30 minutes recommended)
 - Use refresh tokens for longer sessions (7-30 days)
-- Implement token blacklisting for logout in production
+- Tokens automatically expire based on configured timeouts
 
-### 3. HTTPS Only
+### 3. Token Blacklisting
+
+The authentication system includes built-in token blacklisting:
+- Tokens are blacklisted on logout
+- Blacklisted tokens are rejected even if not expired
+- In-memory storage by default (use Redis in production)
+- Prevents token reuse after logout
+
+### 4. HTTPS Only
 
 - Always use HTTPS in production
 - Never send tokens over unencrypted connections
 
-### 4. CORS Configuration
+### 5. CORS Configuration
 
 ```python
 from fastapi.middleware.cors import CORSMiddleware
@@ -336,9 +365,30 @@ app.add_middleware(
 )
 ```
 
-### 5. Rate Limiting
+### 6. Rate Limiting
 
-Consider implementing rate limiting for authentication endpoints to prevent brute force attacks.
+Built-in rate limiting protects against brute force attacks:
+- **Registration**: 3 requests per minute per IP
+- **Login**: 5 requests per minute per IP
+- **Token Refresh**: 60 requests per minute per IP
+- Returns HTTP 429 when limit exceeded
+- Includes rate limit headers in responses
+
+```python
+from amplihack.auth import RateLimiter
+
+# Custom rate limiter for your endpoints
+custom_limiter = RateLimiter(requests_per_minute=10)
+```
+
+### 7. Security Logging
+
+Comprehensive logging tracks security events:
+- Failed login attempts
+- Successful registrations and logins
+- Token blacklisting events
+- Rate limit violations
+- Configure logging level via Python's logging module
 
 ## Advanced Usage
 

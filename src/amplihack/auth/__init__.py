@@ -17,6 +17,12 @@ from .models import (
     UserLogin,
     UserResponse,
 )
+from .rate_limiter import (
+    RateLimiter,
+    general_rate_limiter,
+    login_rate_limiter,
+    register_rate_limiter,
+)
 from .routes import auth_router
 from .user_store import user_store
 
@@ -36,4 +42,8 @@ __all__ = [
     "UserResponse",
     "TokenResponse",
     "TokenData",
+    "RateLimiter",
+    "general_rate_limiter",
+    "login_rate_limiter",
+    "register_rate_limiter",
 ]

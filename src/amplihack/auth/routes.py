@@ -1,35 +1,66 @@
 """Authentication routes for the API."""
 # ruff: noqa: B008  # Depends() in argument defaults is the FastAPI pattern
 
+import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from .jwt_handler import jwt_handler
 from .middleware import get_current_user, jwt_bearer
 from .models import TokenResponse, User, UserCreate, UserLogin, UserResponse
+from .rate_limiter import general_rate_limiter, login_rate_limiter, register_rate_limiter
 from .user_store import user_store
 
 # Create router for authentication endpoints
 auth_router = APIRouter(prefix="/auth", tags=["authentication"])
 
+# Configure logger
+logger = logging.getLogger(__name__)
+
+
+async def check_rate_limit(request: Request, rate_limiter):
+    """Check rate limit for the given request."""
+    client_ip = request.client.host if request.client else "unknown"
+    allowed, remaining = rate_limiter.is_allowed(client_ip)
+
+    if not allowed:
+        reset_time = rate_limiter.get_reset_time(client_ip)
+        logger.warning(f"Rate limit exceeded for IP {client_ip} on {request.url.path}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Please try again later.",
+            headers={
+                "X-RateLimit-Limit": str(rate_limiter.requests_per_minute),
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": reset_time.isoformat(),
+            }
+        )
+
+    return remaining
+
 
 @auth_router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate):
+async def register(user_data: UserCreate, request: Request):
     """
     Register a new user.
 
     Args:
         user_data: User registration data
+        request: The request object (for rate limiting)
 
     Returns:
         The created user (without sensitive data)
 
     Raises:
-        HTTPException: If username or email already exists
+        HTTPException: If username or email already exists or rate limit exceeded
     """
+    # Check rate limit
+    await check_rate_limit(request, register_rate_limiter)
+
     try:
         user = user_store.create_user(user_data)
+        logger.info(f"User registered successfully: {user.username} (ID: {user.id})")
         return UserResponse(
             id=user.id,
             username=user.username,
@@ -40,27 +71,33 @@ async def register(user_data: UserCreate):
             is_admin=user.is_admin,
         )
     except ValueError as e:
+        logger.warning(f"Registration failed for username '{user_data.username}': {str(e)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @auth_router.post("/login", response_model=TokenResponse)
-async def login(login_data: UserLogin):
+async def login(login_data: UserLogin, request: Request):
     """
     Login a user and get access/refresh tokens.
 
     Args:
         login_data: User login credentials
+        request: The request object (for rate limiting)
 
     Returns:
         Access and refresh tokens
 
     Raises:
-        HTTPException: If credentials are invalid
+        HTTPException: If credentials are invalid or rate limit exceeded
     """
+    # Check rate limit
+    await check_rate_limit(request, login_rate_limiter)
+
     # Authenticate user
     user = user_store.authenticate_user(login_data.username, login_data.password)
 
     if not user:
+        logger.warning(f"Failed login attempt for username: {login_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password"
         )
@@ -71,25 +108,31 @@ async def login(login_data: UserLogin):
     access_token = jwt_handler.create_access_token(token_data)
     refresh_token = jwt_handler.create_refresh_token(token_data)
 
+    logger.info(f"User logged in successfully: {user.username} (ID: {user.id})")
+
     return TokenResponse(
         access_token=access_token, refresh_token=refresh_token, token_type="bearer"
     )
 
 
 @auth_router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_token: str):
+async def refresh_token(refresh_token: str, request: Request):
     """
     Refresh access token using a refresh token.
 
     Args:
         refresh_token: The refresh token
+        request: The request object (for rate limiting)
 
     Returns:
         New access and refresh tokens
 
     Raises:
-        HTTPException: If refresh token is invalid
+        HTTPException: If refresh token is invalid or rate limit exceeded
     """
+    # Check rate limit (use general limiter for refresh)
+    await check_rate_limit(request, general_rate_limiter)
+
     try:
         # Verify refresh token
         payload = jwt_handler.verify_refresh_token(refresh_token)
@@ -149,10 +192,10 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 @auth_router.post("/logout")
 async def logout(token: str = Depends(jwt_bearer)):
     """
-    Logout a user.
+    Logout a user by blacklisting their token.
 
-    Note: In a real application, you might want to blacklist the token
-    or implement a token revocation mechanism.
+    The token will be added to the blacklist and will no longer be valid
+    for authentication, even if it hasn't expired yet.
 
     Args:
         token: The current access token
@@ -160,9 +203,14 @@ async def logout(token: str = Depends(jwt_bearer)):
     Returns:
         Logout confirmation message
     """
-    # In a production app, you would add the token to a blacklist
-    # For now, we just return a success message
-    return {"message": "Successfully logged out"}
+    # Add the token to the blacklist
+    jwt_handler.blacklist_token(token)
+
+    # Log the logout event (don't log the full token for security)
+    token_preview = f"{token[:10]}..." if len(token) > 10 else token
+    logger.info(f"User logged out, token blacklisted: {token_preview}")
+
+    return {"message": "Successfully logged out", "detail": "Token has been invalidated"}
 
 
 @auth_router.put("/me", response_model=UserResponse)

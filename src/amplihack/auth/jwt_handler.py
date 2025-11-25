@@ -1,5 +1,6 @@
 """JWT token generation and validation utilities."""
 
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
@@ -9,14 +10,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Configure logger
+logger = logging.getLogger(__name__)
+
 
 class JWTHandler:
     """Handle JWT token generation and validation."""
 
     def __init__(self):
         """Initialize JWT handler with secret key."""
-        # Get secret from environment or generate a secure default
-        self.secret_key = os.getenv("JWT_SECRET_KEY", self._generate_secret_key())
+        # Simple in-memory blacklist (use Redis in production)
+        self._blacklisted_tokens = set()
+
+        # Get secret from environment - REQUIRED in production
+        self.secret_key = os.getenv("JWT_SECRET_KEY")
+        if not self.secret_key:
+            import warnings
+            warnings.warn(
+                "JWT_SECRET_KEY not set! Using generated key for development only. "
+                "Set JWT_SECRET_KEY environment variable in production.",
+                RuntimeWarning,
+                stacklevel=2
+            )
+            self.secret_key = self._generate_secret_key()
+
         self.algorithm = os.getenv("JWT_ALGORITHM", "HS256")
         self.access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
         self.refresh_token_expire_days = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
@@ -95,6 +112,10 @@ class JWTHandler:
             jwt.ExpiredSignatureError: If the token has expired
             jwt.InvalidTokenError: If the token is invalid
         """
+        # Check if token is blacklisted
+        if token in self._blacklisted_tokens:
+            raise jwt.InvalidTokenError("Token has been revoked")
+
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
 
@@ -116,6 +137,30 @@ class JWTHandler:
     def verify_refresh_token(self, token: str) -> Dict[str, Any]:
         """Verify a refresh token."""
         return self.verify_token(token, "refresh")
+
+    def blacklist_token(self, token: str) -> None:
+        """
+        Add a token to the blacklist.
+
+        Args:
+            token: The JWT token to blacklist
+        """
+        self._blacklisted_tokens.add(token)
+        # Log token blacklist (don't log full token for security)
+        token_preview = f"{token[:10]}..." if len(token) > 10 else token
+        logger.debug(f"Token blacklisted: {token_preview}")
+
+    def is_token_blacklisted(self, token: str) -> bool:
+        """
+        Check if a token is blacklisted.
+
+        Args:
+            token: The JWT token to check
+
+        Returns:
+            True if the token is blacklisted, False otherwise
+        """
+        return token in self._blacklisted_tokens
 
 
 # Create a singleton instance
