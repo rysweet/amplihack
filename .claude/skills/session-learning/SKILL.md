@@ -299,6 +299,192 @@ Skip extraction when:
 - Use PATTERNS.md for proven, reusable patterns with code
 - Use Session Learning for quick insights that help future sessions
 
+## Error Handling
+
+### YAML Parsing Errors
+
+If a learning file becomes corrupted or invalid:
+
+```python
+import yaml
+from pathlib import Path
+
+def safe_load_learnings(filepath: Path) -> dict:
+    """Load learnings with graceful error handling."""
+    try:
+        content = filepath.read_text()
+        data = yaml.safe_load(content)
+        if not isinstance(data, dict) or "learnings" not in data:
+            print(f"Warning: Invalid structure in {filepath}, using empty learnings")
+            return {"category": filepath.stem, "learnings": []}
+        return data
+    except yaml.YAMLError as e:
+        print(f"Warning: YAML error in {filepath}: {e}")
+        # Create backup before recovery
+        backup = filepath.with_suffix(".yaml.bak")
+        filepath.rename(backup)
+        print(f"Backed up corrupted file to {backup}")
+        return {"category": filepath.stem, "learnings": []}
+    except Exception as e:
+        print(f"Warning: Could not read {filepath}: {e}")
+        return {"category": filepath.stem, "learnings": []}
+```
+
+### Missing Files
+
+If the learnings directory doesn't exist, create it:
+
+```python
+def ensure_learnings_directory():
+    """Create learnings directory and empty files if missing."""
+    learnings_dir = Path(".claude/data/learnings")
+    learnings_dir.mkdir(parents=True, exist_ok=True)
+
+    categories = ["errors", "workflows", "tools", "architecture", "debugging"]
+    for cat in categories:
+        filepath = learnings_dir / f"{cat}.yaml"
+        if not filepath.exists():
+            filepath.write_text(f"category: {cat}\nlearnings: []\n")
+```
+
+### Fail-Safe Principle
+
+The learning system follows fail-safe design:
+
+- **Never blocks session start**: If injection fails, session continues normally
+- **Never blocks session stop**: If extraction fails, session ends normally
+- **Logs warnings but continues**: Errors are logged, not raised
+- **Creates backups before modifications**: Corrupt files are preserved
+
+## Hook Integration
+
+### Stop Hook: Learning Extraction
+
+Add learning extraction to your stop hook:
+
+```python
+# .claude/tools/amplihack/hooks/stop_hook.py
+
+async def extract_session_learnings(transcript: str, session_id: str):
+    """Extract learnings from session transcript at stop."""
+    from pathlib import Path
+    import yaml
+    from datetime import datetime
+
+    # Only extract if session was substantive (not just a quick question)
+    if len(transcript) < 1000:
+        return
+
+    # Use Claude to extract insights (simplified example)
+    extraction_prompt = f"""
+    Analyze this session transcript and extract any reusable learnings.
+
+    Categories:
+    - errors: Error patterns and solutions
+    - workflows: Process improvements
+    - tools: Tool usage insights
+    - architecture: Design decisions
+    - debugging: Debug strategies
+
+    For each learning, provide:
+    - category (one of the above)
+    - keywords (3-5 searchable terms)
+    - summary (one sentence)
+    - insight (detailed explanation)
+    - example (code if applicable)
+    - confidence (0.5-1.0)
+
+    Transcript:
+    {transcript[:5000]}  # Truncate for token limits
+    """
+
+    # ... call Claude to extract ...
+    # ... parse response and add to appropriate YAML files ...
+
+def on_stop(session_data: dict):
+    """Stop hook entry point."""
+    # ... other stop hook logic ...
+
+    # Extract learnings (non-blocking)
+    try:
+        import asyncio
+        asyncio.create_task(
+            extract_session_learnings(
+                session_data.get("transcript", ""),
+                session_data.get("session_id", "")
+            )
+        )
+    except Exception as e:
+        print(f"Learning extraction failed (non-blocking): {e}")
+```
+
+### Session Start Hook: Learning Injection
+
+Add learning injection to your session start hook:
+
+```python
+# .claude/tools/amplihack/hooks/session_start_hook.py
+
+def inject_relevant_learnings(initial_prompt: str) -> str:
+    """Find and format relevant learnings for injection."""
+    from pathlib import Path
+    import yaml
+
+    learnings_dir = Path(".claude/data/learnings")
+    if not learnings_dir.exists():
+        return ""
+
+    # Extract keywords from prompt
+    prompt_lower = initial_prompt.lower()
+    task_keywords = set()
+    for word in prompt_lower.split():
+        if len(word) > 3:  # Skip short words
+            task_keywords.add(word.strip(".,!?"))
+
+    # Find matching learnings
+    matches = []
+    for yaml_file in learnings_dir.glob("*.yaml"):
+        if yaml_file.name.startswith("_"):
+            continue  # Skip _stats.yaml
+
+        try:
+            data = yaml.safe_load(yaml_file.read_text())
+            for learning in data.get("learnings", []):
+                learning_keywords = set(k.lower() for k in learning.get("keywords", []))
+                overlap = task_keywords & learning_keywords
+                if overlap:
+                    score = len(overlap) * learning.get("confidence", 0.5)
+                    matches.append((score, learning))
+        except Exception:
+            continue
+
+    # Return top 3 matches
+    matches.sort(key=lambda x: x[0], reverse=True)
+    if not matches:
+        return ""
+
+    context = "## Past Learnings Relevant to This Task\n\n"
+    for score, learning in matches[:3]:
+        context += f"### {learning.get('summary', 'Insight')}\n"
+        context += f"{learning.get('insight', '')}\n\n"
+
+    return context
+
+def on_session_start(session_data: dict) -> dict:
+    """Session start hook entry point."""
+    initial_prompt = session_data.get("prompt", "")
+
+    # Inject relevant learnings
+    try:
+        learning_context = inject_relevant_learnings(initial_prompt)
+        if learning_context:
+            session_data["injected_context"] = learning_context
+    except Exception as e:
+        print(f"Learning injection failed (non-blocking): {e}")
+
+    return session_data
+```
+
 ## Limitations
 
 1. **Keyword matching is imperfect** - May miss relevant learnings or match irrelevant ones
