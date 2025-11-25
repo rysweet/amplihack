@@ -1,8 +1,8 @@
 ---
 name: DEFAULT_WORKFLOW
-version: 1.0.0
-description: Standard 21-step workflow for feature development, bug fixes, and refactoring
-steps: 21
+version: 1.1.0
+description: Standard 22-step workflow (Steps 0-21) for feature development, bug fixes, and refactoring
+steps: 22
 phases:
   - requirements-clarification
   - design
@@ -81,28 +81,33 @@ When creating todos during workflow execution, reference the workflow steps dire
 - **Be Specific**: Include the specific agent or action for each step
   - Example: `Step 5: Implement the Solution - Use builder agent from specifications`
 
-- **Track Progress**: Users can see exactly which step is active (e.g., "Step 5 of 15")
+- **Track Progress**: Users can see exactly which step is active (e.g., "Step 5 of 22")
 
 **Example Todo Structure (Single Workflow):**
 
 ```
-Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent to clarify task
-Step 2: Create GitHub Issue - Define requirements and constraints using gh issue create
-Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch in worktrees/
-Step 4: Research and Design - Use architect agent for solution design
-Step 5: Implement the Solution - Use builder agent to implement from specifications
+Step 0: Workflow Preparation - Read workflow, create todos for ALL steps (0-21)
+Step 1: Prepare the Workspace - Check git status and fetch
+Step 2: Rewrite and Clarify Requirements - Use prompt-writer agent to clarify task
+Step 3: Create GitHub Issue - Define requirements and constraints using gh issue create
+Step 4: Setup Worktree and Branch - Create feat/issue-XXX branch in worktrees/
+Step 5: Research and Design - Use architect agent for solution design
 ...
+Step 16: Review the PR - MANDATORY code review
+Step 17: Implement Review Feedback - MANDATORY
+...
+Step 21: Ensure PR is Mergeable - TASK COMPLETION POINT
 ```
 
 **Example Todo Structure (Multiple Parallel Workflows):**
 
 ```
-[PR1090 TASK] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
-[PR1090 TASK] Step 2: Create GitHub Issue - Define requirements using gh issue create
-[PR1090 TASK] Step 4: Research and Design - Use architect agent for solution design
-[FEATURE-X] Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent
+[PR1090 TASK] Step 0: Workflow Preparation - Create todos for ALL steps (0-21)
+[PR1090 TASK] Step 1: Prepare the Workspace - Check git status
+[PR1090 TASK] Step 2: Rewrite and Clarify Requirements - Use prompt-writer agent
+[FEATURE-X] Step 0: Workflow Preparation - Create todos for ALL steps (0-21)
 [FEATURE-X] Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch
-[BUGFIX-Y] Step 5: Implement the Solution - Use builder agent from specifications
+[BUGFIX-Y] Step 16: Review the PR - MANDATORY code review
 ...
 ```
 
@@ -114,7 +119,44 @@ This step-based structure helps users understand:
 
 ## The Workflow
 
+### Step 0: Workflow Preparation (MANDATORY - DO NOT SKIP)
+
+**CRITICAL: This step MUST be completed before ANY implementation work begins.**
+
+**Why This Step Exists:**
+
+Agents that skip workflow steps (especially mandatory review steps 10, 16-17) create quality issues and erode user trust. This step ensures agents track ALL steps from the start, preventing "completion bias" where agents feel done after implementation but before review.
+
+**Root Cause Prevention:**
+
+- **Completion Bias**: Agents often consider "PR created" as task completion
+- **Context Decay**: After heavy implementation, agents lose sight of remaining steps
+- **Autonomy Misapplication**: Being autonomous means making implementation decisions independently, NOT skipping mandatory process steps
+
+**Checklist:**
+
+- [ ] **Read this entire workflow file** - Understand all 22 steps (0-21) before starting
+- [ ] **Create TodoWrite entries for ALL steps (0-21)** using format: `Step N: [Step Name] - [Specific Action]`
+- [ ] **Mark each step complete ONLY when truly done** - No premature completion
+- [ ] **Task is NOT complete until Step 21 is marked complete**
+
+**Self-Verification:** Before proceeding to Step 1, confirm you have 22 todo items visible (Steps 0-21).
+
+**Anti-Pattern Prevention:**
+
+- ❌ DO NOT skip to implementation after reading requirements
+- ❌ DO NOT consider "PR created" as completion (Step 21 is the completion point)
+- ❌ DO NOT omit Steps 10, 16-17 (mandatory review steps)
+- ❌ DO NOT declare task complete with pending steps
+- ✅ DO create all step todos BEFORE starting any implementation
+- ✅ DO mark steps complete sequentially as you finish them
+- ✅ DO track every mandatory step in TodoWrite
+
+**Reference Issue:** This step was added after Issue #1607 identified workflow step skipping as a recurring problem.
+
 ### Step 1: Prepare the Workspace
+
+**Prerequisite Check:** Verify Step 0 is complete - you should have 22 todos visible (Steps 0-21) before proceeding.
 
 - [ ] start with a clean local environment and make sure it is up to date (no unstashed changes, git fetch)
 
