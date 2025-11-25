@@ -1415,6 +1415,22 @@ class TestInvestigationKeywordDetection(unittest.TestCase):
         session_type = self.checker.detect_session_type(transcript)
         self.assertEqual(session_type, "INVESTIGATION")
 
+    def test_how_does_phrase_triggers_investigation(self):
+        """'How does X work?' phrase should classify as INVESTIGATION.
+
+        This test was added per review feedback to explicitly verify that
+        questions about how things work are classified as INVESTIGATION.
+        """
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "How does this authentication module work?"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
     def test_no_false_positive_for_development_task(self):
         """Development tasks without keywords should still be DEVELOPMENT."""
         transcript = [

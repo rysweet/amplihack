@@ -199,12 +199,15 @@ class PowerSteeringChecker:
     # Keywords that indicate investigation/troubleshooting sessions
     # When found in early user messages, session is classified as INVESTIGATION
     # regardless of tool usage patterns (fixes #1604)
+    #
+    # Note: Using substring matching, so shorter forms match longer variants:
+    # - "troubleshoot" matches "troubleshooting"
+    # - "diagnos" matches "diagnose", "diagnosis", "diagnosing"
+    # - "debug" matches "debugging"
     INVESTIGATION_KEYWORDS = [
         "investigate",
         "troubleshoot",
-        "troubleshooting",
-        "diagnose",
-        "diagnos",  # catches diagnose, diagnosis, diagnosing
+        "diagnos",  # matches diagnose, diagnosis, diagnosing
         "analyze",
         "analyse",
         "research",
@@ -219,7 +222,6 @@ class PowerSteeringChecker:
         "what's causing",
         "root cause",
         "debug",
-        "debugging",
         "explain",
     ]
 
