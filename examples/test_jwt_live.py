@@ -31,7 +31,7 @@ def test_jwt_authentication():
     user_data = {
         "username": "livetest",
         "email": "livetest@example.com",
-        "password": "LiveTest123!",
+        "password": "LiveTest123!",  # pragma: allowlist secret
         "full_name": "Live Test User"
     }
     response = requests.post(f"{BASE_URL}/auth/register", json=user_data)
@@ -45,7 +45,7 @@ def test_jwt_authentication():
     print("\n4. Testing login...")
     login_data = {
         "username": "livetest",
-        "password": "LiveTest123!"
+        "password": "LiveTest123!"  # pragma: allowlist secret
     }
     response = requests.post(f"{BASE_URL}/auth/login", json=login_data)
     assert response.status_code == 200, f"Login failed: {response.text}"
@@ -98,9 +98,9 @@ def test_jwt_authentication():
     # Test 10: Test password validation
     print("\n10. Testing password validation...")
     invalid_users = [
-        {"username": "weak1", "email": "weak1@test.com", "password": "weak"},  # Too short
-        {"username": "weak2", "email": "weak2@test.com", "password": "NoDigits!"},  # No digits
-        {"username": "weak3", "email": "weak3@test.com", "password": "nouppercase123!"},  # No uppercase
+        {"username": "weak1", "email": "weak1@test.com", "password": "weak"},  # Too short  # pragma: allowlist secret
+        {"username": "weak2", "email": "weak2@test.com", "password": "NoDigits!"},  # No digits  # pragma: allowlist secret
+        {"username": "weak3", "email": "weak3@test.com", "password": "nouppercase123!"},  # No uppercase  # pragma: allowlist secret
     ]
 
     for invalid_user in invalid_users:
