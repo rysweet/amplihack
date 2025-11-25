@@ -26,12 +26,6 @@ Follow proven methodologies for consistent results:
 - **Multi-Agent Debate**: Structured debates for complex decisions
 - **Investigation Workflow**: Deep knowledge excavation for understanding codebases
 
-### 🎯 Quality & Productivity Features
-
-Built-in features to prevent mistakes and improve workflow:
-
-- **Power-Steering Mode**: Intelligent session completion verification that prevents premature work termination by checking 21 considerations
-
 ### ⚡ Powerful Commands
 
 Execute complex tasks with simple slash commands:
@@ -65,6 +59,7 @@ Built on the "Bricks & Studs" principle:
 - [Project Overview](/.claude/context/PROJECT.md) - Architecture and structure
 - [Patterns](/.claude/context/PATTERNS.md) - Common implementation patterns
 - [Trust & Anti-Sycophancy](/.claude/context/TRUST.md) - Critical operating guidelines
+- [Documentation Guidelines](DOCUMENTATION_GUIDELINES.md) - Eight rules for writing good docs
 
 ### Workflows
 
@@ -84,11 +79,6 @@ Built on the "Bricks & Studs" principle:
 - [Command Guide](/commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [/ultrathink](/.claude/commands/amplihack/ultrathink.md) - Main orchestration command
 - [/ddd:\* commands](/.claude/commands/ddd/0-help.md) - Document-driven development
-
-### Features
-
-- [Power-Steering Mode](features/power-steering/) - Session completion verification
-- [Customization Guide](features/power-steering/customization-guide.md) - Configure power-steering
 
 ## Philosophy
 
