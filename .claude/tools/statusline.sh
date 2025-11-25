@@ -170,35 +170,36 @@ else
 fi
 
 # Power-steering global counter (total invocations across all sessions)
+# Note: session_id is NOT required - counter should show regardless
 power_steering_str=""
-if [ -n "$session_id" ]; then
-    # Use CLAUDE_PROJECT_DIR to find counter (works in worktrees)
-    project_dir="${CLAUDE_PROJECT_DIR:-$current_dir}"
-    ps_count_file="$project_dir/.claude/runtime/power-steering/session_count"
-    if [ -f "$ps_count_file" ]; then
-        ps_count=$(cat "$ps_count_file" 2>/dev/null || echo "0")
-        if [ "$ps_count" -gt 0 ] 2>/dev/null; then
-            power_steering_str=" \033[35m🎯×$ps_count\033[0m"
-        fi
+# Use CLAUDE_PROJECT_DIR to find counter (works in worktrees)
+project_dir="${CLAUDE_PROJECT_DIR:-$current_dir}"
+ps_count_file="$project_dir/.claude/runtime/power-steering/session_count"
+if [ -f "$ps_count_file" ]; then
+    ps_count=$(cat "$ps_count_file" 2>/dev/null || echo "0")
+    if [ "$ps_count" -gt 0 ] 2>/dev/null; then
+        power_steering_str=" \033[35m🚦×$ps_count\033[0m"
     fi
 fi
 
 # Lock mode indicator (if active)
+# Note: session_id is NOT required for basic lock indicator - only for counter
 lock_str=""
-lock_flag="$current_dir/.claude/runtime/locks/.lock_active"
-if [ -f "$lock_flag" ] && [ -n "$session_id" ]; then
-    # Lock is active - show counter
-    lock_counter_file="$current_dir/.claude/runtime/locks/$session_id/lock_invocations.txt"
-    if [ -f "$lock_counter_file" ]; then
-        lock_count=$(cat "$lock_counter_file" 2>/dev/null || echo "0")
-        if [ "$lock_count" -gt 0 ] 2>/dev/null; then
-            lock_str=" \033[33m🔒×$lock_count\033[0m"
-        else
-            lock_str=" \033[33m🔒\033[0m"
+# Use CLAUDE_PROJECT_DIR to find lock file (works in worktrees)
+lock_flag="$project_dir/.claude/runtime/locks/.lock_active"
+if [ -f "$lock_flag" ]; then
+    # Lock is active - show basic indicator first
+    lock_str=" \033[33m🔒\033[0m"
+
+    # Optionally enhance with counter if session_id available
+    if [ -n "$session_id" ]; then
+        lock_counter_file="$project_dir/.claude/runtime/locks/$session_id/lock_invocations.txt"
+        if [ -f "$lock_counter_file" ]; then
+            lock_count=$(cat "$lock_counter_file" 2>/dev/null || echo "0")
+            if [ "$lock_count" -gt 0 ] 2>/dev/null; then
+                lock_str=" \033[33m🔒×$lock_count\033[0m"
+            fi
         fi
-    else
-        # Lock active but no counter yet (first invocation)
-        lock_str=" \033[33m🔒\033[0m"
     fi
 fi
 
