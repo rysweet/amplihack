@@ -196,6 +196,33 @@ class PowerSteeringChecker:
         "python -m unittest",
     ]
 
+    # Keywords that indicate investigation/troubleshooting sessions
+    # When found in early user messages, session is classified as INVESTIGATION
+    # regardless of tool usage patterns (fixes #1604)
+    INVESTIGATION_KEYWORDS = [
+        "investigate",
+        "troubleshoot",
+        "troubleshooting",
+        "diagnose",
+        "diagnos",  # catches diagnose, diagnosis, diagnosing
+        "analyze",
+        "analyse",
+        "research",
+        "explore",
+        "understand",
+        "figure out",
+        "why does",
+        "why is",
+        "how does",
+        "how is",
+        "what causes",
+        "what's causing",
+        "root cause",
+        "debug",
+        "debugging",
+        "explain",
+    ]
+
     # Phase 1 fallback: Hardcoded considerations (top 5 critical)
     # Used when YAML file is missing or invalid
     PHASE1_CONSIDERATIONS = [
@@ -981,6 +1008,40 @@ class PowerSteeringChecker:
         # Multiple Read/Grep without modifications
         return read_grep_operations >= 2 and write_edit_operations == 0
 
+    def _has_investigation_keywords(self, transcript: List[Dict]) -> bool:
+        """Check early user messages for investigation/troubleshooting keywords.
+
+        This check takes PRIORITY over tool-based heuristics. If investigation
+        keywords are found, the session is classified as INVESTIGATION regardless
+        of what tools were used. This fixes #1604 where troubleshooting sessions
+        were incorrectly blocked by development-specific checks.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if investigation keywords found in early user messages
+        """
+        # Check first 5 user messages for investigation keywords
+        user_messages = [m for m in transcript if m.get("type") == "user"][:5]
+
+        if not user_messages:
+            return False
+
+        for msg in user_messages:
+            content = str(msg.get("message", {}).get("content", "")).lower()
+
+            # Check for investigation keywords
+            for keyword in self.INVESTIGATION_KEYWORDS:
+                if keyword in content:
+                    self._log(
+                        f"Investigation keyword '{keyword}' found in user message",
+                        "DEBUG",
+                    )
+                    return True
+
+        return False
+
     def detect_session_type(self, transcript: List[Dict]) -> str:
         """Detect session type for selective consideration application.
 
@@ -988,7 +1049,16 @@ class PowerSteeringChecker:
         - DEVELOPMENT: Code changes, tests, PR operations
         - INFORMATIONAL: Q&A, help queries, capability questions
         - MAINTENANCE: Documentation and configuration updates only
-        - INVESTIGATION: Read-only exploration and analysis
+        - INVESTIGATION: Exploration, analysis, troubleshooting, and debugging
+
+        Detection Priority (fixes #1604):
+        1. Environment override (AMPLIHACK_SESSION_TYPE)
+        2. Investigation keywords in user messages (highest priority heuristic)
+        3. Tool usage patterns (code changes, tests, etc.)
+
+        The keyword detection takes priority over tool-based heuristics because
+        troubleshooting sessions often involve Bash commands and doc updates,
+        which can be misclassified as DEVELOPMENT or MAINTENANCE.
 
         Args:
             transcript: List of message dictionaries
@@ -1005,6 +1075,12 @@ class PowerSteeringChecker:
         # Empty transcript defaults to INFORMATIONAL (fail-open)
         if not transcript:
             return "INFORMATIONAL"
+
+        # PRIORITY CHECK: Investigation keywords in user messages
+        # This takes precedence over tool-based heuristics (fixes #1604)
+        if self._has_investigation_keywords(transcript):
+            self._log("Session classified as INVESTIGATION via keyword detection", "INFO")
+            return "INVESTIGATION"
 
         # Collect indicators from transcript
         code_files_modified = False

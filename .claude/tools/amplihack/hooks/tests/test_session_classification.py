@@ -816,17 +816,28 @@ class TestSessionClassification(unittest.TestCase):
         self.assertEqual(session_type, "INVESTIGATION")
 
     def test_informational_indicators_question_marks(self):
-        """High question density indicates INFORMATIONAL."""
+        """High question density indicates INFORMATIONAL.
+
+        Note: Questions like "How does X work?" are now classified as INVESTIGATION
+        per issue #1604. This test uses truly informational questions about
+        capabilities and features rather than system internals.
+        """
         transcript = [
             {
                 "type": "user",
-                "message": {"content": "What does X do? How does Y work? When should I use Z?"},
+                # Use informational questions (capabilities/features) not investigation questions
+                "message": {
+                    "content": "What commands are available? Can you help me? What's the format?"
+                },
             },
             {
                 "type": "assistant",
                 "message": {
                     "content": [
-                        {"type": "text", "text": "X does... Y works by... Z should be used..."},
+                        {
+                            "type": "text",
+                            "text": "Available commands are... Yes I can help... The format is...",
+                        },
                     ]
                 },
             },
@@ -1044,6 +1055,401 @@ class TestPerformance(unittest.TestCase):
             1000,
             f"Large transcript classification took {elapsed_ms:.2f}ms, should be < 1000ms",
         )
+
+
+class TestInvestigationKeywordDetection(unittest.TestCase):
+    """Tests for investigation keyword detection (Issue #1604).
+
+    These tests verify that investigation/troubleshooting sessions are correctly
+    classified based on keywords in user messages, even when tool usage patterns
+    would suggest a different classification.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.project_root = Path(self.temp_dir)
+
+        (self.project_root / ".claude" / "tools" / "amplihack").mkdir(parents=True, exist_ok=True)
+        (self.project_root / ".claude" / "runtime" / "power-steering").mkdir(
+            parents=True, exist_ok=True
+        )
+
+        config_path = (
+            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
+        config = {"enabled": True, "version": "2.1.0", "phase": 2}
+        config_path.write_text(json.dumps(config, indent=2))
+
+        self.checker = PowerSteeringChecker(self.project_root)
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        import shutil
+
+        shutil.rmtree(self.temp_dir)
+
+    def test_investigate_keyword_triggers_investigation(self):
+        """'Investigate' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Investigate why the SSH connection is failing"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Bash",
+                            "input": {"command": "ssh user@host"},
+                        },
+                    ]
+                },
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_troubleshoot_keyword_triggers_investigation(self):
+        """'Troubleshoot' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Troubleshoot the deployment failure"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Bash",
+                            "input": {"command": "docker logs app"},
+                        },
+                    ]
+                },
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_diagnose_keyword_triggers_investigation(self):
+        """'Diagnose' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Diagnose the memory leak issue"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Bash",
+                            "input": {"command": "ps aux | grep python"},
+                        },
+                    ]
+                },
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_debug_keyword_triggers_investigation(self):
+        """'Debug' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Debug the authentication error"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Read",
+                            "input": {"file_path": "logs/auth.log"},
+                        },
+                    ]
+                },
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_figure_out_phrase_triggers_investigation(self):
+        """'Figure out' phrase should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Figure out why the tests are failing"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_why_does_phrase_triggers_investigation(self):
+        """'Why does' phrase should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Why does the API return 500 errors?"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_root_cause_phrase_triggers_investigation(self):
+        """'Root cause' phrase should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Find the root cause of the crash"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_keyword_takes_priority_over_doc_updates(self):
+        """Investigation keyword should take priority even with doc updates.
+
+        This is the core issue from #1604 - troubleshooting sessions that
+        update DISCOVERIES.md should still be classified as INVESTIGATION.
+        """
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Troubleshoot the SSH connection issue"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Bash",
+                            "input": {"command": "ssh user@host"},
+                        },
+                    ]
+                },
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Edit",
+                            "input": {"file_path": ".claude/context/DISCOVERIES.md"},
+                        },
+                    ]
+                },
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(
+            session_type,
+            "INVESTIGATION",
+            "Troubleshooting session with doc updates should still be INVESTIGATION",
+        )
+
+    def test_keyword_takes_priority_over_git_operations(self):
+        """Investigation keyword should take priority even with git operations."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Investigate why the VM connection fails"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Bash",
+                            "input": {"command": "ssh azureuser@vm.example.com"},
+                        },
+                    ]
+                },
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Bash",
+                            "input": {"command": "git commit -m 'Fix: update SSH key'"},
+                        },
+                    ]
+                },
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(
+            session_type,
+            "INVESTIGATION",
+            "Investigation session with git commit should still be INVESTIGATION",
+        )
+
+    def test_keyword_detection_case_insensitive(self):
+        """Keyword detection should be case-insensitive."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "INVESTIGATE the connection failure"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_has_investigation_keywords_helper(self):
+        """Test the _has_investigation_keywords helper method directly."""
+        # With keyword
+        transcript_with_keyword = [
+            {
+                "type": "user",
+                "message": {"content": "Investigate the issue"},
+            },
+        ]
+        self.assertTrue(self.checker._has_investigation_keywords(transcript_with_keyword))
+
+        # Without keyword
+        transcript_without_keyword = [
+            {
+                "type": "user",
+                "message": {"content": "Add a new feature"},
+            },
+        ]
+        self.assertFalse(self.checker._has_investigation_keywords(transcript_without_keyword))
+
+    def test_keyword_detection_checks_first_5_messages(self):
+        """Keyword detection should only check first 5 user messages."""
+        # Keyword in 6th message should not trigger
+        transcript = []
+        for i in range(6):
+            transcript.append(
+                {
+                    "type": "user",
+                    "message": {"content": f"Do something {i}"},
+                }
+            )
+
+        # Add investigation keyword in 6th user message
+        transcript[5]["message"]["content"] = "Investigate the issue"
+
+        # Should NOT detect as investigation because keyword is in 6th message
+        self.assertFalse(self.checker._has_investigation_keywords(transcript))
+
+    def test_analyze_keyword_triggers_investigation(self):
+        """'Analyze' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Analyze the performance metrics"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_research_keyword_triggers_investigation(self):
+        """'Research' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Research how authentication works"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_explore_keyword_triggers_investigation(self):
+        """'Explore' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Explore the codebase structure"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_understand_keyword_triggers_investigation(self):
+        """'Understand' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Help me understand how the API works"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_explain_keyword_triggers_investigation(self):
+        """'Explain' keyword should classify as INVESTIGATION."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Explain why this test is failing"},
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "INVESTIGATION")
+
+    def test_no_false_positive_for_development_task(self):
+        """Development tasks without keywords should still be DEVELOPMENT."""
+        transcript = [
+            {
+                "type": "user",
+                "message": {"content": "Add JWT authentication to the API"},
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Write",
+                            "input": {"file_path": "src/auth.py"},
+                        },
+                    ]
+                },
+            },
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Bash",
+                            "input": {"command": "pytest tests/test_auth.py"},
+                        },
+                    ]
+                },
+            },
+        ]
+
+        session_type = self.checker.detect_session_type(transcript)
+        self.assertEqual(session_type, "DEVELOPMENT")
 
 
 if __name__ == "__main__":
