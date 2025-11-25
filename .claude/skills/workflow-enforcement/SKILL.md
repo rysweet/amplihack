@@ -1,6 +1,6 @@
 ---
 name: workflow-enforcement
-version: 1.0.0
+version: 1.1.0
 description: Workflow step compliance guidance with mandatory step reminders and visual progress tracking. Reminds Claude to complete all workflow steps before PR creation.
 auto_activates:
   - "start workflow"
@@ -11,6 +11,8 @@ explicit_triggers:
 related_files:
   - .claude/workflow/DEFAULT_WORKFLOW.md
   - .claude/tools/amplihack/hooks/workflow_tracker.py
+  - .claude/tools/amplihack/considerations.yaml
+  - .claude/templates/workflow_state.yaml.template
 implementation_status: specification
 ---
 
@@ -21,7 +23,7 @@ implementation_status: specification
 Guides Claude to complete all workflow steps by:
 
 1. Reminding about step completion tracking (use TodoWrite or `.claude/runtime/workflow_state.yaml`)
-2. Emphasizing mandatory steps (10, 16-17) that must not be skipped
+2. Emphasizing mandatory steps (0, 10, 16-17) that must not be skipped
 3. Providing visual progress indicator format
 4. Defining expected blocking behavior at checkpoints
 
@@ -34,6 +36,7 @@ Guides Claude to complete all workflow steps by:
 
 Agents routinely skip mandatory workflow steps, especially:
 
+- **Step 0**: Workflow Preparation - Create todos for ALL steps (MANDATORY)
 - **Step 10**: Pre-commit code review (MANDATORY)
 - **Step 16**: PR review (MANDATORY)
 - **Step 17**: Review feedback implementation (MANDATORY)
@@ -44,207 +47,357 @@ Root causes:
 - **Context Decay**: After heavy implementation, agent loses sight of remaining steps
 - **Autonomy Misapplication**: Confuses "autonomous implementation" with "skip mandatory process"
 
-## How It Works
+## Philosophy Alignment and Honest Limitations
 
-### 1. State Tracking (Recommended Pattern)
+### The Irony
 
-When activated, Claude SHOULD track workflow state. Options:
+This skill was created because an agent skipped workflow steps while building a feature. The same cognitive patterns that cause step-skipping can also cause this skill to be ignored. We acknowledge this limitation directly.
 
-- **TodoWrite**: Use step-numbered todos (built-in, always available)
-- **YAML state file**: Create `.claude/runtime/workflow_state.yaml` for persistent tracking
+### What This Skill CAN Do
 
-Example YAML state format:
+- Provide clear guidance patterns for Claude to follow
+- Define standard formats for progress tracking
+- Establish checkpoints where Claude SHOULD pause and validate
+- Integrate with power_steering for session-end verification
+- Document the expected behavior for future agents
 
-```yaml
-workflow_id: "session_20251125_143022"
-workflow_name: DEFAULT
-task_description: "Add authentication feature"
-started_at: "2025-11-25T14:30:22"
-current_step: 5
-steps:
-  0: { status: completed, timestamp: "2025-11-25T14:30:22" }
-  1: { status: completed, timestamp: "2025-11-25T14:31:05" }
-  2: { status: completed, timestamp: "2025-11-25T14:35:00" }
-  3: { status: completed, timestamp: "2025-11-25T14:38:00" }
-  4: { status: completed, timestamp: "2025-11-25T14:40:00" }
-  5: { status: in_progress, timestamp: "2025-11-25T14:45:00" }
-  10: { status: pending, mandatory: true }
-  16: { status: pending, mandatory: true }
-  17: { status: pending, mandatory: true }
-  21: { status: pending }
-mandatory_steps: [10, 16, 17]
-```
+### What This Skill CANNOT Do
 
-### 2. Progress Indicator
+- Force Claude to read this skill (relies on auto-activation triggers)
+- Prevent Claude from skipping steps if it "decides" to be autonomous
+- Hard-block operations (no pre-commit hooks implemented yet)
+- Catch workflow violations in real-time (only session-end checks exist)
 
-Display progress after each step completion:
+### Philosophy Alignment
 
-```
-WORKFLOW PROGRESS [5/22] [#####.................] Step 5: Research and Design
-Mandatory gates remaining: Step 10 (Review), Step 16 (PR Review), Step 17 (Feedback)
-```
+| Principle                  | How This Skill Aligns                                 |
+| -------------------------- | ----------------------------------------------------- |
+| **Ruthless Simplicity**    | Single YAML file for state; no complex infrastructure |
+| **Zero-BS Implementation** | Honest about being guidance, not enforcement          |
+| **Modular Design**         | Self-contained skill with clear integration points    |
+| **Fail-Open**              | On errors, log and continue; never block users        |
 
-### 3. Mandatory Step Enforcement (Self-Compliance)
+**Self-Aware Note**: This skill is itself a brick that could be regenerated from its specification. It does not contain executable code - it is documentation that guides Claude's behavior through loaded context.
 
-**Note**: This is guidance for Claude self-compliance, not automated enforcement.
+## How to Use This Skill
 
-Before Step 15 (Open PR):
+### Step-by-Step Instructions
 
-```
-ENFORCEMENT CHECK: Validating pre-PR requirements...
-[X] Step 10: Pre-commit code review - REQUIRED BEFORE PR
-Status: NOT COMPLETED
-ACTION: You MUST invoke the reviewer agent and complete Step 10 before proceeding to Step 15.
-```
+#### At Workflow Start (Step 0)
 
-Before Step 21 (Ensure Mergeable):
+1. **Initialize state tracking** (choose one):
 
-```
-ENFORCEMENT CHECK: Validating completion requirements...
-[X] Step 10: Pre-commit code review - COMPLETED
-[X] Step 16: PR review - COMPLETED
-[X] Step 17: Review feedback - COMPLETED
-Status: ALL MANDATORY STEPS COMPLETE
-Proceed to Step 21.
-```
+   **Option A - TodoWrite (Recommended)**:
 
-## Execution Instructions
+   ```
+   Create TodoWrite entries for ALL 22 steps (0-21):
+   - "Step 0: Workflow Preparation - Create todos for ALL steps"
+   - "Step 1: Prepare the Workspace"
+   - ...
+   - "Step 21: Ensure PR is Mergeable - TASK COMPLETION"
+   ```
 
-When this skill activates:
+   **Option B - YAML state file**:
 
-### At Workflow Start (Step 0)
+   ```bash
+   cp .claude/templates/workflow_state.yaml.template \
+      .claude/runtime/workflow_state.yaml
+   # Edit workflow_id, task_description, started_at
+   ```
 
-1. Create or update `.claude/runtime/workflow_state.yaml`
-2. Initialize all 22 steps (0-21) with `pending` status
-3. Mark mandatory steps (10, 16, 17)
-4. Display initial progress indicator
+2. **Display initial progress**:
 
-### At Each Step Completion
+   ```
+   WORKFLOW PROGRESS [0/22] [.......................] Step 0: Workflow Preparation
+   Mandatory gates: Step 0 (Prep), Step 10 (Review), Step 16 (PR Review), Step 17 (Feedback)
+   ```
 
-1. Update step status to `completed` with timestamp
-2. Update `current_step` to next step
+3. **Verify initialization**: Confirm 22 todo items exist before proceeding.
+
+#### At Each Step Completion
+
+1. Mark step as `completed` in TodoWrite or YAML
+2. Update `current_step` to next step number
 3. Display progress indicator
-4. If approaching mandatory step, display reminder
+4. If approaching mandatory step (10, 16, 17), display reminder
 
-### At Mandatory Checkpoints
+#### At Mandatory Checkpoints
 
 **Before Step 15 (Open PR as Draft)**:
 
-- Validate Step 10 is completed
-- If not, BLOCK and require Step 10 completion
+```
++------------------------------------------------------------------+
+|  CHECKPOINT: Pre-PR Validation                                   |
++------------------------------------------------------------------+
+|  [ ] Step 10: Pre-commit code review                            |
+|      Status: ??? (check your TodoWrite/YAML state)              |
+|                                                                  |
+|  If Step 10 is NOT completed:                                    |
+|  - STOP: Do not proceed to Step 15                              |
+|  - ACTION: Invoke reviewer agent for code review                |
+|  - ACTION: Invoke security agent for security review            |
+|  - Then return here and verify completion                       |
++------------------------------------------------------------------+
+```
 
 **Before Step 21 (Ensure Mergeable)**:
 
-- Validate Steps 10, 16, 17 are all completed
-- If any missing, BLOCK and list required steps
-
-### At Workflow End
-
-1. Verify all steps completed (or explicitly skipped with reason)
-2. Log final state to workflow_tracker.py
-3. Clear workflow_state.yaml for next workflow
-
-## Integration with TodoWrite
-
-When you use TodoWrite, ensure step numbers match workflow tracking:
-
-```python
-TodoWrite(todos=[
-    {"content": "Step 5: Research and Design - Use architect agent", "status": "completed", "activeForm": "..."},
-    {"content": "Step 6: Retcon Documentation Writing", "status": "in_progress", "activeForm": "..."},
-    ...
-])
+```
++------------------------------------------------------------------+
+|  CHECKPOINT: Final Validation                                    |
++------------------------------------------------------------------+
+|  [ ] Step 10: Pre-commit code review                            |
+|  [ ] Step 16: PR review                                         |
+|  [ ] Step 17: Review feedback implementation                    |
+|                                                                  |
+|  ALL mandatory steps must be completed before Step 21.          |
+|  Check your TodoWrite/YAML state for status.                    |
++------------------------------------------------------------------+
 ```
 
-TodoWrite is the primary tracking mechanism. YAML state file is optional for additional persistence.
+#### At Workflow End
 
-## Blocking Behavior (Self-Compliance Pattern)
-
-When mandatory steps are skipped, Claude SHOULD display and follow this pattern:
-
-```
-WORKFLOW ENFORCEMENT: BLOCKED
-
-Cannot proceed to Step 15 (Open PR as Draft).
-
-MISSING MANDATORY STEP:
-  Step 10: Pre-commit code review
-
-  This step is REQUIRED to ensure code quality before creating a PR.
-  The reviewer agent MUST be invoked to complete this step.
-
-ACTION REQUIRED:
-  1. Invoke reviewer agent for comprehensive code review
-  2. Invoke security agent for security review
-  3. Mark Step 10 as completed
-  4. Then proceed to Step 15
-
-Reference: Issue #1607 - Workflow step skipping causes quality issues
-```
+1. Verify all steps completed (or explicitly skipped with documented reason)
+2. Final progress: `[######################] 22/22 Steps Complete`
+3. Delete `.claude/runtime/workflow_state.yaml` if used
+4. Log completion to workflow_tracker.py
 
 ## Visual Progress Formats
 
 ### Standard Progress Bar
 
 ```
-[##########............] 10/22 Steps Complete
+WORKFLOW: DEFAULT_WORKFLOW v1.1.0
+PROGRESS: [##########............] 10/22 (45%)
+
+Current: Step 10 - Pre-commit code review (MANDATORY)
+Next: Step 11 - Incorporate Review Feedback
 ```
 
-### Detailed Status
+### Detailed Status Display
 
 ```
-WORKFLOW: DEFAULT (session_20251125_143022)
-TASK: Add authentication feature
-PROGRESS: 10/22 steps complete (45%)
-
-Completed: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-Current: Step 10 (Pre-commit review)
-Remaining: 11-21
-
-MANDATORY GATES:
-[X] Step 10 - In Progress
-[ ] Step 16 - Pending
-[ ] Step 17 - Pending
++======================================================================+
+|                    DEFAULT WORKFLOW - Progress                        |
++======================================================================+
+| Task: Add authentication feature                                     |
+| Session: session_20251125_143022                                     |
+| Started: 2025-11-25T14:30:22                                         |
++----------------------------------------------------------------------+
+|  Progress: 10/22 steps (45%)                                         |
+|  [##########............] 10/22                                       |
++----------------------------------------------------------------------+
+|  COMPLETED (10):                                                     |
+|    0, 1, 2, 3, 4, 5, 6, 7, 8, 9                                      |
+|                                                                      |
+|  CURRENT:                                                            |
+|    >> Step 10: Pre-commit code review (MANDATORY) <<                 |
+|                                                                      |
+|  REMAINING (12):                                                     |
+|    11, 12, 13, 14, 15, *16*, *17*, 18, 19, 20, 21                   |
+|    (* = mandatory)                                                   |
++----------------------------------------------------------------------+
+|  MANDATORY GATES:                                                    |
+|    [X] Step 0  - Workflow Preparation      COMPLETED                 |
+|    [ ] Step 10 - Pre-commit Review         IN PROGRESS               |
+|    [ ] Step 16 - PR Review                 PENDING                   |
+|    [ ] Step 17 - Feedback Implementation   PENDING                   |
++======================================================================+
 ```
 
-## State File Location
+### Compact Status (For Updates)
 
-**Path**: `.claude/runtime/workflow_state.yaml`
+```
+[10/22] Step 10 (MANDATORY) | Gates: 0[X] 10[>] 16[ ] 17[ ]
+```
 
-This file is:
+## State File Format
 
-- Created when workflow starts
-- Updated on each step change
-- Cleared when workflow completes
-- Read by power-steering for enforcement
+**Template Location**: `.claude/templates/workflow_state.yaml.template`
+**Active State Location**: `.claude/runtime/workflow_state.yaml`
+
+```yaml
+workflow_id: "session_20251125_143022"
+workflow_name: DEFAULT
+task_description: "Add authentication feature"
+started_at: "2025-11-25T14:30:22"
+current_step: 10
+
+steps:
+  0: { status: completed, timestamp: "2025-11-25T14:30:22", mandatory: true }
+  1: { status: completed, timestamp: "2025-11-25T14:31:05" }
+  # ... steps 2-9 ...
+  10: { status: in_progress, mandatory: true }
+  # ... steps 11-15 ...
+  16: { status: pending, mandatory: true }
+  17: { status: pending, mandatory: true }
+  # ... steps 18-21 ...
+
+mandatory_steps: [0, 10, 16, 17]
+
+checkpoints:
+  before_step_15:
+    required_steps: [10]
+    error_message: "Cannot open PR without completing Step 10"
+  before_step_21:
+    required_steps: [10, 16, 17]
+    error_message: "Cannot mark mergeable without all mandatory reviews"
+```
+
+## Integration with Power Steering
+
+Power steering provides session-end verification through the `dev_workflow_complete` consideration in `considerations.yaml`.
+
+### How It Works
+
+1. **During Session**: This skill provides guidance; Claude should track steps in TodoWrite
+2. **At Session End**: Power steering's `_check_dev_workflow_complete` analyzes the transcript
+3. **Heuristics Used**:
+   - Were architect, builder, reviewer agents invoked?
+   - Were tests executed (Bash tool usage)?
+   - Were git operations performed?
+4. **Result**: Blocks session completion if workflow evidence is missing
+
+### Integration Points
+
+```
+considerations.yaml
+==================
+- id: dev_workflow_complete
+  category: Workflow Process Adherence
+  question: Was full DEFAULT_WORKFLOW followed?
+  severity: blocker
+  checker: _check_dev_workflow_complete
+  applicable_session_types: ["DEVELOPMENT"]
+```
+
+**Current Limitation**: Power steering checks for evidence of workflow (agent usage, test runs) but does NOT read `workflow_state.yaml`. This is a future enhancement opportunity.
+
+### Proposed Enhancement (Not Yet Implemented)
+
+```python
+# In power_steering_checker.py (future)
+def _check_dev_workflow_complete(self, transcript, session_id):
+    # Check for workflow_state.yaml
+    state_file = Path(".claude/runtime/workflow_state.yaml")
+    if state_file.exists():
+        state = yaml.safe_load(state_file.read_text())
+        mandatory = state.get("mandatory_steps", [0, 10, 16, 17])
+        steps = state.get("steps", {})
+
+        for step_num in mandatory:
+            step = steps.get(step_num, {})
+            if step.get("status") != "completed":
+                return False  # Mandatory step incomplete
+
+        return True  # All mandatory steps completed
+
+    # Fall back to heuristic analysis
+    return self._check_workflow_heuristics(transcript)
+```
+
+## Integration with TodoWrite
+
+When using TodoWrite, ensure step numbers match workflow tracking:
+
+```python
+TodoWrite(todos=[
+    {"content": "Step 0: Workflow Preparation - Create todos for ALL steps", "status": "completed", "activeForm": "Creating step todos"},
+    {"content": "Step 10: Pre-commit code review - MANDATORY", "status": "in_progress", "activeForm": "Reviewing code"},
+    {"content": "Step 16: PR review - MANDATORY", "status": "pending", "activeForm": "Reviewing PR"},
+    {"content": "Step 17: Implement review feedback - MANDATORY", "status": "pending", "activeForm": "Implementing feedback"},
+])
+```
+
+**Key Point**: TodoWrite is the primary tracking mechanism. YAML state file is optional for additional persistence and structured validation.
+
+## Blocking Behavior (Self-Compliance Pattern)
+
+When mandatory steps are skipped, Claude SHOULD display and follow this pattern:
+
+```
++======================================================================+
+|                    WORKFLOW ENFORCEMENT: BLOCKED                      |
++======================================================================+
+|                                                                      |
+|  Cannot proceed to Step 15 (Open PR as Draft).                       |
+|                                                                      |
+|  MISSING MANDATORY STEP:                                             |
+|    Step 10: Pre-commit code review                                   |
+|                                                                      |
+|  WHY THIS MATTERS:                                                   |
+|    - Code review catches bugs before they reach CI                   |
+|    - Philosophy compliance ensures quality                           |
+|    - Issue #1607 identified this as a recurring problem              |
+|                                                                      |
+|  ACTION REQUIRED:                                                    |
+|    1. Invoke reviewer agent for comprehensive code review            |
+|    2. Invoke security agent for security review                      |
+|    3. Mark Step 10 as completed in TodoWrite                         |
+|    4. Then proceed to Step 15                                        |
+|                                                                      |
++======================================================================+
+```
 
 ## Error Recovery
 
 If state file is missing or corrupt:
 
 1. Check TodoWrite for current step information
-2. Reconstruct state from workflow_tracker.py logs
+2. Reconstruct state from conversation context
 3. If unrecoverable, prompt user to confirm current step
+4. Always fail-open: continue with warning rather than blocking
 
-## Philosophy Alignment
+## Future Work: Path to Hard Enforcement
 
-- **Ruthless Simplicity**: Single YAML file for state, no complex infrastructure
-- **Guidance over Enforcement**: Provides clear guidance; Claude self-compliance determines effectiveness
-- **Modular**: Self-contained skill with clear integration points
-- **Fail-Open for Errors**: If tracking fails, log and continue (never block users on bugs)
+### Phase 1: Current State (Guidance Only)
 
-## Limitations
+- Skill provides documentation and patterns
+- Claude self-compliance determines effectiveness
+- Power steering provides session-end warnings
 
-This skill is a **specification**, not automated enforcement:
+### Phase 2: Enhanced Power Steering (Planned)
 
-- Relies on Claude reading and following this skill's guidance
-- No pre-commit hooks or CI checks currently enforce compliance
-- The same cognitive patterns that cause step-skipping can also skip this skill's guidance
-- For hard enforcement, consider implementing pre-commit or CI-based checks
+- Power steering reads workflow_state.yaml
+- Real-time validation at checkpoint steps
+- More granular `dev_workflow_complete` checks
+
+### Phase 3: Pre-Commit Integration (Future)
+
+```bash
+# .pre-commit-config.yaml (future)
+- repo: local
+  hooks:
+    - id: workflow-validation
+      name: Validate workflow completion
+      entry: python .claude/tools/amplihack/validate_workflow.py
+      language: system
+      pass_filenames: false
+```
+
+### Phase 4: CI Gate (Future)
+
+```yaml
+# .github/workflows/ci.yml (future)
+- name: Validate Workflow Compliance
+  run: |
+    python -c "
+    from pathlib import Path
+    import yaml
+    state = yaml.safe_load(Path('.claude/runtime/workflow_state.yaml').read_text())
+    mandatory = state.get('mandatory_steps', [0, 10, 16, 17])
+    for step in mandatory:
+        if state['steps'].get(step, {}).get('status') != 'completed':
+            print(f'FAIL: Mandatory step {step} not completed')
+            exit(1)
+    print('PASS: All mandatory workflow steps completed')
+    "
+```
 
 ## Related Components
 
 - **DEFAULT_WORKFLOW.md**: Canonical workflow definition with Step 0 guidance
+- **templates/workflow_state.yaml.template**: Template for structured state tracking
 - **workflow_tracker.py**: Historical logging (JSONL format)
 - **power_steering_checker.py**: Session-end enforcement (transcript-based)
-- **considerations.yaml**: `dev_workflow_complete` consideration
+- **considerations.yaml**: `dev_workflow_complete` consideration definition
