@@ -2,12 +2,41 @@
 
 This MVP version uses simple heuristics instead of Claude AI for faster,
 deterministic validation. Suitable for initial deployment and testing.
+
+Comprehensive Review Detection:
+    Recognizes structured code reviews posted as comments (not just formal GitHub reviews).
+    Pattern examples that trigger comprehensive detection (need 4+):
+    - "Review Summary:" / "Overall Assessment:"
+    - "Strengths:" / "Issues Found:"
+    - "Breaking Changes:" / "Philosophy Compliance"
+    - "Final Verdict" / "Score: 8.5" / "8/10"
+    - "Recommendations:"
 """
 
 import re
 from typing import Any, Dict
 
-from .formatters import format_comments, format_files, format_reviews
+# Comprehensive review pattern detection
+COMPREHENSIVE_REVIEW_PATTERNS = [
+    r"review\s+summary",  # "Review Summary:"
+    r"overall\s+assessment",  # "Overall Assessment:"
+    r"strengths:",  # "Strengths:"
+    r"issues?\s+found:",  # "Issues Found:" or "Issue Found:"
+    r"breaking\s+changes?:",  # "Breaking Changes:" or "Breaking Change:"
+    r"philosophy\s+compliance",  # "Philosophy Compliance"
+    r"final\s+verdict",  # "Final Verdict"
+    r"score:\s*[\d.]+",  # "Score: 8.5" or "score: 8/10"
+    r"\b\d+(?:\.\d+)?/10\b",  # "8.5/10"
+    r"recommendations?:",  # "Recommendations:" or "Recommendation:"
+]
+
+PATTERN_THRESHOLD = 4  # 4+ patterns = comprehensive review
+# Chosen to avoid false positives from casual comments while catching
+# structured reviews. Validated by PR #1595 which had 7 patterns.
+
+COMPREHENSIVE_REVIEW_BOOST = 10  # Equivalent to 2 formal approvals
+# (Formal approval = +5 score, so 2 × 5 = 10)
+# Ensures comprehensive comment reviews have equal weight to formal reviews
 
 
 def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -39,8 +68,24 @@ def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
     ]
 
     review_score = 0
+    comprehensive_review_found = False
+
     for comment in comments:
         body = comment.get("body", "").lower()
+
+        # Check for comprehensive review patterns
+        pattern_matches = sum(
+            1
+            for pattern in COMPREHENSIVE_REVIEW_PATTERNS
+            if re.search(pattern, body, re.IGNORECASE)
+        )
+
+        if pattern_matches >= PATTERN_THRESHOLD:
+            comprehensive_review_found = True
+            review_score += COMPREHENSIVE_REVIEW_BOOST
+            # Continue to keyword matching to accumulate additional score
+
+        # Original keyword matching (unchanged logic, just indented)
         for keyword in review_keywords:
             if keyword in body:
                 review_score += 1
@@ -60,17 +105,21 @@ def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Step 11 is complete if we have:
     # - At least one approval OR
-    # - Multiple review-related comments
-    if review_score >= 5:
+    # - Multiple review-related comments OR
+    # - Comprehensive review detected
+    if review_score >= 5 or comprehensive_review_found:
         step11_completed = True
         step11_evidence = (
-            f"Found {len(reviews)} reviews with review indicators. "
-            f"Review score: {review_score}"
+            f"Found {len(reviews)} formal reviews and {len(comments)} comments. "
+            f"Review score: {review_score}. "
+            f"Comprehensive review detected: {comprehensive_review_found}"
         )
     else:
         step11_evidence = (
-            f"Insufficient review evidence. Found {len(reviews)} reviews. "
-            f"Review score: {review_score} (need >= 5)"
+            f"Insufficient review evidence. "
+            f"Found {len(reviews)} formal reviews and {len(comments)} comments. "
+            f"Review score: {review_score} (need >= 5). "
+            f"Comprehensive review detected: {comprehensive_review_found}"
         )
 
     # Step 12: Check for feedback implementation
@@ -116,15 +165,11 @@ def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
             "quality, and philosophy checks"
         )
     if not step12_completed:
-        blocking_issues.append(
-            "Step 12 incomplete: Need to address and respond to review feedback"
-        )
+        blocking_issues.append("Step 12 incomplete: Need to address and respond to review feedback")
 
     recommendations = []
     if not overall_compliant:
-        recommendations.append(
-            "Complete workflow steps 11-12 before marking PR as ready"
-        )
+        recommendations.append("Complete workflow steps 11-12 before marking PR as ready")
     if len(reviews) == 0:
         recommendations.append("Add at least one formal code review")
 
@@ -193,13 +238,13 @@ def detect_priority_complexity(pr_data: Dict[str, Any]) -> Dict[str, str]:
     else:
         complexity = "VERY_COMPLEX"
         complexity_reasoning = (
-            f"{num_files} files with {total_changes} lines changed - "
-            f"system-wide changes"
+            f"{num_files} files with {total_changes} lines changed - system-wide changes"
         )
 
     # Check for architectural changes
     architectural_files = [
-        f for f in files
+        f
+        for f in files
         if any(
             pattern in f.get("path", "").lower()
             for pattern in ["architecture", "design", "workflow", "config", "settings"]
@@ -301,16 +346,10 @@ def detect_unrelated_changes(pr_data: Dict[str, Any]) -> Dict[str, Any]:
             unrelated_purposes.append("Configuration changes")
             unrelated_files.extend(file_categories["config"])
 
-        recommendation = (
-            "Consider splitting this PR into separate focused PRs for each concern"
-        )
+        recommendation = "Consider splitting this PR into separate focused PRs for each concern"
 
     # Special case: Large refactoring with feature work
-    if (
-        "refactor" in title
-        and ("feat" in title or "add" in title)
-        and len(files) > 5
-    ):
+    if "refactor" in title and ("feat" in title or "add" in title) and len(files) > 5:
         has_unrelated_changes = True
         unrelated_purposes.append("Mixed refactoring and feature work")
         recommendation = "Separate refactoring from new features into different PRs"
@@ -321,7 +360,5 @@ def detect_unrelated_changes(pr_data: Dict[str, Any]) -> Dict[str, Any]:
         "primary_purpose": primary_purpose,
         "unrelated_purposes": unrelated_purposes,
         "recommendation": recommendation,
-        "file_categories": {
-            k: len(v) for k, v in file_categories.items() if v
-        },  # Statistics
+        "file_categories": {k: len(v) for k, v in file_categories.items() if v},  # Statistics
     }
