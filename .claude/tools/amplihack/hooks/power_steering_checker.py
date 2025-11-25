@@ -50,6 +50,18 @@ try:
 except ImportError:
     SDK_AVAILABLE = False
 
+# Import turn-aware state management
+try:
+    from power_steering_state import (
+        ConcernAddressedDetector,
+        PowerSteeringTurnState,
+        TurnStateManager,
+    )
+
+    TURN_STATE_AVAILABLE = True
+except ImportError:
+    TURN_STATE_AVAILABLE = False
+
 # Security: Maximum transcript size to prevent memory exhaustion
 MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
 
@@ -483,6 +495,10 @@ class PowerSteeringChecker:
         Returns:
             PowerSteeringResult with decision and prompt/summary
         """
+        # Initialize turn state tracking (outside try block for fail-open)
+        turn_state: Optional[PowerSteeringTurnState] = None
+        turn_state_manager: Optional[TurnStateManager] = None
+
         try:
             # Emit start event
             self._emit_progress(progress_callback, "start", "Starting power-steering analysis...")
@@ -505,6 +521,42 @@ class PowerSteeringChecker:
             # 3. Load transcript
             transcript = self._load_transcript(transcript_path)
 
+            # 3b. Initialize turn state management (fail-open on import error)
+            if TURN_STATE_AVAILABLE:
+                turn_state_manager = TurnStateManager(
+                    project_root=self.project_root,
+                    session_id=session_id,
+                    log=lambda msg: self._log(msg, "INFO"),
+                )
+                turn_state = turn_state_manager.load_state()
+                turn_state = turn_state_manager.increment_turn(turn_state)
+                self._log(
+                    f"Turn state: turn={turn_state.turn_count}, blocks={turn_state.consecutive_blocks}",
+                    "INFO",
+                )
+
+                # 3c. Check auto-approve threshold BEFORE running analysis
+                should_approve, reason = turn_state_manager.should_auto_approve(turn_state)
+                if should_approve:
+                    self._log(f"Auto-approve triggered: {reason}", "INFO")
+                    self._emit_progress(
+                        progress_callback,
+                        "auto_approve",
+                        f"Auto-approving after {turn_state.consecutive_blocks} consecutive blocks",
+                        {"reason": reason},
+                    )
+
+                    # Reset state and approve
+                    turn_state = turn_state_manager.record_approval(turn_state)
+                    turn_state_manager.save_state(turn_state)
+
+                    return PowerSteeringResult(
+                        decision="approve",
+                        reasons=["auto_approve_threshold"],
+                        continuation_prompt=None,
+                        summary=f"Auto-approved: {reason}",
+                    )
+
             # 4. Detect session type for selective consideration application
             session_type = self.detect_session_type(transcript)
             self._log(f"Session classified as: {session_type}", "INFO")
@@ -517,6 +569,10 @@ class PowerSteeringChecker:
 
             # 4b. Backward compatibility: Also check Q&A session (kept for compatibility)
             if self._is_qa_session(transcript):
+                # Reset turn state on approval
+                if turn_state_manager and turn_state:
+                    turn_state = turn_state_manager.record_approval(turn_state)
+                    turn_state_manager.save_state(turn_state)
                 return PowerSteeringResult(
                     decision="approve",
                     reasons=["qa_session"],
@@ -529,37 +585,86 @@ class PowerSteeringChecker:
                 transcript, session_id, session_type, progress_callback
             )
 
+            # 5b. Detect addressed concerns from previous failures (if turn state available)
+            addressed_concerns: Dict[str, str] = {}
+            if TURN_STATE_AVAILABLE and turn_state and turn_state.failed_considerations_history:
+                # Get previous failures
+                all_previous_failures: List[str] = []
+                for block_failures in turn_state.failed_considerations_history:
+                    all_previous_failures.extend(block_failures)
+                previous_failures = list(set(all_previous_failures))
+
+                # Detect which concerns have been addressed
+                concern_detector = ConcernAddressedDetector(log=lambda msg: self._log(msg, "INFO"))
+                session_logs_dir = self.runtime_dir / session_id
+                addressed_concerns = concern_detector.detect_addressed(
+                    transcript=transcript,
+                    previous_failures=previous_failures,
+                    session_logs_dir=session_logs_dir,
+                )
+
+                # Update turn state with addressed concerns
+                if addressed_concerns:
+                    turn_state.addressed_concerns.update(addressed_concerns)
+                    self._log(
+                        f"Addressed concerns detected: {list(addressed_concerns.keys())}", "INFO"
+                    )
+
             # 6. Check if this is first stop (visibility feature)
             is_first_stop = not self._results_already_shown(session_id)
 
             # 7. Make decision based on first/subsequent stop
             if analysis.has_blockers:
-                # Actual failures - always block
-                # Mark results shown on first stop to prevent race condition
-                if is_first_stop:
-                    self._mark_results_shown(session_id)
+                # Filter out addressed concerns from blockers
+                remaining_blockers = [
+                    r
+                    for r in analysis.failed_blockers
+                    if r.consideration_id not in addressed_concerns
+                ]
 
-                prompt = self._generate_continuation_prompt(analysis)
+                # If all blockers were addressed, treat as passing
+                if not remaining_blockers and addressed_concerns:
+                    self._log(
+                        f"All {len(addressed_concerns)} blockers were addressed in this turn",
+                        "INFO",
+                    )
+                    analysis = self._create_passing_analysis(analysis, addressed_concerns)
+                else:
+                    # Actual failures - block
+                    # Mark results shown on first stop to prevent race condition
+                    if is_first_stop:
+                        self._mark_results_shown(session_id)
 
-                # Save redirect record for session reflection
-                failed_ids = [r.consideration_id for r in analysis.failed_blockers]
-                self._save_redirect(
-                    session_id=session_id,
-                    failed_considerations=failed_ids,
-                    continuation_prompt=prompt,
-                    work_summary=None,  # Could be enhanced to extract work summary
-                )
+                    # Record block in turn state - use remaining blockers if available
+                    blockers_to_record = remaining_blockers or analysis.failed_blockers
+                    failed_ids = [r.consideration_id for r in blockers_to_record]
 
-                return PowerSteeringResult(
-                    decision="block",
-                    reasons=failed_ids,
-                    continuation_prompt=prompt,
-                    summary=None,
-                    analysis=analysis,
-                    is_first_stop=is_first_stop,
-                )
+                    if turn_state_manager and turn_state:
+                        turn_state = turn_state_manager.record_block(turn_state, failed_ids)
+                        turn_state_manager.save_state(turn_state)
 
-            # All checks passed
+                    prompt = self._generate_continuation_prompt(
+                        analysis, turn_state, addressed_concerns
+                    )
+
+                    # Save redirect record for session reflection
+                    self._save_redirect(
+                        session_id=session_id,
+                        failed_considerations=failed_ids,
+                        continuation_prompt=prompt,
+                        work_summary=None,  # Could be enhanced to extract work summary
+                    )
+
+                    return PowerSteeringResult(
+                        decision="block",
+                        reasons=failed_ids,
+                        continuation_prompt=prompt,
+                        summary=None,
+                        analysis=analysis,
+                        is_first_stop=is_first_stop,
+                    )
+
+            # All checks passed (or all blockers were addressed)
             if is_first_stop:
                 # FIRST STOP: Block to show results (visibility feature)
                 # Mark results shown immediately to prevent race condition
@@ -585,6 +690,11 @@ class PowerSteeringChecker:
             summary = self._generate_summary(transcript, analysis, session_id)
             self._mark_complete(session_id)
             self._write_summary(session_id, summary)
+
+            # Reset turn state on approval
+            if turn_state_manager and turn_state:
+                turn_state = turn_state_manager.record_approval(turn_state)
+                turn_state_manager.save_state(turn_state)
 
             # Emit completion event
             self._emit_progress(
@@ -1256,6 +1366,39 @@ class PowerSteeringChecker:
             return True
 
         return False
+
+    def _create_passing_analysis(
+        self,
+        original_analysis: ConsiderationAnalysis,
+        addressed_concerns: Dict[str, str],
+    ) -> ConsiderationAnalysis:
+        """Create a modified analysis with addressed blockers marked as satisfied.
+
+        Used when all blockers were addressed in the current turn to convert
+        a failing analysis to a passing one.
+
+        Args:
+            original_analysis: The original analysis with blockers
+            addressed_concerns: Map of concern_id -> how it was addressed
+
+        Returns:
+            New ConsiderationAnalysis with blockers converted to satisfied
+        """
+        # Create a copy of results with addressed concerns marked satisfied
+        modified_results = dict(original_analysis.results)
+
+        for consideration_id, how_addressed in addressed_concerns.items():
+            if consideration_id in modified_results:
+                old_result = modified_results[consideration_id]
+                modified_results[consideration_id] = CheckerResult(
+                    consideration_id=consideration_id,
+                    satisfied=True,
+                    reason=f"{old_result.reason} [ADDRESSED: {how_addressed}]",
+                    severity=old_result.severity,
+                )
+
+        # Create new analysis with modified results
+        return ConsiderationAnalysis(results=modified_results)
 
     def _analyze_considerations(
         self,
@@ -2684,36 +2827,80 @@ class PowerSteeringChecker:
     # Output Generation
     # ========================================================================
 
-    def _generate_continuation_prompt(self, analysis: ConsiderationAnalysis) -> str:
-        """Generate actionable continuation prompt.
+    def _generate_continuation_prompt(
+        self,
+        analysis: ConsiderationAnalysis,
+        turn_state: Optional["PowerSteeringTurnState"] = None,
+        addressed_concerns: Optional[Dict[str, str]] = None,
+    ) -> str:
+        """Generate actionable continuation prompt with turn-awareness.
 
         Args:
             analysis: Analysis results with failed considerations
+            turn_state: Optional turn state for turn-aware prompting
+            addressed_concerns: Optional dict of concerns addressed in this turn
 
         Returns:
-            Formatted continuation prompt
+            Formatted continuation prompt with turn information
         """
-        prompt_parts = [
-            "POWER-STEERING: Session appears incomplete",
-            "",
-            "The following checks failed and need to be addressed:",
-            "",
-        ]
+        prompt_parts = ["POWER-STEERING: Session appears incomplete"]
 
-        # Group by category
+        # Add turn-awareness header if we have turn state
+        if turn_state and turn_state.consecutive_blocks > 0:
+            max_blocks = (
+                PowerSteeringTurnState.MAX_CONSECUTIVE_BLOCKS if TURN_STATE_AVAILABLE else 3
+            )
+            remaining = max_blocks - turn_state.consecutive_blocks
+            prompt_parts.append("")
+            prompt_parts.append(
+                f"**Attempt {turn_state.consecutive_blocks} of {max_blocks}** - {remaining} more block(s) before auto-approve"
+            )
+
+            if remaining == 1:
+                prompt_parts.append(
+                    "**WARNING**: Next block will trigger auto-approve. Address concerns or acknowledge explicitly."
+                )
+
+        prompt_parts.extend(["", "The following checks failed and need to be addressed:", ""])
+
+        # Show addressed concerns if any (to acknowledge progress)
+        if addressed_concerns:
+            prompt_parts.append("**Previously Addressed** (recognized from your actions):")
+            for concern_id, how_addressed in addressed_concerns.items():
+                prompt_parts.append(f"  + {concern_id}: {how_addressed}")
+            prompt_parts.append("")
+
+        # Group remaining failures by category
         by_category = analysis.group_by_category()
 
         for category, failed in by_category.items():
-            prompt_parts.append(f"**{category}**")
-            for result in failed:
-                prompt_parts.append(f"  - {result.reason}")
-            prompt_parts.append("")
+            # Filter out addressed concerns from display
+            remaining_failures = [
+                r
+                for r in failed
+                if not addressed_concerns or r.consideration_id not in addressed_concerns
+            ]
+            if remaining_failures:
+                prompt_parts.append(f"**{category}**")
+                for result in remaining_failures:
+                    prompt_parts.append(f"  - {result.reason}")
+                prompt_parts.append("")
 
         prompt_parts.append("Once these are addressed, you may stop the session.")
-        prompt_parts.append("")
-        prompt_parts.append("To disable power-steering immediately:")
-        prompt_parts.append(
-            "  mkdir -p .claude/runtime/power-steering && touch .claude/runtime/power-steering/.disabled"
+
+        # Add acknowledgment hint if nearing auto-approve threshold
+        if turn_state and turn_state.consecutive_blocks >= 2:
+            prompt_parts.append("")
+            prompt_parts.append(
+                "**To acknowledge and continue**: Say 'I acknowledge these concerns' or create SESSION_SUMMARY.md"
+            )
+
+        prompt_parts.extend(
+            [
+                "",
+                "To disable power-steering immediately:",
+                "  mkdir -p .claude/runtime/power-steering && touch .claude/runtime/power-steering/.disabled",
+            ]
         )
 
         return "\n".join(prompt_parts)
