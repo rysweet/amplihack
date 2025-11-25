@@ -1412,8 +1412,7 @@ class PowerSteeringChecker:
                         "WARNING",
                     )
                     # Run heuristic in thread pool to not block event loop
-                    satisfied = await asyncio.get_event_loop().run_in_executor(
-                        None,
+                    satisfied = await asyncio.to_thread(
                         self._run_heuristic_checker,
                         consideration,
                         transcript,
@@ -1422,8 +1421,7 @@ class PowerSteeringChecker:
             else:
                 # SDK not available or not applicable, use heuristic checker
                 # Run heuristic in thread pool to not block event loop
-                satisfied = await asyncio.get_event_loop().run_in_executor(
-                    None,
+                satisfied = await asyncio.to_thread(
                     self._run_heuristic_checker,
                     consideration,
                     transcript,
