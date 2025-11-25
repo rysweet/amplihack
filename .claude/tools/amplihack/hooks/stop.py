@@ -76,7 +76,7 @@ class StopHook(HookProcessor):
             session_id = self._get_current_session_id()
 
             # Increment lock mode counter
-            lock_count = self._increment_lock_counter(session_id)
+            self._increment_lock_counter(session_id)
 
             # Read custom continuation prompt or use default
             continuation_prompt = self.read_continuation_prompt()
@@ -128,10 +128,27 @@ class StopHook(HookProcessor):
                     self._increment_power_steering_counter()
 
                     if ps_result.decision == "block":
-                        self.log("Power-steering blocking stop - work incomplete")
-                        self.save_metric("power_steering_blocks", 1)
-                        # Display final summary
-                        progress_tracker.display_summary()
+                        # Check if this is first stop (visibility feature)
+                        if ps_result.is_first_stop and ps_result.analysis:
+                            # FIRST STOP: Display all results for visibility
+                            self.log(
+                                "First stop - displaying all consideration results for visibility"
+                            )
+                            progress_tracker.display_all_results(
+                                analysis=ps_result.analysis,
+                                considerations=ps_checker.considerations,
+                                is_first_stop=True,
+                            )
+                            # Mark results as shown so next stop won't block (if all pass)
+                            ps_checker._mark_results_shown(session_id)
+                            self.save_metric("power_steering_first_stop_visibility", 1)
+                        else:
+                            # Subsequent stop with failures OR first stop with failures
+                            self.log("Power-steering blocking stop - work incomplete")
+                            self.save_metric("power_steering_blocks", 1)
+                            # Display final summary
+                            progress_tracker.display_summary()
+
                         self.log("=== STOP HOOK ENDED (decision: block - power-steering) ===")
                         return {
                             "decision": "block",
@@ -481,7 +498,12 @@ class StopHook(HookProcessor):
         """
         try:
             counter_file = (
-                self.project_root / ".claude" / "runtime" / "locks" / session_id / "lock_invocations.txt"
+                self.project_root
+                / ".claude"
+                / "runtime"
+                / "locks"
+                / session_id
+                / "lock_invocations.txt"
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 

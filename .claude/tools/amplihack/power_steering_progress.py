@@ -23,7 +23,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 class VerbosityMode(Enum):
@@ -236,6 +236,97 @@ class ProgressTracker:
         except Exception:
             # Fail-safe: Never raise exceptions
             pass
+
+    def display_all_results(
+        self,
+        analysis: Any,
+        considerations: List[Dict],
+        is_first_stop: bool = True,
+    ) -> None:
+        """Display all consideration results for visibility (first stop feature).
+
+        Shows all 22 considerations grouped by category with ✓/✗ indicators.
+
+        Args:
+            analysis: ConsiderationAnalysis with results
+            considerations: List of consideration definitions
+            is_first_stop: True if this is first stop (shows "will allow next stop" message)
+        """
+        try:
+            # Header
+            print("\n" + "=" * 70, file=sys.stderr, flush=True)
+            print("⚙️  POWER-STEERING ANALYSIS RESULTS", file=sys.stderr, flush=True)
+            print("=" * 70 + "\n", file=sys.stderr, flush=True)
+
+            # Group considerations by category
+            by_category: Dict[str, List[tuple]] = {}
+            for consideration in considerations:
+                category = consideration.get("category", "Unknown")
+                cid = consideration["id"]
+                result = analysis.results.get(cid)
+
+                if category not in by_category:
+                    by_category[category] = []
+
+                by_category[category].append((consideration, result))
+
+            # Display by category
+            total_passed = 0
+            total_failed = 0
+
+            for category, items in sorted(by_category.items()):
+                print(f"📋 {category}", file=sys.stderr, flush=True)
+                print("-" * 50, file=sys.stderr, flush=True)
+
+                for consideration, result in items:
+                    if result is None:
+                        # Not checked (filtered by session type)
+                        indicator = "⬜"
+                    elif result.satisfied:
+                        indicator = "✅"
+                        total_passed += 1
+                    else:
+                        indicator = "❌"
+                        total_failed += 1
+
+                    question = consideration.get("question", consideration["id"])
+                    severity = consideration.get("severity", "warning")
+                    severity_tag = "[blocker]" if severity == "blocker" else ""
+
+                    print(f"  {indicator} {question} {severity_tag}", file=sys.stderr, flush=True)
+
+                print("", file=sys.stderr, flush=True)
+
+            # Summary line
+            print("=" * 70, file=sys.stderr, flush=True)
+            if total_failed == 0:
+                print(
+                    f"✅ ALL CHECKS PASSED ({total_passed} passed, {total_failed} failed)",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                if is_first_stop:
+                    print(
+                        "\n📌 This was your first stop. Next stop will proceed without blocking.",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+            else:
+                print(
+                    f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed)",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                print(
+                    "\n📌 Address the failed checks above before stopping.",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            print("=" * 70 + "\n", file=sys.stderr, flush=True)
+
+        except Exception as e:
+            # Fail-safe: Never raise exceptions that would break the stop hook
+            print(f"Warning: Could not display results: {e}", file=sys.stderr, flush=True)
 
 
 # Module interface for easy import

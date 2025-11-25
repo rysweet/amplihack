@@ -145,6 +145,8 @@ class PowerSteeringResult:
     reasons: List[str]
     continuation_prompt: Optional[str] = None
     summary: Optional[str] = None
+    analysis: Optional["ConsiderationAnalysis"] = None  # Full analysis results for visibility
+    is_first_stop: bool = False  # True if this is the first stop attempt in session
 
 
 class PowerSteeringChecker:
@@ -487,8 +489,12 @@ class PowerSteeringChecker:
                 transcript, session_id, session_type, progress_callback
             )
 
-            # 6. Make decision
+            # 6. Check if this is first stop (visibility feature)
+            is_first_stop = not self._results_already_shown(session_id)
+
+            # 7. Make decision based on first/subsequent stop
             if analysis.has_blockers:
+                # Actual failures - always block
                 prompt = self._generate_continuation_prompt(analysis)
 
                 # Save redirect record for session reflection
@@ -505,8 +511,32 @@ class PowerSteeringChecker:
                     reasons=failed_ids,
                     continuation_prompt=prompt,
                     summary=None,
+                    analysis=analysis,
+                    is_first_stop=is_first_stop,
                 )
-            # 7. Generate summary and mark complete
+
+            # All checks passed
+            if is_first_stop:
+                # FIRST STOP: Block to show results (visibility feature)
+                # stop.py will display all results and then call _mark_results_shown()
+                self._log("First stop - blocking to display all results for visibility", "INFO")
+                self._emit_progress(
+                    progress_callback,
+                    "complete",
+                    "Power-steering analysis complete - all checks passed (first stop - displaying results)",
+                )
+
+                return PowerSteeringResult(
+                    decision="block",
+                    reasons=["first_stop_visibility"],
+                    continuation_prompt="All power-steering checks passed! Displaying results for visibility. Next stop will proceed without blocking.",
+                    summary=None,
+                    analysis=analysis,
+                    is_first_stop=True,
+                )
+
+            # SUBSEQUENT STOP: All checks passed, approve
+            # 8. Generate summary and mark complete
             summary = self._generate_summary(transcript, analysis, session_id)
             self._mark_complete(session_id)
             self._write_summary(session_id, summary)
@@ -523,6 +553,8 @@ class PowerSteeringChecker:
                 reasons=["all_considerations_satisfied"],
                 continuation_prompt=None,
                 summary=summary,
+                analysis=analysis,
+                is_first_stop=False,
             )
 
         except Exception as e:
@@ -643,6 +675,38 @@ class PowerSteeringChecker:
         """
         semaphore = self.runtime_dir / f".{session_id}_completed"
         return semaphore.exists()
+
+    def _results_already_shown(self, session_id: str) -> bool:
+        """Check if power-steering results were already shown for this session.
+
+        Used for the "always block first" visibility feature. On first stop,
+        we always block to show results. On subsequent stops, we only block
+        if there are actual failures.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            True if results were already shown, False otherwise
+        """
+        semaphore = self.runtime_dir / f".{session_id}_results_shown"
+        return semaphore.exists()
+
+    def _mark_results_shown(self, session_id: str) -> None:
+        """Create semaphore to indicate results have been shown.
+
+        Called after displaying all consideration results on first stop.
+
+        Args:
+            session_id: Session identifier
+        """
+        try:
+            semaphore = self.runtime_dir / f".{session_id}_results_shown"
+            semaphore.parent.mkdir(parents=True, exist_ok=True)
+            semaphore.touch()
+            semaphore.chmod(0o600)  # Owner read/write only for security
+        except OSError:
+            pass  # Fail-open: Continue even if semaphore creation fails
 
     def _mark_complete(self, session_id: str) -> None:
         """Create semaphore to prevent re-running.
