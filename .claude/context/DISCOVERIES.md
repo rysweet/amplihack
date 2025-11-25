@@ -4,6 +4,44 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## Power-Steering Session Type Detection Fix (2025-11-25)
+
+### Problem
+
+Power-steering was incorrectly blocking investigation/troubleshooting sessions with development-specific checks (PR, CI/CD, tests). Sessions like "Investigate SSH connection issues" were being classified as DEVELOPMENT or MAINTENANCE based on tool usage patterns (Bash commands, doc updates), even though they should be INVESTIGATION.
+
+### Root Cause
+
+The `detect_session_type()` method relied solely on tool-based heuristics:
+
+- Bash commands → could indicate DEVELOPMENT (tests) or MAINTENANCE (git)
+- Doc file edits → MAINTENANCE
+- Read/Grep operations → INVESTIGATION (but only if no writes)
+
+Troubleshooting sessions often involve:
+
+- Bash commands to diagnose/fix issues (SSH, docker, etc.)
+- Doc updates (DISCOVERIES.md) to record findings
+- These patterns were misclassified
+
+### Solution (PR #1606)
+
+Added **keyword-based session type detection** with priority over tool heuristics:
+
+1. Check first 5 user messages for investigation keywords
+2. Keywords include: investigate, troubleshoot, diagnose, debug, analyze, research, explore, understand, figure out, why does, how does, what causes, root cause, explain
+3. If found → immediately classify as INVESTIGATION
+4. Fall back to tool-based heuristics only if no keywords
+
+### Key Insight
+
+**User intent (expressed through keywords) is more reliable than tool usage patterns** for classifying session types. A user saying "troubleshoot the SSH issue" clearly wants an investigation, regardless of what tools get used.
+
+### Files Changed
+
+- `.claude/tools/amplihack/hooks/power_steering_checker.py`: Added `INVESTIGATION_KEYWORDS`, `_has_investigation_keywords()`, updated `detect_session_type()`
+- `.claude/tools/amplihack/hooks/tests/test_session_classification.py`: Added 18 tests for keyword detection
+
 ## Transcripts System Investigation - Architecture Validated, Microsoft Amplifier Comparison Complete (2025-11-22)
 
 ### Investigation Summary
