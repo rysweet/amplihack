@@ -9,25 +9,44 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 Launches Claude Code with preconfigured agents. No installation needed.
 
-### Create Alias for Easy Access
+## Table of Contents
 
-Instead of typing the full uvx command, create an alias:
-
-```sh
-# Add to your ~/.bashrc or ~/.zshrc
-alias amplihack='uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack'
-
-# Reload your shell
-source ~/.bashrc  # or source ~/.zshrc
-```
-
-Now you can simply run:
-
-```sh
-amplihack launch
-amplihack launch --with-proxy-config ./azure.env
-amplihack launch --checkout-repo owner/repo
-```
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Basic Usage](#basic-usage)
+  - [Create Alias for Easy Access](#create-alias-for-easy-access)
+- [Features](#features)
+  - [Workflow Orchestration by Default](#workflow-orchestration-by-default)
+  - [Goal-Seeking Agent Generator](#goal-seeking-agent-generator)
+  - [Profile Management](#profile-management)
+  - [GitHub Pages Documentation Generation](#github-pages-documentation-generation)
+- [Core Concepts](#core-concepts)
+  - [Workflow](#workflow)
+  - [Philosophy](#philosophy)
+- [Configuration](#configuration)
+  - [Anthropic (Default)](#anthropic-default)
+  - [Azure OpenAI](#azure-openai)
+  - [GitHub Copilot CLI](#github-copilot-cli)
+  - [Custom Workflows](#custom-workflows)
+- [Commands Reference](#commands-reference)
+- [Agents Reference](#agents-reference)
+  - [Core Agents](#core-agents-6)
+  - [Specialized Agents](#specialized-agents-23)
+- [Statusline](#statusline)
+- [Documentation](#documentation)
+  - [Getting Started](#getting-started)
+  - [Features](#features-1)
+  - [Patterns](#patterns)
+  - [Configuration](#configuration-1)
+  - [Development](#development-1)
+  - [Methodology](#methodology)
+  - [Security](#security)
+  - [Core Principles](#core-principles)
+- [Development](#development)
+  - [Contributing](#contributing)
+  - [Local Development](#local-development)
+  - [Testing](#testing)
+- [License](#license)
 
 ## Quick Start
 
@@ -58,7 +77,165 @@ Code to `cd /path/to/my/project` and provide your prompt. All prompts are
 automatically wrapped with `/amplihack:ultrathink` for workflow orchestration
 (use `--no-ultrathink` flag to opt-out for simple tasks).
 
-## Model Configuration
+### Create Alias for Easy Access
+
+Instead of typing the full uvx command, create an alias:
+
+```sh
+# Add to your ~/.bashrc or ~/.zshrc
+alias amplihack='uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack'
+
+# Reload your shell
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+Now you can simply run:
+
+```sh
+amplihack launch
+amplihack launch --with-proxy-config ./azure.env
+amplihack launch --checkout-repo owner/repo
+```
+
+## Features
+
+### Workflow Orchestration by Default
+
+All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
+effectiveness. This enables:
+
+- Multi-agent workflow orchestration
+- 13-step development workflow
+- Automated architecture, building, and testing
+- Philosophy compliance checking
+
+**Benchmark results:** Amplihack without orchestration = vanilla Claude. The
+orchestration IS the value! See [benchmarking guide](docs/BENCHMARKING.md) for
+measuring performance.
+
+**Opt-out for simple tasks:**
+
+```sh
+# Skip orchestration with --no-ultrathink flag
+amplihack launch --no-ultrathink -- -p "simple prompt"
+
+# Or use slash commands directly
+amplihack launch -- -p "/analyze src/file.py"
+```
+
+**How it works:**
+
+```sh
+# Before: Manual orchestration required
+amplihack launch -- -p "/amplihack:ultrathink implement feature"
+
+# Now: Automatic orchestration (same result)
+amplihack launch -- -p "implement feature"
+```
+
+### Goal-Seeking Agent Generator
+
+**Create autonomous agents from simple prompts:**
+
+```bash
+# Write your goal
+cat > my_goal.md <<'EOF'
+# Goal: Automated Code Review
+Review Python code and suggest improvements.
+EOF
+
+# Generate agent
+amplihack new --file my_goal.md
+
+# Run agent
+cd goal_agents/automated-code-review-agent
+python main.py
+```
+
+**Features:**
+
+- Generate agents in < 0.1 seconds
+- Automatic skill matching
+- Multi-phase execution planning
+- Standalone, distributable agents
+
+**Learn more:** [Goal Agent Generator Guide](docs/GOAL_AGENT_GENERATOR_GUIDE.md)
+
+### Profile Management
+
+**Reduce token usage by 72% with profile-based component filtering:**
+
+```bash
+# Set profile (outside Claude Code)
+export AMPLIHACK_PROFILE=amplihack://profiles/coding
+
+# Install with filtering
+amplihack install
+# Result: Only 9/32 agents staged (72% reduction)
+
+# Launch with filtering
+amplihack launch
+# Result: Focused environment for coding tasks
+
+# To switch profiles: exit Claude, set new profile, restart
+```
+
+**Built-in Profiles:**
+
+- `all`: Full environment (32 agents, default)
+- `coding`: Development-focused (9 agents)
+- `research`: Investigation-focused (7 agents)
+
+**Learn more:** [Profile Management Guide](docs/PROFILE_MANAGEMENT.md)
+
+### GitHub Pages Documentation Generation
+
+**Generate professional documentation sites automatically:**
+
+- Auto-discovers content from `docs/`, `README.md`, and `.claude/commands/`
+- Three-pass validation ensures quality documentation
+- Safe gh-pages deployment with rollback support
+- Local preview server for testing
+- MkDocs + Material theme integration
+
+**Learn more:**
+
+- [Tutorial: Your First Documentation Site](docs/tutorials/first-docs-site.md)
+- [How-To: Generate GitHub Pages Sites](docs/howto/github-pages-generation.md)
+- [API Reference: GitHub Pages Module](docs/reference/github-pages-api.md)
+
+## Core Concepts
+
+### Workflow
+
+Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
+
+1. Clarify requirements
+2. Create issue
+3. Setup branch
+4. Design tests
+5. Implement
+6. Simplify
+7. Test
+8. Commit
+9. Create PR
+10. Review
+11. Integrate feedback
+12. Check philosophy
+13. Prepare merge
+14. Cleanup
+
+### Philosophy
+
+- **Simplicity** - Start simple, add only justified complexity
+- **Modular** - Self-contained modules with clear interfaces
+- **Working code** - No stubs or dead code
+- **Test-driven** - Tests before implementation
+
+## Configuration
+
+amplihack works with Claude Code and Anthropic models by default. For additional
+capabilities, you can configure Azure OpenAI integration.
 
 ### Anthropic (Default)
 
@@ -94,17 +271,28 @@ amplihack launch --with-proxy-config ./azure.env
 `https://your-resource.openai.azure.com`) without `/openai` or other path
 suffixes. The proxy will automatically construct the correct API paths.
 
+**Security Warning**: Never commit API keys to version control. Use environment
+variables or secure key management systems.
+
 ### GitHub Copilot CLI
 
 amplihack also supports GitHub Copilot CLI integration. See
 [docs/github-copilot-litellm-integration.md](docs/github-copilot-litellm-integration.md)
 for setup instructions.
 
-## Quick Reference - Commands
+### Custom Workflows
+
+The iterative-step workflow is fully customizable. Edit
+`.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process -
+changes apply immediately to `/ultrathink` and other commands. See
+[docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed
+customization instructions.
+
+## Commands Reference
 
 | Command                        | Description                                             |
 | ------------------------------ | ------------------------------------------------------- |
-| `amplihack new`                | **NEW!** Generate goal-seeking agents from prompts      |
+| `amplihack new`                | Generate goal-seeking agents from prompts               |
 | `/amplihack:ultrathink`        | Deep multi-agent analysis (now DEFAULT for all prompts) |
 | `/amplihack:analyze`           | Code analysis and philosophy compliance review          |
 | `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute)      |
@@ -175,261 +363,23 @@ for setup instructions.
 | **xpia-defense**            | Advanced threat detection                       |
 | **philosophy-guardian**     | Philosophy compliance and simplicity validation |
 
-## Features
-
-### Workflow Orchestration by Default (NEW!)
-
-All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
-effectiveness. This enables:
-
-- Multi-agent workflow orchestration
-- 13-step development workflow
-- Automated architecture, building, and testing
-- Philosophy compliance checking
-
-**Benchmark results:** Amplihack without orchestration = vanilla Claude. The
-orchestration IS the value! See [benchmarking guide](docs/BENCHMARKING.md) for
-measuring performance.
-
-**Opt-out for simple tasks:**
-
-```sh
-# Skip orchestration with --no-ultrathink flag
-amplihack launch --no-ultrathink -- -p "simple prompt"
-
-# Or use slash commands directly
-amplihack launch -- -p "/analyze src/file.py"
-```
-
-**How it works:**
-
-```sh
-# Before: Manual orchestration required
-amplihack launch -- -p "/amplihack:ultrathink implement feature"
-
-# Now: Automatic orchestration (same result)
-amplihack launch -- -p "implement feature"
-```
-
-### Goal-Seeking Agent Generator (NEW!)
-
-**Create autonomous agents from simple prompts:**
-
-```bash
-# Write your goal
-cat > my_goal.md <<'EOF'
-# Goal: Automated Code Review
-Review Python code and suggest improvements.
-EOF
-
-# Generate agent
-amplihack new --file my_goal.md
-
-# Run agent
-cd goal_agents/automated-code-review-agent
-python main.py
-```
-
-**Features:**
-
-- Generate agents in < 0.1 seconds
-- Automatic skill matching
-- Multi-phase execution planning
-- Standalone, distributable agents
-
-**Learn more:** [Goal Agent Generator Guide](docs/GOAL_AGENT_GENERATOR_GUIDE.md)
-
-### Profile Management
-
-**Reduce token usage by 72% with profile-based component filtering:**
-
-```bash
-# Set profile (outside Claude Code)
-export AMPLIHACK_PROFILE=amplihack://profiles/coding
-
-# Install with filtering
-amplihack install
-# Result: Only 9/32 agents staged (72% reduction)
-
-# Launch with filtering
-amplihack launch
-# Result: Focused environment for coding tasks
-
-# To switch profiles: exit Claude, set new profile, restart
-```
-
-**Built-in Profiles:**
-
-- `all`: Full environment (32 agents, default)
-- `coding`: Development-focused (9 agents)
-- `research`: Investigation-focused (7 agents)
-
-**Learn more:** [Profile Management Guide](docs/PROFILE_MANAGEMENT.md)
-
-### GitHub Pages Documentation Generation (NEW!)
-
-**Generate professional documentation sites automatically:**
-
-- Auto-discovers content from `docs/`, `README.md`, and `.claude/commands/`
-- Three-pass validation ensures quality documentation
-- Safe gh-pages deployment with rollback support
-- Local preview server for testing
-- MkDocs + Material theme integration
-
-**Learn more:**
-
-- [Tutorial: Your First Documentation Site](docs/tutorials/first-docs-site.md)
-- [How-To: Generate GitHub Pages Sites](docs/howto/github-pages-generation.md)
-- [API Reference: GitHub Pages Module](docs/reference/github-pages-api.md)
-
----
-
-## Core Concepts
-
-### Workflow
-
-Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
-
-1. Clarify requirements
-2. Create issue
-3. Setup branch
-4. Design tests
-5. Implement
-6. Simplify
-7. Test
-8. Commit
-9. Create PR
-10. Review
-11. Integrate feedback
-12. Check philosophy
-13. Prepare merge
-14. Cleanup
-
-### Philosophy
-
-- **Simplicity** - Start simple, add only justified complexity
-- **Modular** - Self-contained modules with clear interfaces
-- **Working code** - No stubs or dead code
-- **Test-driven** - Tests before implementation
-
-## Configuration
-
-amplihack works with Claude Code and Anthropic models by default. For additional
-capabilities, you can configure Azure OpenAI integration.
-
-### Azure OpenAI
-
-Create `azure.env` with your credentials:
-
-```env
-AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
-```
-
-**Security Warning**: Never commit API keys to version control. Use environment
-variables or secure key management systems.
-
-### Custom Workflows
-
-The iterative-step workflow is fully customizable. Edit
-`.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process -
-changes apply immediately to `/ultrathink` and other commands. See
-[docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed
-customization instructions.
-
 ## Statusline
 
-### Overview
+Real-time session information displayed at the bottom of Claude Code showing:
 
-Real-time session information bar at the bottom of Claude Code interface showing
-progress, costs, context usage, and active features.
+- Current directory and git status (branch, clean/dirty)
+- Active model (Opus/Sonnet/Haiku)
+- Token usage 🎫, Cost 💰, and Duration ⏱
+- Feature indicators: Power-Steering 🚦, Lock Mode 🔒
 
-### Indicators Reference
-
-| Indicator             | Shows                     | Format                                      | Notes                                                   |
-| --------------------- | ------------------------- | ------------------------------------------- | ------------------------------------------------------- |
-| **Directory**         | Current working directory | `~/path`                                    | `~` = home directory                                    |
-| **Git Branch**        | Branch name and status    | `(branch → remote)` or `(branch* → remote)` | `*` = uncommitted changes, Cyan = clean, Yellow = dirty |
-| **Model**             | Active Claude model       | `Opus`, `Sonnet`, `Haiku`                   | Red=Opus, Green=Sonnet, Blue=Haiku                      |
-| **Tokens** 🎫         | Total token usage         | `234K`, `1.2M`, or raw number               | M=millions, K=thousands                                 |
-| **Cost** 💰           | Total session cost        | `$1.23`                                     | USD                                                     |
-| **Duration** ⏱       | Session elapsed time      | `15m`, `1h`, `30s`                          | s/m/h format                                            |
-| **Power-Steering** 🚦 | Redirect count            | `🚦×3`                                      | Only when active (purple)                               |
-| **Lock Mode** 🔒      | Lock invocation count     | `🔒×5`                                      | Only when active (yellow)                               |
-
-### Color Coding
-
-**Git Status:**
-
-- Cyan: Clean working tree (no uncommitted changes)
-- Yellow with `*`: Dirty working tree (uncommitted changes)
-
-**Model Type:**
-
-- Red: Opus models
-- Green: Sonnet models
-- Blue: Haiku models
-- Gray: Unknown/other models
-
-**Feature Indicators:**
-
-- Purple (🚦): Power-steering active
-- Yellow (🔒): Lock mode active
-
-### Examples
-
-**Example 1: Clean Development Session**
+**Example:**
 
 ```
-~/src/amplihack4 (main → origin) Sonnet 🎫 234K 💰$1.23 ⏱12m
+~/src/amplihack (main → origin) Sonnet 🎫 234K 💰$1.23 ⏱12m
 ```
 
-- Directory: `~/src/amplihack4` (~= home shorthand)
-- Git: `(main → origin)` cyan = clean branch
-- Model: `Sonnet` green = Sonnet family
-- Tokens: `🎫 234K` 234,000 tokens
-- Cost: `💰$1.23` $1.23 USD
-- Duration: `⏱12m` 12 minutes
-
-**Example 2: Active Development with Features**
-
-```
-~/projects/api (feature/auth* → origin) Opus 🎫 1.2M 💰$15.67 ⏱1h 🚦×3 🔒×5
-```
-
-- Directory: `~/projects/api`
-- Git: `(feature/auth* → origin)` yellow = dirty, `*` = uncommitted changes
-- Model: `Opus` red = Opus family
-- Tokens: `🎫 1.2M` 1.2 million tokens
-- Cost: `💰$15.67` $15.67 USD
-- Duration: `⏱1h` 1 hour
-- Power-Steering: `🚦×3` 3 redirects (purple indicator)
-- Lock Mode: `🔒×5` 5 lock invocations (yellow indicator)
-
-### Configuration
-
-`.claude/settings.json`:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/statusline.sh"
-  }
-}
-```
-
-### Project Structure
-
-```
-.claude/
-├── agents/     # Agent definitions (core + specialized)
-├── context/    # Philosophy and patterns
-├── workflow/   # Development processes
-└── commands/   # Slash commands
-```
+**Full documentation:**
+[docs/reference/STATUSLINE.md](docs/reference/STATUSLINE.md)
 
 ## Documentation
 
@@ -489,7 +439,7 @@ progress, costs, context usage, and active features.
 - [Security Context Preservation](docs/SECURITY_CONTEXT_PRESERVATION.md) -
   Context handling
 
-### Patterns
+### Core Principles
 
 - [The Amplihack Way](docs/THIS_IS_THE_WAY.md) - Effective strategies for
   AI-agent development
@@ -497,9 +447,6 @@ progress, costs, context usage, and active features.
   learnings
 - [Creating Tools](docs/CREATE_YOUR_OWN_TOOLS.md) - Build custom AI-powered
   tools
-
-### Core Principles
-
 - [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles and patterns
 - [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Development process
 
@@ -524,16 +471,6 @@ amplihack launch
 ```sh
 pytest tests/
 ```
-
-## Command Reference
-
-| Task        | Command                               |
-| ----------- | ------------------------------------- |
-| Launch      | `amplihack launch`                    |
-| With Azure  | Add `--with-proxy-config ./azure.env` |
-| With repo   | Add `--checkout-repo owner/repo`      |
-| From branch | Use `@branch-name` after URL          |
-| Uninstall   | `amplihack uninstall`                 |
 
 ## License
 
