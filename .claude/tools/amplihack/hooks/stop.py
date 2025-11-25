@@ -124,8 +124,8 @@ class StopHook(HookProcessor):
                         transcript_path, session_id, progress_callback=progress_tracker.emit
                     )
 
-                    # Increment counter for statusline display
-                    self._increment_power_steering_counter()
+                    # Increment counter for statusline display (session-specific)
+                    self._increment_power_steering_counter(session_id)
 
                     if ps_result.decision == "block":
                         # Check if this is first stop (visibility feature)
@@ -459,14 +459,26 @@ class StopHook(HookProcessor):
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
 
-    def _increment_power_steering_counter(self) -> None:
+    def _increment_power_steering_counter(self, session_id: str) -> int:
         """Increment power-steering invocation counter for statusline display.
 
-        Writes counter to .claude/runtime/power-steering/session_count for statusline to read.
+        Writes counter to .claude/runtime/power-steering/{session_id}/session_count
+        for statusline to read. Session-specific like lock counter.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            New count value
         """
         try:
             counter_file = (
-                self.project_root / ".claude" / "runtime" / "power-steering" / "session_count"
+                self.project_root
+                / ".claude"
+                / "runtime"
+                / "power-steering"
+                / session_id
+                / "session_count"
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -481,10 +493,12 @@ class StopHook(HookProcessor):
             # Increment and write
             new_count = current_count + 1
             counter_file.write_text(str(new_count))
+            return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails
             self.log(f"Failed to update power-steering counter: {e}", "DEBUG")
+            return 0
 
     def _increment_lock_counter(self, session_id: str) -> int:
         """Increment lock mode invocation counter for session.
