@@ -57,7 +57,7 @@ Launches Claude Code with preconfigured agents. No installation needed.
 - uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 
 For detailed installation instructions, see
-[docs/PREREQUISITES.md](docs/PREREQUISITES.md).
+[docs/PREREQUISITES.md](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/PREREQUISITES/).
 
 ### Basic Usage
 
@@ -110,8 +110,9 @@ effectiveness. This enables:
 - Philosophy compliance checking
 
 **Benchmark results:** Amplihack without orchestration = vanilla Claude. The
-orchestration IS the value! See [benchmarking guide](docs/BENCHMARKING.md) for
-measuring performance.
+orchestration IS the value! See
+[benchmarking guide](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/BENCHMARKING/)
+for measuring performance.
 
 **Opt-out for simple tasks:**
 
@@ -159,7 +160,8 @@ python main.py
 - Multi-phase execution planning
 - Standalone, distributable agents
 
-**Learn more:** [Goal Agent Generator Guide](docs/GOAL_AGENT_GENERATOR_GUIDE.md)
+**Learn more:**
+[Goal Agent Generator Guide](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/GOAL_AGENT_GENERATOR_GUIDE/)
 
 ### Profile Management
 
@@ -186,7 +188,8 @@ amplihack launch
 - `coding`: Development-focused (9 agents)
 - `research`: Investigation-focused (7 agents)
 
-**Learn more:** [Profile Management Guide](docs/PROFILE_MANAGEMENT.md)
+**Learn more:**
+[Profile Management Guide](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/PROFILE_MANAGEMENT/)
 
 ### GitHub Pages Documentation Generation
 
@@ -200,9 +203,9 @@ amplihack launch
 
 **Learn more:**
 
-- [Tutorial: Your First Documentation Site](docs/tutorials/first-docs-site.md)
-- [How-To: Generate GitHub Pages Sites](docs/howto/github-pages-generation.md)
-- [API Reference: GitHub Pages Module](docs/reference/github-pages-api.md)
+- [Tutorial: Your First Documentation Site](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/tutorials/first-docs-site/)
+- [How-To: Generate GitHub Pages Sites](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/howto/github-pages-generation/)
+- [API Reference: GitHub Pages Module](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/reference/github-pages-api/)
 
 ## Core Concepts
 
@@ -277,7 +280,7 @@ variables or secure key management systems.
 ### GitHub Copilot CLI
 
 amplihack also supports GitHub Copilot CLI integration. See
-[docs/github-copilot-litellm-integration.md](docs/github-copilot-litellm-integration.md)
+[docs/github-copilot-litellm-integration.md](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/github-copilot-litellm-integration/)
 for setup instructions.
 
 ### Custom Workflows
@@ -285,8 +288,8 @@ for setup instructions.
 The iterative-step workflow is fully customizable. Edit
 `.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process -
 changes apply immediately to `/ultrathink` and other commands. See
-[docs/WORKFLOW_COMPLETION.md](docs/WORKFLOW_COMPLETION.md) for detailed
-customization instructions.
+[docs/WORKFLOW_COMPLETION.md](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/WORKFLOW_COMPLETION/)
+for detailed customization instructions.
 
 ## Commands Reference
 
@@ -379,20 +382,24 @@ Real-time session information displayed at the bottom of Claude Code showing:
 ```
 
 **Full documentation:**
-[docs/reference/STATUSLINE.md](docs/reference/STATUSLINE.md)
+[docs/reference/STATUSLINE.md](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/reference/STATUSLINE/)
 
 ## Documentation
 
 ### Getting Started
 
-- [Prerequisites](docs/PREREQUISITES.md) - Platform setup and dependencies
-- [Proxy Configuration](docs/PROXY_CONFIG_GUIDE.md) - Azure OpenAI proxy setup
+- [Prerequisites](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/PREREQUISITES/) -
+  Platform setup and dependencies
+- [Proxy Configuration](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/PROXY_CONFIG_GUIDE/) -
+  Azure OpenAI proxy setup
 
 ### Features
 
-- [Auto Mode](docs/AUTO_MODE.md) - Autonomous agentic loop
-- [Agent Bundles](docs/agent-bundle-generator-guide.md) - Custom agent creation
-- [GitHub Copilot Integration](docs/github-copilot-litellm-integration.md) -
+- [Auto Mode](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/AUTO_MODE/) -
+  Autonomous agentic loop
+- [Agent Bundles](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/agent-bundle-generator-guide/) -
+  Custom agent creation
+- [GitHub Copilot Integration](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/github-copilot-litellm-integration/) -
   Copilot CLI support
 - [Office Skills](.claude/skills/README.md) - PDF, Excel, Word, and PowerPoint
   document processing
@@ -401,52 +408,56 @@ Real-time session information displayed at the bottom of Claude Code showing:
     formulas and financial modeling
 - [Azure DevOps CLI Skill](.claude/skills/azure-devops-cli/README.md) - Expert
   guidance for Azure DevOps automation, pipelines, boards, repos, and artifacts
-- [Benchmarking with eval-recipes](docs/BENCHMARKING.md) - Performance
-  measurement and comparison
-- [Profile Management](docs/PROFILE_MANAGEMENT.md) - Token optimization and
-  environment customization
+- [Benchmarking with eval-recipes](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/BENCHMARKING/) -
+  Performance measurement and comparison
+- [Profile Management](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/PROFILE_MANAGEMENT/) -
+  Token optimization and environment customization
 
 ### Patterns
 
-- [Workspace Pattern](docs/WORKSPACE_PATTERN.md) - Multi-project organization
-  with git submodules
+- [Workspace Pattern](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/WORKSPACE_PATTERN/) -
+  Multi-project organization with git submodules
 
 ### Configuration
 
-- [Hook Configuration](docs/HOOK_CONFIGURATION_GUIDE.md) - Session hooks
-- [Workflow Customization](docs/WORKFLOW_COMPLETION.md) - Process customization
+- [Hook Configuration](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/HOOK_CONFIGURATION_GUIDE/) -
+  Session hooks
+- [Workflow Customization](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/WORKFLOW_COMPLETION/) -
+  Process customization
 
 ### Development
 
-- [Developing amplihack](docs/DEVELOPING_AMPLIHACK.md) - Contributing guide
-- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Architecture
-  overview
+- [Developing amplihack](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/DEVELOPING_AMPLIHACK/) -
+  Contributing guide
+- [Implementation Summary](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/IMPLEMENTATION_SUMMARY/) -
+  Architecture overview
 
 ### Methodology
 
-- [Document-Driven Development](docs/document_driven_development/README.md) -
+- [Document-Driven Development](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/document_driven_development/) -
   Systematic approach for large features
-- [DDD Overview](docs/document_driven_development/overview.md) - Comprehensive
-  guide to DDD principles
-- [Core Concepts](docs/document_driven_development/core_concepts/README.md) -
+- [DDD Overview](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/document_driven_development/overview/) -
+  Comprehensive guide to DDD principles
+- [Core Concepts](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/document_driven_development/core_concepts/) -
   Context poisoning, file crawling, retcon writing
-- [DDD Phases](docs/document_driven_development/phases/README.md) - Step-by-step
-  implementation guide
+- [DDD Phases](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/document_driven_development/phases/) -
+  Step-by-step implementation guide
 
 ### Security
 
-- [Security Recommendations](docs/SECURITY_RECOMMENDATIONS.md) - Best practices
-- [Security Context Preservation](docs/SECURITY_CONTEXT_PRESERVATION.md) -
+- [Security Recommendations](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/SECURITY_RECOMMENDATIONS/) -
+  Best practices
+- [Security Context Preservation](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/SECURITY_CONTEXT_PRESERVATION/) -
   Context handling
 
 ### Core Principles
 
-- [The Amplihack Way](docs/THIS_IS_THE_WAY.md) - Effective strategies for
-  AI-agent development
-- [Discoveries](docs/DISCOVERIES.md) - Documented problems, solutions, and
-  learnings
-- [Creating Tools](docs/CREATE_YOUR_OWN_TOOLS.md) - Build custom AI-powered
-  tools
+- [The Amplihack Way](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/THIS_IS_THE_WAY/) -
+  Effective strategies for AI-agent development
+- [Discoveries](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/DISCOVERIES/) -
+  Documented problems, solutions, and learnings
+- [Creating Tools](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/CREATE_YOUR_OWN_TOOLS/) -
+  Build custom AI-powered tools
 - [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles and patterns
 - [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Development process
 
