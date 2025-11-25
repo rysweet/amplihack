@@ -44,11 +44,29 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Try to import Claude SDK integration
 try:
-    from claude_power_steering import analyze_consideration
+    from claude_power_steering import (
+        analyze_claims_sync,
+        analyze_consideration,
+        analyze_if_addressed_sync,
+    )
 
     SDK_AVAILABLE = True
 except ImportError:
     SDK_AVAILABLE = False
+
+# Import turn-aware state management with delta analysis
+try:
+    from power_steering_state import (
+        DeltaAnalysisResult,
+        DeltaAnalyzer,
+        FailureEvidence,
+        PowerSteeringTurnState,
+        TurnStateManager,
+    )
+
+    TURN_STATE_AVAILABLE = True
+except ImportError:
+    TURN_STATE_AVAILABLE = False
 
 # Security: Maximum transcript size to prevent memory exhaustion
 MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
@@ -483,6 +501,10 @@ class PowerSteeringChecker:
         Returns:
             PowerSteeringResult with decision and prompt/summary
         """
+        # Initialize turn state tracking (outside try block for fail-open)
+        turn_state: Optional[PowerSteeringTurnState] = None
+        turn_state_manager: Optional[TurnStateManager] = None
+
         try:
             # Emit start event
             self._emit_progress(progress_callback, "start", "Starting power-steering analysis...")
@@ -505,6 +527,44 @@ class PowerSteeringChecker:
             # 3. Load transcript
             transcript = self._load_transcript(transcript_path)
 
+            # 3b. Initialize turn state management (fail-open on import error)
+            if TURN_STATE_AVAILABLE:
+                turn_state_manager = TurnStateManager(
+                    project_root=self.project_root,
+                    session_id=session_id,
+                    log=lambda msg: self._log(msg, "INFO"),
+                )
+                turn_state = turn_state_manager.load_state()
+                turn_state = turn_state_manager.increment_turn(turn_state)
+                self._log(
+                    f"Turn state: turn={turn_state.turn_count}, blocks={turn_state.consecutive_blocks}",
+                    "INFO",
+                )
+
+                # 3c. Check auto-approve threshold BEFORE running analysis
+                should_approve, reason, escalation_msg = turn_state_manager.should_auto_approve(
+                    turn_state
+                )
+                if should_approve:
+                    self._log(f"Auto-approve triggered: {reason}", "INFO")
+                    self._emit_progress(
+                        progress_callback,
+                        "auto_approve",
+                        f"Auto-approving after {turn_state.consecutive_blocks} consecutive blocks",
+                        {"reason": reason},
+                    )
+
+                    # Reset state and approve
+                    turn_state = turn_state_manager.record_approval(turn_state)
+                    turn_state_manager.save_state(turn_state)
+
+                    return PowerSteeringResult(
+                        decision="approve",
+                        reasons=["auto_approve_threshold"],
+                        continuation_prompt=None,
+                        summary=f"Auto-approved: {reason}",
+                    )
+
             # 4. Detect session type for selective consideration application
             session_type = self.detect_session_type(transcript)
             self._log(f"Session classified as: {session_type}", "INFO")
@@ -517,6 +577,10 @@ class PowerSteeringChecker:
 
             # 4b. Backward compatibility: Also check Q&A session (kept for compatibility)
             if self._is_qa_session(transcript):
+                # Reset turn state on approval
+                if turn_state_manager and turn_state:
+                    turn_state = turn_state_manager.record_approval(turn_state)
+                    turn_state_manager.save_state(turn_state)
                 return PowerSteeringResult(
                     decision="approve",
                     reasons=["qa_session"],
@@ -529,37 +593,132 @@ class PowerSteeringChecker:
                 transcript, session_id, session_type, progress_callback
             )
 
+            # 5b. Delta analysis: Check if NEW content addresses previous failures
+            addressed_concerns: Dict[str, str] = {}
+            user_claims: List[str] = []
+            delta_result: Optional[DeltaAnalysisResult] = None
+
+            if TURN_STATE_AVAILABLE and turn_state and turn_state.block_history:
+                # Get previous block's failures for delta analysis
+                previous_block = turn_state.get_previous_block()
+                if previous_block and previous_block.failed_evidence:
+                    # Initialize delta analyzer for text extraction
+                    delta_analyzer = DeltaAnalyzer(log=lambda msg: self._log(msg, "INFO"))
+
+                    # Get delta transcript (new messages since last block)
+                    start_idx, end_idx = turn_state_manager.get_delta_transcript_range(
+                        turn_state, len(transcript)
+                    )
+                    delta_messages = transcript[start_idx:end_idx]
+
+                    self._log(
+                        f"Delta analysis: {len(delta_messages)} new messages since last block",
+                        "INFO",
+                    )
+
+                    # Extract delta text for LLM analysis
+                    delta_text = delta_analyzer._extract_all_text(delta_messages)
+
+                    # Use LLM-based claim detection (replaces regex patterns)
+                    if SDK_AVAILABLE and delta_text:
+                        self._log("Using LLM-based claim detection", "DEBUG")
+                        user_claims = analyze_claims_sync(delta_text, self.project_root)
+                    else:
+                        user_claims = []
+
+                    # Use LLM-based address checking for each previous failure
+                    if SDK_AVAILABLE and delta_text:
+                        self._log("Using LLM-based address checking", "DEBUG")
+                        for failure in previous_block.failed_evidence:
+                            evidence = analyze_if_addressed_sync(
+                                failure.consideration_id,
+                                failure.reason,
+                                delta_text,
+                                self.project_root,
+                            )
+                            if evidence:
+                                addressed_concerns[failure.consideration_id] = evidence
+                    else:
+                        # Fallback to simple DeltaAnalyzer (heuristics) if SDK unavailable
+                        delta_result = delta_analyzer.analyze_delta(
+                            delta_messages, previous_block.failed_evidence
+                        )
+                        addressed_concerns = delta_result.new_content_addresses_failures
+                        if not user_claims:
+                            user_claims = delta_result.new_claims_detected
+
+                    if addressed_concerns:
+                        self._log(
+                            f"Delta addressed {len(addressed_concerns)} concerns: "
+                            f"{list(addressed_concerns.keys())}",
+                            "INFO",
+                        )
+                    if user_claims:
+                        self._log(f"Detected {len(user_claims)} completion claims", "INFO")
+
             # 6. Check if this is first stop (visibility feature)
             is_first_stop = not self._results_already_shown(session_id)
 
             # 7. Make decision based on first/subsequent stop
             if analysis.has_blockers:
-                # Actual failures - always block
-                # Mark results shown on first stop to prevent race condition
-                if is_first_stop:
-                    self._mark_results_shown(session_id)
+                # Filter out addressed concerns from blockers
+                remaining_blockers = [
+                    r
+                    for r in analysis.failed_blockers
+                    if r.consideration_id not in addressed_concerns
+                ]
 
-                prompt = self._generate_continuation_prompt(analysis)
+                # If all blockers were addressed, treat as passing
+                if not remaining_blockers and addressed_concerns:
+                    self._log(
+                        f"All {len(addressed_concerns)} blockers were addressed in this turn",
+                        "INFO",
+                    )
+                    analysis = self._create_passing_analysis(analysis, addressed_concerns)
+                else:
+                    # Actual failures - block
+                    # Mark results shown on first stop to prevent race condition
+                    if is_first_stop:
+                        self._mark_results_shown(session_id)
 
-                # Save redirect record for session reflection
-                failed_ids = [r.consideration_id for r in analysis.failed_blockers]
-                self._save_redirect(
-                    session_id=session_id,
-                    failed_considerations=failed_ids,
-                    continuation_prompt=prompt,
-                    work_summary=None,  # Could be enhanced to extract work summary
-                )
+                    # Record block in turn state with full evidence
+                    blockers_to_record = remaining_blockers or analysis.failed_blockers
 
-                return PowerSteeringResult(
-                    decision="block",
-                    reasons=failed_ids,
-                    continuation_prompt=prompt,
-                    summary=None,
-                    analysis=analysis,
-                    is_first_stop=is_first_stop,
-                )
+                    if turn_state_manager and turn_state:
+                        # Convert CheckerResults to FailureEvidence
+                        failed_evidence = self._convert_to_failure_evidence(
+                            blockers_to_record, transcript, user_claims
+                        )
 
-            # All checks passed
+                        turn_state = turn_state_manager.record_block_with_evidence(
+                            turn_state, failed_evidence, len(transcript), user_claims
+                        )
+                        turn_state_manager.save_state(turn_state)
+
+                    failed_ids = [r.consideration_id for r in blockers_to_record]
+
+                    prompt = self._generate_continuation_prompt(
+                        analysis, turn_state, addressed_concerns, user_claims
+                    )
+
+                    # Save redirect record for session reflection
+                    self._save_redirect(
+                        session_id=session_id,
+                        failed_considerations=failed_ids,
+                        continuation_prompt=prompt,
+                        work_summary=None,  # Could be enhanced to extract work summary
+                    )
+
+                    return PowerSteeringResult(
+                        decision="block",
+                        reasons=failed_ids,
+                        continuation_prompt=prompt,
+                        summary=None,
+                        analysis=analysis,
+                        is_first_stop=is_first_stop,
+                    )
+
+            # All checks passed (or all blockers were addressed)
             if is_first_stop:
                 # FIRST STOP: Block to show results (visibility feature)
                 # Mark results shown immediately to prevent race condition
@@ -585,6 +744,11 @@ class PowerSteeringChecker:
             summary = self._generate_summary(transcript, analysis, session_id)
             self._mark_complete(session_id)
             self._write_summary(session_id, summary)
+
+            # Reset turn state on approval
+            if turn_state_manager and turn_state:
+                turn_state = turn_state_manager.record_approval(turn_state)
+                turn_state_manager.save_state(turn_state)
 
             # Emit completion event
             self._emit_progress(
@@ -1256,6 +1420,191 @@ class PowerSteeringChecker:
             return True
 
         return False
+
+    def _create_passing_analysis(
+        self,
+        original_analysis: ConsiderationAnalysis,
+        addressed_concerns: Dict[str, str],
+    ) -> ConsiderationAnalysis:
+        """Create a modified analysis with addressed blockers marked as satisfied.
+
+        Used when all blockers were addressed in the current turn to convert
+        a failing analysis to a passing one.
+
+        Args:
+            original_analysis: The original analysis with blockers
+            addressed_concerns: Map of concern_id -> how it was addressed
+
+        Returns:
+            New ConsiderationAnalysis with blockers converted to satisfied
+        """
+        # Create a copy of results with addressed concerns marked satisfied
+        modified_results = dict(original_analysis.results)
+
+        for consideration_id, how_addressed in addressed_concerns.items():
+            if consideration_id in modified_results:
+                old_result = modified_results[consideration_id]
+                modified_results[consideration_id] = CheckerResult(
+                    consideration_id=consideration_id,
+                    satisfied=True,
+                    reason=f"{old_result.reason} [ADDRESSED: {how_addressed}]",
+                    severity=old_result.severity,
+                )
+
+        # Create new analysis with modified results
+        return ConsiderationAnalysis(results=modified_results)
+
+    def _convert_to_failure_evidence(
+        self,
+        failed_results: List[CheckerResult],
+        transcript: List[Dict],
+        user_claims: Optional[List[str]] = None,
+    ) -> List["FailureEvidence"]:
+        """Convert CheckerResults to FailureEvidence with evidence quotes.
+
+        Extracts specific evidence from the transcript to show WHY each
+        check failed, enabling the agent to understand exactly what's missing.
+
+        Args:
+            failed_results: List of failed CheckerResult objects
+            transcript: Full transcript for evidence extraction
+            user_claims: User claims detected (to mark as was_claimed_complete)
+
+        Returns:
+            List of FailureEvidence objects with detailed evidence
+        """
+        if not TURN_STATE_AVAILABLE:
+            return []
+
+        evidence_list: List[FailureEvidence] = []
+        claimed_ids = set()
+
+        # Extract consideration IDs that were claimed as complete
+        if user_claims:
+            for claim in user_claims:
+                claim_lower = claim.lower()
+                for result in failed_results:
+                    cid = result.consideration_id.lower()
+                    # Simple heuristic: if claim mentions words from consideration ID
+                    if any(word in claim_lower for word in cid.split("_") if len(word) > 2):
+                        claimed_ids.add(result.consideration_id)
+
+        for result in failed_results:
+            # Try to find specific evidence quote from transcript
+            quote = self._find_evidence_quote(result, transcript)
+
+            evidence = FailureEvidence(
+                consideration_id=result.consideration_id,
+                reason=result.reason,
+                evidence_quote=quote,
+                was_claimed_complete=result.consideration_id in claimed_ids,
+            )
+            evidence_list.append(evidence)
+
+        return evidence_list
+
+    def _find_evidence_quote(
+        self,
+        result: CheckerResult,
+        transcript: List[Dict],
+    ) -> Optional[str]:
+        """Find a specific quote from transcript showing why check failed.
+
+        Searches for relevant context based on the consideration type to
+        provide concrete evidence of what's missing or failing.
+
+        Args:
+            result: CheckerResult to find evidence for
+            transcript: Full transcript to search
+
+        Returns:
+            Evidence quote string if found, None otherwise
+        """
+        cid = result.consideration_id.lower()
+
+        # Define search patterns for each consideration type
+        search_terms: Dict[str, List[str]] = {
+            "todos": ["todo", "task", "item", "remaining"],
+            "testing": ["test", "pytest", "unittest", "failing", "error"],
+            "ci": ["ci", "github actions", "pipeline", "build", "workflow"],
+            "workflow": ["step", "workflow", "phase"],
+            "review": ["review", "feedback", "comment"],
+            "philosophy": ["philosophy", "simplicity", "stub", "placeholder"],
+            "docs": ["documentation", "readme", "doc"],
+        }
+
+        # Find which search terms apply to this consideration
+        relevant_terms = []
+        for key, terms in search_terms.items():
+            if key in cid:
+                relevant_terms.extend(terms)
+
+        if not relevant_terms:
+            return None
+
+        # Search recent transcript for relevant content
+        recent_messages = transcript[-20:] if len(transcript) > 20 else transcript
+
+        for msg in reversed(recent_messages):
+            content = self._extract_message_text(msg).lower()
+
+            for term in relevant_terms:
+                if term in content:
+                    # Found relevant content - extract context
+                    idx = content.find(term)
+                    start = max(0, idx - 30)
+                    end = min(len(content), idx + len(term) + 70)
+
+                    # Get original case text
+                    original_content = self._extract_message_text(msg)
+                    quote = original_content[start:end].strip()
+
+                    if len(quote) > 10:  # Only return meaningful quotes
+                        return f"...{quote}..."
+
+        return None
+
+    def _extract_message_text(self, msg: Dict) -> str:
+        """Extract text content from a message dict.
+
+        Args:
+            msg: Message dictionary
+
+        Returns:
+            Text content as string
+        """
+        content = msg.get("content", msg.get("message", ""))
+
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, dict):
+            inner = content.get("content", "")
+            if isinstance(inner, str):
+                return inner
+            if isinstance(inner, list):
+                return self._extract_text_from_blocks(inner)
+
+        if isinstance(content, list):
+            return self._extract_text_from_blocks(content)
+
+        return ""
+
+    def _extract_text_from_blocks(self, blocks: List) -> str:
+        """Extract text from content blocks.
+
+        Args:
+            blocks: List of content blocks
+
+        Returns:
+            Concatenated text content
+        """
+        texts = []
+        for block in blocks:
+            if isinstance(block, dict):
+                if block.get("type") == "text":
+                    texts.append(str(block.get("text", "")))
+        return " ".join(texts)
 
     def _analyze_considerations(
         self,
@@ -2684,36 +3033,137 @@ class PowerSteeringChecker:
     # Output Generation
     # ========================================================================
 
-    def _generate_continuation_prompt(self, analysis: ConsiderationAnalysis) -> str:
-        """Generate actionable continuation prompt.
+    def _generate_continuation_prompt(
+        self,
+        analysis: ConsiderationAnalysis,
+        turn_state: Optional["PowerSteeringTurnState"] = None,
+        addressed_concerns: Optional[Dict[str, str]] = None,
+        user_claims: Optional[List[str]] = None,
+    ) -> str:
+        """Generate actionable continuation prompt with turn-awareness and evidence.
+
+        Enhanced to show:
+        - Specific evidence for each failure
+        - User claims vs actual evidence gap
+        - Persistent failures across blocks
+        - Escalating severity on repeated blocks
 
         Args:
             analysis: Analysis results with failed considerations
+            turn_state: Optional turn state for turn-aware prompting
+            addressed_concerns: Optional dict of concerns addressed in this turn
+            user_claims: Optional list of completion claims detected from user/agent
 
         Returns:
-            Formatted continuation prompt
+            Formatted continuation prompt with evidence and turn information
         """
+        blocks = turn_state.consecutive_blocks if turn_state else 1
+        threshold = PowerSteeringTurnState.MAX_CONSECUTIVE_BLOCKS if TURN_STATE_AVAILABLE else 10
+
+        # Escalating tone based on block count
+        if blocks == 1:
+            severity_header = "First check"
+        elif blocks <= threshold // 2:
+            severity_header = f"Block {blocks}/{threshold}"
+        else:
+            severity_header = (
+                f"**CRITICAL: Block {blocks}/{threshold}** - Auto-approval approaching"
+            )
+
         prompt_parts = [
-            "POWER-STEERING: Session appears incomplete",
             "",
-            "The following checks failed and need to be addressed:",
+            "=" * 60,
+            f"POWER-STEERING Analysis - {severity_header}",
+            "=" * 60,
             "",
         ]
 
-        # Group by category
+        # Show progress if addressing concerns
+        if addressed_concerns:
+            prompt_parts.append("**Progress Since Last Block** (recognized from your actions):")
+            for concern_id, how_addressed in addressed_concerns.items():
+                prompt_parts.append(f"  + {concern_id}: {how_addressed}")
+            prompt_parts.append("")
+
+        # Show user claims vs evidence gap
+        if user_claims:
+            prompt_parts.append("**Completion Claims Detected:**")
+            prompt_parts.append("You or Claude claimed the following:")
+            for claim in user_claims[:3]:  # Limit to 3 claims
+                prompt_parts.append(f"  - {claim[:100]}...")  # Truncate long claims
+            prompt_parts.append("")
+            prompt_parts.append(
+                "**However, the checks below still failed.** "
+                "Please provide specific evidence these checks pass, or complete the remaining work."
+            )
+            prompt_parts.append("")
+
+        # Show persistent failures if repeated blocks
+        if turn_state and blocks > 1:
+            persistent = turn_state.get_persistent_failures()
+            repeatedly_failed = {k: v for k, v in persistent.items() if v > 1}
+
+            if repeatedly_failed:
+                prompt_parts.append("**Persistent Issues** (failed multiple times):")
+                for cid, count in sorted(repeatedly_failed.items(), key=lambda x: -x[1]):
+                    prompt_parts.append(f"  - {cid}: Failed {count} times")
+                prompt_parts.append("")
+                prompt_parts.append("These issues require immediate attention.")
+                prompt_parts.append("")
+
+        # Show current failures grouped by category with evidence
+        prompt_parts.append("**Current Failures:**")
+        prompt_parts.append("")
+
         by_category = analysis.group_by_category()
 
         for category, failed in by_category.items():
-            prompt_parts.append(f"**{category}**")
-            for result in failed:
-                prompt_parts.append(f"  - {result.reason}")
+            # Filter out addressed concerns
+            remaining_failures = [
+                r
+                for r in failed
+                if not addressed_concerns or r.consideration_id not in addressed_concerns
+            ]
+            if remaining_failures:
+                prompt_parts.append(f"### {category}")
+                for result in remaining_failures:
+                    prompt_parts.append(f"  - **{result.consideration_id}**: {result.reason}")
+
+                    # Show evidence if available from turn state
+                    if turn_state and turn_state.block_history:
+                        current_block = turn_state.get_previous_block()
+                        if current_block:
+                            for ev in current_block.failed_evidence:
+                                if ev.consideration_id == result.consideration_id:
+                                    if ev.evidence_quote:
+                                        prompt_parts.append(f"    Evidence: {ev.evidence_quote}")
+                                    if ev.was_claimed_complete:
+                                        prompt_parts.append(
+                                            "    **Note**: This was claimed complete but check still fails"
+                                        )
+                prompt_parts.append("")
+
+        # Call to action
+        prompt_parts.append("**Next Steps:**")
+        prompt_parts.append("1. Complete the failed checks listed above")
+        prompt_parts.append("2. Provide specific evidence that checks now pass")
+        remaining = threshold - blocks
+        prompt_parts.append(f"3. Or continue working ({remaining} more blocks until auto-approval)")
+        prompt_parts.append("")
+
+        # Add acknowledgment hint if nearing auto-approve threshold
+        if blocks >= threshold // 2:
+            prompt_parts.append(
+                "**Tip**: If checks are genuinely complete, say 'I acknowledge these concerns' "
+                "or create SESSION_SUMMARY.md to indicate intentional completion."
+            )
             prompt_parts.append("")
 
-        prompt_parts.append("Once these are addressed, you may stop the session.")
-        prompt_parts.append("")
-        prompt_parts.append("To disable power-steering immediately:")
-        prompt_parts.append(
-            "  mkdir -p .claude/runtime/power-steering && touch .claude/runtime/power-steering/.disabled"
+        prompt_parts.extend(
+            [
+                "To disable power-steering immediately:",
+                "  mkdir -p .claude/runtime/power-steering && touch .claude/runtime/power-steering/.disabled",
+            ]
         )
 
         return "\n".join(prompt_parts)
