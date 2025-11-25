@@ -5,14 +5,48 @@ Automatically selects the best available backend:
 2. Neo4j (Docker) - when Docker is running and container exists
 
 This allows amplihack to work seamlessly regardless of infrastructure.
+
+Auto-Install Feature:
+    When Kùzu would be preferred but isn't installed, it will be automatically
+    installed via pip. This provides a zero-config experience for users.
 """
 
 import logging
 import subprocess
+import sys
 from enum import Enum
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _install_kuzu() -> bool:
+    """Install Kùzu package automatically.
+
+    Returns:
+        True if installation succeeded, False otherwise.
+    """
+    print("📦 Installing Kùzu embedded database (one-time setup)...")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "kuzu>=0.11.0"],
+            capture_output=True,
+            text=True,
+            timeout=120,  # 2 minute timeout for installation
+        )
+        if result.returncode == 0:
+            print("✓ Kùzu installed successfully")
+            return True
+        logger.warning(f"Kùzu installation failed: {result.stderr}")
+        print(f"⚠️  Kùzu installation failed: {result.stderr[:200]}")
+        return False
+    except subprocess.TimeoutExpired:
+        print("⚠️  Kùzu installation timed out")
+        return False
+    except Exception as e:
+        logger.warning(f"Kùzu installation error: {e}")
+        print(f"⚠️  Kùzu installation error: {e}")
+        return False
 
 
 class BackendType(Enum):
@@ -85,8 +119,24 @@ class BackendDetector:
                     self._neo4j_container_running = False
         return self._neo4j_container_running
 
-    def detect_best_backend(self) -> BackendType:
+    def _try_install_kuzu(self) -> bool:
+        """Attempt to install Kùzu and update availability cache.
+
+        Returns:
+            True if Kùzu is now available, False otherwise.
+        """
+        if _install_kuzu():
+            # Reset cached value to re-check
+            self._kuzu_available = None
+            return self.kuzu_available
+        return False
+
+    def detect_best_backend(self, auto_install: bool = True) -> BackendType:
         """Detect and return the best available backend.
+
+        Args:
+            auto_install: If True, automatically install Kùzu when needed.
+                         Set to False to disable auto-installation.
 
         Returns:
             BackendType enum indicating recommended backend
@@ -102,9 +152,13 @@ class BackendDetector:
             if self.kuzu_available:
                 logger.info("Using Kùzu backend (via AMPLIHACK_GRAPH_BACKEND)")
                 return BackendType.KUZU
+            # Try auto-install if enabled
+            if auto_install and self._try_install_kuzu():
+                logger.info("Using Kùzu backend (via AMPLIHACK_GRAPH_BACKEND, auto-installed)")
+                return BackendType.KUZU
             raise RuntimeError(
-                "AMPLIHACK_GRAPH_BACKEND=kuzu but kuzu not installed. "
-                "Install with: pip install kuzu"
+                "AMPLIHACK_GRAPH_BACKEND=kuzu but kuzu could not be installed. "
+                "Try manually: pip install kuzu"
             )
         if env_backend == "neo4j":
             if self.docker_available:
@@ -128,11 +182,16 @@ class BackendDetector:
             logger.info("Using Neo4j backend (Docker available)")
             return BackendType.NEO4J
 
-        # 4. No backend available
+        # 4. No backend available - try auto-installing Kùzu
+        if auto_install and self._try_install_kuzu():
+            logger.info("Using Kùzu backend (auto-installed)")
+            return BackendType.KUZU
+
+        # 5. Still no backend - give up
         raise RuntimeError(
             "No graph database backend available.\n"
-            "Options:\n"
-            "  1. Install Kùzu (recommended): pip install kuzu\n"
+            "Auto-installation of Kùzu failed. Options:\n"
+            "  1. Install Kùzu manually: pip install kuzu\n"
             "  2. Start Docker daemon for Neo4j\n"
             "\n"
             "Kùzu is recommended for development - zero infrastructure needed."
