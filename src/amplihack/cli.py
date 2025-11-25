@@ -876,19 +876,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             from remote.cli import execute_remote_workflow  # type: ignore[import-not-found]
             from remote.orchestrator import VMOptions  # type: ignore[import-not-found]
 
-            # Map size shortcuts to Azure VM sizes
-            size_mapping = {
-                "s": "Standard_D2s_v3",  # 2 vCPU, 8GB RAM
-                "m": "Standard_D4s_v3",  # 4 vCPU, 16GB RAM
-                "l": "Standard_E16as_v5",  # 16 vCPU, 128GB RAM
-                "xl": "Standard_E32as_v5",  # 32 vCPU, 256GB RAM
-            }
-
-            # Convert shortcut to full size name if needed
-            vm_size = size_mapping.get(args.vm_size.lower(), args.vm_size)
-
+            # Note: azlin handles size mapping (s/m/l/xl -> Azure VM sizes)
+            # We pass the size directly to azlin without mapping
             vm_options = VMOptions(
-                size=vm_size,
+                size=args.vm_size,
                 region=args.region,
                 keep_vm=args.keep_vm,
             )
