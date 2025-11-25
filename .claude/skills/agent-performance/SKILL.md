@@ -152,7 +152,7 @@ recommendations:
 
 - architect, builder, reviewer, tester, optimizer, api-designer
 
-**Specialized Agents** (26):
+**Specialized Agents** (25):
 
 - ambiguity, amplifier-cli-architect, analyzer, azure-kubernetes-expert
 - ci-diagnostic-workflow, cleanup, database, documentation-writer
@@ -161,6 +161,8 @@ recommendations:
 - philosophy-guardian, pre-commit-diagnostic, preference-reviewer
 - prompt-writer, rust-programming-expert, security, visualization-architect
 - worktree-manager, xpia-defense
+
+**Note**: Agent count may change as specialized agents are added/removed. Use `ls .claude/agents/amplihack/specialized/` for current count.
 
 ## Tracking Best Practices
 
@@ -207,3 +209,63 @@ This skill follows:
 - **Zero-BS**: No placeholders, working aggregation logic
 - **Modular Design**: Self-contained skill, clear boundaries
 - **Emergence**: Insights emerge from simple tracking patterns
+
+## Interpreting Metrics
+
+### Success Rate Guidelines
+
+| Rate      | Assessment      | Action                                     |
+| --------- | --------------- | ------------------------------------------ |
+| 95-100%   | Excellent       | Maintain current patterns                  |
+| 85-94%    | Good            | Review occasional failures for patterns    |
+| 70-84%    | Needs Attention | Investigate failure causes, adjust prompts |
+| Below 70% | Critical        | Agent may need redesign or prompt overhaul |
+
+### Invocation Volume Interpretation
+
+- **High volume (30+ in 30 days)**: Core workflow agent, ensure reliability
+- **Medium volume (10-29)**: Regular use, monitor for optimization opportunities
+- **Low volume (5-9)**: Specialized use case, verify still needed
+- **Very low (<5)**: Consider if agent is discoverable or relevant
+
+### Duration Benchmarks
+
+- **< 2 seconds**: Fast execution, typical for simple analysis
+- **2-10 seconds**: Normal for moderate complexity
+- **10-60 seconds**: Expected for deep analysis or multi-step tasks
+- **> 60 seconds**: May indicate inefficiency, consider optimization
+
+## Empty State Handling
+
+When no log data exists (new project or logs cleared):
+
+```yaml
+# Agent Performance Report
+# Period: Last 30 days
+# Status: No data available
+
+summary:
+  total_invocations: 0
+  message: "No agent invocations logged yet"
+
+getting_started:
+  - "Agent tracking begins when workflow_tracker logs invocations"
+  - "Ensure agents are invoked via Task tool with proper logging"
+  - "First report available after initial workflow execution"
+
+next_steps:
+  - "Run a workflow task to generate initial data"
+  - "Verify workflow_tracker is properly configured"
+  - "Check .claude/runtime/logs/ directory exists"
+```
+
+## Limitations
+
+This skill has the following constraints:
+
+1. **Depends on workflow_tracker**: Only tracks agents invoked through the logging system
+2. **No real-time metrics**: Reports are generated on-demand, not streamed
+3. **Historical data only**: Cannot predict future usage patterns
+4. **Manual log analysis**: Does not auto-detect anomalies or alert on issues
+5. **Single-project scope**: Metrics are per-project, no cross-project aggregation
+6. **Time-based only**: No correlation with code quality or PR outcomes

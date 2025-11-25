@@ -99,3 +99,29 @@ Metrics help verify workflow adherence by tracking which agents are used at each
 - **File-based storage**: Simple YAML/JSONL, no database required
 - **Minimal overhead**: Logging adds <5ms per invocation
 - **Self-contained**: All skill logic in SKILL.md, uses existing tools
+
+## Interpreting Results
+
+### Success Rate Benchmarks
+
+- **95%+**: Excellent - agents working reliably
+- **85-94%**: Good - occasional failures, review patterns
+- **70-84%**: Needs attention - investigate causes
+- **<70%**: Critical - agent redesign likely needed
+
+### Empty State
+
+When no logs exist yet, the report provides:
+
+- Clear "no data available" message
+- Getting started guidance
+- Next steps for enabling tracking
+
+## Limitations
+
+- Only tracks agents invoked through workflow_tracker
+- On-demand reports (not real-time streaming)
+- Single-project scope only
+- No automatic anomaly detection
+
+See SKILL.md for complete documentation including metric interpretation guidelines.
