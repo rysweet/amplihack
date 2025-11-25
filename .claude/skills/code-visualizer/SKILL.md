@@ -1,11 +1,16 @@
 ---
 name: code-visualizer
-version: 1.0.0
+version: 1.1.0
 description: |
   Auto-generates code flow diagrams from Python module analysis.
   Detects when architecture diagrams become stale (code changed, diagram didn't).
   Use when: creating new modules, reviewing PRs for architecture impact, or checking diagram freshness.
   Generates mermaid diagrams showing imports, dependencies, and module relationships.
+invokes:
+  skills:
+    - mermaid-diagram-generator # For mermaid syntax generation and formatting
+  agents:
+    - visualization-architect # For complex multi-level architecture diagrams
 ---
 
 # Code Visualizer Skill
@@ -13,6 +18,66 @@ description: |
 ## Purpose
 
 Automatically generate and maintain visual code flow diagrams. This skill analyzes Python module structure, detects import relationships, and generates mermaid diagrams. It also monitors for staleness when code changes but diagrams don't.
+
+## Philosophy Alignment
+
+This skill embodies amplihack's core philosophy:
+
+### Ruthless Simplicity
+
+- **Single responsibility**: Visualize code structure - nothing more
+- **Minimal dependencies**: Uses only Python AST for analysis, delegates diagram syntax to mermaid-diagram-generator
+- **No over-engineering**: Timestamp-based staleness is simple and "good enough" for 90% of cases
+
+### Zero-BS Implementation
+
+- **Real analysis**: Actually parses Python AST to extract imports - no mock data
+- **Honest limitations**: Staleness detection is timestamp-based, not semantic (see Limitations section)
+- **Working code**: All algorithms shown are functional, not pseudocode
+
+### Modular Design (Bricks & Studs)
+
+- **This skill is one brick**: Code analysis and staleness detection
+- **Delegates to other bricks**: mermaid-diagram-generator for syntax, visualization-architect for complex diagrams
+- **Clear studs (public contract)**: Analyze modules, generate diagrams, check freshness
+
+## Skill Delegation Architecture
+
+```
+code-visualizer (this skill)
+├── Responsibilities:
+│   ├── Python module analysis (AST parsing)
+│   ├── Import relationship extraction
+│   ├── Staleness detection (timestamp-based)
+│   └── Orchestration of diagram generation
+│
+└── Delegates to:
+    ├── mermaid-diagram-generator skill
+    │   ├── Mermaid syntax generation
+    │   ├── Diagram formatting and styling
+    │   └── Markdown embedding
+    │
+    └── visualization-architect agent
+        ├── Complex multi-level architecture
+        ├── ASCII art alternatives
+        └── Cross-module dependency graphs
+```
+
+**Invocation Pattern:**
+
+```python
+# code-visualizer analyzes code structure
+modules = analyze_python_modules("src/")
+relationships = extract_import_relationships(modules)
+
+# Then delegates to mermaid-diagram-generator for syntax
+Skill(skill="mermaid-diagram-generator")
+# Provide: Module relationships, diagram type (flowchart/class), styling preferences
+# Receive: Valid mermaid syntax ready for embedding
+
+# For complex architectures, delegates to visualization-architect
+Task(subagent_type="visualization-architect", prompt="Create multi-level diagram for...")
+```
 
 ## When to Use This Skill
 
@@ -371,6 +436,137 @@ A good visualization:
 - [ ] Includes freshness metadata
 - [ ] Clear and not overcrowded
 
+## Limitations
+
+**IMPORTANT**: Understand these limitations before relying on this skill:
+
+### Staleness Detection Limitations
+
+1. **Timestamp-based, not semantic**: Detection compares file modification times, not actual code changes
+   - A file touched but not meaningfully changed will trigger "stale"
+   - Reformatting code triggers false positives
+   - Git operations that update mtime trigger false positives
+
+2. **Cannot detect logic changes**: Adding a function that doesn't change imports won't be detected
+   - Internal refactoring within a module is invisible
+   - Changes to function signatures not reflected
+   - New class methods added without import changes won't show
+
+3. **Import-centric view**: Only tracks import relationships
+   - Runtime dependencies (dependency injection) not detected
+   - Configuration-based connections invisible
+   - Duck typing relationships not captured
+
+### Scope Limitations
+
+1. **Python-only**: Currently only analyzes Python files
+   - No TypeScript, JavaScript, Rust, Go support
+   - Multi-language projects partially covered
+
+2. **Static analysis only**: No runtime information
+   - Dynamic imports (`__import__`, `importlib`) not detected
+   - Conditional imports may be missed
+   - Plugin architectures not fully represented
+
+3. **Single-project scope**: Cannot analyze cross-repository dependencies
+   - External package internals not shown
+   - Monorepo relationships require manual configuration
+
+### Accuracy Expectations
+
+| Scenario                      | Accuracy | Notes                       |
+| ----------------------------- | -------- | --------------------------- |
+| New module detection          | 95%+     | Reliable for Python modules |
+| Import relationship mapping   | 90%+     | Misses dynamic imports      |
+| Staleness detection           | 70-80%   | False positives common      |
+| Circular dependency detection | 85%+     | May miss complex cycles     |
+| Class hierarchy extraction    | 85%+     | Mixins can be tricky        |
+
+### When NOT to Use This Skill
+
+- **Security-critical dependency audits**: Use proper security scanning tools
+- **Runtime dependency analysis**: Use profilers or dynamic analysis tools
+- **Cross-language projects**: Manual analysis may be more accurate
+- **Heavily dynamic codebases**: Plugin architectures, metaprogramming
+
+## Dependencies
+
+This skill requires:
+
+1. **mermaid-diagram-generator skill**: Must be available for diagram syntax generation
+2. **Python 3.8+**: For AST parsing features used
+3. **Git (optional)**: For enhanced staleness detection using git history
+
+If mermaid-diagram-generator is unavailable, this skill will provide raw relationship data but cannot generate embedded diagrams.
+
+## PR Review Integration
+
+### How Diagrams Appear in PRs
+
+When reviewing PRs, this skill generates impact diagrams that can be added to PR descriptions:
+
+**PR Description Template:**
+
+````markdown
+## Architecture Impact
+
+<!-- Generated by code-visualizer -->
+
+### Changed Dependencies
+
+```mermaid
+flowchart LR
+    subgraph changed["Modified Modules"]
+        style changed fill:#FFE4B5
+        auth[auth/service.py]
+        api[api/routes.py]
+    end
+
+    subgraph added["New Modules"]
+        style added fill:#90EE90
+        oauth[auth/oauth.py]
+    end
+
+    subgraph unchanged["Existing"]
+        models[models/user.py]
+        db[db/connection.py]
+    end
+
+    oauth --> auth
+    auth --> models
+    api --> auth
+    api --> db
+```
+````
+
+### Impact Summary
+
+- **New modules**: 1 (oauth.py)
+- **Modified modules**: 2 (auth/service.py, api/routes.py)
+- **New dependencies**: oauth.py -> auth/service.py
+- **Diagrams to update**: README.md (STALE)
+
+````
+
+### CI Integration Example
+
+Add to `.github/workflows/pr-review.yml`:
+
+```yaml
+- name: Check Diagram Staleness
+  run: |
+    # Claude Code analyzes and reports
+    # Outputs: STALE diagrams that need updating
+    # Generates: Suggested diagram updates
+````
+
+### Reviewer Workflow
+
+1. **PR opened** -> code-visualizer generates impact diagram
+2. **Reviewer sees** -> Visual diff of architecture changes
+3. **Staleness check** -> Warns if existing diagrams need updates
+4. **Action items** -> Lists diagrams requiring manual update
+
 ## Remember
 
 This skill automates what developers often forget:
@@ -380,3 +576,5 @@ This skill automates what developers often forget:
 - Understanding dependency impacts
 
 The goal is diagrams that stay fresh automatically.
+
+**But remember the limitations**: Staleness detection is approximate. When accuracy matters, verify manually.

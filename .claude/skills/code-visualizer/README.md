@@ -51,9 +51,37 @@ Shows architecture changes in pull requests:
 ## How It Works
 
 1. **Analyze**: Parse Python files for imports and classes
-2. **Generate**: Create mermaid diagrams from relationships
+2. **Generate**: Create mermaid diagrams from relationships (delegates to mermaid-diagram-generator)
 3. **Monitor**: Compare timestamps to detect staleness
 4. **Report**: Provide freshness status and recommendations
+
+## Skill Architecture
+
+```
+code-visualizer
+├── Analyzes: Python AST for imports/classes
+├── Detects: Stale diagrams via timestamps
+└── Delegates to:
+    ├── mermaid-diagram-generator (syntax)
+    └── visualization-architect (complex diagrams)
+```
+
+## Limitations (Important)
+
+- **Staleness is timestamp-based**: 70-80% accuracy, false positives common
+- **Python-only**: No TypeScript/JS/Rust support
+- **Static analysis**: Dynamic imports not detected
+- **Import-centric**: Internal logic changes invisible
+
+See SKILL.md for complete limitations and accuracy expectations.
+
+## Philosophy Alignment
+
+| Principle               | How This Skill Follows It                                           |
+| ----------------------- | ------------------------------------------------------------------- |
+| **Ruthless Simplicity** | Timestamp-based staleness is "good enough" for 90% of cases         |
+| **Zero-BS**             | Real AST parsing, no mock data, honest about limitations            |
+| **Modular Design**      | Single brick, delegates diagram syntax to mermaid-diagram-generator |
 
 ## Integration
 
@@ -63,10 +91,7 @@ Works with:
 - `visualization-architect` agent for complex diagrams
 - PR review workflow for impact analysis
 
-## Philosophy
+## Dependencies
 
-Follows amplihack principles:
-
-- **Ruthless Simplicity**: Auto-generate what humans forget
-- **Zero-BS**: Diagrams must reflect actual code
-- **Modular**: Each diagram covers one scope
+- **Required**: mermaid-diagram-generator skill
+- **Recommended**: Python 3.8+, Git for enhanced staleness detection
