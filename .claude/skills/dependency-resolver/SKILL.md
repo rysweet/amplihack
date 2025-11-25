@@ -8,13 +8,14 @@ auto_activates:
   - "CI failing on linting"
   - "works locally but fails in CI"
   - "pre-push validation"
-explicit_triggers:
-  - /amplihack:dependency-resolver
-  - /fix dependency
-  - /check-env
-confirmation_required: false
-skip_confirmation_if_explicit: true
-token_budget: 2500
+priority_score: 42.0
+evaluation_criteria:
+  frequency: HIGH
+  impact: HIGH
+  complexity: LOW
+  reusability: HIGH
+  philosophy_alignment: HIGH
+  uniqueness: HIGH
 ---
 
 # Dependency Resolver Skill
@@ -220,18 +221,17 @@ pre-commit autoupdate
 # Re-run pre-commit to validate
 pre-commit run --all-files
 ```
-````
 
 ### Status: ACTION REQUIRED
 
 Push may fail due to environment mismatches.
 Run recommended fixes before pushing.
-
-```
+````
 
 ## When to Use This Skill
 
 **Trigger Signs:**
+
 - "CI is failing but it works locally"
 - "Linting passes here but not in CI"
 - Before pushing after long development session
@@ -239,6 +239,7 @@ Run recommended fixes before pushing.
 - When onboarding to new project
 
 **Not Needed When:**
+
 - CI already passing consistently
 - Environment just synced
 - Only editing documentation
@@ -250,4 +251,23 @@ Run recommended fixes before pushing.
 - **ci-diagnostic-workflow.md**: Post-push CI failure resolution
 - **pre-commit-diagnostic.md**: Pre-commit hook failures
 - **.github/workflows/ci.yml**: CI configuration source of truth
-```
+
+## Philosophy Alignment
+
+### Ruthless Simplicity
+
+- Procedural approach: Five clear steps, no unnecessary abstraction
+- Direct shell commands: Users can copy-paste recommendations
+- Focused scope: Only detects environment mismatches, delegates fixes to existing agents
+
+### Zero-BS Implementation
+
+- Actionable output: Every recommendation includes exact commands
+- No theoretical advice: Specific version numbers and file paths
+- Pre-push prevention: Catches issues before wasted CI cycles
+
+### Modular Design
+
+- Clean hand-offs: Integrates with fix-agent, pre-commit-diagnostic, ci-diagnostic-workflow
+- Single responsibility: Detection and comparison only; fixes delegated to specialized agents
+- Regeneratable: Can be rebuilt from this specification
