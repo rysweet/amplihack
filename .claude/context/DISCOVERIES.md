@@ -4,6 +4,129 @@ This file documents non-obvious problems, solutions, and patterns discovered
 during development. It serves as a living knowledge base that grows with the
 project.
 
+## Neo4j Memory System - Docker Issues and Solutions (2025-11-25)
+
+### Issue
+
+Neo4j Docker reconnection fails almost universally when starting a new session - particularly when connecting to an existing container that was started in a previous session. Additional problems include credential synchronization issues, port conflicts, and stale configuration.
+
+### Root Causes Identified (6 Issues)
+
+1. **Password detection happens before container restart** - Container still has old password when credential detection runs via `docker inspect`
+2. **Config singleton not properly refreshed** - Stale credentials persist across sessions in the singleton instance
+3. **Port config mismatch** - `.env` file updated but singleton not reloaded
+4. **Race condition in container selection** - Interactive prompts during config loading
+5. **Password not persisted to .env** - Detected passwords lost between sessions
+6. **ConnectionTracker uses stale config** - Shutdown coordinator has wrong credentials
+
+### Solution - Three-Pronged Approach
+
+**PR #1615: Fix Docker Reconnection** (Fixes issues 1, 2, 5)
+- Reorder `start()` flow: check status → restart if needed → THEN detect credentials
+- Container must be running before `docker inspect` can reliably read environment variables
+- Add `_persist_password_to_env()` to save detected passwords for session continuity
+- Add `_restart_container_only()` helper to avoid circular credential detection
+
+**PR #1617: Add Kùzu Embedded Database** (Alternative to Docker)
+- Kùzu is an embedded graph database that requires zero infrastructure
+- No Docker, no server, no daemon - just `pip install kuzu`
+- Uses same Cypher query language as Neo4j for compatibility
+- Auto-detection selects best backend based on environment
+- Priority: Running Neo4j container > Kùzu (if installed) > Start Neo4j Docker
+
+**PR #1618: Add Docker MCP Server Integration** (Better debugging)
+- Docker MCP server enables container management directly from Claude Code
+- Tools: list-containers, create-container, deploy-compose, get-logs
+- Helps debug Docker issues without leaving the session
+
+### Alternative Solutions Evaluated
+
+| Option | Pros | Cons | Recommendation |
+|--------|------|------|----------------|
+| **Fix Docker** | Works with existing setup | Still has Docker complexity | ✅ PR #1615 |
+| **Kùzu Embedded** | Zero infrastructure, Cypher compatible | New dependency | ✅ PR #1617 |
+| **Native Neo4j** | No Docker, systemd integration | Requires Neo4j binary installed | Future option |
+| **Graphiti** | Temporal knowledge graphs, multiple backends | Not drop-in replacement | Phase 2 upgrade |
+| **Neo4j Aura** | Cloud-hosted, managed | Network latency, wrong for dev | Production only |
+
+### Graphiti Framework Assessment
+
+**What is Graphiti?** A temporal knowledge graph framework from Zep (20k+ GitHub stars).
+
+**Key Features:**
+- Bi-temporal model (event time + ingestion time)
+- Supports Neo4j, Kùzu, FalkorDB, Amazon Neptune backends
+- LLM-powered entity extraction
+- Hybrid retrieval (semantic + keyword + graph)
+
+**Recommendation:** Use as Phase 2 upgrade path, not immediate replacement:
+1. Phase 1: Implement current memory system (already designed)
+2. Phase 2: Add Graphiti pattern for temporal + learning capabilities
+3. Phase 3: Full integration with code graph (blarify)
+
+### Key Learnings
+
+1. **Order of operations matters** - Credential detection must happen AFTER container is running
+2. **Persist configuration changes** - Don't just update memory, write to `.env` for session continuity
+3. **Multiple backend options reduce risk** - Kùzu provides fallback when Docker fails
+4. **Embedded databases eliminate infrastructure issues** - No server = no connection problems
+5. **MCP integration improves debugging** - Container management from Claude Code accelerates troubleshooting
+
+### Files Created/Modified
+
+**PR #1615 (Docker Fix):**
+- `src/amplihack/memory/neo4j/lifecycle.py` - Reordered startup flow, added password persistence
+
+**PR #1617 (Kùzu Backend):**
+- `src/amplihack/memory/kuzu/__init__.py` - Package init
+- `src/amplihack/memory/kuzu/connector.py` - KuzuConnector implementation
+- `src/amplihack/memory/auto_backend.py` - Backend auto-detection
+- `pyproject.toml` - Added kuzu optional dependency
+
+**PR #1618 (Docker MCP):**
+- `.mcp.json` - Docker MCP server configuration
+
+### Testing
+
+Backend auto-detection priority:
+1. `AMPLIHACK_GRAPH_BACKEND=kuzu` or `neo4j` (explicit override)
+2. Existing Neo4j container (if already running)
+3. Kùzu (if installed) - preferred for simplicity
+4. Neo4j Docker (if Docker available)
+
+```bash
+# Install Kùzu backend
+pip install amplihack[kuzu]
+
+# Use auto-detection
+from amplihack.memory.auto_backend import get_connector
+with get_connector() as conn:
+    results = conn.execute_query("MATCH (n) RETURN count(n)")
+```
+
+### Prevention
+
+**For Docker reconnection issues:**
+- Always check container status BEFORE credential detection
+- Persist detected passwords to `.env` file
+- Use actual container ports (via `docker port`), not config file values
+
+**For future infrastructure complexity:**
+- Offer embedded alternatives (Kùzu)
+- Auto-detect best backend based on environment
+- Provide clear error messages with installation guidance
+
+### Related Issues/PRs
+
+- Issue #1612: Neo4j Docker reconnection fails between sessions
+- Issue #1613: Add Kùzu as embedded alternative
+- Issue #1614: Add Docker MCP server integration
+- PR #1615: Fix Docker reconnection
+- PR #1617: Add Kùzu embedded backend
+- PR #1618: Add Docker MCP integration
+
+---
+
 ## Power-Steering Session Type Detection Fix (2025-11-25)
 
 ### Problem
