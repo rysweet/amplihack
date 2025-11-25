@@ -87,7 +87,6 @@ From `.claude/context/DISCOVERIES.md` (Pattern Applicability Analysis):
 **Weight Calibration:**
 
 - `static` - Fixed weights per domain (DEFAULT)
-- `adaptive` - Adjust weights based on historical accuracy
 
 ### Domain Expertise Weights
 
@@ -317,13 +316,10 @@ Based on configured voting mode:
 - OR: Accept simple majority with documented risk
 ```
 
-### Step 8: Record and Calibrate
+### Step 8: Record Decision
 
 - Log voting result to session decisions
-- If adaptive calibration enabled:
-  - Track prediction accuracy per agent
-  - Adjust weights based on outcome correctness
-  - Document weight adjustments in DISCOVERIES.md
+- Document vote reasoning for future reference
 
 ## Trade-Offs
 
