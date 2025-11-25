@@ -233,7 +233,9 @@ class InteractiveInstaller:
             platform: Target platform for installation
         """
         self.platform = platform
-        self.audit_log_path = Path.home() / ".claude" / "runtime" / "logs" / "installation_audit.jsonl"
+        self.audit_log_path = (
+            Path.home() / ".claude" / "runtime" / "logs" / "installation_audit.jsonl"
+        )
 
     def is_interactive_environment(self) -> bool:
         """Check if running in an interactive environment.
@@ -274,7 +276,9 @@ class InteractiveInstaller:
         print(f"\n{'=' * 70}\n")
 
         while True:
-            response = input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
+            response = (
+                input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
+            )
             if response in ["y", "yes"]:
                 return True
             if response in ["n", "no", ""]:
@@ -879,20 +883,26 @@ class PrerequisiteChecker:
 
 # Convenience function for quick prerequisite checking
 def check_prerequisites() -> bool:
-    """Quick prerequisite check with automatic reporting.
+    """Quick prerequisite check with automatic interactive installation.
+
+    In interactive environments (TTY), prompts user to install missing tools.
+    In non-interactive environments (CI), prints manual instructions.
 
     Returns:
         True if all prerequisites available, False otherwise
 
     Side Effects:
-        Prints detailed report to stdout if prerequisites are missing
+        - In interactive mode: Prompts for user approval and installs missing tools
+        - In non-interactive mode: Prints manual installation instructions
+        - All installation attempts are logged to ~/.amplihack/installation_audit.json
 
     Example:
         >>> if not check_prerequisites():
         ...     sys.exit(1)
     """
     checker = PrerequisiteChecker()
-    return checker.check_and_report()
+    result = checker.check_and_install(interactive=True)
+    return result.all_available
 
 
 __all__ = [
