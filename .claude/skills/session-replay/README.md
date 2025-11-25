@@ -77,20 +77,32 @@ Health Score: 82/100 (Good)
 
 ## Related Tools
 
-- `/transcripts` - Conversation transcript management
-- `context-management` skill - Proactive context optimization
-- `codex_transcripts_builder.py` - Knowledge extraction from sessions
+| Need                             | Use This                        |
+| -------------------------------- | ------------------------------- |
+| Session performance metrics      | **session-replay** (this skill) |
+| Conversation content/restoration | `/transcripts` command          |
+| Knowledge extraction             | `codex_transcripts_builder.py`  |
+| Token optimization               | `context-management` skill      |
 
-## Philosophy
+## Philosophy Alignment
 
-This skill follows amplihack principles:
+This skill strictly follows amplihack principles:
 
-- **Ruthless Simplicity**: Direct file parsing, no complex dependencies
-- **Zero-BS**: All functions work completely, no stubs
-- **Brick Philosophy**: Self-contained, regeneratable module
+- **Ruthless Simplicity**: Direct file parsing using only Python standard library (json, pathlib)
+- **Zero-BS**: Every code example runs without modification, no stubs or placeholders
+- **Brick Philosophy**: Self-contained module with clear inputs (trace files) and outputs (reports)
+- **Fail Fast**: Clear error messages for malformed files, missing traces, or permission issues
+
+## Limitations
+
+- **Read-only**: Cannot modify or generate trace files
+- **Local only**: Analyzes traces in current project only
+- **JSONL format**: Only claude-trace JSONL format supported
+- **Post-session**: Analyzes completed sessions, not real-time
 
 ## See Also
 
-- [SKILL.md](./SKILL.md) - Full skill specification
+- [SKILL.md](./SKILL.md) - Full skill specification with implementation details
 - `.claude-trace/` - Trace file location (project root)
 - `/transcripts` - Conversation transcript management command
+- `context-management` skill - Proactive context optimization

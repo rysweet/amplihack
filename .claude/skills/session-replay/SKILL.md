@@ -326,7 +326,83 @@ def find_trace_files(trace_dir: str = ".claude-trace") -> List[Path]:
     )
 ```
 
+### Error Handling
+
+Handle common error scenarios gracefully:
+
+```python
+def safe_parse_trace_file(path: Path) -> Tuple[List[Dict], List[str]]:
+    """Parse trace file with error collection for malformed lines.
+
+    Returns:
+        Tuple of (valid_entries, error_messages)
+    """
+    entries = []
+    errors = []
+
+    if not path.exists():
+        return [], [f"Trace file not found: {path}"]
+
+    try:
+        with open(path) as f:
+            for line_num, line in enumerate(f, 1):
+                if not line.strip():
+                    continue
+                try:
+                    entry = json.loads(line)
+                    entries.append(entry)
+                except json.JSONDecodeError as e:
+                    errors.append(f"Line {line_num}: Invalid JSON - {e}")
+    except PermissionError:
+        return [], [f"Permission denied: {path}"]
+    except UnicodeDecodeError:
+        return [], [f"Encoding error: {path} (expected UTF-8)"]
+
+    return entries, errors
+
+
+def format_error_report(errors: List[str], path: Path) -> str:
+    """Format error report for user display."""
+    if not errors:
+        return ""
+
+    report = f"""
+Trace File Issues
+=================
+File: {path.name}
+Issues found: {len(errors)}
+
+"""
+    for error in errors[:10]:  # Limit to first 10
+        report += f"- {error}\n"
+
+    if len(errors) > 10:
+        report += f"\n... and {len(errors) - 10} more issues"
+
+    return report
+```
+
+**Common error scenarios:**
+
+| Scenario          | Cause                                | Handling                           |
+| ----------------- | ------------------------------------ | ---------------------------------- |
+| Empty file        | Session had no API calls             | Report "No data to analyze"        |
+| Malformed JSON    | Corrupted trace or interrupted write | Skip line, count in error report   |
+| Missing fields    | Older trace format                   | Use `.get()` with defaults         |
+| Permission denied | File locked by another process       | Clear error message, suggest retry |
+| Encoding error    | Non-UTF-8 characters                 | Report encoding issue              |
+
 ## Integration with Existing Tools
+
+### Tool Selection Matrix
+
+| Need                               | Use This                                    | Why                           |
+| ---------------------------------- | ------------------------------------------- | ----------------------------- |
+| "Why was my session slow?"         | **session-replay**                          | API latency and token metrics |
+| "What did I discuss last session?" | **/transcripts**                            | Conversation content          |
+| "Extract learnings from sessions"  | **CodexTranscriptsBuilder**                 | Knowledge extraction          |
+| "Reduce my token usage"            | **session-replay** + **context_management** | Metrics + optimization        |
+| "Resume interrupted work"          | **/transcripts**                            | Context restoration           |
 
 ### vs. /transcripts Command
 
@@ -335,12 +411,14 @@ def find_trace_files(trace_dir: str = ".claude-trace") -> List[Path]:
 - Focuses on conversation content
 - Restores session context
 - Used for context preservation
+- **Trigger**: "restore session", "continue work", "what was I doing"
 
 **session-replay skill** (API-level analysis):
 
 - Focuses on API metrics
 - Analyzes performance and errors
 - Used for debugging and optimization
+- **Trigger**: "session health", "token usage", "why slow", "debug session"
 
 ### vs. CodexTranscriptsBuilder
 
@@ -349,12 +427,42 @@ def find_trace_files(trace_dir: str = ".claude-trace") -> List[Path]:
 - Extracts patterns from conversations
 - Builds learning corpus
 - Knowledge-focused
+- **Trigger**: "extract patterns", "build knowledge base", "learn from sessions"
 
 **session-replay skill** (metrics analysis):
 
 - Extracts performance metrics
 - Identifies technical issues
 - Operations-focused
+- **Trigger**: "performance metrics", "error patterns", "tool efficiency"
+
+### Combined Workflows
+
+**Workflow 1: Diagnose and Fix Token Issues**
+
+```
+1. session-replay: Analyze token usage patterns (health action)
+2. Identify high-token operations
+3. context_management skill: Apply proactive trimming
+4. session-replay: Compare before/after sessions (compare action)
+```
+
+**Workflow 2: Post-Incident Analysis**
+
+```
+1. session-replay: Identify error patterns (errors action)
+2. /transcripts: Review conversation context around errors
+3. session-replay: Check tool usage around failures (tools action)
+4. Document findings in DISCOVERIES.md
+```
+
+**Workflow 3: Performance Baseline**
+
+```
+1. session-replay: Analyze 5-10 recent sessions (compare action)
+2. Establish baseline metrics (tokens, latency, errors)
+3. Track deviations from baseline over time
+```
 
 ## Storage Locations
 
@@ -366,21 +474,36 @@ def find_trace_files(trace_dir: str = ".claude-trace") -> List[Path]:
 
 ### Ruthless Simplicity
 
-- Single-purpose: Analyze trace files
-- No external dependencies
-- Direct file parsing, no complex abstractions
+- **Single-purpose**: Analyze trace files only - no session management, no transcript editing
+- **No external dependencies**: Uses only Python standard library (json, pathlib, datetime)
+- **Direct file parsing**: No ORM, no database, no complex abstractions
+- **Present-moment focus**: Analyzes what exists now, no future-proofing
 
 ### Zero-BS Implementation
 
-- All functions work completely
-- Real parsing, real metrics
-- No stubs or placeholders
+- **All functions work completely**: Every code example in this skill runs without modification
+- **Real parsing, real metrics**: No mocked data, no placeholder calculations
+- **No stubs or placeholders**: If a feature is documented, it works
+- **Fail fast on errors**: Clear error messages, no silent failures
 
 ### Brick Philosophy
 
-- Self-contained analysis
-- Clear inputs (trace files) and outputs (reports)
-- Regeneratable from this specification
+- **Self-contained analysis**: All functionality in this single skill
+- **Clear inputs (trace files) and outputs (reports)**: No hidden state or side effects
+- **Regeneratable from this specification**: This SKILL.md is the complete source of truth
+- **Isolated responsibility**: Session analysis only - doesn't modify files or trigger actions
+
+## Limitations
+
+This skill CANNOT:
+
+- **Modify trace files**: Read-only analysis, no editing or deletion
+- **Generate traces**: Use `claude-trace` npm package to create trace files
+- **Restore sessions**: Use `/transcripts` command for session restoration
+- **Real-time monitoring**: Analyzes completed sessions, not live tracking
+- **Cross-project analysis**: Analyzes traces in current project only
+- **Parse non-JSONL formats**: Only claude-trace JSONL format supported
+- **Access remote traces**: Local filesystem only, no cloud storage
 
 ## Tips for Effective Analysis
 
@@ -431,6 +554,56 @@ User: I keep getting errors, find the pattern
 - **Transcripts command**: `/transcripts`
 - **Context management skill**: `context-management`
 - **Philosophy**: `.claude/context/PHILOSOPHY.md`
+
+## Troubleshooting
+
+### No trace files found
+
+**Symptom**: "No trace files in .claude-trace/"
+
+**Causes and fixes**:
+
+1. **claude-trace not enabled**: Set `AMPLIHACK_USE_TRACE=1` before starting session
+2. **Wrong directory**: Check you're in project root with `.claude-trace/` directory
+3. **Fresh project**: Run a session with tracing enabled first
+
+### Incomplete metrics
+
+**Symptom**: Missing token counts or zero values
+
+**Causes and fixes**:
+
+1. **Interrupted session**: Trace may be incomplete if session crashed
+2. **Streaming responses**: Some streaming modes don't capture full metrics
+3. **Older trace format**: Upgrade claude-trace to latest version
+
+### Health score seems wrong
+
+**Symptom**: Score doesn't match session experience
+
+**Understanding the score**:
+
+- 90-100: Excellent - low errors, good efficiency
+- 70-89: Good - minor issues detected
+- 50-69: Fair - significant issues worth investigating
+- Below 50: Poor - likely errors or inefficiencies
+
+**Factors in health score**:
+
+- Error rate (40% weight)
+- Token efficiency ratio (30% weight)
+- Request success rate (20% weight)
+- Tool success rate (10% weight)
+
+### Large trace files
+
+**Symptom**: Analysis is slow or memory-intensive
+
+**Solutions**:
+
+1. Analyze specific time range instead of full file
+2. Use `tools` action for targeted analysis
+3. Archive old traces: `mv .claude-trace/old-*.jsonl .claude-trace/archive/`
 
 ## Remember
 
