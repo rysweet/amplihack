@@ -335,3 +335,11 @@ def get_default_connector() -> KuzuConnector:
         ImportError: If kuzu package not installed
     """
     return KuzuConnector()
+
+
+__all__ = [
+    "KuzuConnector",
+    "KUZU_AVAILABLE",
+    "ensure_kuzu_available",
+    "get_default_connector",
+]
