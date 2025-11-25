@@ -84,90 +84,6 @@ class Neo4jContainerManager:
         # Reload config to pick up the new password
         self.config = get_config()
 
-    def _persist_password_to_env(self, password: str) -> None:
-        """Persist detected password to .env file for session continuity.
-
-        Args:
-            password: Password to persist
-
-        Note:
-            This ensures passwords survive between sessions by writing
-            to the .env file. Without this, detected passwords are lost
-            when the session ends.
-        """
-        try:
-            from pathlib import Path
-
-            # Find project root
-            project_root = Path.cwd()
-            while project_root != project_root.parent:
-                if (project_root / ".claude").exists() or (project_root / ".env").exists():
-                    break
-                project_root = project_root.parent
-
-            env_file = project_root / ".env"
-
-            # Read existing .env content
-            env_content = ""
-            if env_file.exists():
-                env_content = env_file.read_text()
-
-            # Check if NEO4J_PASSWORD already set correctly
-            import re
-            password_pattern = r'^NEO4J_PASSWORD=.*$'
-            existing_match = re.search(password_pattern, env_content, re.MULTILINE)
-
-            if existing_match:
-                # Update existing password
-                new_content = re.sub(
-                    password_pattern,
-                    f'NEO4J_PASSWORD={password}',
-                    env_content,
-                    flags=re.MULTILINE
-                )
-            else:
-                # Add new password entry
-                if env_content and not env_content.endswith('\n'):
-                    env_content += '\n'
-                new_content = env_content + f'NEO4J_PASSWORD={password}\n'
-
-            # Only write if changed
-            if new_content != env_content:
-                env_file.write_text(new_content)
-                logger.info("✅ Persisted Neo4j password to .env for session continuity")
-
-        except Exception as e:
-            logger.warning("Could not persist password to .env: %s", e)
-            # Non-fatal - password is still in memory
-
-    def _restart_container_only(self) -> bool:
-        """Restart container without credential detection.
-
-        This is a simpler restart that just starts the container
-        without the full credential detection flow. Used when we
-        need the container running BEFORE we can detect credentials.
-
-        Returns:
-            True if container started, False otherwise
-        """
-        try:
-            cmd = ["docker", "start", self.config.container_name]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-
-            if result.returncode != 0:
-                logger.error("Failed to restart container: %s", result.stderr)
-                return False
-
-            logger.info("Container restarted (waiting for startup)")
-            return True
-
-        except subprocess.TimeoutExpired:
-            logger.error("Timeout restarting container")
-            return False
-        except Exception as e:
-            logger.error("Error restarting container: %s", e)
-            return False
-
     def _handle_unhealthy_container(self) -> bool:
         """Handle unhealthy container by restarting.
 
@@ -217,13 +133,8 @@ class Neo4jContainerManager:
 
         Behavior:
             - Checks if container exists first
-            - If exists: check status → start if needed → detect credentials → update config
+            - If exists: detect credentials → update config → check status → connect/start
             - If not exists: create new container with environment password
-
-        Note:
-            Credential detection happens AFTER container is running to ensure
-            we can inspect the container's environment variables reliably.
-            Detected passwords are persisted to .env for session continuity.
         """
         logger.info("Starting Neo4j container: %s", self.config.container_name)
 
@@ -231,53 +142,36 @@ class Neo4jContainerManager:
         container_exists = self._check_container_exists()
 
         if container_exists:
-            logger.info("Container exists, checking status...")
+            logger.info("Container exists, detecting credentials...")
 
-            # Step 2: Check container status FIRST (before credential detection)
-            status = self.get_status()
-
-            # Step 3: Ensure container is running before credential detection
-            if status == ContainerStatus.STOPPED:
-                logger.info("○ Container %s is stopped, restarting...", self.config.container_name)
-                if not self._restart_container_only():
-                    return False
-                # Wait for Docker container to initialize before credential detection.
-                # 2 seconds is empirically determined: allows Docker to complete startup
-                # and populate environment variables accessible via `docker inspect`.
-                # Shorter waits cause intermittent credential detection failures on
-                # slower systems or under load.
-                time.sleep(2)
-                # Update status to reflect the restart
-                status = ContainerStatus.RUNNING
-
-            elif status == ContainerStatus.UNHEALTHY:
-                logger.warning("⚠ Container %s is unhealthy, attempting restart...", self.config.container_name)
-                if not self._handle_unhealthy_container():
-                    return False
-                # Container is now running after unhealthy recovery
-                status = ContainerStatus.RUNNING
-
-            # Step 4: NOW detect credentials (container is running)
-            logger.info("Detecting credentials from running container...")
+            # Step 2: Try to detect password from existing container
             detected_password = detect_container_password(self.config.container_name)
 
-            # Step 5: Update config AND persist to .env if password detected
+            # Step 3: Update config if password detected
             if detected_password:
-                logger.info("🔑 Detected credentials from container")
+                logger.info("🔑 Detected credentials from existing container")
                 self._update_password(detected_password)
-                self._persist_password_to_env(detected_password)
             else:
                 logger.info("No credentials detected, using environment password")
 
-            # Step 6: Final status check - container should be running now
-            # Note: status was updated in Step 3 if container was restarted
+            # Step 4: Check container status
+            status = self.get_status()
+
             if status == ContainerStatus.RUNNING:
-                logger.info("✓ Container %s is running", self.config.container_name)
+                logger.info("✓ Container %s already running", self.config.container_name)
                 if wait_for_ready:
                     return self.wait_for_healthy()
                 return True
 
-            logger.error("Unexpected container status after start: %s", self.get_status())
+            if status == ContainerStatus.STOPPED:
+                logger.info("○ Container %s is stopped, restarting...", self.config.container_name)
+                return self._restart_container(wait_for_ready)
+
+            if status == ContainerStatus.UNHEALTHY:
+                logger.warning("⚠ Container %s is unhealthy", self.config.container_name)
+                return self._handle_unhealthy_container()
+
+            logger.error("Unexpected container status: %s", status)
             return False
 
         # Container doesn't exist - create it
