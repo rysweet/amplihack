@@ -1,6 +1,6 @@
 ---
 name: smart-test
-version: 1.0.0
+version: 1.1.0
 description: |
   Intelligent test selection based on code changes. Maps source files to tests via import analysis,
   implements tiered testing (fast < 1 min, impacted < 5 min, full suite), and tracks test reliability.
@@ -31,6 +31,8 @@ invokes:
     name: outside-in-testing
   - type: skill
     name: pre-commit-diagnostic
+  - type: subagent
+    path: .claude/agents/amplihack/tester.md
 dependencies:
   tools:
     - Read
@@ -40,14 +42,25 @@ dependencies:
   external:
     - "pytest"
     - "git"
+  data_files:
+    - ".claude/data/test-mapping/code_to_tests.yaml"
+    - ".claude/data/test-mapping/reliability.yaml"
 philosophy:
   - principle: Ruthless Simplicity
-    application: Three-tier system (Fast/Impacted/Full) avoids over-engineering
+    application: Three-tier system (Fast/Impacted/Full) avoids over-engineering test strategies
   - principle: Zero-BS Implementation
-    application: Real pytest commands ready to copy-paste
+    application: Real pytest commands ready to copy-paste; no placeholder data
   - principle: Modular Design
-    application: YAML storage enables cache regeneration
+    application: YAML storage enables cache regeneration; skill is self-contained
+  - principle: Testing Pyramid
+    application: Tier 1 prioritizes unit tests (60%), Tier 2 adds integration (30%), Tier 3 includes E2E (10%)
 maturity: production
+maturity_reason: |
+  - Complete documentation with usage examples, error handling, and troubleshooting
+  - Clear "When to Avoid" guidance prevents misuse
+  - Realistic example data files demonstrate expected structure
+  - Integrates with existing pytest markers and workflow steps
+  - Philosophy-aligned with testing pyramid and ruthless simplicity
 ---
 
 # Smart Test Selection Skill
@@ -390,6 +403,83 @@ Recommend: Quarantine these tests or fix root cause.
 - Single-level transitive analysis (deeper chains excluded)
 - Reliability data requires initial seeding from test runs
 - Does not detect dynamic imports or string-based imports
+
+## When to Avoid
+
+Do NOT use smart-test when:
+
+1. **First time setting up tests** - No mapping cache exists yet; run full suite first
+2. **Major refactoring** - When module structure changes significantly, mappings become stale
+3. **Configuration changes** - Changes to `pytest.ini`, `conftest.py`, or fixtures affect all tests
+4. **CI environment variables changed** - Environment-dependent tests may all need re-running
+5. **Database schema migrations** - All database-touching tests should run
+6. **Flaky test investigation** - Run full suite to get accurate reliability data
+7. **Pre-merge final check** - Always run Tier 3 (full suite) before merging to main
+
+**Rule of thumb**: When in doubt, run the full suite. Smart-test optimizes iteration speed, not correctness.
+
+## Error Handling and Troubleshooting
+
+### Common Issues
+
+**Issue: "No tests found for changed file"**
+
+```
+Cause: File is new or not yet mapped
+Fix: Rebuild the mapping cache
+     User: "Rebuild test mapping cache"
+```
+
+**Issue: "Import analysis failed"**
+
+```
+Cause: Syntax error in Python file or circular imports
+Fix: 1. Check file for syntax errors: python -m py_compile file.py
+     2. Resolve circular imports
+     3. Rebuild mapping cache
+```
+
+**Issue: "Reliability data missing"**
+
+```
+Cause: No test runs have been recorded yet
+Fix: Run full test suite once, then:
+     User: "Update test reliability with these results"
+```
+
+**Issue: "Tier 1 tests taking too long"**
+
+```
+Cause: Too many tests marked as "fast" or slow tests not marked
+Fix: 1. Add @pytest.mark.slow to tests > 1 second
+     2. Add @pytest.mark.integration to integration tests
+     3. Review test granularity
+```
+
+**Issue: "Cache is stale / wrong tests selected"**
+
+```
+Cause: Module structure changed since last cache build
+Fix: Delete cache and rebuild:
+     rm -rf .claude/data/test-mapping/*.yaml
+     User: "Rebuild test mapping cache"
+```
+
+### Recovery Commands
+
+```bash
+# Verify test mapping is valid
+python -c "import yaml; yaml.safe_load(open('.claude/data/test-mapping/code_to_tests.yaml'))"
+
+# Check reliability data
+python -c "import yaml; print(yaml.safe_load(open('.claude/data/test-mapping/reliability.yaml')))"
+
+# Force full suite (bypass smart-test)
+pytest --ignore-glob='**/test_slow_*'
+
+# Find tests with no source mapping (orphaned tests)
+find tests -name "test_*.py" -exec basename {} \; | sort > /tmp/tests.txt
+```
 
 ## Cache Maintenance
 
