@@ -61,6 +61,12 @@ Built on the "Bricks & Studs" principle:
 - [Trust & Anti-Sycophancy](/.claude/context/TRUST.md) - Critical operating guidelines
 - [Documentation Guidelines](DOCUMENTATION_GUIDELINES.md) - Eight rules for writing good docs
 
+### Documentation & Publishing
+
+- [First Documentation Site Tutorial](tutorials/first-docs-site.md) - 30-minute beginner tutorial: create and deploy your first docs site
+- [Generate GitHub Pages Sites](howto/github-pages-generation.md) - Task-oriented guide: generate, validate, and deploy documentation
+- [GitHub Pages API Reference](reference/github-pages-api.md) - Complete Python API for site generation, validation, and deployment
+
 ### Workflows
 
 - [Default Workflow](/.claude/workflow/DEFAULT_WORKFLOW.md) - Standard 13-step process
