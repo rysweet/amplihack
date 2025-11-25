@@ -156,6 +156,8 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 
 ### Step 1: Prepare the Workspace
 
+**Prerequisite Check:** Verify Step 0 is complete - you should have 22 todos visible (Steps 0-21) before proceeding.
+
 - [ ] start with a clean local environment and make sure it is up to date (no unstashed changes, git fetch)
 
 ### Step 2: Rewrite and Clarify Requirements
