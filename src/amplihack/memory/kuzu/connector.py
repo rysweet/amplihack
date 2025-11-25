@@ -107,8 +107,8 @@ class KuzuConnector:
         if self._db is not None:
             return self  # Already connected
 
-        # Ensure directory exists
-        self.db_path.mkdir(parents=True, exist_ok=True)
+        # Ensure parent directory exists (kuzu creates the db directory itself)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Open database
         self._db = kuzu.Database(str(self.db_path), read_only=self.read_only)
