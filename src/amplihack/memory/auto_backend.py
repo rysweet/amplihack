@@ -110,9 +110,7 @@ class BackendDetector:
             if self.docker_available:
                 logger.info("Using Neo4j backend (via AMPLIHACK_GRAPH_BACKEND)")
                 return BackendType.NEO4J
-            raise RuntimeError(
-                "AMPLIHACK_GRAPH_BACKEND=neo4j but Docker not available"
-            )
+            raise RuntimeError("AMPLIHACK_GRAPH_BACKEND=neo4j but Docker not available")
 
         # Auto-detection priority
         # 1. If Neo4j container already running, use it
@@ -206,3 +204,11 @@ def get_backend_status() -> dict:
     """
     detector = BackendDetector()
     return detector.get_status()
+
+
+__all__ = [
+    "BackendType",
+    "BackendDetector",
+    "get_connector",
+    "get_backend_status",
+]

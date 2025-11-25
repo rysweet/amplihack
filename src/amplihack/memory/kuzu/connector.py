@@ -185,6 +185,29 @@ class KuzuConnector:
             logger.error("Query execution failed: %s", e)
             raise
 
+    def execute_write(
+        self,
+        query: str,
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Execute a write query (alias for execute_query).
+
+        For interface parity with Neo4jConnector. In Kuzu, there's no
+        distinction between read and write transactions at the API level.
+
+        Args:
+            query: Cypher query string
+            parameters: Query parameters (optional)
+
+        Returns:
+            List of result dictionaries
+
+        Raises:
+            RuntimeError: If not connected
+            Exception: If query execution fails
+        """
+        return self.execute_query(query, parameters)
+
     def verify_connectivity(self) -> bool:
         """Verify database connectivity with a simple query.
 
