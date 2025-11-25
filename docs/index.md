@@ -20,7 +20,7 @@ Deploy purpose-built agents for different aspects of development:
 
 Follow proven methodologies for consistent results:
 
-- **Default Workflow**: 13-step process for feature development
+- **Default Workflow**: Multi-step process for feature development
 - **Document-Driven Development (DDD)**: Documentation-first approach for large features
 - **N-Version Programming**: Generate multiple solutions for critical code
 - **Multi-Agent Debate**: Structured debates for complex decisions
@@ -69,7 +69,7 @@ Built on the "Bricks & Studs" principle:
 
 ### Workflows
 
-- [Default Workflow](/.claude/workflow/DEFAULT_WORKFLOW.md) - Standard 13-step process
+- [Default Workflow](/.claude/workflow/DEFAULT_WORKFLOW.md) - Standard multi-step process
 - [Document-Driven Development](/document_driven_development/README.md) - Documentation-first approach
 - [Investigation Workflow](/.claude/workflow/INVESTIGATION_WORKFLOW.md) - Deep codebase analysis
 
@@ -116,7 +116,7 @@ amplihack excels at:
 # UltraThink will:
 # 1. Read the default workflow
 # 2. Orchestrate multiple agents (architect, security, api-designer, database, builder, tester)
-# 3. Follow all 13 steps systematically
+# 3. Follow all workflow steps systematically
 # 4. Ensure quality and philosophy compliance
 # 5. Generate tests and documentation
 ```

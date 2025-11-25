@@ -223,42 +223,42 @@ for detailed customization instructions.
 
 ### Core Agents (6)
 
-| Agent            | Purpose                                  |
-| ---------------- | ---------------------------------------- |
-| **api-designer** | API design and endpoint structure        |
-| **architect**    | System design and architecture decisions |
-| **builder**      | Code generation and implementation       |
-| **optimizer**    | Performance optimization and efficiency  |
-| **reviewer**     | Code quality and best practices review   |
-| **tester**       | Test generation and validation           |
+| Agent                                                             | Purpose                                  |
+| ----------------------------------------------------------------- | ---------------------------------------- |
+| [**api-designer**](.claude/agents/amplihack/core/api-designer.md) | API design and endpoint structure        |
+| [**architect**](.claude/agents/amplihack/core/architect.md)       | System design and architecture decisions |
+| [**builder**](.claude/agents/amplihack/core/builder.md)           | Code generation and implementation       |
+| [**optimizer**](.claude/agents/amplihack/core/optimizer.md)       | Performance optimization and efficiency  |
+| [**reviewer**](.claude/agents/amplihack/core/reviewer.md)         | Code quality and best practices review   |
+| [**tester**](.claude/agents/amplihack/core/tester.md)             | Test generation and validation           |
 
 ### Specialized Agents (23)
 
-| Agent                       | Purpose                                         |
-| --------------------------- | ----------------------------------------------- |
-| **ambiguity**               | Clarify ambiguous requirements                  |
-| **amplifier-cli-architect** | CLI tool design and architecture                |
-| **analyzer**                | Deep code analysis                              |
-| **azure-kubernetes-expert** | Azure Kubernetes Service expertise              |
-| **ci-diagnostic-workflow**  | CI/CD pipeline diagnostics                      |
-| **cleanup**                 | Remove artifacts and enforce philosophy         |
-| **database**                | Database design and optimization                |
-| **fallback-cascade**        | Resilient fallback strategies                   |
-| **fix-agent**               | Automated error fixing                          |
-| **integration**             | System integration patterns                     |
-| **knowledge-archaeologist** | Extract and preserve knowledge                  |
-| **memory-manager**          | Context and state management                    |
-| **multi-agent-debate**      | Facilitate multi-perspective debates            |
-| **n-version-validator**     | Validate N-version implementations              |
-| **patterns**                | Design pattern recommendations                  |
-| **pre-commit-diagnostic**   | Pre-commit hook diagnostics                     |
-| **preference-reviewer**     | User preference validation                      |
-| **prompt-writer**           | Effective prompt engineering                    |
-| **rust-programming-expert** | Rust language expertise                         |
-| **security**                | Security analysis and vulnerability detection   |
-| **visualization-architect** | Data visualization design                       |
-| **xpia-defense**            | Advanced threat detection                       |
-| **philosophy-guardian**     | Philosophy compliance and simplicity validation |
+| Agent                                                                                          | Purpose                                         |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| [**ambiguity**](.claude/agents/amplihack/specialized/ambiguity.md)                             | Clarify ambiguous requirements                  |
+| [**amplifier-cli-architect**](.claude/agents/amplihack/specialized/amplifier-cli-architect.md) | CLI tool design and architecture                |
+| [**analyzer**](.claude/agents/amplihack/specialized/analyzer.md)                               | Deep code analysis                              |
+| [**azure-kubernetes-expert**](.claude/agents/amplihack/specialized/azure-kubernetes-expert.md) | Azure Kubernetes Service expertise              |
+| [**ci-diagnostic-workflow**](.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)   | CI/CD pipeline diagnostics                      |
+| [**cleanup**](.claude/agents/amplihack/specialized/cleanup.md)                                 | Remove artifacts and enforce philosophy         |
+| [**database**](.claude/agents/amplihack/specialized/database.md)                               | Database design and optimization                |
+| [**fallback-cascade**](.claude/agents/amplihack/specialized/fallback-cascade.md)               | Resilient fallback strategies                   |
+| [**fix-agent**](.claude/agents/amplihack/specialized/fix-agent.md)                             | Automated error fixing                          |
+| [**integration**](.claude/agents/amplihack/specialized/integration.md)                         | System integration patterns                     |
+| [**knowledge-archaeologist**](.claude/agents/amplihack/specialized/knowledge-archaeologist.md) | Extract and preserve knowledge                  |
+| [**memory-manager**](.claude/agents/amplihack/specialized/memory-manager.md)                   | Context and state management                    |
+| [**multi-agent-debate**](.claude/agents/amplihack/specialized/multi-agent-debate.md)           | Facilitate multi-perspective debates            |
+| [**n-version-validator**](.claude/agents/amplihack/specialized/n-version-validator.md)         | Validate N-version implementations              |
+| [**patterns**](.claude/agents/amplihack/specialized/patterns.md)                               | Design pattern recommendations                  |
+| [**pre-commit-diagnostic**](.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)     | Pre-commit hook diagnostics                     |
+| [**preference-reviewer**](.claude/agents/amplihack/specialized/preference-reviewer.md)         | User preference validation                      |
+| [**prompt-writer**](.claude/agents/amplihack/specialized/prompt-writer.md)                     | Effective prompt engineering                    |
+| [**rust-programming-expert**](.claude/agents/amplihack/specialized/rust-programming-expert.md) | Rust language expertise                         |
+| [**security**](.claude/agents/amplihack/specialized/security.md)                               | Security analysis and vulnerability detection   |
+| [**visualization-architect**](.claude/agents/amplihack/specialized/visualization-architect.md) | Data visualization design                       |
+| [**xpia-defense**](.claude/agents/amplihack/specialized/xpia-defense.md)                       | Advanced threat detection                       |
+| [**philosophy-guardian**](.claude/agents/amplihack/specialized/philosophy-guardian.md)         | Philosophy compliance and simplicity validation |
 
 ## Features
 
@@ -268,7 +268,7 @@ All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
 effectiveness. This enables:
 
 - Multi-agent workflow orchestration
-- 13-step development workflow
+- Multi-step development workflow
 - Automated architecture, building, and testing
 - Philosophy compliance checking
 

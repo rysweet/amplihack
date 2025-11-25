@@ -9,12 +9,12 @@ automation and collaborative problem-solving.
 
 When starting a session, import these files for context:
 
-@.claude/context/PHILOSOPHY.md
-@.claude/context/PROJECT.md
-@.claude/context/PATTERNS.md
-@.claude/context/TRUST.md
-@.claude/context/USER_PREFERENCES.md
-@.claude/context/USER_REQUIREMENT_PRIORITY.md
+[@.claude/context/PHILOSOPHY.md](.claude/context/PHILOSOPHY.md)
+[@.claude/context/PROJECT.md](.claude/context/PROJECT.md)
+[@.claude/context/PATTERNS.md](.claude/context/PATTERNS.md)
+[@.claude/context/TRUST.md](.claude/context/TRUST.md)
+[@.claude/context/USER_PREFERENCES.md](.claude/context/USER_PREFERENCES.md)
+[@.claude/context/USER_REQUIREMENT_PRIORITY.md](.claude/context/USER_REQUIREMENT_PRIORITY.md)
 
 ## Working Philosophy
 
@@ -25,11 +25,14 @@ When starting a session, import these files for context:
   As you come to each item in a ToDo list you can then break that item down
   further into smaller tasks.
 - **The workflow is MANDATORY: ALWAYS the starting point**: The defaultworkflow
-  in `@.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations,
-  git workflow, and CI/CD process (users can customize this file) - you should call this using skill tool -  Skill(default-workflow)
+  in
+  [`@.claude/workflow/DEFAULT_WORKFLOW.md`](.claude/workflow/DEFAULT_WORKFLOW.md)
+  defines the order of operations, git workflow, and CI/CD process (users can
+  customize this file) - you should call this using skill tool -
+  Skill(default-workflow)
 - **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
-  Skill(ultrathink-orchestrator) which reads the workflow and orchestrates agents to
-  execute it - this is defined in the ultrathink skill. 
+  Skill(ultrathink-orchestrator) which reads the workflow and orchestrates
+  agents to execute it - this is defined in the ultrathink skill.
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Operate Autonomously and Independently by default**: You must try to
@@ -64,31 +67,37 @@ When starting a session, import these files for context:
 
 Amplihack provides four extensibility mechanisms with clear invocation patterns:
 
-| Mechanism | Purpose | Invoked By | Invocation Method |
-|-----------|---------|------------|-------------------|
-| **Workflow** | Multi-step process blueprint | Commands, Skills, Agents | `Read` workflow file, follow steps |
-| **Command** | User-explicit entry point | User, Commands, Skills, Agents | User types `/cmd` OR `SlashCommand` tool |
-| **Skill** | Auto-discovered capability | Claude auto-discovers | Context triggers OR explicit `Skill` tool |
-| **Subagent** | Specialized delegation | Commands, Skills, Agents | `Task` tool with `subagent_type` |
+| Mechanism    | Purpose                      | Invoked By                     | Invocation Method                         |
+| ------------ | ---------------------------- | ------------------------------ | ----------------------------------------- |
+| **Workflow** | Multi-step process blueprint | Commands, Skills, Agents       | `Read` workflow file, follow steps        |
+| **Command**  | User-explicit entry point    | User, Commands, Skills, Agents | User types `/cmd` OR `SlashCommand` tool  |
+| **Skill**    | Auto-discovered capability   | Claude auto-discovers          | Context triggers OR explicit `Skill` tool |
+| **Subagent** | Specialized delegation       | Commands, Skills, Agents       | `Task` tool with `subagent_type`          |
 
 **Key Invocation Patterns:**
 
-- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked programmatically by commands, skills, and agents. Only built-in commands (`/help`, `/clear`) cannot be invoked programmatically.
+- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked
+  programmatically by commands, skills, and agents. Only built-in commands
+  (`/help`, `/clear`) cannot be invoked programmatically.
+
   ```python
   SlashCommand(command="/ultrathink Analyze architecture")
   ```
 
 - **Skill Tool**: Invoke skills explicitly when auto-discovery isn't sufficient
+
   ```python
   Skill(skill="mermaid-diagram-generator")
   ```
 
 - **Task Tool**: Invoke subagents for specialized perspectives
+
   ```python
   Task(subagent_type="architect", prompt="Design system...")
   ```
 
-- **Workflow Reference**: Commands/skills/agents read workflow files to follow process
+- **Workflow Reference**: Commands/skills/agents read workflow files to follow
+  process
   ```python
   Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
   ```
@@ -100,7 +109,8 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 - Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
 - Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
 
-See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata in frontmatter.
+See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata
+in frontmatter.
 
 ### CRITICAL: User Requirement Priority
 
@@ -115,7 +125,9 @@ See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata 
 requirements in quotes, these CANNOT be optimized away by simplification
 agents.**
 
-See `@.claude/context/USER_REQUIREMENT_PRIORITY.md` for complete guidelines.
+See
+[`@.claude/context/USER_REQUIREMENT_PRIORITY.md`](.claude/context/USER_REQUIREMENT_PRIORITY.md)
+for complete guidelines.
 
 ### Agent Delegation Strategy
 
@@ -242,12 +254,12 @@ Example - Any Non-Trivial Task:
 User: "Add authentication to the API"
 
 1. Invoke /ultrathink with the task
-   → UltraThink reads DEFAULT_WORKFLOW.md
-   → Follows all 13 steps in order
+   → UltraThink reads [DEFAULT_WORKFLOW.md](.claude/workflow/DEFAULT_WORKFLOW.md)
+   → Follows all workflow steps in order
    → Orchestrates multiple agents at each step
 
 2. Workflow provides the authoritative process:
-   → Step order (1-13) must be followed
+   → Step order must be followed
    → Git operations (branch, commit, push)
    → CI/CD integration points
    → Review and merge requirements
@@ -463,7 +475,7 @@ Execute comprehensive system review with all relevant agents in parallel.
 ├── ai_working/       # Experimental tools under development
 ├── tools/            # Hooks and utilities
 ├── workflow/         # Default workflow definition
-│   └── DEFAULT_WORKFLOW.md  # Customizable 13-step workflow
+│   └── DEFAULT_WORKFLOW.md  # Customizable multi-step workflow
 └── runtime/          # Logs, metrics, analysis
 
 Specs/               # Module specifications
@@ -476,7 +488,8 @@ Makefile             # Easy access to scenario tools
 
 Default execution mode for non-trivial tasks. UltraThink:
 
-- Reads the workflow from `.claude/workflow/DEFAULT_WORKFLOW.md`
+- Reads the workflow from
+  [`.claude/workflow/DEFAULT_WORKFLOW.md`](.claude/workflow/DEFAULT_WORKFLOW.md)
 - Follows all steps in the exact order defined
 - Orchestrates multiple agents at each step for maximum effectiveness
 - Adapts automatically when you customize the workflow file
@@ -879,6 +892,6 @@ liberally, execute in parallel, and continuously learn.
 # tool vs skill
 
 **PREFERRED PATTERN:** When user says "create a tool" → Build BOTH:
+
 1. Executable tool in `.claude/scenarios/` (the program itself)
 2. Skill in `.claude/skills/` that calls the tool (convenient interface)
-

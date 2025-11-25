@@ -36,7 +36,6 @@ This file defines the workflow for investigation and research tasks. Unlike DEFA
 
 > **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
 
-
 ## How This Workflow Works
 
 **This workflow is the single source of truth for investigation tasks:**
@@ -400,7 +399,7 @@ Both workflows share core principles:
 | Aspect             | Investigation Workflow     | DEFAULT_WORKFLOW.md      |
 | ------------------ | -------------------------- | ------------------------ |
 | **Goal**           | Understanding              | Implementation           |
-| **Phases**         | 6 phases                   | 15 steps                 |
+| **Phases**         | 6 phases                   | Multi-step workflow      |
 | **Execution**      | Exploration-first          | Implementation-first     |
 | **Parallel Focus** | Phase 3 (Deep Dives)       | Various steps            |
 | **Testing**        | Understanding verification | Code validation          |
