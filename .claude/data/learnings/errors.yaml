@@ -1,0 +1,24 @@
+# Cross-Session Learning: Error Patterns
+# This file stores error patterns and their solutions for automatic injection
+# at session start when similar errors are encountered.
+
+category: errors
+description: Error patterns encountered during development and their solutions
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Example learning entry - replace with real learnings
+  - id: "err-example-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "example"
+      - "template"
+    summary: "This is an example learning entry"
+    insight: |
+      Replace this with real learnings extracted from sessions.
+      Each learning should explain WHY something happens and HOW to fix it.
+    example: |
+      # Example code showing the solution
+      pass
+    confidence: 0.5
+    times_used: 0

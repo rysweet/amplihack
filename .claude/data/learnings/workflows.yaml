@@ -1,0 +1,23 @@
+# Cross-Session Learning: Workflow Insights
+# This file stores workflow insights and process improvements.
+
+category: workflows
+description: Workflow patterns, shortcuts, and process improvements
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Example learning entry
+  - id: "wf-example-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "example"
+      - "template"
+    summary: "This is an example workflow learning"
+    insight: |
+      Workflow learnings capture process improvements and shortcuts.
+      For example: "Always run pre-commit before pushing to catch issues early."
+    example: |
+      # Run pre-commit on all files
+      pre-commit run --all-files
+    confidence: 0.5
+    times_used: 0

@@ -1,0 +1,25 @@
+# Cross-Session Learning: Debugging Strategies
+# This file stores debugging strategies, root cause patterns, and diagnostic techniques.
+
+category: debugging
+description: Debugging strategies, root cause analysis, and diagnostic techniques
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Example learning entry
+  - id: "dbg-example-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "example"
+      - "template"
+    summary: "This is an example debugging learning"
+    insight: |
+      Debugging learnings capture diagnostic strategies and root cause patterns.
+      For example: "When imports fail mysteriously, check for circular dependencies
+      using python -c 'import module'."
+    example: |
+      # Isolate import issues
+      python -c "import problematic_module"
+      # This shows the actual import error without other noise
+    confidence: 0.5
+    times_used: 0

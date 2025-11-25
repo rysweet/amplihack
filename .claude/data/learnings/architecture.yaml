@@ -1,0 +1,25 @@
+# Cross-Session Learning: Architecture Decisions
+# This file stores architecture decisions, trade-offs, and design insights.
+
+category: architecture
+description: Architecture decisions, design trade-offs, and structural insights
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Example learning entry
+  - id: "arch-example-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "example"
+      - "template"
+    summary: "This is an example architecture learning"
+    insight: |
+      Architecture learnings capture design decisions and their rationale.
+      For example: "Use composition over inheritance for flexible agent design."
+    example: |
+      # Composition example
+      class Agent:
+          def __init__(self, tools: list[Tool]):
+              self.tools = tools  # Compose with tools
+    confidence: 0.5
+    times_used: 0

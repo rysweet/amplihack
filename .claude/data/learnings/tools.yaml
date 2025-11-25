@@ -1,0 +1,24 @@
+# Cross-Session Learning: Tool Usage Patterns
+# This file stores tool usage patterns, gotchas, and best practices.
+
+category: tools
+description: Tool usage patterns, gotchas, and effective techniques
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Example learning entry
+  - id: "tool-example-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "example"
+      - "template"
+    summary: "This is an example tool usage learning"
+    insight: |
+      Tool learnings capture effective ways to use development tools.
+      For example: "Use 'git worktree' for parallel development instead of
+      switching branches."
+    example: |
+      # Create a worktree for a feature branch
+      git worktree add /tmp/feature-work -b feature/new-thing
+    confidence: 0.5
+    times_used: 0
