@@ -1,0 +1,59 @@
+# Default Configuration for amplihack
+#
+# This file contains the default configuration values.
+# Override values using environment variables with AMPLIHACK_ prefix.
+#
+# Example: AMPLIHACK_DATABASE__HOST=prod.db.com
+#
+# See docs/howto/configuration-setup.md for complete documentation.
+
+# Debug mode
+debug: false
+
+# Database configuration
+database:
+  host: localhost
+  port: 5432
+  name: amplihack_dev
+  user: developer
+  pool_size: 10
+  timeout: 30
+  # Password should be set via environment: AMPLIHACK_DATABASE__PASSWORD
+
+# Server configuration
+server:
+  host: 0.0.0.0
+  port: 8000
+  workers: 4
+  reload: false
+  timeout: 60
+
+# Cache configuration
+cache:
+  enabled: true
+  ttl: 3600
+  max_size: 1000
+  redis:
+    host: localhost
+    port: 6379
+    db: 0
+
+# Logging configuration
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  handlers:
+    - console
+
+# API configuration
+api:
+  endpoint: https://api.example.com
+  timeout: 30
+  retry_count: 3
+  # API key should be set via environment: AMPLIHACK_API__KEY
+
+# Feature flags
+features:
+  new_ui: false
+  beta_api: false
+  experimental_cache: false
