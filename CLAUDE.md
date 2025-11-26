@@ -16,6 +16,53 @@ When starting a session, import these files for context:
 [@.claude/context/USER_PREFERENCES.md](.claude/context/USER_PREFERENCES.md)
 [@.claude/context/USER_REQUIREMENT_PRIORITY.md](.claude/context/USER_REQUIREMENT_PRIORITY.md)
 
+## MANDATORY: Workflow Selection (ALWAYS FIRST)
+
+**CRITICAL**: You MUST classify every user request into one of three workflows
+BEFORE taking action. No exceptions.
+
+### Quick Classification (3 seconds max)
+
+| Task Type         | Workflow               | When to Use                                            |
+| ----------------- | ---------------------- | ------------------------------------------------------ |
+| **Q&A**           | Q&A_WORKFLOW           | Simple questions, single-turn answers, no code changes |
+| **Investigation** | INVESTIGATION_WORKFLOW | Understanding code, exploring systems, research        |
+| **Development**   | DEFAULT_WORKFLOW       | Code changes, features, bugs, refactoring              |
+
+### Classification Keywords
+
+- **Q&A**: "what is", "explain briefly", "quick question", "how do I run"
+- **Investigation**: "investigate", "understand", "analyze", "research",
+  "explore", "how does X work"
+- **Development**: "implement", "add", "fix", "create", "refactor", "update",
+  "build"
+
+### Required Announcement
+
+State your classification before proceeding:
+
+```
+WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
+Reason: [Brief justification]
+Following: .claude/workflow/[WORKFLOW_NAME].md
+```
+
+### Rules
+
+1. **If keywords match multiple workflows**: Choose DEFAULT_WORKFLOW
+2. **If uncertain**: Choose DEFAULT_WORKFLOW (never skip workflow)
+3. **Q&A is for simple questions ONLY**: If answer needs exploration, use
+   INVESTIGATION
+4. **For DEFAULT_WORKFLOW**: Create TodoWrite entries for ALL 22 steps before
+   implementation
+
+### Anti-Patterns (DO NOT)
+
+- Answering without classifying first
+- Starting implementation without reading DEFAULT_WORKFLOW.md
+- Skipping Step 0 of DEFAULT_WORKFLOW
+- Treating workflow as optional
+
 ## Working Philosophy
 
 ### Critical Operating Principles
@@ -24,15 +71,12 @@ When starting a session, import these files for context:
   break it down into smaller tasks and use TodoWrite tool to manage a todo list.
   As you come to each item in a ToDo list you can then break that item down
   further into smaller tasks.
-- **The workflow is MANDATORY: ALWAYS the starting point**: The defaultworkflow
-  in
-  [`@.claude/workflow/DEFAULT_WORKFLOW.md`](.claude/workflow/DEFAULT_WORKFLOW.md)
-  defines the order of operations, git workflow, and CI/CD process (users can
-  customize this file) - you should call this using skill tool -
-  Skill(default-workflow)
-- **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
-  Skill(ultrathink-orchestrator) which reads the workflow and orchestrates
-  agents to execute it - this is defined in the ultrathink skill.
+- **ALWAYS classify into a workflow FIRST**: See "MANDATORY: Workflow Selection"
+  section above. Every task gets classified into Q&A_WORKFLOW,
+  INVESTIGATION_WORKFLOW, or DEFAULT_WORKFLOW BEFORE any action. Read the
+  appropriate workflow file and follow all steps.
+- **No workflow = No action**: If you haven't announced your workflow
+  classification, you haven't started the task. Period.
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Operate Autonomously and Independently by default**: You must try to
@@ -81,7 +125,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
   (`/help`, `/clear`) cannot be invoked programmatically.
 
   ```python
-  SlashCommand(command="/ultrathink Analyze architecture")
+  SlashCommand(command="/amplihack:analyze Analyze architecture")
   ```
 
 - **Skill Tool**: Invoke skills explicitly when auto-discovery isn't sufficient
@@ -104,7 +148,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 
 **Composition Examples:**
 
-- Command invoking workflow: `/ultrathink` reads `DEFAULT_WORKFLOW.md`
+- Workflow classification: Reading `DEFAULT_WORKFLOW.md` based on task type
 - Command invoking command: `/improve` can invoke `/amplihack:reflect`
 - Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
 - Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
@@ -243,35 +287,6 @@ agent to handle that task as an experiment. Use agents to manage context for
 granularity of tasks (eg when going off to do something specific where context
 from the whole conversation is not necessary, such as managing a git worktree or
 cleaning some data).
-
-### Workflow and UltraThink Integration
-
-**The workflow defines WHAT to do, UltraThink orchestrates HOW to do it:**
-
-```
-Example - Any Non-Trivial Task:
-
-User: "Add authentication to the API"
-
-1. Invoke /ultrathink with the task
-   → UltraThink reads [DEFAULT_WORKFLOW.md](.claude/workflow/DEFAULT_WORKFLOW.md)
-   → Follows all workflow steps in order
-   → Orchestrates multiple agents at each step
-
-2. Workflow provides the authoritative process:
-   → Step order must be followed
-   → Git operations (branch, commit, push)
-   → CI/CD integration points
-   → Review and merge requirements
-
-3. Agents execute the actual work:
-   → prompt-writer clarifies requirements
-   → architect designs the solution
-   → builder implements the code
-   → reviewer ensures quality
-```
-
-The workflow file is the single source of truth - edit it to change the process.
 
 ### Microsoft Amplifier Parallel Execution Engine
 
@@ -462,7 +477,7 @@ Execute comprehensive system review with all relevant agents in parallel.
 .claude/
 ├── context/          # Philosophy, patterns, project info
 ├── agents/           # Specialized AI agents
-├── commands/         # Slash commands (/ultrathink, /analyze, /improve)
+├── commands/         # Slash commands (/analyze, /improve, /fix)
 ├── scenarios/        # Production-ready user-facing tools
 │   ├── README.md     # Scenarios pattern documentation
 │   ├── tool-name/    # Each tool gets its own directory
@@ -484,16 +499,6 @@ Makefile             # Easy access to scenario tools
 
 ## Key Commands
 
-### /ultrathink <task>
-
-Default execution mode for non-trivial tasks. UltraThink:
-
-- Reads the workflow from
-  [`.claude/workflow/DEFAULT_WORKFLOW.md`](.claude/workflow/DEFAULT_WORKFLOW.md)
-- Follows all steps in the exact order defined
-- Orchestrates multiple agents at each step for maximum effectiveness
-- Adapts automatically when you customize the workflow file
-
 ### /analyze <path>
 
 Comprehensive code review for philosophy compliance
@@ -510,7 +515,7 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 - **Template-based**: Uses pre-built templates for 80% of common fixes
 - **Mode selection**: QUICK (< 5 min), DIAGNOSTIC (root cause), COMPREHENSIVE
   (full workflow)
-- **Integration**: Seamlessly works with UltraThink and existing agents
+- **Integration**: Seamlessly works with workflows and existing agents
 
 **Usage Examples:**
 
@@ -576,9 +581,9 @@ pragmatic → minimal ensures reliable completion.
 /amplihack:cascade "Generate API documentation from codebase"
 ```
 
-**Integration with UltraThink:** These patterns can be combined with
-`/ultrathink` by customizing the workflow file to include consensus or fallback
-stages at specific steps.
+**Integration with Workflows:** These patterns can be combined with
+DEFAULT_WORKFLOW by customizing the workflow file to include consensus or
+fallback stages at specific steps.
 
 ### Document-Driven Development (DDD)
 
