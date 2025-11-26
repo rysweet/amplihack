@@ -95,20 +95,23 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
-    # Handle backwards compatibility: Check for deprecated --use-graph-mem flag
-    use_graph_mem = getattr(args, "use_graph_mem", False)
+    # Handle graph backend selection (new unified approach)
+    graph_backend = getattr(args, "graph_backend", "auto")
     enable_neo4j = getattr(args, "enable_neo4j_memory", False)
+    use_graph_mem = getattr(args, "use_graph_mem", False)  # Deprecated
 
-    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks and launcher)
-    if use_graph_mem or enable_neo4j:
+    # Set environment variable for graph backend selection
+    if graph_backend != "auto":
+        os.environ["AMPLIHACK_GRAPH_BACKEND"] = graph_backend
+        print(f"Graph backend set to: {graph_backend}")
+    elif enable_neo4j or use_graph_mem:
+        os.environ["AMPLIHACK_GRAPH_BACKEND"] = "neo4j"
         os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
         if use_graph_mem:
             print(
-                "WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead."
+                "WARNING: --use-graph-mem is deprecated. Please use --graph-backend neo4j instead."
             )
-            print("Neo4j graph memory enabled via --use-graph-mem flag (deprecated)")
-        else:
-            print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
+        print("Graph backend set to: neo4j")
 
         # Set container name if provided
         if getattr(args, "use_memory_db", None):
@@ -244,7 +247,9 @@ def handle_auto_mode(
     # Extract timeout from args
     query_timeout = getattr(args, "query_timeout_minutes", 5.0)
 
-    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout)
+    auto = AutoMode(
+        sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout
+    )
     return auto.run()
 
 
@@ -427,6 +432,30 @@ def add_neo4j_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_graph_backend_args(parser: argparse.ArgumentParser) -> None:
+    """Add graph backend selection arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--graph-backend",
+        choices=["kuzu", "neo4j", "auto"],
+        default="auto",
+        metavar="BACKEND",
+        help=(
+            "Select graph database backend for memory system. "
+            "Options: kuzu (embedded, zero-config), neo4j (Docker), auto (default). "
+            "Kùzu is auto-installed if needed."
+        ),
+    )
+    parser.add_argument(
+        "--enable-neo4j-memory",
+        action="store_true",
+        help="Enable Neo4j graph memory (alias for --graph-backend neo4j).",
+    )
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser for amplihack CLI.
 
@@ -469,12 +498,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_claude_specific_args(launch_parser)
     add_auto_mode_args(launch_parser)
     add_neo4j_args(launch_parser)
+    add_graph_backend_args(launch_parser)
     add_common_sdk_args(launch_parser)
     launch_parser.add_argument(
         "--profile",
         type=str,
         default=None,
-        help="Profile URI to use for this launch (overrides configured profile)"
+        help="Profile URI to use for this launch (overrides configured profile)",
     )
 
     # Claude command (alias for launch)
@@ -482,12 +512,13 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_claude_specific_args(claude_parser)
     add_auto_mode_args(claude_parser)
     add_neo4j_args(claude_parser)
+    add_graph_backend_args(claude_parser)
     add_common_sdk_args(claude_parser)
     claude_parser.add_argument(
         "--profile",
         type=str,
         default=None,
-        help="Profile URI to use for this launch (overrides configured profile)"
+        help="Profile URI to use for this launch (overrides configured profile)",
     )
 
     # Copilot command
@@ -547,7 +578,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--profile",
         type=str,
         default=None,
-        help="Profile URI to use for this install (overrides configured profile)"
+        help="Profile URI to use for this install (overrides configured profile)",
     )
 
     return parser
@@ -610,7 +641,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Find the amplihack package location
         import amplihack
 
-        from . import copytree_manifest, ESSENTIAL_DIRS
+        from . import ESSENTIAL_DIRS, copytree_manifest
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
@@ -625,8 +656,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if os.path.exists(claude_tools_path):
                     sys.path.insert(0, claude_tools_path)
                     from profile_management.staging import create_staging_manifest
+
                     manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
-                    if manifest.profile_name != "all" and not manifest.profile_name.endswith("(fallback)"):
+                    if manifest.profile_name != "all" and not manifest.profile_name.endswith(
+                        "(fallback)"
+                    ):
                         print(f"📦 Using profile: {manifest.profile_name}")
             except Exception as e:
                 # Fall back to full staging on errors
@@ -634,12 +668,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-        copied = copytree_manifest(
-            amplihack_src,
-            temp_claude_dir,
-            ".claude",
-            manifest=manifest
-        )
+        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude", manifest=manifest)
 
         # Smart PROJECT.md initialization for UVX mode
         if copied:
@@ -672,12 +701,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 def replace_paths(obj):
                     if isinstance(obj, dict):
                         for key, value in obj.items():
-                            if key == "command" and isinstance(value, str) and value.startswith(
-                                ".claude/"
+                            if (
+                                key == "command"
+                                and isinstance(value, str)
+                                and value.startswith(".claude/")
                             ):
-                                obj[key] = value.replace(
-                                    ".claude/", "$CLAUDE_PROJECT_DIR/.claude/"
-                                )
+                                obj[key] = value.replace(".claude/", "$CLAUDE_PROJECT_DIR/.claude/")
                             else:
                                 replace_paths(value)
                     elif isinstance(obj, list):
@@ -761,21 +790,20 @@ def main(argv: Optional[List[str]] = None) -> int:
             # _local_install expects repo root, so pass package_dir (which contains .claude/)
             _local_install(str(package_dir))
             return 0
-        else:
-            # Fallback: Clone from GitHub (for old installations)
-            import subprocess
-            import tempfile
+        # Fallback: Clone from GitHub (for old installations)
+        import subprocess
+        import tempfile
 
-            print("⚠️  Package .claude/ not found, cloning from GitHub...")
-            with tempfile.TemporaryDirectory() as tmp:
-                repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
-                try:
-                    subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
-                    _local_install(tmp)
-                    return 0
-                except subprocess.CalledProcessError as e:
-                    print(f"Failed to install: {e}")
-                    return 1
+        print("⚠️  Package .claude/ not found, cloning from GitHub...")
+        with tempfile.TemporaryDirectory() as tmp:
+            repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
+            try:
+                subprocess.check_call(["git", "clone", "--depth", "1", repo_url, tmp])
+                _local_install(tmp)
+                return 0
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to install: {e}")
+                return 1
 
     elif args.command == "uninstall":
         uninstall()
