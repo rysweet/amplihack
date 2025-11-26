@@ -2,6 +2,56 @@
 
 This file documents non-obvious problems, solutions, and patterns discovered during amplihack development. Review and update this regularly, removing outdated entries or those replaced by better practices, code, or tools. Update entries where best practices have evolved.
 
+## Workflow Enforcement via CLAUDE.md (2025-11-26)
+
+### Issue
+
+Claude consistently ignored workflow instructions even when explicitly invoked with `/ultrathink`. Despite the command being explicitly invoked, Claude would skip workflow steps or not follow the DEFAULT_WORKFLOW.md at all.
+
+### Root Cause
+
+**4 levels of indirection** caused context loss:
+
+```
+/ultrathink command
+  -> ultrathink-orchestrator skill
+    -> default-workflow skill
+      -> DEFAULT_WORKFLOW.md
+```
+
+Each layer of indirection loses context. By the time Claude reaches the actual workflow file, the instruction to follow it strictly has been diluted or lost.
+
+### Solution
+
+**PR #1686** eliminated the indirection by adding workflow classification directly to CLAUDE.md:
+
+1. Added "MANDATORY: Workflow Selection" section to CLAUDE.md (lines 19-64)
+2. Created Q&A_WORKFLOW.md for simple questions (enables "always use a workflow")
+3. Deprecated (but kept working) the old command/skill chain
+4. Removed all /ultrathink references from CLAUDE.md
+
+### Classification Table
+
+| Task Type     | Workflow               | When to Use                           |
+| ------------- | ---------------------- | ------------------------------------- |
+| Q&A           | Q&A_WORKFLOW           | Simple questions, single-turn answers |
+| Investigation | INVESTIGATION_WORKFLOW | Understanding code, research          |
+| Development   | DEFAULT_WORKFLOW       | Code changes, features, bugs          |
+
+### Key Learnings
+
+1. **Indirection kills enforcement**: Each layer between instruction and action reduces compliance
+2. **Put critical instructions in CLAUDE.md**: It's always loaded, always visible
+3. **Create exhaustive categories**: Q&A_WORKFLOW enables "always use a workflow" without exception
+4. **Deprecate gracefully**: Keep old commands working but direct to new pattern
+
+### Prevention
+
+- Put mandatory behavior directly in CLAUDE.md, not in commands/skills
+- Limit indirection to 1 level maximum for critical instructions
+- Create a workflow for every task category to enable "no exceptions" rules
+- Test workflow enforcement by starting fresh sessions
+
 ## Auto Mode SDK Integration Challenges (2025-10-25)
 
 ### Issue
