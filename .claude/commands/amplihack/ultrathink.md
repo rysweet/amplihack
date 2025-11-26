@@ -2,6 +2,14 @@
 name: ultrathink
 version: 1.0.0
 description: Deep analysis mode with multi-agent orchestration
+DEPRECATED: true
+deprecation_notice: |
+  This command is DEPRECATED as of 2025-11-26.
+  Workflow selection is now handled directly in CLAUDE.md via the
+  "MANDATORY: Workflow Selection" section. Use workflow classification
+  directly instead of invoking /ultrathink.
+  For backward compatibility, this command still works but routes to
+  workflow classification in CLAUDE.md.
 triggers:
   - "Complex multi-step task"
   - "Need deep analysis"
@@ -27,7 +35,7 @@ invokes:
 ## Purpose
 
 Deep analysis mode for complex tasks. Invokes workflow skills (default-workflow or investigation-workflow) based on task type, with automatic fallback to markdown workflows if skills are not yet available.
-You MUST use one of the workflow skills - either default-workflow or investigation-workflow or both or its possible the user could pass in additional workflow skills like cascade or debate. 
+You MUST use one of the workflow skills - either default-workflow or investigation-workflow or both or its possible the user could pass in additional workflow skills like cascade or debate.
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
@@ -48,26 +56,27 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
      - Development: @.claude/workflow/DEFAULT_WORKFLOW.md
 3. ALWAYS **Create a comprehensive todo list** using TodoWrite tool that includes all workflow steps/phases
 4. ALWAYS **Execute each step systematically**, marking todos as in_progress and completed
-   
-THERE IS NO VALUE in SKIPPING STEPS - DO NOT TAKE SHORTCUTS. 
+
+THERE IS NO VALUE in SKIPPING STEPS - DO NOT TAKE SHORTCUTS.
 
 - **For Each Workflow Step**:
-   - Mark step as in_progress in TodoWrite
-   - Break down the step into smaller tasks if needed
-   - Read the step requirements from workflow
-   - Invoke specified agents via Task tool
-   - Log decisions made
-   - Mark step as completed
-   - No steps are optional - all steps must be followed in sequence. 
+  - Mark step as in_progress in TodoWrite
+  - Break down the step into smaller tasks if needed
+  - Read the step requirements from workflow
+  - Invoke specified agents via Task tool
+  - Log decisions made
+  - Mark step as completed
+  - No steps are optional - all steps must be followed in sequence.
 - **Agent Invocation Pattern**:
 
-   ```
-   For step requiring "**Use** architect agent":
-   → Invoke Task(subagent_type="architect", prompt="[step requirements + task context]")
+  ```
+  For step requiring "**Use** architect agent":
+  → Invoke Task(subagent_type="architect", prompt="[step requirements + task context]")
 
-   For step requiring multiple agents:
-   → Invoke multiple Task calls in parallel
-   ```
+  For step requiring multiple agents:
+  → Invoke multiple Task calls in parallel
+  ```
+
 ### Agent Orchestration
 
 #### When to Use Sequential
@@ -84,16 +93,16 @@ THERE IS NO VALUE in SKIPPING STEPS - DO NOT TAKE SHORTCUTS.
 
 - **Decision Logging**:
 
-   After each major decision, append to DECISIONS.md:
-   - What was decided
-   - Why this approach
-   - Alternatives considered
+  After each major decision, append to DECISIONS.md:
+  - What was decided
+  - Why this approach
+  - Alternatives considered
 
 - **Mandatory Cleanup**:
-   Always end with Task(subagent_type="cleanup")
-  
+  Always end with Task(subagent_type="cleanup")
+
 5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
-6. **MANDATORY: Enforce all steps. 
+6. \*\*MANDATORY: Enforce all steps.
 7. **Track decisions** by creating and writing important decisions to `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
 8. **End with cleanup agent** (development) or knowledge capture (investigation)
 
@@ -178,7 +187,7 @@ In these cases, pause development workflow at Step 4, run full INVESTIGATION_WOR
 
 # ALWAYS PICK A WORKFLOW OR FOLLOW THE ONE THE USER TOLD YOU TO USE
 
-YOU MAY NOT SKIP STEPS in the workflow. 
+YOU MAY NOT SKIP STEPS in the workflow.
 UltraThink enhances the workflow with deep multi-agent analysis while respecting user customizations.
 
 Remember: Ultra-thinking means thorough analysis before action, followed by ruthless cleanup.
