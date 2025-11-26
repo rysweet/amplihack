@@ -50,6 +50,39 @@ What insights should be remembered?
 
 ---
 
+## Auto Mode Timeout Causing Opus Model Workflow Failures (2025-11-26)
+
+### Problem
+
+Opus model was "skipping" workflow steps during auto mode execution. Investigation revealed the 5-minute per-turn timeout was cutting off Opus execution mid-workflow due to extended thinking requirements.
+
+### Root Cause
+
+The default per-turn timeout of 5 minutes was too aggressive for Opus model, which requires extended thinking time. Log analysis showed:
+
+- `Turn 2 timed out after 300.0s`
+- `Turn 1 timed out after 600.1s`
+
+### Solution (PR #1676)
+
+Implemented flexible timeout resolution system:
+
+1. **Increased default timeout**: 5 min → 30 min
+2. **Added `--no-timeout` flag**: Disables timeout entirely using `nullcontext()`
+3. **Opus auto-detection**: Model names containing "opus" automatically get 60 min timeout
+4. **Clear priority system**: `--no-timeout` > explicit > auto-detect > default
+
+### Key Insight
+
+**Extended thinking models like Opus need significantly longer timeouts.** Auto-detection based on model name provides a good default without requiring users to remember to adjust settings.
+
+### Files Changed
+
+- `src/amplihack/cli.py`: Added `--no-timeout` flag and `resolve_timeout()` function
+- `src/amplihack/launcher/auto_mode.py`: Accept `None` timeout using `nullcontext`
+- `tests/unit/test_auto_mode_timeout.py`: 19 comprehensive tests
+- `docs/AUTO_MODE.md`: Added timeout configuration documentation
+
 ## Power-Steering Session Type Detection Fix (2025-11-25)
 
 ### Problem
