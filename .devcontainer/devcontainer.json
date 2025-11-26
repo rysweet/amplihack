@@ -11,7 +11,7 @@
   },
   // Features to add to the dev container. More info: https://containers.dev/features.
   // Version alignment: Match CI configuration (ci.yml) for consistency
-  // CI uses: Python 3.11, Node.js 20
+  // CI uses: Python 3.12, Node.js 20
   "features": {
     "ghcr.io/jungaretti/features/make:1": {},
     "ghcr.io/jungaretti/features/vim:1": {},
