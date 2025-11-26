@@ -33,17 +33,12 @@ __all__ = ["TodoInterceptor", "InterceptResult"]
 
 
 # Regex pattern for matching "Step N:" format
-# Tolerant parsing: case-insensitive, allows extra whitespace
-# Matches: "Step 5:", "STEP 5:", "step  5:", "Step 0 -", etc.
-STEP_PATTERN = re.compile(r"(?:step|STEP|Step)\s*(\d+)\s*[:\-\.]", re.IGNORECASE)
+# Single tolerant pattern: case-insensitive, allows whitespace variations
+# Matches: "Step 5:", "STEP 5:", "step 5-", "Step 0.", etc.
+STEP_PATTERN = re.compile(r"step\s+(\d+)\s*[:\-\.]", re.IGNORECASE)
 
-# Alternative patterns for even more tolerance
-STEP_PATTERNS = [
-    re.compile(r"(?:step|STEP|Step)\s*(\d+)\s*[:\-\.]", re.IGNORECASE),
-    re.compile(r"^\s*(\d+)\.\s*(?:step|STEP|Step)", re.IGNORECASE | re.MULTILINE),
-    re.compile(r"\[\s*(\d+)\s*\]", re.IGNORECASE),  # [5]
-    re.compile(r"#\s*(\d+)\s*", re.IGNORECASE),  # #5
-]
+# Maximum valid step number (prevents garbage matches)
+MAX_STEP_NUMBER = 100
 
 # Expected number of workflow todos for Step 0 compliance
 EXPECTED_WORKFLOW_TODOS = 22
@@ -237,16 +232,15 @@ class TodoInterceptor:
             if not content:
                 continue
 
-            # Try each pattern
-            for pattern in STEP_PATTERNS:
-                matches = pattern.findall(content)
-                for match in matches:
-                    try:
-                        step_num = int(match)
-                        if 0 <= step_num < 100:  # Reasonable range check
-                            step_numbers.add(step_num)
-                    except (ValueError, TypeError):
-                        continue
+            # Extract step numbers using single tolerant pattern
+            matches = STEP_PATTERN.findall(content)
+            for match in matches:
+                try:
+                    step_num = int(match)
+                    if 0 <= step_num < MAX_STEP_NUMBER:
+                        step_numbers.add(step_num)
+                except (ValueError, TypeError):
+                    continue
 
         return step_numbers
 
@@ -276,16 +270,15 @@ class TodoInterceptor:
         if not content:
             return None
 
-        # Extract step number from content
-        for pattern in STEP_PATTERNS:
-            matches = pattern.findall(content)
-            if matches:
-                try:
-                    step_num = int(matches[0])
-                    if 0 <= step_num < state.total_steps:
-                        return step_num
-                except (ValueError, TypeError):
-                    continue
+        # Extract step number from content using single pattern
+        matches = STEP_PATTERN.findall(content)
+        if matches:
+            try:
+                step_num = int(matches[0])
+                if 0 <= step_num < state.total_steps:
+                    return step_num
+            except (ValueError, TypeError):
+                pass
 
         return None
 

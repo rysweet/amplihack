@@ -32,6 +32,9 @@ except ImportError:
 __all__ = ["WorkflowGate", "GateResult"]
 
 
+# Configuration constants
+MAX_DISPLAYED_STEPS = 5  # Maximum steps to show in continuation prompts
+
 # Step names for readable continuation prompts
 STEP_NAMES = {
     0: "Workflow Preparation (create 22 todos)",
@@ -192,11 +195,11 @@ class WorkflowGate:
         ]
         if other_missing:
             lines.append("Other Incomplete Steps:")
-            for step in sorted(other_missing)[:5]:  # Limit to 5
+            for step in sorted(other_missing)[:MAX_DISPLAYED_STEPS]:
                 step_name = STEP_NAMES.get(step, f"Step {step}")
                 lines.append(f"  - Step {step}: {step_name}")
-            if len(other_missing) > 5:
-                lines.append(f"  ... and {len(other_missing) - 5} more")
+            if len(other_missing) > MAX_DISPLAYED_STEPS:
+                lines.append(f"  ... and {len(other_missing) - MAX_DISPLAYED_STEPS} more")
             lines.append("")
 
         # Suggest next actions
