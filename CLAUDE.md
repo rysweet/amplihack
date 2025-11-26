@@ -16,10 +16,33 @@ When starting a session, import these files for context:
 [@.claude/context/USER_PREFERENCES.md](.claude/context/USER_PREFERENCES.md)
 [@.claude/context/USER_REQUIREMENT_PRIORITY.md](.claude/context/USER_REQUIREMENT_PRIORITY.md)
 
-## MANDATORY: Workflow Selection (ALWAYS FIRST)
+```
+╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║  🚨 MANDATORY WORKFLOW CLASSIFICATION - DO NOT SKIP 🚨            ║
+║                                                                    ║
+║  YOU MUST CLASSIFY EVERY REQUEST BEFORE TAKING ACTION             ║
+║  NO EXCEPTIONS • NO JUDGMENT CALLS • NO SKIPPING                  ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
+```
+
+## ⚠️ MANDATORY STEP 1: WORKFLOW CLASSIFICATION ⚠️
 
 **CRITICAL**: You MUST classify every user request into one of three workflows
 BEFORE taking action. No exceptions.
+
+### 🎯 BEFORE YOU DO ANYTHING ELSE, YOU MUST COMPLETE THESE 5 STEPS:
+
+```
+✅ STEP 1: READ the entire user request carefully
+✅ STEP 2: CLASSIFY it into one of three workflows (table below)
+✅ STEP 3: ANNOUNCE your classification explicitly
+✅ STEP 4: READ the full workflow file from .claude/workflow/
+✅ STEP 5: CREATE TodoWrite entries for ALL workflow steps
+
+🚫 NO EXCEPTIONS  🚫 NO JUDGMENT CALLS  🚫 NO SKIPPING
+```
 
 ### Quick Classification (3 seconds max)
 
@@ -37,7 +60,7 @@ BEFORE taking action. No exceptions.
 - **Development**: "implement", "add", "fix", "create", "refactor", "update",
   "build"
 
-### Required Announcement
+### 📢 Required Announcement (MANDATORY)
 
 State your classification before proceeding:
 
@@ -56,27 +79,45 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
 4. **For DEFAULT_WORKFLOW**: Create TodoWrite entries for ALL 22 steps before
    implementation
 
-### Anti-Patterns (DO NOT)
+### ⛔ Anti-Patterns (DO NOT DO THESE) ⛔
 
-- Answering without classifying first
-- Starting implementation without reading DEFAULT_WORKFLOW.md
-- Skipping Step 0 of DEFAULT_WORKFLOW
-- Treating workflow as optional
+❌ Answering without classifying first
+❌ Starting implementation without reading DEFAULT_WORKFLOW.md
+❌ Skipping Step 0 of DEFAULT_WORKFLOW
+❌ Treating workflow as optional
+❌ Deciding "this task is too simple for the workflow"
+❌ Using your judgment to skip workflow steps
 
 ## Working Philosophy
 
 ### Critical Operating Principles
 
+```
+╔════════════════════════════════════════════════════════════════════╗
+║  🚨 REMINDER: WORKFLOW CLASSIFICATION IS MANDATORY 🚨             ║
+║  Every task MUST be classified BEFORE any work begins             ║
+║  If you have not announced your workflow, STOP and classify now   ║
+╚════════════════════════════════════════════════════════════════════╝
+```
+
 - **Always think through a plan**: For any non-trivial task, think carefully,
   break it down into smaller tasks and use TodoWrite tool to manage a todo list.
   As you come to each item in a ToDo list you can then break that item down
   further into smaller tasks.
-- **ALWAYS classify into a workflow FIRST**: See "MANDATORY: Workflow Selection"
-  section above. Every task gets classified into Q&A_WORKFLOW,
-  INVESTIGATION_WORKFLOW, or DEFAULT_WORKFLOW BEFORE any action. Read the
-  appropriate workflow file and follow all steps.
-- **No workflow = No action**: If you haven't announced your workflow
-  classification, you haven't started the task. Period.
+
+- **🚨 ALWAYS CLASSIFY INTO A WORKFLOW FIRST 🚨**: See "MANDATORY STEP 1:
+  Workflow Classification" section above. Every task gets classified into
+  Q&A_WORKFLOW, INVESTIGATION_WORKFLOW, or DEFAULT_WORKFLOW BEFORE any action.
+  Read the appropriate workflow file and follow ALL steps.
+
+  ```
+  ✅ CORRECT: Classify → Read workflow → Create todos → Execute
+  ❌ WRONG: Start working immediately without classification
+  ```
+
+- **🛑 NO WORKFLOW = NO ACTION 🛑**: If you haven't announced your workflow
+  classification, you haven't started the task. Period. STOP and go back to
+  classify before proceeding.
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Operate Autonomously and Independently by default**: You must try to
@@ -888,6 +929,31 @@ Use `/amplihack:customize` to manage preferences:
 This command uses Claude Code's native Read, Edit, and Write tools to modify
 `.claude/context/USER_PREFERENCES.md` directly - no bash scripts, no complex
 automation, just simple file operations.
+
+---
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║                                                                      ║
+║  🚨 FINAL ENFORCEMENT NOTICE - WORKFLOW COMPLIANCE 🚨               ║
+║                                                                      ║
+║  This is your THIRD reminder that workflow classification is        ║
+║  MANDATORY for every task:                                          ║
+║                                                                      ║
+║  1️⃣  CLASSIFY the task (Q&A, INVESTIGATION, or DEFAULT)           ║
+║  2️⃣  ANNOUNCE your classification explicitly                       ║
+║  3️⃣  READ the complete workflow file                               ║
+║  4️⃣  CREATE todos for ALL workflow steps                           ║
+║  5️⃣  EXECUTE every step without skipping                           ║
+║                                                                      ║
+║  ⛔ THERE ARE NO EXCEPTIONS TO THIS REQUIREMENT ⛔                 ║
+║                                                                      ║
+║  "This task is too simple" is NOT a valid reason to skip steps     ║
+║  Your judgment does NOT override the workflow                        ║
+║  ALL tasks follow the workflow - NO exceptions                      ║
+║                                                                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+```
 
 ---
 
