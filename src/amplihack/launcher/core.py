@@ -361,11 +361,33 @@ class ClaudeLauncher:
             return False
         return "--model" in self.claude_args
 
+    def _get_default_model(self) -> str:
+        """Get the default model from environment or fallback.
+
+        Returns:
+            Model name from AMPLIHACK_DEFAULT_MODEL env var, or "sonnet[1m]" as fallback.
+        """
+        return os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
+
     def build_claude_command(self) -> list[str]:
         """Build the Claude command with arguments.
 
         Note: Prerequisites have already been validated before this is called,
         so Claude CLI is guaranteed to be available.
+
+        Known Limitation - Azure Proxy + User --model Flag:
+            When proxy_manager is configured (Azure mode), the launcher adds
+            --model azure/... to the command. If user ALSO passes --model via
+            claude_args, both flags will be present in the final command.
+            Claude CLI will use the LAST --model flag, which could override
+            the intended Azure model with the user's model flag.
+
+            This is a known issue that requires further investigation to determine
+            the correct behavior. Should user flags override Azure config, or should
+            Azure config take precedence when explicitly configured?
+
+            Test coverage: tests/launcher/test_default_model.py lines 193-214
+            documents this behavior and tests that Azure model is present.
 
         Returns:
             List of command arguments for subprocess.
@@ -417,8 +439,7 @@ class ClaudeLauncher:
                 claude_args.extend(["--model", f"azure/{azure_model}"])
             # Add default model if not using proxy and user hasn't specified one
             elif not self._has_model_arg():
-                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
-                claude_args.extend(["--model", default_model])
+                claude_args.extend(["--model", self._get_default_model()])
 
             # Add forwarded Claude arguments
             if self.claude_args:
@@ -457,8 +478,7 @@ class ClaudeLauncher:
             cmd.extend(["--model", f"azure/{azure_model}"])
         # Add default model if not using proxy and user hasn't specified one
         elif not self._has_model_arg():
-            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
-            cmd.extend(["--model", default_model])
+            cmd.extend(["--model", self._get_default_model()])
 
         # Add forwarded Claude arguments
         if self.claude_args:
