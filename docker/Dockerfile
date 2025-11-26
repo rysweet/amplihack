@@ -1,15 +1,27 @@
-FROM python:3.11-slim
+# Version alignment: Match CI configuration (Python 3.12, Node 20)
+FROM python:3.12-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    nodejs \
-    npm \
+    curl \
     git \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Node.js 20.x (aligned with CI)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install UV package manager via official installer
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    mv /root/.local/bin/uv /usr/local/bin/uv
+
 # Install Claude Code CLI globally
 RUN npm install -g @anthropic-ai/claude-code
+
+# Upgrade pip to latest
+RUN pip install --no-cache-dir --upgrade pip
 
 # Install amplihack
 COPY . /tmp/amplihack
