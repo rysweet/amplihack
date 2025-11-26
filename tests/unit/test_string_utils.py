@@ -22,6 +22,7 @@ Test Coverage:
 
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
@@ -29,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 # slugify function to be implemented
 try:
-    from amplihack.utils.string_utils import slugify
+    from amplihack.utils.string_utils import slugify, slugify_v2
 except ImportError:
     # Define placeholder so tests can be written
     def slugify(text: str) -> str:
@@ -42,6 +43,19 @@ except ImportError:
             URL-safe slug string
         """
         raise NotImplementedError("slugify not yet implemented")
+
+    def slugify_v2(text: str, max_length: Optional[int] = None, separator: str = "-") -> str:
+        """Placeholder - to be implemented.
+
+        Args:
+            text: String to convert to slug
+            max_length: Maximum length of slug
+            separator: Separator character
+
+        Returns:
+            URL-safe slug string
+        """
+        raise NotImplementedError("slugify_v2 not yet implemented")
 
 
 class TestSlugify:
@@ -410,3 +424,381 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+
+class TestSlugifyV2:
+    """Test slugify_v2 function with enhanced features.
+
+    The slugify_v2 function extends slugify with:
+    1. max_length parameter for truncation at word boundaries
+    2. separator parameter for custom separators
+    3. Delegation to existing slugify for base functionality
+
+    Since slugify_v2 is not implemented, all tests will FAIL initially (TDD).
+    """
+
+    # Test Group 1: Delegation to Existing Slugify
+    def test_v2_delegates_to_slugify_basic(self):
+        """Test that slugify_v2 delegates basic functionality to slugify.
+
+        Expected behavior:
+        - slugify_v2("Hello World") should return "hello-world"
+        - Same as slugify("Hello World")
+        """
+        result = slugify_v2("Hello World")
+        assert result == "hello-world", "Should delegate basic conversion to slugify"
+
+    def test_v2_delegates_unicode_handling(self):
+        """Test that unicode handling is delegated to slugify.
+
+        Expected behavior:
+        - slugify_v2("Café") should return "cafe"
+        - Unicode normalization through original slugify
+        """
+        result = slugify_v2("Café")
+        assert result == "cafe", "Should delegate unicode normalization to slugify"
+
+    def test_v2_delegates_special_chars(self):
+        """Test that special character removal is delegated to slugify.
+
+        Expected behavior:
+        - slugify_v2("Hello@World!") should return "hello-world"
+        - Special character handling through original slugify
+        """
+        result = slugify_v2("Hello@World!")
+        assert result == "hello-world", "Should delegate special char removal to slugify"
+
+    def test_v2_delegates_empty_string(self):
+        """Test that empty string handling is delegated to slugify.
+
+        Expected behavior:
+        - slugify_v2("") should return ""
+        - Empty string handling through original slugify
+        """
+        result = slugify_v2("")
+        assert result == "", "Should delegate empty string handling to slugify"
+
+    # Test Group 2: Max Length Truncation at Word Boundaries
+    def test_max_length_simple_truncation(self):
+        """Test basic max_length truncation.
+
+        Expected behavior:
+        - "hello-world-test" with max_length=11 should become "hello-world"
+        - Truncates to 11 chars which includes "hello-world"
+        """
+        result = slugify_v2("hello world test", max_length=11)
+        assert result == "hello-world", "Should truncate to max_length"
+
+    def test_max_length_word_boundary_preservation(self):
+        """Test that truncation happens at word boundaries.
+
+        Expected behavior:
+        - "hello-world-test" with max_length=13 should become "hello-world"
+        - Not "hello-world-t" (doesn't cut words)
+        - Truncates at last complete word before max_length
+        """
+        result = slugify_v2("hello world test", max_length=13)
+        assert result == "hello-world", "Should truncate at word boundary, not mid-word"
+
+    def test_max_length_single_word_exceeds(self):
+        """Test when single word exceeds max_length.
+
+        Expected behavior:
+        - "superlongword" with max_length=5 should become "superlongword"
+        - Single words are not truncated (no separator to split on)
+        """
+        result = slugify_v2("superlongword", max_length=5)
+        assert result == "superlongword", "Single word should not be truncated"
+
+    def test_max_length_exact_match(self):
+        """Test when result exactly matches max_length.
+
+        Expected behavior:
+        - "hello-world" (11 chars) with max_length=11 should remain "hello-world"
+        - No truncation when exactly at limit
+        """
+        result = slugify_v2("hello world", max_length=11)
+        assert result == "hello-world", "Should not truncate when exactly at max_length"
+
+    def test_max_length_none_no_truncation(self):
+        """Test that None max_length means no truncation.
+
+        Expected behavior:
+        - Long string with max_length=None should not be truncated
+        - Default behavior when max_length not specified
+        """
+        long_text = "this is a very long string that should not be truncated"
+        result = slugify_v2(long_text, max_length=None)
+        expected = slugify(long_text)
+        assert result == expected, "Should not truncate when max_length is None"
+
+    def test_max_length_zero_returns_empty(self):
+        """Test edge case of max_length=0.
+
+        Expected behavior:
+        - Any string with max_length=0 should return ""
+        - Edge case handling
+        """
+        result = slugify_v2("hello world", max_length=0)
+        assert result == "", "max_length=0 should return empty string"
+
+    def test_max_length_with_unicode(self):
+        """Test max_length with unicode characters.
+
+        Expected behavior:
+        - "café-crème-brûlée" normalized then truncated
+        - Length calculated after normalization
+        """
+        result = slugify_v2("Café Crème Brûlée", max_length=10)
+        assert result == "cafe-creme", "Should handle unicode then truncate"
+
+    # Test Group 3: Custom Separator Functionality
+    def test_custom_separator_underscore(self):
+        """Test using underscore as separator.
+
+        Expected behavior:
+        - "hello world" with separator="_" should become "hello_world"
+        - All hyphens replaced with underscores
+        """
+        result = slugify_v2("hello world", separator="_")
+        assert result == "hello_world", "Should use underscore as separator"
+
+    def test_custom_separator_dot(self):
+        """Test using dot as separator.
+
+        Expected behavior:
+        - "hello world test" with separator="." should become "hello.world.test"
+        - All hyphens replaced with dots
+        """
+        result = slugify_v2("hello world test", separator=".")
+        assert result == "hello.world.test", "Should use dot as separator"
+
+    def test_custom_separator_empty_string(self):
+        """Test using empty string as separator.
+
+        Expected behavior:
+        - "hello world" with separator="" should become "helloworld"
+        - Hyphens removed entirely
+        """
+        result = slugify_v2("hello world", separator="")
+        assert result == "helloworld", "Should handle empty string separator"
+
+    def test_custom_separator_default_hyphen(self):
+        """Test that default separator is hyphen.
+
+        Expected behavior:
+        - "hello world" without separator arg should use "-"
+        - Default behavior preserved
+        """
+        result = slugify_v2("hello world")
+        assert result == "hello-world", "Should default to hyphen separator"
+
+    def test_custom_separator_multi_char(self):
+        """Test multi-character separator.
+
+        Expected behavior:
+        - "hello world" with separator="--" should become "hello--world"
+        - Multi-char separators should work
+        """
+        result = slugify_v2("hello world", separator="--")
+        assert result == "hello--world", "Should handle multi-character separator"
+
+    def test_custom_separator_special_char(self):
+        """Test special character as separator.
+
+        Expected behavior:
+        - "hello world" with separator="+" should become "hello+world"
+        - Special chars allowed as separator
+        """
+        result = slugify_v2("hello world", separator="+")
+        assert result == "hello+world", "Should allow special char as separator"
+
+    # Test Group 4: Combined Features (Max Length + Custom Separator)
+    def test_combined_max_length_and_separator(self):
+        """Test using both max_length and custom separator.
+
+        Expected behavior:
+        - "hello world test" with max_length=11, separator="_"
+        - Should become "hello_world" (truncated and custom separator)
+        """
+        result = slugify_v2("hello world test", max_length=11, separator="_")
+        assert result == "hello_world", "Should apply both max_length and custom separator"
+
+    def test_combined_truncation_at_custom_separator(self):
+        """Test that truncation respects custom separator boundaries.
+
+        Expected behavior:
+        - "hello world test extra" with max_length=17, separator="."
+        - Should become "hello.world.test" not "hello.world.test."
+        - Truncates at last complete word with custom separator
+        """
+        result = slugify_v2("hello world test extra", max_length=17, separator=".")
+        assert result == "hello.world.test", "Should truncate at custom separator boundary"
+
+    def test_combined_empty_separator_with_max_length(self):
+        """Test empty separator with max_length.
+
+        Expected behavior:
+        - "hello world test" with max_length=10, separator=""
+        - Should become "helloworld" (no truncation possible without separator)
+        """
+        result = slugify_v2("hello world test", max_length=10, separator="")
+        assert result == "helloworldtest", "Empty separator means no word boundary truncation"
+
+    def test_combined_unicode_all_features(self):
+        """Test all features with unicode input.
+
+        Expected behavior:
+        - "Café Crème Brûlée Extra" with max_length=15, separator="+"
+        - Should become "cafe+creme" after normalization and truncation
+        """
+        result = slugify_v2("Café Crème Brûlée Extra", max_length=10, separator="+")
+        assert result == "cafe+creme", "Should handle unicode with all features"
+
+    # Test Group 5: Edge Cases and Boundary Conditions
+    def test_edge_only_separators_input(self):
+        """Test input that becomes only separators after processing.
+
+        Expected behavior:
+        - "---" should become "" (empty after processing)
+        - No separators in final output
+        """
+        result = slugify_v2("---")
+        assert result == "", "Only separators should return empty string"
+
+    def test_edge_max_length_1_character(self):
+        """Test max_length=1 edge case.
+
+        Expected behavior:
+        - "hello" with max_length=1 should become "hello"
+        - Single word not truncated even if exceeds max
+        """
+        result = slugify_v2("hello", max_length=1)
+        assert result == "hello", "Single word should not truncate even with max_length=1"
+
+    def test_edge_max_length_negative(self):
+        """Test negative max_length edge case.
+
+        Expected behavior:
+        - Negative max_length should be treated as 0
+        - Returns empty string
+        """
+        result = slugify_v2("hello world", max_length=-5)
+        assert result == "", "Negative max_length should return empty string"
+
+    def test_edge_very_long_separator(self):
+        """Test very long separator string.
+
+        Expected behavior:
+        - Should handle long separators without issues
+        - "hello world" with separator="<-SEP->" becomes "hello<-SEP->world"
+        """
+        result = slugify_v2("hello world", separator="<-SEP->")
+        assert result == "hello<-SEP->world", "Should handle long separator strings"
+
+    def test_edge_separator_with_special_regex_chars(self):
+        """Test separator containing regex special characters.
+
+        Expected behavior:
+        - Separators with regex chars like "." or "$" should work
+        - No regex interpretation, literal replacement
+        """
+        result = slugify_v2("hello world", separator="$.")
+        assert result == "hello$.world", "Should handle regex special chars in separator literally"
+
+    def test_edge_max_length_with_multi_char_separator(self):
+        """Test max_length calculation with multi-char separator.
+
+        Expected behavior:
+        - Length calculation includes full separator length
+        - "hello world test" with separator="---", max_length=13
+        - "hello---world" is 13 chars, should keep it
+        """
+        result = slugify_v2("hello world test", max_length=13, separator="---")
+        assert result == "hello---world", "Should calculate length with multi-char separator"
+
+    def test_edge_consecutive_spaces_custom_separator(self):
+        """Test multiple spaces with custom separator.
+
+        Expected behavior:
+        - "hello   world" with separator="_" should become "hello_world"
+        - Multiple spaces still collapse to single separator
+        """
+        result = slugify_v2("hello   world", separator="_")
+        assert result == "hello_world", "Multiple spaces should become single custom separator"
+
+    def test_edge_already_truncated_input(self):
+        """Test input that's already shorter than max_length.
+
+        Expected behavior:
+        - "hi" with max_length=10 should remain "hi"
+        - No padding or changes when under limit
+        """
+        result = slugify_v2("hi", max_length=10)
+        assert result == "hi", "Should not modify when already under max_length"
+
+    def test_edge_max_length_between_separator_chars(self):
+        """Test max_length that falls between separator characters.
+
+        Expected behavior:
+        - "a b c d" with max_length=4 should become "a-b"
+        - "a-b-c-d" truncated to "a-b" (3 chars)
+        """
+        result = slugify_v2("a b c d", max_length=4)
+        assert result == "a-b", "Should truncate when max_length falls between words"
+
+    def test_edge_only_unicode_with_all_features(self):
+        """Test input with only unicode characters.
+
+        Expected behavior:
+        - "ñ ü ö" with max_length=3, separator="_"
+        - After normalization: "n_u_o" truncated to "n_u"
+        """
+        result = slugify_v2("ñ ü ö", max_length=3, separator="_")
+        assert result == "n_u", "Should handle unicode-only input with all features"
+
+    # Test idempotency with v2 features
+    def test_v2_idempotency_basic(self):
+        """Test that slugify_v2 is idempotent for basic case.
+
+        Expected behavior:
+        - Applying slugify_v2 twice gives same result
+        - slugify_v2(slugify_v2(x)) == slugify_v2(x)
+        """
+        original = "Hello World!"
+        first_pass = slugify_v2(original)
+        second_pass = slugify_v2(first_pass)
+        assert first_pass == second_pass, "slugify_v2 should be idempotent"
+
+    def test_v2_idempotency_with_features(self):
+        """Test idempotency with max_length and separator.
+
+        Expected behavior:
+        - Features should be consistently applied
+        - Second application shouldn't change result
+        """
+        original = "Hello World Test"
+        first_pass = slugify_v2(original, max_length=11, separator="_")
+        second_pass = slugify_v2(first_pass, max_length=11, separator="_")
+        assert first_pass == second_pass, "Should be idempotent with features"
+
+    # Compatibility tests
+    def test_v2_backwards_compatible_default(self):
+        """Test that default slugify_v2 matches slugify behavior.
+
+        Expected behavior:
+        - slugify_v2(x) should equal slugify(x) when no extra params
+        - Full backwards compatibility
+        """
+        test_strings = [
+            "Hello World",
+            "Café Crème",
+            "test@email.com",
+            "  spaces  ",
+            "123-numbers",
+            ""
+        ]
+        for text in test_strings:
+            v1_result = slugify(text)
+            v2_result = slugify_v2(text)
+            assert v1_result == v2_result, f"v2 should match v1 for '{text}'"
