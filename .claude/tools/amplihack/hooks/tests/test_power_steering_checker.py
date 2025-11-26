@@ -327,7 +327,7 @@ class TestPowerSteeringChecker(unittest.TestCase):
         self.assertFalse(result)  # No tests run
 
     def test_continuation_prompt_generation(self):
-        """Test _generate_continuation_prompt."""
+        """Test _generate_continuation_prompt with transcript containing incomplete todos."""
         checker = PowerSteeringChecker(self.project_root)
 
         analysis = ConsiderationAnalysis()
@@ -340,10 +340,40 @@ class TestPowerSteeringChecker(unittest.TestCase):
             )
         )
 
-        prompt = checker._generate_continuation_prompt(analysis)
+        # Create transcript with incomplete todos to trigger the incomplete work section
+        transcript = [
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "TodoWrite",
+                            "input": {
+                                "todos": [
+                                    {
+                                        "content": "Fix the bug",
+                                        "status": "pending",
+                                        "activeForm": "Fixing bug",
+                                    },
+                                    {
+                                        "content": "Add tests",
+                                        "status": "in_progress",
+                                        "activeForm": "Adding tests",
+                                    },
+                                ]
+                            },
+                        }
+                    ]
+                },
+            }
+        ]
+
+        prompt = checker._generate_continuation_prompt(analysis, transcript)
 
         self.assertIn("incomplete", prompt.lower())
         self.assertIn("TODO", prompt)
+        self.assertIn("Fix the bug", prompt)  # Should show specific incomplete item
 
     def test_summary_generation(self):
         """Test _generate_summary."""
