@@ -15,7 +15,7 @@ import logging
 import subprocess
 import sys
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -84,9 +84,9 @@ class BackendDetector:
     """
 
     def __init__(self):
-        self._kuzu_available: Optional[bool] = None
-        self._docker_available: Optional[bool] = None
-        self._neo4j_container_running: Optional[bool] = None
+        self._kuzu_available: bool | None = None
+        self._docker_available: bool | None = None
+        self._neo4j_container_running: bool | None = None
 
     @property
     def kuzu_available(self) -> bool:

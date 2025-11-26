@@ -2,7 +2,6 @@
 
 import os
 import subprocess
-from typing import List, Optional
 
 
 def check_copilot() -> bool:
@@ -29,7 +28,7 @@ def install_copilot() -> bool:
         return False
 
 
-def launch_copilot(args: Optional[List[str]] = None, interactive: bool = True) -> int:
+def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> int:
     """Launch Copilot CLI.
 
     Args:

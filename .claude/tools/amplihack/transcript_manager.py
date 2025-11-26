@@ -25,7 +25,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = [
     "TranscriptManager",
@@ -54,7 +54,7 @@ class TranscriptSummary:
     original_request_exists: bool
     file_path: Path
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary format."""
         return {
             "session_id": self.session_id,
@@ -90,7 +90,7 @@ class TranscriptManager:
     - Session ID management
     """
 
-    def __init__(self, logs_dir: Optional[Path] = None):
+    def __init__(self, logs_dir: Path | None = None):
         """Initialize transcript manager.
 
         Args:
@@ -98,7 +98,7 @@ class TranscriptManager:
         """
         self.logs_dir = self._resolve_path(logs_dir, DEFAULT_LOGS_DIR)
 
-    def _resolve_path(self, provided_path: Optional[Path], default_path: str) -> Path:
+    def _resolve_path(self, provided_path: Path | None, default_path: str) -> Path:
         """Resolve path relative to project root."""
         if provided_path:
             return provided_path if isinstance(provided_path, Path) else Path(provided_path)
@@ -113,7 +113,7 @@ class TranscriptManager:
     # Session Listing
     # ========================================================================
 
-    def list_sessions(self) -> List[str]:
+    def list_sessions(self) -> list[str]:
         """List available session transcripts.
 
         Returns:
@@ -186,7 +186,7 @@ class TranscriptManager:
     # Context Restoration
     # ========================================================================
 
-    def restore_context(self, session_id: str) -> Dict[str, Any]:
+    def restore_context(self, session_id: str) -> dict[str, Any]:
         """Restore and return context from a transcript.
 
         Args:
@@ -257,7 +257,7 @@ class TranscriptManager:
     # Checkpoint Management
     # ========================================================================
 
-    def save_checkpoint(self, session_id: Optional[str] = None) -> str:
+    def save_checkpoint(self, session_id: str | None = None) -> str:
         """Create a session checkpoint marker.
 
         Args:
@@ -385,7 +385,7 @@ class TranscriptManager:
     📊 {status_str}
 """
 
-    def format_context_display(self, context: Dict[str, Any]) -> str:
+    def format_context_display(self, context: dict[str, Any]) -> str:
         """Format restored context for display.
 
         Args:
@@ -463,7 +463,7 @@ class TranscriptManager:
 # ============================================================================
 
 
-def list_transcripts(**kwargs) -> List[str]:
+def list_transcripts(**kwargs) -> list[str]:
     """List available transcript sessions.
 
     Returns:
@@ -486,7 +486,7 @@ def get_transcript_summary(session_id: str, **kwargs) -> TranscriptSummary:
     return manager.get_summary(session_id)
 
 
-def restore_transcript(session_id: str, **kwargs) -> Dict[str, Any]:
+def restore_transcript(session_id: str, **kwargs) -> dict[str, Any]:
     """Restore transcript context.
 
     Args:
@@ -499,7 +499,7 @@ def restore_transcript(session_id: str, **kwargs) -> Dict[str, Any]:
     return manager.restore_context(session_id)
 
 
-def save_checkpoint(session_id: Optional[str] = None, **kwargs) -> str:
+def save_checkpoint(session_id: str | None = None, **kwargs) -> str:
     """Save session checkpoint marker.
 
     Args:

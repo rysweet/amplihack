@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class MemoryType(Enum):
@@ -31,19 +31,19 @@ class MemoryEntry:
     # Content
     title: str
     content: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
     # Timestamps
     created_at: datetime
     accessed_at: datetime
 
     # Optional fields
-    tags: Optional[List[str]] = None
-    importance: Optional[int] = None  # 1-10 scale
-    expires_at: Optional[datetime] = None
-    parent_id: Optional[str] = None  # For hierarchical memories
+    tags: list[str] | None = None
+    importance: int | None = None  # 1-10 scale
+    expires_at: datetime | None = None
+    parent_id: str | None = None  # For hierarchical memories
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "id": self.id,
@@ -62,7 +62,7 @@ class MemoryEntry:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryEntry":
+    def from_dict(cls, data: dict[str, Any]) -> "MemoryEntry":
         """Create from dictionary."""
         return cls(
             id=data["id"],
@@ -99,11 +99,11 @@ class SessionInfo:
     session_id: str
     created_at: datetime
     last_accessed: datetime
-    agent_ids: List[str]
+    agent_ids: list[str]
     memory_count: int
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "session_id": self.session_id,
@@ -119,22 +119,22 @@ class SessionInfo:
 class MemoryQuery:
     """Query parameters for memory retrieval."""
 
-    session_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    memory_type: Optional[MemoryType] = None
-    tags: Optional[List[str]] = None
-    content_search: Optional[str] = None
-    min_importance: Optional[int] = None
-    created_after: Optional[datetime] = None
-    created_before: Optional[datetime] = None
-    limit: Optional[int] = None
-    offset: Optional[int] = None
+    session_id: str | None = None
+    agent_id: str | None = None
+    memory_type: MemoryType | None = None
+    tags: list[str] | None = None
+    content_search: str | None = None
+    min_importance: int | None = None
+    created_after: datetime | None = None
+    created_before: datetime | None = None
+    limit: int | None = None
+    offset: int | None = None
     include_expired: bool = False
 
-    def to_sql_where(self) -> Tuple[str, List[Any]]:
+    def to_sql_where(self) -> tuple[str, list[Any]]:
         """Convert to SQL WHERE clause and parameters."""
         conditions = []
-        params: List[Any] = []
+        params: list[Any] = []
 
         if self.session_id:
             conditions.append("session_id = ?")

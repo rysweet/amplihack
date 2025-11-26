@@ -17,7 +17,6 @@ Thread Safety:
 
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional
 
 from .uvx_models import (
     FrameworkLocation,
@@ -40,7 +39,7 @@ def _get_cached_environment_info() -> UVXEnvironmentInfo:
     return UVXEnvironmentInfo.from_current_environment()
 
 
-def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetectionState:
+def detect_uvx_deployment(config: UVXConfiguration | None = None) -> UVXDetectionState:
     """Detect UVX deployment state with detailed reasoning.
 
     Args:
@@ -125,7 +124,7 @@ def detect_uvx_deployment(config: Optional[UVXConfiguration] = None) -> UVXDetec
 
 
 def resolve_framework_paths(
-    detection_state: UVXDetectionState, config: Optional[UVXConfiguration] = None
+    detection_state: UVXDetectionState, config: UVXConfiguration | None = None
 ) -> PathResolutionResult:
     """Resolve framework paths based on detection state.
 
@@ -241,7 +240,7 @@ def resolve_framework_paths(
     return result
 
 
-def _find_framework_in_sys_path(sys_path_entries: List[str]) -> Optional[Path]:
+def _find_framework_in_sys_path(sys_path_entries: list[str]) -> Path | None:
     """Find framework installation in Python sys.path.
 
     Args:
@@ -263,7 +262,7 @@ def _find_framework_in_sys_path(sys_path_entries: List[str]) -> Optional[Path]:
     return None
 
 
-def _search_parent_directories(start_path: Path, max_levels: int = 10) -> Optional[Path]:
+def _search_parent_directories(start_path: Path, max_levels: int = 10) -> Path | None:
     """Search parent directories for framework root.
 
     Args:
@@ -286,13 +285,13 @@ def _search_parent_directories(start_path: Path, max_levels: int = 10) -> Option
 
 
 # Convenience functions for backward compatibility
-def is_uvx_deployment(config: Optional[UVXConfiguration] = None) -> bool:
+def is_uvx_deployment(config: UVXConfiguration | None = None) -> bool:
     """Check if running in UVX deployment mode."""
     detection = detect_uvx_deployment(config)
     return detection.is_uvx_deployment
 
 
-def find_framework_root(config: Optional[UVXConfiguration] = None) -> Optional[Path]:
+def find_framework_root(config: UVXConfiguration | None = None) -> Path | None:
     """Find framework root directory."""
     detection = detect_uvx_deployment(config)
     resolution = resolve_framework_paths(detection, config)
@@ -303,8 +302,8 @@ def find_framework_root(config: Optional[UVXConfiguration] = None) -> Optional[P
 
 
 def resolve_framework_file(
-    relative_path: str, config: Optional[UVXConfiguration] = None
-) -> Optional[Path]:
+    relative_path: str, config: UVXConfiguration | None = None
+) -> Path | None:
     """Resolve a framework file path."""
     detection = detect_uvx_deployment(config)
     resolution = resolve_framework_paths(detection, config)

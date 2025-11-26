@@ -6,7 +6,6 @@ amplihack profiles.
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 try:
     from rich.console import Console
@@ -98,7 +97,7 @@ class ProfileCLI:
 
         console.print(table)
 
-    def show_profile(self, uri: Optional[str] = None):
+    def show_profile(self, uri: str | None = None):
         """Show details of a specific profile.
 
         Args:

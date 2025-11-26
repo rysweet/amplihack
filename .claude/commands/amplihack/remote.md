@@ -52,6 +52,7 @@ Execute amplihack commands on remote Azure VMs using azlin for provisioning.
 ### Basic Usage
 
 Execute auto mode with default settings:
+
 ```bash
 /amplihack:remote auto "implement user authentication"
 ```
@@ -59,16 +60,19 @@ Execute auto mode with default settings:
 ### With Options
 
 Execute with custom max turns:
+
 ```bash
 /amplihack:remote --max-turns 20 auto "refactor the API module"
 ```
 
 Keep VM for debugging:
+
 ```bash
 /amplihack:remote --keep-vm ultrathink "analyze performance bottlenecks"
 ```
 
 Use specific VM size for compute-intensive tasks:
+
 ```bash
 /amplihack:remote --vm-size Standard_D4s_v3 auto "process large dataset"
 ```
@@ -76,16 +80,19 @@ Use specific VM size for compute-intensive tasks:
 ### Advanced Usage
 
 Reuse a specific VM:
+
 ```bash
 /amplihack:remote --vm-name amplihack-ryan-20251120-143022 auto "continue previous work"
 ```
 
 Force fresh VM (no reuse):
+
 ```bash
 /amplihack:remote --no-reuse auto "start clean implementation"
 ```
 
 Set timeout for long-running tasks:
+
 ```bash
 /amplihack:remote --timeout 240 auto "comprehensive refactoring"
 ```
@@ -153,12 +160,14 @@ git cherry-pick remote-exec/feature-branch
 The command performs comprehensive secret scanning before packaging:
 
 **Detected Patterns**:
+
 - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`
-- Generic API keys (sk-ant-*, sk-*, ghp_*)
+- Generic API keys (sk-ant-_, sk-_, ghp\_\*)
 - Azure/AWS credentials
 - Passwords and tokens
 
 **Auto-Excluded Files**:
+
 - `.env*` files
 - SSH keys (`.ssh/`, `*.pem`, `*.key`)
 - Cloud credentials (`.aws/`, `.azure/`)
@@ -175,6 +184,7 @@ Only `ANTHROPIC_API_KEY` is transferred to remote VM, using secure SSH environme
 ### VM Reuse Logic
 
 By default, the command tries to reuse existing VMs matching:
+
 - Tag: `amplihack_workflow=true`
 - Age: < 24 hours
 - Size: Matches requested `--vm-size`
@@ -189,16 +199,19 @@ Example: `amplihack-ryan-20251120-143022`
 ### Manual VM Management
 
 List VMs:
+
 ```bash
 azlin list
 ```
 
 Connect to VM:
+
 ```bash
 azlin connect amplihack-ryan-20251120-143022
 ```
 
 Delete VM manually:
+
 ```bash
 azlin kill amplihack-ryan-20251120-143022
 ```
@@ -208,6 +221,7 @@ azlin kill amplihack-ryan-20251120-143022
 ### Packaging Errors
 
 **Secret Detected**:
+
 ```
 ERROR: Secret detected during packaging
 
@@ -226,6 +240,7 @@ Action required:
 ### Provisioning Errors
 
 **Azlin Not Installed**:
+
 ```
 ERROR: Azlin not found. Please install:
   pip install azlin
@@ -237,6 +252,7 @@ ERROR: Azlin not found. Please install:
 ### Execution Errors
 
 **Timeout**:
+
 ```
 Execution timed out after 120.0 minutes
 VM preserved for inspection: amplihack-ryan-20251120-143022
@@ -247,6 +263,7 @@ VM preserved for inspection: amplihack-ryan-20251120-143022
 ### Integration Errors
 
 **Merge Conflicts**:
+
 ```
 WARNING: Conflicts detected!
 Branch 'main' has diverged: local=a1b2c3d4, remote=e5f6g7h8
@@ -276,6 +293,7 @@ Branches available in 'remote-exec/' namespace for manual merge:
 ### Execution Fails
 
 VM is preserved automatically. Inspect it:
+
 ```bash
 azlin connect amplihack-ryan-20251120-143022
 cd ~/workspace/remote-task
@@ -285,6 +303,7 @@ cat .claude/runtime/logs/auto_claude_*.log
 ### Results Not Retrieved
 
 If retrieval fails, VM is preserved. Manual retrieval:
+
 ```bash
 # Connect to VM
 azlin connect amplihack-ryan-20251120-143022
@@ -324,6 +343,7 @@ azlin cp amplihack-ryan-20251120-143022:~/logs.tar.gz logs.tar.gz
 ### VM Costs
 
 Estimated costs (as of 2025):
+
 - **Standard_D2s_v3**: ~$0.10-0.15/hour (2 vCPU, 8GB RAM)
 - **Standard_D4s_v3**: ~$0.20-0.30/hour (4 vCPU, 16GB RAM)
 
@@ -350,11 +370,13 @@ azlin kill amplihack-ryan-OLD-TIMESTAMP
 ## Logs
 
 All remote execution logs are stored in:
+
 ```
 .claude/runtime/logs/remote/
 ```
 
 Log files include:
+
 - Execution stdout/stderr
 - Git operations
 - Integration summary

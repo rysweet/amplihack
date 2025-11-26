@@ -32,7 +32,6 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 # Configuration
 WORKFLOW_LOG_DIR = Path(".claude/runtime/logs/workflow_adherence")
@@ -72,10 +71,14 @@ def _write_log_entry(entry: dict) -> None:
 
     # Warn if overhead exceeds threshold (but don't fail)
     if duration_ms > PERFORMANCE_THRESHOLD_MS:
-        print(f"Warning: workflow_tracker overhead {duration_ms:.2f}ms exceeds {PERFORMANCE_THRESHOLD_MS}ms threshold")
+        print(
+            f"Warning: workflow_tracker overhead {duration_ms:.2f}ms exceeds {PERFORMANCE_THRESHOLD_MS}ms threshold"
+        )
 
 
-def log_workflow_start(workflow_name: str, task_description: str, session_id: Optional[str] = None) -> None:
+def log_workflow_start(
+    workflow_name: str, task_description: str, session_id: str | None = None
+) -> None:
     """
     Log workflow start event.
 
@@ -96,9 +99,9 @@ def log_workflow_start(workflow_name: str, task_description: str, session_id: Op
 def log_step(
     step_number: int,
     step_name: str,
-    agent_used: Optional[str] = None,
-    duration_ms: Optional[float] = None,
-    details: Optional[dict] = None,
+    agent_used: str | None = None,
+    duration_ms: float | None = None,
+    details: dict | None = None,
 ) -> None:
     """
     Log workflow step execution.
@@ -142,7 +145,7 @@ def log_skip(step_number: int, step_name: str, reason: str) -> None:
     _write_log_entry(entry)
 
 
-def log_agent_invocation(agent_name: str, purpose: str, step_number: Optional[int] = None) -> None:
+def log_agent_invocation(agent_name: str, purpose: str, step_number: int | None = None) -> None:
     """
     Log agent invocation.
 
@@ -160,7 +163,9 @@ def log_agent_invocation(agent_name: str, purpose: str, step_number: Optional[in
     _write_log_entry(entry)
 
 
-def log_workflow_end(success: bool, total_steps: int, skipped_steps: int = 0, notes: Optional[str] = None) -> None:
+def log_workflow_end(
+    success: bool, total_steps: int, skipped_steps: int = 0, notes: str | None = None
+) -> None:
     """
     Log workflow completion.
 
@@ -175,13 +180,17 @@ def log_workflow_end(success: bool, total_steps: int, skipped_steps: int = 0, no
         "success": success,
         "total_steps": total_steps,
         "skipped_steps": skipped_steps,
-        "completion_rate": round((total_steps - skipped_steps) / total_steps * 100, 1) if total_steps > 0 else 0,
+        "completion_rate": round((total_steps - skipped_steps) / total_steps * 100, 1)
+        if total_steps > 0
+        else 0,
         "notes": notes,
     }
     _write_log_entry(entry)
 
 
-def log_workflow_violation(violation_type: str, description: str, step_number: Optional[int] = None) -> None:
+def log_workflow_violation(
+    violation_type: str, description: str, step_number: int | None = None
+) -> None:
     """
     Log workflow violation (e.g., wrong TodoWrite format, missing agent usage).
 
@@ -211,7 +220,7 @@ class StepTimer:
         # Automatically logs step with duration
     """
 
-    def __init__(self, step_number: int, step_name: str, agent_used: Optional[str] = None):
+    def __init__(self, step_number: int, step_name: str, agent_used: str | None = None):
         self.step_number = step_number
         self.step_name = step_name
         self.agent_used = agent_used
@@ -249,7 +258,7 @@ def get_workflow_stats(limit: int = 100) -> dict:
     workflows = []
     step_skips = {}
 
-    with open(WORKFLOW_LOG_FILE, "r") as f:
+    with open(WORKFLOW_LOG_FILE) as f:
         lines = f.readlines()[-limit:]
 
         current_workflow = {}
@@ -288,8 +297,12 @@ def get_workflow_stats(limit: int = 100) -> dict:
         "total_workflows": len(workflows),
         "successful": successful,
         "failed": len(workflows) - successful,
-        "avg_completion_rate": round(sum(completion_rates) / len(completion_rates), 1) if completion_rates else 0,
-        "avg_skipped_steps": round(sum(skipped_steps) / len(skipped_steps), 1) if skipped_steps else 0,
+        "avg_completion_rate": round(sum(completion_rates) / len(completion_rates), 1)
+        if completion_rates
+        else 0,
+        "avg_skipped_steps": round(sum(skipped_steps) / len(skipped_steps), 1)
+        if skipped_steps
+        else 0,
         "most_skipped_steps": most_skipped,
     }
 

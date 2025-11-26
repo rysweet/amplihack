@@ -17,7 +17,6 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
 
 # Check for requests library
 try:
@@ -52,7 +51,7 @@ def save_metadata(metadata_path: Path, metadata: dict):
     metadata_path.write_text(json.dumps(metadata, indent=2))
 
 
-def fetch_content(url: str, timeout: int = 30) -> Optional[str]:
+def fetch_content(url: str, timeout: int = 30) -> str | None:
     """
     Fetch content from URL.
 
@@ -128,7 +127,7 @@ def check_source_drift(source: dict) -> dict:
     }
 
 
-def check_all_drift(metadata_path: Path) -> Dict[str, any]:
+def check_all_drift(metadata_path: Path) -> dict[str, any]:
     """
     Check drift for all sources in metadata.
 

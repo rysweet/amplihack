@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
@@ -20,14 +20,14 @@ logger = logging.getLogger(__name__)
 class ProxyManager:
     """Manages claude-code-proxy lifecycle."""
 
-    def __init__(self, proxy_config: Optional[ProxyConfig] = None):
+    def __init__(self, proxy_config: ProxyConfig | None = None):
         """Initialize proxy manager.
 
         Args:
             proxy_config: Proxy configuration object.
         """
         self.proxy_config = proxy_config
-        self.proxy_process: Optional[subprocess.Popen] = None
+        self.proxy_process: subprocess.Popen | None = None
         self.proxy_dir = Path.home() / ".amplihack" / "proxy"
         self.env_manager = ProxyEnvironment()
         # Read PORT from proxy_config if available, otherwise use default
@@ -247,8 +247,8 @@ class ProxyManager:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
         """Context manager exit - stops proxy.
@@ -260,7 +260,7 @@ class ProxyManager:
         """
         self.stop_proxy()
 
-    def get_azure_deployment(self, model_name: str) -> Optional[str]:
+    def get_azure_deployment(self, model_name: str) -> str | None:
         """Get Azure deployment name for OpenAI model.
 
         Args:
@@ -299,7 +299,7 @@ class ProxyManager:
 
         return self.proxy_config.get_endpoint_type()
 
-    def get_azure_deployments(self) -> Dict[str, str]:
+    def get_azure_deployments(self) -> dict[str, str]:
         """Get Azure deployment mappings.
 
         Returns:
@@ -322,7 +322,7 @@ class ProxyManager:
 
         return deployments
 
-    def transform_request_for_azure(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_request_for_azure(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Transform OpenAI request format to Azure format.
 
         Args:
@@ -338,7 +338,7 @@ class ProxyManager:
 
         return azure_request
 
-    def construct_azure_url(self, model: str) -> Optional[str]:
+    def construct_azure_url(self, model: str) -> str | None:
         """Construct Azure OpenAI API URL for a specific model.
 
         Args:
@@ -388,8 +388,8 @@ class ProxyManager:
         return url
 
     def normalize_azure_response(
-        self, response: Dict[str, Any], original_model: str
-    ) -> Dict[str, Any]:
+        self, response: dict[str, Any], original_model: str
+    ) -> dict[str, Any]:
         """Normalize Azure response to OpenAI format.
 
         Args:
@@ -531,7 +531,7 @@ class ProxyManager:
         except Exception:
             return "<path unavailable>"
 
-    def _build_safe_subprocess_command(self, command: List[str]) -> Optional[List[str]]:
+    def _build_safe_subprocess_command(self, command: list[str]) -> list[str] | None:
         """Build a safe subprocess command with validation.
 
         Args:
@@ -588,7 +588,7 @@ class ProxyManager:
 
         return any(re.match(pattern, code.strip()) for pattern in safe_patterns)
 
-    def _create_secure_env(self) -> Dict[str, str]:
+    def _create_secure_env(self) -> dict[str, str]:
         """Create a secure environment dictionary.
 
         Returns:
@@ -617,7 +617,7 @@ class ProxyManager:
 
         return env
 
-    def _get_secure_start_command(self, proxy_repo: Path) -> Optional[List[str]]:
+    def _get_secure_start_command(self, proxy_repo: Path) -> list[str] | None:
         """Get a secure start command for the proxy.
 
         Args:
@@ -635,7 +635,7 @@ class ProxyManager:
             return ["npm", "start"]
         return None
 
-    def _get_proxy_start_command(self) -> Optional[List[str]]:
+    def _get_proxy_start_command(self) -> list[str] | None:
         """Determine the correct command to start the proxy server.
 
         This method handles both development (running from source) and

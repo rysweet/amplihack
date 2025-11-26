@@ -10,7 +10,6 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 
 class AppendError(Exception):
@@ -58,7 +57,7 @@ class AppendResult:
     session_id: str
     append_dir: Path
     timestamp: str
-    message: Optional[str] = None
+    message: str | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary representation.
@@ -144,7 +143,7 @@ def _check_rate_limit(append_dir: Path) -> None:
         )
 
 
-def _find_workspace_root(start_dir: Path) -> Optional[Path]:
+def _find_workspace_root(start_dir: Path) -> Path | None:
     """Find workspace root by traversing up to find .claude directory.
 
     Args:
@@ -165,7 +164,7 @@ def _find_workspace_root(start_dir: Path) -> Optional[Path]:
     return None
 
 
-def _find_active_session(workspace: Path, session_id: Optional[str] = None) -> Optional[Path]:
+def _find_active_session(workspace: Path, session_id: str | None = None) -> Path | None:
     """Find active auto mode session directory.
 
     Args:
@@ -200,7 +199,7 @@ def _find_active_session(workspace: Path, session_id: Optional[str] = None) -> O
     return None
 
 
-def append_instructions(instruction: str, session_id: Optional[str] = None) -> AppendResult:
+def append_instructions(instruction: str, session_id: str | None = None) -> AppendResult:
     """Append instruction to active auto mode session.
 
     Args:

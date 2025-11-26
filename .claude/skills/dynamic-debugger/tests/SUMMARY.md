@@ -17,12 +17,12 @@ Coverage: 58% overall
 
 ## Test Distribution
 
-| Category      | Tests | Target | Actual % | Status |
-|---------------|-------|--------|----------|--------|
-| Unit Tests    | 54    | 60%    | 71%      | ✅      |
-| Integration   | 18    | 30%    | 24%      | ✅      |
-| E2E (shell)   | 3     | 10%    | 4%       | ✅      |
-| **TOTAL**     | **76**| **100%**| **100%** | ✅      |
+| Category    | Tests  | Target   | Actual % | Status |
+| ----------- | ------ | -------- | -------- | ------ |
+| Unit Tests  | 54     | 60%      | 71%      | ✅     |
+| Integration | 18     | 30%      | 24%      | ✅     |
+| E2E (shell) | 3      | 10%      | 4%       | ✅     |
+| **TOTAL**   | **76** | **100%** | **100%** | ✅     |
 
 ## Files Created
 
@@ -45,6 +45,7 @@ tests/
 ### test_language_detection.py (28 tests)
 
 **Manifest Detection (6 tests)** - All passing
+
 - Python (requirements.txt, pyproject.toml)
 - JavaScript (package.json)
 - Go (go.mod)
@@ -52,14 +53,16 @@ tests/
 - C++ (CMakeLists.txt)
 
 **Extension Analysis (6 tests)** - All passing
+
 - Pure Python files
 - Mixed languages (Python dominant)
 - Equal language split
-- Directory exclusion (.venv, node_modules, __pycache__)
+- Directory exclusion (.venv, node_modules, **pycache**)
 - TypeScript files
 - C++ multiple extensions
 
 **Edge Cases (6 tests)** - All passing
+
 - Non-existent directory
 - Empty directory
 - Permission errors
@@ -68,15 +71,18 @@ tests/
 - Unknown language
 
 **Debugger Mapping (8 tests)** - All passing
+
 - Parametrized tests for all supported languages
 
 **CLI Interface (2 tests)** - All passing
+
 - JSON output format
 - Default text output
 
 ### test_config_generation.py (26 tests)
 
 **Template Loading (6 tests)** - All passing
+
 - Python (debugpy)
 - JavaScript/TypeScript (node)
 - Go (delve)
@@ -84,6 +90,7 @@ tests/
 - Missing template handling
 
 **Variable Substitution (6 tests)** - All passing
+
 - Project directory
 - Default/custom ports
 - Entry points
@@ -91,22 +98,26 @@ tests/
 - Lists
 
 **Validation (6 tests)** - All passing
+
 - Complete config
 - Missing required fields (name, type, request)
 - Empty config
 - Extra fields
 
 **Error Handling (3 tests)** - All passing
+
 - Invalid language
 - Non-existent project
 - Missing variables
 
 **CLI Interface (3 tests)** - All passing
+
 - JSON output
 - Validation flag
 - Custom parameters
 
 **Real Config Files (2 tests)** - All passing
+
 - All real config files loadable
 - Required fields present
 
@@ -115,14 +126,17 @@ tests/
 **Status: SKIPPED** - Due to syntax error in original monitor_session.py
 
 The test file is complete and ready to run once the syntax error is fixed:
+
 - 6 tests for process info gathering
 - 6 tests for monitoring session
 - 6 tests for JSON output format
 
 **Known Issue**: `monitor_session.py` line 159 has syntax error:
+
 ```python
 global MAX_MEMORY_MB, SESSION_TIMEOUT_MIN
 ```
+
 These variables are used before global declaration (in argparse defaults).
 
 **Workaround**: Tests include graceful fallback for syntax errors.
@@ -130,28 +144,34 @@ These variables are used before global declaration (in argparse defaults).
 ### test_integration.py (18 tests)
 
 **Full Workflows (4 tests)** - All passing
+
 - Python: detect → config → validate
 - JavaScript: detect → config → validate
 - Multi-language project
 - C++: detect → GDB config → validate
 
 **Server Lifecycle (3 tests)** - All passing
+
 - Complete lifecycle verification
 - Cleanup workflow
 - Status checking
 
 **Error Recovery (2 tests)** - All passing
+
 - Missing dap-mcp handling
 - Stale PID file recovery
 
 **Cross-Language (5 tests)** - All passing
+
 - Parametrized tests for all languages
 
 **Configuration Persistence (2 tests)** - All passing
+
 - Serialization/deserialization
 - Custom parameters persistence
 
 **Script Execution (2 tests)** - All passing
+
 - detect_language.py as script
 - generate_dap_config.py as script
 
@@ -173,12 +193,14 @@ These variables are used before global declaration (in argparse defaults).
 ## How to Run
 
 ### All Tests
+
 ```bash
 cd tests/
 pytest
 ```
 
 ### Specific Categories
+
 ```bash
 # Unit tests only
 pytest test_language_detection.py test_config_generation.py
@@ -191,6 +213,7 @@ pytest test_integration.py
 ```
 
 ### With Coverage Report
+
 ```bash
 pytest --cov=../scripts --cov-report=html
 open htmlcov/index.html
@@ -213,22 +236,26 @@ open htmlcov/index.html
 ### Current Coverage: 58%
 
 **detect_language.py: 69%**
+
 - Missing: CLI main block (lines 113-134)
 - Missing: Permission error branch (lines 83-84)
 - Core functionality: 100% covered
 
 **generate_dap_config.py: 50%**
+
 - Missing: CLI main block (lines 86-129)
 - Missing: FileNotFoundError path (line 44)
 - Core functionality: ~85% covered
 
 **monitor_session.py: Not parseable**
+
 - Syntax error prevents coverage analysis
 - Tests ready to run once fixed
 
 ### To Reach 80% Coverage
 
 Need to add:
+
 - CLI integration tests (would add ~15%)
 - Error path tests (would add ~5%)
 
@@ -259,15 +286,18 @@ Current core functionality coverage: ~85%
 ## Recommendations
 
 ### Immediate
+
 1. Fix syntax error in monitor_session.py (line 159)
 2. Re-run tests to verify session monitoring tests pass
 
 ### Short-term
+
 1. Add CLI integration tests for main blocks
 2. Increase coverage to 80%+
 3. Add more error path tests
 
 ### Long-term
+
 1. Add performance benchmarks
 2. Add mutation testing
 3. Integrate with CI/CD pipeline
@@ -284,6 +314,7 @@ Current core functionality coverage: ~85%
 - Production-ready test suite
 
 The test suite is ready for use and provides:
+
 - Fast feedback (< 1 second)
 - High confidence in correctness
 - Comprehensive edge case coverage

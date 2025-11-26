@@ -4,7 +4,7 @@ This module provides secure, parameterized Cypher query construction for
 all database operations related to code ingestion metadata.
 """
 
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from .models import CodebaseIdentity, IngestionMetadata
 
@@ -17,7 +17,7 @@ class QueryBuilder:
     """
 
     @staticmethod
-    def get_codebase_by_unique_key() -> Tuple[str, str]:
+    def get_codebase_by_unique_key() -> tuple[str, str]:
         """Query to find codebase by unique_key.
 
         Returns:
@@ -30,7 +30,7 @@ class QueryBuilder:
         return query, "unique_key"
 
     @staticmethod
-    def create_codebase_node(identity: CodebaseIdentity) -> Tuple[str, Dict[str, Any]]:
+    def create_codebase_node(identity: CodebaseIdentity) -> tuple[str, dict[str, Any]]:
         """Query to create new Codebase node.
 
         Args:
@@ -64,7 +64,7 @@ class QueryBuilder:
         return query, params
 
     @staticmethod
-    def update_codebase_node(identity: CodebaseIdentity) -> Tuple[str, Dict[str, Any]]:
+    def update_codebase_node(identity: CodebaseIdentity) -> tuple[str, dict[str, Any]]:
         """Query to update existing Codebase node.
 
         Updates commit_sha, updated_at, and increments ingestion_count.
@@ -89,7 +89,7 @@ class QueryBuilder:
         return query, params
 
     @staticmethod
-    def create_ingestion_node(metadata: IngestionMetadata) -> Tuple[str, Dict[str, Any]]:
+    def create_ingestion_node(metadata: IngestionMetadata) -> tuple[str, dict[str, Any]]:
         """Query to create new Ingestion node.
 
         Args:
@@ -195,7 +195,7 @@ class QueryBuilder:
     def track_new_codebase(
         identity: CodebaseIdentity,
         metadata: IngestionMetadata,
-    ) -> Tuple[str, Dict[str, Any]]:
+    ) -> tuple[str, dict[str, Any]]:
         """Complete query to track a new codebase ingestion.
 
         This creates both the Codebase and Ingestion nodes and links them
@@ -252,7 +252,7 @@ class QueryBuilder:
         identity: CodebaseIdentity,
         metadata: IngestionMetadata,
         previous_ingestion_id: str,
-    ) -> Tuple[str, Dict[str, Any]]:
+    ) -> tuple[str, dict[str, Any]]:
         """Complete query to track an update to existing codebase.
 
         This updates the Codebase node, creates a new Ingestion node,

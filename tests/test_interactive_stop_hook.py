@@ -94,8 +94,9 @@ class TestRecursionGuard:
         """Recursion guard is reset after processing completes."""
         stop_hook._recursion_guard.active = False
 
-        with patch("stop.ReflectionLock") as mock_lock_class, patch.object(
-            stop_hook, "get_session_messages", return_value=[]
+        with (
+            patch("stop.ReflectionLock") as mock_lock_class,
+            patch.object(stop_hook, "get_session_messages", return_value=[]),
         ):
             mock_lock = MagicMock()
             mock_lock.is_locked.return_value = False

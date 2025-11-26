@@ -1,6 +1,6 @@
 """gRPC request handler implementation."""
 
-from typing import Any, Dict
+from typing import Any
 
 from ..services.auth_service import AuthService
 from ..utils.logger import get_logger
@@ -23,7 +23,7 @@ class GRPCHandler(Handler):
         """
         self.auth_service = auth_service
 
-    def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def handle(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle gRPC request.
 
         Args:
@@ -45,7 +45,7 @@ class GRPCHandler(Handler):
 
         return {"error": "Service not found"}
 
-    def validate_request(self, request: Dict[str, Any]) -> bool:
+    def validate_request(self, request: dict[str, Any]) -> bool:
         """Validate gRPC request.
 
         Args:
@@ -56,7 +56,7 @@ class GRPCHandler(Handler):
         """
         return "service" in request and "method" in request
 
-    def _handle_auth_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_auth_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle authentication requests.
 
         Args:

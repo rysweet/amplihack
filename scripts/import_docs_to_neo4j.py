@@ -25,7 +25,6 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import List
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -47,7 +46,7 @@ def setup_logging(verbose: bool = False):
     )
 
 
-def find_markdown_files(paths: List[Path], recursive: bool = True) -> List[Path]:
+def find_markdown_files(paths: list[Path], recursive: bool = True) -> list[Path]:
     """Find all markdown files in given paths.
 
     Args:
@@ -71,7 +70,7 @@ def find_markdown_files(paths: List[Path], recursive: bool = True) -> List[Path]
 
 
 def import_documentation(
-    file_paths: List[Path],
+    file_paths: list[Path],
     project_id: str = None,
     link_code: bool = False,
     link_memory: bool = False,

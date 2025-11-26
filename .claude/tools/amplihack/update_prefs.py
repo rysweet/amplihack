@@ -14,7 +14,7 @@ Storage Format:
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def _get_preference_file_path() -> Path:
@@ -39,7 +39,7 @@ def _get_preference_file_path() -> Path:
     return claude_dir / ".update_preference"
 
 
-def load_update_preference() -> Optional[str]:
+def load_update_preference() -> str | None:
     """Load user's auto-update preference from storage.
 
     Priority:
@@ -131,7 +131,7 @@ def save_update_preference(value: str) -> None:
     pref_file = _get_preference_file_path()
 
     # Create data structure
-    data: Dict[str, Any] = {
+    data: dict[str, Any] = {
         "auto_update": auto_update_value,
         "last_prompted": datetime.utcnow().isoformat() + "Z",
     }
@@ -156,7 +156,7 @@ def save_update_preference(value: str) -> None:
         raise
 
 
-def get_last_prompted() -> Optional[datetime]:
+def get_last_prompted() -> datetime | None:
     """Get the timestamp of when user was last prompted about updates.
 
     Returns:

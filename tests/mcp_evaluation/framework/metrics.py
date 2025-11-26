@@ -5,7 +5,6 @@ during scenario execution, including quality, efficiency, and tool-specific metr
 """
 
 import time
-from typing import Dict, List, Optional, Set
 
 from .adapter import ToolAdapter
 from .types import (
@@ -26,7 +25,7 @@ class MetricsCollector:
     - Quality assessments
     """
 
-    def __init__(self, adapter: Optional[ToolAdapter] = None):
+    def __init__(self, adapter: ToolAdapter | None = None):
         """Initialize metrics collector.
 
         Args:
@@ -38,11 +37,11 @@ class MetricsCollector:
     def _reset(self) -> None:
         """Reset all metrics to initial state."""
         # Efficiency tracking
-        self.start_time: Optional[float] = None
-        self.end_time: Optional[float] = None
+        self.start_time: float | None = None
+        self.end_time: float | None = None
         self.total_tokens: int = 0
-        self.file_reads: Set[str] = set()
-        self.file_writes: Set[str] = set()
+        self.file_reads: set[str] = set()
+        self.file_writes: set[str] = set()
         self.tool_invocations: int = 0
         self.unnecessary_ops: int = 0
 
@@ -55,7 +54,7 @@ class MetricsCollector:
         self.bugs_introduced: int = 0
 
         # Tool tracking
-        self.tool_calls: List[Dict] = []
+        self.tool_calls: list[dict] = []
 
     def start(self) -> None:
         """Start metrics collection."""

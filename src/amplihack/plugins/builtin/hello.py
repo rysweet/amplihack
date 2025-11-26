@@ -34,6 +34,11 @@ class HelloPlugin(PluginBase):
         "Hello, World!"
     """
 
+    @property
+    def name(self) -> str:
+        """Return the plugin name from metadata."""
+        return self._plugin_metadata.get("name", "hello")
+
     def execute(self, args: dict[str, Any]) -> str:
         """Generate a greeting message.
 
@@ -50,7 +55,9 @@ class HelloPlugin(PluginBase):
             "Hello, Friend!"
         """
         name = args.get("name", "Friend")
-        return f"Hello, {name}!"
+        message = f"Hello, {name}!"
+        print(message)
+        return message
 
 
 __all__ = ["HelloPlugin"]

@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from .database import MemoryDatabase
 from .models import MemoryEntry, MemoryQuery, MemoryType
@@ -16,9 +16,7 @@ class MemoryManager:
     batch operations for efficiency, and memory lifecycle management.
     """
 
-    def __init__(
-        self, db_path: Optional[Union[str, Path]] = None, session_id: Optional[str] = None
-    ):
+    def __init__(self, db_path: str | Path | None = None, session_id: str | None = None):
         """Initialize memory manager.
 
         Args:
@@ -33,12 +31,12 @@ class MemoryManager:
         agent_id: str,
         title: str,
         content: str,
-        memory_type: Union[MemoryType, str] = MemoryType.CONTEXT,
-        metadata: Optional[Dict[str, Any]] = None,
-        tags: Optional[List[str]] = None,
-        importance: Optional[int] = None,
-        expires_in: Optional[timedelta] = None,
-        parent_id: Optional[str] = None,
+        memory_type: MemoryType | str = MemoryType.CONTEXT,
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        importance: int | None = None,
+        expires_in: timedelta | None = None,
+        parent_id: str | None = None,
     ) -> str:
         """Store a memory entry.
 
@@ -98,15 +96,15 @@ class MemoryManager:
 
     def retrieve(
         self,
-        agent_id: Optional[str] = None,
-        memory_type: Optional[Union[MemoryType, str]] = None,
-        tags: Optional[List[str]] = None,
-        search: Optional[str] = None,
-        min_importance: Optional[int] = None,
-        limit: Optional[int] = None,
+        agent_id: str | None = None,
+        memory_type: MemoryType | str | None = None,
+        tags: list[str] | None = None,
+        search: str | None = None,
+        min_importance: int | None = None,
+        limit: int | None = None,
         include_other_agents: bool = False,
         include_expired: bool = False,
-    ) -> List[MemoryEntry]:
+    ) -> list[MemoryEntry]:
         """Retrieve memories matching criteria.
 
         Args:
@@ -143,7 +141,7 @@ class MemoryManager:
 
         return self.db.retrieve_memories(query)
 
-    def get(self, memory_id: str) -> Optional[MemoryEntry]:
+    def get(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
 
         Args:
@@ -163,11 +161,11 @@ class MemoryManager:
     def update(
         self,
         memory_id: str,
-        title: Optional[str] = None,
-        content: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        tags: Optional[List[str]] = None,
-        importance: Optional[int] = None,
+        title: str | None = None,
+        content: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        importance: int | None = None,
     ) -> bool:
         """Update an existing memory.
 
@@ -219,7 +217,7 @@ class MemoryManager:
 
         return self.db.delete_memory(memory_id)
 
-    def store_batch(self, memories: List[Dict[str, Any]]) -> List[str]:
+    def store_batch(self, memories: list[dict[str, Any]]) -> list[str]:
         """Store multiple memories efficiently.
 
         Args:
@@ -259,9 +257,7 @@ class MemoryManager:
 
         return memory_ids
 
-    def search(
-        self, query: str, agent_id: Optional[str] = None, limit: int = 10
-    ) -> List[MemoryEntry]:
+    def search(self, query: str, agent_id: str | None = None, limit: int = 10) -> list[MemoryEntry]:
         """Simple full-text search across memories.
 
         Args:
@@ -278,7 +274,7 @@ class MemoryManager:
             limit=limit,
         )
 
-    def get_recent(self, agent_id: Optional[str] = None, limit: int = 10) -> List[MemoryEntry]:
+    def get_recent(self, agent_id: str | None = None, limit: int = 10) -> list[MemoryEntry]:
         """Get most recently accessed memories.
 
         Args:
@@ -290,7 +286,7 @@ class MemoryManager:
         """
         return self.retrieve(agent_id=agent_id, limit=limit)
 
-    def get_important(self, min_importance: int = 7, limit: int = 10) -> List[MemoryEntry]:
+    def get_important(self, min_importance: int = 7, limit: int = 10) -> list[MemoryEntry]:
         """Get high-importance memories.
 
         Args:
@@ -310,7 +306,7 @@ class MemoryManager:
         """
         return self.db.cleanup_expired()
 
-    def get_session_summary(self) -> Dict[str, Any]:
+    def get_session_summary(self) -> dict[str, Any]:
         """Get summary of current session.
 
         Returns:
@@ -335,7 +331,7 @@ class MemoryManager:
             "metadata": session_info.metadata,
         }
 
-    def list_memory_types(self) -> List[str]:
+    def list_memory_types(self) -> list[str]:
         """Get list of available memory types.
 
         Returns:
@@ -343,7 +339,7 @@ class MemoryManager:
         """
         return [t.value for t in MemoryType]
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
         Returns:

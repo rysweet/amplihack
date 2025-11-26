@@ -5,7 +5,6 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Tuple
 
 
 class SettingsManager:
@@ -35,7 +34,7 @@ class SettingsManager:
         self.settings_path = settings_path
         self.session_id = session_id
         self.non_interactive = non_interactive
-        self.backup_path: Optional[Path] = None
+        self.backup_path: Path | None = None
 
         # Session state directory
         self.session_state_dir = Path.home() / ".claude" / "runtime" / "sessions"
@@ -78,7 +77,7 @@ class SettingsManager:
             print("\nOperation cancelled by user")
             return False
 
-    def create_backup(self) -> Tuple[bool, Optional[Path]]:
+    def create_backup(self) -> tuple[bool, Path | None]:
         """Create a timestamped backup of settings.json.
 
         Backup format: settings.json.backup.<timestamp>

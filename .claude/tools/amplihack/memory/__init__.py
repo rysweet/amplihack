@@ -45,11 +45,11 @@ from amplihack.memory import MemoryEntry, MemoryManager, MemoryType
 
 # Global memory manager instance with thread safety
 _memory_manager_lock = threading.RLock()
-_memory_manager_instance: Optional[MemoryManager] = None
+_memory_manager_instance: MemoryManager | None = None
 _memory_enabled = True
 
 
-def get_memory_manager(session_id: Optional[str] = None) -> Optional[MemoryManager]:
+def get_memory_manager(session_id: str | None = None) -> MemoryManager | None:
     """Get memory manager instance for the current session.
 
     Returns thread-safe singleton memory manager. If memory is disabled
@@ -143,10 +143,10 @@ def store_agent_memory(
     title: str,
     content: str,
     memory_type: MemoryType = MemoryType.CONTEXT,
-    importance: Optional[int] = None,
+    importance: int | None = None,
     tags: Optional["list[str]"] = None,
     **kwargs,
-) -> Optional[str]:
+) -> str | None:
     """Convenience function to store agent memory.
 
     Simplified interface for common memory storage operations.
@@ -194,10 +194,10 @@ def store_agent_memory(
 
 def retrieve_agent_memories(
     agent_id: str,
-    memory_type: Optional[MemoryType] = None,
-    min_importance: Optional[int] = None,
+    memory_type: MemoryType | None = None,
+    min_importance: int | None = None,
     tags: Optional["list[str]"] = None,
-    limit: Optional[int] = None,
+    limit: int | None = None,
     **kwargs,
 ) -> "list[MemoryEntry]":
     """Convenience function to retrieve agent memories.
@@ -242,7 +242,7 @@ def retrieve_agent_memories(
 
 
 def search_memories(
-    query: str, agent_id: Optional[str] = None, limit: Optional[int] = None
+    query: str, agent_id: str | None = None, limit: int | None = None
 ) -> "list[MemoryEntry]":
     """Search memories by content.
 

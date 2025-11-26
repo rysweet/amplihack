@@ -6,14 +6,13 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Set
 
 
 class UVXStager:
     """Handles staging of framework files from UVX to user's working directory."""
 
     def __init__(self):
-        self._staged_files: Set[Path] = set()
+        self._staged_files: set[Path] = set()
         self._debug_enabled = os.environ.get("AMPLIHACK_DEBUG", "").lower() in (
             "true",
             "1",
@@ -33,7 +32,7 @@ class UVXStager:
         """Detect if running in UVX deployment mode."""
         return "UV_PYTHON" in os.environ or not (Path.cwd() / ".claude").exists()
 
-    def _find_uvx_framework_root(self) -> Optional[Path]:
+    def _find_uvx_framework_root(self) -> Path | None:
         """Find framework root in UVX installation."""
         if "AMPLIHACK_ROOT" in os.environ:
             env_path = Path(os.environ["AMPLIHACK_ROOT"])

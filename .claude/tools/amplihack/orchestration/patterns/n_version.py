@@ -7,7 +7,7 @@ Based on: .claude/workflow/N_VERSION_WORKFLOW.md
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..execution import run_parallel
 from ..session import OrchestratorSession
@@ -54,12 +54,12 @@ DEFAULT_CRITERIA = [
 def run_n_version(
     task_prompt: str,
     n: int = 3,
-    model: Optional[str] = None,
-    working_dir: Optional[Path] = None,
-    selection_criteria: Optional[List[str]] = None,
-    diversity_profiles: Optional[List[Dict[str, str]]] = None,
-    timeout: Optional[int] = None,
-) -> Dict[str, Any]:
+    model: str | None = None,
+    working_dir: Path | None = None,
+    selection_criteria: list[str] | None = None,
+    diversity_profiles: list[dict[str, str]] | None = None,
+    timeout: int | None = None,
+) -> dict[str, Any]:
     """Execute N-version programming pattern.
 
     Generates N independent implementations in parallel, compares them using

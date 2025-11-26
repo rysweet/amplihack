@@ -4,7 +4,6 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
@@ -48,8 +47,8 @@ def ensure_ultrathink_command(prompt: str) -> str:
 
 
 def wrap_prompt_with_ultrathink(
-    claude_args: Optional[List[str]], no_ultrathink: bool = False
-) -> Optional[List[str]]:
+    claude_args: list[str] | None, no_ultrathink: bool = False
+) -> list[str] | None:
     """Wrap prompt in claude_args with /amplihack:ultrathink command.
 
     Modifies the prompt passed via -p flag to use workflow orchestration.
@@ -85,7 +84,7 @@ def wrap_prompt_with_ultrathink(
     return claude_args
 
 
-def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
+def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
     """Handle the launch command.
 
     Args:
@@ -207,9 +206,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     return launcher.launch_interactive()
 
 
-def handle_auto_mode(
-    sdk: str, args: argparse.Namespace, cmd_args: Optional[List[str]]
-) -> Optional[int]:
+def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> int | None:
     """Handle auto mode for claude, copilot, or codex commands.
 
     Args:
@@ -302,8 +299,8 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
 
 
 def parse_args_with_passthrough(
-    argv: Optional[List[str]] = None,
-) -> "tuple[argparse.Namespace, List[str]]":
+    argv: list[str] | None = None,
+) -> "tuple[argparse.Namespace, list[str]]":
     """Parse arguments with support for -- separator for Claude argument forwarding.
 
     Args:
@@ -383,7 +380,7 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def resolve_timeout(args: argparse.Namespace, model: Optional[str] = None) -> Optional[float]:
+def resolve_timeout(args: argparse.Namespace, model: str | None = None) -> float | None:
     """Resolve timeout value based on CLI args and model detection.
 
     Priority order:
@@ -631,7 +628,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     return parser
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 
     Args:

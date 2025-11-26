@@ -25,6 +25,9 @@ MAX_FILE_SIZE = 1024 * 1024  # 1MB in bytes
 def _validate_path(plugin_dir: str) -> Path:
     """Validate directory path against traversal attacks.
 
+    Uses Path.resolve() and is_relative_to() for robust validation.
+    Blocks access to system directories and sensitive paths.
+
     Args:
         plugin_dir: Directory path to validate
 
@@ -32,22 +35,39 @@ def _validate_path(plugin_dir: str) -> Path:
         Path: Resolved absolute path
 
     Raises:
-        ValueError: If path contains traversal attempts
+        ValueError: If path contains traversal attempts or targets sensitive areas
     """
+    # Resolve to absolute canonical path (resolves symlinks, removes .., etc)
     path = Path(plugin_dir).resolve()
-
-    # Check for path traversal patterns
-    if ".." in plugin_dir:
-        raise ValueError(
-            f"path traversal detected in '{plugin_dir}'. "
-            "Relative paths with '..' are not allowed for security."
-        )
-
-    # Additional check: ensure resolved path doesn't escape to sensitive areas
     path_str = str(path)
-    if "/etc" in path_str or "passwd" in path_str:
+
+    # Define safe base directories
+    cwd = Path.cwd().resolve()
+    home = Path.home().resolve()
+    tmp = Path("/tmp").resolve()  # Allow /tmp for testing and temporary operations
+
+    # Check if path is relative to safe directories
+    is_in_cwd = path.is_relative_to(cwd)
+    is_in_home = path.is_relative_to(home)
+    is_in_tmp = path.is_relative_to(tmp)
+
+    # Block sensitive system paths BEFORE checking safe directories
+    sensitive_paths = ["/etc", "/sys", "/proc", "/boot", "/root", "/var/log"]
+    for sensitive in sensitive_paths:
+        if path_str.startswith(sensitive) or f"/{sensitive}/" in path_str:
+            raise ValueError(
+                f"access denied: '{plugin_dir}' resolves to sensitive system path '{path_str}'"
+            )
+
+    # Block paths containing sensitive files
+    if "passwd" in path_str or "shadow" in path_str or "sudoers" in path_str:
+        raise ValueError(f"access denied: '{plugin_dir}' resolves to sensitive path '{path_str}'")
+
+    # Now check if in safe directories (includes /tmp for tests)
+    if not (is_in_cwd or is_in_home or is_in_tmp):
         raise ValueError(
-            f"path traversal detected: '{plugin_dir}' resolves to sensitive system path '{path_str}'"
+            f"path traversal detected: '{plugin_dir}' resolves to '{path}' "
+            f"which is outside allowed directories (cwd: {cwd}, home: {home}, /tmp)"
         )
 
     return path

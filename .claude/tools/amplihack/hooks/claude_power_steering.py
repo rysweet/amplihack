@@ -14,7 +14,6 @@ Philosophy:
 
 import asyncio
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Try to import Claude SDK
 try:
@@ -29,7 +28,7 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 POWER_STEERING_PROMPT_TEMPLATE = TEMPLATE_DIR / "power_steering_prompt.txt"
 
 
-def load_prompt_template() -> Optional[str]:
+def load_prompt_template() -> str | None:
     """Load power-steering prompt template.
 
     Returns:
@@ -48,7 +47,7 @@ def load_prompt_template() -> Optional[str]:
         return None
 
 
-def format_prompt(template: str, variables: Dict[str, str]) -> str:
+def format_prompt(template: str, variables: dict[str, str]) -> str:
     """Format prompt with variable substitution.
 
     Args:
@@ -65,7 +64,7 @@ def format_prompt(template: str, variables: Dict[str, str]) -> str:
 
 
 async def analyze_consideration(
-    conversation: List[Dict], consideration: Dict, project_root: Path
+    conversation: list[dict], consideration: dict, project_root: Path
 ) -> bool:
     """Use Claude SDK to analyze if consideration is satisfied.
 
@@ -143,7 +142,7 @@ async def analyze_consideration(
         return True
 
 
-def _format_consideration_prompt(consideration: Dict, conversation: List[Dict]) -> str:
+def _format_consideration_prompt(consideration: dict, conversation: list[dict]) -> str:
     """Format analysis prompt for a consideration.
 
     Args:
@@ -183,7 +182,7 @@ If the consideration is not applicable to this session (e.g., no relevant work w
     return prompt
 
 
-def _format_conversation_summary(conversation: List[Dict], max_length: int = 5000) -> str:
+def _format_conversation_summary(conversation: list[dict], max_length: int = 5000) -> str:
     """Format conversation summary for analysis.
 
     Args:
@@ -249,7 +248,7 @@ def _format_conversation_summary(conversation: List[Dict], max_length: int = 500
     return "".join(summary_parts)
 
 
-async def analyze_claims(delta_text: str, project_root: Path) -> List[str]:
+async def analyze_claims(delta_text: str, project_root: Path) -> list[str]:
     """Use Claude SDK to detect completion claims in delta text.
 
     Replaces regex-based claim detection with LLM-powered analysis.
@@ -339,7 +338,7 @@ async def analyze_if_addressed(
     failure_reason: str,
     delta_text: str,
     project_root: Path,
-) -> Optional[str]:
+) -> str | None:
     """Use Claude SDK to check if delta content addresses a previous failure.
 
     Replaces heuristic keyword matching with LLM-powered analysis.
@@ -417,7 +416,7 @@ Be conservative - only say ADDRESSED if there is clear evidence in the new conte
         return None  # Fail-open on any error
 
 
-def analyze_claims_sync(delta_text: str, project_root: Path) -> List[str]:
+def analyze_claims_sync(delta_text: str, project_root: Path) -> list[str]:
     """Synchronous wrapper for analyze_claims.
 
     Args:
@@ -438,7 +437,7 @@ def analyze_if_addressed_sync(
     failure_reason: str,
     delta_text: str,
     project_root: Path,
-) -> Optional[str]:
+) -> str | None:
     """Synchronous wrapper for analyze_if_addressed.
 
     Args:
@@ -459,7 +458,7 @@ def analyze_if_addressed_sync(
 
 
 def analyze_consideration_sync(
-    conversation: List[Dict], consideration: Dict, project_root: Path
+    conversation: list[dict], consideration: dict, project_root: Path
 ) -> bool:
     """Synchronous wrapper for analyze_consideration.
 

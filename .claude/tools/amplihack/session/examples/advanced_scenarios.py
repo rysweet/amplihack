@@ -6,7 +6,7 @@ Real-world examples that demonstrate complex workflows and patterns.
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from ..claude_session import SessionConfig
 from ..session_toolkit import SessionToolkit
@@ -18,7 +18,7 @@ class CodeAnalysisWorkflow:
     def __init__(self, runtime_dir: Path):
         self.toolkit = SessionToolkit(runtime_dir=runtime_dir, auto_save=True, log_level="INFO")
 
-    def analyze_project(self, project_path: str) -> Dict[str, Any]:
+    def analyze_project(self, project_path: str) -> dict[str, Any]:
         """Analyze a code project with full session tracking."""
 
         # Custom configuration for analysis tasks
@@ -100,8 +100,8 @@ class BatchProcessingManager:
         self.toolkit = SessionToolkit(runtime_dir=runtime_dir, auto_save=True)
 
     def process_data_batches(
-        self, batch_configs: List[Dict[str, Any]], parallel: bool = False
-    ) -> Dict[str, Any]:
+        self, batch_configs: list[dict[str, Any]], parallel: bool = False
+    ) -> dict[str, Any]:
         """Process multiple data batches with comprehensive session tracking."""
 
         session_id = self.toolkit.create_session(
@@ -268,7 +268,7 @@ class DebugContext:
         self.logger = logger
         self.checkpoint_count = 0
 
-    def reproduce_issue(self, steps: List[str]) -> Dict[str, Any]:
+    def reproduce_issue(self, steps: list[str]) -> dict[str, Any]:
         """Reproduce the issue with detailed logging."""
         with self.logger.operation("issue_reproduction"):
             for i, step in enumerate(steps):
@@ -322,7 +322,7 @@ class MonitoringSystem:
         self.toolkit = SessionToolkit(runtime_dir=runtime_dir, auto_save=True)
         self.monitoring_active = False
 
-    def start_monitoring(self, components: List[str], interval: float = 60.0):
+    def start_monitoring(self, components: list[str], interval: float = 60.0):
         """Start system monitoring with session persistence."""
 
         config = SessionConfig(

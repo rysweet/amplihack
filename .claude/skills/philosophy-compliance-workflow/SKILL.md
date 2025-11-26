@@ -25,6 +25,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 ## When to Use This Skill
 
 **USE FOR:**
+
 - Architecture reviews before implementation
 - Code reviews for philosophy alignment
 - Refactoring validation (did we actually simplify?)
@@ -33,6 +34,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 - Identifying over-engineering and complexity creep
 
 **AVOID FOR:**
+
 - Functional bug fixes (not philosophy issues)
 - Performance optimization alone
 - Documentation updates
@@ -66,11 +68,13 @@ Systematic philosophy compliance review that ensures all code and architecture a
 ### Step 1: Scope Identification
 
 **Identify what to review:**
+
 - Single module, multiple modules, or full architecture
 - Recent changes or complete codebase
 - Specific complexity concerns or general review
 
 **Questions to ask:**
+
 - What triggered this review?
 - What are the main concerns?
 - What's the expected outcome?
@@ -78,6 +82,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 ### Step 2: Initial Analysis
 
 **Scan the code structure:**
+
 - Module organization and boundaries
 - Public interfaces (the "studs")
 - Dependencies and coupling
@@ -85,6 +90,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 - Configuration complexity
 
 **Red flags to watch for:**
+
 - Multiple responsibilities in one module
 - Unclear module boundaries
 - Deep inheritance hierarchies
@@ -120,6 +126,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 **Categorize issues by severity:**
 
 **CRITICAL (Must Fix):**
+
 - Multiple responsibilities in one module
 - Circular dependencies
 - Unclear public contracts
@@ -127,6 +134,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 - Tight coupling preventing module replacement
 
 **WARNING (Should Fix):**
+
 - Premature optimizations
 - Excessive configuration options
 - Unnecessary abstractions
@@ -134,6 +142,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 - Future-proofing without current need
 
 **SUGGESTION (Consider):**
+
 - Opportunities for simplification
 - Alternative approaches with fewer dependencies
 - Ways to flatten abstraction layers
@@ -149,6 +158,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 ## Overall Score: [A/B/C/D/F]
 
 ## Summary
+
 [One paragraph overview of findings]
 
 ## Strengths (What Aligns)
@@ -172,24 +182,29 @@ Systematic philosophy compliance review that ensures all code and architecture a
 ## Recommendations
 
 ### Immediate Actions (Critical)
+
 1. [Specific fix required with rationale]
 2. [Another critical fix]
 
 ### Structural Improvements (Important)
+
 1. [Module boundary adjustments]
 2. [Decoupling suggestions]
 
 ### Simplification Opportunities (Good to Have)
+
 1. [Ways to reduce complexity]
 2. [Abstraction removal suggestions]
 
 ## Regeneration Assessment
 
 **Can AI rebuild these components from specifications?**
+
 - Module A: [Ready/Needs Work] - [Specific reason]
 - Module B: [Ready/Needs Work] - [Specific reason]
 
 **What's blocking regeneration:**
+
 - [List specific issues preventing clear AI regeneration]
 
 ## Philosophy Alignment Score
@@ -204,6 +219,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 ### Step 6: Provide Actionable Guidance
 
 **For each violation, provide:**
+
 - Clear explanation of the problem
 - Why it violates philosophy
 - Specific fix recommendation
@@ -211,6 +227,7 @@ Systematic philosophy compliance review that ensures all code and architecture a
 - Priority (Critical/Important/Nice-to-have)
 
 **Example:**
+
 ```
 Issue: SessionManager class has 8 different responsibilities
 Violation: Breaks single responsibility (brick philosophy)
@@ -259,6 +276,7 @@ Priority: Critical
 ## Green Patterns (Examples of Good Design)
 
 **Philosophy-Aligned Designs:**
+
 - Single-responsibility modules with clear purpose
 - Self-contained directories with all code and tests
 - Obvious public interfaces (studs) for connections
@@ -266,6 +284,7 @@ Priority: Critical
 - Minimal dependencies (preferring standard library)
 
 **Example: Good Brick Module**
+
 ```
 authentication/
 ├── __init__.py        # Exports: authenticate, validate_token
@@ -286,6 +305,7 @@ Regeneratable: Yes, from README.md specification
 ## Red Patterns (Examples to Avoid)
 
 **Philosophy Violations:**
+
 - God objects with multiple responsibilities
 - Abstract base classes without clear justification
 - Complex configuration systems for simple features
@@ -293,6 +313,7 @@ Regeneratable: Yes, from README.md specification
 - Premature performance optimizations
 
 **Example: Bad Design**
+
 ```
 user_system/
 ├── framework.py          # Generic abstraction layer
@@ -318,6 +339,7 @@ Problems:
 - **With Cleanup**: Identify what to simplify/remove
 
 **Default workflow position:**
+
 - Architecture Phase: Before implementation starts
 - Code Review Phase: After implementation, before merge
 - Refactoring Phase: Validate simplification efforts
@@ -335,12 +357,14 @@ Problems:
 ## Common Pitfalls
 
 **Disguised Complexity:**
+
 - "This makes it flexible" → Often means over-engineered
 - "We might need this later" → Future-proofing without current need
 - "This is more generic" → Generic often means complex
 - "Industry best practice" → May not apply to your scale
 
 **Philosophy Traps:**
+
 - Adding abstraction layers "just in case"
 - Building frameworks for single use cases
 - Creating plugin systems before needing plugins
@@ -350,6 +374,7 @@ Problems:
 ## Success Criteria
 
 A successful philosophy review:
+
 - [ ] Identifies all critical philosophy violations
 - [ ] Provides actionable fix recommendations
 - [ ] Explains why violations matter
@@ -361,12 +386,14 @@ A successful philosophy review:
 ## Output Artifacts
 
 **Generated documents:**
+
 - Philosophy review report (markdown)
 - Action items with priorities
 - Before/after comparison (if fixes applied)
 - Regeneration assessment per module
 
 **Where to save:**
+
 - `.claude/runtime/logs/<session>/philosophy_review_<timestamp>.md`
 - Link in commit message if fixes applied
 - Update `.claude/context/DISCOVERIES.md` with patterns learned

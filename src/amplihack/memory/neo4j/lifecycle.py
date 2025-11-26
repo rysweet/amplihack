@@ -11,7 +11,6 @@ import logging
 import subprocess
 import time
 from enum import Enum
-from typing import Optional
 
 from .config import get_config, update_password
 from .connector import Neo4jConnector
@@ -114,22 +113,20 @@ class Neo4jContainerManager:
 
             # Check if NEO4J_PASSWORD already set correctly
             import re
-            password_pattern = r'^NEO4J_PASSWORD=.*$'
+
+            password_pattern = r"^NEO4J_PASSWORD=.*$"
             existing_match = re.search(password_pattern, env_content, re.MULTILINE)
 
             if existing_match:
                 # Update existing password
                 new_content = re.sub(
-                    password_pattern,
-                    f'NEO4J_PASSWORD={password}',
-                    env_content,
-                    flags=re.MULTILINE
+                    password_pattern, f"NEO4J_PASSWORD={password}", env_content, flags=re.MULTILINE
                 )
             else:
                 # Add new password entry
-                if env_content and not env_content.endswith('\n'):
-                    env_content += '\n'
-                new_content = env_content + f'NEO4J_PASSWORD={password}\n'
+                if env_content and not env_content.endswith("\n"):
+                    env_content += "\n"
+                new_content = env_content + f"NEO4J_PASSWORD={password}\n"
 
             # Only write if changed
             if new_content != env_content:
@@ -251,7 +248,9 @@ class Neo4jContainerManager:
                 status = ContainerStatus.RUNNING
 
             elif status == ContainerStatus.UNHEALTHY:
-                logger.warning("⚠ Container %s is unhealthy, attempting restart...", self.config.container_name)
+                logger.warning(
+                    "⚠ Container %s is unhealthy, attempting restart...", self.config.container_name
+                )
                 if not self._handle_unhealthy_container():
                     return False
                 # Container is now running after unhealthy recovery
@@ -379,7 +378,7 @@ class Neo4jContainerManager:
             logger.debug("Health check failed: %s", e)
             return False
 
-    def wait_for_healthy(self, timeout: Optional[int] = None) -> bool:
+    def wait_for_healthy(self, timeout: int | None = None) -> bool:
         """Wait for Neo4j to become healthy.
 
         Args:

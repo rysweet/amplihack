@@ -9,7 +9,6 @@ import logging
 import re
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 from .models import CodebaseIdentity
 
@@ -239,7 +238,7 @@ class CodebaseIdentifier:
         remote_url: str,
         branch: str,
         commit_sha: str,
-        metadata: Optional[dict[str, str]] = None,
+        metadata: dict[str, str] | None = None,
     ) -> CodebaseIdentity:
         """Create a CodebaseIdentity manually without Git access.
 

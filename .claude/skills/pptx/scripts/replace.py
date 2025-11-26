@@ -12,7 +12,7 @@ unless "paragraphs" is specified in the replacements for that shape.
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from inventory import InventoryData, extract_text_inventory
 from pptx import Presentation
@@ -40,7 +40,7 @@ def clear_paragraph_bullets(paragraph):
     return pPr
 
 
-def apply_paragraph_properties(paragraph, para_data: Dict[str, Any]):
+def apply_paragraph_properties(paragraph, para_data: dict[str, Any]):
     """Apply formatting properties to a paragraph."""
     # Get the text but don't set it on paragraph directly yet
     text = para_data.get("text", "")
@@ -110,7 +110,7 @@ def apply_paragraph_properties(paragraph, para_data: Dict[str, Any]):
     apply_font_properties(run, para_data)
 
 
-def apply_font_properties(run, para_data: Dict[str, Any]):
+def apply_font_properties(run, para_data: dict[str, Any]):
     """Apply font properties to a text run."""
     if "bold" in para_data:
         run.font.bold = para_data["bold"]
@@ -140,7 +140,7 @@ def apply_font_properties(run, para_data: Dict[str, Any]):
             print(f"  WARNING: Unknown theme color name '{theme_name}'")
 
 
-def detect_frame_overflow(inventory: InventoryData) -> Dict[str, Dict[str, float]]:
+def detect_frame_overflow(inventory: InventoryData) -> dict[str, dict[str, float]]:
     """Detect text overflow in shapes (text exceeding shape bounds).
 
     Returns dict of slide_key -> shape_key -> overflow_inches.
@@ -159,7 +159,7 @@ def detect_frame_overflow(inventory: InventoryData) -> Dict[str, Dict[str, float
     return overflow_map
 
 
-def validate_replacements(inventory: InventoryData, replacements: Dict) -> List[str]:
+def validate_replacements(inventory: InventoryData, replacements: dict) -> list[str]:
     """Validate that all shapes in replacements exist in inventory.
 
     Returns list of error messages.

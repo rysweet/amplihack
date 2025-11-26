@@ -1,7 +1,6 @@
 """Detection of .claude directories in project hierarchy."""
 
 from pathlib import Path
-from typing import Optional
 
 
 class ClaudeDirectoryDetector:
@@ -31,7 +30,7 @@ class ClaudeDirectoryDetector:
         self._cache = {}
         self._cache_max_size = 100  # Prevent unlimited cache growth
 
-    def find_claude_directory(self, start_path: Optional[Path] = None) -> Optional[Path]:
+    def find_claude_directory(self, start_path: Path | None = None) -> Path | None:
         """Find .claude directory in current or parent directories with caching.
 
         Args:
@@ -68,7 +67,7 @@ class ClaudeDirectoryDetector:
         self._cache[cache_key] = result
         return result
 
-    def has_claude_directory(self, path: Optional[Path] = None) -> bool:
+    def has_claude_directory(self, path: Path | None = None) -> bool:
         """Check if a .claude directory exists in the hierarchy.
 
         Args:

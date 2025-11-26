@@ -22,16 +22,19 @@ Abstract base class that all plugins must inherit from.
 
 ```python
 from abc import ABC, abstractmethod
-import argparse
+from typing import Any
 
 class PluginBase(ABC):
     """Abstract base class for all amplihack plugins."""
 
-    name: str
-    description: str
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Plugin identifier."""
+        pass
 
     @abstractmethod
-    def execute(self, args: argparse.Namespace) -> int:
+    def execute(self, args: dict[str, Any]) -> Any:
         """Execute the plugin command."""
         pass
 ```
@@ -78,17 +81,22 @@ class MyPlugin(PluginBase):
 
 ### Required Methods
 
-#### `execute(args: argparse.Namespace) -> int`
+#### `execute(args: dict[str, Any]) -> Any`
 
-Main execution method called when plugin is invoked from CLI.
+Main execution method called when plugin is invoked.
 
 **Parameters:**
 
-- `args` (argparse.Namespace): Parsed command-line arguments
+- `args` (dict[str, Any]): Dictionary of arguments passed to the plugin
+  - Can contain any key-value pairs
+  - Commonly includes command-line arguments from argparse
+  - Use `getattr(args, 'key', default)` for safe access or `args.get('key', default)`
 
 **Returns:**
 
-- `int`: Exit code (0 for success, non-zero for error)
+- `Any`: Plugin can return any value
+  - Common pattern: Return 0 for success, non-zero for error (CLI convention)
+  - Can also return strings, objects, or any data structure
 
 **Standard Exit Codes:**
 
@@ -102,12 +110,12 @@ Main execution method called when plugin is invoked from CLI.
 **Example:**
 
 ```python
-def execute(self, args: argparse.Namespace) -> int:
+def execute(self, args: dict[str, Any]) -> Any:
     """Execute the plugin."""
     try:
-        # Access arguments
-        verbose = getattr(args, 'verbose', False)
-        file_path = getattr(args, 'file', None)
+        # Access arguments safely using .get() with defaults
+        verbose = args.get('verbose', False)
+        file_path = args.get('file', None)
 
         # Validate input
         if not file_path:
@@ -117,7 +125,7 @@ def execute(self, args: argparse.Namespace) -> int:
         # Execute plugin logic
         result = self._process_file(file_path)
 
-        # Return success
+        # Return success (0 for CLI convention, or any data)
         if verbose:
             print(f"Processed {file_path} successfully")
         return 0
@@ -161,18 +169,18 @@ class MyPlugin(PluginBase):
 
 ### Accessing Arguments
 
-Use `getattr()` for safe argument access with defaults:
+Use `.get()` for safe argument access with defaults:
 
 ```python
-def execute(self, args: argparse.Namespace) -> int:
-    # Safe access with default
-    verbose = getattr(args, 'verbose', False)
-    timeout = getattr(args, 'timeout', 30)
-    config_file = getattr(args, 'config', None)
+def execute(self, args: dict[str, Any]) -> Any:
+    # Safe access with default using .get()
+    verbose = args.get('verbose', False)
+    timeout = args.get('timeout', 30)
+    config_file = args.get('config', None)
 
     # Check if argument exists
-    if hasattr(args, 'api_key'):
-        api_key = args.api_key
+    if 'api_key' in args:
+        api_key = args['api_key']
     else:
         print("Warning: No API key provided")
 ```

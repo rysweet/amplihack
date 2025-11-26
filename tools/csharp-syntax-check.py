@@ -13,10 +13,9 @@ Checks for:
 import re
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 
-def validate_balanced_delimiters(content: str, filepath: str) -> List[str]:
+def validate_balanced_delimiters(content: str, filepath: str) -> list[str]:
     """Check for balanced delimiters in C# code."""
     errors = []
 
@@ -50,7 +49,7 @@ def validate_balanced_delimiters(content: str, filepath: str) -> List[str]:
     return errors
 
 
-def validate_common_patterns(content: str, filepath: str) -> List[str]:
+def validate_common_patterns(content: str, filepath: str) -> list[str]:
     """Check for common C# syntax errors."""
     errors = []
     lines = content.split("\n")
@@ -88,7 +87,7 @@ def validate_common_patterns(content: str, filepath: str) -> List[str]:
     return errors
 
 
-def validate_namespace_class_structure(content: str, filepath: str) -> List[str]:
+def validate_namespace_class_structure(content: str, filepath: str) -> list[str]:
     """Basic validation of namespace and class structure."""
     errors = []
 
@@ -108,7 +107,7 @@ def validate_namespace_class_structure(content: str, filepath: str) -> List[str]
     return errors
 
 
-def validate_cs_syntax(filepath: str) -> Tuple[bool, List[str]]:
+def validate_cs_syntax(filepath: str) -> tuple[bool, list[str]]:
     """
     Validate C# file syntax.
     Returns (is_valid, list_of_errors)

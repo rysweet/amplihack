@@ -8,12 +8,12 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent
 
 
-def run_git_command(cmd: List[str]) -> tuple[bool, str]:
+def run_git_command(cmd: list[str]) -> tuple[bool, str]:
     """Run a git command and return success status and output."""
     try:
         result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=30)
@@ -22,7 +22,7 @@ def run_git_command(cmd: List[str]) -> tuple[bool, str]:
         return False, str(e)
 
 
-def filter_main_codebase_issues(issues: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def filter_main_codebase_issues(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Filter issues to only include main codebase (no worktrees, prioritize src/)."""
     filtered = []
     for issue in issues:
@@ -201,7 +201,7 @@ def apply_silent_exception_fix(file_path: Path, line_num: int, function_name: st
         return False
 
 
-def apply_fix(issue: Dict[str, Any], fix_number: int) -> bool:
+def apply_fix(issue: dict[str, Any], fix_number: int) -> bool:
     """Apply a single fix and create branch/commit."""
     location = issue["location"]
     parts = location.split(":")

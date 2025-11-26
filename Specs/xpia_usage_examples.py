@@ -8,7 +8,7 @@ Note: This is example/demonstration code. Some functions may not be implemented.
 """
 
 import asyncio
-from typing import Any, Dict
+from typing import Any
 
 # Example imports - these would be from the actual XPIA Defense implementation
 try:
@@ -231,14 +231,14 @@ async def example_hook_system():
     xpia_client = await create_xpia_defense_client("http://localhost:8080/api/v1/xpia")
 
     # Define hook callbacks
-    def log_threats(event_data: Dict[str, Any]) -> Dict[str, Any]:
+    def log_threats(event_data: dict[str, Any]) -> dict[str, Any]:
         validation = event_data["validation_result"]
         print(f"🚨 THREAT DETECTED: {validation.risk_level.value}")
         for threat in validation.threats:
             print(f"   ⚠️  {threat.threat_type.value}: {threat.description}")
         return {"action": "logged"}
 
-    def alert_critical_threats(event_data: Dict[str, Any]) -> Dict[str, Any]:
+    def alert_critical_threats(event_data: dict[str, Any]) -> dict[str, Any]:
         validation = event_data["validation_result"]
         if validation.risk_level == RiskLevel.CRITICAL:
             print("🚨🚨 CRITICAL THREAT - ALERTING SECURITY TEAM 🚨🚨")

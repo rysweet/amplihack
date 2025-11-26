@@ -7,7 +7,7 @@ import sqlite3
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from .models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class MemoryDatabase:
     """Thread-safe SQLite database for agent memory storage."""
 
-    def __init__(self, db_path: Optional[Union[Path, str]] = None):
+    def __init__(self, db_path: Path | str | None = None):
         """Initialize database connection.
 
         Args:
@@ -30,7 +30,7 @@ class MemoryDatabase:
 
         self.db_path = db_path
         self._lock = threading.RLock()
-        self._connection: Optional[sqlite3.Connection] = None
+        self._connection: sqlite3.Connection | None = None
         self._init_database()
 
     def _init_database(self) -> None:
@@ -232,7 +232,7 @@ class MemoryDatabase:
                 if conn:
                     conn.close()
 
-    def retrieve_memories(self, query: MemoryQuery) -> List[MemoryEntry]:
+    def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
         """Retrieve memories matching the query.
 
         Args:
@@ -295,7 +295,7 @@ class MemoryDatabase:
                 if conn:
                     conn.close()
 
-    def get_memory_by_id(self, memory_id: str) -> Optional[MemoryEntry]:
+    def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
 
         Args:
@@ -400,7 +400,7 @@ class MemoryDatabase:
                 if conn:
                     conn.close()
 
-    def get_session_info(self, session_id: str) -> Optional[SessionInfo]:
+    def get_session_info(self, session_id: str) -> SessionInfo | None:
         """Get information about a session.
 
         Args:
@@ -465,7 +465,7 @@ class MemoryDatabase:
 
         return None
 
-    def list_sessions(self, limit: Optional[int] = None) -> List[SessionInfo]:
+    def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
         """List all sessions ordered by last accessed.
 
         Args:
@@ -534,7 +534,7 @@ class MemoryDatabase:
                 if conn:
                     conn.close()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
         Returns:
@@ -608,7 +608,7 @@ class MemoryDatabase:
             (session_id, agent_id, session_id, agent_id, now, now),
         )
 
-    def _row_to_memory(self, row: tuple) -> Optional[MemoryEntry]:
+    def _row_to_memory(self, row: tuple) -> MemoryEntry | None:
         """Convert database row to MemoryEntry."""
         try:
             return MemoryEntry(

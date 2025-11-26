@@ -1,6 +1,6 @@
 """Azure OpenAI model mapping."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class AzureModelMapper:
@@ -24,7 +24,7 @@ class AzureModelMapper:
     # Reasoning models that require max_completion_tokens parameter
     REASONING_MODELS = {"gpt-5", "o3", "o4", "o3-mini", "o4-mini", "gpt-5-mini"}
 
-    def __init__(self, config: Dict[str, str]):
+    def __init__(self, config: dict[str, str]):
         """Initialize model mapper with configuration.
 
         Args:
@@ -41,7 +41,7 @@ class AzureModelMapper:
             if deployment_var in config:
                 self._deployment_cache[model] = config[deployment_var]
 
-    def get_azure_deployment(self, model_name: str) -> Optional[str]:
+    def get_azure_deployment(self, model_name: str) -> str | None:
         """Get Azure deployment name for OpenAI model.
 
         Args:
@@ -91,7 +91,7 @@ class AzureModelMapper:
         """
         return model_name.lower() in {m.lower() for m in self.REASONING_MODELS}
 
-    def convert_parameters_for_reasoning(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def convert_parameters_for_reasoning(self, params: dict[str, Any]) -> dict[str, Any]:
         """Convert parameters for reasoning models.
 
         Args:
@@ -108,7 +108,7 @@ class AzureModelMapper:
 
         return converted
 
-    def get_model_mapping_config(self) -> Dict[str, str]:
+    def get_model_mapping_config(self) -> dict[str, str]:
         """Get all model mapping configuration.
 
         Returns:

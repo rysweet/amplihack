@@ -331,10 +331,11 @@ class TestPluginDiscovery:
         """Discovery prevents path traversal attacks."""
         from src.amplihack.plugins.discovery import discover_plugins
 
-        with pytest.raises(ValueError, match="path traversal"):
+        # Should raise ValueError for sensitive paths (either "access denied" or "path traversal")
+        with pytest.raises(ValueError, match="(path traversal|access denied)"):
             discover_plugins("../../../etc/passwd")
 
-        with pytest.raises(ValueError, match="path traversal"):
+        with pytest.raises(ValueError, match="(path traversal|access denied)"):
             discover_plugins("/tmp/plugins/../../etc")
 
     def test_discover_plugins_validates_file_size(self):
@@ -353,10 +354,14 @@ class TestPluginDiscovery:
                 discover_plugins(str(plugin_dir))
 
     def test_discover_plugins_handles_missing_directory(self):
-        """Discovery handles missing directory gracefully."""
+        """Discovery handles missing directory gracefully within allowed paths."""
+        import uuid
+
         from src.amplihack.plugins.discovery import discover_plugins
 
-        result = discover_plugins("/nonexistent/directory")
+        # Use a non-existent directory within /tmp (allowed path)
+        nonexistent_dir = f"/tmp/nonexistent_{uuid.uuid4()}"
+        result = discover_plugins(nonexistent_dir)
         assert result == []
 
     def test_discover_plugins_ignores_non_python_files(self):
@@ -576,6 +581,81 @@ class TestPluginLoading:
         assert "plugin2" in all_plugins
         assert isinstance(all_plugins["plugin1"], Plugin1)
         assert isinstance(all_plugins["plugin2"], Plugin2)
+
+
+# ============================================================================
+# TEST: HelloPlugin Built-in Example (5% of unit tests)
+# ============================================================================
+
+
+class TestHelloPlugin:
+    """Test the HelloPlugin built-in example plugin."""
+
+    def test_hello_plugin_exists(self):
+        """HelloPlugin should be importable from builtin module."""
+        from src.amplihack.plugins.builtin.hello import HelloPlugin
+
+        assert HelloPlugin is not None
+        assert hasattr(HelloPlugin, "execute")
+
+    def test_hello_plugin_inherits_pluginbase(self):
+        """HelloPlugin should inherit from PluginBase."""
+        from src.amplihack.plugins.base import PluginBase
+        from src.amplihack.plugins.builtin.hello import HelloPlugin
+
+        assert issubclass(HelloPlugin, PluginBase)
+
+    def test_hello_plugin_has_name_property(self):
+        """HelloPlugin should have a name property returning 'hello'."""
+        from src.amplihack.plugins.builtin.hello import HelloPlugin
+
+        plugin = HelloPlugin()
+        assert plugin.name == "hello"
+
+    def test_hello_plugin_execute_with_default_name(self, capsys):
+        """HelloPlugin should print 'Hello, Friend!' with no arguments."""
+        from src.amplihack.plugins.builtin.hello import HelloPlugin
+
+        plugin = HelloPlugin()
+        result = plugin.execute({})
+
+        # Capture printed output
+        captured = capsys.readouterr()
+        assert "Hello, Friend!" in captured.out
+        assert result == "Hello, Friend!"
+
+    def test_hello_plugin_execute_with_custom_name(self, capsys):
+        """HelloPlugin should print 'Hello, {name}!' with name argument."""
+        from src.amplihack.plugins.builtin.hello import HelloPlugin
+
+        plugin = HelloPlugin()
+        result = plugin.execute({"name": "Captain"})
+
+        # Capture printed output
+        captured = capsys.readouterr()
+        assert "Hello, Captain!" in captured.out
+        assert result == "Hello, Captain!"
+
+    def test_hello_plugin_returns_message(self):
+        """HelloPlugin should return the greeting message."""
+        from src.amplihack.plugins.builtin.hello import HelloPlugin
+
+        plugin = HelloPlugin()
+        result = plugin.execute({"name": "Tester"})
+
+        assert isinstance(result, str)
+        assert result == "Hello, Tester!"
+
+    def test_hello_plugin_registered_automatically(self):
+        """HelloPlugin should be auto-registered when module is imported."""
+        from src.amplihack.plugins.builtin.hello import HelloPlugin  # noqa: F401
+        from src.amplihack.plugins.registry import PluginRegistry
+
+        registry = PluginRegistry()
+        plugin_class = registry.get("hello")
+
+        assert plugin_class is not None
+        assert plugin_class.__name__ == "HelloPlugin"
 
 
 # ============================================================================

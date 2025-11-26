@@ -11,7 +11,6 @@ import threading
 import time
 from contextlib import nullcontext
 from pathlib import Path
-from typing import Optional, Tuple
 
 # Try to import Claude SDK, fall back gracefully
 try:
@@ -79,9 +78,9 @@ class AutoMode:
         sdk: str,
         prompt: str,
         max_turns: int = 10,
-        working_dir: Optional[Path] = None,
+        working_dir: Path | None = None,
         ui_mode: bool = False,
-        query_timeout_minutes: Optional[float] = 30.0,
+        query_timeout_minutes: float | None = 30.0,
     ):
         """Initialize auto mode.
 
@@ -106,7 +105,7 @@ class AutoMode:
         # Handle timeout: None means no timeout, otherwise validate
         if query_timeout_minutes is None:
             # No timeout - used for --no-timeout flag
-            self.query_timeout_seconds: Optional[float] = None
+            self.query_timeout_seconds: float | None = None
         else:
             # Validate positive timeout
             if query_timeout_minutes <= 0:
@@ -237,7 +236,7 @@ class AutoMode:
 
         return f"[Turn {self.turn}/{self.max_turns} | {phase} | {self._format_elapsed(total_time)}{fork_info}]"
 
-    def run_sdk(self, prompt: str) -> Tuple[int, str]:
+    def run_sdk(self, prompt: str) -> tuple[int, str]:
         """Run SDK command with prompt, choosing method by provider.
 
         For Claude: Should NOT be called directly - use async path instead
@@ -255,7 +254,7 @@ class AutoMode:
         # Fallback to subprocess for Copilot or if SDK unavailable
         return self._run_sdk_subprocess(prompt)
 
-    def _run_sdk_subprocess(self, prompt: str) -> Tuple[int, str]:
+    def _run_sdk_subprocess(self, prompt: str) -> tuple[int, str]:
         """Run SDK command via subprocess (legacy/copilot mode).
 
         Returns:
@@ -502,7 +501,7 @@ Document your decisions and reasoning in comments/logs."""
             # Never break conversation flow for todo formatting errors
             self.log(f"Error formatting todos: {e}", level="WARNING")
 
-    async def _run_turn_with_sdk(self, prompt: str) -> Tuple[int, str]:
+    async def _run_turn_with_sdk(self, prompt: str) -> tuple[int, str]:
         """Execute one turn using Claude Python SDK with streaming.
 
         Args:
@@ -656,7 +655,7 @@ Document your decisions and reasoning in comments/logs."""
 
             return (0, full_output)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Timeout handling with turn context
             turn_elapsed = time.time() - turn_start_time
             partial_output = "".join(output_lines)
@@ -717,7 +716,7 @@ Document your decisions and reasoning in comments/logs."""
         prompt: str,
         max_retries: int = 3,
         base_delay: float = 2.0,
-    ) -> Tuple[int, str]:
+    ) -> tuple[int, str]:
         """Execute turn with retry on transient errors.
 
         Implements exponential backoff for transient API errors (500, 429, 503).

@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .connector import Neo4jConnector
 from .exceptions import Neo4jConnectionError
@@ -43,19 +43,19 @@ class RetrievalContext:
     # Identity context
     project_id: str
     agent_type: str
-    agent_instance_id: Optional[str] = None
+    agent_instance_id: str | None = None
 
     # Retrieval parameters
     isolation_level: IsolationLevel = IsolationLevel.AGENT_TYPE
     include_global: bool = True  # Include global (non-project) memories
 
     # Time boundaries
-    time_window_hours: Optional[int] = None  # Only recent memories
-    since: Optional[datetime] = None  # Created after this time
+    time_window_hours: int | None = None  # Only recent memories
+    since: datetime | None = None  # Created after this time
 
     # Quality filters
-    min_importance: Optional[int] = None  # 1-10 scale
-    memory_types: Optional[List[str]] = None  # Filter by type
+    min_importance: int | None = None  # 1-10 scale
+    memory_types: list[str] | None = None  # Filter by type
 
     def validate(self) -> bool:
         """Validate retrieval context.
@@ -86,13 +86,13 @@ class MemoryResult:
     content: str
     memory_type: str
     created_at: datetime
-    importance: Optional[int]
-    tags: List[str]
-    metadata: Dict[str, Any]
+    importance: int | None
+    tags: list[str]
+    metadata: dict[str, Any]
     score: float  # Relevance score (0.0-1.0)
 
     @classmethod
-    def from_neo4j_record(cls, record: Dict[str, Any], score: float = 1.0) -> "MemoryResult":
+    def from_neo4j_record(cls, record: dict[str, Any], score: float = 1.0) -> "MemoryResult":
         """Create from Neo4j query result.
 
         Args:
@@ -129,7 +129,7 @@ class RetrievalStrategy(ABC):
         self.conn = connector
 
     @abstractmethod
-    def retrieve(self, context: RetrievalContext, limit: int = 10) -> List[MemoryResult]:
+    def retrieve(self, context: RetrievalContext, limit: int = 10) -> list[MemoryResult]:
         """Retrieve memories using this strategy.
 
         Args:
@@ -143,7 +143,7 @@ class RetrievalStrategy(ABC):
             Neo4jConnectionError: If query fails
         """
 
-    def _build_isolation_clause(self, context: RetrievalContext) -> tuple[str, Dict[str, Any]]:
+    def _build_isolation_clause(self, context: RetrievalContext) -> tuple[str, dict[str, Any]]:
         """Build Cypher WHERE clause for isolation.
 
         Args:
@@ -211,7 +211,7 @@ class TemporalRetrieval(RetrievalStrategy):
     - Frequently accessed memories
     """
 
-    def retrieve(self, context: RetrievalContext, limit: int = 10) -> List[MemoryResult]:
+    def retrieve(self, context: RetrievalContext, limit: int = 10) -> list[MemoryResult]:
         """Retrieve recent memories.
 
         Args:
@@ -255,8 +255,8 @@ class SimilarityRetrieval(RetrievalStrategy):
     """
 
     def retrieve(
-        self, context: RetrievalContext, limit: int = 10, query_tags: Optional[List[str]] = None
-    ) -> List[MemoryResult]:
+        self, context: RetrievalContext, limit: int = 10, query_tags: list[str] | None = None
+    ) -> list[MemoryResult]:
         """Retrieve similar memories based on tags.
 
         Args:
@@ -316,8 +316,8 @@ class GraphTraversal(RetrievalStrategy):
     """
 
     def retrieve(
-        self, context: RetrievalContext, limit: int = 10, start_memory_id: Optional[str] = None
-    ) -> List[MemoryResult]:
+        self, context: RetrievalContext, limit: int = 10, start_memory_id: str | None = None
+    ) -> list[MemoryResult]:
         """Retrieve related memories via graph traversal.
 
         Args:
@@ -409,9 +409,9 @@ class HybridRetrieval(RetrievalStrategy):
         self,
         context: RetrievalContext,
         limit: int = 10,
-        query_tags: Optional[List[str]] = None,
-        start_memory_id: Optional[str] = None,
-    ) -> List[MemoryResult]:
+        query_tags: list[str] | None = None,
+        start_memory_id: str | None = None,
+    ) -> list[MemoryResult]:
         """Retrieve memories using hybrid strategy.
 
         Args:
@@ -427,7 +427,7 @@ class HybridRetrieval(RetrievalStrategy):
             raise ValueError("Invalid retrieval context")
 
         # Collect results from all strategies
-        all_results: Dict[str, MemoryResult] = {}
+        all_results: dict[str, MemoryResult] = {}
 
         # Temporal retrieval
         try:
@@ -478,7 +478,7 @@ def retrieve_recent_memories(
     agent_type: str,
     hours: int = 24,
     limit: int = 10,
-) -> List[MemoryResult]:
+) -> list[MemoryResult]:
     """Retrieve recent memories for a project and agent type.
 
     Args:
@@ -505,9 +505,9 @@ def retrieve_similar_memories(
     connector: Neo4jConnector,
     project_id: str,
     agent_type: str,
-    tags: List[str],
+    tags: list[str],
     limit: int = 10,
-) -> List[MemoryResult]:
+) -> list[MemoryResult]:
     """Retrieve memories similar to given tags.
 
     Args:

@@ -6,7 +6,6 @@ Detects when codebase has changed and index needs updating.
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ def get_codebase_last_modified(project_root: Path, patterns: list[str] | None = 
     return latest
 
 
-def get_code_index_last_updated(conn) -> Optional[datetime]:
+def get_code_index_last_updated(conn) -> datetime | None:
     """Get when code understanding index was last updated.
 
     Args:
@@ -72,7 +71,7 @@ def get_code_index_last_updated(conn) -> Optional[datetime]:
 
 def is_code_index_stale(
     project_root: Path, conn, max_age_minutes: int = 60
-) -> Tuple[bool, Optional[str]]:
+) -> tuple[bool, str | None]:
     """Check if code understanding index is stale.
 
     Index is stale if:

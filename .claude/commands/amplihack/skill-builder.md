@@ -61,6 +61,7 @@ This command implements patterns from:
 - **Skill Builder Reference**: https://github.com/metaskills/skill-builder
 
 **Key Best Practices to Follow:**
+
 - Keep SKILL.md under 500 lines (use progressive disclosure)
 - Avoid deeply nested references (max 1 level deep)
 - Use workflows and feedback loops for complex tasks

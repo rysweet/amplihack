@@ -33,6 +33,7 @@ services:
 ```
 
 **Identify:**
+
 - What you're managing: Services
 - Key operations: enable/disable/add/remove
 - Validation rules: required fields, constraints
@@ -132,6 +133,7 @@ def _cleanup_old_backups(backup_dir: Path, stem: str, keep_count: int = 10) -> N
 ```
 
 **Key Principles:**
+
 - Atomic writes (temp file + rename)
 - Preserve file permissions
 - Auto-cleanup old backups
@@ -289,6 +291,7 @@ def validate_config(config: dict[str, Any]) -> list[str]:
 ```
 
 **Key Principles:**
+
 - Immutable operations (deep copy, return new)
 - Data model with validation
 - Clear error messages
@@ -475,6 +478,7 @@ if __name__ == "__main__":
 ```
 
 **Key Principles:**
+
 - Clear command structure
 - Backup before modifications
 - Rollback on errors
@@ -580,6 +584,7 @@ def test_enable_entity_immutability():
 ## Step 7: Write Documentation
 
 Create comprehensive README.md with:
+
 - Overview and features
 - Installation instructions
 - Usage examples for each command
@@ -613,6 +618,7 @@ Before considering your tool complete:
 ## Adaptation Examples
 
 ### YAML Configuration
+
 ```python
 import yaml
 
@@ -628,6 +634,7 @@ def write_config(path, data):
 ```
 
 ### TOML Configuration
+
 ```python
 import tomli
 import tomli_w
@@ -644,6 +651,7 @@ def write_config(path, data):
 ```
 
 ### Environment Variables
+
 ```python
 # For .env files
 from dotenv import dotenv_values, set_key
@@ -677,6 +685,7 @@ After creating your basic tool:
 ## Questions?
 
 Refer to MCP Manager implementation as reference:
+
 - `/home/azureuser/src/amplihack3/.claude/scenarios/mcp-manager/`
 
 Each module demonstrates the pattern clearly with full working code.
