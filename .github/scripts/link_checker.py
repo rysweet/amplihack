@@ -12,14 +12,17 @@ Security notes:
 - Uses environment variables for configuration
 - Rate limits external requests to avoid abuse
 - No user input is processed (reads only from repository files)
+- SSRF protection: blocks requests to internal/private IPs
 """
 
+import ipaddress
 import re
 import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import requests
 
@@ -28,12 +31,49 @@ DOCS_DIRS = ["docs", ".claude", "Specs"]
 MARKDOWN_EXTENSIONS = [".md", ".mdx"]
 REQUEST_TIMEOUT = 10
 RATE_LIMIT_DELAY = 0.5  # seconds between external requests
-MAX_RETRIES = 2
+
+# Security: Hosts that should never be accessed (SSRF protection)
+BLOCKED_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 
 # Patterns
 MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
 ANCHOR_PATTERN = re.compile(r"^#+\s+(.+)$", re.MULTILINE)
 IMAGE_PATTERN = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
+
+
+def is_safe_url(url: str) -> tuple[bool, str]:
+    """Validate URL is safe to request (SSRF protection).
+
+    Returns (is_safe, error_message).
+    """
+    try:
+        parsed = urlparse(url)
+
+        # Check for blocked hostnames
+        hostname = parsed.hostname
+        if hostname is None:
+            return False, "Invalid URL: no hostname"
+
+        if hostname.lower() in BLOCKED_HOSTS:
+            return False, f"Blocked host: {hostname}"
+
+        # Check for private/internal IP addresses
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_reserved:
+                return False, f"Private/internal IP not allowed: {hostname}"
+        except ValueError:
+            # Not an IP address, that's fine (it's a hostname)
+            pass
+
+        # Check for valid schemes
+        if parsed.scheme not in ("http", "https"):
+            return False, f"Invalid scheme: {parsed.scheme}"
+
+        return True, ""
+
+    except (ValueError, AttributeError) as e:
+        return False, f"URL validation error: {e}"
 
 
 @dataclass
@@ -153,7 +193,7 @@ def check_anchor_in_file(anchor: str, file_path: Path) -> Optional[str]:
 
         if normalized_anchor not in anchors:
             return f"Anchor not found: #{anchor}"
-    except Exception as e:
+    except (OSError, UnicodeDecodeError) as e:
         return f"Could not read file for anchor check: {e}"
 
     return None
@@ -161,11 +201,16 @@ def check_anchor_in_file(anchor: str, file_path: Path) -> Optional[str]:
 
 def check_external_link(url: str) -> tuple[Optional[str], str]:
     """Check if external URL is accessible. Returns (error, severity)."""
+    # SSRF protection: validate URL before making request
+    is_safe, error_msg = is_safe_url(url)
+    if not is_safe:
+        return f"Unsafe URL: {error_msg}", "error"
+
     try:
         response = requests.head(
             url,
             timeout=REQUEST_TIMEOUT,
-            allow_redirects=True,
+            allow_redirects=False,  # Don't follow redirects so we can detect them
             headers={"User-Agent": "Mozilla/5.0 (Link Checker Bot)"},
         )
 
@@ -183,12 +228,12 @@ def check_external_link(url: str) -> tuple[Optional[str], str]:
 
     except requests.exceptions.Timeout:
         return "Request timed out", "warning"
-    except requests.exceptions.SSLError:
-        return "SSL certificate error", "warning"
-    except requests.exceptions.ConnectionError:
-        return "Connection failed", "error"
-    except Exception as e:
-        return f"Error: {str(e)[:50]}", "error"
+    except requests.exceptions.SSLError as e:
+        return f"SSL certificate error: {str(e)[:40]}", "warning"
+    except requests.exceptions.ConnectionError as e:
+        return f"Connection failed: {str(e)[:40]}", "error"
+    except requests.exceptions.RequestException as e:
+        return f"Request error: {str(e)[:40]}", "error"
 
 
 def find_markdown_files(repo_root: Path) -> list[Path]:
@@ -354,8 +399,14 @@ def main() -> int:
 
     if result.broken_links or result.warnings:
         report = generate_report(result)
-        Path("broken_links_report.md").write_text(report)
-        print("\nReport written to broken_links_report.md")
+        try:
+            Path("broken_links_report.md").write_text(report)
+            print("\nReport written to broken_links_report.md")
+        except OSError as e:
+            print(f"\nError writing report: {e}", file=sys.stderr)
+            # Still print report to stdout so workflow can capture it
+            print("\n--- Report follows ---")
+            print(report)
 
     return 0 if not result.broken_links else 1
 

@@ -39,12 +39,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests aiohttp
+          pip install requests
 
       - name: Run link checker
         id: linkcheck
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_PAGES_URL: ${{ vars.GITHUB_PAGES_URL }}
         run: |
           set +x  # Disable command echoing
