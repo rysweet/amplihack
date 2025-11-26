@@ -132,6 +132,44 @@ These files are kept for backward compatibility but should not be used:
 - `.claude/skills/ultrathink-orchestrator/SKILL.md`
 - `.claude/skills/default-workflow/SKILL.md`
 
+## Runtime Enforcement
+
+The workflow enforcement system includes runtime mechanisms to prevent agents from skipping steps.
+
+### How It Works
+
+Three modules work together:
+
+1. **`workflow_state.py`** - Tracks which steps are completed/skipped
+2. **`todo_interceptor.py`** - Monitors TodoWrite to detect step progress
+3. **`workflow_gate.py`** - Blocks session stop until Step 21 is reached
+
+### Mandatory Steps
+
+These steps cannot be skipped without explicit user override:
+
+| Step | Name                   | Why Mandatory                        |
+| ---- | ---------------------- | ------------------------------------ |
+| 0    | Workflow Preparation   | Ensures 22 todos created at start    |
+| 10   | Open Pull Request      | Code must be submitted for review    |
+| 16   | Philosophy Compliance  | Ensures code follows principles      |
+| 17   | Ensure PR is Mergeable | Verifies CI passes and PR is clean   |
+| 21   | Task Completion        | Final step - workflow must complete  |
+
+### Fail-Open Design
+
+The system fails open (allows stop) when:
+
+- No workflow state exists (legacy sessions)
+- State file is corrupted
+- Errors occur during validation
+
+This prevents blocking users due to enforcement bugs.
+
+### State Files
+
+State is persisted in `.claude/runtime/workflow/state_{session_id}.json` using atomic writes (temp file + rename) for reliability.
+
 ## Troubleshooting
 
 ### Wrong workflow selected
