@@ -937,7 +937,14 @@ class TestUserCustomization(unittest.TestCase):
         self.assertNotIn("disabled_check", analysis.results)
 
     def test_custom_consideration_with_generic_checker(self):
-        """Test custom considerations work with generic checker."""
+        """Test custom considerations work with generic checker.
+
+        NOTE: With SDK-first refactoring, we must mock SDK_AVAILABLE=False
+        to test the generic checker fallback path. When SDK is available,
+        SDK analysis is used instead.
+        """
+        from unittest.mock import patch
+
         yaml_path = self.project_root / ".claude" / "tools" / "amplihack" / "considerations.yaml"
         yaml_content = """
 - id: custom_check
@@ -974,11 +981,13 @@ class TestUserCustomization(unittest.TestCase):
             },
         ]
 
-        analysis = checker._analyze_considerations(transcript, "test_session")
+        # Mock SDK_AVAILABLE=False to test the generic checker fallback path
+        with patch("power_steering_checker.SDK_AVAILABLE", False):
+            analysis = checker._analyze_considerations(transcript, "test_session")
 
         # Should have result for custom check
         self.assertIn("custom_check", analysis.results)
-        # Generic analyzer defaults to satisfied (fail-open)
+        # Generic analyzer defaults to satisfied (fail-open) when SDK unavailable
         self.assertTrue(analysis.results["custom_check"].satisfied)
 
 
@@ -1073,6 +1082,304 @@ class TestBackwardCompatibility(unittest.TestCase):
 
         # todos_complete should not be in results (disabled in config)
         self.assertNotIn("todos_complete", analysis.results)
+
+
+class TestSDKFirstRefactoring(unittest.TestCase):
+    """TDD tests for SDK-First refactoring (Issue #1679).
+
+    These tests verify that SDK is tried FIRST for ALL considerations,
+    with heuristics as fallback only. Current implementation has BACKWARDS
+    logic that will cause these tests to FAIL.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.project_root = Path(self.temp_dir)
+        (self.project_root / ".claude" / "tools" / "amplihack").mkdir(parents=True)
+        (self.project_root / ".claude" / "runtime" / "power-steering").mkdir(
+            parents=True, exist_ok=True
+        )
+        config_path = (
+            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
+        config_path.write_text(json.dumps({"enabled": True}))
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        import shutil
+
+        shutil.rmtree(self.temp_dir)
+
+    def test_sdk_first_for_all_considerations(self):
+        """Test that SDK is tried FIRST for ALL consideration types.
+
+        SDK analysis should be attempted for ALL considerations, including
+        those with checker='generic'. Heuristics are only used as fallback.
+        """
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        checker = PowerSteeringChecker(self.project_root)
+
+        # Mock transcript
+        transcript = [
+            {"type": "user", "message": {"content": "Test"}},
+            {"type": "assistant", "message": {"content": [{"type": "text", "text": "Response"}]}},
+        ]
+
+        # Test consideration with "generic" checker (currently SKIPPED by SDK)
+        consideration = {
+            "id": "test_generic",
+            "question": "Is this satisfied?",
+            "category": "Test",
+            "severity": "warning",
+            "checker": "generic",  # This should still use SDK first!
+        }
+
+        # Mock SDK to track if it was called
+        with (
+            patch("power_steering_checker.SDK_AVAILABLE", True),
+            patch(
+                "power_steering_checker.analyze_consideration", new_callable=AsyncMock
+            ) as mock_sdk,
+        ):
+            mock_sdk.return_value = True
+
+            # Run async check
+            result = asyncio.run(
+                checker._check_single_consideration_async(consideration, transcript, "test_session")
+            )
+
+            # SDK MUST be called even for "generic" checker
+            mock_sdk.assert_called_once()
+            self.assertTrue(result.satisfied)
+
+    def test_sdk_used_for_generic_checkers(self):
+        """Test that SDK is used even when checker='generic'.
+
+        SDK should be tried for generic checkers too. When SDK succeeds,
+        heuristic fallback should NOT be called.
+        """
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        checker = PowerSteeringChecker(self.project_root)
+
+        transcript = [
+            {"type": "user", "message": {"content": "Test"}},
+        ]
+
+        consideration = {
+            "id": "generic_check",
+            "question": "Generic question?",
+            "category": "Test",
+            "severity": "warning",
+            "checker": "generic",
+        }
+
+        with (
+            patch("power_steering_checker.SDK_AVAILABLE", True),
+            patch(
+                "power_steering_checker.analyze_consideration", new_callable=AsyncMock
+            ) as mock_sdk,
+        ):
+            mock_sdk.return_value = False
+
+            # Also mock the heuristic fallback to track if it's called
+            with patch.object(checker, "_generic_analyzer", return_value=True) as mock_heuristic:
+                asyncio.run(
+                    checker._check_single_consideration_async(
+                        consideration, transcript, "test_session"
+                    )
+                )
+
+                # SDK MUST be called first (even for generic)
+                mock_sdk.assert_called_once()
+
+                # Heuristic should NOT be called since SDK succeeded
+                mock_heuristic.assert_not_called()
+
+    def test_fallback_to_heuristics_when_sdk_unavailable(self):
+        """Test that heuristics are used when SDK_AVAILABLE=False.
+
+        EXPECTED: When SDK not available, fall back to heuristics.
+
+        This test should PASS even with current implementation.
+        """
+        import asyncio
+        from unittest.mock import patch
+
+        checker = PowerSteeringChecker(self.project_root)
+
+        transcript = [
+            {"type": "user", "message": {"content": "Test"}},
+        ]
+
+        consideration = {
+            "id": "test_fallback",
+            "question": "Test?",
+            "category": "Test",
+            "severity": "warning",
+            "checker": "_check_todos_complete",
+        }
+
+        with patch("power_steering_checker.SDK_AVAILABLE", False):
+            # Mock the heuristic checker
+            with patch.object(
+                checker, "_check_todos_complete", return_value=True
+            ) as mock_heuristic:
+                result = asyncio.run(
+                    checker._check_single_consideration_async(
+                        consideration, transcript, "test_session"
+                    )
+                )
+
+                # Heuristic should be called when SDK unavailable
+                mock_heuristic.assert_called_once()
+                self.assertTrue(result.satisfied)
+
+    def test_fallback_to_heuristics_when_sdk_fails(self):
+        """Test that heuristics are used when SDK call raises exception.
+
+        When SDK fails, gracefully fall back to heuristics.
+        """
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        checker = PowerSteeringChecker(self.project_root)
+
+        transcript = [
+            {"type": "user", "message": {"content": "Test"}},
+        ]
+
+        consideration = {
+            "id": "test_sdk_failure",
+            "question": "Test?",
+            "category": "Test",
+            "severity": "warning",
+            "checker": "generic",
+        }
+
+        with (
+            patch("power_steering_checker.SDK_AVAILABLE", True),
+            patch(
+                "power_steering_checker.analyze_consideration", new_callable=AsyncMock
+            ) as mock_sdk,
+        ):
+            # SDK raises exception
+            mock_sdk.side_effect = Exception("SDK timeout")
+
+            # Mock heuristic fallback
+            with patch.object(checker, "_generic_analyzer", return_value=True) as mock_heuristic:
+                result = asyncio.run(
+                    checker._check_single_consideration_async(
+                        consideration, transcript, "test_session"
+                    )
+                )
+
+                # SDK should have been attempted
+                mock_sdk.assert_called_once()
+
+                # Heuristic should be called as fallback after SDK failure
+                mock_heuristic.assert_called_once()
+                self.assertTrue(result.satisfied)
+
+    def test_fail_open_on_complete_failure(self):
+        """Test that system fails open when both SDK and heuristics fail.
+
+        EXPECTED: Return satisfied=True to allow user to continue.
+
+        This test verifies fail-open behavior.
+        """
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        checker = PowerSteeringChecker(self.project_root)
+
+        transcript = [
+            {"type": "user", "message": {"content": "Test"}},
+        ]
+
+        consideration = {
+            "id": "test_fail_open",
+            "question": "Test?",
+            "category": "Test",
+            "severity": "blocker",
+            "checker": "generic",
+        }
+
+        with (
+            patch("power_steering_checker.SDK_AVAILABLE", True),
+            patch(
+                "power_steering_checker.analyze_consideration", new_callable=AsyncMock
+            ) as mock_sdk,
+        ):
+            # SDK fails
+            mock_sdk.side_effect = Exception("SDK error")
+
+            # Heuristic also fails
+            with patch.object(
+                checker, "_generic_analyzer", side_effect=Exception("Heuristic error")
+            ):
+                result = asyncio.run(
+                    checker._check_single_consideration_async(
+                        consideration, transcript, "test_session"
+                    )
+                )
+
+                # Must fail-open: satisfied=True even though everything failed
+                self.assertTrue(result.satisfied)
+                self.assertIn("fail-open", result.reason.lower())
+
+    def test_sdk_first_for_specific_checkers(self):
+        """Test that SDK is used first for specific _check_* methods.
+
+        SDK should be attempted first even for considerations with specific
+        checker methods like _check_todos_complete. Heuristics are fallback only.
+        """
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        checker = PowerSteeringChecker(self.project_root)
+
+        transcript = [
+            {"type": "user", "message": {"content": "Test"}},
+        ]
+
+        consideration = {
+            "id": "todos_complete",
+            "question": "Are todos complete?",
+            "category": "Workflow",
+            "severity": "blocker",
+            "checker": "_check_todos_complete",
+        }
+
+        with (
+            patch("power_steering_checker.SDK_AVAILABLE", True),
+            patch(
+                "power_steering_checker.analyze_consideration", new_callable=AsyncMock
+            ) as mock_sdk,
+        ):
+            mock_sdk.return_value = True
+
+            with patch.object(
+                checker, "_check_todos_complete", return_value=False
+            ) as mock_heuristic:
+                result = asyncio.run(
+                    checker._check_single_consideration_async(
+                        consideration, transcript, "test_session"
+                    )
+                )
+
+                # SDK should be called first
+                mock_sdk.assert_called_once()
+
+                # Heuristic should NOT be called since SDK succeeded
+                mock_heuristic.assert_not_called()
+
+                # Result should use SDK result, not heuristic
+                self.assertTrue(result.satisfied)
 
 
 if __name__ == "__main__":

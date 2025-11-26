@@ -31,6 +31,7 @@ import os
 import re
 import signal
 import sys
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -519,7 +520,7 @@ class PowerSteeringChecker:
         self,
         transcript_path: Path,
         session_id: str,
-        progress_callback: callable | None = None,
+        progress_callback: Callable | None = None,
     ) -> PowerSteeringResult:
         """Main entry point - analyze transcript and make decision.
 
@@ -1693,7 +1694,7 @@ class PowerSteeringChecker:
         transcript: list[dict],
         session_id: str,
         session_type: str = None,
-        progress_callback: callable | None = None,
+        progress_callback: Callable | None = None,
     ) -> ConsiderationAnalysis:
         """Analyze transcript against all enabled considerations IN PARALLEL.
 
@@ -1791,7 +1792,7 @@ class PowerSteeringChecker:
         transcript: list[dict],
         session_id: str,
         enabled_considerations: list[dict[str, Any]],
-        progress_callback: callable | None = None,
+        progress_callback: Callable | None = None,
     ) -> ConsiderationAnalysis:
         """Async implementation that runs ALL considerations in parallel.
 
@@ -1881,6 +1882,11 @@ class PowerSteeringChecker:
     ) -> CheckerResult:
         """Check a single consideration asynchronously.
 
+        Phase 5 (SDK-First): Use Claude SDK as PRIMARY method
+        - ALL considerations analyzed by SDK first (when available)
+        - Specific checkers (_check_*) used ONLY as fallback
+        - Fail-open when SDK unavailable or fails
+
         This is the parallel worker that handles one consideration.
         The transcript is already loaded - this method does NOT fetch it.
 
@@ -1893,108 +1899,65 @@ class PowerSteeringChecker:
             CheckerResult with satisfaction status
         """
         try:
-            # Determine if we should use SDK analysis
-            checker_name = consideration["checker"]
-            use_sdk = (
-                SDK_AVAILABLE
-                and checker_name != "generic"  # Skip SDK for generic checkers
-                and checker_name.startswith("_check_")  # Only use SDK for specific checkers
-            )
-
-            if use_sdk:
+            # SDK-FIRST: Try SDK for ALL considerations (when available)
+            if SDK_AVAILABLE:
                 try:
-                    # Use the async SDK function directly (no asyncio.run())
+                    # Use async SDK function directly (already awaitable)
                     satisfied = await analyze_consideration(
                         conversation=transcript,
                         consideration=consideration,
                         project_root=self.project_root,
                     )
-                    self._log(
-                        f"SDK analysis for '{consideration['id']}': "
-                        f"{'satisfied' if satisfied else 'not satisfied'}",
-                        "DEBUG",
+
+                    # SDK succeeded - return result
+                    return CheckerResult(
+                        consideration_id=consideration["id"],
+                        satisfied=satisfied,
+                        reason=(
+                            "SDK analysis: satisfied"
+                            if satisfied
+                            else f"SDK analysis: {consideration['question']} not met"
+                        ),
+                        severity=consideration["severity"],
                     )
                 except Exception as e:
-                    # SDK failed, fall back to heuristic checker
+                    # SDK failed - log and fall through to fallback
                     self._log(
-                        f"SDK analysis failed for '{consideration['id']}': {e}, using heuristic",
-                        "WARNING",
+                        f"SDK analysis failed for '{consideration['id']}': {e}",
+                        "DEBUG",
                     )
-                    # Run heuristic in thread pool to not block event loop
-                    satisfied = await asyncio.to_thread(
-                        self._run_heuristic_checker,
-                        consideration,
-                        transcript,
-                        session_id,
-                    )
+                    # Continue to fallback methods below
+
+            # FALLBACK: Use heuristic checkers when SDK unavailable or failed
+            checker_name = consideration["checker"]
+
+            # Dispatch to specific checker or generic analyzer
+            if hasattr(self, checker_name) and callable(getattr(self, checker_name)):
+                checker_func = getattr(self, checker_name)
+                satisfied = checker_func(transcript, session_id)
             else:
-                # SDK not available or not applicable, use heuristic checker
-                # Run heuristic in thread pool to not block event loop
-                satisfied = await asyncio.to_thread(
-                    self._run_heuristic_checker,
-                    consideration,
-                    transcript,
-                    session_id,
-                )
+                # Generic analyzer for considerations without specific checker
+                satisfied = self._generic_analyzer(transcript, session_id, consideration)
 
             return CheckerResult(
                 consideration_id=consideration["id"],
                 satisfied=satisfied,
-                reason=consideration["question"],
+                reason=(f"Heuristic fallback: {'satisfied' if satisfied else 'not met'}"),
                 severity=consideration["severity"],
             )
 
-        except TimeoutError:
-            # Individual task timeout - fail-open
-            self._log(f"Check '{consideration['id']}' timed out", "WARNING")
-            return CheckerResult(
-                consideration_id=consideration["id"],
-                satisfied=True,  # Fail-open
-                reason="Timeout",
-                severity=consideration["severity"],
-            )
         except Exception as e:
-            # Any other error - fail-open
-            self._log(f"Check '{consideration['id']}' failed: {e}", "ERROR")
+            # Fail-open: Never block on errors
+            self._log(
+                f"Checker error for '{consideration['id']}': {e}",
+                "WARNING",
+            )
             return CheckerResult(
                 consideration_id=consideration["id"],
                 satisfied=True,  # Fail-open
-                reason=f"Error: {e}",
+                reason=f"Error (fail-open): {e}",
                 severity=consideration["severity"],
             )
-
-    def _run_heuristic_checker(
-        self, consideration: dict[str, Any], transcript: list[dict], session_id: str
-    ) -> bool:
-        """Run heuristic checker for a consideration.
-
-        Fallback mechanism when Claude SDK is unavailable or fails.
-
-        Args:
-            consideration: Consideration dictionary
-            transcript: List of message dictionaries
-            session_id: Session identifier
-
-        Returns:
-            True if satisfied, False otherwise
-        """
-        checker_name = consideration["checker"]
-
-        # Handle generic checker
-        if checker_name == "generic":
-            checker_func = self._generic_analyzer
-        else:
-            checker_func = getattr(self, checker_name, None)
-
-        if checker_func is None:
-            # Log warning and use generic analyzer as fallback
-            self._log(f"Checker not found: {checker_name}, using generic", "WARNING")
-            checker_func = self._generic_analyzer
-
-        # Run checker
-        if checker_name == "generic" or checker_func == self._generic_analyzer:
-            return checker_func(transcript, session_id, consideration)
-        return checker_func(transcript, session_id)
 
     # ========================================================================
     # Phase 1: Top 5 Critical Checkers
@@ -3198,7 +3161,7 @@ class PowerSteeringChecker:
 
     def _emit_progress(
         self,
-        progress_callback: callable | None,
+        progress_callback: Callable | None,
         event_type: str,
         message: str,
         details: dict | None = None,
