@@ -105,9 +105,9 @@
 
 - id: next_steps
   category: Session Completion & Progress
-  question: Were next steps identified and documented?
-  description: Ensures follow-up tasks are captured for future sessions
-  severity: warning
+  question: Is work complete with no remaining next steps?
+  description: Blocks stopping if agent mentions "next steps" or "remaining work" - they must continue until no outstanding items remain
+  severity: blocker
   checker: _check_next_steps
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]

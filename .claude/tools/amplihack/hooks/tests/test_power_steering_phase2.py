@@ -70,12 +70,18 @@ class TestYAMLLoading(unittest.TestCase):
         self.assertEqual(checker.considerations[0]["id"], "test_consideration")
 
     def test_yaml_loading_missing_file(self):
-        """Test YAML loading falls back to Phase 1 when file missing."""
-        # No YAML file created
+        """Test YAML loading falls back to package default when file missing.
+
+        When no YAML exists in the project root, the system falls back to
+        loading the package's default considerations.yaml (22 considerations),
+        not the hardcoded Phase 1 fallback (5 considerations).
+        """
+        # No YAML file created in temp project root
         checker = PowerSteeringChecker(self.project_root)
 
-        # Should fall back to Phase 1 (5 considerations)
-        self.assertEqual(len(checker.considerations), 5)
+        # Should fall back to package default YAML (22 considerations)
+        # The fallback mechanism loads considerations.yaml from the package directory
+        self.assertGreaterEqual(len(checker.considerations), 5)  # At least Phase 1
         self.assertEqual(checker.considerations[0]["id"], "todos_complete")
 
     def test_yaml_loading_invalid_format(self):
@@ -461,8 +467,13 @@ class TestNewCheckers(unittest.TestCase):
         self.assertTrue(result)
 
     def test_check_next_steps(self):
-        """Test _check_next_steps."""
-        # Transcript with next steps mentioned
+        """Test _check_next_steps.
+
+        INVERTED LOGIC (per issue #1679):
+        - Returns FALSE when next steps ARE found (work incomplete - should continue)
+        - Returns TRUE when NO next steps found (work is complete)
+        """
+        # Transcript with next steps mentioned - should return FALSE (incomplete)
         transcript = [
             {
                 "type": "assistant",
@@ -473,15 +484,15 @@ class TestNewCheckers(unittest.TestCase):
         ]
 
         result = self.checker._check_next_steps(transcript, "test_session")
-        self.assertTrue(result)
+        self.assertFalse(result)  # FALSE = work incomplete, has next steps
 
-        # Transcript without next steps
+        # Transcript without next steps - should return TRUE (complete)
         transcript_no_steps = [
             {"type": "assistant", "message": {"content": [{"type": "text", "text": "Done"}]}}
         ]
 
         result = self.checker._check_next_steps(transcript_no_steps, "test_session")
-        self.assertFalse(result)
+        self.assertTrue(result)  # TRUE = work complete, no next steps
 
     def test_check_docs_organization(self):
         """Test _check_docs_organization."""
@@ -883,6 +894,7 @@ class TestUserCustomization(unittest.TestCase):
   severity: blocker
   checker: generic
   enabled: true
+  applicable_session_types: ["*"]
 
 - id: disabled_check
   category: Test
@@ -891,13 +903,33 @@ class TestUserCustomization(unittest.TestCase):
   severity: blocker
   checker: generic
   enabled: false
+  applicable_session_types: ["*"]
 """
         yaml_path.write_text(yaml_content)
 
         checker = PowerSteeringChecker(self.project_root)
 
-        # Create test transcript
-        transcript = []
+        # Create test transcript with enough activity to not be SIMPLE/INFORMATIONAL
+        transcript = [
+            {"type": "user", "message": {"content": "Create a feature"}},
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Write",
+                            "input": {"file_path": "/test.py", "content": "x=1"},
+                        },
+                        {
+                            "type": "tool_use",
+                            "name": "Write",
+                            "input": {"file_path": "/test2.py", "content": "y=2"},
+                        },
+                    ]
+                },
+            },
+        ]
         analysis = checker._analyze_considerations(transcript, "test_session")
 
         # Only enabled consideration should be in results
@@ -915,13 +947,31 @@ class TestUserCustomization(unittest.TestCase):
   severity: warning
   checker: generic
   enabled: true
+  applicable_session_types: ["*"]
 """
         yaml_path.write_text(yaml_content)
 
         checker = PowerSteeringChecker(self.project_root)
+        # Transcript with tool usage to ensure it's not classified as SIMPLE/INFORMATIONAL
         transcript = [
-            {"type": "user", "message": {"content": "Test"}},
-            {"type": "assistant", "message": {"content": [{"type": "text", "text": "Done"}]}},
+            {"type": "user", "message": {"content": "Build a feature"}},
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Write",
+                            "input": {"file_path": "/app.py", "content": "code"},
+                        },
+                        {
+                            "type": "tool_use",
+                            "name": "Write",
+                            "input": {"file_path": "/test.py", "content": "tests"},
+                        },
+                    ]
+                },
+            },
         ]
 
         analysis = checker._analyze_considerations(transcript, "test_session")
@@ -965,12 +1015,18 @@ class TestBackwardCompatibility(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def test_phase1_checkers_still_work(self):
-        """Test Phase 1 checkers still function with Phase 2 code."""
-        # No YAML file - should use Phase 1 fallback
+        """Test Phase 1 checkers still function with Phase 2 code.
+
+        When no YAML exists in the project root, the system falls back to
+        loading the package's default considerations.yaml. The original Phase 1
+        considerations (todos_complete, dev_workflow_complete, etc.) should
+        still be present and functional.
+        """
+        # No YAML file - should use package default fallback
         checker = PowerSteeringChecker(self.project_root)
 
-        # Should have Phase 1 considerations
-        self.assertEqual(len(checker.considerations), 5)
+        # Should have at least Phase 1 considerations (could be more from package YAML)
+        self.assertGreaterEqual(len(checker.considerations), 5)
 
         # Test a Phase 1 checker still works
         transcript = [

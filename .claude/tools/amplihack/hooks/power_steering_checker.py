@@ -35,7 +35,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 import yaml
 
@@ -118,9 +118,9 @@ class CheckerResult:
 class ConsiderationAnalysis:
     """Results of analyzing all considerations."""
 
-    results: Dict[str, CheckerResult] = field(default_factory=dict)
-    failed_blockers: List[CheckerResult] = field(default_factory=list)
-    failed_warnings: List[CheckerResult] = field(default_factory=list)
+    results: dict[str, CheckerResult] = field(default_factory=dict)
+    failed_blockers: list[CheckerResult] = field(default_factory=list)
+    failed_warnings: list[CheckerResult] = field(default_factory=list)
 
     @property
     def has_blockers(self) -> bool:
@@ -136,10 +136,10 @@ class ConsiderationAnalysis:
             else:
                 self.failed_warnings.append(result)
 
-    def group_by_category(self) -> Dict[str, List[CheckerResult]]:
+    def group_by_category(self) -> dict[str, list[CheckerResult]]:
         """Group failed considerations by category."""
         # For Phase 1, use simplified categories based on consideration ID prefix
-        grouped: Dict[str, List[CheckerResult]] = {}
+        grouped: dict[str, list[CheckerResult]] = {}
         for result in self.failed_blockers + self.failed_warnings:
             # Simple category derivation from ID
             if "workflow" in result.consideration_id or "philosophy" in result.consideration_id:
@@ -161,9 +161,9 @@ class PowerSteeringRedirect:
 
     redirect_number: int
     timestamp: str  # ISO format
-    failed_considerations: List[str]  # IDs of failed checks
+    failed_considerations: list[str]  # IDs of failed checks
     continuation_prompt: str
-    work_summary: Optional[str] = None
+    work_summary: str | None = None
 
 
 @dataclass
@@ -171,9 +171,9 @@ class PowerSteeringResult:
     """Final decision from power-steering analysis."""
 
     decision: Literal["approve", "block"]
-    reasons: List[str]
-    continuation_prompt: Optional[str] = None
-    summary: Optional[str] = None
+    reasons: list[str]
+    continuation_prompt: str | None = None
+    summary: str | None = None
     analysis: Optional["ConsiderationAnalysis"] = None  # Full analysis results for visibility
     is_first_stop: bool = False  # True if this is the first stop attempt in session
 
@@ -212,6 +212,36 @@ class PowerSteeringChecker:
         "go test",
         "python -m pytest",
         "python -m unittest",
+    ]
+
+    # Keywords that indicate simple housekeeping tasks (skip power-steering)
+    # When found in user messages, session is classified as SIMPLE and most
+    # considerations are skipped. These are routine maintenance tasks.
+    SIMPLE_TASK_KEYWORDS = [
+        "cleanup",
+        "clean up",
+        "fetch",
+        "git fetch",
+        "git pull",
+        "pull latest",
+        "sync",
+        "update branch",
+        "rebase",
+        "git rebase",
+        "merge main",
+        "merge master",
+        "workspace",
+        "stash",
+        "git stash",
+        "discard changes",
+        "reset",
+        "checkout",
+        "switch branch",
+        "list files",
+        "show status",
+        "git status",
+        "what's changed",
+        "what changed",
     ]
 
     # Keywords that indicate investigation/troubleshooting sessions
@@ -283,7 +313,7 @@ class PowerSteeringChecker:
         },
     ]
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         """Initialize power-steering checker.
 
         Args:
@@ -333,7 +363,7 @@ class PowerSteeringChecker:
 
         raise ValueError("Could not find project root with .claude marker")
 
-    def _validate_config_integrity(self, config: Dict) -> bool:
+    def _validate_config_integrity(self, config: dict) -> bool:
         """Validate configuration integrity (security check).
 
         Args:
@@ -364,7 +394,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load configuration from file with defaults.
 
         Returns:
@@ -402,7 +432,7 @@ class PowerSteeringChecker:
 
         return defaults
 
-    def _load_considerations_yaml(self) -> List[Dict[str, Any]]:
+    def _load_considerations_yaml(self) -> list[dict[str, Any]]:
         """Load considerations from YAML file with fallback to Phase 1.
 
         Returns:
@@ -489,7 +519,7 @@ class PowerSteeringChecker:
         self,
         transcript_path: Path,
         session_id: str,
-        progress_callback: Optional[callable] = None,
+        progress_callback: callable | None = None,
     ) -> PowerSteeringResult:
         """Main entry point - analyze transcript and make decision.
 
@@ -502,8 +532,8 @@ class PowerSteeringChecker:
             PowerSteeringResult with decision and prompt/summary
         """
         # Initialize turn state tracking (outside try block for fail-open)
-        turn_state: Optional[PowerSteeringTurnState] = None
-        turn_state_manager: Optional[TurnStateManager] = None
+        turn_state: PowerSteeringTurnState | None = None
+        turn_state_manager: TurnStateManager | None = None
 
         try:
             # Emit start event
@@ -594,9 +624,9 @@ class PowerSteeringChecker:
             )
 
             # 5b. Delta analysis: Check if NEW content addresses previous failures
-            addressed_concerns: Dict[str, str] = {}
-            user_claims: List[str] = []
-            delta_result: Optional[DeltaAnalysisResult] = None
+            addressed_concerns: dict[str, str] = {}
+            user_claims: list[str] = []
+            delta_result: DeltaAnalysisResult | None = None
 
             if TURN_STATE_AVAILABLE and turn_state and turn_state.block_history:
                 # Get previous block's failures for delta analysis
@@ -698,7 +728,7 @@ class PowerSteeringChecker:
                     failed_ids = [r.consideration_id for r in blockers_to_record]
 
                     prompt = self._generate_continuation_prompt(
-                        analysis, turn_state, addressed_concerns, user_claims
+                        analysis, transcript, turn_state, addressed_concerns, user_claims
                     )
 
                     # Save redirect record for session reflection
@@ -943,7 +973,7 @@ class PowerSteeringChecker:
         session_dir = self.runtime_dir / session_id
         return session_dir / "redirects.jsonl"
 
-    def _load_redirects(self, session_id: str) -> List[PowerSteeringRedirect]:
+    def _load_redirects(self, session_id: str) -> list[PowerSteeringRedirect]:
         """Load redirect history for a session.
 
         Args:
@@ -986,9 +1016,9 @@ class PowerSteeringChecker:
     def _save_redirect(
         self,
         session_id: str,
-        failed_considerations: List[str],
+        failed_considerations: list[str],
         continuation_prompt: str,
-        work_summary: Optional[str] = None,
+        work_summary: str | None = None,
     ) -> None:
         """Save a redirect record to persistent storage.
 
@@ -1038,7 +1068,7 @@ class PowerSteeringChecker:
             # Fail-open: Don't block user if we can't save redirect
             self._log(f"Failed to save redirect: {e}", "ERROR")
 
-    def _load_transcript(self, transcript_path: Path) -> List[Dict]:
+    def _load_transcript(self, transcript_path: Path) -> list[dict]:
         """Load transcript from JSONL file with size limits.
 
         Args:
@@ -1108,7 +1138,7 @@ class PowerSteeringChecker:
         write_edit_operations: int,
         read_grep_operations: int,
         question_count: int,
-        user_messages: List[Dict],
+        user_messages: list[dict],
     ) -> bool:
         """Check if transcript shows informational session indicators.
 
@@ -1174,7 +1204,39 @@ class PowerSteeringChecker:
         # Multiple Read/Grep without modifications
         return read_grep_operations >= 2 and write_edit_operations == 0
 
-    def _has_investigation_keywords(self, transcript: List[Dict]) -> bool:
+    def _has_simple_task_keywords(self, transcript: list[dict]) -> bool:
+        """Check user messages for simple housekeeping task keywords.
+
+        Simple tasks like "cleanup workspace", "fetch latest", "git pull" should
+        skip most power-steering checks as they are routine maintenance.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if simple task keywords found in user messages
+        """
+        # Check first 3 user messages for simple task keywords
+        user_messages = [m for m in transcript if m.get("type") == "user"][:3]
+
+        if not user_messages:
+            return False
+
+        for msg in user_messages:
+            content = str(msg.get("message", {}).get("content", "")).lower()
+
+            # Check for simple task keywords
+            for keyword in self.SIMPLE_TASK_KEYWORDS:
+                if keyword in content:
+                    self._log(
+                        f"Simple task keyword '{keyword}' found in user message",
+                        "DEBUG",
+                    )
+                    return True
+
+        return False
+
+    def _has_investigation_keywords(self, transcript: list[dict]) -> bool:
         """Check early user messages for investigation/troubleshooting keywords.
 
         This check takes PRIORITY over tool-based heuristics. If investigation
@@ -1208,19 +1270,21 @@ class PowerSteeringChecker:
 
         return False
 
-    def detect_session_type(self, transcript: List[Dict]) -> str:
+    def detect_session_type(self, transcript: list[dict]) -> str:
         """Detect session type for selective consideration application.
 
         Session Types:
+        - SIMPLE: Routine housekeeping tasks (cleanup, fetch, sync) - skip most checks
         - DEVELOPMENT: Code changes, tests, PR operations
         - INFORMATIONAL: Q&A, help queries, capability questions
         - MAINTENANCE: Documentation and configuration updates only
         - INVESTIGATION: Exploration, analysis, troubleshooting, and debugging
 
-        Detection Priority (fixes #1604):
+        Detection Priority:
         1. Environment override (AMPLIHACK_SESSION_TYPE)
-        2. Investigation keywords in user messages (highest priority heuristic)
-        3. Tool usage patterns (code changes, tests, etc.)
+        2. Simple task keywords (cleanup, fetch, workspace) - highest priority heuristic
+        3. Investigation keywords in user messages
+        4. Tool usage patterns (code changes, tests, etc.)
 
         The keyword detection takes priority over tool-based heuristics because
         troubleshooting sessions often involve Bash commands and doc updates,
@@ -1230,17 +1294,29 @@ class PowerSteeringChecker:
             transcript: List of message dictionaries
 
         Returns:
-            Session type string: "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", or "INVESTIGATION"
+            Session type string: "SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", or "INVESTIGATION"
         """
         # Check for environment override first
         env_override = os.getenv("AMPLIHACK_SESSION_TYPE", "").upper()
-        if env_override in ["DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION"]:
+        if env_override in [
+            "SIMPLE",
+            "DEVELOPMENT",
+            "INFORMATIONAL",
+            "MAINTENANCE",
+            "INVESTIGATION",
+        ]:
             self._log(f"Session type overridden by environment: {env_override}", "INFO")
             return env_override
 
         # Empty transcript defaults to INFORMATIONAL (fail-open)
         if not transcript:
             return "INFORMATIONAL"
+
+        # HIGHEST PRIORITY: Simple task keywords (cleanup, fetch, sync, workspace)
+        # These routine maintenance tasks should skip most power-steering checks
+        if self._has_simple_task_keywords(transcript):
+            self._log("Session classified as SIMPLE via keyword detection", "INFO")
+            return "SIMPLE"
 
         # PRIORITY CHECK: Investigation keywords in user messages
         # This takes precedence over tool-based heuristics (fixes #1604)
@@ -1335,15 +1411,21 @@ class PowerSteeringChecker:
         # Default to INFORMATIONAL if unclear (fail-open, conservative)
         return "INFORMATIONAL"
 
-    def get_applicable_considerations(self, session_type: str) -> List[Dict[str, Any]]:
+    def get_applicable_considerations(self, session_type: str) -> list[dict[str, Any]]:
         """Get considerations applicable to a specific session type.
 
         Args:
-            session_type: Session type ("DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION")
+            session_type: Session type ("SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION")
 
         Returns:
             List of consideration dictionaries applicable to this session type
         """
+        # SIMPLE sessions skip ALL considerations - they are routine maintenance tasks
+        # like cleanup, fetch, sync, workspace management that don't need verification
+        if session_type == "SIMPLE":
+            self._log("SIMPLE session - skipping all considerations", "INFO")
+            return []
+
         # Filter considerations based on session type
         applicable = []
 
@@ -1365,7 +1447,7 @@ class PowerSteeringChecker:
 
         return applicable
 
-    def _is_qa_session(self, transcript: List[Dict]) -> bool:
+    def _is_qa_session(self, transcript: list[dict]) -> bool:
         """Detect if session is interactive Q&A (skip power-steering).
 
         Heuristics:
@@ -1424,7 +1506,7 @@ class PowerSteeringChecker:
     def _create_passing_analysis(
         self,
         original_analysis: ConsiderationAnalysis,
-        addressed_concerns: Dict[str, str],
+        addressed_concerns: dict[str, str],
     ) -> ConsiderationAnalysis:
         """Create a modified analysis with addressed blockers marked as satisfied.
 
@@ -1456,10 +1538,10 @@ class PowerSteeringChecker:
 
     def _convert_to_failure_evidence(
         self,
-        failed_results: List[CheckerResult],
-        transcript: List[Dict],
-        user_claims: Optional[List[str]] = None,
-    ) -> List["FailureEvidence"]:
+        failed_results: list[CheckerResult],
+        transcript: list[dict],
+        user_claims: list[str] | None = None,
+    ) -> list["FailureEvidence"]:
         """Convert CheckerResults to FailureEvidence with evidence quotes.
 
         Extracts specific evidence from the transcript to show WHY each
@@ -1476,7 +1558,7 @@ class PowerSteeringChecker:
         if not TURN_STATE_AVAILABLE:
             return []
 
-        evidence_list: List[FailureEvidence] = []
+        evidence_list: list[FailureEvidence] = []
         claimed_ids = set()
 
         # Extract consideration IDs that were claimed as complete
@@ -1506,8 +1588,8 @@ class PowerSteeringChecker:
     def _find_evidence_quote(
         self,
         result: CheckerResult,
-        transcript: List[Dict],
-    ) -> Optional[str]:
+        transcript: list[dict],
+    ) -> str | None:
         """Find a specific quote from transcript showing why check failed.
 
         Searches for relevant context based on the consideration type to
@@ -1523,7 +1605,7 @@ class PowerSteeringChecker:
         cid = result.consideration_id.lower()
 
         # Define search patterns for each consideration type
-        search_terms: Dict[str, List[str]] = {
+        search_terms: dict[str, list[str]] = {
             "todos": ["todo", "task", "item", "remaining"],
             "testing": ["test", "pytest", "unittest", "failing", "error"],
             "ci": ["ci", "github actions", "pipeline", "build", "workflow"],
@@ -1564,7 +1646,7 @@ class PowerSteeringChecker:
 
         return None
 
-    def _extract_message_text(self, msg: Dict) -> str:
+    def _extract_message_text(self, msg: dict) -> str:
         """Extract text content from a message dict.
 
         Args:
@@ -1590,7 +1672,7 @@ class PowerSteeringChecker:
 
         return ""
 
-    def _extract_text_from_blocks(self, blocks: List) -> str:
+    def _extract_text_from_blocks(self, blocks: list) -> str:
         """Extract text from content blocks.
 
         Args:
@@ -1608,10 +1690,10 @@ class PowerSteeringChecker:
 
     def _analyze_considerations(
         self,
-        transcript: List[Dict],
+        transcript: list[dict],
         session_id: str,
         session_type: str = None,
-        progress_callback: Optional[callable] = None,
+        progress_callback: callable | None = None,
     ) -> ConsiderationAnalysis:
         """Analyze transcript against all enabled considerations IN PARALLEL.
 
@@ -1706,10 +1788,10 @@ class PowerSteeringChecker:
 
     async def _analyze_considerations_parallel_async(
         self,
-        transcript: List[Dict],
+        transcript: list[dict],
         session_id: str,
-        enabled_considerations: List[Dict[str, Any]],
-        progress_callback: Optional[callable] = None,
+        enabled_considerations: list[dict[str, Any]],
+        progress_callback: callable | None = None,
     ) -> ConsiderationAnalysis:
         """Async implementation that runs ALL considerations in parallel.
 
@@ -1740,13 +1822,13 @@ class PowerSteeringChecker:
         try:
             async with asyncio.timeout(PARALLEL_TIMEOUT):
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._log(f"Parallel execution timed out after {PARALLEL_TIMEOUT}s", "WARNING")
             # Fail-open: Return empty analysis on timeout
             return analysis
 
         # Process results from all parallel tasks
-        for consideration, result in zip(enabled_considerations, results):
+        for consideration, result in zip(enabled_considerations, results, strict=False):
             if isinstance(result, Exception):
                 # Task raised an exception - fail-open
                 self._log(
@@ -1793,8 +1875,8 @@ class PowerSteeringChecker:
 
     async def _check_single_consideration_async(
         self,
-        consideration: Dict[str, Any],
-        transcript: List[Dict],
+        consideration: dict[str, Any],
+        transcript: list[dict],
         session_id: str,
     ) -> CheckerResult:
         """Check a single consideration asynchronously.
@@ -1862,7 +1944,7 @@ class PowerSteeringChecker:
                 severity=consideration["severity"],
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Individual task timeout - fail-open
             self._log(f"Check '{consideration['id']}' timed out", "WARNING")
             return CheckerResult(
@@ -1882,7 +1964,7 @@ class PowerSteeringChecker:
             )
 
     def _run_heuristic_checker(
-        self, consideration: Dict[str, Any], transcript: List[Dict], session_id: str
+        self, consideration: dict[str, Any], transcript: list[dict], session_id: str
     ) -> bool:
         """Run heuristic checker for a consideration.
 
@@ -1918,7 +2000,7 @@ class PowerSteeringChecker:
     # Phase 1: Top 5 Critical Checkers
     # ========================================================================
 
-    def _check_todos_complete(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_todos_complete(self, transcript: list[dict], session_id: str) -> bool:
         """Check if all TODO items completed.
 
         Args:
@@ -1959,7 +2041,100 @@ class PowerSteeringChecker:
 
         return True  # All todos completed
 
-    def _check_dev_workflow_complete(self, transcript: List[Dict], session_id: str) -> bool:
+    def _extract_incomplete_todos(self, transcript: list[dict]) -> list[str]:
+        """Extract list of incomplete todo items from transcript.
+
+        Helper method used by continuation prompt generation to show
+        specific items the agent needs to complete.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            List of incomplete todo item descriptions
+        """
+        incomplete_todos = []
+
+        # Find last TodoWrite tool call
+        last_todo_write = None
+        for msg in reversed(transcript):
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "TodoWrite":
+                                last_todo_write = block.get("input", {})
+                                break
+            if last_todo_write:
+                break
+
+        if not last_todo_write:
+            return []
+
+        todos = last_todo_write.get("todos", [])
+        for todo in todos:
+            status = todo.get("status", "pending")
+            if status != "completed":
+                content = todo.get("content", "Unknown task")
+                incomplete_todos.append(f"[{status}] {content}")
+
+        return incomplete_todos
+
+    def _extract_next_steps_mentioned(self, transcript: list[dict]) -> list[str]:
+        """Extract specific next steps mentioned in recent assistant messages.
+
+        Helper method used by continuation prompt generation to show
+        specific next steps the agent mentioned but hasn't completed.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            List of next step descriptions (extracted sentences/phrases)
+        """
+        next_steps = []
+        next_steps_triggers = [
+            "next step",
+            "next steps",
+            "follow-up",
+            "remaining",
+            "still need",
+            "todo",
+            "left to",
+        ]
+
+        # Check recent assistant messages
+        recent_messages = [m for m in transcript[-15:] if m.get("type") == "assistant"][-5:]
+
+        for msg in recent_messages:
+            content = msg.get("message", {}).get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = str(block.get("text", ""))
+                        text_lower = text.lower()
+
+                        # Check if this block mentions next steps
+                        if any(trigger in text_lower for trigger in next_steps_triggers):
+                            # Extract sentences containing the trigger
+                            sentences = text.replace("\n", " ").split(". ")
+                            for sentence in sentences:
+                                sentence_lower = sentence.lower()
+                                if any(
+                                    trigger in sentence_lower for trigger in next_steps_triggers
+                                ):
+                                    clean_sentence = sentence.strip()
+                                    if clean_sentence and len(clean_sentence) > 10:
+                                        # Truncate long sentences
+                                        if len(clean_sentence) > 150:
+                                            clean_sentence = clean_sentence[:147] + "..."
+                                        if clean_sentence not in next_steps:
+                                            next_steps.append(clean_sentence)
+
+        return next_steps[:5]  # Limit to 5 items
+
+    def _check_dev_workflow_complete(self, transcript: list[dict], session_id: str) -> bool:
         """Check if full DEFAULT_WORKFLOW followed.
 
         Heuristics:
@@ -1998,7 +2173,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _check_philosophy_compliance(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_philosophy_compliance(self, transcript: list[dict], session_id: str) -> bool:
         """Check for PHILOSOPHY adherence (zero-BS).
 
         Heuristics:
@@ -2049,7 +2224,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _check_local_testing(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_local_testing(self, transcript: list[dict], session_id: str) -> bool:
         """Check if agent tested locally.
 
         Heuristics:
@@ -2117,7 +2292,7 @@ class PowerSteeringChecker:
         # No tests found or tests failed
         return False
 
-    def _check_ci_status(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_ci_status(self, transcript: list[dict], session_id: str) -> bool:
         """Check if CI passing/mergeable.
 
         Heuristics:
@@ -2178,7 +2353,7 @@ class PowerSteeringChecker:
     # ========================================================================
 
     def _generic_analyzer(
-        self, transcript: List[Dict], session_id: str, consideration: Dict[str, Any]
+        self, transcript: list[dict], session_id: str, consideration: dict[str, Any]
     ) -> bool:
         """Generic analyzer for considerations without specific checkers.
 
@@ -2229,7 +2404,7 @@ class PowerSteeringChecker:
 
         return True  # Phase 2: Always satisfied (fail-open)
 
-    def _check_agent_unnecessary_questions(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_agent_unnecessary_questions(self, transcript: list[dict], session_id: str) -> bool:
         """Check if agent asked unnecessary questions instead of proceeding.
 
         Detects questions that could have been inferred from context.
@@ -2259,7 +2434,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _check_objective_completion(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_objective_completion(self, transcript: list[dict], session_id: str) -> bool:
         """Check if original user objective was fully accomplished.
 
         Looks for completion indicators in later messages.
@@ -2303,7 +2478,7 @@ class PowerSteeringChecker:
 
         return False  # No completion indicators found
 
-    def _check_documentation_updates(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_documentation_updates(self, transcript: list[dict], session_id: str) -> bool:
         """Check if relevant documentation files were updated.
 
         Looks for Write/Edit operations on documentation files.
@@ -2344,7 +2519,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _check_tutorial_needed(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_tutorial_needed(self, transcript: list[dict], session_id: str) -> bool:
         """Check if new feature needs tutorial/how-to.
 
         Detects new user-facing features that should have examples.
@@ -2389,7 +2564,7 @@ class PowerSteeringChecker:
 
         return has_tutorial
 
-    def _check_presentation_needed(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_presentation_needed(self, transcript: list[dict], session_id: str) -> bool:
         """Check if work needs presentation deck.
 
         Detects high-impact work that should be presented to stakeholders.
@@ -2405,7 +2580,7 @@ class PowerSteeringChecker:
         # Could be enhanced to detect high-impact work patterns
         return True
 
-    def _check_feature_docs_discoverable(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_feature_docs_discoverable(self, transcript: list[dict], session_id: str) -> bool:
         """Check if feature documentation is discoverable from multiple paths.
 
         Verifies new features have documentation discoverable from README and docs/ directory.
@@ -2514,7 +2689,7 @@ class PowerSteeringChecker:
             # Fail-open: Return True on errors to avoid blocking users
             return True
 
-    def _is_docs_only_session(self, transcript: List[Dict]) -> bool:
+    def _is_docs_only_session(self, transcript: list[dict]) -> bool:
         """Check if session only modified documentation files.
 
         Helper method to detect docs-only sessions where no code files were touched.
@@ -2554,53 +2729,71 @@ class PowerSteeringChecker:
             # Fail-open: Return False on errors (assume code might be modified)
             return False
 
-    def _check_next_steps(self, transcript: List[Dict], session_id: str) -> bool:
-        """Check if next steps were identified and documented.
+    def _check_next_steps(self, transcript: list[dict], session_id: str) -> bool:
+        """Check that work is complete with NO remaining next steps.
 
-        Looks for TODO items or documented follow-up tasks.
+        INVERTED LOGIC: If the agent mentions "next steps", "remaining work", or
+        similar phrases in their final messages, that means they're acknowledging
+        there's MORE work to do. This check FAILS when next steps are found,
+        prompting the agent to continue working until no next steps remain.
 
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
 
         Returns:
-            True if next steps documented, False if missing
+            True if NO next steps found (work is complete)
+            False if next steps ARE found (work is incomplete - should continue)
         """
-        # Look for next steps indicators
-        next_steps_keywords = [
+        # Keywords that indicate incomplete work
+        incomplete_work_keywords = [
             "next steps",
+            "next step",
             "follow-up",
+            "follow up",
             "future work",
+            "remaining work",
+            "remaining tasks",
+            "still need to",
+            "still needs to",
             "todo",
-            "remaining",
-            "planned",
+            "to-do",
+            "to do",
+            "left to do",
+            "more to do",
+            "additional work",
+            "further work",
+            "outstanding",
+            "not yet complete",
+            "not yet done",
+            "incomplete",
+            "pending",
+            "planned for later",
+            "deferred",
         ]
 
-        for msg in reversed(transcript[-20:]):  # Check recent messages
-            if msg.get("type") == "assistant":
-                content = msg.get("message", {}).get("content", [])
-                if isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict) and block.get("type") == "text":
-                            text = str(block.get("text", "")).lower()
-                            if any(keyword in text for keyword in next_steps_keywords):
-                                return True
+        # Check RECENT assistant messages (last 10) for incomplete work indicators
+        # These are where the agent would summarize before stopping
+        recent_messages = [m for m in transcript[-20:] if m.get("type") == "assistant"][-10:]
 
-        # Also check for Write operations on TODO or planning files
-        for msg in transcript:
-            if msg.get("type") == "assistant" and "message" in msg:
-                content = msg["message"].get("content", [])
-                if isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict) and block.get("type") == "tool_use":
-                            if block.get("name") == "Write":
-                                file_path = block.get("input", {}).get("file_path", "").lower()
-                                if "todo" in file_path or "plan" in file_path:
-                                    return True
+        for msg in reversed(recent_messages):
+            content = msg.get("message", {}).get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = str(block.get("text", "")).lower()
+                        for keyword in incomplete_work_keywords:
+                            if keyword in text:
+                                self._log(
+                                    f"Incomplete work indicator found: '{keyword}' - agent should continue",
+                                    "INFO",
+                                )
+                                return False  # Work is INCOMPLETE
 
-        return False
+        # No incomplete work indicators found - work is complete
+        return True
 
-    def _check_docs_organization(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_docs_organization(self, transcript: list[dict], session_id: str) -> bool:
         """Check if investigation/session docs are organized properly.
 
         Verifies documentation is in correct directories.
@@ -2633,7 +2826,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _check_investigation_docs(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_investigation_docs(self, transcript: list[dict], session_id: str) -> bool:
         """Check if investigation findings were documented.
 
         Ensures exploration work is captured in persistent documentation.
@@ -2683,7 +2876,7 @@ class PowerSteeringChecker:
 
         return doc_created
 
-    def _check_shortcuts(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_shortcuts(self, transcript: list[dict], session_id: str) -> bool:
         """Check if any quality shortcuts were taken.
 
         Identifies compromises like skipped error handling or incomplete validation.
@@ -2724,7 +2917,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _check_interactive_testing(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_interactive_testing(self, transcript: list[dict], session_id: str) -> bool:
         """Check if agent tested interactively beyond automated tests.
 
         Looks for manual verification, edge case testing, UI validation.
@@ -2770,7 +2963,7 @@ class PowerSteeringChecker:
 
         return False
 
-    def _check_unrelated_changes(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_unrelated_changes(self, transcript: list[dict], session_id: str) -> bool:
         """Check if there are unrelated changes in PR.
 
         Detects scope creep and unrelated modifications.
@@ -2810,7 +3003,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _check_root_pollution(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_root_pollution(self, transcript: list[dict], session_id: str) -> bool:
         """Check if PR polluted project root with new files.
 
         Flags new top-level files that should be in subdirectories.
@@ -2855,7 +3048,7 @@ class PowerSteeringChecker:
 
         return True
 
-    def _check_pr_description(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_pr_description(self, transcript: list[dict], session_id: str) -> bool:
         """Check if PR description is clear and complete.
 
         Verifies PR has summary, test plan, and context.
@@ -2892,7 +3085,7 @@ class PowerSteeringChecker:
 
         return has_all_sections
 
-    def _check_review_responses(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_review_responses(self, transcript: list[dict], session_id: str) -> bool:
         """Check if PR review comments were addressed.
 
         Verifies reviewer feedback was acknowledged and resolved.
@@ -2935,7 +3128,7 @@ class PowerSteeringChecker:
 
         return has_responses
 
-    def _check_branch_rebase(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_branch_rebase(self, transcript: list[dict], session_id: str) -> bool:
         """Check if branch needs rebase on main.
 
         Verifies branch is up to date with main.
@@ -2963,7 +3156,7 @@ class PowerSteeringChecker:
         # Default to satisfied if no information
         return True
 
-    def _check_ci_precommit_mismatch(self, transcript: List[Dict], session_id: str) -> bool:
+    def _check_ci_precommit_mismatch(self, transcript: list[dict], session_id: str) -> bool:
         """Check for CI failures contradicting passing pre-commit.
 
         Identifies divergence between local pre-commit and CI checks.
@@ -3005,10 +3198,10 @@ class PowerSteeringChecker:
 
     def _emit_progress(
         self,
-        progress_callback: Optional[callable],
+        progress_callback: callable | None,
         event_type: str,
         message: str,
-        details: Optional[Dict] = None,
+        details: dict | None = None,
     ) -> None:
         """Emit progress event to callback if provided.
 
@@ -3036,20 +3229,23 @@ class PowerSteeringChecker:
     def _generate_continuation_prompt(
         self,
         analysis: ConsiderationAnalysis,
+        transcript: list[dict] | None = None,
         turn_state: Optional["PowerSteeringTurnState"] = None,
-        addressed_concerns: Optional[Dict[str, str]] = None,
-        user_claims: Optional[List[str]] = None,
+        addressed_concerns: dict[str, str] | None = None,
+        user_claims: list[str] | None = None,
     ) -> str:
         """Generate actionable continuation prompt with turn-awareness and evidence.
 
         Enhanced to show:
-        - Specific evidence for each failure
+        - Specific incomplete TODO items that need completion
+        - Specific "next steps" mentioned that indicate incomplete work
         - User claims vs actual evidence gap
         - Persistent failures across blocks
         - Escalating severity on repeated blocks
 
         Args:
             analysis: Analysis results with failed considerations
+            transcript: Optional transcript for extracting specific incomplete items
             turn_state: Optional turn state for turn-aware prompting
             addressed_concerns: Optional dict of concerns addressed in this turn
             user_claims: Optional list of completion claims detected from user/agent
@@ -3059,6 +3255,13 @@ class PowerSteeringChecker:
         """
         blocks = turn_state.consecutive_blocks if turn_state else 1
         threshold = PowerSteeringTurnState.MAX_CONSECUTIVE_BLOCKS if TURN_STATE_AVAILABLE else 10
+
+        # Extract specific incomplete items for detailed guidance
+        incomplete_todos = []
+        next_steps_mentioned = []
+        if transcript:
+            incomplete_todos = self._extract_incomplete_todos(transcript)
+            next_steps_mentioned = self._extract_next_steps_mentioned(transcript)
 
         # Escalating tone based on block count
         if blocks == 1:
@@ -3077,6 +3280,29 @@ class PowerSteeringChecker:
             "=" * 60,
             "",
         ]
+
+        # CRITICAL: Show specific incomplete items that MUST be completed
+        if incomplete_todos or next_steps_mentioned:
+            prompt_parts.append("**INCOMPLETE WORK DETECTED - YOU MUST CONTINUE:**")
+            prompt_parts.append("")
+
+            if incomplete_todos:
+                prompt_parts.append("**Incomplete TODO Items** (you MUST complete these):")
+                for todo in incomplete_todos:
+                    prompt_parts.append(f"  • {todo}")
+                prompt_parts.append("")
+
+            if next_steps_mentioned:
+                prompt_parts.append("**Next Steps You Mentioned** (you MUST complete these):")
+                for step in next_steps_mentioned:
+                    prompt_parts.append(f"  • {step}")
+                prompt_parts.append("")
+
+            prompt_parts.append(
+                "**ACTION REQUIRED**: Continue working on the items above. "
+                "Do NOT stop until ALL todos are completed and NO next steps remain."
+            )
+            prompt_parts.append("")
 
         # Show progress if addressing concerns
         if addressed_concerns:
@@ -3169,7 +3395,7 @@ class PowerSteeringChecker:
         return "\n".join(prompt_parts)
 
     def _generate_summary(
-        self, transcript: List[Dict], analysis: ConsiderationAnalysis, session_id: str
+        self, transcript: list[dict], analysis: ConsiderationAnalysis, session_id: str
     ) -> str:
         """Generate session summary for successful completion.
 
@@ -3251,7 +3477,7 @@ class PowerSteeringChecker:
 
 
 def check_session(
-    transcript_path: Path, session_id: str, project_root: Optional[Path] = None
+    transcript_path: Path, session_id: str, project_root: Path | None = None
 ) -> PowerSteeringResult:
     """Convenience function to check session completeness.
 
