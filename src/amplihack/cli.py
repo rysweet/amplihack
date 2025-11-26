@@ -244,8 +244,18 @@ def handle_auto_mode(
     # Check if UI mode is enabled
     ui_mode = getattr(args, "ui", False)
 
-    # Extract timeout from args
-    query_timeout = getattr(args, "query_timeout_minutes", 5.0)
+    # Extract model from cmd_args for timeout auto-detection
+    model = None
+    if cmd_args and "--model" in cmd_args:
+        try:
+            model_idx = cmd_args.index("--model")
+            if model_idx + 1 < len(cmd_args):
+                model = cmd_args[model_idx + 1]
+        except (ValueError, IndexError):
+            pass
+
+    # Resolve timeout using priority: --no-timeout > explicit > model auto-detect > default
+    query_timeout = resolve_timeout(args, model)
 
     auto = AutoMode(
         sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout
@@ -358,14 +368,51 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--query-timeout-minutes",
         type=float,
-        default=5.0,
+        default=30.0,
         metavar="MINUTES",
         help=(
-            "Timeout for each SDK query in minutes (default: 5.0). "
-            "Prevents indefinite hangs in complex sessions. "
-            "Use higher values (10-15) for very long-running operations."
+            "Timeout for each SDK query in minutes (default: 30). "
+            "Opus models auto-detect to 60 minutes. "
+            "Use --no-timeout to disable timeout completely."
         ),
     )
+    parser.add_argument(
+        "--no-timeout",
+        action="store_true",
+        help="Disable timeout for SDK queries (allows indefinite execution).",
+    )
+
+
+def resolve_timeout(args: argparse.Namespace, model: Optional[str] = None) -> Optional[float]:
+    """Resolve timeout value based on CLI args and model detection.
+
+    Priority order:
+    1. --no-timeout flag (returns None)
+    2. Explicit --query-timeout-minutes value (if not default 30.0)
+    3. Auto-detect Opus model (60 minutes)
+    4. Default from argparse (30 minutes)
+
+    Args:
+        args: Parsed command line arguments
+        model: Model name from --model arg (for Opus detection)
+
+    Returns:
+        Timeout in minutes, or None for no timeout
+    """
+    # Priority 1: --no-timeout flag takes precedence
+    if getattr(args, "no_timeout", False):
+        return None
+
+    # Get the timeout value (defaults to 30.0 from argparse)
+    timeout = getattr(args, "query_timeout_minutes", 30.0)
+
+    # Priority 3: Auto-detect Opus model (60 minute timeout)
+    # Only apply if timeout is the default (30.0), meaning user didn't explicitly override
+    if model and "opus" in model.lower() and timeout == 30.0:
+        return 60.0
+
+    # Return the timeout value (explicit or default)
+    return timeout
 
 
 def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
