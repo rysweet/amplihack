@@ -732,18 +732,22 @@ class PowerSteeringChecker:
                         analysis, transcript, turn_state, addressed_concerns, user_claims
                     )
 
+                    # Include formatted results in the prompt for visibility
+                    results_text = self._format_results_text(analysis, session_type)
+                    prompt_with_results = f"{prompt}\n{results_text}"
+
                     # Save redirect record for session reflection
                     self._save_redirect(
                         session_id=session_id,
                         failed_considerations=failed_ids,
-                        continuation_prompt=prompt,
+                        continuation_prompt=prompt_with_results,
                         work_summary=None,  # Could be enhanced to extract work summary
                     )
 
                     return PowerSteeringResult(
                         decision="block",
                         reasons=failed_ids,
-                        continuation_prompt=prompt,
+                        continuation_prompt=prompt_with_results,
                         summary=None,
                         analysis=analysis,
                         is_first_stop=is_first_stop,
@@ -761,10 +765,14 @@ class PowerSteeringChecker:
                     "Power-steering analysis complete - all checks passed (first stop - displaying results)",
                 )
 
+                # Format results for inclusion in continuation_prompt
+                # This ensures results are visible even when stderr is not shown
+                results_text = self._format_results_text(analysis, session_type)
+
                 return PowerSteeringResult(
                     decision="block",
                     reasons=["first_stop_visibility"],
-                    continuation_prompt="All power-steering checks passed! Displaying results for visibility. Next stop will proceed without blocking.",
+                    continuation_prompt=f"All power-steering checks passed! Please present these results to the user:\n{results_text}",
                     summary=None,
                     analysis=analysis,
                     is_first_stop=True,
@@ -1958,6 +1966,76 @@ class PowerSteeringChecker:
                 reason=f"Error (fail-open): {e}",
                 severity=consideration["severity"],
             )
+
+    def _format_results_text(self, analysis: ConsiderationAnalysis, session_type: str) -> str:
+        """Format analysis results as text for inclusion in continuation_prompt.
+
+        This allows users to see results even when stderr isn't visible.
+
+        Args:
+            analysis: ConsiderationAnalysis with results
+            session_type: Session type (e.g., "SIMPLE", "STANDARD")
+
+        Returns:
+            Formatted text string with results grouped by category
+        """
+        lines = []
+        lines.append("\n" + "=" * 60)
+        lines.append("⚙️  POWER-STEERING ANALYSIS RESULTS")
+        lines.append("=" * 60 + "\n")
+        lines.append(f"Session Type: {session_type}\n")
+
+        # Group results by category
+        by_category: dict[str, list[tuple]] = {}
+        for consideration in self.considerations:
+            category = consideration.get("category", "Unknown")
+            cid = consideration["id"]
+            result = analysis.results.get(cid)
+
+            if category not in by_category:
+                by_category[category] = []
+
+            by_category[category].append((consideration, result))
+
+        # Display by category
+        total_passed = 0
+        total_failed = 0
+        total_skipped = 0
+
+        for category, items in sorted(by_category.items()):
+            lines.append(f"📋 {category}")
+            lines.append("-" * 40)
+
+            for consideration, result in items:
+                if result is None:
+                    indicator = "⬜"  # Not checked (skipped)
+                    total_skipped += 1
+                elif result.satisfied:
+                    indicator = "✅"
+                    total_passed += 1
+                else:
+                    indicator = "❌"
+                    total_failed += 1
+
+                question = consideration.get("question", consideration["id"])
+                severity = consideration.get("severity", "warning")
+                severity_tag = " [blocker]" if severity == "blocker" else ""
+
+                lines.append(f"  {indicator} {question}{severity_tag}")
+
+            lines.append("")
+
+        # Summary line
+        lines.append("=" * 60)
+        if total_failed == 0:
+            lines.append(f"✅ ALL CHECKS PASSED ({total_passed} passed, {total_skipped} skipped)")
+            lines.append("\n📌 This was your first stop. Next stop will proceed without blocking.")
+        else:
+            lines.append(f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed)")
+            lines.append("\n📌 Address the failed checks above before stopping.")
+        lines.append("=" * 60 + "\n")
+
+        return "\n".join(lines)
 
     # ========================================================================
     # Phase 1: Top 5 Critical Checkers
