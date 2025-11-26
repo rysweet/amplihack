@@ -15,6 +15,7 @@ from .defensive import (
 from .hello_world import hello_world
 from .paths import FrameworkPathResolver
 from .process import ProcessManager
+from .string_utils import slugify
 from .uvx_staging import stage_uvx_framework
 
 
@@ -33,6 +34,8 @@ __all__ = [
     "ProcessManager",
     # Hello world
     "hello_world",
+    # String utilities
+    "slugify",
     # UVX utilities
     "is_uvx_deployment",
     "stage_uvx_framework",
