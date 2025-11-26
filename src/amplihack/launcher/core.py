@@ -7,7 +7,6 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
@@ -21,7 +20,7 @@ from .repo_checkout import checkout_repository
 logger = logging.getLogger(__name__)
 
 
-def merge_node_options(user_node_options: Optional[str], default_memory_mb: int = 8192) -> str:
+def merge_node_options(user_node_options: str | None, default_memory_mb: int = 8192) -> str:
     """Merge user's NODE_OPTIONS with amplihack defaults.
 
     Respects user's explicit memory limit if set, otherwise applies default.
@@ -93,11 +92,11 @@ class ClaudeLauncher:
 
     def __init__(
         self,
-        proxy_manager: Optional[ProxyManager] = None,
-        append_system_prompt: Optional[Path] = None,
+        proxy_manager: ProxyManager | None = None,
+        append_system_prompt: Path | None = None,
         force_staging: bool = False,
-        checkout_repo: Optional[str] = None,
-        claude_args: Optional[List[str]] = None,
+        checkout_repo: str | None = None,
+        claude_args: list[str] | None = None,
         verbose: bool = False,
     ):
         """Initialize Claude launcher.
@@ -117,7 +116,7 @@ class ClaudeLauncher:
         self.checkout_repo = checkout_repo
         self.claude_args = claude_args or []
         self.verbose = verbose
-        self.claude_process: Optional[subprocess.Popen] = None
+        self.claude_process: subprocess.Popen | None = None
 
         # Cached computation results for performance optimization
         self._cached_resolved_paths = {}  # Cache for path resolution results
@@ -200,7 +199,7 @@ class ClaudeLauncher:
             print(f"Repository checkout failed: {e!s}")
             return False
 
-    def _find_target_directory(self) -> Optional[Path]:
+    def _find_target_directory(self) -> Path | None:
         """Find the target directory for execution.
 
         Returns:
@@ -362,7 +361,7 @@ class ClaudeLauncher:
             return False
         return "--model" in self.claude_args
 
-    def build_claude_command(self) -> List[str]:
+    def build_claude_command(self) -> list[str]:
         """Build the Claude command with arguments.
 
         Note: Prerequisites have already been validated before this is called,
@@ -416,6 +415,10 @@ class ClaudeLauncher:
                     "gpt-5-codex",  # Fallback default
                 )
                 claude_args.extend(["--model", f"azure/{azure_model}"])
+            # Add default model if not using proxy and user hasn't specified one
+            elif not self._has_model_arg():
+                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
+                claude_args.extend(["--model", default_model])
 
             # Add forwarded Claude arguments
             if self.claude_args:
@@ -452,6 +455,10 @@ class ClaudeLauncher:
                 or "gpt-5-codex"  # Fallback default
             )
             cmd.extend(["--model", f"azure/{azure_model}"])
+        # Add default model if not using proxy and user hasn't specified one
+        elif not self._has_model_arg():
+            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
+            cmd.extend(["--model", default_model])
 
         # Add forwarded Claude arguments
         if self.claude_args:
