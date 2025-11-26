@@ -14,12 +14,19 @@ EXPECTED_PYTHON_MAJOR_MINOR="3.12"
 EXPECTED_NODE_MAJOR="20"
 
 echo ""
-echo "Step 1: Upgrading pip to latest..."
+echo "Step 1: Installing system dependencies..."
+# Install ripgrep (required by amplihack for code search)
+sudo apt-get update -qq
+sudo apt-get install -y -qq ripgrep
+echo "    ripgrep installed: $(rg --version | head -1)"
+
+echo ""
+echo "Step 2: Upgrading pip to latest..."
 python3 -m pip install --upgrade pip --quiet
 echo "    pip upgraded to: $(pip --version | cut -d' ' -f2)"
 
 echo ""
-echo "Step 2: Installing uv via official installer..."
+echo "Step 3: Installing uv via official installer..."
 # Use official astral.sh installer for latest uv (more reliable than pipx)
 if ! command -v uv &> /dev/null; then
     curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -33,12 +40,35 @@ else
 fi
 
 echo ""
-echo "Step 3: Configuring Git..."
+echo "Step 4: Setting up Python virtual environment..."
+# Create venv and install project dependencies
+cd "${containerWorkspaceFolder:-/workspaces/$(basename $(pwd))}"
+uv venv .venv
+source .venv/bin/activate
+uv sync
+echo "    Virtual environment created and dependencies installed"
+
+# Add auto-activation to .bashrc for future terminal sessions
+BASHRC_ACTIVATE='
+# Auto-activate amplihack virtual environment
+if [ -f "/workspaces/${PWD##*/}/.venv/bin/activate" ]; then
+    source "/workspaces/${PWD##*/}/.venv/bin/activate"
+elif [ -f ".venv/bin/activate" ]; then
+    source ".venv/bin/activate"
+fi
+'
+if ! grep -q "Auto-activate amplihack" ~/.bashrc 2>/dev/null; then
+    echo "$BASHRC_ACTIVATE" >> ~/.bashrc
+    echo "    Added venv auto-activation to .bashrc"
+fi
+
+echo ""
+echo "Step 5: Configuring Git..."
 git config --global push.autoSetupRemote true
 echo "    Git configured for auto-upstream on push"
 
 echo ""
-echo "Step 4: Setting up pnpm global bin directory..."
+echo "Step 6: Setting up pnpm global bin directory..."
 # Ensure SHELL is set for pnpm setup
 export SHELL="${SHELL:-/bin/bash}"
 # Configure pnpm to use a global bin directory
@@ -74,11 +104,13 @@ fi
 # Display all tool versions
 echo "  • pip: $(pip --version | cut -d' ' -f2)"
 echo "  • uv: $(uv --version 2>&1 | head -1)"
+echo "  • rg: $(rg --version | head -1)"
 echo "  • npm: $(npm --version)"
 echo "  • pnpm: $(pnpm --version)"
 echo "  • Git: $(git --version | cut -d' ' -f3)"
 echo "  • Make: $(make --version 2>&1 | head -n 1 | cut -d' ' -f3)"
 echo "  • Claude CLI: $(claude --version 2>&1 || echo 'NOT INSTALLED')"
+echo "  • venv: $(.venv/bin/python --version 2>&1 || echo 'NOT CREATED')"
 
 echo ""
 echo "========================================="
