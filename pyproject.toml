@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "microsofthackathon2025-agenticcoding"
 version = "0.1.7"
 description = "Agentic Coding Framework for Microsoft Hackathon 2025"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "flask>=2.0.0",
     "requests>=2.25.0",
@@ -61,7 +61,7 @@ amplihack = [
 [tool.ruff]
 # Essential Ruff settings only
 line-length = 100
-target-version = "py38"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I"]  # Basic errors, warnings, pyflakes, isort
@@ -69,7 +69,7 @@ ignore = ["E501", "E402"]  # Line too long - handled by formatter, Module level 
 
 [tool.pyright]
 # Essential Pyright settings only
-pythonVersion = "3.8"
+pythonVersion = "3.11"
 typeCheckingMode = "standard"
 exclude = [
     "**/__pycache__",

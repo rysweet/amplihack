@@ -1,4 +1,5 @@
 # Dockerfile for amplihack
+# Version alignment: Match CI configuration (Python 3.12, Node 20)
 FROM python:3.12-slim
 
 # Install system dependencies
@@ -15,8 +16,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Set working directory
 WORKDIR /app
 
-# Install UV package manager
-RUN pip install --no-cache-dir uv
+# Upgrade pip to latest
+RUN pip install --no-cache-dir --upgrade pip
+
+# Install UV package manager via official installer (more reliable than pip)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    mv /root/.local/bin/uv /usr/local/bin/uv
 
 # Copy project files
 COPY pyproject.toml uv.lock ./
