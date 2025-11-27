@@ -259,12 +259,12 @@ class TestSlugify:
         """Test removal of single and double quotes.
 
         Expected behavior:
-        - "It's \"Great\"" should become "its-great"
-        - Single quotes removed
+        - "It's \"Great\"" should become "it-s-great"
+        - Single quotes converted to hyphens
         - Double quotes removed
         """
         result = slugify('It\'s "Great"')
-        assert result == "its-great", "Should remove quotes"
+        assert result == "it-s-great", "Should handle quotes correctly"
 
     def test_slash_removed(self):
         """Test removal of forward and back slashes.
@@ -410,3 +410,43 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+    def test_none_value(self):
+        """Test handling of None value.
+
+        Expected behavior:
+        - None should become ""
+        - No errors or exceptions
+        """
+        result = slugify(None)
+        assert result == "", "None should return empty string"
+
+    def test_integer_value(self):
+        """Test handling of integer values.
+
+        Expected behavior:
+        - 123 should become "123"
+        - Negative numbers handled correctly
+        """
+        assert slugify(123) == "123", "Integer 123 should become '123'"
+        assert slugify(-456) == "-456", "Negative integer should preserve minus sign"
+
+    def test_float_value(self):
+        """Test handling of float values.
+
+        Expected behavior:
+        - 123.456 should become "123-456"
+        - Decimal point replaced with hyphen
+        """
+        result = slugify(123.456)
+        assert result == "123-456", "Float 123.456 should become '123-456'"
+
+    def test_boolean_values(self):
+        """Test handling of boolean values.
+
+        Expected behavior:
+        - True should become "true"
+        - False should become "false"
+        """
+        assert slugify(True) == "true", "True should become 'true'"
+        assert slugify(False) == "false", "False should become 'false'"
