@@ -1311,24 +1311,12 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("No messages captured for export", level="DEBUG")
                 return
 
-            # Validate export path BEFORE exporting
-            expected_session_dir = self.log_dir
+            # Log where transcripts will be exported
             actual_session_dir = builder.session_dir
-
-            # Check if builder's session_dir matches our expected location
-            if expected_session_dir.resolve() != actual_session_dir.resolve():
-                error_msg = (
-                    f"Transcript export path mismatch detected!\n"
-                    f"  Expected: {expected_session_dir}\n"
-                    f"  Actual:   {actual_session_dir}\n"
-                    f"  This usually means project root detection failed.\n"
-                    f"  Skipping transcript export (non-fatal for remote execution)."
-                )
-                self.log(error_msg, level="WARNING")
-                return  # Skip export instead of raising error
-
-            # Log where transcripts will be exported (helps debugging)
             self.log(f"Exporting transcripts to: {actual_session_dir}", level="DEBUG")
+
+            # Note: We don't validate path location - transcript export works
+            # whether it's in workspace or venv site-packages (remote execution)
 
             # Calculate total duration across all forks
             total_duration = self.total_session_time + (time.time() - self.start_time)

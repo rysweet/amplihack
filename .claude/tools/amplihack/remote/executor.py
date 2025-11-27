@@ -275,13 +275,20 @@ amplihack claude --{command} --max-turns {max_turns} -- -p '{escaped_prompt}'
         print("Retrieving execution logs...")
 
         # Create archive of logs on remote (put in ~/ for azlin cp)
+        # Try workspace first, then venv location (for pip install -e .)
         create_archive = f"""
-cd {self.remote_workspace}
-if [ -d .claude/runtime/logs ]; then
+# Try workspace location first
+if [ -d {self.remote_workspace}/.claude/runtime/logs ]; then
+    cd {self.remote_workspace}
     tar czf ~/logs.tar.gz .claude/runtime/logs/
-    echo "Logs archived"
+    echo "Logs archived from workspace"
+# Fall back to venv location
+elif [ -d ~/.amplihack-venv/lib/python*/site-packages/amplihack/.claude/runtime/logs ]; then
+    cd ~/.amplihack-venv/lib/python*/site-packages/amplihack
+    tar czf ~/logs.tar.gz .claude/runtime/logs/
+    echo "Logs archived from venv"
 else
-    echo "No logs directory found"
+    echo "No logs directory found in workspace or venv"
     exit 1
 fi
 """
