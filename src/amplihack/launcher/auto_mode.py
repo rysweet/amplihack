@@ -1304,7 +1304,7 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("Transcript builder not found, skipping export", level="INFO")
                 return
 
-            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
+            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name, working_dir=self.working_dir)
             messages = self.message_capture.get_messages()
 
             if not messages:
@@ -1322,10 +1322,10 @@ Current Turn: {turn}/{self.max_turns}"""
                     f"  Expected: {expected_session_dir}\n"
                     f"  Actual:   {actual_session_dir}\n"
                     f"  This usually means project root detection failed.\n"
-                    f"  Refusing to export to wrong location to prevent silent data loss."
+                    f"  Skipping transcript export (non-fatal for remote execution)."
                 )
-                self.log(error_msg, level="ERROR")
-                raise ValueError(error_msg)
+                self.log(error_msg, level="WARNING")
+                return  # Skip export instead of raising error
 
             # Log where transcripts will be exported (helps debugging)
             self.log(f"Exporting transcripts to: {actual_session_dir}", level="DEBUG")

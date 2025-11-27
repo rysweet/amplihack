@@ -74,7 +74,7 @@ class ContextPackager:
     It explicitly excludes sensitive files and scans for hardcoded secrets.
     """
 
-    def __init__(self, repo_path: Path, max_size_mb: int = 500):
+    def __init__(self, repo_path: Path, max_size_mb: int = 500, skip_secret_scan: bool = False):
         """Initialize context packager.
 
         Args:
@@ -83,6 +83,7 @@ class ContextPackager:
         """
         self.repo_path = Path(repo_path).resolve()
         self.max_size_bytes = max_size_mb * 1024 * 1024
+        self.skip_secret_scan = skip_secret_scan
         self.temp_dir: Optional[Path] = None
 
     def scan_secrets(self) -> List[SecretMatch]:
@@ -205,11 +206,8 @@ class ContextPackager:
 
         return bundle_path
 
-    def package(self, skip_secret_scan: bool = False) -> Path:
+    def package(self) -> Path:
         """Create complete context archive.
-
-        Args:
-            skip_secret_scan: Skip secret scanning (for development with ephemeral VMs)
 
         Returns:
             Path to context.tar.gz archive
@@ -218,7 +216,7 @@ class ContextPackager:
             PackagingError: If packaging fails or secrets detected
         """
         # Step 1: Scan for secrets (unless skipped)
-        if not skip_secret_scan:
+        if not self.skip_secret_scan:
             secrets = self.scan_secrets()
             if secrets:
                 error_details = "\n".join(
@@ -233,10 +231,11 @@ class ContextPackager:
                     "Action required:\n"
                     "  1. Remove hardcoded secrets from source files\n"
                     "  2. Add secrets to .env file (automatically excluded)\n"
-                    "  3. Retry remote execution\n"
-                    "  4. Or use --skip-secret-scan flag (ephemeral VMs only)\n",
+                    "  3. Retry remote execution\n",
                     context={"secret_count": len(secrets)},
                 )
+        else:
+            print("  ⚠ Secret scan skipped (skip_secret_scan=True)")
 
         # Step 2: Create git bundle
         bundle_path = self.create_bundle()

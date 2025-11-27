@@ -42,7 +42,7 @@ class Executor:
         """
         self.vm = vm
         self.timeout_seconds = timeout_minutes * 60
-        self.remote_workspace = "/home/amplihack/workspace"
+        self.remote_workspace = "~/workspace"
 
     def transfer_context(self, archive_path: Path) -> bool:
         """Transfer context archive to remote VM.
@@ -152,20 +152,56 @@ set -e
 cd ~
 tar xzf context.tar.gz
 
-# Setup workspace
+# Setup workspace (clean first for idempotency)
+rm -rf {self.remote_workspace}
 mkdir -p {self.remote_workspace}
 cd {self.remote_workspace}
 
 # Restore git repository
 git clone ~/repo.bundle .
-cp -r ~/.claude .
+# Copy .claude from archive (remove existing first to avoid conflicts)
+rm -rf .claude && cp -r ~/.claude .
 
-# Install amplihack from the transferred repository
-# This ensures we run the exact same version as locally
-pip install -e . --quiet
+# Install Python 3.11 (required for blarify dependency)
+# Use deadsnakes PPA for Ubuntu
+if ! command -v python3.11 &> /dev/null; then
+    echo "Installing Python 3.11..."
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq software-properties-common
+    sudo add-apt-repository -y ppa:deadsnakes/ppa
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq python3.11 python3.11-venv python3.11-dev
+fi
 
-# Export API key
-export ANTHROPIC_API_KEY='{api_key}'
+# Create venv with Python 3.11 (remove old one first for fresh install)
+echo "Creating Python 3.11 virtual environment..."
+rm -rf ~/.amplihack-venv
+python3.11 -m venv ~/.amplihack-venv
+source ~/.amplihack-venv/bin/activate
+
+# Upgrade pip and install amplihack from local bundle
+pip install --upgrade pip --quiet
+pip install . --quiet
+export PATH="$HOME/.amplihack-venv/bin:$PATH"
+
+# Get API key from .claude.json if available (NFS shared home)
+if [ -f ~/.claude.json ]; then
+    API_KEY=$(python3 -c "import json; print(json.load(open('$HOME/.claude.json')).get('anthropicApiKey',''))" 2>/dev/null)
+    if [ -n "$API_KEY" ]; then
+        export ANTHROPIC_API_KEY="$API_KEY"
+        echo "Using API key from ~/.claude.json"
+    fi
+fi
+
+# Fallback to provided key if set
+if [ -z "$ANTHROPIC_API_KEY" ] && [ -n '{api_key}' ] && [ '{api_key}' != 'None' ]; then
+    export ANTHROPIC_API_KEY='{api_key}'
+fi
+
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    echo "ERROR: No API key found. Set ANTHROPIC_API_KEY or ensure ~/.claude.json exists"
+    exit 1
+fi
 
 # Run amplihack command
 amplihack claude --{command} --max-turns {max_turns} -- -p '{escaped_prompt}'
