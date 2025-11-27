@@ -17,7 +17,12 @@ Test Coverage:
 - Only special characters
 - Mixed case conversion
 - Consecutive hyphens
+- Max length truncation
+- Custom separator
+- None handling
 - Complex edge cases
+- Property-based tests
+- Idempotency verification
 """
 
 import sys
@@ -32,11 +37,13 @@ try:
     from amplihack.utils.string_utils import slugify
 except ImportError:
     # Define placeholder so tests can be written
-    def slugify(text: str) -> str:
+    def slugify(text: str, max_length: int = 50, separator: str = "-") -> str:
         """Placeholder - to be implemented.
 
         Args:
             text: String to convert to slug
+            max_length: Maximum length of output (default 50)
+            separator: Separator character (default "-")
 
         Returns:
             URL-safe slug string
@@ -410,3 +417,472 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+
+class TestSlugifyMaxLength:
+    """Test max_length parameter for truncation behavior."""
+
+    def test_max_length_default_50(self):
+        """Test default max_length of 50 characters.
+
+        Expected behavior:
+        - Long strings truncated to 50 characters
+        - No partial words at end (clean break)
+        """
+        long_text = (
+            "This is a very long string that definitely exceeds fifty characters when slugified"
+        )
+        result = slugify(long_text)
+        assert len(result) <= 50, f"Should truncate to max 50 chars, got {len(result)}"
+        assert not result.endswith("-"), "Should not end with separator after truncation"
+
+    def test_max_length_custom_value(self):
+        """Test custom max_length values.
+
+        Expected behavior:
+        - Respects custom max_length parameter
+        - Truncates at word boundary if possible
+        """
+        text = "The quick brown fox jumps over the lazy dog"
+        result = slugify(text, max_length=20)
+        assert len(result) <= 20, f"Should truncate to max 20 chars, got {len(result)}"
+        assert not result.endswith("-"), "Should not end with separator"
+
+    def test_max_length_zero(self):
+        """Test max_length=0 returns empty string.
+
+        Expected behavior:
+        - max_length=0 always returns empty string
+        """
+        result = slugify("Hello World", max_length=0)
+        assert result == "", "max_length=0 should return empty string"
+
+    def test_max_length_negative_treated_as_unlimited(self):
+        """Test negative max_length means no limit.
+
+        Expected behavior:
+        - Negative values disable truncation
+        - Full slug returned regardless of length
+        """
+        text = "This is a very long string " * 10
+        result = slugify(text, max_length=-1)
+        # Should contain all words, just slugified
+        assert "very-long-string" in result, "Should not truncate with negative max_length"
+
+    def test_max_length_preserves_whole_words(self):
+        """Test truncation doesn't break words.
+
+        Expected behavior:
+        - Truncates at word boundaries
+        - Doesn't leave partial words
+        """
+        text = "Hello wonderful world"
+        result = slugify(text, max_length=15)
+        assert len(result) <= 15, "Should respect max_length"
+        # Should be either "hello" or "hello-wonderful" depending on implementation
+        assert result in ["hello", "hello-wonderful"], "Should truncate at word boundary"
+
+    def test_max_length_with_unicode(self):
+        """Test max_length with unicode normalization.
+
+        Expected behavior:
+        - Length counted after normalization
+        - Unicode converted to ASCII first
+        """
+        text = "Café résumé naïve"
+        result = slugify(text, max_length=10)
+        assert len(result) <= 10, "Should respect max_length after normalization"
+        assert "cafe" in result or result == "cafe", "Should normalize unicode before truncating"
+
+
+class TestSlugifySeparator:
+    """Test custom separator parameter."""
+
+    def test_separator_underscore(self):
+        """Test using underscore as separator.
+
+        Expected behavior:
+        - Uses "_" instead of "-" as separator
+        - All other rules still apply
+        """
+        result = slugify("Hello World", separator="_")
+        assert result == "hello_world", "Should use underscore as separator"
+
+    def test_separator_empty_string(self):
+        """Test empty string as separator.
+
+        Expected behavior:
+        - No separator between words
+        - Words concatenated directly
+        """
+        result = slugify("Hello World", separator="")
+        assert result == "helloworld", "Should concatenate without separator"
+
+    def test_separator_multiple_chars(self):
+        """Test multi-character separator.
+
+        Expected behavior:
+        - Uses full separator string
+        - Not collapsed like single separators
+        """
+        result = slugify("Hello World", separator="--")
+        assert result == "hello--world", "Should use multi-char separator"
+
+    def test_separator_special_char_cleaned(self):
+        """Test special characters in separator are cleaned.
+
+        Expected behavior:
+        - Invalid separator chars removed or replaced
+        - Falls back to default if invalid
+        """
+        result = slugify("Hello World", separator="@")
+        # Should either use @ if allowed or fall back to default
+        assert "hello" in result and "world" in result, "Should still separate words"
+
+    def test_separator_with_collapse(self):
+        """Test multiple separators are collapsed.
+
+        Expected behavior:
+        - Multiple consecutive separators become one
+        - Works with custom separator
+        """
+        text = "Hello   World"  # Multiple spaces
+        result = slugify(text, separator="_")
+        assert result == "hello_world", "Should collapse multiple to single separator"
+
+    def test_separator_strip_leading_trailing(self):
+        """Test leading/trailing separators are stripped.
+
+        Expected behavior:
+        - No leading separator
+        - No trailing separator
+        - Works with custom separator
+        """
+        text = " Hello World "
+        result = slugify(text, separator="_")
+        assert result == "hello_world", "Should strip leading/trailing spaces"
+        assert not result.startswith("_"), "Should not start with separator"
+        assert not result.endswith("_"), "Should not end with separator"
+
+
+class TestSlugifyNoneHandling:
+    """Test None input handling."""
+
+    def test_none_input(self):
+        """Test None is converted to string first.
+
+        Expected behavior:
+        - None becomes "none"
+        - No exceptions raised
+        """
+        result = slugify(None)
+        assert result == "none", "None should become 'none'"
+
+    def test_none_type_conversion(self):
+        """Test various None-like inputs.
+
+        Expected behavior:
+        - Consistent handling of None-like values
+        - String conversion applied first
+        """
+        # Testing with actual None
+        result = slugify(None)
+        assert isinstance(result, str), "Should return string for None input"
+        assert result == "none", "None should slugify to 'none'"
+
+    def test_none_with_parameters(self):
+        """Test None with custom parameters.
+
+        Expected behavior:
+        - Parameters still applied after conversion
+        - max_length and separator work normally
+        """
+        result = slugify(None, max_length=2)
+        assert len(result) <= 2, "Should respect max_length with None"
+
+        result = slugify(None, separator="_")
+        assert result == "none", "Separator doesn't affect single word 'none'"
+
+
+class TestSlugifyEdgeCases:
+    """Test complex edge cases and corner scenarios."""
+
+    def test_only_separators(self):
+        """Test string with only separator characters.
+
+        Expected behavior:
+        - "---" should become ""
+        - All separators removed
+        """
+        result = slugify("---")
+        assert result == "", "Only separators should return empty string"
+
+    def test_alternating_special_chars(self):
+        """Test alternating special and valid chars.
+
+        Expected behavior:
+        - "a!b@c#d" should become "a-b-c-d"
+        - Special chars become separators
+        """
+        result = slugify("a!b@c#d")
+        assert result == "a-b-c-d", "Special chars should become separators"
+
+    def test_unicode_emoji_with_text(self):
+        """Test emoji mixed with regular text.
+
+        Expected behavior:
+        - Emoji removed cleanly
+        - Text preserved and slugified
+        """
+        result = slugify("Hello 😀 World 🌍 Test")
+        assert result == "hello-world-test", "Should remove emoji and preserve text"
+
+    def test_rtl_text(self):
+        """Test right-to-left text (Arabic, Hebrew).
+
+        Expected behavior:
+        - RTL text handled gracefully
+        - Either transliterated or removed
+        """
+        result = slugify("مرحبا hello שלום")
+        assert "hello" in result, "Should at least preserve ASCII text"
+
+    def test_very_long_single_word(self):
+        """Test single word longer than max_length.
+
+        Expected behavior:
+        - Truncates even single words if needed
+        - Clean truncation
+        """
+        long_word = "abcdefghijklmnopqrstuvwxyz" * 3
+        result = slugify(long_word, max_length=20)
+        assert len(result) <= 20, "Should truncate long single word"
+        assert result == long_word[:20].lower(), "Should truncate at exact length for single word"
+
+    def test_max_length_with_separator_at_boundary(self):
+        """Test truncation when separator is at max_length position.
+
+        Expected behavior:
+        - Don't include trailing separator
+        - Clean word boundary
+        """
+        text = "Hello World Test"
+        # Assuming "hello-world" is 11 chars
+        result = slugify(text, max_length=11)
+        assert not result.endswith("-"), "Should not end with separator"
+        assert len(result) <= 11, "Should respect max_length"
+
+    def test_all_params_together(self):
+        """Test all parameters used simultaneously.
+
+        Expected behavior:
+        - All params work together correctly
+        - None + max_length + separator
+        """
+        result = slugify(None, max_length=3, separator="_")
+        # "none" truncated to "non" with underscore separator
+        assert len(result) <= 3, "Should respect max_length"
+
+    def test_whitespace_variations(self):
+        """Test various whitespace characters.
+
+        Expected behavior:
+        - All whitespace types converted to separator
+        - Tabs, newlines, etc. handled
+        """
+        text = "Hello\tWorld\nTest\rLine Form\fFeed"
+        result = slugify(text)
+        assert "-" in result, "Should have separators"
+        assert "\t" not in result, "Should remove tabs"
+        assert "\n" not in result, "Should remove newlines"
+        assert "\r" not in result, "Should remove carriage returns"
+
+    def test_mixed_separators_custom(self):
+        """Test mixed input with custom separator.
+
+        Expected behavior:
+        - Underscores and spaces both become custom separator
+        - Consistent replacement
+        """
+        text = "hello_world and_test"
+        result = slugify(text, separator="+")
+        assert result == "hello+world+and+test", "Should use custom separator consistently"
+
+
+class TestSlugifySecurity:
+    """Test security features of slugify function."""
+
+    def test_max_input_length_validation(self):
+        """Test that very long inputs are rejected to prevent memory exhaustion.
+
+        Expected behavior:
+        - Input longer than MAX_INPUT_LENGTH should raise ValueError
+        - Prevents potential DoS through memory exhaustion
+        """
+        # Create a string longer than the MAX_INPUT_LENGTH (10,000)
+        very_long_text = "a" * 10001
+        try:
+            slugify(very_long_text)
+            assert False, "Should have raised ValueError for input exceeding MAX_INPUT_LENGTH"
+        except ValueError as e:
+            assert "exceeds maximum" in str(e).lower() or "too long" in str(e).lower(), (
+                f"Error message should mention maximum length, got: {e}"
+            )
+
+    def test_input_at_max_length_allowed(self):
+        """Test that input exactly at MAX_INPUT_LENGTH is allowed.
+
+        Expected behavior:
+        - Input of exactly 10,000 characters should be processed
+        - No ValueError raised
+        """
+        # Create a string exactly at MAX_INPUT_LENGTH (10,000)
+        max_length_text = "a" * 10000
+        result = slugify(max_length_text)
+        # Should not raise an exception
+        assert isinstance(result, str), "Should process input at maximum allowed length"
+
+    def test_input_below_max_length_allowed(self):
+        """Test that normal inputs below MAX_INPUT_LENGTH work fine.
+
+        Expected behavior:
+        - Normal length inputs process without issues
+        - No performance impact for regular use
+        """
+        normal_text = "This is a normal length string that should work fine"
+        result = slugify(normal_text)
+        assert result == "this-is-a-normal-length-string-that-should-work-fine"
+
+
+class TestSlugifyPropertyBased:
+    """Property-based tests for slugify - testing invariants."""
+
+    def test_always_lowercase(self):
+        """Test output is always lowercase.
+
+        Property: For any input, output.islower() or output == ""
+        """
+        test_cases = [
+            "UPPERCASE",
+            "MiXeDcAsE",
+            "lowercase",
+            "123NUMBERS456",
+            "SYMBOLS!@#",
+        ]
+        for text in test_cases:
+            result = slugify(text)
+            assert result.islower() or result == "", f"Output should be lowercase for '{text}'"
+
+    def test_no_special_chars_except_separator(self):
+        """Test output contains only alphanumeric and separator.
+
+        Property: Output chars are in [a-z0-9] + separator
+        """
+        test_cases = [
+            "Test!@#$%",
+            "Hello&World",
+            "Special*Chars",
+        ]
+        for text in test_cases:
+            result = slugify(text)
+            for char in result:
+                assert char.isalnum() or char == "-", f"Invalid char '{char}' in result"
+
+            # Test with custom separator
+            result = slugify(text, separator="_")
+            for char in result:
+                assert char.isalnum() or char == "_", f"Invalid char '{char}' in result"
+
+    def test_no_consecutive_separators(self):
+        """Test no consecutive separators in output.
+
+        Property: No separator appears twice in a row
+        """
+        test_cases = [
+            "Multiple   Spaces",
+            "Many-----Hyphens",
+            "Mixed   ---   Separators",
+        ]
+        for text in test_cases:
+            result = slugify(text)
+            assert "--" not in result, f"Found consecutive separators in '{result}'"
+
+            result = slugify(text, separator="_")
+            assert "__" not in result, f"Found consecutive separators in '{result}'"
+
+    def test_no_leading_trailing_separator(self):
+        """Test no leading or trailing separators.
+
+        Property: Output never starts or ends with separator
+        """
+        test_cases = [
+            "  Leading spaces",
+            "Trailing spaces  ",
+            "  Both sides  ",
+            "---Leading hyphens",
+            "Trailing hyphens---",
+        ]
+        for text in test_cases:
+            result = slugify(text)
+            if result:  # Only check non-empty results
+                assert not result.startswith("-"), f"Result starts with separator: '{result}'"
+                assert not result.endswith("-"), f"Result ends with separator: '{result}'"
+
+            result = slugify(text, separator="_")
+            if result:
+                assert not result.startswith("_"), f"Result starts with separator: '{result}'"
+                assert not result.endswith("_"), f"Result ends with separator: '{result}'"
+
+    def test_length_constraint_respected(self):
+        """Test max_length is always respected.
+
+        Property: len(output) <= max_length for any input
+        """
+        test_cases = [
+            ("short", 10),
+            ("This is a longer string", 10),
+            ("Very very very long " * 10, 20),
+            ("Single", 3),
+        ]
+        for text, max_len in test_cases:
+            result = slugify(text, max_length=max_len)
+            assert len(result) <= max_len, f"Result exceeds max_length: {len(result)} > {max_len}"
+
+    def test_idempotency_property(self):
+        """Test idempotency for all inputs.
+
+        Property: slugify(slugify(x)) == slugify(x)
+        """
+        test_cases = [
+            "Hello World",
+            "Already-a-slug",
+            "MIXED case STRING",
+            "Special!@#Chars",
+            "Unicode café",
+            "   Spaces   ",
+        ]
+        for text in test_cases:
+            once = slugify(text)
+            twice = slugify(once)
+            assert once == twice, f"Not idempotent for '{text}': '{once}' != '{twice}'"
+
+            # Also test with parameters
+            once = slugify(text, max_length=20, separator="_")
+            twice = slugify(once, max_length=20, separator="_")
+            assert once == twice, f"Not idempotent with params: '{once}' != '{twice}'"
+
+    def test_deterministic(self):
+        """Test same input always produces same output.
+
+        Property: Deterministic function
+        """
+        text = "Test String 123!"
+        result1 = slugify(text)
+        result2 = slugify(text)
+        result3 = slugify(text)
+        assert result1 == result2 == result3, "Function is not deterministic"
+
+        # With parameters
+        result1 = slugify(text, max_length=10, separator="_")
+        result2 = slugify(text, max_length=10, separator="_")
+        assert result1 == result2, "Function is not deterministic with parameters"
