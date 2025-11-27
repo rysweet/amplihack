@@ -410,3 +410,311 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+    # ========== Additional Tests for Complete Coverage ==========
+    # Following TDD methodology and testing pyramid:
+    # - 60% Unit tests (individual behaviors)
+    # - 30% Integration tests (combinations)
+    # - 10% E2E tests (real-world scenarios)
+
+    # UNIT TESTS (60% - Testing individual behaviors)
+
+    def test_none_input_handling(self):
+        """Test None input returns empty string gracefully.
+
+        Expected behavior:
+        - None should return "" without raising exceptions
+        - Requirement #7: Handles None gracefully
+        """
+        result = slugify(None)
+        assert result == "", "None input should return empty string"
+
+    def test_only_hyphens_input(self):
+        """Test string with only hyphens.
+
+        Expected behavior:
+        - "---" should return ""
+        - Pure hyphen strings collapse to empty
+        """
+        result = slugify("---")
+        assert result == "", "Only hyphens should return empty string"
+
+    def test_spaces_and_hyphens_mixed(self):
+        """Test mixed spaces and hyphens.
+
+        Expected behavior:
+        - "hello - world" should become "hello-world"
+        - Spaces around hyphens removed
+        """
+        result = slugify("hello - world")
+        assert result == "hello-world", "Spaces around hyphens should be normalized"
+
+    def test_multiple_underscores(self):
+        """Test consecutive underscores.
+
+        Expected behavior:
+        - "hello___world" should become "hello-world"
+        - Multiple underscores collapse to single hyphen
+        """
+        result = slugify("hello___world")
+        assert result == "hello-world", "Multiple underscores should become single hyphen"
+
+    def test_currency_symbols(self):
+        """Test removal of currency symbols.
+
+        Expected behavior:
+        - "$100 USD" should become "100-usd"
+        - "€50 EUR" should become "50-eur"
+        - "¥1000" should become "1000"
+        """
+        assert slugify("$100 USD") == "100-usd", "Dollar sign should be removed"
+        assert slugify("€50 EUR") == "50-eur", "Euro sign should be removed"
+        assert slugify("¥1000") == "1000", "Yen sign should be removed"
+
+    def test_math_symbols(self):
+        """Test removal of mathematical symbols.
+
+        Expected behavior:
+        - "1+1=2" should become "1-1-2"
+        - "50% off" should become "50-off"
+        - "a*b/c" should become "a-b-c"
+        """
+        assert slugify("1+1=2") == "1-1-2", "Plus and equals should be removed"
+        assert slugify("50% off") == "50-off", "Percent sign should be removed"
+        assert slugify("a*b/c") == "a-b-c", "Math operators should be removed"
+
+    def test_hashtags_and_at_symbols(self):
+        """Test social media symbols.
+
+        Expected behavior:
+        - "#hashtag" should become "hashtag"
+        - "@username" should become "username"
+        - "#1 @best" should become "1-best"
+        """
+        assert slugify("#hashtag") == "hashtag", "Hash symbol should be removed"
+        assert slugify("@username") == "username", "At symbol should be removed"
+        assert slugify("#1 @best") == "1-best", "Multiple social symbols removed"
+
+    def test_file_extensions(self):
+        """Test handling of file extensions.
+
+        Expected behavior:
+        - "document.pdf" should become "document-pdf"
+        - "script.min.js" should become "script-min-js"
+        """
+        assert slugify("document.pdf") == "document-pdf", "Dot should become hyphen"
+        assert slugify("script.min.js") == "script-min-js", "Multiple dots handled"
+
+    def test_url_like_strings(self):
+        """Test URL-like input strings.
+
+        Expected behavior:
+        - "https://example.com" should become "https-example-com"
+        - "user@email.com" should become "user-email-com"
+        """
+        assert slugify("https://example.com") == "https-example-com", "URL should be slugified"
+        assert slugify("user@email.com") == "user-email-com", "Email should be slugified"
+
+    # INTEGRATION TESTS (30% - Testing combinations of behaviors)
+
+    def test_complex_unicode_normalization(self):
+        """Test complex Unicode normalization scenarios.
+
+        Expected behavior:
+        - Mixed scripts and accents normalize correctly
+        - Requirement #9: Handles Unicode characters properly
+        """
+        # French accents
+        assert slugify("naïve résumé") == "naive-resume", "French accents normalized"
+        # German umlauts
+        assert slugify("Über Größe") == "uber-grosse", "German umlauts normalized"
+        # Spanish tildes
+        assert slugify("Niño Español") == "nino-espanol", "Spanish tildes normalized"
+        # Combined diacritics
+        assert slugify("Zürich Café") == "zurich-cafe", "Mixed diacritics normalized"
+
+    def test_complex_whitespace_handling(self):
+        """Test various whitespace character combinations.
+
+        Expected behavior:
+        - All whitespace types convert to single hyphens
+        - No consecutive hyphens in output
+        """
+        # Mixed whitespace types
+        result = slugify("hello\t\n\r world \t test")
+        assert result == "hello-world-test", "Mixed whitespace should normalize"
+
+        # Unicode spaces
+        result = slugify("hello\u00a0world")  # Non-breaking space
+        assert result == "hello-world", "Unicode spaces should normalize"
+
+    def test_special_character_combinations(self):
+        """Test combinations of special characters.
+
+        Expected behavior:
+        - Multiple special chars don't create excess hyphens
+        - Clean separation between words
+        """
+        assert slugify("!!!hello???world***") == "hello-world", "Special chars at boundaries"
+        assert slugify("test!@#$%^&*()case") == "test-case", "Special chars in middle"
+        assert slugify("(hello)[world]{test}") == "hello-world-test", "Bracket variations"
+
+    def test_numeric_with_special_chars(self):
+        """Test numbers mixed with special characters.
+
+        Expected behavior:
+        - Numbers preserved, special chars removed
+        - Proper hyphenation maintained
+        """
+        assert slugify("123!@#456") == "123-456", "Numbers with specials between"
+        assert slugify("#1 Product!") == "1-product", "Numbered item with specials"
+        assert slugify("v2.0.1") == "v2-0-1", "Version number format"
+
+    def test_idempotency_with_various_inputs(self):
+        """Test idempotency with different input types.
+
+        Expected behavior:
+        - Requirement #10: Is idempotent
+        - Running twice produces same result
+        """
+        test_cases = [
+            "Hello World!",
+            "café-résumé",
+            "123 ABC xyz",
+            "!!!special###",
+            "  spaced  out  ",
+            "already-slugified",
+        ]
+
+        for test_input in test_cases:
+            first_pass = slugify(test_input)
+            second_pass = slugify(first_pass)
+            third_pass = slugify(second_pass)
+            assert second_pass == first_pass, f"Not idempotent for: {test_input}"
+            assert third_pass == second_pass, f"Not stable after 3 passes: {test_input}"
+
+    def test_edge_case_combinations(self):
+        """Test combinations of edge cases.
+
+        Expected behavior:
+        - Multiple edge cases handled correctly together
+        """
+        # Empty after processing
+        assert slugify("!@#$%^&*()") == "", "Only special chars returns empty"
+
+        # Single valid character after processing
+        assert slugify("!@#a$%^") == "a", "Single valid char preserved"
+
+        # Numbers only after processing
+        assert slugify("!@#123$%^") == "123", "Numbers preserved when only valid chars"
+
+    # END-TO-END TESTS (10% - Real-world scenarios)
+
+    def test_blog_post_titles(self):
+        """Test real-world blog post title scenarios.
+
+        Expected behavior:
+        - Common blog titles slugify correctly
+        - Readable URLs generated
+        """
+        test_cases = [
+            ("10 Tips for Better Python Code!", "10-tips-for-better-python-code"),
+            (
+                "Why I Love Programming (And You Should Too)",
+                "why-i-love-programming-and-you-should-too",
+            ),
+            ("COVID-19: A Developer's Perspective", "covid-19-a-developers-perspective"),
+            ("The #1 Mistake Junior Devs Make", "the-1-mistake-junior-devs-make"),
+            ("How to: Build Your First API", "how-to-build-your-first-api"),
+        ]
+
+        for input_title, expected_slug in test_cases:
+            assert slugify(input_title) == expected_slug, f"Blog title failed: {input_title}"
+
+    def test_product_names(self):
+        """Test e-commerce product name scenarios.
+
+        Expected behavior:
+        - Product names become SEO-friendly slugs
+        """
+        test_cases = [
+            ("iPhone 15 Pro Max - 256GB", "iphone-15-pro-max-256gb"),
+            ("Men's T-Shirt (Large)", "mens-t-shirt-large"),
+            ("50% OFF! Summer Sale", "50-off-summer-sale"),
+            ("Nike Air Max 90 'Infrared'", "nike-air-max-90-infrared"),
+            ('Samsung 65" 4K Smart TV', "samsung-65-4k-smart-tv"),
+        ]
+
+        for product_name, expected_slug in test_cases:
+            assert slugify(product_name) == expected_slug, f"Product name failed: {product_name}"
+
+    def test_multilingual_content(self):
+        """Test real-world multilingual content.
+
+        Expected behavior:
+        - International content handled gracefully
+        - Accents and special chars normalized
+        """
+        test_cases = [
+            ("São Paulo Travel Guide", "sao-paulo-travel-guide"),
+            ("Düsseldorf Beer Festival", "dusseldorf-beer-festival"),
+            ("Montréal Jazz Festival", "montreal-jazz-festival"),
+            ("København City Guide", "kobenhavn-city-guide"),
+            ("Zürich Banking Summit", "zurich-banking-summit"),
+        ]
+
+        for input_text, expected_slug in test_cases:
+            assert slugify(input_text) == expected_slug, f"Multilingual failed: {input_text}"
+
+    def test_technical_documentation_titles(self):
+        """Test technical documentation and API endpoint names.
+
+        Expected behavior:
+        - Technical terms slugify appropriately
+        - Version numbers handled correctly
+        """
+        test_cases = [
+            ("API v2.0 Documentation", "api-v2-0-documentation"),
+            ("Node.js Best Practices", "node-js-best-practices"),
+            ("C++ Programming Guide", "c-programming-guide"),
+            ("OAuth 2.0 Implementation", "oauth-2-0-implementation"),
+            ("/api/v1/users/{id}", "api-v1-users-id"),
+        ]
+
+        for tech_title, expected_slug in test_cases:
+            assert slugify(tech_title) == expected_slug, f"Technical title failed: {tech_title}"
+
+    # BOUNDARY TESTS (Additional coverage for edge cases)
+
+    def test_extremely_long_input(self):
+        """Test handling of very long strings (1000+ chars).
+
+        Expected behavior:
+        - Long strings process without errors
+        - No performance degradation
+        """
+        long_text = "This is a test " * 100  # 1500 characters
+        result = slugify(long_text.strip())
+        assert result.startswith("this-is-a-test"), "Long string should process"
+        assert "--" not in result, "No double hyphens in long string"
+        # Verify it's properly formatted throughout
+        parts = result.split("-")
+        assert all(part.isalnum() for part in parts if part), "All parts should be alphanumeric"
+
+    def test_unicode_emoji_extended(self):
+        """Test extended emoji and symbol handling.
+
+        Expected behavior:
+        - All emoji types removed cleanly
+        - No artifacts left behind
+        """
+        test_cases = [
+            ("Hello 👋 World", "hello-world"),
+            ("Fire 🔥 Hot 🌶️ Deal", "fire-hot-deal"),
+            ("5⭐ Rating", "5-rating"),
+            ("📧 Contact Us", "contact-us"),
+            ("Price: 💰💰💰", "price"),
+        ]
+
+        for emoji_text, expected_slug in test_cases:
+            assert slugify(emoji_text) == expected_slug, f"Emoji handling failed: {emoji_text}"
