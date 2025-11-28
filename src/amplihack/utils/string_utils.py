@@ -51,7 +51,7 @@ def slugify(text: str, separator: str = "-", max_length: int | None = None) -> s
         >>> slugify("Hello World", max_length=5)
         'hello'
     """
-    # Type check for non-string inputs
+    # Type check for non-string inputs FIRST (before any string operations)
     if not isinstance(text, str):
         raise TypeError(f"slugify() expects str, got {type(text).__name__}")
 
@@ -60,16 +60,14 @@ def slugify(text: str, separator: str = "-", max_length: int | None = None) -> s
         return ""
 
     # Normalize Unicode (NFD) and convert to ASCII, then lowercase
+    # Now safe to use string methods since we've validated it's a string
     result = unicodedata.normalize("NFD", text).encode("ascii", "ignore").decode("ascii").lower()
 
-    # Combined regex operations:
-    # 1. Remove quotes/apostrophes (for contractions like It's -> Its)
-    # 2. Replace non-alphanumeric with spaces
-    # 3. Collapse multiple spaces
+    # Combined regex operations for performance:
+    # Step 1: Remove quotes/apostrophes (for contractions like It's -> Its)
+    # Step 2: Replace all non-alphanumeric with spaces in single pass
     result = re.sub(r"['\"]", "", result)  # Remove quotes first
-    result = re.sub(r"[^a-z0-9]+", " ", result)  # Replace all non-alphanumeric with space
-    result = result.strip()  # Remove leading/trailing spaces
-    result = re.sub(r"\s+", " ", result)  # Collapse internal spaces
+    result = re.sub(r"[^a-z0-9]+", " ", result).strip()  # Replace all non-alphanumeric and strip
 
     # If empty, return "untitled" (respecting max_length)
     if not result:

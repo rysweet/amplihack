@@ -10,8 +10,8 @@ from amplihack.utils.string_utils import slugify
 # Convert user input to safe filename
 user_input = "My Document (v2.1).txt"
 safe_name = slugify(user_input, separator="_")
-print(f"{safe_name}.txt")
-# Output: my_document_v2_1.txt
+print(safe_name)
+# Output: my_document_v2_1_txt
 ```
 
 ## Common Scenarios
