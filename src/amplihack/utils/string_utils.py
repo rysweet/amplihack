@@ -15,7 +15,12 @@ Public API:
 import re
 import unicodedata
 
-# Maximum input length to prevent resource exhaustion
+# Maximum input length to prevent resource exhaustion attacks
+# 10,000 chars is chosen as a reasonable upper bound that:
+# - Prevents DoS attacks from extremely long strings (megabytes/gigabytes)
+# - Allows legitimate use cases (long blog posts, article titles)
+# - Keeps memory usage and processing time bounded
+# - Aligns with typical web framework limits (e.g., URL length limits)
 MAX_INPUT_LENGTH = 10000
 
 # Compile regex patterns at module level for performance
