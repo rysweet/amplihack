@@ -73,6 +73,13 @@ Built on the "Bricks & Studs" principle:
 - [Document-Driven Development](/document_driven_development/README.md) - Documentation-first approach
 - [Investigation Workflow](/.claude/workflow/INVESTIGATION_WORKFLOW.md) - Deep codebase analysis
 
+### Utilities
+
+- [String Utilities Module](reference/string-utils.md) - Text processing utilities including slugification
+- [slugify Function Reference](reference/slugify.md) - Convert text to URL-friendly slugs
+- [URL Generation Guide](howto/url-generation.md) - Create safe URLs from user input
+- [Safe Filename Guide](howto/safe-filenames.md) - Generate filesystem-safe filenames
+
 ### Agents
 
 - [Agents Overview](/.claude/agents/amplihack/README.md) - All available agents
