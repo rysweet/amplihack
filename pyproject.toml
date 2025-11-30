@@ -36,6 +36,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.21.0",
+    "responses>=0.23.0",  # HTTP mocking for REST API tests
     "black>=22.0.0",
     "ruff>=0.1.0",
     "build>=1.0.0",  # Required for test_uvx_packaging.py
@@ -118,4 +119,9 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
+]
+
+[dependency-groups]
+dev = [
+    "responses>=0.25.8",
 ]

@@ -40,17 +40,20 @@ class TestPlatformDetection:
 
     def test_detect_linux_not_wsl(self):
         """Test Linux platform detection (non-WSL)."""
-        with patch("platform.system", return_value="Linux"), patch(
-            "pathlib.Path.exists", return_value=False
+        with (
+            patch("platform.system", return_value="Linux"),
+            patch("pathlib.Path.exists", return_value=False),
         ):
             checker = PrerequisiteChecker()
             assert checker.platform == Platform.LINUX
 
     def test_detect_wsl(self):
         """Test WSL platform detection."""
-        with patch("platform.system", return_value="Linux"), patch(
-            "pathlib.Path.exists", return_value=True
-        ), patch("pathlib.Path.read_text", return_value="Linux version microsoft"):
+        with (
+            patch("platform.system", return_value="Linux"),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value="Linux version microsoft"),
+        ):
             checker = PrerequisiteChecker()
             assert checker.platform == Platform.WSL
 
@@ -91,9 +94,12 @@ class TestToolChecking:
     def test_check_tool_with_version(self):
         """Test checking tool with version verification."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which", return_value="/usr/bin/node"), patch(
-            "subprocess.run",
-            return_value=Mock(returncode=0, stdout="v20.0.0", stderr=""),
+        with (
+            patch("shutil.which", return_value="/usr/bin/node"),
+            patch(
+                "subprocess.run",
+                return_value=Mock(returncode=0, stdout="v20.0.0", stderr=""),
+            ),
         ):
             result = checker.check_tool("node", version_arg="--version")
             assert result.available is True
@@ -102,10 +108,14 @@ class TestToolChecking:
     def test_check_all_prerequisites_success(self):
         """Test checking all prerequisites when all are available."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which", return_value="/usr/bin/tool"), patch(
-            "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
-        ), patch(
-            "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+        with (
+            patch("shutil.which", return_value="/usr/bin/tool"),
+            patch(
+                "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+            ),
+            patch(
+                "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+            ),
         ):
             result = checker.check_all_prerequisites()
             assert result.all_available is True
@@ -126,8 +136,9 @@ class TestInstallationCommands:
 
     def test_get_install_command_linux(self):
         """Test Linux installation command generation."""
-        with patch("platform.system", return_value="Linux"), patch(
-            "pathlib.Path.exists", return_value=False
+        with (
+            patch("platform.system", return_value="Linux"),
+            patch("pathlib.Path.exists", return_value=False),
         ):
             checker = PrerequisiteChecker()
             cmd = checker.get_install_command("git")
@@ -225,10 +236,14 @@ class TestPrerequisiteIntegration:
     def test_full_check_workflow_all_present(self):
         """Test complete prerequisite check when all tools present."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which") as mock_which, patch(
-            "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
-        ), patch(
-            "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+        with (
+            patch("shutil.which") as mock_which,
+            patch(
+                "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+            ),
+            patch(
+                "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+            ),
         ):
             # Simulate all tools being available
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
@@ -241,8 +256,11 @@ class TestPrerequisiteIntegration:
     def test_full_check_workflow_some_missing(self):
         """Test complete prerequisite check with some tools missing."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which") as mock_which, patch(
-            "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+        with (
+            patch("shutil.which") as mock_which,
+            patch(
+                "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+            ),
         ):
             # node, npm, rg, and claude missing; uv and git present
             mock_which.side_effect = lambda x: (f"/usr/bin/{x}" if x in ["uv", "git"] else None)
@@ -287,8 +305,9 @@ class TestPrerequisiteIntegration:
         ]
 
         for system, expected_platform, expected_cmd in platforms:
-            with patch("platform.system", return_value=system), patch(
-                "pathlib.Path.exists", return_value=False
+            with (
+                patch("platform.system", return_value=system),
+                patch("pathlib.Path.exists", return_value=False),
             ):
                 checker = PrerequisiteChecker()
                 assert checker.platform == expected_platform
@@ -376,8 +395,11 @@ class TestEndToEnd:
     def test_e2e_all_prerequisites_present(self):
         """E2E: Complete workflow when all prerequisites present."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which") as mock_which, patch(
-            "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+        with (
+            patch("shutil.which") as mock_which,
+            patch(
+                "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+            ),
         ):
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
 
@@ -414,13 +436,18 @@ class TestEndToEnd:
 
     def test_e2e_partial_prerequisites_with_specific_guidance(self):
         """E2E: Workflow with some prerequisites missing, specific guidance provided."""
-        with patch("platform.system", return_value="Linux"), patch(
-            "pathlib.Path.exists", return_value=False
+        with (
+            patch("platform.system", return_value="Linux"),
+            patch("pathlib.Path.exists", return_value=False),
         ):
             checker = PrerequisiteChecker()
 
-            with patch("shutil.which") as mock_which, patch(
-                "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+            with (
+                patch("shutil.which") as mock_which,
+                patch(
+                    "subprocess.run",
+                    return_value=Mock(returncode=0, stdout="version 1.0", stderr=""),
+                ),
             ):
                 # Only git and uv present
                 mock_which.side_effect = lambda x: (f"/usr/bin/{x}" if x in ["git", "uv"] else None)

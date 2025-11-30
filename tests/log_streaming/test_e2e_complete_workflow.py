@@ -99,7 +99,7 @@ class TestCompleteLogStreamingWorkflow:
                         # Wait for events to be collected
                         try:
                             await asyncio.wait_for(collect_task, timeout=5.0)
-                        except asyncio.TimeoutError:
+                        except TimeoutError:
                             collect_task.cancel()
 
                         # Step 5: Verify we received log events
@@ -198,7 +198,7 @@ class TestCompleteLogStreamingWorkflow:
                         # Wait for events
                         try:
                             await asyncio.wait_for(collect_task, timeout=3.0)
-                        except asyncio.TimeoutError:
+                        except TimeoutError:
                             collect_task.cancel()
 
                         # Verify Azure-specific log events were captured
@@ -275,7 +275,7 @@ class TestCompleteLogStreamingWorkflow:
                 # Start client collectors
                 collector_tasks = [
                     asyncio.create_task(client_event_collector(client_id, session))
-                    for client_id, session in zip(client_events.keys(), sessions)
+                    for client_id, session in zip(client_events.keys(), sessions, strict=False)
                 ]
 
                 # Generate sustained proxy activity

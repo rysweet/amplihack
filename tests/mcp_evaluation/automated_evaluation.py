@@ -10,7 +10,6 @@ import json
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict
 
 # Test scenarios
 SCENARIOS = [
@@ -32,7 +31,7 @@ SCENARIOS = [
 ]
 
 
-def run_amplihack_auto(goal_file: str, enable_serena: bool, output_dir: Path) -> Dict:
+def run_amplihack_auto(goal_file: str, enable_serena: bool, output_dir: Path) -> dict:
     """Run amplihack in auto mode with given goal."""
     print(f"  Running {'WITH' if enable_serena else 'WITHOUT'} Serena...")
 

@@ -1,6 +1,6 @@
 """User service for managing user operations."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..models.user import User
 from .database_service import DatabaseService
@@ -20,7 +20,7 @@ class UserService:
         """
         self.db = db_service
 
-    def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
+    def get_user(self, user_id: str) -> dict[str, Any] | None:
         """Get user by ID.
 
         Args:
@@ -45,7 +45,7 @@ class UserService:
         self.db.insert("users", user.to_dict())
         return user
 
-    def update_user(self, user_id: str, data: Dict[str, Any]) -> bool:
+    def update_user(self, user_id: str, data: dict[str, Any]) -> bool:
         """Update user information.
 
         Args:
@@ -68,7 +68,7 @@ class UserService:
         """
         return self.db.delete("users", {"id": user_id})
 
-    def list_users(self, limit: int = 100) -> list[Dict[str, Any]]:
+    def list_users(self, limit: int = 100) -> list[dict[str, Any]]:
         """List all users.
 
         Args:

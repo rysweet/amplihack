@@ -1,0 +1,520 @@
+openapi: 3.0.0
+info:
+  title: REST API Client Contract
+  version: 1.0.0
+  description: |
+    OpenAPI specification defining the contract for the REST API Client library.
+    This describes the client-side interface, not a server API.
+
+    Philosophy:
+    - Single purpose endpoints
+    - Consistent error responses
+    - Standard HTTP semantics
+    - Predictable behavior
+
+components:
+  schemas:
+    # Configuration Schemas
+    ClientConfig:
+      type: object
+      description: Client behavior configuration
+      properties:
+        max_retries:
+          type: integer
+          default: 3
+          minimum: 0
+          description: Maximum number of retry attempts
+        retry_backoff_factor:
+          type: number
+          default: 1.0
+          minimum: 0
+          description: Exponential backoff factor for retries
+        retry_on_status:
+          type: array
+          items:
+            type: integer
+          default: [429, 500, 502, 503, 504]
+          description: HTTP status codes that trigger retry
+        rate_limit:
+          $ref: "#/components/schemas/RateLimitConfig"
+        timeout:
+          type: number
+          default: 30.0
+          minimum: 0
+          description: Request timeout in seconds
+        connect_timeout:
+          type: number
+          default: 5.0
+          minimum: 0
+          description: Connection timeout in seconds
+        log_requests:
+          type: boolean
+          default: false
+          description: Enable request logging
+        log_responses:
+          type: boolean
+          default: false
+          description: Enable response logging
+
+    RateLimitConfig:
+      type: object
+      required:
+        - requests_per_second
+      properties:
+        requests_per_second:
+          type: number
+          minimum: 0.1
+          description: Maximum requests per second
+        burst_size:
+          type: integer
+          default: 10
+          minimum: 1
+          description: Burst capacity for rate limiting
+        wait_on_limit:
+          type: boolean
+          default: true
+          description: Wait when rate limited vs raise exception
+
+    SessionConfig:
+      type: object
+      description: HTTP session configuration
+      properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Default headers for all requests
+        auth:
+          $ref: "#/components/schemas/AuthConfig"
+        verify_ssl:
+          type: boolean
+          default: true
+          description: Verify SSL certificates
+        proxies:
+          type: object
+          additionalProperties:
+            type: string
+          description: Proxy configuration
+
+    AuthConfig:
+      type: object
+      required:
+        - type
+        - credentials
+      properties:
+        type:
+          type: string
+          enum: [bearer, basic, api_key, custom]
+          description: Authentication type
+        credentials:
+          type: object
+          description: Authentication credentials
+          additionalProperties: true
+
+    # Request/Response Models
+    Request:
+      type: object
+      required:
+        - method
+        - url
+      properties:
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS]
+          description: HTTP method
+        url:
+          type: string
+          format: uri
+          description: Full URL for the request
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Request headers
+        params:
+          type: object
+          additionalProperties: true
+          description: Query parameters
+        json:
+          description: JSON body data
+        data:
+          description: Form or raw body data
+        files:
+          type: object
+          description: Files for multipart upload
+
+    Response:
+      type: object
+      required:
+        - status_code
+        - headers
+        - content
+        - request
+        - elapsed
+      properties:
+        status_code:
+          type: integer
+          description: HTTP status code
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Response headers
+        content:
+          type: string
+          format: byte
+          description: Raw response content
+        request:
+          $ref: "#/components/schemas/Request"
+        elapsed:
+          type: number
+          description: Request duration in seconds
+        text:
+          type: string
+          description: Response body as text (computed property)
+        json:
+          description: Response body as JSON (computed property)
+        ok:
+          type: boolean
+          description: True if status code is 2xx (computed property)
+
+    # Error Schemas
+    APIError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Error message
+        request:
+          $ref: "#/components/schemas/Request"
+        response:
+          $ref: "#/components/schemas/Response"
+
+    HTTPError:
+      allOf:
+        - $ref: "#/components/schemas/APIError"
+        - type: object
+          properties:
+            status_code:
+              type: integer
+              description: HTTP status code
+
+    RateLimitError:
+      allOf:
+        - $ref: "#/components/schemas/HTTPError"
+        - type: object
+          properties:
+            retry_after:
+              type: integer
+              description: Seconds to wait before retry
+
+  # Standard error responses
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "BAD_REQUEST"
+                  message:
+                    type: string
+                    example: "Invalid request parameters"
+                  details:
+                    type: object
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "UNAUTHORIZED"
+                  message:
+                    type: string
+                    example: "Authentication required"
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "FORBIDDEN"
+                  message:
+                    type: string
+                    example: "Access denied"
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "NOT_FOUND"
+                  message:
+                    type: string
+                    example: "Resource not found"
+
+    RateLimit:
+      description: Too Many Requests
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "RATE_LIMITED"
+                  message:
+                    type: string
+                    example: "Rate limit exceeded"
+                  retry_after:
+                    type: integer
+                    description: Seconds to wait
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retry
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Rate limit ceiling
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "INTERNAL_ERROR"
+                  message:
+                    type: string
+                    example: "An internal error occurred"
+
+# Client interface operations (not server endpoints)
+paths:
+  /client/methods:
+    get:
+      summary: Client HTTP methods contract
+      description: |
+        Defines the contract for HTTP method implementations in the client.
+        These are not server endpoints but client-side method signatures.
+      tags:
+        - Client Interface
+      responses:
+        "200":
+          description: Method signatures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  get:
+                    type: object
+                    properties:
+                      parameters:
+                        type: array
+                        items:
+                          type: string
+                        example: ["path", "params", "headers", "response_model"]
+                      returns:
+                        type: string
+                        example: "Union[Response, T]"
+                  post:
+                    type: object
+                    properties:
+                      parameters:
+                        type: array
+                        items:
+                          type: string
+                        example: ["path", "json", "data", "files", "headers", "response_model"]
+                      returns:
+                        type: string
+                        example: "Union[Response, T]"
+                  put:
+                    type: object
+                    properties:
+                      parameters:
+                        type: array
+                        items:
+                          type: string
+                        example: ["path", "json", "data", "headers", "response_model"]
+                      returns:
+                        type: string
+                        example: "Union[Response, T]"
+                  patch:
+                    type: object
+                    properties:
+                      parameters:
+                        type: array
+                        items:
+                          type: string
+                        example: ["path", "json", "data", "headers", "response_model"]
+                      returns:
+                        type: string
+                        example: "Union[Response, T]"
+                  delete:
+                    type: object
+                    properties:
+                      parameters:
+                        type: array
+                        items:
+                          type: string
+                        example: ["path", "headers"]
+                      returns:
+                        type: string
+                        example: "Response"
+
+  /client/hooks:
+    get:
+      summary: Hook interface contract
+      description: Extensibility hooks for request/response processing
+      tags:
+        - Extensibility
+      responses:
+        "200":
+          description: Hook interfaces
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_hook:
+                    type: object
+                    properties:
+                      signature:
+                        type: string
+                        example: "(request: Request) -> None"
+                      purpose:
+                        type: string
+                        example: "Modify request before sending"
+                  response_hook:
+                    type: object
+                    properties:
+                      signature:
+                        type: string
+                        example: "(response: Response) -> None"
+                      purpose:
+                        type: string
+                        example: "Process response after receiving"
+                  retry_strategy:
+                    type: object
+                    properties:
+                      methods:
+                        type: array
+                        items:
+                          type: string
+                        example: ["should_retry", "get_retry_delay"]
+
+  /client/exceptions:
+    get:
+      summary: Exception hierarchy contract
+      description: Client exception types and hierarchy
+      tags:
+        - Error Handling
+      responses:
+        "200":
+          description: Exception hierarchy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hierarchy:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        parent:
+                          type: string
+                        http_status:
+                          type: integer
+                    example:
+                      - name: "APIError"
+                        parent: "Exception"
+                        http_status: null
+                      - name: "HTTPError"
+                        parent: "APIError"
+                        http_status: null
+                      - name: "BadRequestError"
+                        parent: "HTTPError"
+                        http_status: 400
+                      - name: "UnauthorizedError"
+                        parent: "HTTPError"
+                        http_status: 401
+                      - name: "ForbiddenError"
+                        parent: "HTTPError"
+                        http_status: 403
+                      - name: "NotFoundError"
+                        parent: "HTTPError"
+                        http_status: 404
+                      - name: "RateLimitError"
+                        parent: "HTTPError"
+                        http_status: 429
+                      - name: "InternalServerError"
+                        parent: "HTTPError"
+                        http_status: 500
+                      - name: "ConnectionError"
+                        parent: "APIError"
+                        http_status: null
+                      - name: "TimeoutError"
+                        parent: "APIError"
+                        http_status: null
+                      - name: "ConfigurationError"
+                        parent: "APIError"
+                        http_status: null
+
+tags:
+  - name: Client Interface
+    description: Core client method contracts
+  - name: Extensibility
+    description: Hook and extension point contracts
+  - name: Error Handling
+    description: Exception contracts and error responses

@@ -1,6 +1,6 @@
 """WebSocket handler implementation."""
 
-from typing import Any, Dict
+from typing import Any
 
 from ..utils.logger import get_logger
 from .base_handler import Handler
@@ -18,7 +18,7 @@ class WebSocketHandler(Handler):
         """Initialize WebSocket handler."""
         self.connections = []
 
-    def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def handle(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle WebSocket message.
 
         Args:
@@ -42,7 +42,7 @@ class WebSocketHandler(Handler):
 
         return {"error": "Unknown message type"}
 
-    def validate_request(self, request: Dict[str, Any]) -> bool:
+    def validate_request(self, request: dict[str, Any]) -> bool:
         """Validate WebSocket message.
 
         Args:
@@ -53,20 +53,20 @@ class WebSocketHandler(Handler):
         """
         return "type" in request
 
-    def _handle_connect(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_connect(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle connection request."""
         conn_id = request.get("connection_id")
         self.connections.append(conn_id)
         return {"status": "connected", "connection_id": conn_id}
 
-    def _handle_disconnect(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_disconnect(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle disconnection request."""
         conn_id = request.get("connection_id")
         if conn_id in self.connections:
             self.connections.remove(conn_id)
         return {"status": "disconnected"}
 
-    def _handle_message(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_message(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle regular message."""
         message = request.get("message", "")
         return {"status": "delivered", "message": message}

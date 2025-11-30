@@ -1,6 +1,6 @@
 """HTTP request handler implementation."""
 
-from typing import Any, Dict
+from typing import Any
 
 from ..services.user_service import UserService
 from ..utils.logger import get_logger
@@ -23,7 +23,7 @@ class HTTPHandler(Handler):
         """
         self.user_service = user_service
 
-    def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def handle(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle HTTP request.
 
         Args:
@@ -46,7 +46,7 @@ class HTTPHandler(Handler):
             return {"status": "ok", "code": 200}
         return {"error": "Not found", "status": 404}
 
-    def validate_request(self, request: Dict[str, Any]) -> bool:
+    def validate_request(self, request: dict[str, Any]) -> bool:
         """Validate HTTP request.
 
         Args:
@@ -57,7 +57,7 @@ class HTTPHandler(Handler):
         """
         return "method" in request and "path" in request
 
-    def _handle_user_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_user_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle user-related requests.
 
         Args:
