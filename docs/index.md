@@ -67,6 +67,15 @@ Built on the "Bricks & Studs" principle:
 - [Generate GitHub Pages Sites](howto/github-pages-generation.md) - Task-oriented guide: generate, validate, and deploy documentation
 - [GitHub Pages API Reference](reference/github-pages-api.md) - Complete Python API for site generation, validation, and deployment
 
+### REST API Client
+
+- [REST API Client Overview](../.claude/scenarios/rest-api-client/README.md) - Production-ready HTTP client with retry logic and rate limiting
+- [API Reference](../.claude/scenarios/rest-api-client/api_reference.md) - Complete method and class documentation
+- [Configuration Guide](../.claude/scenarios/rest-api-client/configuration_guide.md) - All configuration options explained
+- [Error Handling Guide](../.claude/scenarios/rest-api-client/error_handling_guide.md) - How to handle different exceptions
+- [Testing Guide](../.claude/scenarios/rest-api-client/testing_guide.md) - Unit and integration testing patterns
+- [Usage Examples](../.claude/scenarios/rest-api-client/examples/README.md) - Common scenarios and code examples
+
 ### Workflows
 
 - [Default Workflow](/.claude/workflow/DEFAULT_WORKFLOW.md) - Standard multi-step process
