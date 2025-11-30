@@ -754,6 +754,29 @@ class PowerSteeringChecker:
                     )
 
             # All checks passed (or all blockers were addressed)
+            # FIX (Issue #1744): Check if any checks were actually evaluated
+            # If all checks were skipped (no results), approve immediately without blocking
+            if len(analysis.results) == 0:
+                self._log(
+                    "No power-steering checks applicable for session type - approving immediately",
+                    "INFO",
+                )
+                # Mark complete to prevent re-running
+                self._mark_complete(session_id)
+                self._emit_progress(
+                    progress_callback,
+                    "complete",
+                    "Power-steering analysis complete - no applicable checks for session type",
+                )
+                return PowerSteeringResult(
+                    decision="approve",
+                    reasons=["no_applicable_checks"],
+                    continuation_prompt=None,
+                    summary=None,
+                    analysis=analysis,
+                    is_first_stop=False,
+                )
+
             if is_first_stop:
                 # FIRST STOP: Block to show results (visibility feature)
                 # Mark results shown immediately to prevent race condition
@@ -775,7 +798,12 @@ class PowerSteeringChecker:
                     continuation_prompt=f"All power-steering checks passed! Please present these results to the user:\n{results_text}",
                     summary=None,
                     analysis=analysis,
-                    is_first_stop=is_first_stop,  # FIX (Issue #1744): Pass through is_first_stop to prevent infinite loop
+                    # FIX (Issue #1744): Pass through calculated is_first_stop value
+                    # This prevents infinite loop by allowing stop.py (line 132) to distinguish
+                    # between first stop (display results) vs subsequent stops (don't block).
+                    # Previously hardcoded to True, causing every stop to block indefinitely.
+                    # NOTE: This was fixed in PR #1745; kept here for documentation.
+                    is_first_stop=is_first_stop,
                 )
 
             # SUBSEQUENT STOP: All checks passed, approve
@@ -1972,6 +2000,15 @@ class PowerSteeringChecker:
 
         This allows users to see results even when stderr isn't visible.
 
+        Note on message branches: This method handles three cases:
+        1. Some checks passed → "ALL CHECKS PASSED"
+        2. No checks ran (all skipped) → "NO CHECKS APPLICABLE"
+        3. Some checks failed → "CHECKS FAILED"
+
+        Case #2 is primarily for testing - in production, check() returns early
+        (line 759) when len(analysis.results)==0, so this method won't be called.
+        However, tests call this method directly to verify message formatting works.
+
         Args:
             analysis: ConsiderationAnalysis with results
             session_type: Session type (e.g., "SIMPLE", "STANDARD")
@@ -2027,12 +2064,31 @@ class PowerSteeringChecker:
 
         # Summary line
         lines.append("=" * 60)
-        if total_failed == 0:
+        if total_failed == 0 and total_passed > 0:
+            # Some checks passed and none failed
+            self._log(
+                f"Message branch: ALL_CHECKS_PASSED (passed={total_passed}, failed=0, skipped={total_skipped})",
+                "DEBUG",
+            )
             lines.append(f"✅ ALL CHECKS PASSED ({total_passed} passed, {total_skipped} skipped)")
             lines.append("\n📌 This was your first stop. Next stop will proceed without blocking.")
             lines.append("\n💡 To disable power-steering: export AMPLIHACK_SKIP_POWER_STEERING=1")
             lines.append("   Or create: .claude/runtime/power-steering/.disabled")
+        elif total_failed == 0 and total_passed == 0:
+            # No checks were evaluated (all skipped) - not a "pass", just no applicable checks
+            self._log(
+                f"Message branch: NO_CHECKS_APPLICABLE (passed=0, failed=0, skipped={total_skipped})",
+                "DEBUG",
+            )
+            lines.append(f"⚠️  NO CHECKS APPLICABLE ({total_skipped} skipped for session type)")
+            lines.append("\n📌 No power-steering checks apply to this session type.")
+            lines.append("   This is expected for simple Q&A or informational sessions.")
         else:
+            # Some checks failed
+            self._log(
+                f"Message branch: CHECKS_FAILED (passed={total_passed}, failed={total_failed}, skipped={total_skipped})",
+                "DEBUG",
+            )
             lines.append(f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed)")
             lines.append("\n📌 Address the failed checks above before stopping.")
         lines.append("=" * 60 + "\n")
