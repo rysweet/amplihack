@@ -262,7 +262,18 @@ for detailed customization instructions.
 
 ## Features
 
-### Workflow Orchestration by Default
+### Remote Execution (Beta)
+
+Distribute agentic work across Azure VMs:
+
+```sh
+amplihack remote auto "implement feature" --region westus3 --vm-size s
+```
+
+Documentation:
+[.claude/tools/amplihack/remote/README.md](.claude/tools/amplihack/remote/README.md)
+
+### Workflow Orchestration by Default (NEW!)
 
 All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
 effectiveness. This enables:
@@ -330,9 +341,37 @@ python main.py
 
 **Reduce token usage by 72% with profile-based component filtering:**
 
-```bash
-# Set profile (outside Claude Code)
-export AMPLIHACK_PROFILE=amplihack://profiles/coding
+| Command                        | Description                                             |
+| ------------------------------ | ------------------------------------------------------- |
+| `amplihack new`                | **NEW!** Generate goal-seeking agents from prompts      |
+| `/amplihack:ultrathink`        | Deep multi-agent analysis (now DEFAULT for all prompts) |
+| `/amplihack:analyze`           | Code analysis and philosophy compliance review          |
+| `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute)      |
+| `/amplihack:cascade`           | Fallback cascade for resilient operations               |
+| `/amplihack:debate`            | Multi-agent debate for complex decisions                |
+| `/amplihack:expert-panel`      | Multi-expert review with voting                         |
+| `/amplihack:n-version`         | N-version programming for critical code                 |
+| `/amplihack:socratic`          | Generate Socratic questions to challenge claims         |
+| `/amplihack:reflect`           | Session reflection and improvement analysis             |
+| `/amplihack:improve`           | Capture learnings and implement improvements            |
+| `/amplihack:fix`               | Fix common errors and code issues                       |
+| `/amplihack:modular-build`     | Build self-contained modules with clear contracts       |
+| `/amplihack:knowledge-builder` | Build comprehensive knowledge base                      |
+| `/amplihack:transcripts`       | Conversation transcript management                      |
+| `/amplihack:xpia`              | Security analysis and threat detection                  |
+| `/amplihack:customize`         | Manage user-specific preferences                        |
+| `/amplihack:ddd:0-help`        | Document-Driven Development help and guidance           |
+| `/amplihack:ddd:1-plan`        | Phase 0: Planning & Alignment                           |
+| `/amplihack:ddd:2-docs`        | Phase 1: Documentation Retcon                           |
+| `/amplihack:ddd:3-code-plan`   | Phase 3: Implementation Planning                        |
+| `/amplihack:ddd:4-code`        | Phase 4: Code Implementation                            |
+| `/amplihack:ddd:5-finish`      | Phase 5: Testing & Phase 6: Cleanup                     |
+| `/amplihack:ddd:prime`         | Prime context with DDD overview                         |
+| `/amplihack:ddd:status`        | Check current DDD phase and progress                    |
+| `/amplihack:lock`              | Enable continuous work mode                             |
+| `/amplihack:unlock`            | Disable continuous work mode                            |
+| `/amplihack:install`           | Install amplihack tools                                 |
+| `/amplihack:uninstall`         | Uninstall amplihack tools                               |
 
 # Install with filtering
 amplihack install
@@ -342,7 +381,85 @@ amplihack install
 amplihack launch
 # Result: Focused environment for coding tasks
 
-# To switch profiles: exit Claude, set new profile, restart
+| Agent            | Purpose                                  |
+| ---------------- | ---------------------------------------- |
+| **api-designer** | API design and endpoint structure        |
+| **architect**    | System design and architecture decisions |
+| **builder**      | Code generation and implementation       |
+| **optimizer**    | Performance optimization and efficiency  |
+| **reviewer**     | Code quality and best practices review   |
+| **tester**       | Test generation and validation           |
+
+### Specialized Agents (23)
+
+| Agent                       | Purpose                                         |
+| --------------------------- | ----------------------------------------------- |
+| **ambiguity**               | Clarify ambiguous requirements                  |
+| **amplifier-cli-architect** | CLI tool design and architecture                |
+| **analyzer**                | Deep code analysis                              |
+| **azure-kubernetes-expert** | Azure Kubernetes Service expertise              |
+| **ci-diagnostic-workflow**  | CI/CD pipeline diagnostics                      |
+| **cleanup**                 | Remove artifacts and enforce philosophy         |
+| **database**                | Database design and optimization                |
+| **fallback-cascade**        | Resilient fallback strategies                   |
+| **fix-agent**               | Automated error fixing                          |
+| **integration**             | System integration patterns                     |
+| **knowledge-archaeologist** | Extract and preserve knowledge                  |
+| **memory-manager**          | Context and state management                    |
+| **multi-agent-debate**      | Facilitate multi-perspective debates            |
+| **n-version-validator**     | Validate N-version implementations              |
+| **patterns**                | Design pattern recommendations                  |
+| **pre-commit-diagnostic**   | Pre-commit hook diagnostics                     |
+| **preference-reviewer**     | User preference validation                      |
+| **prompt-writer**           | Effective prompt engineering                    |
+| **rust-programming-expert** | Rust language expertise                         |
+| **security**                | Security analysis and vulnerability detection   |
+| **visualization-architect** | Data visualization design                       |
+| **xpia-defense**            | Advanced threat detection                       |
+| **philosophy-guardian**     | Philosophy compliance and simplicity validation |
+
+## Core Concepts
+
+### Workflow
+
+Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
+
+1. Clarify requirements
+2. Create issue
+3. Setup branch
+4. Design tests
+5. Implement
+6. Simplify
+7. Test
+8. Commit
+9. Create PR
+10. Review
+11. Integrate feedback
+12. Check philosophy
+13. Prepare merge
+14. Cleanup
+
+### Philosophy
+
+- **Simplicity** - Start simple, add only justified complexity
+- **Modular** - Self-contained modules with clear interfaces
+- **Working code** - No stubs or dead code
+- **Test-driven** - Tests before implementation
+
+## Configuration
+
+amplihack works with Claude Code and Anthropic models by default. For additional
+capabilities, you can configure Azure OpenAI integration.
+
+### Azure OpenAI
+
+Create `azure.env` with your credentials:
+
+```env
+AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 ```
 
 **Built-in Profiles:**

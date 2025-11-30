@@ -20,7 +20,7 @@ Deploy purpose-built agents for different aspects of development:
 
 Follow proven methodologies for consistent results:
 
-- **Default Workflow**: Multi-step process for feature development
+- **Default Workflow**: 13-step process for feature development
 - **Document-Driven Development (DDD)**: Documentation-first approach for large features
 - **N-Version Programming**: Generate multiple solutions for critical code
 - **Multi-Agent Debate**: Structured debates for complex decisions
@@ -48,43 +48,31 @@ Built on the "Bricks & Studs" principle:
 ## Quick Links
 
 ### Get Started
-
 - [Installation Guide](PREREQUISITES.md) - Set up amplihack
 - [Interactive Setup](INTERACTIVE_INSTALLATION.md) - Step-by-step installation
 - [Quick Start](README.md) - Basic usage and examples
 
 ### Core Concepts
-
 - [Philosophy](/.claude/context/PHILOSOPHY.md) - Design principles and values
 - [Project Overview](/.claude/context/PROJECT.md) - Architecture and structure
 - [Patterns](/.claude/context/PATTERNS.md) - Common implementation patterns
 - [Trust & Anti-Sycophancy](/.claude/context/TRUST.md) - Critical operating guidelines
-- [Documentation Guidelines](DOCUMENTATION_GUIDELINES.md) - Eight rules for writing good docs
-
-### Documentation & Publishing
-
-- [First Documentation Site Tutorial](tutorials/first-docs-site.md) - 30-minute beginner tutorial: create and deploy your first docs site
-- [Generate GitHub Pages Sites](howto/github-pages-generation.md) - Task-oriented guide: generate, validate, and deploy documentation
-- [GitHub Pages API Reference](reference/github-pages-api.md) - Complete Python API for site generation, validation, and deployment
 
 ### Workflows
-
-- [Default Workflow](/.claude/workflow/DEFAULT_WORKFLOW.md) - Standard multi-step process
+- [Default Workflow](/.claude/workflow/DEFAULT_WORKFLOW.md) - Standard 13-step process
 - [Document-Driven Development](/document_driven_development/README.md) - Documentation-first approach
 - [Investigation Workflow](/.claude/workflow/INVESTIGATION_WORKFLOW.md) - Deep codebase analysis
 
 ### Agents
-
 - [Agents Overview](/.claude/agents/amplihack/README.md) - All available agents
 - [Architect](/.claude/agents/amplihack/core/architect.md) - System design and specifications
 - [Builder](/.claude/agents/amplihack/core/builder.md) - Code implementation
 - [Reviewer](/.claude/agents/amplihack/core/reviewer.md) - Quality assurance
 
 ### Commands
-
 - [Command Guide](/commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [/ultrathink](/.claude/commands/amplihack/ultrathink.md) - Main orchestration command
-- [/ddd:\* commands](/.claude/commands/ddd/0-help.md) - Document-driven development
+- [/ddd:* commands](/.claude/commands/ddd/0-help.md) - Document-driven development
 
 ## Philosophy
 
@@ -116,7 +104,7 @@ amplihack excels at:
 # UltraThink will:
 # 1. Read the default workflow
 # 2. Orchestrate multiple agents (architect, security, api-designer, database, builder, tester)
-# 3. Follow all workflow steps systematically
+# 3. Follow all 13 steps systematically
 # 4. Ensure quality and philosophy compliance
 # 5. Generate tests and documentation
 ```
