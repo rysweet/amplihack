@@ -15,8 +15,12 @@ Public API:
 import re
 import unicodedata
 
+# Security constants to prevent ReDoS attacks
+MAX_PROCESSING_LENGTH = 10000
+MAX_SLUG_LENGTH = 2048
 
-def slugify(text: str) -> str:
+
+def slugify(text: str | float | bool | None) -> str:
     """Convert text to URL-safe slug format.
 
     Transforms any string into a URL-safe slug by:
@@ -28,10 +32,11 @@ def slugify(text: str) -> str:
 
     Args:
         text: Input string with any Unicode characters, special chars, or spaces.
+              Also accepts int, float, bool, or None which are converted to strings.
 
     Returns:
         URL-safe slug with lowercase alphanumeric characters and hyphens.
-        Empty string if input contains no valid characters.
+        Empty string if input contains no valid characters or is None.
 
     Examples:
         >>> slugify("Hello World")
@@ -40,7 +45,27 @@ def slugify(text: str) -> str:
         'cafe'
         >>> slugify("Rock & Roll")
         'rock-roll'
+        >>> slugify(123)
+        '123'
+        >>> slugify(3.14)
+        '3-14'
+        >>> slugify(True)
+        'true'
+        >>> slugify(None)
+        ''
     """
+    # Handle None explicitly
+    if text is None:
+        return ""
+
+    # Convert non-string types to string
+    if not isinstance(text, str):
+        text = str(text)
+
+    # Length validation to prevent ReDoS attacks
+    if len(text) > MAX_PROCESSING_LENGTH:
+        text = text[:MAX_PROCESSING_LENGTH]
+
     # Normalize Unicode and convert to ASCII
     normalized = unicodedata.normalize("NFD", text)
     ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
@@ -58,7 +83,13 @@ def slugify(text: str) -> str:
 
     # Consolidate hyphens and strip edges
     text = re.sub(r"-+", "-", text)
-    return text.strip("-")
+    slug = text.strip("-")
+
+    # Truncate to maximum length if needed
+    if len(slug) > MAX_SLUG_LENGTH:
+        slug = slug[:MAX_SLUG_LENGTH].rstrip("-")
+
+    return slug
 
 
 __all__ = ["slugify"]

@@ -26,22 +26,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-
-# slugify function to be implemented
-try:
-    from amplihack.utils.string_utils import slugify
-except ImportError:
-    # Define placeholder so tests can be written
-    def slugify(text: str) -> str:
-        """Placeholder - to be implemented.
-
-        Args:
-            text: String to convert to slug
-
-        Returns:
-            URL-safe slug string
-        """
-        raise NotImplementedError("slugify not yet implemented")
+from amplihack.utils.string_utils import slugify
 
 
 class TestSlugify:
@@ -410,3 +395,77 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+    def test_none_input(self):
+        """Test handling of None input.
+
+        Expected behavior:
+        - None should return empty string ""
+        - No exceptions raised
+        """
+        result = slugify(None)
+        assert result == "", "None input should return empty string"
+
+    def test_integer_input(self):
+        """Test handling of integer input.
+
+        Expected behavior:
+        - 123 should become "123"
+        - Numbers converted to string and preserved
+        """
+        result = slugify(123)
+        assert result == "123", "Integer input should be converted to string"
+
+    def test_float_input(self):
+        """Test handling of float input.
+
+        Expected behavior:
+        - 3.14 should become "3-14"
+        - Dot treated as special character and replaced with hyphen
+        """
+        result = slugify(3.14)
+        assert result == "3-14", "Float input should convert dot to hyphen"
+
+    def test_boolean_input(self):
+        """Test handling of boolean input.
+
+        Expected behavior:
+        - True should become "true"
+        - False should become "false"
+        - Boolean converted to lowercase string
+        """
+        assert slugify(True) == "true", "Boolean True should become 'true'"
+        assert slugify(False) == "false", "Boolean False should become 'false'"
+
+    def test_length_limits(self):
+        """Test length validation and truncation.
+
+        Expected behavior:
+        - Very long strings (>10000 chars) should be truncated before processing
+        - Result should not exceed MAX_SLUG_LENGTH (2048)
+        - No errors on extremely long inputs
+        """
+        # Test MAX_PROCESSING_LENGTH truncation
+        very_long = "a" * 15000
+        result = slugify(very_long)
+        assert len(result) <= 10000, "Should truncate to MAX_PROCESSING_LENGTH"
+
+        # Test MAX_SLUG_LENGTH truncation
+        long_valid = "test-" * 500  # Creates string much longer than 2048
+        result = slugify(long_valid)
+        assert len(result) <= 2048, "Result should not exceed MAX_SLUG_LENGTH"
+        assert not result.endswith("-"), "Should strip trailing hyphen after truncation"
+
+    def test_invalid_types(self):
+        """Test handling of complex invalid types.
+
+        Expected behavior:
+        - Lists, dicts, and other complex types should convert to string representation
+        - No exceptions raised for any input type
+        """
+        # These will be converted via str() which is valid behavior
+        result_list = slugify([1, 2, 3])
+        assert isinstance(result_list, str), "Should return string for list input"
+
+        result_dict = slugify({"key": "value"})
+        assert isinstance(result_dict, str), "Should return string for dict input"
