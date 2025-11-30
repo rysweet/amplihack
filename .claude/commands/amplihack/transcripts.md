@@ -1,5 +1,5 @@
 ---
-name: transcripts
+name: amplihack:transcripts
 version: 1.0.0
 description: Manage and analyze conversation transcripts
 triggers:

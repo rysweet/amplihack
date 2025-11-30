@@ -1,5 +1,5 @@
 ---
-name: ultrathink
+name: amplihack:ultrathink
 version: 1.0.0
 description: Deep analysis mode with multi-agent orchestration
 DEPRECATED: true
