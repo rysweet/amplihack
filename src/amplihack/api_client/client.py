@@ -3,7 +3,7 @@
 Provides enterprise-grade API client with retry, rate limiting, and error handling.
 """
 
-import builtins
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -19,7 +19,7 @@ from .exceptions import (
     ValidationError,
     exception_from_status_code,
 )
-from .models import APIConfig, Request, Response, RetryConfig
+from .models import APIConfig, RateLimitInfo, Request, Response, RetryConfig
 from .rate_limiter import RateLimitHandler
 from .retry import RetryHandler
 
@@ -279,6 +279,35 @@ class APIClient:
         self._validate_headers(merged)
         return merged
 
+    def _parse_rate_limit_headers(self, headers: dict) -> RateLimitInfo:
+        """Parse rate limit information from response headers.
+
+        Args:
+            headers: Response headers dictionary
+
+        Returns:
+            RateLimitInfo with parsed values
+        """
+        from datetime import datetime
+
+        info = RateLimitInfo()
+
+        # Common rate limit headers
+        if 'X-RateLimit-Limit' in headers:
+            info.limit = int(headers['X-RateLimit-Limit'])
+        if 'X-RateLimit-Remaining' in headers:
+            info.remaining = int(headers['X-RateLimit-Remaining'])
+        if 'X-RateLimit-Reset' in headers:
+            # Unix timestamp
+            info.reset = datetime.fromtimestamp(int(headers['X-RateLimit-Reset']))
+        if 'Retry-After' in headers:
+            # Can be seconds or HTTP date
+            retry_after = headers['Retry-After']
+            if retry_after.isdigit():
+                info.retry_after = int(retry_after)
+
+        return info
+
     async def _execute_request(self, request: Request) -> tuple[aiohttp.ClientResponse, str]:
         """Execute HTTP request with rate limiting.
 
@@ -328,7 +357,7 @@ class APIClient:
                 # Return tuple with response and body text
                 return response, text
 
-        except builtins.TimeoutError as e:
+        except asyncio.TimeoutError as e:
             raise TimeoutError(
                 f"Request timed out after {request.timeout}s", request=request
             ) from e

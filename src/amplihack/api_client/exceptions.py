@@ -243,6 +243,36 @@ class ConfigurationError(APIClientError):
         return f"Configuration error: {self.message}"
 
 
+class ConnectionError(NetworkError):
+    """Connection error - unable to establish connection."""
+    pass
+
+
+class DNSError(NetworkError):
+    """DNS resolution error."""
+    pass
+
+
+class SSLError(NetworkError):
+    """SSL/TLS certificate verification error."""
+    pass
+
+
+class BadGatewayError(ServerError):
+    """Bad gateway error (502)."""
+
+    def __init__(
+        self,
+        message: str = "Bad gateway",
+        status_code: int = 502,
+        response_body: str | None = None,
+        request: Optional["Request"] = None,
+        response: Optional["Response"] = None,
+    ):
+        """Initialize bad gateway error."""
+        super().__init__(message, status_code, response_body, request, response)
+
+
 # Map status codes to exception classes for easy dispatching
 STATUS_CODE_EXCEPTIONS = {
     400: ValidationError,
@@ -250,11 +280,12 @@ STATUS_CODE_EXCEPTIONS = {
     403: AuthenticationError,
     404: NotFoundError,
     429: RateLimitError,
+    502: BadGatewayError,
     503: ServiceUnavailableError,
     # Other 4xx mapped to ClientError
     **{code: ClientError for code in range(400, 500) if code not in [400, 401, 403, 404, 429]},
     # Other 5xx mapped to ServerError
-    **{code: ServerError for code in range(500, 600) if code not in [503]},
+    **{code: ServerError for code in range(500, 600) if code not in [502, 503]},
 }
 
 

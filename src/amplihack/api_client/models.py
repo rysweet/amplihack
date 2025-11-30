@@ -9,7 +9,19 @@ from datetime import datetime, timedelta
 from typing import Any, Generic, TypeVar
 from urllib.parse import urlparse
 
+from .exceptions import ValidationError
+
 T = TypeVar("T")
+
+
+@dataclass(frozen=True)
+class ErrorDetail:
+    """Detail about a specific error."""
+
+    code: str | None = None
+    field: str | None = None
+    message: str | None = None
+    value: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -26,13 +38,13 @@ class RetryConfig:
     def __post_init__(self):
         """Validate configuration."""
         if self.max_retries < 0:
-            raise ValueError("max_retries must be non-negative")
+            raise ValidationError("max_retries must be non-negative")
         if self.initial_delay <= 0:
-            raise ValueError("initial_delay must be positive")
+            raise ValidationError("initial_delay must be positive")
         if self.max_delay <= 0:
-            raise ValueError("max_delay must be positive")
+            raise ValidationError("max_delay must be positive")
         if self.exponential_base <= 1:
-            raise ValueError("exponential_base must be greater than 1")
+            raise ValidationError("exponential_base must be greater than 1")
 
 
 @dataclass
@@ -57,20 +69,20 @@ class APIConfig:
         # Validate URL
         parsed = urlparse(self.base_url)
         if not parsed.scheme or not parsed.netloc:
-            raise ValueError(f"Invalid base_url: {self.base_url} - must include scheme and host")
+            raise ValidationError(f"Invalid base URL: {self.base_url} - must include scheme and host")
 
         # Validate timeout
         if self.timeout <= 0:
-            raise ValueError("timeout must be positive")
+            raise ValidationError("Timeout must be positive")
 
         # Validate retries
         if self.max_retries < 0:
-            raise ValueError("max_retries must be non-negative")
+            raise ValidationError("max_retries must be non-negative")
 
         # Validate log level
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         if self.log_level.upper() not in valid_levels:
-            raise ValueError(f"Invalid log_level: {self.log_level} - must be one of {valid_levels}")
+            raise ValidationError(f"Invalid log_level: {self.log_level} - must be one of {valid_levels}")
 
         # Ensure base_url doesn't end with slash
         if self.base_url.endswith("/"):
