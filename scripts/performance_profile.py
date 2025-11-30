@@ -12,15 +12,16 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from rest_api_client import APIClient
-from rest_api_client.config import RateLimitConfig, RetryConfig
+from rest_api_client.models import ClientConfig, RateLimitConfig, RetryConfig
 
 
 def profile_token_bucket():
     """Profile token bucket rate limiting algorithm."""
-    from rest_api_client.rate_limiter import TokenBucket
+    # Token bucket is now inlined in client.py
+    from rest_api_client.client import TokenBucket
 
     # High throughput config
     config = RateLimitConfig(
@@ -53,7 +54,8 @@ def profile_token_bucket():
 
 def profile_exponential_backoff():
     """Profile exponential backoff calculation."""
-    from rest_api_client.retry import RetryHandler
+    # RetryHandler is now inlined in client.py
+    from rest_api_client.client import RetryHandler
 
     config = RetryConfig(
         max_retries=5, base_delay=1.0, max_delay=60.0, exponential_base=2, jitter=0.1
@@ -82,8 +84,7 @@ def profile_connection_pooling():
     """Profile connection pooling efficiency."""
     import httpx
 
-    from rest_api_client.config import ClientConfig
-    from rest_api_client.session import SessionManager
+    from rest_api_client.utils import SessionManager
 
     config = ClientConfig(base_url="http://localhost:8888", timeout=30.0)
 
@@ -91,7 +92,7 @@ def profile_connection_pooling():
 
     # Profile reusing connection
     start = time.perf_counter()
-    client = manager.get_sync_client()
+    _ = manager.get_sync_client()
     for _ in range(100):
         # Simulate getting client (should be instant after first)
         _ = manager.get_sync_client()
@@ -179,7 +180,7 @@ def run_full_profile():
         try:
             # This will fail but we want to profile the client logic
             client.get("/status/200", timeout=0.1, skip_retry=True)
-        except:
+        except Exception:
             pass
 
     profiler.disable()

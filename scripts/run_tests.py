@@ -30,7 +30,7 @@ def main():
     """Run all test suites with coverage."""
 
     # Change to project root
-    project_root = Path(__file__).parent
+    _ = Path(__file__).parent.parent  # Reference for path context
 
     all_passed = True
 

@@ -9,6 +9,7 @@ def test_import_fix():
     import json
 
     from rest_api_client.exceptions import APIClientError, ValidationError
+
     from rest_api_client.models import APIResponse
 
     response = APIResponse(status_code=400, body=json.dumps({"error": "Bad Request"}), headers={})

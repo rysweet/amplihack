@@ -6,9 +6,10 @@ Tests the implementation in realistic scenarios
 
 import time
 
-from rest_api_client import APIClient
 from rest_api_client.config import ClientConfig, RateLimitConfig, RetryConfig
 from rest_api_client.exceptions import APIClientError
+
+from rest_api_client import APIClient
 
 
 def test_simple_use_case():
@@ -198,7 +199,7 @@ def test_no_regressions():
     # Test context manager
     try:
         with APIClient("https://httpbin.org") as client:
-            response = client.get("/get")
+            _ = client.get("/get")
         print("   ✅ Context manager works")
     except Exception as e:
         print(f"   ❌ Context manager failed: {e}")

@@ -15,6 +15,7 @@ def test_all_fixes():
     # Test 1: Import fix (critical bug)
     print("\n1. Testing import fix (APIClientError vs APIException)...")
     from rest_api_client.exceptions import APIClientError
+
     from rest_api_client.models import APIResponse
 
     # Create a response with non-standard error code
@@ -33,8 +34,8 @@ def test_all_fixes():
     print("\n2. Testing environment variable support for API key...")
     from rest_api_client import APIClient
 
-    # Set environment variable
-    os.environ["API_KEY"] = "test-api-key-from-env"
+    # Set environment variable  # pragma: allowlist secret
+    os.environ["API_KEY"] = "test-api-key-from-env"  # pragma: allowlist secret
 
     # Create client without explicit API key
     client = APIClient(base_url="https://api.example.com")
@@ -74,9 +75,13 @@ def test_all_fixes():
     # Test 4: Test dependency (responses package)
     print("\n4. Testing that responses package is available...")
     try:
-        import responses
+        import importlib.util
 
-        print("   ✓ responses package is installed")
+        spec = importlib.util.find_spec("responses")
+        if spec is not None:
+            print("   ✓ responses package is installed")
+        else:
+            print("   ✗ responses package not found (needed for tests)")
     except ImportError:
         print("   ✗ responses package not found (needed for tests)")
 
