@@ -775,7 +775,7 @@ class PowerSteeringChecker:
                     continuation_prompt=f"All power-steering checks passed! Please present these results to the user:\n{results_text}",
                     summary=None,
                     analysis=analysis,
-                    is_first_stop=True,
+                    is_first_stop=is_first_stop,  # FIX (Issue #1744): Pass through is_first_stop to prevent infinite loop
                 )
 
             # SUBSEQUENT STOP: All checks passed, approve
@@ -2030,6 +2030,8 @@ class PowerSteeringChecker:
         if total_failed == 0:
             lines.append(f"✅ ALL CHECKS PASSED ({total_passed} passed, {total_skipped} skipped)")
             lines.append("\n📌 This was your first stop. Next stop will proceed without blocking.")
+            lines.append("\n💡 To disable power-steering: export AMPLIHACK_SKIP_POWER_STEERING=1")
+            lines.append("   Or create: .claude/runtime/power-steering/.disabled")
         else:
             lines.append(f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed)")
             lines.append("\n📌 Address the failed checks above before stopping.")
