@@ -67,6 +67,11 @@ Built on the "Bricks & Studs" principle:
 - [API Client Configuration](howto/api-client-config.md) - Detailed configuration options
 - [API Client Reference](reference/api-client.md) - Complete API documentation
 
+### Utilities
+
+- [Generate URL Slugs](howto/generate-url-slugs.md) - Create URL-friendly slugs from text
+- [String Utilities Reference](reference/string-utilities.md) - Complete API for string manipulation functions
+
 ### Documentation & Publishing
 
 - [First Documentation Site Tutorial](tutorials/first-docs-site.md) - 30-minute beginner tutorial: create and deploy your first docs site
