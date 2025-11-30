@@ -3,24 +3,23 @@
 {
   "name": "amplihack",
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
   "hostRequirements": {
     "cpus": 2,
     "memory": "8gb",
     "storage": "32gb"
   },
   // Features to add to the dev container. More info: https://containers.dev/features.
+  // Version alignment: Match CI configuration (ci.yml) for consistency
+  // CI uses: Python 3.12, Node.js 20
   "features": {
     "ghcr.io/jungaretti/features/make:1": {},
     "ghcr.io/jungaretti/features/vim:1": {},
-    "ghcr.io/devcontainers-extra/features/pipx-package:1": {
-      "package": "uv",
-      "version": "latest"
-    },
+    // uv is installed via post-create.sh using official installer for reliability
     "ghcr.io/devcontainers/features/node:1": {
       "nodeGypDependencies": true,
       "installYarnUsingApt": true,
-      "version": "lts",
+      "version": "20",
       "nvmVersion": "latest",
       "pnpmVersion": "latest"
     },

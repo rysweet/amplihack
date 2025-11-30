@@ -1,6 +1,8 @@
 ---
 name: amplifier-cli-architect
+version: 1.0.0
 description: CLI application architect. Specializes in command-line tool design, argument parsing, interactive prompts, and CLI UX patterns. Use when designing CLI tools or refactoring command-line interfaces. For general architecture use architect.
+role: "CLI application architect and hybrid code/AI systems expert"
 model: inherit
 ---
 
@@ -435,7 +437,7 @@ async def coordinate_agents(task: str) -> Dict:
 ### Amplifier Integration
 
 - **Agent Coordination**: Work with security, optimizer, patterns, integration agents
-- **Workflow**: Map decisions to 13-step workflow
+- **Workflow**: Map decisions to multi-step workflow
 - **Priorities**: Explicit requirements > implicit preferences > philosophy > defaults
 - **Execution**: Support parallel execution where decisions are independent
 - **Knowledge**: Update DISCOVERIES.md with learnings

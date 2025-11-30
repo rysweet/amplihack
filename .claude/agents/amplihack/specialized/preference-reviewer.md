@@ -1,6 +1,8 @@
 ---
 name: preference-reviewer
+version: 1.0.0
 description: User preference analyzer. Reviews USER_PREFERENCES.md to identify generalizable patterns worth contributing to Claude Code upstream. Use when user preferences might benefit other users, or periodically to assess contribution opportunities.
+role: "User preference analyzer and contribution opportunity identifier"
 model: inherit
 ---
 

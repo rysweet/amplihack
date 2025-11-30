@@ -37,7 +37,7 @@ A workflow is a structured, step-by-step process that defines:
 
 **Characteristics**:
 
-- 15 well-defined steps from requirements to merge
+- Well-defined workflow steps from requirements to merge
 - Balanced speed and quality
 - Agent deployment at appropriate steps
 - TDD approach with pre-commit validation
@@ -60,7 +60,7 @@ A workflow is a structured, step-by-step process that defines:
 
 **Characteristics**:
 
-- Same 15-step structure as default
+- Same multi-step structure as default
 - Multi-Agent Debate for requirements and design (Steps 1 & 4)
 - N-Version Programming for critical code (Step 5)
 - Expert Panel reviews for refactoring and PR review (Steps 6, 11, 13, 15)
@@ -374,13 +374,13 @@ User: /ultrathink "Add authentication to API"
 UltraThink:
 1. Reads USER_PREFERENCES.md → selected: "CONSENSUS_WORKFLOW"
 2. Loads .claude/workflow/CONSENSUS_WORKFLOW.md
-3. Parses 15 steps with agent assignments
-4. Creates TodoWrite with all 15 steps
+3. Parses workflow steps with agent assignments
+4. Creates TodoWrite with all workflow steps
 5. Executes Step 1:
    - Reads: "Deploy prompt-writer, analyzer, ambiguity"
    - If ambiguous: "Deploy Multi-Agent Debate"
    - Invokes agents as specified
-6. Continues through all 15 steps
+6. Continues through all workflow steps
 7. Validates: PR is mergeable, all requirements met
 ```
 
@@ -504,7 +504,7 @@ UltraThink:
 
 # UltraThink will:
 # 1. Load DEFAULT_WORKFLOW.md
-# 2. Execute all 15 steps
+# 2. Execute all workflow steps
 # 3. Deploy agents as specified in each step
 # 4. Produce mergeable PR
 ```

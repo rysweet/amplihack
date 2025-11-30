@@ -1,6 +1,8 @@
 ---
 name: integration
+version: 1.0.0
 description: External integration specialist. Designs and implements connections to third-party APIs, services, and external systems. Handles authentication, rate limiting, error handling, and retries. Use when integrating external services, not for internal API design (use api-designer).
+role: "External integration and third-party API specialist"
 model: inherit
 ---
 

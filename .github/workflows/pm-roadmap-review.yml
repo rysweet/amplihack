@@ -1,0 +1,74 @@
+name: PM - Weekly Roadmap Review
+
+# Purpose: Review roadmap alignment and post weekly analysis to tracking issue
+# Security: Implements all 9 mandatory mitigations from SECURITY_ASSESSMENT.md
+# Type: Informational only (read-only, no state changes)
+
+on:
+  schedule:
+    # Run weekly on Monday at 8 AM UTC
+    - cron: "0 8 * * 1"
+  workflow_dispatch: # Allow manual triggering for testing
+
+# SECURITY M2.1: Minimal permissions (read-only by default)
+permissions:
+  contents: read # Read repository contents only
+  issues: write # Post roadmap reviews to designated issue
+
+jobs:
+  roadmap-review:
+    name: Review Project Roadmap
+    runs-on: ubuntu-latest
+    # SECURITY: Timeout limit prevents runaway execution
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+
+      # SECURITY M1.2: Mask API key to prevent exposure in logs
+      - name: Mask API key
+        run: echo "::add-mask::${{ secrets.ANTHROPIC_API_KEY }}"
+
+      # SECURITY M3.2: Use environment variables, never string interpolation
+      # SECURITY: Error handling filters output to prevent secret leakage
+      - name: Review roadmap
+        id: review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ISSUE_NUMBER: ${{ vars.PM_ROADMAP_ISSUE_NUMBER }}
+        run: |
+          set +x  # Disable command echoing to prevent accidental exposure
+
+          # NOTE M3.1: PM scripts must sanitize user inputs from roadmap content
+          # NOTE M3.4: PM scripts must validate for prompt injection
+
+          # Generate roadmap review using PM roadmap review script
+          python .github/scripts/pm_roadmap_review.py
+
+          # Add summary to GitHub Actions step summary
+          echo "## Roadmap Review Summary" >> $GITHUB_STEP_SUMMARY
+          cat roadmap_review.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Post review to tracking issue
+        uses: peter-evans/create-or-update-comment@v4
+        if: success() && vars.PM_ROADMAP_ISSUE_NUMBER != ''
+        with:
+          issue-number: ${{ vars.PM_ROADMAP_ISSUE_NUMBER }}
+          body-path: roadmap_review.md
+
+      # SECURITY: Error handling without exposing secrets
+      - name: Handle errors
+        if: failure()
+        run: |
+          echo "::error::Roadmap review workflow failed. Check logs for details."
+          echo "Note: Check that ANTHROPIC_API_KEY secret and PM_ROADMAP_ISSUE_NUMBER variable are configured."

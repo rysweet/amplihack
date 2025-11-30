@@ -1,3 +1,14 @@
+---
+name: reflect
+version: 1.0.0
+description: Reflection and meta-cognitive analysis of sessions
+triggers:
+  - "Analyze session"
+  - "Run reflection"
+  - "Identify improvements"
+  - "Session retrospective"
+---
+
 # /amplihack:reflect - Session Reflection Analysis
 
 ## Input Validation

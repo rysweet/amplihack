@@ -1,5 +1,6 @@
 ---
 name: political-scientist-analyst
+version: 1.0.0
 description: |
   Analyzes events through political science lens using IR theory (Realism, Liberalism, Constructivism),
   comparative politics, institutional analysis, and power dynamics.

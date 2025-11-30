@@ -149,6 +149,35 @@ Adjust based on task complexity:
 amplihack claude --auto --max-turns 25 -- -p "complex multi-module refactoring"
 ```
 
+### Per-Turn Timeout
+
+Default: 30 minutes per turn
+
+Controls how long each turn can run before timing out. This prevents runaway executions while allowing complex operations to complete.
+
+**Priority order (highest to lowest):**
+
+1. `--no-timeout` flag (disables timeout entirely)
+2. Explicit `--query-timeout-minutes` value
+3. Auto-detection (Opus models → 60 minutes)
+4. Default (30 minutes)
+
+```bash
+# Use default 30-minute timeout
+amplihack claude --auto -- -p "implement feature"
+
+# Explicit timeout (45 minutes)
+amplihack claude --auto --query-timeout-minutes 45 -- -p "complex refactoring"
+
+# Disable timeout for very long operations
+amplihack claude --auto --no-timeout -- -p "comprehensive codebase analysis"
+
+# Opus model auto-detects to 60 minutes
+amplihack claude --auto -- --model opus -p "architectural design"
+```
+
+**Note:** Opus models automatically use 60-minute timeouts due to extended thinking requirements. Use `--no-timeout` for operations expected to exceed 60 minutes.
+
 ### Session Logging
 
 All auto mode sessions are logged to:
@@ -398,6 +427,17 @@ Auto mode excels at:
 
 **Cause**: Syntax errors, test failures during execution
 **Solution**: Auto mode logs errors and continues. Review logs in `.claude/runtime/logs/` to see what happened.
+
+### Turn Timeouts
+
+**Cause**: A turn exceeded the per-turn timeout (default 30 minutes)
+**Solution**:
+
+- Check logs for `Turn N timed out after X seconds`
+- For Opus models, ensure auto-detection is working (uses 60 min automatically)
+- Use `--query-timeout-minutes 60` for longer operations
+- Use `--no-timeout` for very long operations (use with caution)
+- Consider breaking complex tasks into smaller subtasks
 
 ### Installation Issues (Copilot)
 

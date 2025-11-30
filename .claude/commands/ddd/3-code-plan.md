@@ -1,7 +1,16 @@
 ---
-description: DDD Phase 3 - Plan code implementation (project:ddd)
+name: ddd:3-code-plan
+version: 1.0.0
+description: DDD Phase 3 - Plan code implementation
 argument-hint: [optional override instructions]
 allowed-tools: TodoWrite, Read, Grep, Glob, Task, Bash(git diff:*), Bash(make check:*)
+triggers:
+  - "Plan code implementation for DDD"
+  - "Create code plan from DDD specs"
+  - "Phase 3 implementation planning"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DDD_WORKFLOW.md
 ---
 
 # DDD Phase 3: Code Planning

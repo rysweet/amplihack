@@ -1,5 +1,6 @@
 ---
 name: "Goal-Seeking Agent Pattern"
+version: 1.0.0
 description: |
   Guides architects on when and how to use goal-seeking agents as a design pattern.
   This skill helps evaluate whether autonomous agents are appropriate for a given

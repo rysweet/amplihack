@@ -1,5 +1,6 @@
 ---
 name: module-spec-generator
+version: 1.0.0
 description: |
   Generates module specifications following amplihack's brick philosophy template.
   Use when creating new modules or documenting existing ones to ensure they follow

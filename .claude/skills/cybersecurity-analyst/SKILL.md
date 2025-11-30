@@ -1,5 +1,6 @@
 ---
 name: cybersecurity-analyst
+version: 1.0.0
 description: |
   Analyzes events through cybersecurity lens using threat modeling, attack surface analysis, defense-in-depth,
   zero-trust architecture, and risk-based frameworks (CIA triad, STRIDE, MITRE ATT&CK).

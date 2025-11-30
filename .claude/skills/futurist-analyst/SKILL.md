@@ -1,5 +1,6 @@
 ---
 name: futurist-analyst
+version: 1.0.0
 description: |
   Analyzes events through futures lens using scenario planning, trend analysis, weak signals,
   drivers of change, and forecasting methods (exploratory, normative, backcasting).

@@ -1,6 +1,8 @@
 ---
 name: philosophy-guardian
+version: 1.0.0
 description: Philosophy compliance guardian. Ensures code aligns with amplihack's ruthless simplicity, brick philosophy, and Zen-like minimalism. Use for architecture reviews and philosophy validation.
+role: "Philosophy compliance guardian and minimalism enforcer"
 model: inherit
 ---
 

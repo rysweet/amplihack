@@ -1,6 +1,44 @@
+---
+name: N_VERSION_WORKFLOW
+version: 1.0.0
+description: N-version programming for critical code - generate multiple independent implementations and select best
+steps: 7
+phases:
+  - common-context-preparation
+  - n-independent-implementations
+  - collection-and-comparison
+  - review-and-evaluation
+  - selection-or-synthesis
+  - final-implementation
+  - learning-documentation
+success_criteria:
+  - "N independent implementations generated (N=2-6)"
+  - "All implementations tested against same specification"
+  - "Selection based on correctness > security > simplicity > philosophy > performance"
+  - "Best solution identified or hybrid synthesized"
+  - "Learnings from rejected versions captured"
+philosophy_alignment:
+  - principle: Reduced Risk
+    application: Multiple implementations catch errors single approach misses
+  - principle: Exploration
+    application: Different approaches reveal design trade-offs
+  - principle: Evidence-Based Selection
+    application: Systematic comparison vs gut feeling
+  - principle: Learning
+    application: Rejected versions provide valuable insights
+references:
+  workflows:
+    - DEFAULT_WORKFLOW.md
+    - CONSENSUS_WORKFLOW.md
+customizable: true
+---
+
 # N-Version Programming Workflow
 
 This workflow implements N-version programming for critical decisions where multiple independent implementations should be generated and compared to select the best solution.
+
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
 
 ## Configuration
 

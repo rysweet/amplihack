@@ -1,5 +1,6 @@
 ---
 name: chemist-analyst
+version: 1.0.0
 description: |
   Analyzes events through chemistry lens using molecular structure, reaction mechanisms, thermodynamics,
   kinetics, and analytical techniques (spectroscopy, chromatography, mass spectrometry).

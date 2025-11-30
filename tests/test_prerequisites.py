@@ -104,7 +104,9 @@ class TestToolChecking:
         checker = PrerequisiteChecker()
         with patch("shutil.which", return_value="/usr/bin/tool"), patch(
             "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
-        ), patch("subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")):
+        ), patch(
+            "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+        ):
             result = checker.check_all_prerequisites()
             assert result.all_available is True
             assert len(result.missing_tools) == 0
@@ -225,7 +227,9 @@ class TestPrerequisiteIntegration:
         checker = PrerequisiteChecker()
         with patch("shutil.which") as mock_which, patch(
             "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
-        ), patch("subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")):
+        ), patch(
+            "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+        ):
             # Simulate all tools being available
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
             result = checker.check_all_prerequisites()
@@ -237,8 +241,9 @@ class TestPrerequisiteIntegration:
     def test_full_check_workflow_some_missing(self):
         """Test complete prerequisite check with some tools missing."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which") as mock_which, \
-             patch("subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")):
+        with patch("shutil.which") as mock_which, patch(
+            "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+        ):
             # node, npm, rg, and claude missing; uv and git present
             mock_which.side_effect = lambda x: (f"/usr/bin/{x}" if x in ["uv", "git"] else None)
             result = checker.check_all_prerequisites()
@@ -334,6 +339,32 @@ class TestPrerequisiteIntegration:
             assert result.path == "/path with spaces/tool"
 
 
+class TestCheckPrerequisitesConvenience:
+    """Integration tests for check_prerequisites() convenience function."""
+
+    def test_check_prerequisites_calls_check_and_install_interactive(self):
+        """Test that check_prerequisites() calls check_and_install(interactive=True)
+        and returns correct boolean based on result.all_available."""
+        from amplihack.utils.prerequisites import check_prerequisites
+
+        with patch("amplihack.utils.prerequisites.PrerequisiteChecker") as MockChecker:
+            mock_checker_instance = Mock()
+            mock_result = Mock()
+            MockChecker.return_value = mock_checker_instance
+
+            # Test True case (all tools available)
+            mock_result.all_available = True
+            mock_checker_instance.check_and_install.return_value = mock_result
+            assert check_prerequisites() is True
+            mock_checker_instance.check_and_install.assert_called_with(interactive=True)
+
+            # Reset and test False case (tools missing)
+            mock_checker_instance.check_and_install.reset_mock()
+            mock_result.all_available = False
+            assert check_prerequisites() is False
+            mock_checker_instance.check_and_install.assert_called_with(interactive=True)
+
+
 # ============================================================================
 # E2E TESTS (10% - 3 tests)
 # ============================================================================
@@ -388,8 +419,9 @@ class TestEndToEnd:
         ):
             checker = PrerequisiteChecker()
 
-            with patch("shutil.which") as mock_which, \
-                 patch("subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")):
+            with patch("shutil.which") as mock_which, patch(
+                "subprocess.run", return_value=Mock(returncode=0, stdout="version 1.0", stderr="")
+            ):
                 # Only git and uv present
                 mock_which.side_effect = lambda x: (f"/usr/bin/{x}" if x in ["git", "uv"] else None)
 

@@ -1,5 +1,6 @@
 ---
 name: physicist-analyst
+version: 1.0.0
 description: |
   Analyzes events through physics lens using fundamental laws (thermodynamics, conservation, relativity),
   quantitative modeling, systems dynamics, and energy principles to understand causation, constraints, and feasibility.

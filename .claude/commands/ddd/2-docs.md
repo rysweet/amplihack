@@ -1,7 +1,16 @@
 ---
-description: DDD Phase 2 - Update all non-code files (project:ddd)
+name: ddd:2-docs
+version: 1.0.0
+description: DDD Phase 2 - Update all non-code files
 argument-hint: [optional override instructions]
 allowed-tools: TodoWrite, Read, Write, Edit, MultiEdit, Grep, Glob, Task, Bash(git diff:*), Bash(git status:*), Bash(git add:*)
+triggers:
+  - "Update DDD documentation"
+  - "Phase 2 documentation retcon"
+  - "Apply retcon writing to docs"
+invokes:
+  - type: workflow
+    path: .claude/workflow/DDD_WORKFLOW.md
 ---
 
 # DDD Phase 2: Non-Code Changes

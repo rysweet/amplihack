@@ -1,6 +1,8 @@
 ---
 name: xpia-defense
+version: 1.0.0
 description: Cross-Prompt Injection Attack defense specialist. Provides transparent AI security protection with sub-100ms processing for prompt injection detection and prevention.
+role: "AI security specialist and prompt injection defense expert"
 model: inherit
 ---
 

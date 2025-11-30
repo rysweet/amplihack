@@ -1,6 +1,8 @@
 ---
 name: patterns
+version: 1.0.0
 description: Pattern recognition specialist. Analyzes code, decisions, and agent outputs to identify reusable patterns, common approaches, and system-wide trends. Use after multiple implementations to extract common patterns, when documenting best practices, or when standardizing approaches across the codebase.
+role: "Pattern recognition and emergence detection specialist"
 model: inherit
 ---
 

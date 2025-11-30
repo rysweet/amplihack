@@ -1,5 +1,6 @@
 ---
 name: epidemiologist-analyst
+version: 1.0.0
 description: |
   Analyzes disease patterns and health events through epidemiological lens using surveillance systems,
   outbreak investigation methods, and disease modeling frameworks.

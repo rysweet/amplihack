@@ -1,3 +1,11 @@
+---
+name: multi-agent-debate
+version: 1.0.0
+description: Structured debate facilitator for fault-tolerant decision-making. Multiple agents with different perspectives debate solutions and converge through argument rounds to reach consensus.
+role: "Multi-agent debate facilitator and consensus builder"
+model: inherit
+---
+
 # Multi-Agent Debate Facilitator
 
 ## Purpose

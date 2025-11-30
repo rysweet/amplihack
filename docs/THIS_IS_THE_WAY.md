@@ -513,5 +513,5 @@ The challenges you overcome today become capabilities amplihack has tomorrow.
 
 - **PHILOSOPHY.md** - Core principles and the Brick Philosophy
 - **DISCOVERIES.md** - Documented problems and solutions
-- **DEFAULT_WORKFLOW.md** - The 15-step development workflow
+- **DEFAULT_WORKFLOW.md** - The multi-step development workflow
 - **agents/** - Specialized agent documentation

@@ -1,6 +1,45 @@
+---
+name: DEBATE_WORKFLOW
+version: 1.0.0
+description: Multi-agent structured debate for complex decisions requiring diverse perspectives
+steps: 8
+phases:
+  - decision-framing
+  - perspective-initialization
+  - initial-positions
+  - challenge-and-respond
+  - common-ground-synthesis
+  - facilitator-synthesis
+  - decision-documentation
+  - implementation
+success_criteria:
+  - "Decision clearly framed with evaluation criteria"
+  - "Multiple perspectives (3-7) provide independent analysis"
+  - "Arguments supported by evidence, not opinions"
+  - "Facilitator synthesizes consensus or hybrid approach"
+  - "Decision documented with rationale and dissent"
+philosophy_alignment:
+  - principle: Perspective Diversity
+    application: Multiple viewpoints surface hidden trade-offs
+  - principle: Evidence-Based Decisions
+    application: Arguments must be supported with data
+  - principle: Transparent Trade-offs
+    application: Dissent documented, not hidden
+  - principle: Structured Exploration
+    application: Debate format prevents premature convergence
+references:
+  workflows:
+    - DEFAULT_WORKFLOW.md
+    - CONSENSUS_WORKFLOW.md
+customizable: true
+---
+
 # Debate Workflow
 
 This workflow implements structured multi-perspective debate for important architectural decisions, design trade-offs, and complex problems where multiple valid approaches exist.
+
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
 
 ## Configuration
 

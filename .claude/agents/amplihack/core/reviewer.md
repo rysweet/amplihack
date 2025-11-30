@@ -1,6 +1,8 @@
 ---
 name: reviewer
+version: 1.0.0
 description: Code review and debugging specialist. Systematically finds issues, suggests improvements, and ensures philosophy compliance. Use for bug hunting and quality assurance.
+role: "Code review and quality assurance specialist"
 model: inherit
 ---
 

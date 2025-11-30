@@ -1,6 +1,8 @@
 ---
 name: api-designer
+version: 1.0.0
 description: API contract specialist. Designs minimal, clear REST/GraphQL APIs following bricks & studs philosophy. Creates OpenAPI specs, versioning strategies, error patterns. Use for API design, review, or refactoring.
+role: "API contract specialist and interface designer"
 model: inherit
 ---
 

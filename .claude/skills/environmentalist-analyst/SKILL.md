@@ -1,5 +1,6 @@
 ---
 name: environmentalist-analyst
+version: 1.0.0
 description: |
   Analyzes events through environmental lens using ecological principles, systems thinking, sustainability frameworks,
   and conservation biology to assess ecosystem health, biodiversity impacts, and long-term environmental sustainability.

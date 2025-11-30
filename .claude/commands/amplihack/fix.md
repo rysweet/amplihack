@@ -1,3 +1,40 @@
+---
+name: fix
+version: 1.0.0
+description: Rapid diagnosis and fix for common issues
+triggers:
+  - "fix this error"
+  - "CI failing"
+  - "tests broken"
+  - "import error"
+  - "something's broken"
+invokes:
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/fix-agent.md
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/pre-commit-diagnostic.md
+  - type: subagent
+    path: .claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
+  - type: command
+    name: /ultrathink
+philosophy:
+  - principle: Ruthless Simplicity
+    application: Templates handle 80% of common fixes in under 5 minutes
+  - principle: Analysis First
+    application: Auto-detects pattern before applying fix
+dependencies:
+  required:
+    - .claude/workflow/FIX_WORKFLOW.md
+  optional:
+    - .claude/tools/ci_status.py
+examples:
+  - "/fix"
+  - "/fix import"
+  - "/fix ci"
+  - "/fix test diagnostic"
+  - "/fix logic comprehensive"
+---
+
 # Fix Command
 
 ## Input Validation
@@ -206,7 +243,7 @@ For comprehensive fixes, automatically integrates with UltraThink:
 1. /fix comprehensive [pattern]
 2. → Calls /ultrathink with fix task
 3. → UltraThink reads DEFAULT_WORKFLOW.md
-4. → Follows full 14-step process
+4. → Follows full multi-step process
 5. → Uses fix-agent and templates as needed
 ```
 

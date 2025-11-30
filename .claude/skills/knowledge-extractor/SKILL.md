@@ -1,5 +1,6 @@
 ---
 name: knowledge-extractor
+version: 1.0.0
 description: |
   Extracts key learnings from conversations, debugging sessions, and failed attempts.
   Use at session end or after solving complex problems to capture insights.

@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  amplihack:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ../workspace:/home/claude/workspace
+    stdin_open: true
+    tty: true
+    command: amplihack claude

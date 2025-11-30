@@ -1,5 +1,6 @@
 ---
 name: code-smell-detector
+version: 1.0.0
 description: |
   Identifies anti-patterns specific to amplihack philosophy.
   Use when reviewing code for quality issues or refactoring.

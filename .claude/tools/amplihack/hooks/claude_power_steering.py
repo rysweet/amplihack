@@ -249,6 +249,215 @@ def _format_conversation_summary(conversation: List[Dict], max_length: int = 500
     return "".join(summary_parts)
 
 
+async def analyze_claims(delta_text: str, project_root: Path) -> List[str]:
+    """Use Claude SDK to detect completion claims in delta text.
+
+    Replaces regex-based claim detection with LLM-powered analysis.
+
+    Args:
+        delta_text: New transcript content since last block
+        project_root: Project root directory
+
+    Returns:
+        List of detected completion claims with context.
+        (Fail-open: returns empty list on SDK unavailable or errors)
+    """
+    if not CLAUDE_SDK_AVAILABLE:
+        return []  # Fail-open if SDK unavailable
+
+    if not delta_text or len(delta_text.strip()) < 20:
+        return []  # Nothing meaningful to analyze
+
+    prompt = f"""Analyze the following conversation excerpt and identify any claims about task completion.
+
+**Conversation Content:**
+{delta_text[:3000]}
+
+## Your Task
+
+Identify any statements where the user or assistant claims that work is complete. Look for:
+- Claims about completing tasks, features, or implementations
+- Statements about tests passing or CI being green
+- Claims that todos are done or workflow is complete
+- Assertions that PRs are ready or mergeable
+
+**Respond with a JSON array of claim strings, each with surrounding context (max 100 chars).**
+
+Format: ["...claim with context...", "...another claim..."]
+
+If no completion claims are found, respond with: []
+
+Be specific - only include actual claims about completion, not general discussion."""
+
+    try:
+        options = ClaudeAgentOptions(
+            cwd=str(project_root),
+            permission_mode="bypassPermissions",
+        )
+
+        response_parts = []
+        async for message in query(prompt=prompt, options=options):
+            if hasattr(message, "text"):
+                response_parts.append(message.text)
+            elif hasattr(message, "content"):
+                response_parts.append(str(message.content))
+
+        response = "".join(response_parts).strip()
+
+        # Parse JSON array from response
+        import json
+
+        # Try to extract JSON array
+        if response.startswith("["):
+            try:
+                claims = json.loads(response)
+                if isinstance(claims, list):
+                    return [str(c) for c in claims if c]
+            except json.JSONDecodeError:
+                pass
+
+        # Try to find JSON array in response
+        import re
+
+        match = re.search(r"\[.*?\]", response, re.DOTALL)
+        if match:
+            try:
+                claims = json.loads(match.group())
+                if isinstance(claims, list):
+                    return [str(c) for c in claims if c]
+            except json.JSONDecodeError:
+                pass
+
+        return []
+
+    except Exception:
+        return []  # Fail-open on any error
+
+
+async def analyze_if_addressed(
+    failure_id: str,
+    failure_reason: str,
+    delta_text: str,
+    project_root: Path,
+) -> Optional[str]:
+    """Use Claude SDK to check if delta content addresses a previous failure.
+
+    Replaces heuristic keyword matching with LLM-powered analysis.
+
+    Args:
+        failure_id: ID of the failed consideration (e.g., "todos_complete")
+        failure_reason: Human-readable reason the check failed
+        delta_text: New transcript content since last block
+        project_root: Project root directory
+
+    Returns:
+        Evidence string if delta addresses the failure, None otherwise.
+        (Fail-open: returns None on SDK unavailable or errors)
+    """
+    if not CLAUDE_SDK_AVAILABLE:
+        return None  # Fail-open if SDK unavailable
+
+    if not delta_text or len(delta_text.strip()) < 20:
+        return None  # Nothing meaningful to analyze
+
+    prompt = f"""Analyze if the following new conversation content addresses a previous verification failure.
+
+**Previous Failure:**
+- Check ID: {failure_id}
+- Reason it failed: {failure_reason}
+
+**New Conversation Content:**
+{delta_text[:3000]}
+
+## Your Task
+
+Determine if the new content shows evidence that the previously failed check has now been addressed.
+
+Look for:
+- Actions taken to fix the issue
+- Evidence the concern was resolved
+- Tool outputs or results showing completion
+- Explicit discussion addressing the failure reason
+
+**Respond with ONE of:**
+- "ADDRESSED: [specific evidence from the conversation showing why]"
+- "NOT ADDRESSED: [brief explanation]"
+
+Be conservative - only say ADDRESSED if there is clear evidence in the new content."""
+
+    try:
+        options = ClaudeAgentOptions(
+            cwd=str(project_root),
+            permission_mode="bypassPermissions",
+        )
+
+        response_parts = []
+        async for message in query(prompt=prompt, options=options):
+            if hasattr(message, "text"):
+                response_parts.append(message.text)
+            elif hasattr(message, "content"):
+                response_parts.append(str(message.content))
+
+        response = "".join(response_parts).strip().lower()
+
+        # Check for ADDRESSED indicator
+        if "addressed:" in response:
+            # Extract the evidence
+            idx = response.find("addressed:")
+            evidence = response[idx + 10 :].strip()
+            # Clean up and truncate
+            evidence = evidence.replace("not addressed:", "").strip()
+            if evidence and len(evidence) > 10:
+                return evidence[:200]  # Truncate evidence
+            return "Delta content addresses this concern"
+
+        return None
+
+    except Exception:
+        return None  # Fail-open on any error
+
+
+def analyze_claims_sync(delta_text: str, project_root: Path) -> List[str]:
+    """Synchronous wrapper for analyze_claims.
+
+    Args:
+        delta_text: New transcript content since last block
+        project_root: Project root directory
+
+    Returns:
+        List of detected completion claims
+    """
+    try:
+        return asyncio.run(analyze_claims(delta_text, project_root))
+    except Exception:
+        return []  # Fail-open on any error
+
+
+def analyze_if_addressed_sync(
+    failure_id: str,
+    failure_reason: str,
+    delta_text: str,
+    project_root: Path,
+) -> Optional[str]:
+    """Synchronous wrapper for analyze_if_addressed.
+
+    Args:
+        failure_id: ID of the failed consideration
+        failure_reason: Reason it failed
+        delta_text: New transcript content
+        project_root: Project root directory
+
+    Returns:
+        Evidence string if addressed, None otherwise
+    """
+    try:
+        return asyncio.run(
+            analyze_if_addressed(failure_id, failure_reason, delta_text, project_root)
+        )
+    except Exception:
+        return None  # Fail-open on any error
+
+
 def analyze_consideration_sync(
     conversation: List[Dict], consideration: Dict, project_root: Path
 ) -> bool:

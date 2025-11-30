@@ -14,8 +14,22 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Lock files in runtime directory
-LOCK_DIR = Path(".claude/runtime/locks")
+
+def _get_project_root() -> Path:
+    """Get project root from CLAUDE_PROJECT_DIR or fallback to cwd.
+
+    This ensures lock files are created in the correct location regardless
+    of which directory the user runs the command from.
+    """
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR")
+    if project_dir:
+        return Path(project_dir)
+    return Path.cwd()
+
+
+# Lock files in runtime directory (using absolute path from project root)
+_PROJECT_ROOT = _get_project_root()
+LOCK_DIR = _PROJECT_ROOT / ".claude" / "runtime" / "locks"
 LOCK_FILE = LOCK_DIR / ".lock_active"
 MESSAGE_FILE = LOCK_DIR / ".lock_message"
 
@@ -122,6 +136,7 @@ def main():
         return remove_lock()
     if args.command == "check":
         return check_lock()
+    return 1  # Unknown command
 
 
 if __name__ == "__main__":

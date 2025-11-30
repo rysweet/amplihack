@@ -1,5 +1,6 @@
 ---
 name: sociologist-analyst
+version: 1.0.0
 description: |
   Analyzes events through sociological lens using social structures, institutions, stratification, culture,
   norms, collective behavior, and multiple theoretical perspectives (functionalist, conflict, symbolic interactionist).

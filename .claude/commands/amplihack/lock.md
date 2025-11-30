@@ -1,3 +1,14 @@
+---
+name: lock
+version: 1.0.0
+description: Enable continuous work mode without stopping
+triggers:
+  - "Enable continuous work mode"
+  - "Work autonomously"
+  - "Don't stop until done"
+  - "Keep working through all tasks"
+---
+
 # Lock: Enable Continuous Work Mode
 
 **Purpose**: Enable continuous work mode to prevent Claude from stopping until explicitly unlocked.

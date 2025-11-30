@@ -98,20 +98,23 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     Returns:
         Exit code.
     """
-    # Handle backwards compatibility: Check for deprecated --use-graph-mem flag
-    use_graph_mem = getattr(args, "use_graph_mem", False)
+    # Handle graph backend selection (new unified approach)
+    graph_backend = getattr(args, "graph_backend", "auto")
     enable_neo4j = getattr(args, "enable_neo4j_memory", False)
+    use_graph_mem = getattr(args, "use_graph_mem", False)  # Deprecated
 
-    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks and launcher)
-    if use_graph_mem or enable_neo4j:
+    # Set environment variable for graph backend selection
+    if graph_backend != "auto":
+        os.environ["AMPLIHACK_GRAPH_BACKEND"] = graph_backend
+        print(f"Graph backend set to: {graph_backend}")
+    elif enable_neo4j or use_graph_mem:
+        os.environ["AMPLIHACK_GRAPH_BACKEND"] = "neo4j"
         os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
         if use_graph_mem:
             print(
-                "WARNING: --use-graph-mem is deprecated. Please use --enable-neo4j-memory instead."
+                "WARNING: --use-graph-mem is deprecated. Please use --graph-backend neo4j instead."
             )
-            print("Neo4j graph memory enabled via --use-graph-mem flag (deprecated)")
-        else:
-            print("Neo4j graph memory enabled via --enable-neo4j-memory flag")
+        print("Graph backend set to: neo4j")
 
         # Set container name if provided
         if getattr(args, "use_memory_db", None):
@@ -244,7 +247,22 @@ def handle_auto_mode(
     # Check if UI mode is enabled
     ui_mode = getattr(args, "ui", False)
 
-    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode)
+    # Extract model from cmd_args for timeout auto-detection
+    model = None
+    if cmd_args and "--model" in cmd_args:
+        try:
+            model_idx = cmd_args.index("--model")
+            if model_idx + 1 < len(cmd_args):
+                model = cmd_args[model_idx + 1]
+        except (ValueError, IndexError):
+            pass
+
+    # Resolve timeout using priority: --no-timeout > explicit > model auto-detect > default
+    query_timeout = resolve_timeout(args, model)
+
+    auto = AutoMode(
+        sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout
+    )
     return auto.run()
 
 
@@ -350,6 +368,54 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
+    parser.add_argument(
+        "--query-timeout-minutes",
+        type=float,
+        default=30.0,
+        metavar="MINUTES",
+        help=(
+            "Timeout for each SDK query in minutes (default: 30). "
+            "Opus models auto-detect to 60 minutes. "
+            "Use --no-timeout to disable timeout completely."
+        ),
+    )
+    parser.add_argument(
+        "--no-timeout",
+        action="store_true",
+        help="Disable timeout for SDK queries (allows indefinite execution).",
+    )
+
+
+def resolve_timeout(args: argparse.Namespace, model: Optional[str] = None) -> Optional[float]:
+    """Resolve timeout value based on CLI args and model detection.
+
+    Priority order:
+    1. --no-timeout flag (returns None)
+    2. Explicit --query-timeout-minutes value (if not default 30.0)
+    3. Auto-detect Opus model (60 minutes)
+    4. Default from argparse (30 minutes)
+
+    Args:
+        args: Parsed command line arguments
+        model: Model name from --model arg (for Opus detection)
+
+    Returns:
+        Timeout in minutes, or None for no timeout
+    """
+    # Priority 1: --no-timeout flag takes precedence
+    if getattr(args, "no_timeout", False):
+        return None
+
+    # Get the timeout value (defaults to 30.0 from argparse)
+    timeout = getattr(args, "query_timeout_minutes", 30.0)
+
+    # Priority 3: Auto-detect Opus model (60 minute timeout)
+    # Only apply if timeout is the default (30.0), meaning user didn't explicitly override
+    if model and "opus" in model.lower() and timeout == 30.0:
+        return 60.0
+
+    # Return the timeout value (explicit or default)
+    return timeout
 
 
 def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
@@ -416,6 +482,30 @@ def add_neo4j_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_graph_backend_args(parser: argparse.ArgumentParser) -> None:
+    """Add graph backend selection arguments to a parser.
+
+    Args:
+        parser: ArgumentParser to add arguments to.
+    """
+    parser.add_argument(
+        "--graph-backend",
+        choices=["kuzu", "neo4j", "auto"],
+        default="auto",
+        metavar="BACKEND",
+        help=(
+            "Select graph database backend for memory system. "
+            "Options: kuzu (embedded, zero-config), neo4j (Docker), auto (default). "
+            "Kùzu is auto-installed if needed."
+        ),
+    )
+    parser.add_argument(
+        "--enable-neo4j-memory",
+        action="store_true",
+        help="Enable Neo4j graph memory (alias for --graph-backend neo4j).",
+    )
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser for amplihack CLI.
 
@@ -458,14 +548,28 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_claude_specific_args(launch_parser)
     add_auto_mode_args(launch_parser)
     add_neo4j_args(launch_parser)
+    add_graph_backend_args(launch_parser)
     add_common_sdk_args(launch_parser)
+    launch_parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help="Profile URI to use for this launch (overrides configured profile)",
+    )
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
     add_claude_specific_args(claude_parser)
     add_auto_mode_args(claude_parser)
     add_neo4j_args(claude_parser)
+    add_graph_backend_args(claude_parser)
     add_common_sdk_args(claude_parser)
+    claude_parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help="Profile URI to use for this launch (overrides configured profile)",
+    )
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
@@ -526,6 +630,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     # Hidden local install command
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
+    local_install_parser.add_argument(
+        "--profile",
+        type=str,
+        default=None,
+        help="Profile URI to use for this install (overrides configured profile)",
+    )
 
     return parser
 
@@ -585,16 +695,36 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
-        # Find amplihack package location for .claude files
         import amplihack
 
-        from . import copytree_manifest
+        from . import ESSENTIAL_DIRS, copytree_manifest
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
+        # NEW: Create staging manifest based on profile (if available)
+        manifest = None
+        profile_uri = os.environ.get("AMPLIHACK_PROFILE")
+
+        if profile_uri:
+            try:
+                # Try to load profile for filtering
+                claude_tools_path = os.path.join(amplihack_src, ".claude", "tools", "amplihack")
+                if os.path.exists(claude_tools_path):
+                    sys.path.insert(0, claude_tools_path)
+                    from profile_management.staging import create_staging_manifest
+
+                    manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
+                    if manifest.profile_name != "all" and not manifest.profile_name.endswith(
+                        "(fallback)"
+                    ):
+                        print(f"📦 Using profile: {manifest.profile_name}")
+            except Exception as e:
+                # Fall back to full staging on errors
+                print(f"ℹ️  Profile loading failed ({e}), using full staging")
+
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude", manifest=manifest)
 
         # Smart PROJECT.md initialization for UVX mode
         if copied:
@@ -736,7 +866,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "_local_install":
-        _local_install(args.repo_root)
+        profile_uri = getattr(args, "profile", None)
+        _local_install(args.repo_root, profile_uri=profile_uri)
         return 0
 
     elif args.command == "launch":

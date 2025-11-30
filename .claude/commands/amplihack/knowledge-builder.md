@@ -1,5 +1,28 @@
 ---
+name: knowledge-builder
+version: 1.0.0
 description: Build comprehensive knowledge base using Socratic method and web search
+triggers:
+  - "learn about topic deeply"
+  - "build knowledge base"
+  - "research comprehensive understanding"
+  - "generate question hierarchy"
+invokes:
+  - type: command
+    name: /socratic
+philosophy:
+  - principle: Analysis First
+    application: 270 questions across 4 depth levels ensure deep understanding
+  - principle: Modular Design
+    application: Structured output in 5 self-contained markdown files
+dependencies:
+  required:
+    - amplihack.knowledge_builder
+  optional:
+    - WebSearch tool for question answering
+examples:
+  - "/amplihack:knowledge-builder Quantum computing and its implications"
+  - "/amplihack:knowledge-builder Rust memory safety model"
 ---
 
 # Knowledge Builder

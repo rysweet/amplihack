@@ -1,5 +1,6 @@
 ---
 name: meeting-synthesizer
+version: 1.0.0
 description: |
   Processes meeting notes or transcripts to extract structured information.
   Use after meetings to quickly generate action items, capture decisions, and create follow-up tasks.

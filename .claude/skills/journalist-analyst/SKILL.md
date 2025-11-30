@@ -1,5 +1,6 @@
 ---
 name: journalist-analyst
+version: 1.0.0
 description: |
   Analyzes events through journalistic lens using 5 Ws and H, investigative methods, source evaluation,
   fact-checking, newsworthiness criteria, and ethical journalism principles.

@@ -1,8 +1,11 @@
 ---
+name: rust-programming-expert
+version: 1.0.0
 description: Rust programming expert with deep knowledge of memory safety, ownership, and systems programming
+role: "Rust programming expert and systems programming specialist"
 knowledge_base: amplihack-logparse/.claude/data/rust_focused_for_log_parser/
 priority: high
-version: 1.0.0
+model: inherit
 ---
 
 # Rust Programming Expert Agent

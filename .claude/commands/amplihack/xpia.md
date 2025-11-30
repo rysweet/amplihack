@@ -1,3 +1,14 @@
+---
+name: xpia
+version: 1.0.0
+description: Cross-Prompt Injection Attack defense and security management
+triggers:
+  - "Check XPIA security status"
+  - "Run XPIA health check"
+  - "View XPIA logs"
+  - "Test XPIA defense system"
+---
+
 # XPIA Security Command
 
 XPIA (Cross-Platform Injection Attack) Defense system management and health monitoring.

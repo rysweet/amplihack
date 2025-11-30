@@ -1,3 +1,34 @@
+---
+name: CI_FIX_TEMPLATE
+version: 1.0.0
+description: Template for fixing CI/CD pipeline failures, build issues, and deployment problems
+usage_frequency: 20%
+steps: 3
+phases:
+  - quick-assessment
+  - solution-application
+  - validation
+success_criteria:
+  - "CI pipeline passes"
+  - "Build succeeds"
+  - "Tests pass in CI environment"
+  - "Deployment completes successfully"
+philosophy_alignment:
+  - principle: Quick Resolution
+    application: Template-based fixes for common CI patterns
+  - principle: Environment Consistency
+    application: Ensure local and CI environments aligned
+entry_points:
+  - /fix ci
+references:
+  workflows:
+    - DEFAULT_WORKFLOW.md
+  commands:
+    - /fix
+  subagents:
+    - .claude/agents/amplihack/ci-diagnostic-workflow.md
+---
+
 # CI/CD Fix Template
 
 **Usage**: 20% of all fixes - Pipeline configuration, dependency conflicts, build environment issues, deployment failures

@@ -1,6 +1,42 @@
+---
+name: CASCADE_WORKFLOW
+version: 1.0.0
+description: Graceful degradation workflow with 3-level fallback cascade (primary → secondary → tertiary)
+steps: 7
+phases:
+  - cascade-level-definition
+  - primary-attempt
+  - secondary-fallback
+  - tertiary-guarantee
+  - degradation-reporting
+  - metrics-logging
+  - continuous-optimization
+success_criteria:
+  - "Tertiary level always succeeds"
+  - "Degradation properly reported to user"
+  - "Cascade metrics logged for optimization"
+  - "System never completely fails"
+philosophy_alignment:
+  - principle: Resilience
+    application: System always completes through graceful degradation
+  - principle: User Experience
+    application: Better degraded service than error message
+  - principle: Transparency
+    application: Users understand what they receive at each level
+  - principle: Continuous Improvement
+    application: Metrics drive timeout and fallback optimization
+references:
+  workflows:
+    - DEFAULT_WORKFLOW.md
+customizable: true
+---
+
 # Cascade Workflow with Graceful Degradation
 
 This workflow implements graceful degradation through cascading fallback strategies. When optimal approaches fail or timeout, the system automatically falls back to simpler, more reliable alternatives while maintaining acceptable functionality.
+
+> **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
+
 
 ## Configuration
 

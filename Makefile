@@ -9,9 +9,15 @@ help:
 	@echo "============================================="
 	@echo ""
 	@echo "Available commands:"
-	@echo "  make analyze-codebase TARGET=<path> [OPTIONS=<opts>]  - Analyze codebase structure and patterns"
-	@echo "  make list-scenarios                                   - List all available scenario tools"
-	@echo "  make scenarios-help                                   - Show detailed help for scenarios"
+	@echo "  make analyze-codebase TARGET=<path> [OPTIONS=<opts>]   - Analyze codebase structure and patterns"
+	@echo "  make analyze-trace-logs [TARGET=<dir>] [OPTIONS=<opts>]- Analyze claude-trace logs for user patterns"
+	@echo "  make list-scenarios                                    - List all available scenario tools"
+	@echo "  make scenarios-help                                    - Show detailed help for scenarios"
+	@echo ""
+	@echo "Documentation commands:"
+	@echo "  make docs-serve                                       - Start local documentation server"
+	@echo "  make docs-build                                       - Build documentation site"
+	@echo "  make docs-deploy                                      - Deploy documentation to GitHub Pages"
 	@echo ""
 	@echo "Documentation commands:"
 	@echo "  make docs-serve                                       - Start local documentation server"
@@ -74,6 +80,11 @@ analyze-codebase:
 		exit 1; \
 	fi
 	@python .claude/scenarios/analyze-codebase/tool.py $(TARGET) $(OPTIONS)
+
+# Analyze Trace Logs Tool
+analyze-trace-logs:
+	@echo "📊 Running Trace Log Analysis..."
+	@python .claude/scenarios/analyze-trace-logs/tool.py $(TARGET) $(OPTIONS)
 
 # Template for adding new scenario tools:
 # Replace {tool-name} with actual tool name

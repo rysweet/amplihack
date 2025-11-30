@@ -1,5 +1,6 @@
 ---
 name: email-drafter
+version: 1.0.0
 description: |
   Generates professional emails from bullet points or conversation summaries.
   Use when you need to draft emails quickly with consistent style and tone.

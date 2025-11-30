@@ -1,6 +1,15 @@
 ---
+name: customize
+version: 1.0.0
 description: Manage user-specific preferences and customizations
 argument-hint: <action> [preference] [value]
+triggers:
+  - "change my preferences"
+  - "customize workflow"
+  - "set verbosity to"
+invokes:
+  - type: file
+    path: .claude/context/USER_PREFERENCES.md
 ---
 
 # User Customization Command

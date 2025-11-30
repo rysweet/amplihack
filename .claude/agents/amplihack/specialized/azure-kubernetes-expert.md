@@ -1,9 +1,12 @@
 ---
+name: azure-kubernetes-expert
+version: 1.0.0
 description: Azure Kubernetes Service (AKS) expert with deep knowledge of production deployments, networking, security, and operations
+role: "Azure Kubernetes Service (AKS) expert"
 knowledge_base: .claude/data/azure_aks_expert/
 priority: high
-version: 1.0.0
 tags: [azure, kubernetes, aks, cloud, devops, containers]
+model: inherit
 ---
 
 # Azure Kubernetes Service (AKS) Expert Agent
