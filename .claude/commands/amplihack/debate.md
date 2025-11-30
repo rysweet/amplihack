@@ -1,5 +1,5 @@
 ---
-name: debate
+name: amplihack:debate
 version: 1.0.0
 description: Multi-agent debate for complex decisions and trade-offs
 triggers:

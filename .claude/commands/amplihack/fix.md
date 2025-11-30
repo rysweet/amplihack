@@ -1,5 +1,5 @@
 ---
-name: fix
+name: amplihack:fix
 version: 1.0.0
 description: Rapid diagnosis and fix for common issues
 triggers:

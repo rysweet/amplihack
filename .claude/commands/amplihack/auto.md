@@ -1,5 +1,5 @@
 ---
-name: auto
+name: amplihack:auto
 version: 1.0.0
 description: Autonomous multi-turn agentic loop for complex implementations
 triggers:

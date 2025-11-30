@@ -1,5 +1,5 @@
 ---
-name: lock
+name: amplihack:lock
 version: 1.0.0
 description: Enable continuous work mode without stopping
 triggers:
