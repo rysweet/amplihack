@@ -724,22 +724,8 @@ def main(argv: list[str] | None = None) -> int:
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude", manifest=manifest)
 
-        # Smart PROJECT.md initialization for UVX mode
-        if copied:
-            try:
-                from .utils.project_initializer import InitMode, initialize_project_md
-
-                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
-                if result.success and result.action_taken.value in ["initialized", "regenerated"]:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(
-                            f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
-                        )
-            except Exception as e:
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"Warning: PROJECT.md initialization failed: {e}")
-
-        # Handle CLAUDE.md preservation during UVX deployment (Issue #1746)
+        # Handle CLAUDE.md preservation FIRST during UVX deployment (Issue #1746)
+        # Must run before PROJECT.md initialization to preserve custom content
         if copied:
             try:
                 from .utils.claude_md_preserver import HandleMode, handle_claude_md
@@ -756,6 +742,22 @@ def main(argv: list[str] | None = None) -> int:
             except Exception as e:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: CLAUDE.md handling failed: {e}")
+
+        # Smart PROJECT.md initialization for UVX mode (after CLAUDE.md preservation)
+        # Use AUTO mode instead of FORCE to preserve existing PROJECT.md content
+        if copied:
+            try:
+                from .utils.project_initializer import InitMode, initialize_project_md
+
+                result = initialize_project_md(Path(original_cwd), mode=InitMode.AUTO)
+                if result.success and result.action_taken.value in ["initialized", "regenerated"]:
+                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                        print(
+                            f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
+                        )
+            except Exception as e:
+                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                    print(f"Warning: PROJECT.md initialization failed: {e}")
 
         # Create settings.json with appropriate paths based on staging mode
         if copied:
