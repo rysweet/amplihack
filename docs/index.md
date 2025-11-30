@@ -61,6 +61,12 @@ Built on the "Bricks & Studs" principle:
 - [Trust & Anti-Sycophancy](/.claude/context/TRUST.md) - Critical operating guidelines
 - [Documentation Guidelines](DOCUMENTATION_GUIDELINES.md) - Eight rules for writing good docs
 
+### API & Integration
+
+- [REST API Client Guide](howto/api-client-usage.md) - Common usage patterns for the HTTP client
+- [API Client Configuration](howto/api-client-config.md) - Detailed configuration options
+- [API Client Reference](reference/api-client.md) - Complete API documentation
+
 ### Documentation & Publishing
 
 - [First Documentation Site Tutorial](tutorials/first-docs-site.md) - 30-minute beginner tutorial: create and deploy your first docs site

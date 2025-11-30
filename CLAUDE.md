@@ -18,8 +18,8 @@ When starting a session, import these files for context:
 
 ## 🛑 STOP: PRE-FLIGHT CHECKLIST (MANDATORY) 🛑
 
-Before taking ANY action on this task, you MUST complete this checklist.
-DO NOT PROCEED until ALL boxes are checked:
+Before taking ANY action on this task, you MUST complete this checklist. DO NOT
+PROCEED until ALL boxes are checked:
 
 ```
 PRE-FLIGHT CHECKLIST - MUST COMPLETE BEFORE ANY WORK:
@@ -35,8 +35,8 @@ PRE-FLIGHT CHECKLIST - MUST COMPLETE BEFORE ANY WORK:
 ⚠️  STOP and complete the missing items before continuing  ⚠️
 ```
 
-Once checklist is complete, state:
-**"PRE-FLIGHT CHECKLIST COMPLETE - PROCEEDING WITH [WORKFLOW_NAME]"**
+Once checklist is complete, state: **"PRE-FLIGHT CHECKLIST COMPLETE - PROCEEDING
+WITH [WORKFLOW_NAME]"**
 
 ---
 
@@ -46,8 +46,9 @@ Once checklist is complete, state:
 BEFORE taking action. No exceptions.
 
 🛑 **STOP GATE 1**: Have you completed the PRE-FLIGHT CHECKLIST above?
-   - If NO: Return to PRE-FLIGHT CHECKLIST and complete it now
-   - If YES: Continue to classification
+
+- If NO: Return to PRE-FLIGHT CHECKLIST and complete it now
+- If YES: Continue to classification
 
 ### Quick Classification (3 seconds max)
 
@@ -76,16 +77,19 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
 ```
 
 🛑 **STOP GATE 2**: Have you announced your workflow classification?
-   - If NO: State your classification now using the format above
-   - If YES: Continue to reading the workflow file
+
+- If NO: State your classification now using the format above
+- If YES: Continue to reading the workflow file
 
 🛑 **STOP GATE 3**: Have you read the COMPLETE workflow file?
-   - If NO: Use Read tool to read .claude/workflow/[WORKFLOW_NAME].md NOW
-   - If YES: Continue to creating todos
+
+- If NO: Use Read tool to read .claude/workflow/[WORKFLOW_NAME].md NOW
+- If YES: Continue to creating todos
 
 🛑 **STOP GATE 4**: Have you created TodoWrite entries for ALL workflow steps?
-   - If NO: Use TodoWrite tool to create entries for ALL steps (0-21 for DEFAULT)
-   - If YES: Proceed with execution
+
+- If NO: Use TodoWrite tool to create entries for ALL steps (0-21 for DEFAULT)
+- If YES: Proceed with execution
 
 ### Rules
 
@@ -959,4 +963,3 @@ CHECKPOINT VALIDATION:
 ```
 
 If validation passes, state: **"CHECKPOINT VALIDATED - CONTINUING"**
-
