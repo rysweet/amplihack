@@ -18,6 +18,9 @@ from .exceptions import RateLimitError
 # Set up module logger
 logger = logging.getLogger(__name__)
 
+# Maximum allowed Retry-After value (24 hours)
+MAX_RETRY_AFTER_SECONDS = 86400
+
 
 class RateLimitHandler:
     """Handles API rate limiting (HTTP 429 responses).
@@ -60,11 +63,14 @@ class RateLimitHandler:
         1. Seconds as integer: "60"
         2. HTTP date: "Wed, 21 Oct 2015 07:28:00 GMT"
 
+        Security: Caps excessive values at MAX_RETRY_AFTER_SECONDS (24 hours)
+        to prevent malicious servers from forcing indefinite waits.
+
         Args:
             headers: Response headers dict
 
         Returns:
-            Wait time in seconds, or None if header not present or invalid
+            Wait time in seconds (capped at MAX_RETRY_AFTER_SECONDS), or None if header not present or invalid
         """
         retry_after = headers.get("Retry-After") or headers.get("retry-after")
 
@@ -80,6 +86,13 @@ class RateLimitHandler:
             if wait_time < 0:
                 logger.warning(f"Negative Retry-After value rejected: {wait_time}s")
                 return None
+
+            # Cap excessive values for security
+            if wait_time > MAX_RETRY_AFTER_SECONDS:
+                logger.warning(
+                    f"Excessive Retry-After value capped: {wait_time}s -> {MAX_RETRY_AFTER_SECONDS}s"
+                )
+                return MAX_RETRY_AFTER_SECONDS
 
             logger.debug(f"Parsed Retry-After header: {wait_time}s")
             return wait_time
@@ -97,6 +110,13 @@ class RateLimitHandler:
                 if wait_time < 0:
                     logger.debug(f"Retry-After date in past: {retry_after}, treating as immediate")
                     return 0.0
+
+                # Cap excessive values for security
+                if wait_time > MAX_RETRY_AFTER_SECONDS:
+                    logger.warning(
+                        f"Excessive Retry-After date value capped: {wait_time}s -> {MAX_RETRY_AFTER_SECONDS}s"
+                    )
+                    return MAX_RETRY_AFTER_SECONDS
 
                 logger.debug(f"Parsed Retry-After HTTP date: {wait_time}s")
                 return wait_time

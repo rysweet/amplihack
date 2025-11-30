@@ -203,17 +203,17 @@ class TestCredentialProtection:
         with pytest.raises(Exception) as exc_info:
             client.get("/resource")
 
-        error_message = str(exc_info.value)
-        assert "secret-token-12345" not in error_message
+        error_msg = str(exc_info.value)
+        assert "secret-token-12345" not in error_msg
 
     def test_credentials_in_url_not_logged(self, caplog):
         """Test credentials in URL (bad practice) are not logged"""
         # Note: This tests the client handles it, though users shouldn't do this
         with caplog.at_level(logging.DEBUG):
             try:
-                client = APIClient(base_url="https://user:password@api.example.com")
+                _ = APIClient(base_url="https://user:password@api.example.com")
                 # May fail connection, but shouldn't log password
-            except:
+            except Exception:
                 pass
 
         log_text = " ".join([record.message for record in caplog.records])
@@ -447,6 +447,22 @@ class TestInputSanitization:
             # If rejected, that's also fine
             pass
 
+    def test_url_encoded_path_traversal_rejected(self):
+        """Test URL-encoded path traversal is rejected"""
+        client = APIClient(base_url="https://api.example.com")
+
+        # Test ..%2F (URL-encoded ../)
+        with pytest.raises(ValueError, match="decoded URL path"):
+            client._build_url("..%2Fetc%2Fpasswd")
+
+        # Test %2E%2E/ (URL-encoded ../)
+        with pytest.raises(ValueError, match="decoded URL path"):
+            client._build_url("%2E%2E/etc/passwd")
+
+        # Test %2E%2E%2F (fully encoded ../)
+        with pytest.raises(ValueError, match="decoded URL path"):
+            client._build_url("%2E%2E%2Fetc%2Fpasswd")
+
 
 class TestErrorMessageSanitization:
     """Test error messages don't leak sensitive information"""
@@ -486,7 +502,7 @@ class TestErrorMessageSanitization:
         with pytest.raises(Exception) as exc_info:
             client.get("/resource")
 
-        error_msg = str(exc_info.value)
+        _ = str(exc_info.value)
         # Error should not contain absolute file system paths
         # (some stack trace info may be acceptable, but not full paths)
         # This is a guideline - exact implementation may vary
@@ -510,7 +526,7 @@ class TestTimeoutSecurity:
         """Test zero timeout is rejected or handled"""
         # Zero timeout would mean no timeout, which could hang
         try:
-            client = APIClient(base_url="https://api.example.com", timeout=0.0)
+            _ = APIClient(base_url="https://api.example.com", timeout=0.0)
             # If allowed, should be documented behavior
         except ValueError:
             # If rejected, that's also acceptable

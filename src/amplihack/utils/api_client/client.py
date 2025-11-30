@@ -10,8 +10,9 @@ Philosophy:
 """
 
 import logging
+import time
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import requests
 
@@ -158,20 +159,19 @@ class APIClient:
         # Validate and sanitize base URL
         self.base_url = self._validate_base_url(base_url)
 
-        # Handle timeout parameter (use timeout if provided, else default_timeout)
-        if timeout is not None:
-            default_timeout = timeout
+        # Handle timeout parameter - use timeout if provided, else default_timeout
+        effective_timeout = timeout if timeout is not None else default_timeout
 
         # Validate timeout bounds (min 1 second, max 300 seconds = 5 minutes)
-        if not 1.0 <= default_timeout <= 300.0:
+        if not 1.0 <= effective_timeout <= 300.0:
             raise ValueError(
-                f"timeout must be between 1.0 and 300.0 seconds, got {default_timeout}"
+                f"timeout must be between 1.0 and 300.0 seconds, got {effective_timeout}"
             )
 
         # Store configuration
         self.default_headers = default_headers or {}
-        self.default_timeout = default_timeout
-        self.timeout = default_timeout  # Alias for compatibility
+        self.default_timeout = effective_timeout
+        self.timeout = effective_timeout  # Alias for backward compatibility
         self.verify_ssl = verify_ssl
 
         # Set up logger
@@ -286,17 +286,25 @@ class APIClient:
             Full URL
 
         Raises:
-            ValueError: If path contains path traversal patterns
+            ValueError: If path contains path traversal patterns (raw or URL-encoded)
         """
         if path.startswith(("http://", "https://")):
             # Absolute URL provided
             return path
 
-        # Check for path traversal attempts
+        # Check for path traversal attempts in raw path
         if "../" in path or "/.." in path:
             raise ValueError(
                 f"Path traversal detected in URL path: {path}. "
                 "Paths containing '../' are not allowed for security reasons."
+            )
+
+        # Check for path traversal attempts in URL-decoded path
+        decoded_path = unquote(path)
+        if "../" in decoded_path or "/.." in decoded_path:
+            raise ValueError(
+                f"Path traversal pattern detected in decoded URL path: {path}. "
+                "URL-encoded path traversal sequences are not allowed for security reasons."
             )
 
         # Ensure path starts with /
@@ -391,11 +399,12 @@ class APIClient:
             # Check for HTTP errors
             if response.status_code >= 400:
                 # Parse response data for error details
+                error_data: dict | None = None
                 try:
                     error_data = response.json()
                 except Exception:
-                    # Not JSON - use text if available
-                    error_data = response.text if response.text else None
+                    # Not JSON - will leave error_data as None
+                    pass
 
                 # Check for rate limiting
                 if self.rate_limit_handler.is_rate_limited(response.status_code):
@@ -406,8 +415,6 @@ class APIClient:
 
                     if should_retry:
                         # Wait and retry internally - this doesn't count against max_retries
-                        import time
-
                         self.logger.warning(
                             f"Rate limited. Waiting {wait_time}s before retrying "
                             f"(max: {self.rate_limit_handler.config.max_wait_time}s)"
@@ -503,7 +510,9 @@ class APIClient:
 
             # Retry on configured HTTP status codes
             if isinstance(error, HTTPError):
-                return error.status_code in self.retry_handler.config.retry_on_status
+                retry_statuses = self.retry_handler.config.retry_on_status
+                # retry_on_status is guaranteed to be a list after __post_init__
+                return error.status_code in (retry_statuses or [])
 
             # Retry on request errors (network issues)
             if isinstance(error, RequestError):

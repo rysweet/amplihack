@@ -44,6 +44,38 @@ response = client.post(
 )
 ```
 
+### Using Context Manager
+
+The `APIClient` supports Python's context manager protocol for automatic session cleanup:
+
+```python
+# Automatically closes session when done
+with APIClient(base_url="https://api.example.com") as client:
+    response = client.get("/resource")
+    print(f"Status: {response.status_code}")
+    print(f"Data: {response.json}")
+# Session automatically closed here
+
+# Equivalent to:
+client = APIClient(base_url="https://api.example.com")
+try:
+    response = client.get("/resource")
+finally:
+    client.close()  # Explicit cleanup
+```
+
+**When to Use**:
+
+- Short-lived operations (single script execution)
+- One-off requests
+- Testing scenarios
+
+**When NOT to Use**:
+
+- Long-running services (create once, reuse)
+- Multiple requests over time
+- Connection pooling scenarios
+
 ## Contents
 
 - [Features](#features)
@@ -208,6 +240,25 @@ client = APIClient(
         respect_retry_after=True
     )
 )
+```
+
+**💡 Timeout Behavior:**
+
+- `timeout` in `__init__()`: Sets **default** timeout for **all** requests
+- `timeout` in request methods (`.get()`, `.post()`, etc.): **Overrides** default for **that specific request**
+
+```python
+# Set default 30s timeout
+client = APIClient("https://api.example.com", timeout=30.0)
+
+# Use default (30s)
+client.get("/fast-endpoint")
+
+# Override to 120s for this request only
+client.get("/slow-endpoint", timeout=120.0)
+
+# Use default again (30s)
+client.get("/another-endpoint")
 ```
 
 ### RetryConfig Options
@@ -583,6 +634,60 @@ client = APIClient(
 
 ## Security
 
+### ⚠️ **CRITICAL: SSL/TLS Verification**
+
+**NEVER disable SSL verification in production!**
+
+```python
+# ❌ DANGEROUS - Only for local development/testing
+client = APIClient("https://api.example.com", verify_ssl=False)
+
+# ✅ SAFE - Always use SSL verification (default)
+client = APIClient("https://api.example.com")  # verify_ssl=True by default
+```
+
+**Why This Matters**:
+
+- Disabling SSL verification exposes you to **man-in-the-middle attacks**
+- Attackers can intercept and modify API responses
+- Credentials and sensitive data can be stolen
+- Your application becomes vulnerable to impersonation attacks
+
+**When `verify_ssl=False` Might Be Acceptable** (with extreme caution):
+
+- Local development against self-signed certificates
+- Testing environments with mock servers
+- **NEVER** in production
+- **NEVER** with real credentials
+- **NEVER** with sensitive data
+
+### SSRF (Server-Side Request Forgery) Considerations
+
+When using this client in server-side applications, be aware of potential SSRF risks:
+
+- **Validate User Input**: Always validate and sanitize user-provided URLs before passing to the client
+- **Consider Allowlisting**: For production use, consider allowlisting destination hosts
+- **Timeout Awareness**: Timeouts apply per-request, not per-connection. Multiple retry attempts could extend total execution time.
+
+**Example - Safe URL Validation**:
+
+```python
+from urllib.parse import urlparse
+
+ALLOWED_HOSTS = ["api.example.com", "api-staging.example.com"]
+
+def is_safe_url(url: str) -> bool:
+    """Validate URL is safe for use"""
+    parsed = urlparse(url)
+    return parsed.netloc in ALLOWED_HOSTS
+
+# Use validation before creating client
+if is_safe_url(user_provided_url):
+    client = APIClient(base_url=user_provided_url)
+else:
+    raise ValueError("Untrusted URL rejected")
+```
+
 ### Input Validation
 
 The client validates all inputs to prevent common security issues:
@@ -609,21 +714,6 @@ client.get("/resource", headers={"X-Custom": 123})      # ✗ Raises ValueError
 # Parameters must be strings or convertible to strings
 client.get("/resource", params={"page": 1})           # ✓ Valid
 client.get("/resource", params={"page": [1, 2, 3]})  # ✗ Raises ValueError
-```
-
-### SSL/TLS Enforcement
-
-SSL certificate verification is enabled by default:
-
-```python
-# Default: SSL verification enabled (recommended)
-client = APIClient(base_url="https://api.example.com")
-
-# Disable only for testing/development
-client = APIClient(
-    base_url="https://api.example.com",
-    verify_ssl=False  # Not recommended for production
-)
 ```
 
 ### Credential Protection

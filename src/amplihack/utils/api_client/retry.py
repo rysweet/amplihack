@@ -78,7 +78,7 @@ class RetryHandler:
             Exception: If a non-retryable exception occurs
         """
         attempt = 0
-        last_error = None
+        last_error: Exception | None = None
 
         while attempt <= self.config.max_retries:
             try:
@@ -130,10 +130,15 @@ class RetryHandler:
                 time.sleep(delay)
                 attempt += 1
 
-        # This should never be reached, but just in case
-        if last_error:
-            raise RetryExhaustedError(attempts=self.config.max_retries, last_error=last_error)
-        raise RuntimeError(f"Unexpected retry loop exit for {operation_name}")
+        # Loop exit means all retries exhausted with an error
+        # This should never happen (we should always hit an exception first)
+        # but handle it gracefully for type safety
+        if last_error is None:
+            raise RetryExhaustedError(
+                attempts=self.config.max_retries,
+                last_error=Exception("Retry loop exited unexpectedly without error"),
+            )
+        raise RetryExhaustedError(attempts=self.config.max_retries, last_error=last_error)
 
     def _calculate_delay(self, attempt: int) -> float:
         """Calculate exponential backoff delay for given attempt number.
