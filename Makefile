@@ -9,6 +9,7 @@ help:
 	@echo "============================================="
 	@echo ""
 	@echo "Available commands:"
+	@echo "  make rest-api-client URL=<url> [METHOD=<method>] [OPTIONS=<opts>] - Make REST API requests"
 	@echo "  make analyze-codebase TARGET=<path> [OPTIONS=<opts>]   - Analyze codebase structure and patterns"
 	@echo "  make analyze-trace-logs [TARGET=<dir>] [OPTIONS=<opts>]- Analyze claude-trace logs for user patterns"
 	@echo "  make list-scenarios                                    - List all available scenario tools"
@@ -20,6 +21,8 @@ help:
 	@echo "  make docs-deploy                                      - Deploy documentation to GitHub Pages"
 	@echo ""
 	@echo "Examples:"
+	@echo "  make rest-api-client URL=https://api.github.com/users/octocat"
+	@echo "  make rest-api-client URL=https://api.example.com METHOD=POST OPTIONS='--json {\"key\":\"value\"}'"
 	@echo "  make analyze-codebase TARGET=./src"
 	@echo "  make analyze-codebase TARGET=./src OPTIONS='--format json --depth deep'"
 	@echo "  make analyze-trace-logs"
@@ -66,6 +69,21 @@ scenarios-help:
 
 # Scenario Tools
 # =============
+
+# REST API Client Tool
+rest-api-client:
+	@echo "🌐 REST API Client Tool"
+	@if [ -z "$(URL)" ]; then \
+		echo "Error: URL parameter is required"; \
+		echo "Usage: make rest-api-client URL=<api-url> [METHOD=<method>] [OPTIONS=<opts>]"; \
+		echo "Example: make rest-api-client URL=https://api.github.com/users/octocat"; \
+		echo "Example: make rest-api-client URL=https://api.example.com/data METHOD=POST OPTIONS='--json {\"key\":\"value\"}'"; \
+		exit 1; \
+	fi
+	@python .claude/scenarios/rest-api-client/tool.py \
+		--url "$(URL)" \
+		--method "$${METHOD:-GET}" \
+		$${OPTIONS}
 
 # Analyze Codebase Tool
 analyze-codebase:
