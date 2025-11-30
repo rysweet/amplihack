@@ -1,5 +1,5 @@
 ---
-name: ingest-code
+name: amplihack:ingest-code
 version: 1.0.0
 description: Ingest and analyze external codebases into Neo4j
 triggers:

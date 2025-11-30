@@ -1,5 +1,5 @@
 ---
-name: socratic
+name: amplihack:socratic
 version: 1.0.0
 description: Generate Socratic questions for requirements clarification
 triggers:

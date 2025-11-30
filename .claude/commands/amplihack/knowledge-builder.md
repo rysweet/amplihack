@@ -1,5 +1,5 @@
 ---
-name: knowledge-builder
+name: amplihack:knowledge-builder
 version: 1.0.0
 description: Build comprehensive knowledge base using Socratic method and web search
 triggers:

@@ -1,5 +1,5 @@
 ---
-name: uninstall
+name: amplihack:uninstall
 version: 1.0.0
 description: Uninstall amplihack framework and tools
 triggers:

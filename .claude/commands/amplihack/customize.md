@@ -1,5 +1,5 @@
 ---
-name: customize
+name: amplihack:customize
 version: 1.0.0
 description: Manage user-specific preferences and customizations
 argument-hint: <action> [preference] [value]

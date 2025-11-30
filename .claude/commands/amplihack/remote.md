@@ -1,3 +1,13 @@
+---
+name: amplihack:remote
+version: 1.0.0
+description: Execute amplihack commands on remote Azure VMs using azlin
+triggers:
+  - "Run on remote VM"
+  - "Execute remotely"
+  - "Use Azure VM"
+---
+
 # Remote Execution Command
 
 Execute amplihack commands on remote Azure VMs using azlin for provisioning.

@@ -1,5 +1,5 @@
 ---
-name: modular-build
+name: amplihack:modular-build
 version: 1.0.0
 description: Build modular code following brick philosophy
 triggers:
