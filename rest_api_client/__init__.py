@@ -21,8 +21,8 @@ Public API (the "studs"):
     ClientConfig: Client configuration
     RetryConfig: Retry configuration
     RateLimitConfig: Rate limit configuration
-    APIException: Base exception class
-    ConnectionError: Connection failure exception
+    APIClientError: Base exception class
+    NetworkError: Network-related errors
     TimeoutError: Timeout exception
     RateLimitError: Rate limit exception
     AuthenticationError: Auth failure exception
@@ -34,24 +34,23 @@ Public API (the "studs"):
 # Main client
 from .client import APIClient
 
-# Configuration
-from .config import ClientConfig, RateLimitConfig, RetryConfig
-
-# Exceptions
-from .exceptions import (
+# Models, Configuration and Exceptions
+from .models import (
     APIClientError,
+    APIRequest,
+    APIResponse,
     AuthenticationError,
+    ClientConfig,
     ClientError,
     HTTPResponseError,
     NetworkError,
+    RateLimitConfig,
     RateLimitError,
+    RetryConfig,
     ServerError,
     TimeoutError,
     ValidationError,
 )
-
-# Data models
-from .models import APIRequest, APIResponse
 
 # Define public API
 __all__ = [

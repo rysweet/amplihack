@@ -1,13 +1,23 @@
-"""Structured logging setup for the REST API client.
+"""Utilities for the REST API client.
 
-Provides request ID tracking and structured log formatting.
+Contains logging setup and session management helpers.
 """
 
 import json
 import logging
+import sys
 import uuid
+import warnings
 from datetime import datetime
 from typing import Any
+
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry as URLLibRetry  # type: ignore[import-untyped]
+
+# =============================================================================
+# Logging Utilities
+# =============================================================================
 
 
 class RequestIDFilter(logging.Filter):
@@ -250,3 +260,103 @@ def get_logger(name: str = "rest_api_client", level: str = "INFO") -> APIClientL
     if _logger is None:
         _logger = APIClientLogger(name, level)
     return _logger
+
+
+# =============================================================================
+# Session Management Utilities
+# =============================================================================
+
+
+def create_session(
+    max_retries: int = 3,
+    backoff_factor: float = 0.3,
+    status_forcelist: list[int] | None = None,
+    pool_connections: int = 10,
+    pool_maxsize: int = 10,
+    pool_block: bool = False,
+    verify_ssl: bool = True,
+) -> requests.Session:
+    """Create a configured requests session with connection pooling.
+
+    Args:
+        max_retries: Maximum number of retries for failed requests
+        backoff_factor: Factor for exponential backoff between retries
+        status_forcelist: HTTP status codes to retry on
+        pool_connections: Number of connection pools to cache
+        pool_maxsize: Maximum number of connections to save in the pool
+        pool_block: Whether to block when no free connections are available
+        verify_ssl: Whether to verify SSL certificates
+
+    Returns:
+        Configured requests Session
+    """
+    session = requests.Session()
+
+    # Configure SSL verification with warning
+    if not verify_ssl:
+        # Make SSL warning more prominent
+        ssl_warning = (
+            "\n" + "=" * 60 + "\n"
+            "WARNING: SSL certificate verification is disabled!\n"
+            "This makes the connection vulnerable to man-in-the-middle attacks.\n"
+            "Only use this setting in development/testing environments.\n" + "=" * 60 + "\n"
+        )
+
+        # Log at WARNING level
+        logging.getLogger("rest_api_client").warning(ssl_warning)
+
+        # Print to stderr for immediate visibility
+        print(ssl_warning, file=sys.stderr)
+
+        # Also use warnings module (though less visible)
+        warnings.warn(
+            "SSL certificate verification is disabled. This is insecure!",
+            category=Warning,
+            stacklevel=2,
+        )
+
+        session.verify = False
+        # Disable urllib3 SSL warnings to reduce noise after our prominent warning
+        import urllib3  # type: ignore[import-untyped]
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    # Default status codes to retry
+    if status_forcelist is None:
+        status_forcelist = [500, 502, 503, 504]
+
+    # Configure retry strategy using urllib3's Retry
+    retry_strategy = URLLibRetry(
+        total=max_retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+        allowed_methods=["HEAD", "GET", "PUT", "DELETE", "OPTIONS", "TRACE"],
+        raise_on_status=False,
+    )
+
+    # Create adapter with connection pooling
+    adapter = HTTPAdapter(
+        max_retries=retry_strategy,
+        pool_connections=pool_connections,
+        pool_maxsize=pool_maxsize,
+        pool_block=pool_block,
+    )
+
+    # Mount adapter for both HTTP and HTTPS
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    return session
+
+
+def close_session(session: requests.Session) -> None:
+    """Properly close a requests session.
+
+    Args:
+        session: Session to close
+    """
+    try:
+        session.close()
+    except Exception:
+        # Ignore errors during cleanup
+        pass
