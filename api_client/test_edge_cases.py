@@ -31,9 +31,7 @@ class TestBoundaryConditions(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
@@ -294,9 +292,7 @@ class TestErrorScenarios(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
@@ -395,9 +391,7 @@ class TestPerformanceCharacteristics(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")

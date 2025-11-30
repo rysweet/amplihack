@@ -27,9 +27,7 @@ class TestThreadSafety(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
@@ -186,7 +184,7 @@ class TestThreadSafety(unittest.TestCase):
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
     def test_rate_limiter_thread_safety(self):
         """Test that rate limiter works correctly with multiple threads."""
-        config = ClientConfig(base_url="https://api.example.com", disable_ssrf_protection=True)
+        config = ClientConfig(base_url="https://api.example.com")
         client = APIClient(config)
 
         # Track request times
@@ -438,9 +436,7 @@ class TestRaceConditions(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")

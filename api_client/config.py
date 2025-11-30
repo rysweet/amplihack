@@ -22,7 +22,6 @@ class ClientConfig:
     max_retries: int = 3
     api_key: str | None = None
     api_key_env: str | None = None
-    disable_ssrf_protection: bool = False  # For testing only
 
     def __post_init__(self):
         """Validate and normalize configuration."""

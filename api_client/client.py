@@ -255,9 +255,8 @@ class APIClient:
             query_string = urllib.parse.urlencode(params)
             url = f"{url}?{query_string}"
 
-        # Validate URL for SSRF prevention (unless disabled for testing)
-        if not self.config.disable_ssrf_protection:
-            self._validate_url(url)
+        # Validate URL for SSRF prevention (always enabled for security)
+        self._validate_url(url)
 
         return url
 

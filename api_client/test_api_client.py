@@ -15,6 +15,7 @@ import socket
 import threading
 import time
 import unittest
+import unittest.mock as mock
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -53,7 +54,7 @@ class TestClientConfig(unittest.TestCase):
     @unittest.skipIf(ClientConfig is None, "ClientConfig not implemented yet")
     def test_config_with_minimal_params(self):
         """Test ClientConfig with only base_url."""
-        config = ClientConfig(base_url="https://api.example.com", disable_ssrf_protection=True)
+        config = ClientConfig(base_url="https://api.example.com")
         self.assertEqual(config.base_url, "https://api.example.com")
         self.assertEqual(config.timeout, 30.0)  # Default timeout
         self.assertEqual(config.max_retries, 3)  # Default retries
@@ -95,7 +96,7 @@ class TestAPIClientInitialization(unittest.TestCase):
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
     def test_client_initialization(self):
         """Test APIClient initialization with config."""
-        config = ClientConfig(base_url="https://api.example.com", disable_ssrf_protection=True)
+        config = ClientConfig(base_url="https://api.example.com")
         client = APIClient(config)
         self.assertIsNotNone(client)
         self.assertEqual(client.config, config)
@@ -107,9 +108,7 @@ class TestAPIClientMethods(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
@@ -265,9 +264,7 @@ class TestExceptionHandling(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(HTTPError is None, "HTTPError not implemented yet")
@@ -489,7 +486,7 @@ class TestRateLimiting(unittest.TestCase):
     @patch("urllib.request.urlopen")
     def test_client_rate_limiting(self, mock_urlopen):
         """Test that APIClient applies rate limiting."""
-        config = ClientConfig(base_url="https://api.example.com", disable_ssrf_protection=True)
+        config = ClientConfig(base_url="https://api.example.com")
         client = APIClient(config)
 
         mock_response = MagicMock()
@@ -553,9 +550,7 @@ class TestThreadSafety(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
@@ -603,9 +598,7 @@ class Test429Handling(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(
-                base_url="https://api.example.com", disable_ssrf_protection=True
-            )
+            self.config = ClientConfig(base_url="https://api.example.com")
             self.client = APIClient(self.config)
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
@@ -743,8 +736,16 @@ class TestIntegrationWithMockServer(unittest.TestCase):
     def setUp(self):
         """Set up test client."""
         if ClientConfig and APIClient:
-            self.config = ClientConfig(base_url=self.base_url, disable_ssrf_protection=True)
+            self.config = ClientConfig(base_url=self.base_url)
             self.client = APIClient(self.config)
+            # Patch SSRF validation for localhost testing
+            self.patcher = mock.patch.object(self.client, "_validate_url")
+            self.patcher.start()
+
+    def tearDown(self):
+        """Clean up after test."""
+        if hasattr(self, "patcher"):
+            self.patcher.stop()
 
     @unittest.skipIf(APIClient is None, "APIClient not implemented yet")
     def test_integration_get_request(self):
