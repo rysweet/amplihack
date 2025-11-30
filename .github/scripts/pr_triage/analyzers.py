@@ -2,13 +2,13 @@
 
 import json
 import re
-from typing import Any, Dict
+from typing import Any
 
 from .claude_runner import run_claude
 from .formatters import format_comments, format_files, format_reviews
 
 
-def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
+def validate_workflow_compliance(pr_data: dict[str, Any]) -> dict[str, Any]:
     """Check if PR completed Steps 11-12 of workflow.
 
     Args:
@@ -72,7 +72,7 @@ Reviews ({len(pr_data["reviews"])}):
     return extract_json(result["output"])
 
 
-def detect_priority_complexity(pr_data: Dict[str, Any]) -> Dict[str, str]:
+def detect_priority_complexity(pr_data: dict[str, Any]) -> dict[str, str]:
     """Detect appropriate priority and complexity labels.
 
     Args:
@@ -124,7 +124,7 @@ Diff Preview (first 5000 chars):
     return extract_json(result["output"])
 
 
-def detect_unrelated_changes(pr_data: Dict[str, Any]) -> Dict[str, Any]:
+def detect_unrelated_changes(pr_data: dict[str, Any]) -> dict[str, Any]:
     """Detect if PR contains unrelated changes.
 
     Args:
@@ -170,7 +170,7 @@ Diff (first 10000 chars):
     return extract_json(result["output"])
 
 
-def extract_json(text: str) -> Dict[str, Any]:
+def extract_json(text: str) -> dict[str, Any]:
     """Extract JSON from Claude output.
 
     Args:

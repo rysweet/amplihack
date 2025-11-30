@@ -25,14 +25,15 @@ CLI Usage (status/reset only):
 import argparse
 import json
 import sys
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any
 
 import yaml
 
 
-def load_yaml(path: Path) -> Dict[str, Any]:
+def load_yaml(path: Path) -> dict[str, Any]:
     """Load YAML file safely."""
     if not path.exists():
         return {}
@@ -40,7 +41,7 @@ def load_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def save_yaml(path: Path, data: Dict[str, Any]) -> None:
+def save_yaml(path: Path, data: dict[str, Any]) -> None:
     """Save YAML file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
@@ -49,7 +50,7 @@ def save_yaml(path: Path, data: Dict[str, Any]) -> None:
 
 def get_timestamp() -> str:
     """Get current UTC timestamp."""
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 class BatchProcessor:
@@ -68,7 +69,7 @@ class BatchProcessor:
         self.status_file = self.pm_dir / f"batch_status_{processor_name}.yaml"
         self.state = self.load_state()
 
-    def load_state(self) -> Dict:
+    def load_state(self) -> dict:
         """Load batch processing state."""
         if self.status_file.exists():
             return load_yaml(self.status_file)
@@ -96,7 +97,7 @@ class BatchProcessor:
             f["id"] for f in self.state["failed"]
         ]
 
-    def mark_processed(self, item_id: str, result: Dict = None):
+    def mark_processed(self, item_id: str, result: dict = None):
         """Mark item as successfully processed."""
         if item_id not in self.state["processed"]:
             self.state["processed"].append(item_id)
@@ -121,8 +122,8 @@ class BatchProcessor:
         self.save_state()  # Save after EACH failure
 
     def process_items(
-        self, items: List[Dict], processor_func: Callable[[Dict], Dict], batch_size: int = 10
-    ) -> Dict:
+        self, items: list[dict], processor_func: Callable[[dict], dict], batch_size: int = 10
+    ) -> dict:
         """Process items in batches with state tracking.
 
         Args:
@@ -187,7 +188,7 @@ class BatchProcessor:
             self.status_file.unlink()
         self.state = self.load_state()
 
-    def get_progress(self) -> Dict:
+    def get_progress(self) -> dict:
         """Get current progress information."""
         return {
             "processor": self.processor_name,

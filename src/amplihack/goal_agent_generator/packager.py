@@ -6,7 +6,6 @@ Creates self-contained agent directories with all necessary files.
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from .models import GoalAgentBundle
 
@@ -14,7 +13,7 @@ from .models import GoalAgentBundle
 class GoalAgentPackager:
     """Package goal agent bundles as standalone directories."""
 
-    def __init__(self, output_dir: Optional[Path] = None):
+    def __init__(self, output_dir: Path | None = None):
         """
         Initialize packager.
 

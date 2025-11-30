@@ -5,7 +5,6 @@ import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Tuple
 
 
 class ReflectionState(Enum):
@@ -25,16 +24,16 @@ class ReflectionStateData:
     """Data for reflection state machine."""
 
     state: ReflectionState
-    analysis: Optional[dict] = None
-    issue_url: Optional[str] = None
+    analysis: dict | None = None
+    issue_url: str | None = None
     timestamp: float = field(default_factory=time.time)
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
 
 class ReflectionStateMachine:
     """Manages interactive reflection workflow state."""
 
-    def __init__(self, session_id: str, runtime_dir: Optional[Path] = None):
+    def __init__(self, session_id: str, runtime_dir: Path | None = None):
         """Initialize state machine for session."""
         self.session_id = session_id
 
@@ -79,7 +78,7 @@ class ReflectionStateMachine:
         except OSError:
             pass  # Failed to write, will retry next time
 
-    def detect_user_intent(self, message: str) -> Optional[str]:
+    def detect_user_intent(self, message: str) -> str | None:
         """Detect user intent from message text.
 
         Returns:
@@ -110,8 +109,8 @@ class ReflectionStateMachine:
         return None
 
     def transition(
-        self, current_state: ReflectionState, user_intent: Optional[str]
-    ) -> Tuple[ReflectionState, str]:
+        self, current_state: ReflectionState, user_intent: str | None
+    ) -> tuple[ReflectionState, str]:
         """Determine next state based on current state and user intent.
 
         Returns:

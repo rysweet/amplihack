@@ -7,7 +7,6 @@ amplihack commands on remote Azure VMs.
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 import click
 
@@ -42,11 +41,11 @@ def remote_execute(
     prompt: str,
     max_turns: int,
     vm_size: str,
-    vm_name: Optional[str],
+    vm_name: str | None,
     keep_vm: bool,
     no_reuse: bool,
     timeout: int,
-    region: Optional[str],
+    region: str | None,
     azlin_args: tuple,
 ):
     """Execute amplihack command on remote Azure VM.

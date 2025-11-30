@@ -8,7 +8,6 @@ import os
 import stat
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from .detector import Neo4jContainer
 
@@ -46,7 +45,7 @@ class CredentialSync:
     MAX_PASSWORD_LENGTH = 128
     MAX_USERNAME_LENGTH = 64
 
-    def __init__(self, env_file: Optional[Path] = None):
+    def __init__(self, env_file: Path | None = None):
         """Initialize credential sync.
 
         Args:
@@ -54,7 +53,7 @@ class CredentialSync:
         """
         self.env_file = env_file or Path(".env")
 
-    def get_existing_credentials(self) -> tuple[Optional[str], Optional[str]]:
+    def get_existing_credentials(self) -> tuple[str | None, str | None]:
         """Read existing credentials from .env file.
 
         Returns:
@@ -106,7 +105,7 @@ class CredentialSync:
         username, password = self.get_existing_credentials()
         return username is not None and password is not None
 
-    def validate_credentials(self, username: str, password: str) -> tuple[bool, Optional[str]]:
+    def validate_credentials(self, username: str, password: str) -> tuple[bool, str | None]:
         """Validate credential format and security.
 
         Args:
@@ -147,8 +146,8 @@ class CredentialSync:
         self,
         container: Neo4jContainer,
         choice: SyncChoice,
-        manual_username: Optional[str] = None,
-        manual_password: Optional[str] = None,
+        manual_username: str | None = None,
+        manual_password: str | None = None,
     ) -> bool:
         """Synchronize credentials based on user choice.
 

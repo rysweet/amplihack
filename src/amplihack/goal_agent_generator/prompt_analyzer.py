@@ -6,7 +6,7 @@ Analyzes prompt.md files to extract structured goal definitions.
 
 import re
 from pathlib import Path
-from typing import List, Literal
+from typing import Literal
 
 from .models import GoalDefinition
 
@@ -130,7 +130,7 @@ class PromptAnalyzer:
         # Return domain with highest score
         return max(domain_scores.items(), key=lambda x: x[1])[0]
 
-    def _extract_constraints(self, prompt: str) -> List[str]:
+    def _extract_constraints(self, prompt: str) -> list[str]:
         """Extract technical or operational constraints."""
         constraints = []
 
@@ -150,7 +150,7 @@ class PromptAnalyzer:
 
         return constraints[:5]  # Limit to top 5 constraints
 
-    def _extract_success_criteria(self, prompt: str) -> List[str]:
+    def _extract_success_criteria(self, prompt: str) -> list[str]:
         """Extract success criteria or completion indicators."""
         criteria = []
 

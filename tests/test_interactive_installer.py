@@ -10,10 +10,9 @@ Tests cover:
 """
 
 import json
-import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, mock_open, patch
 
 try:
     import pytest
@@ -27,7 +26,6 @@ from amplihack.utils.prerequisites import (
     Platform,
     PrerequisiteChecker,
 )
-
 
 # ============================================================================
 # UNIT TESTS - Data Structures
@@ -103,9 +101,7 @@ class TestIsInteractiveEnvironment:
     def test_is_interactive_with_tty(self):
         """Test interactive detection with TTY."""
         installer = InteractiveInstaller(Platform.MACOS)
-        with patch("sys.stdin.isatty", return_value=True), patch.dict(
-            "os.environ", {}, clear=True
-        ):
+        with patch("sys.stdin.isatty", return_value=True), patch.dict("os.environ", {}, clear=True):
             assert installer.is_interactive_environment() is True
 
     def test_is_not_interactive_without_tty(self):
@@ -117,16 +113,15 @@ class TestIsInteractiveEnvironment:
     def test_is_not_interactive_in_ci(self):
         """Test non-interactive detection in CI environment."""
         installer = InteractiveInstaller(Platform.MACOS)
-        with patch("sys.stdin.isatty", return_value=True), patch.dict(
-            "os.environ", {"CI": "true"}
-        ):
+        with patch("sys.stdin.isatty", return_value=True), patch.dict("os.environ", {"CI": "true"}):
             assert installer.is_interactive_environment() is False
 
     def test_detects_github_actions(self):
         """Test detection of GitHub Actions CI."""
         installer = InteractiveInstaller(Platform.LINUX)
-        with patch("sys.stdin.isatty", return_value=True), patch.dict(
-            "os.environ", {"GITHUB_ACTIONS": "true"}
+        with (
+            patch("sys.stdin.isatty", return_value=True),
+            patch.dict("os.environ", {"GITHUB_ACTIONS": "true"}),
         ):
             assert installer.is_interactive_environment() is False
 
@@ -210,9 +205,10 @@ class TestAuditLogging:
             exit_code=0,
         )
 
-        with patch("pathlib.Path.mkdir") as mock_mkdir, patch(
-            "builtins.open", mock_open()
-        ) as mock_file:
+        with (
+            patch("pathlib.Path.mkdir") as mock_mkdir,
+            patch("builtins.open", mock_open()) as mock_file,
+        ):
             installer._log_audit(entry)
             mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
@@ -235,9 +231,7 @@ class TestAuditLogging:
             installer._log_audit(entry)
 
             # Check that write was called with JSON + newline
-            written_data = "".join(
-                call.args[0] for call in mock_file_handle().write.call_args_list
-            )
+            written_data = "".join(call.args[0] for call in mock_file_handle().write.call_args_list)
             assert written_data.endswith("\n")
             parsed = json.loads(written_data.strip())
             assert parsed["tool"] == "git"
@@ -267,11 +261,11 @@ class TestInstallTool:
     def test_install_tool_user_declines(self):
         """Test install_tool when user declines installation."""
         installer = InteractiveInstaller(Platform.MACOS)
-        with patch.object(
-            installer, "is_interactive_environment", return_value=True
-        ), patch.object(installer, "prompt_for_approval", return_value=False), patch.object(
-            installer, "_log_audit"
-        ) as mock_log:
+        with (
+            patch.object(installer, "is_interactive_environment", return_value=True),
+            patch.object(installer, "prompt_for_approval", return_value=False),
+            patch.object(installer, "_log_audit") as mock_log,
+        ):
             result = installer.install_tool("git")
             assert result.success is False
             assert result.user_approved is False
@@ -283,13 +277,14 @@ class TestInstallTool:
         installer = InteractiveInstaller(Platform.MACOS)
         mock_subprocess_result = Mock(returncode=0, stdout="Installed", stderr="")
 
-        with patch.object(
-            installer, "is_interactive_environment", return_value=True
-        ), patch.object(installer, "prompt_for_approval", return_value=True), patch.object(
-            installer, "_execute_install_command", return_value=mock_subprocess_result
-        ), patch.object(
-            installer, "_log_audit"
-        ) as mock_log:
+        with (
+            patch.object(installer, "is_interactive_environment", return_value=True),
+            patch.object(installer, "prompt_for_approval", return_value=True),
+            patch.object(
+                installer, "_execute_install_command", return_value=mock_subprocess_result
+            ),
+            patch.object(installer, "_log_audit") as mock_log,
+        ):
             result = installer.install_tool("node")
             assert result.success is True
             assert result.user_approved is True
@@ -299,16 +294,15 @@ class TestInstallTool:
     def test_install_tool_failure(self):
         """Test failed tool installation."""
         installer = InteractiveInstaller(Platform.LINUX)
-        mock_subprocess_result = Mock(
-            returncode=1, stdout="", stderr="Package not found"
-        )
+        mock_subprocess_result = Mock(returncode=1, stdout="", stderr="Package not found")
 
-        with patch.object(
-            installer, "is_interactive_environment", return_value=True
-        ), patch.object(installer, "prompt_for_approval", return_value=True), patch.object(
-            installer, "_execute_install_command", return_value=mock_subprocess_result
-        ), patch.object(
-            installer, "_log_audit"
+        with (
+            patch.object(installer, "is_interactive_environment", return_value=True),
+            patch.object(installer, "prompt_for_approval", return_value=True),
+            patch.object(
+                installer, "_execute_install_command", return_value=mock_subprocess_result
+            ),
+            patch.object(installer, "_log_audit"),
         ):
             result = installer.install_tool("npm")
             assert result.success is False
@@ -320,12 +314,13 @@ class TestInstallTool:
         """Test install_tool handles exceptions gracefully."""
         installer = InteractiveInstaller(Platform.MACOS)
 
-        with patch.object(
-            installer, "is_interactive_environment", return_value=True
-        ), patch.object(installer, "prompt_for_approval", return_value=True), patch.object(
-            installer, "_execute_install_command", side_effect=Exception("Unexpected error")
-        ), patch.object(
-            installer, "_log_audit"
+        with (
+            patch.object(installer, "is_interactive_environment", return_value=True),
+            patch.object(installer, "prompt_for_approval", return_value=True),
+            patch.object(
+                installer, "_execute_install_command", side_effect=Exception("Unexpected error")
+            ),
+            patch.object(installer, "_log_audit"),
         ):
             result = installer.install_tool("uv")
             assert result.success is False
@@ -344,8 +339,11 @@ class TestCheckAndInstall:
     def test_check_and_install_all_available(self):
         """Test check_and_install when all prerequisites available."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which", return_value="/usr/bin/tool"), patch(
-            "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+        with (
+            patch("shutil.which", return_value="/usr/bin/tool"),
+            patch(
+                "amplihack.utils.prerequisites.get_claude_cli_path", return_value="/usr/bin/claude"
+            ),
         ):
             result = checker.check_and_install(interactive=True)
             assert result.all_available is True
@@ -361,8 +359,9 @@ class TestCheckAndInstall:
     def test_check_and_install_non_interactive_environment(self):
         """Test check_and_install in non-interactive environment."""
         checker = PrerequisiteChecker()
-        with patch("shutil.which", return_value=None), patch(
-            "sys.stdin.isatty", return_value=False
+        with (
+            patch("shutil.which", return_value=None),
+            patch("sys.stdin.isatty", return_value=False),
         ):
             result = checker.check_and_install(interactive=True)
             assert result.all_available is False
@@ -379,23 +378,22 @@ class TestCheckAndInstall:
         )
 
         # Mock successful installations
-        mock_install_result_node = Mock(
-            success=True, user_approved=True, stderr=""
-        )
-        mock_install_result_npm = Mock(
-            success=True, user_approved=True, stderr=""
-        )
+        mock_install_result_node = Mock(success=True, user_approved=True, stderr="")
+        mock_install_result_npm = Mock(success=True, user_approved=True, stderr="")
 
         # Mock final check shows all available
         mock_final_result = Mock(
             all_available=True, missing_tools=[], available_tools=[Mock(), Mock()]
         )
 
-        with patch.object(
-            checker, "check_all_prerequisites", side_effect=[mock_initial_result, mock_final_result]
-        ), patch(
-            "amplihack.utils.prerequisites.InteractiveInstaller"
-        ) as mock_installer_class:
+        with (
+            patch.object(
+                checker,
+                "check_all_prerequisites",
+                side_effect=[mock_initial_result, mock_final_result],
+            ),
+            patch("amplihack.utils.prerequisites.InteractiveInstaller") as mock_installer_class,
+        ):
             mock_installer = Mock()
             mock_installer.is_interactive_environment.return_value = True
             mock_installer.install_tool.side_effect = [
@@ -419,15 +417,12 @@ class TestCheckAndInstall:
             available_tools=[],
         )
 
-        mock_install_result = Mock(
-            success=False, user_approved=False, stderr="User declined"
-        )
+        mock_install_result = Mock(success=False, user_approved=False, stderr="User declined")
 
-        with patch.object(
-            checker, "check_all_prerequisites", return_value=mock_initial_result
-        ), patch(
-            "amplihack.utils.prerequisites.InteractiveInstaller"
-        ) as mock_installer_class:
+        with (
+            patch.object(checker, "check_all_prerequisites", return_value=mock_initial_result),
+            patch("amplihack.utils.prerequisites.InteractiveInstaller") as mock_installer_class,
+        ):
             mock_installer = Mock()
             mock_installer.is_interactive_environment.return_value = True
             mock_installer.install_tool.return_value = mock_install_result
@@ -453,9 +448,9 @@ class TestSecurityFeatures:
                 continue
             for tool, command in commands.items():
                 assert isinstance(command, list), f"{platform}.{tool} must be List[str]"
-                assert all(
-                    isinstance(arg, str) for arg in command
-                ), f"{platform}.{tool} args must be strings"
+                assert all(isinstance(arg, str) for arg in command), (
+                    f"{platform}.{tool} args must be strings"
+                )
 
     def test_no_shell_injection_in_commands(self):
         """Test that commands don't contain shell operators."""
@@ -511,8 +506,9 @@ class TestEdgeCases:
             exit_code=0,
         )
 
-        with patch("pathlib.Path.mkdir"), patch(
-            "builtins.open", side_effect=PermissionError("No write access")
+        with (
+            patch("pathlib.Path.mkdir"),
+            patch("builtins.open", side_effect=PermissionError("No write access")),
         ):
             # Should not raise exception - should handle gracefully
             installer._log_audit(entry)  # Should complete without error

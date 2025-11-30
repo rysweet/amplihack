@@ -6,7 +6,6 @@ Future: AI-generate custom skills.
 """
 
 from pathlib import Path
-from typing import List, Optional
 
 from .models import ExecutionPlan, SkillDefinition
 
@@ -28,7 +27,7 @@ class SkillSynthesizer:
         "integrator": ["integrate", "connect", "api", "webhook"],
     }
 
-    def __init__(self, skills_directory: Optional[Path] = None):
+    def __init__(self, skills_directory: Path | None = None):
         """
         Initialize skill synthesizer.
 
@@ -37,7 +36,7 @@ class SkillSynthesizer:
         """
         self.skills_directory = skills_directory or self._find_skills_directory()
 
-    def synthesize_skills(self, execution_plan: ExecutionPlan) -> List[SkillDefinition]:
+    def synthesize_skills(self, execution_plan: ExecutionPlan) -> list[SkillDefinition]:
         """
         Synthesize skills needed for execution plan.
 
@@ -74,7 +73,7 @@ class SkillSynthesizer:
         # Fallback: create temp directory
         return Path.cwd() / ".skills_temp"
 
-    def _find_matching_skill(self, skill_name: str) -> Optional[SkillDefinition]:
+    def _find_matching_skill(self, skill_name: str) -> SkillDefinition | None:
         """
         Find existing skill that matches the requirement.
 
@@ -155,7 +154,7 @@ class SkillSynthesizer:
 
         return " ".join(description_lines[:200])  # Limit to 200 chars
 
-    def _extract_capabilities(self, content: str, skill_name: str) -> List[str]:
+    def _extract_capabilities(self, content: str, skill_name: str) -> list[str]:
         """Extract capabilities from skill content."""
         # Use keywords as capabilities
         keywords = self.SKILL_KEYWORDS.get(skill_name, [skill_name])
@@ -182,7 +181,7 @@ class SkillSynthesizer:
 
         return capabilities[:5]  # Limit to top 5
 
-    def _extract_dependencies(self, content: str) -> List[str]:
+    def _extract_dependencies(self, content: str) -> list[str]:
         """Extract dependencies from skill content."""
         dependencies = []
 

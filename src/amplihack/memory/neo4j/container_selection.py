@@ -12,7 +12,6 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from .credential_detector import detect_container_password
 
@@ -31,7 +30,7 @@ class ContainerInfo:
 
     name: str
     status: str
-    ports: List[str]
+    ports: list[str]
 
 
 @dataclass(frozen=True)
@@ -45,8 +44,8 @@ class NameResolutionContext:
         auto_mode: Whether running in auto mode (non-interactive)
     """
 
-    cli_arg: Optional[str]
-    env_var: Optional[str]
+    cli_arg: str | None
+    env_var: str | None
     current_dir: Path
     auto_mode: bool
 
@@ -81,7 +80,7 @@ def sanitize_directory_name(dirname: str) -> str:
     return sanitized[:40]
 
 
-def get_default_container_name(current_dir: Optional[Path] = None) -> str:
+def get_default_container_name(current_dir: Path | None = None) -> str:
     """Generate default container name based on current directory.
 
     Args:
@@ -104,7 +103,7 @@ def get_default_container_name(current_dir: Optional[Path] = None) -> str:
     return f"amplihack-{sanitized}"
 
 
-def extract_ports(container_name: str) -> List[str]:
+def extract_ports(container_name: str) -> list[str]:
     """Extract port mappings from a container.
 
     Args:
@@ -147,7 +146,7 @@ def extract_ports(container_name: str) -> List[str]:
         return []
 
 
-def format_ports(ports: List[str]) -> str:
+def format_ports(ports: list[str]) -> str:
     """Format port list for display.
 
     Args:
@@ -161,7 +160,7 @@ def format_ports(ports: List[str]) -> str:
     return ", ".join(ports)
 
 
-def discover_amplihack_containers() -> List[ContainerInfo]:
+def discover_amplihack_containers() -> list[ContainerInfo]:
     """Discover all amplihack-* containers.
 
     Returns:
@@ -215,7 +214,7 @@ def discover_amplihack_containers() -> List[ContainerInfo]:
         return []
 
 
-def select_container_interactive(containers: List[ContainerInfo], default_name: str) -> str:
+def select_container_interactive(containers: list[ContainerInfo], default_name: str) -> str:
     """Interactive menu for selecting or creating a container.
 
     Args:
@@ -282,11 +281,11 @@ def select_container_interactive(containers: List[ContainerInfo], default_name: 
 
 
 def resolve_container_name(
-    context: Optional[NameResolutionContext] = None,
-    cli_arg: Optional[str] = None,
-    env_var: Optional[str] = None,
-    current_dir: Optional[Path] = None,
-    auto_mode: Optional[bool] = None,
+    context: NameResolutionContext | None = None,
+    cli_arg: str | None = None,
+    env_var: str | None = None,
+    current_dir: Path | None = None,
+    auto_mode: bool | None = None,
 ) -> str:
     """Resolve container name using priority hierarchy.
 
@@ -362,7 +361,9 @@ def resolve_container_name(
         # This ensures no interactive prompts during session cleanup regardless of code path
         cleanup_mode_check = os.getenv("AMPLIHACK_CLEANUP_MODE", "0") == "1"
         dialog_auto_mode = context.auto_mode or cleanup_mode_check
-        container_name = unified_container_and_credential_dialog(default_name, auto_mode=dialog_auto_mode)
+        container_name = unified_container_and_credential_dialog(
+            default_name, auto_mode=dialog_auto_mode
+        )
         if container_name:
             return container_name
         # User cancelled, fall back to default
@@ -377,7 +378,7 @@ def resolve_container_name(
         return default_name
 
 
-def get_container_status(container_name: str) -> Tuple[bool, str]:
+def get_container_status(container_name: str) -> tuple[bool, str]:
     """Check if a container exists and is running.
 
     Args:

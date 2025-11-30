@@ -7,7 +7,6 @@ implementing the decision logic for new vs. update operations.
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 from neo4j import Driver
 
@@ -45,7 +44,7 @@ class IngestionTracker:
     def track_ingestion(
         self,
         repo_path: Path,
-        metadata: Optional[dict[str, str]] = None,
+        metadata: dict[str, str] | None = None,
     ) -> IngestionResult:
         """Track a code ingestion from a Git repository.
 
@@ -94,7 +93,7 @@ class IngestionTracker:
     def track_manual_ingestion(
         self,
         identity: CodebaseIdentity,
-        metadata: Optional[dict[str, str]] = None,
+        metadata: dict[str, str] | None = None,
     ) -> IngestionResult:
         """Track an ingestion with manually provided identity.
 
@@ -131,7 +130,7 @@ class IngestionTracker:
     def _track_ingestion_impl(
         self,
         identity: CodebaseIdentity,
-        metadata: Optional[dict[str, str]] = None,
+        metadata: dict[str, str] | None = None,
     ) -> IngestionResult:
         """Core implementation of ingestion tracking logic.
 
@@ -195,7 +194,7 @@ class IngestionTracker:
             previous_ingestion_id=previous_ingestion_id,
         )
 
-    def get_ingestion_history(self, unique_key: str) -> List[dict]:
+    def get_ingestion_history(self, unique_key: str) -> list[dict]:
         """Get complete ingestion history for a codebase.
 
         Args:
@@ -215,7 +214,7 @@ class IngestionTracker:
 
             return history
 
-    def get_codebase_info(self, unique_key: str) -> Optional[dict]:
+    def get_codebase_info(self, unique_key: str) -> dict | None:
         """Get codebase information by unique key.
 
         Args:
@@ -233,7 +232,7 @@ class IngestionTracker:
                 return dict(record["c"])
             return None
 
-    def _get_latest_ingestion(self, unique_key: str) -> Optional[dict]:
+    def _get_latest_ingestion(self, unique_key: str) -> dict | None:
         """Get the latest ingestion for a codebase.
 
         Args:

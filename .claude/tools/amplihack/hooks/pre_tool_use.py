@@ -6,7 +6,7 @@ Prevents dangerous operations like git commit --no-verify.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
@@ -18,7 +18,7 @@ class PreToolUseHook(HookProcessor):
     def __init__(self):
         super().__init__("pre_tool_use")
 
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process pre tool use event and block dangerous operations.
 
         Args:

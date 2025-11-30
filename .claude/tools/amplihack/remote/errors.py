@@ -4,8 +4,6 @@ This module defines the error hierarchy for remote execution operations,
 providing clear error categories with context and actionable messages.
 """
 
-from typing import Optional
-
 
 class RemoteExecutionError(Exception):
     """Base exception for all remote execution errors.
@@ -15,7 +13,7 @@ class RemoteExecutionError(Exception):
     specific error types for detailed handling.
     """
 
-    def __init__(self, message: str, context: Optional[dict] = None):
+    def __init__(self, message: str, context: dict | None = None):
         """Initialize remote execution error.
 
         Args:

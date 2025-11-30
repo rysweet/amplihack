@@ -9,7 +9,7 @@ import json
 import logging
 import threading
 import time
-from typing import Any, Dict
+from typing import Any
 
 import requests
 from flask import Flask, jsonify, request
@@ -106,7 +106,7 @@ class ResponsesAPIProxy:
             """Health check endpoint."""
             return jsonify({"status": "healthy", "proxy_type": "responses_api"})
 
-    def _transform_to_responses_api(self, openai_request: Dict[str, Any]) -> Dict[str, Any]:
+    def _transform_to_responses_api(self, openai_request: dict[str, Any]) -> dict[str, Any]:
         """Transform OpenAI Chat API request to Azure Responses API format."""
         responses_request = {
             "model": openai_request.get("model"),
@@ -179,7 +179,7 @@ class ResponsesAPIProxy:
 
         return responses_request
 
-    def _transform_to_openai_format(self, azure_response: Dict[str, Any]) -> Dict[str, Any]:
+    def _transform_to_openai_format(self, azure_response: dict[str, Any]) -> dict[str, Any]:
         """Transform Azure Responses API response to OpenAI Chat API format."""
         # This is a simplified transformation - may need adjustment based on actual response format
         openai_response = {
@@ -286,7 +286,7 @@ class ResponsesAPIProxy:
         # The thread will be cleaned up when the main process exits
 
 
-def create_responses_api_proxy(config: Dict[str, str], port: int = 8082) -> ResponsesAPIProxy:
+def create_responses_api_proxy(config: dict[str, str], port: int = 8082) -> ResponsesAPIProxy:
     """Create and configure a Responses API proxy instance."""
     azure_base_url = config.get("OPENAI_BASE_URL")
     azure_api_key = config.get("AZURE_OPENAI_KEY") or config.get("OPENAI_API_KEY")

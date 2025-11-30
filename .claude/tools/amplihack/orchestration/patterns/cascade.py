@@ -8,7 +8,7 @@ Based on: .claude/workflow/CASCADE_WORKFLOW.md
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..session import OrchestratorSession
 
@@ -53,12 +53,12 @@ def run_cascade(
     task_prompt: str,
     fallback_strategy: str = "quality",
     timeout_strategy: str = "balanced",
-    models: Optional[List[str]] = None,
-    working_dir: Optional[Path] = None,
+    models: list[str] | None = None,
+    working_dir: Path | None = None,
     notification_level: str = "warning",
-    custom_timeouts: Optional[Dict[str, int]] = None,
-    custom_constraints: Optional[Dict[str, str]] = None,
-) -> Dict[str, Any]:
+    custom_timeouts: dict[str, int] | None = None,
+    custom_constraints: dict[str, str] | None = None,
+) -> dict[str, Any]:
     """Execute fallback cascade pattern.
 
     Attempts primary (optimal) approach first, then falls back to secondary
@@ -181,7 +181,7 @@ Execute the task now with the {level} approach.
     # Use run_with_fallback to try each level
     session.log("Step 2-4: Attempting cascade levels")
 
-    for i, (level, process) in enumerate(zip(cascade_levels, processes)):
+    for i, (level, process) in enumerate(zip(cascade_levels, processes, strict=False)):
         session.log(f"Attempting {level.upper()} level (timeout: {timeouts[level]}s)")
 
         result = process.run()
@@ -268,10 +268,10 @@ What you're getting:
 
 def create_custom_cascade(
     task_prompt: str,
-    levels: List[Dict[str, Any]],
-    working_dir: Optional[Path] = None,
+    levels: list[dict[str, Any]],
+    working_dir: Path | None = None,
     notification_level: str = "warning",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a custom cascade with explicitly defined levels.
 
     For cases where predefined strategies don't fit, allows full control

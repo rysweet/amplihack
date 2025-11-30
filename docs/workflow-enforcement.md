@@ -148,13 +148,13 @@ Three modules work together:
 
 These steps cannot be skipped without explicit user override:
 
-| Step | Name                   | Why Mandatory                        |
-| ---- | ---------------------- | ------------------------------------ |
-| 0    | Workflow Preparation   | Ensures 22 todos created at start    |
-| 10   | Open Pull Request      | Code must be submitted for review    |
-| 16   | Philosophy Compliance  | Ensures code follows principles      |
-| 17   | Ensure PR is Mergeable | Verifies CI passes and PR is clean   |
-| 21   | Task Completion        | Final step - workflow must complete  |
+| Step | Name                   | Why Mandatory                       |
+| ---- | ---------------------- | ----------------------------------- |
+| 0    | Workflow Preparation   | Ensures 22 todos created at start   |
+| 10   | Open Pull Request      | Code must be submitted for review   |
+| 16   | Philosophy Compliance  | Ensures code follows principles     |
+| 17   | Ensure PR is Mergeable | Verifies CI passes and PR is clean  |
+| 21   | Task Completion        | Final step - workflow must complete |
 
 ### Fail-Open Design
 

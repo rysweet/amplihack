@@ -4,7 +4,6 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
 def should_use_trace() -> bool:
@@ -87,7 +86,7 @@ def _configure_user_local_npm() -> dict[str, str]:
     return env
 
 
-def _find_valid_claude_trace() -> Optional[str]:
+def _find_valid_claude_trace() -> str | None:
     """Find a valid claude-trace binary using smart detection.
 
     Searches for claude-trace binaries in order of preference:

@@ -9,15 +9,13 @@ Testing pyramid:
 """
 
 import json
-import os
-import tempfile
-from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 # Import from parent directory
 import sys
+import tempfile
+from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -29,7 +27,6 @@ from workflow_state import (
     WorkflowStateMachine,
     get_state_machine,
 )
-
 
 # =============================================================================
 # UNIT TESTS (60%)

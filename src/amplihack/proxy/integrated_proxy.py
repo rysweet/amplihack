@@ -8,7 +8,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 import aiohttp  # type: ignore[import-unresolved]
 import certifi  # type: ignore[import-unresolved]
@@ -68,7 +68,7 @@ ENABLE_REASONING_EFFORT = os.environ.get("AMPLIHACK_REASONING_EFFORT", "false").
 class ToolCallError(Exception):
     """Base exception for tool call errors"""
 
-    def __init__(self, message: str, tool_name: Optional[str] = None, retry_count: int = 0):
+    def __init__(self, message: str, tool_name: str | None = None, retry_count: int = 0):
         super().__init__(message)
         self.tool_name = tool_name
         self.retry_count = retry_count
@@ -80,8 +80,8 @@ class ToolValidationError(ToolCallError):
     def __init__(
         self,
         message: str,
-        tool_name: Optional[str] = None,
-        schema_errors: Optional[List[str]] = None,
+        tool_name: str | None = None,
+        schema_errors: list[str] | None = None,
     ):
         super().__init__(message, tool_name)
         self.schema_errors = schema_errors or []
@@ -91,7 +91,7 @@ class ToolTimeoutError(ToolCallError):
     """Exception for tool call timeouts"""
 
     def __init__(
-        self, message: str, tool_name: Optional[str] = None, timeout_seconds: Optional[int] = None
+        self, message: str, tool_name: str | None = None, timeout_seconds: int | None = None
     ):
         super().__init__(message, tool_name)
         self.timeout_seconds = timeout_seconds
@@ -103,8 +103,8 @@ class ToolStreamingError(ToolCallError):
     def __init__(
         self,
         message: str,
-        tool_name: Optional[str] = None,
-        chunk_data: Optional[Dict[str, Any]] = None,
+        tool_name: str | None = None,
+        chunk_data: dict[str, Any] | None = None,
     ):
         super().__init__(message, tool_name)
         self.chunk_data = chunk_data or {}
@@ -113,7 +113,7 @@ class ToolStreamingError(ToolCallError):
 class ConversationStateError(Exception):
     """Exception for conversation state management errors"""
 
-    def __init__(self, message: str, state: Optional[str] = None):
+    def __init__(self, message: str, state: str | None = None):
         super().__init__(message)
         self.state = state
 
@@ -125,8 +125,8 @@ class AzureAPIError(Exception):
     def __init__(
         self,
         message: str,
-        status_code: Optional[int] = None,
-        error_type: Optional[str] = None,
+        status_code: int | None = None,
+        error_type: str | None = None,
         retry_count: int = 0,
         is_retryable: bool = False,
     ):
@@ -140,21 +140,21 @@ class AzureAPIError(Exception):
 class AzureTransientError(AzureAPIError):
     """Exception for transient Azure errors that should be retried"""
 
-    def __init__(self, message: str, status_code: Optional[int] = None, retry_count: int = 0):
+    def __init__(self, message: str, status_code: int | None = None, retry_count: int = 0):
         super().__init__(message, status_code, "transient", retry_count, is_retryable=True)
 
 
 class AzureAuthenticationError(AzureAPIError):
     """Exception for Azure authentication/authorization errors"""
 
-    def __init__(self, message: str, status_code: Optional[int] = None):
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message, status_code, "authentication", is_retryable=False)
 
 
 class AzureRateLimitError(AzureAPIError):
     """Exception for Azure rate limiting errors"""
 
-    def __init__(self, message: str, retry_after: Optional[int] = None, retry_count: int = 0):
+    def __init__(self, message: str, retry_after: int | None = None, retry_count: int = 0):
         super().__init__(message, 429, "rate_limit", retry_count, is_retryable=True)
         self.retry_after = retry_after
 
@@ -162,14 +162,14 @@ class AzureRateLimitError(AzureAPIError):
 class AzureConfigurationError(AzureAPIError):
     """Exception for Azure configuration/deployment errors"""
 
-    def __init__(self, message: str, status_code: Optional[int] = None):
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message, status_code, "configuration", is_retryable=False)
 
 
 class AzureFallbackError(AzureAPIError):
     """Exception indicating Azure fallback was triggered"""
 
-    def __init__(self, message: str, original_error: Optional[Exception] = None):
+    def __init__(self, message: str, original_error: Exception | None = None):
         super().__init__(message, error_type="fallback", is_retryable=False)
         self.original_error = original_error
 
@@ -369,7 +369,7 @@ async def retry_azure_request(
 
             await asyncio.sleep(delay)
 
-        except asyncio.TimeoutError as timeout_error:
+        except TimeoutError as timeout_error:
             # Treat timeouts as transient errors
             last_error = AzureTransientError(
                 f"Request timeout: {timeout_error}", status_code=408, retry_count=attempt
@@ -581,7 +581,7 @@ class AzureErrorLogger:
         self.last_health_check = None
 
     def log_azure_error(
-        self, azure_error: AzureAPIError, request_context: Optional[dict] = None
+        self, azure_error: AzureAPIError, request_context: dict | None = None
     ) -> None:
         """Log Azure error with context and update metrics."""
         error_entry = {
@@ -641,7 +641,7 @@ class AzureErrorLogger:
             user_id = request_context.get("user_id", "unknown")
             logger.info(f"📊 Error Context: Model={model}, User={user_id}")
 
-    def log_azure_success(self, request_context: Optional[dict] = None) -> None:
+    def log_azure_success(self, request_context: dict | None = None) -> None:
         """Log successful Azure API call for health monitoring."""
         if request_context:
             model = request_context.get("model", "unknown")
@@ -701,8 +701,8 @@ azure_error_logger = AzureErrorLogger()
 def log_azure_operation(
     operation_name: str,
     success: bool,
-    context: Optional[dict] = None,
-    error: Optional[Exception] = None,
+    context: dict | None = None,
+    error: Exception | None = None,
 ):
     """Unified logging function for Azure operations."""
     if success:
@@ -815,10 +815,10 @@ for handler in logger.handlers:
 
 
 # Global config for LiteLLM router initialization
-_proxy_config: Optional[Dict[str, str]] = None
+_proxy_config: dict[str, str] | None = None
 
 
-def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Router]:
+def setup_litellm_router(config: dict[str, str] | None = None) -> Router | None:
     """Set up unified LiteLLM router for both Azure Chat and Responses APIs."""
     if not USE_LITELLM_ROUTER:
         return None
@@ -874,7 +874,7 @@ def setup_litellm_router(config: Optional[Dict[str, str]] = None) -> Optional[Ro
         return None
 
 
-def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
+def create_app(config: dict[str, str] | None = None) -> FastAPI:
     """Create FastAPI app with configuration."""
     global _proxy_config
 
@@ -964,7 +964,7 @@ def create_app(config: Optional[Dict[str, str]] = None) -> FastAPI:
     async def root():
         return {"message": "Integrated Anthropic Proxy with Azure Responses API Support"}
 
-    async def handle_message_with_litellm_router(request: dict) -> Dict[str, Any]:
+    async def handle_message_with_litellm_router(request: dict) -> dict[str, Any]:
         """Handle messages using unified LiteLLM router for Chat and Responses APIs."""
         claude_model = request.get("model", "unknown")
 
@@ -1296,7 +1296,7 @@ _litellm_router = None
 _router_init_attempted = False
 
 
-def get_litellm_router() -> Optional[Router]:
+def get_litellm_router() -> Router | None:
     """Get LiteLLM router with lazy initialization for optimal startup performance."""
     global _litellm_router, _router_init_attempted, _proxy_config
 
@@ -1360,7 +1360,7 @@ GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
 
 
 # Type alias for JSON schema structures
-JSONSchema = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
+JSONSchema = Union[dict[str, Any], list[Any], str, int, float, bool, None]
 
 
 # Helper function to clean schema for Gemini
@@ -1397,22 +1397,22 @@ class ContentBlockText(BaseModel):
 
 class ContentBlockImage(BaseModel):
     type: Literal["image"]
-    source: Dict[str, Any]
+    source: dict[str, Any]
 
 
 class ContentBlockToolUse(BaseModel):
     model_config = {"extra": "allow"}  # Allow extra fields like cache_control
     type: Literal["tool_use"]
     id: str
-    name: Optional[str] = None  # Name can be None in partial tool use blocks
-    input: Dict[str, Any]
+    name: str | None = None  # Name can be None in partial tool use blocks
+    input: dict[str, Any]
 
 
 class ContentBlockToolResult(BaseModel):
     model_config = {"extra": "allow"}  # Allow extra fields like cache_control
     type: Literal["tool_result"]
     tool_use_id: str
-    content: Union[str, List[Dict[str, Any]], Dict[str, Any], List[Any]]
+    content: str | list[dict[str, Any]] | dict[str, Any] | list[Any]
 
 
 class SystemContent(BaseModel):
@@ -1422,18 +1422,16 @@ class SystemContent(BaseModel):
 
 class Message(BaseModel):
     role: Literal["user", "assistant"]
-    content: Union[
-        str,
-        List[
-            Union[ContentBlockText, ContentBlockImage, ContentBlockToolUse, ContentBlockToolResult]
-        ],
-    ]
+    content: (
+        str
+        | list[ContentBlockText | ContentBlockImage | ContentBlockToolUse | ContentBlockToolResult]
+    )
 
 
 class Tool(BaseModel):
     name: str
-    description: Optional[str] = None
-    input_schema: Dict[str, Any]
+    description: str | None = None
+    input_schema: dict[str, Any]
 
 
 class ThinkingConfig(BaseModel):
@@ -1444,21 +1442,21 @@ class ConversationState(BaseModel):
     """Phase 2: Manages conversation state for tool call analysis"""
 
     phase: Literal["normal", "tool_call_pending", "tool_result_pending", "tool_complete"] = "normal"
-    pending_tool_calls: List[Dict[str, Any]] = []
-    completed_tool_calls: List[Dict[str, Any]] = []
-    last_tool_call_id: Optional[str] = None
+    pending_tool_calls: list[dict[str, Any]] = []
+    completed_tool_calls: list[dict[str, Any]] = []
+    last_tool_call_id: str | None = None
     tool_call_count: int = 0
     has_streaming_tools: bool = False
     conversation_turn: int = 0
 
-    def add_tool_call(self, tool_call: Dict[str, Any]) -> None:
+    def add_tool_call(self, tool_call: dict[str, Any]) -> None:
         """Add a pending tool call"""
         self.pending_tool_calls.append(tool_call)
         self.last_tool_call_id = tool_call.get("id")
         self.tool_call_count += 1
         self.phase = "tool_call_pending"
 
-    def complete_tool_call(self, tool_call_id: str, result: Dict[str, Any]) -> None:
+    def complete_tool_call(self, tool_call_id: str, result: dict[str, Any]) -> None:
         """Mark a tool call as completed"""
         for i, call in enumerate(self.pending_tool_calls):
             if call.get("id") == tool_call_id:
@@ -1481,18 +1479,18 @@ class ConversationState(BaseModel):
 class MessagesRequest(BaseModel):
     model: str
     max_tokens: int
-    messages: List[Message]
-    system: Optional[Union[str, List[SystemContent]]] = None
-    stop_sequences: Optional[List[str]] = None
-    stream: Optional[bool] = False
-    temperature: Optional[float] = 1.0
-    top_p: Optional[float] = None
-    top_k: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
-    tools: Optional[List[Tool]] = None
-    tool_choice: Optional[Dict[str, Any]] = None
-    thinking: Optional[ThinkingConfig] = None
-    original_model: Optional[str] = None  # Will store the original model name
+    messages: list[Message]
+    system: str | list[SystemContent] | None = None
+    stop_sequences: list[str] | None = None
+    stream: bool | None = False
+    temperature: float | None = 1.0
+    top_p: float | None = None
+    top_k: int | None = None
+    metadata: dict[str, Any] | None = None
+    tools: list[Tool] | None = None
+    tool_choice: dict[str, Any] | None = None
+    thinking: ThinkingConfig | None = None
+    original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
     def validate_model_field(cls, v, info):  # Renamed to avoid conflict
@@ -1560,12 +1558,12 @@ class MessagesRequest(BaseModel):
 
 class TokenCountRequest(BaseModel):
     model: str
-    messages: List[Message]
-    system: Optional[Union[str, List[SystemContent]]] = None
-    tools: Optional[List[Tool]] = None
-    thinking: Optional[ThinkingConfig] = None
-    tool_choice: Optional[Dict[str, Any]] = None
-    original_model: Optional[str] = None  # Will store the original model name
+    messages: list[Message]
+    system: str | list[SystemContent] | None = None
+    tools: list[Tool] | None = None
+    thinking: ThinkingConfig | None = None
+    tool_choice: dict[str, Any] | None = None
+    original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
     def validate_model_token_count(cls, v, info):  # Renamed to avoid conflict
@@ -1648,10 +1646,10 @@ class MessagesResponse(BaseModel):
     id: str
     model: str
     role: Literal["assistant"] = "assistant"
-    content: List[Union[ContentBlockText, ContentBlockToolUse]]
+    content: list[ContentBlockText | ContentBlockToolUse]
     type: Literal["message"] = "message"
-    stop_reason: Optional[Literal["end_turn", "max_tokens", "stop_sequence", "tool_use"]] = None
-    stop_sequence: Optional[str] = None
+    stop_reason: Literal["end_turn", "max_tokens", "stop_sequence", "tool_use"] | None = None
+    stop_sequence: str | None = None
     usage: Usage
 
 
@@ -1718,7 +1716,7 @@ def parse_tool_result_content(content):
         return "Unparseable content"
 
 
-def analyze_conversation_for_tools(messages: List[Message]) -> ConversationState:
+def analyze_conversation_for_tools(messages: list[Message]) -> ConversationState:
     """
     Phase 2: Analyze conversation messages to determine tool call state.
 
@@ -1870,7 +1868,7 @@ def should_use_responses_api_for_model(model: str) -> bool:
     return clean_model in responses_api_models
 
 
-def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> Dict[str, Any]:
+def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> dict[str, Any]:
     """Convert Anthropic API request format to Azure Responses API format."""
     # Extract model name without provider prefix
     model = anthropic_request.model
@@ -1993,10 +1991,10 @@ def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> 
     return azure_request
 
 
-async def make_azure_responses_api_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
+async def make_azure_responses_api_call(request_data: dict[str, Any]) -> dict[str, Any]:
     """Make a direct call to Azure Responses API with robust error handling and retry logic."""
 
-    async def _make_request() -> Dict[str, Any]:
+    async def _make_request() -> dict[str, Any]:
         """Internal request function for retry logic."""
         headers = {
             "Content-Type": "application/json",
@@ -2065,7 +2063,7 @@ async def make_azure_responses_api_call(request_data: Dict[str, Any]) -> Dict[st
 
 
 def convert_azure_responses_to_anthropic(
-    azure_response: Optional[Dict[str, Any]], original_request: MessagesRequest
+    azure_response: dict[str, Any] | None, original_request: MessagesRequest
 ) -> MessagesResponse:
     """Convert Azure Responses API response to Anthropic format."""
     try:
@@ -2165,7 +2163,7 @@ def convert_azure_responses_to_anthropic(
         )
 
 
-def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str, Any]:
+def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str, Any]:
     """Convert Anthropic API request format to LiteLLM format (which follows OpenAI)."""
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
     # So we just need to convert our Pydantic model to a dict in the expected format
@@ -2302,7 +2300,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                             )
                         elif block.type == "tool_result":
                             # Handle different formats of tool result content
-                            processed_content_block: Dict[str, Any] = {
+                            processed_content_block: dict[str, Any] = {
                                 "type": "tool_result",
                                 "tool_use_id": block.tool_use_id
                                 if hasattr(block, "tool_use_id")
@@ -2426,7 +2424,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
 
 def convert_litellm_to_anthropic(
-    litellm_response: Union[Dict[str, Any], Any], original_request: MessagesRequest
+    litellm_response: dict[str, Any] | Any, original_request: MessagesRequest
 ) -> MessagesResponse:
     """Convert LiteLLM (OpenAI format) response to Anthropic API response format."""
 
@@ -2636,9 +2634,7 @@ def convert_litellm_to_anthropic(
         )
 
 
-async def retry_tool_call(
-    func, max_attempts: Optional[int] = None, tool_name: Optional[str] = None
-):
+async def retry_tool_call(func, max_attempts: int | None = None, tool_name: str | None = None):
     """
     Phase 2: Retry tool calls with exponential backoff.
 
@@ -2663,7 +2659,7 @@ async def retry_tool_call(
             )
             return await func()
 
-        except (asyncio.TimeoutError, aiohttp.ClientError) as e:
+        except (TimeoutError, aiohttp.ClientError) as e:
             last_exception = e
             if attempt < max_attempts - 1:
                 # Exponential backoff: 1s, 2s, 4s, etc.
@@ -2698,7 +2694,7 @@ async def retry_tool_call(
     )
 
 
-def validate_tool_schema(tool: Dict[str, Any]) -> List[str]:
+def validate_tool_schema(tool: dict[str, Any]) -> list[str]:
     """
     Phase 2: Validate tool schema and return list of errors.
 
@@ -2733,7 +2729,7 @@ def validate_tool_schema(tool: Dict[str, Any]) -> List[str]:
 
 
 async def handle_tool_call_with_fallback(
-    litellm_request: Dict[str, Any], original_request: MessagesRequest
+    litellm_request: dict[str, Any], original_request: MessagesRequest
 ):
     """
     Phase 2: Handle tool calls with fallback strategies.
@@ -2936,7 +2932,7 @@ def is_azure_responses_api_model(model: str) -> bool:
 
 
 async def handle_azure_streaming_with_tools(
-    azure_request: Dict[str, Any],
+    azure_request: dict[str, Any],
     original_request: MessagesRequest,
     conversation_state: ConversationState,
 ):

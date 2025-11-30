@@ -6,7 +6,6 @@ and collecting tool-specific metrics.
 """
 
 from abc import ABC, abstractmethod
-from typing import List
 
 from .types import ToolCapability, ToolMetrics
 
@@ -57,7 +56,7 @@ class ToolAdapter(ABC):
         """
 
     @abstractmethod
-    def get_capabilities(self) -> List[ToolCapability]:
+    def get_capabilities(self) -> list[ToolCapability]:
         """Return tool's capabilities.
 
         Returns:
@@ -101,7 +100,7 @@ class MockToolAdapter(ToolAdapter):
             time_saved_estimate=10.0,
         )
 
-    def get_capabilities(self) -> List[ToolCapability]:
+    def get_capabilities(self) -> list[ToolCapability]:
         """Return mock capabilities."""
         from .types import ExpectedImprovement, ScenarioCategory
 

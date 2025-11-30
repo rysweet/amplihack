@@ -6,7 +6,7 @@ Used to decide whether it's safe to shutdown the database.
 
 import logging
 import os
-from typing import Any, Optional
+from typing import Any
 
 import requests
 
@@ -102,7 +102,7 @@ class Neo4jConnectionTracker:
             s = s[:max_length] + "...[truncated]"
         return s
 
-    def get_active_connection_count(self, max_retries: int = 2) -> Optional[int]:
+    def get_active_connection_count(self, max_retries: int = 2) -> int | None:
         """Query Neo4j for active connection count with retry logic.
 
         Args:

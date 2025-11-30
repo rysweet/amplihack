@@ -7,7 +7,6 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from .exceptions import BundleGeneratorError
 
@@ -19,7 +18,7 @@ class UpdateInfo:
     available: bool
     current_version: str
     latest_version: str
-    changes: List[str]
+    changes: list[str]
 
 
 @dataclass
@@ -27,16 +26,16 @@ class UpdateResult:
     """Result of bundle update operation."""
 
     success: bool
-    updated_files: List[str]
-    preserved_files: List[str]
-    conflicts: List[str]
-    error: Optional[str] = None
+    updated_files: list[str]
+    preserved_files: list[str]
+    conflicts: list[str]
+    error: str | None = None
 
 
 class UpdateManager:
     """Manages bundle updates from upstream framework."""
 
-    def __init__(self, framework_repo_path: Optional[Path] = None):
+    def __init__(self, framework_repo_path: Path | None = None):
         """Initialize update manager.
 
         Args:
@@ -166,7 +165,7 @@ class UpdateManager:
                 success=False, updated_files=[], preserved_files=[], conflicts=[], error=str(e)
             )
 
-    def detect_customizations(self, bundle_path: Path) -> Dict[str, bool]:
+    def detect_customizations(self, bundle_path: Path) -> dict[str, bool]:
         """Detect which files have been customized by user.
 
         Args:
@@ -200,7 +199,7 @@ class UpdateManager:
 
         return result.stdout.strip()[:12]  # Short hash
 
-    def _get_changelog(self, old_version: str, new_version: str) -> List[str]:
+    def _get_changelog(self, old_version: str, new_version: str) -> list[str]:
         """Get changelog between versions."""
         result = subprocess.run(
             ["git", "log", f"{old_version}..{new_version}", "--oneline"],
@@ -216,7 +215,7 @@ class UpdateManager:
 
         return result.stdout.strip().split("\n")[:10]  # Limit to 10 entries
 
-    def _detect_customizations(self, bundle_path: Path, checksums: Dict[str, str]) -> set:
+    def _detect_customizations(self, bundle_path: Path, checksums: dict[str, str]) -> set:
         """Detect files that have been modified from original."""
         customized = set()
 

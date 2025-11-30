@@ -106,6 +106,7 @@ If MCP is configured correctly, Claude Code will use the `azure_list_resources` 
 ### Resource Management Tools
 
 **azure_list_resources**
+
 - **Purpose**: List resources in subscription or resource group
 - **Parameters**:
   - `resourceGroup` (optional): Filter by resource group
@@ -114,6 +115,7 @@ If MCP is configured correctly, Claude Code will use the `azure_list_resources` 
   - `tags` (optional): Filter by tags
 
 **Example usage:**
+
 ```
 Show all VMs in my subscription
 Show storage accounts in resource group "production-rg"
@@ -121,6 +123,7 @@ List all resources tagged with Environment=Production
 ```
 
 **azure_get_resource**
+
 - **Purpose**: Get detailed information about a specific resource
 - **Parameters**:
   - `resourceId`: Full resource ID or resource name
@@ -128,12 +131,14 @@ List all resources tagged with Environment=Production
   - `resourceType`: Resource type (if using resource name)
 
 **Example usage:**
+
 ```
 Show details for VM named "myVM" in resource group "myRG"
 Get information about resource ID /subscriptions/.../virtualMachines/myVM
 ```
 
 **azure_create_resource**
+
 - **Purpose**: Create a new Azure resource
 - **Parameters**:
   - `resourceGroup`: Target resource group
@@ -143,18 +148,21 @@ Get information about resource ID /subscriptions/.../virtualMachines/myVM
   - `properties`: Resource-specific properties (JSON)
 
 **Example usage:**
+
 ```
 Create a storage account named "mystorageaccount" in resource group "myRG" in eastus
 Create a virtual network named "myVNet" with address space 10.0.0.0/16
 ```
 
 **azure_delete_resource**
+
 - **Purpose**: Delete an existing resource
 - **Parameters**:
   - `resourceId`: Full resource ID
   - `noWait` (optional): Don't wait for deletion to complete
 
 **Example usage:**
+
 ```
 Delete the VM named "testVM" in resource group "dev-rg"
 Remove all resources tagged with Environment=Temporary
@@ -163,12 +171,14 @@ Remove all resources tagged with Environment=Temporary
 ### Identity and Access Tools
 
 **azure_list_users**
+
 - **Purpose**: List Entra ID users
 - **Parameters**:
   - `filter` (optional): OData filter expression
   - `top` (optional): Limit results
 
 **Example usage:**
+
 ```
 List all users in Entra ID
 Show users in the Engineering department
@@ -176,28 +186,33 @@ Find users with email starting with "john"
 ```
 
 **azure_get_user**
+
 - **Purpose**: Get detailed user information
 - **Parameters**:
   - `userId`: User principal name or object ID
 
 **Example usage:**
+
 ```
 Show details for user jane@contoso.com
 Get information about user with ID 12345678-1234-1234-1234-123456789012
 ```
 
 **azure_list_service_principals**
+
 - **Purpose**: List service principals
 - **Parameters**:
   - `filter` (optional): OData filter expression
 
 **Example usage:**
+
 ```
 List all service principals
 Show service principals for my application
 ```
 
 **azure_list_role_assignments**
+
 - **Purpose**: List RBAC role assignments
 - **Parameters**:
   - `scope` (optional): Limit to specific scope
@@ -205,6 +220,7 @@ Show service principals for my application
   - `roleDefinitionName` (optional): Filter by role
 
 **Example usage:**
+
 ```
 List all role assignments in my subscription
 Show role assignments for user jane@contoso.com
@@ -214,11 +230,13 @@ Find all Owner role assignments
 ### Query Tools
 
 **azure_query**
+
 - **Purpose**: Execute Azure Resource Graph queries
 - **Parameters**:
   - `query`: KQL (Kusto Query Language) query string
 
 **Example usage:**
+
 ```
 Query all VMs with their power state
 Find resources created in the last 7 days
@@ -226,11 +244,13 @@ Show cost by resource group for this month
 ```
 
 **azure_cli**
+
 - **Purpose**: Execute arbitrary az CLI commands
 - **Parameters**:
   - `command`: CLI command to execute (without "az" prefix)
 
 **Example usage:**
+
 ```
 Run: az vm list --query "[?powerState=='VM running']"
 Execute: az account show
@@ -372,6 +392,7 @@ Claude Code workflow:
 **Symptom**: Claude Code doesn't use Azure MCP tools
 
 **Solutions**:
+
 ```bash
 # 1. Verify MCP server installation
 npx @modelcontextprotocol/server-azure --version
@@ -393,6 +414,7 @@ az account show --query id -o tsv
 **Symptom**: "Authentication failed" or "Unauthorized"
 
 **Solutions**:
+
 ```bash
 # Re-authenticate Azure CLI
 az logout
@@ -413,6 +435,7 @@ echo $AZURE_TENANT_ID
 **Symptom**: "Insufficient privileges" errors
 
 **Solutions**:
+
 ```bash
 # Check your role assignments
 az role assignment list \
@@ -428,6 +451,7 @@ az role assignment list \
 **Symptom**: "Tool azure_list_resources not found"
 
 **Solutions**:
+
 1. Verify MCP server version: `npm list -g @modelcontextprotocol/server-azure`
 2. Update to latest: `npm update -g @modelcontextprotocol/server-azure`
 3. Check MCP server logs for errors
@@ -438,6 +462,7 @@ az role assignment list \
 **Symptom**: MCP operations take a long time
 
 **Optimizations**:
+
 1. **Use filters**: Always filter queries to reduce data transfer
 2. **Cache results**: MCP maintains session cache automatically
 3. **Parallel operations**: Request multiple resources simultaneously

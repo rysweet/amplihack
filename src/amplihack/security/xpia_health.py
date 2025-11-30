@@ -16,10 +16,10 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
-def check_hook_file_exists(hook_path: str) -> Dict[str, Any]:
+def check_hook_file_exists(hook_path: str) -> dict[str, Any]:
     """Check if a hook file exists and is executable"""
     path = Path(hook_path).expanduser()
 
@@ -43,7 +43,7 @@ def check_hook_file_exists(hook_path: str) -> Dict[str, Any]:
     return {"status": "ok", "path": str(path), "message": "Hook file exists and is executable"}
 
 
-def check_settings_json_hooks(settings_path: Optional[Path] = None) -> Dict[str, Any]:
+def check_settings_json_hooks(settings_path: Path | None = None) -> dict[str, Any]:
     """Check if XPIA hooks are configured in settings.json"""
     if settings_path is None:
         settings_path = Path.home() / ".claude" / "settings.json"
@@ -104,7 +104,7 @@ def check_settings_json_hooks(settings_path: Optional[Path] = None) -> Dict[str,
         return {"status": "error", "error": str(e), "message": f"Error reading settings.json: {e}"}
 
 
-def check_xpia_log_directory() -> Dict[str, Any]:
+def check_xpia_log_directory() -> dict[str, Any]:
     """Check if XPIA log directory exists and is writable"""
     log_dir = Path.home() / ".claude" / "logs" / "xpia"
 
@@ -146,7 +146,7 @@ def check_xpia_log_directory() -> Dict[str, Any]:
         }
 
 
-def check_xpia_modules() -> Dict[str, Any]:
+def check_xpia_modules() -> dict[str, Any]:
     """Check if XPIA modules are importable"""
     try:
         # Try to import XPIA defense interface
@@ -175,7 +175,7 @@ def check_xpia_modules() -> Dict[str, Any]:
         return {"status": "error", "error": str(e), "message": f"Error checking XPIA modules: {e}"}
 
 
-def get_xpia_hook_paths() -> List[str]:
+def get_xpia_hook_paths() -> list[str]:
     """Get list of expected XPIA hook file paths"""
     home_dir = Path.home()
     hook_base = home_dir / ".claude" / "tools" / "xpia" / "hooks"
@@ -187,7 +187,7 @@ def get_xpia_hook_paths() -> List[str]:
     ]
 
 
-def check_xpia_health(settings_path: Optional[Path] = None) -> Dict[str, Any]:
+def check_xpia_health(settings_path: Path | None = None) -> dict[str, Any]:
     """
     Comprehensive XPIA health check
 
@@ -282,7 +282,7 @@ def check_xpia_health(settings_path: Optional[Path] = None) -> Dict[str, Any]:
     return health_report
 
 
-def print_health_report(health_report: Dict[str, Any], verbose: bool = False) -> None:
+def print_health_report(health_report: dict[str, Any], verbose: bool = False) -> None:
     """Print formatted health report"""
     status_emoji = {
         "healthy": "✅",

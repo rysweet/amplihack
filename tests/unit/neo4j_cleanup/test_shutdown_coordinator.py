@@ -514,9 +514,10 @@ Controls neo4j_auto_shutdown preference.
         mock_path.resolve.return_value = mock_path
         mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
-        with patch("builtins.input", return_value="always"), patch(
-            "amplihack.neo4j.shutdown_coordinator.Path"
-        ) as MockPath:
+        with (
+            patch("builtins.input", return_value="always"),
+            patch("amplihack.neo4j.shutdown_coordinator.Path") as MockPath,
+        ):
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             result = coordinator.prompt_user_shutdown()
 
@@ -542,9 +543,10 @@ Controls neo4j_auto_shutdown preference.
         mock_path.resolve.return_value = mock_path
         mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
-        with patch("builtins.input", return_value="a"), patch(
-            "amplihack.neo4j.shutdown_coordinator.Path"
-        ) as MockPath:
+        with (
+            patch("builtins.input", return_value="a"),
+            patch("amplihack.neo4j.shutdown_coordinator.Path") as MockPath,
+        ):
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             result = coordinator.prompt_user_shutdown()
 
@@ -570,9 +572,10 @@ Controls neo4j_auto_shutdown preference.
         mock_path.resolve.return_value = mock_path
         mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
-        with patch("builtins.input", return_value="never"), patch(
-            "amplihack.neo4j.shutdown_coordinator.Path"
-        ) as MockPath:
+        with (
+            patch("builtins.input", return_value="never"),
+            patch("amplihack.neo4j.shutdown_coordinator.Path") as MockPath,
+        ):
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             result = coordinator.prompt_user_shutdown()
 
@@ -598,9 +601,10 @@ Controls neo4j_auto_shutdown preference.
         mock_path.resolve.return_value = mock_path
         mock_path.__str__.return_value = "/path/.claude/context/USER_PREFERENCES.md"
 
-        with patch("builtins.input", return_value="v"), patch(
-            "amplihack.neo4j.shutdown_coordinator.Path"
-        ) as MockPath:
+        with (
+            patch("builtins.input", return_value="v"),
+            patch("amplihack.neo4j.shutdown_coordinator.Path") as MockPath,
+        ):
             MockPath.cwd.return_value.__truediv__.return_value.__truediv__.return_value.__truediv__.return_value = mock_path
             result = coordinator.prompt_user_shutdown()
 

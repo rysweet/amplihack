@@ -10,7 +10,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Add project root to path for amplihack imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
@@ -24,7 +24,7 @@ class CodebaseAnalyzer:
         self.skip_patterns = [".git", "__pycache__", "node_modules", ".venv", ".pytest_cache"]
         self.max_file_size = 1024 * 1024  # 1MB
 
-    def analyze(self, target_path: str, options: dict = None) -> Dict[str, Any]:
+    def analyze(self, target_path: str, options: dict = None) -> dict[str, Any]:
         """
         Perform analysis of target codebase.
 
@@ -55,8 +55,8 @@ class CodebaseAnalyzer:
         return self._format_output(result, options)
 
     def _analyze_content(
-        self, content_map: Dict[str, List[Path]], start_time: datetime
-    ) -> Dict[str, Any]:
+        self, content_map: dict[str, list[Path]], start_time: datetime
+    ) -> dict[str, Any]:
         """Analyze discovered content and generate insights."""
         total_files = sum(len(files) for files in content_map.values())
         total_lines = self._count_lines(content_map)
@@ -110,7 +110,7 @@ class CodebaseAnalyzer:
             "recommendations": recommendations,
         }
 
-    def _discover_content(self, target_path: Path) -> Dict[str, List[Path]]:
+    def _discover_content(self, target_path: Path) -> dict[str, list[Path]]:
         """Discover and categorize analyzable content."""
         content_map = {"python": [], "javascript": [], "yaml": [], "markdown": [], "other": []}
 
@@ -150,7 +150,7 @@ class CodebaseAnalyzer:
 
         return False
 
-    def _count_lines(self, content_map: Dict[str, List[Path]]) -> int:
+    def _count_lines(self, content_map: dict[str, list[Path]]) -> int:
         """Count total lines of code."""
         total_lines = 0
         for files in content_map.values():
@@ -169,7 +169,7 @@ class CodebaseAnalyzer:
 
         return total_lines
 
-    def _format_output(self, result: Dict[str, Any], options: Dict) -> Any:
+    def _format_output(self, result: dict[str, Any], options: dict) -> Any:
         """Format output according to user preferences."""
         if options.get("format") == "json":
             return result

@@ -12,7 +12,7 @@ import re
 
 # Import from specifications
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 from urllib.parse import urlparse
 
 from .xpia_defense_interface import (
@@ -47,13 +47,13 @@ class XPIADefender(XPIADefenseInterface):
     with configurable security levels.
     """
 
-    def __init__(self, config: Optional[SecurityConfiguration] = None):
+    def __init__(self, config: SecurityConfiguration | None = None):
         """Initialize XPIA Defender with configuration"""
         self.config = config or self._load_config_from_env()
         self.patterns = XPIAPatterns()
         self.whitelist = self._load_whitelist()
         self.blacklist = self._load_blacklist()
-        self._security_events: List[Dict[str, Any]] = []
+        self._security_events: list[dict[str, Any]] = []
 
         logger.info(f"XPIA Defender initialized with security level: {self.config.security_level}")
 
@@ -83,7 +83,7 @@ class XPIADefender(XPIADefenseInterface):
 
         return config
 
-    def _load_whitelist(self) -> Set[str]:
+    def _load_whitelist(self) -> set[str]:
         """Load domain whitelist from environment or file"""
         whitelist = set()
 
@@ -116,7 +116,7 @@ class XPIADefender(XPIADefenseInterface):
 
         return whitelist
 
-    def _load_blacklist(self) -> Set[str]:
+    def _load_blacklist(self) -> set[str]:
         """Load domain blacklist from environment or file"""
         blacklist = set()
 
@@ -137,8 +137,8 @@ class XPIADefender(XPIADefenseInterface):
         self,
         content: str,
         content_type: ContentType,
-        context: Optional[ValidationContext] = None,
-        security_level: Optional[SecurityLevel] = None,
+        context: ValidationContext | None = None,
+        security_level: SecurityLevel | None = None,
     ) -> ValidationResult:
         """
         Validate arbitrary content for security threats
@@ -147,7 +147,7 @@ class XPIADefender(XPIADefenseInterface):
             return self._create_pass_result("XPIA validation disabled")
 
         security_level = security_level or self.config.security_level
-        threats: List[ThreatDetection] = []
+        threats: list[ThreatDetection] = []
 
         # Detect attack patterns
         detected_patterns = self.patterns.detect_patterns(content)
@@ -193,8 +193,8 @@ class XPIADefender(XPIADefenseInterface):
     async def validate_bash_command(
         self,
         command: str,
-        arguments: Optional[List[str]] = None,
-        context: Optional[ValidationContext] = None,
+        arguments: list[str] | None = None,
+        context: ValidationContext | None = None,
     ) -> ValidationResult:
         """
         Validate bash commands for security threats
@@ -202,7 +202,7 @@ class XPIADefender(XPIADefenseInterface):
         if not self.config.bash_validation:
             return self._create_pass_result("Bash validation disabled")
 
-        threats: List[ThreatDetection] = []
+        threats: list[ThreatDetection] = []
         full_command = f"{command} {' '.join(arguments or [])}"
 
         # Check for dangerous commands
@@ -273,7 +273,7 @@ class XPIADefender(XPIADefenseInterface):
         self,
         source_agent: str,
         target_agent: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
         message_type: str = "task",
     ) -> ValidationResult:
         """
@@ -282,7 +282,7 @@ class XPIADefender(XPIADefenseInterface):
         if not self.config.agent_communication:
             return self._create_pass_result("Agent communication validation disabled")
 
-        threats: List[ThreatDetection] = []
+        threats: list[ThreatDetection] = []
 
         # Extract and validate message content
         message_str = json.dumps(message)
@@ -344,7 +344,7 @@ class XPIADefender(XPIADefenseInterface):
         # Hook unregistration would be implemented here
         return True
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform health check and return status"""
         return {
             "status": "healthy",
@@ -416,7 +416,7 @@ class XPIADefender(XPIADefenseInterface):
             mitigation=pattern.mitigation,
         )
 
-    def _calculate_risk_level(self, threats: List[ThreatDetection]) -> RiskLevel:
+    def _calculate_risk_level(self, threats: list[ThreatDetection]) -> RiskLevel:
         """Calculate overall risk level from threats"""
         if not threats:
             return RiskLevel.NONE
@@ -435,8 +435,8 @@ class XPIADefender(XPIADefenseInterface):
         return RiskLevel.NONE
 
     def _generate_recommendations(
-        self, threats: List[ThreatDetection], security_level: SecurityLevel
-    ) -> List[str]:
+        self, threats: list[ThreatDetection], security_level: SecurityLevel
+    ) -> list[str]:
         """Generate security recommendations based on threats"""
         recommendations = []
 
@@ -471,8 +471,8 @@ class XPIADefender(XPIADefenseInterface):
     def _log_security_event(
         self,
         content_type: ContentType,
-        threats: List[ThreatDetection],
-        context: Optional[ValidationContext],
+        threats: list[ThreatDetection],
+        context: ValidationContext | None,
     ):
         """Log security event for audit"""
         event = {
@@ -520,12 +520,12 @@ class WebFetchXPIADefender(XPIADefender):
     """
 
     async def validate_webfetch_request(
-        self, url: str, prompt: str, context: Optional[ValidationContext] = None
+        self, url: str, prompt: str, context: ValidationContext | None = None
     ) -> ValidationResult:
         """
         Validate WebFetch request (URL + prompt)
         """
-        threats: List[ThreatDetection] = []
+        threats: list[ThreatDetection] = []
 
         # Validate URL
         url_threats = await self._validate_url(url)
@@ -556,7 +556,7 @@ class WebFetchXPIADefender(XPIADefender):
             timestamp=datetime.now(),
         )
 
-    async def _validate_url(self, url: str) -> List[ThreatDetection]:
+    async def _validate_url(self, url: str) -> list[ThreatDetection]:
         """Validate URL for security threats"""
         threats = []
 
@@ -640,7 +640,7 @@ class WebFetchXPIADefender(XPIADefender):
 
         return threats
 
-    def _check_combined_attacks(self, url: str, prompt: str) -> List[ThreatDetection]:
+    def _check_combined_attacks(self, url: str, prompt: str) -> list[ThreatDetection]:
         """Check for attacks that combine URL and prompt"""
         threats = []
 
@@ -671,8 +671,8 @@ class WebFetchXPIADefender(XPIADefender):
         return threats
 
     def _generate_webfetch_recommendations(
-        self, threats: List[ThreatDetection], url: str
-    ) -> List[str]:
+        self, threats: list[ThreatDetection], url: str
+    ) -> list[str]:
         """Generate WebFetch-specific recommendations"""
         recommendations = self._generate_recommendations(threats, self.config.security_level)
 

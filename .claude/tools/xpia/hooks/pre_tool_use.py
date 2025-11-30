@@ -11,7 +11,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Add project src to path for imports - find project root by .claude marker
 current = Path(__file__).resolve()
@@ -60,7 +60,7 @@ def log_security_event(event_type: str, data: dict) -> None:
         pass
 
 
-def validate_bash_command(command: str, context: Dict[str, Any]) -> Dict[str, Any]:
+def validate_bash_command(command: str, context: dict[str, Any]) -> dict[str, Any]:
     """
     Validate bash command for security threats
 
@@ -143,7 +143,7 @@ def validate_bash_command(command: str, context: Dict[str, Any]) -> Dict[str, An
         }
 
 
-def process_tool_use_request(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+def process_tool_use_request(tool_name: str, parameters: dict[str, Any]) -> dict[str, Any]:
     """Process pre-tool-use validation.
 
     Returns Claude Code hook protocol format:

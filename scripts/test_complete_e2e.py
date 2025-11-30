@@ -34,7 +34,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -67,7 +67,7 @@ class E2ETestRunner:
         """Initialize test runner."""
         self.container_manager = Neo4jContainerManager()
         self.connector = None
-        self.results: Dict[str, Dict[str, Any]] = {}
+        self.results: dict[str, dict[str, Any]] = {}
         self.start_time = time.time()
 
     def run_all_tests(self) -> bool:

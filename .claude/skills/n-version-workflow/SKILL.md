@@ -24,6 +24,7 @@ Execute N-version programming workflow for critical implementations where multip
 ## When to Use This Skill
 
 **USE FOR:**
+
 - Critical security features (authentication, authorization)
 - Complex algorithms with multiple valid approaches
 - High-risk refactoring of core components
@@ -31,6 +32,7 @@ Execute N-version programming workflow for critical implementations where multip
 - When correctness is paramount over speed
 
 **AVOID FOR:**
+
 - Simple CRUD operations
 - Straightforward bug fixes
 - Documentation updates
@@ -42,11 +44,13 @@ Execute N-version programming workflow for critical implementations where multip
 ### Core Parameters
 
 **N (Number of Versions):**
+
 - `3` - Default for standard tasks
 - `4-6` - Critical features requiring high confidence
 - `2` - Quick validation of approach
 
 **Selection Criteria** (priority order):
+
 1. Correctness - Meets requirements and passes tests
 2. Security - No vulnerabilities or anti-patterns
 3. Simplicity - Ruthless simplicity, minimal complexity
@@ -54,6 +58,7 @@ Execute N-version programming workflow for critical implementations where multip
 5. Performance - Efficiency and resource usage
 
 **Agent Diversity Profiles:**
+
 - `conservative` - Proven patterns and safety
 - `innovative` - Novel approaches and optimizations
 - `minimalist` - Ruthless simplicity
@@ -83,6 +88,7 @@ Execute N-version programming workflow for critical implementations where multip
 - Each works in isolated directory (version_1/, version_2/, etc.)
 
 **Example for N=3:**
+
 - Subprocess 1: Conservative approach (proven patterns, comprehensive error handling)
 - Subprocess 2: Pragmatic approach (balance simplicity and robustness)
 - Subprocess 3: Minimalist approach (ruthless simplification, minimal dependencies)
@@ -95,6 +101,7 @@ Execute N-version programming workflow for critical implementations where multip
 - Document results in comparison matrix
 
 **Comparison Matrix:**
+
 ```
 | Version | Correctness | Security | Simplicity | Philosophy | Performance | Lines of Code |
 |---------|-------------|----------|------------|------------|-------------|---------------|
@@ -113,6 +120,7 @@ Execute N-version programming workflow for critical implementations where multip
 - Identify best parts of each implementation
 
 **Evaluation Process:**
+
 1. Filter: Remove versions failing correctness tests
 2. Security Gate: Eliminate versions with security issues
 3. Philosophy Check: Score each on simplicity and compliance
@@ -122,6 +130,7 @@ Execute N-version programming workflow for critical implementations where multip
 ### Step 5: Select or Synthesize Solution
 
 **Decision Tree:**
+
 1. Is there ONE version that passes all criteria?
    - YES → Select it and document why
    - NO → Continue to step 2
@@ -133,6 +142,7 @@ Execute N-version programming workflow for critical implementations where multip
    - NO → Select based on weighted criteria priority
 
 **Example Synthesis:**
+
 ```
 Selected: Hybrid of v1 and v2
 - Core logic from v2 (ruthless simplicity)
@@ -155,6 +165,7 @@ and production-readiness.
 - Document selection rationale in code comments
 
 **Documentation Template:**
+
 ```python
 """
 N-Version Implementation Selection
@@ -202,12 +213,14 @@ Selection Criteria Applied:
 **Profiles:** conservative, security-focused, pragmatic, minimalist
 
 **Result:**
+
 - v1 (conservative): Most comprehensive but over-engineered
 - v2 (security-focused): Excellent security but complex
 - v3 (pragmatic): Good balance, missing edge cases
 - v4 (minimalist): Too simple, security gaps
 
 **Selection:** Hybrid of v2 and v3
+
 - Security implementation from v2
 - API design and simplicity from v3
 
@@ -220,6 +233,7 @@ Selection Criteria Applied:
 **Profiles:** pragmatic, performance-focused, minimalist
 
 **Result:**
+
 - v1 (pragmatic): Pandas-based, familiar but slow
 - v2 (performance-focused): Custom streaming, 10x faster
 - v3 (minimalist): Python CSV module, simple but slow
@@ -231,6 +245,7 @@ Selection Criteria Applied:
 ## Philosophy Alignment
 
 This workflow enforces:
+
 - **Reduced Risk:** Multiple implementations catch errors single approach might miss
 - **Exploration:** Different approaches reveal design trade-offs
 - **Evidence-Based Selection:** Systematic comparison vs. gut feeling

@@ -12,7 +12,6 @@ import string
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class Neo4jConfig:
     health_check_interval: int  # seconds between health checks
 
     @classmethod
-    def from_environment(cls, cli_container_name: Optional[str] = None) -> "Neo4jConfig":
+    def from_environment(cls, cli_container_name: str | None = None) -> "Neo4jConfig":
         """Load configuration from environment variables.
 
         Args:
@@ -288,11 +287,11 @@ def get_or_create_password() -> str:
 
 
 # Singleton instance (lazy-loaded)
-_config: Optional[Neo4jConfig] = None
-_cli_container_name: Optional[str] = None
+_config: Neo4jConfig | None = None
+_cli_container_name: str | None = None
 
 
-def set_cli_container_name(container_name: Optional[str]):
+def set_cli_container_name(container_name: str | None):
     """Set container name from CLI argument.
 
     This must be called before get_config() to take effect.

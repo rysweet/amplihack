@@ -9,7 +9,7 @@ Uses extensible tool registry system for multiple tool hooks.
 # Import the base processor
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
@@ -50,7 +50,7 @@ class PostToolUseHook(HookProcessor):
         # from other_tool_hook import register_other_hook
         # register_other_hook()
 
-    def save_tool_metric(self, tool_name: str, duration_ms: Optional[int] = None):
+    def save_tool_metric(self, tool_name: str, duration_ms: int | None = None):
         """Save tool usage metric with structured data.
 
         Args:
@@ -63,7 +63,7 @@ class PostToolUseHook(HookProcessor):
 
         self.save_metric("tool_usage", tool_name, metadata)
 
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process post tool use event.
 
         Args:

@@ -3,7 +3,7 @@
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass
@@ -20,7 +20,7 @@ class Session:
     expires_at: datetime = field(default_factory=lambda: datetime.now() + timedelta(hours=24))
     is_valid: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert session to dictionary.
 
         Returns:

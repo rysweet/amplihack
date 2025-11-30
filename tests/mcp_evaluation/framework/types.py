@@ -4,11 +4,12 @@ This module defines all data structures used throughout the evaluation system.
 Each type represents a clear concept with well-defined boundaries.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 
 class ScenarioCategory(Enum):
@@ -49,9 +50,9 @@ class ToolCapability:
     id: str
     name: str
     description: str
-    relevant_scenarios: List[ScenarioCategory]
+    relevant_scenarios: list[ScenarioCategory]
     expected_improvement: ExpectedImprovement
-    mcp_commands: List[str]
+    mcp_commands: list[str]
 
     def __post_init__(self):
         """Convert string enums to enum types if needed."""
@@ -71,17 +72,17 @@ class ToolConfiguration:
     tool_name: str
     version: str
     description: str
-    capabilities: List[ToolCapability]
+    capabilities: list[ToolCapability]
     adapter_class: str
     setup_required: bool
     setup_instructions: str
-    expected_advantages: Dict[ScenarioCategory, List[str]]
+    expected_advantages: dict[ScenarioCategory, list[str]]
     baseline_comparison_mode: ComparisonMode
 
     # Optional fields
-    health_check_url: Optional[str] = None
-    environment_variables: Dict[str, str] = field(default_factory=dict)
-    max_concurrent_calls: Optional[int] = None
+    health_check_url: str | None = None
+    environment_variables: dict[str, str] = field(default_factory=dict)
+    max_concurrent_calls: int | None = None
     timeout_seconds: int = 30
     fallback_behavior: FallbackBehavior = FallbackBehavior.BASELINE
 
@@ -106,7 +107,7 @@ class ToolConfiguration:
             ToolCapability(**cap) if isinstance(cap, dict) else cap for cap in self.capabilities
         ]
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate configuration.
 
         Returns:
@@ -180,15 +181,15 @@ class TestScenario:
 
     # Test Setup
     test_codebase: Path
-    initial_state: Dict[str, Any]
+    initial_state: dict[str, Any]
 
     # Test Execution
     task_prompt: str
-    success_criteria: List[Criterion]
+    success_criteria: list[Criterion]
 
     # Measurement
-    baseline_metrics: List[str]
-    tool_metrics: List[str]
+    baseline_metrics: list[str]
+    tool_metrics: list[str]
 
     def __post_init__(self):
         """Convert types if needed."""
@@ -237,11 +238,11 @@ class ToolMetrics:
     """Tool-specific measurements."""
 
     # Tool Usage
-    features_used: List[str]
-    feature_effectiveness: Dict[str, float]
+    features_used: list[str]
+    feature_effectiveness: dict[str, float]
 
     # Tool Performance
-    tool_call_latency: List[float]
+    tool_call_latency: list[float]
     tool_failures: int
     fallback_count: int
 
@@ -256,7 +257,7 @@ class Metrics:
 
     quality: QualityMetrics
     efficiency: EfficiencyMetrics
-    tool: Optional[ToolMetrics] = None
+    tool: ToolMetrics | None = None
 
 
 @dataclass
@@ -277,9 +278,9 @@ class ComparisonResult:
     scenario: TestScenario
     baseline_result: ScenarioResult
     enhanced_result: ScenarioResult
-    quality_delta: Dict[str, Any]
-    efficiency_delta: Dict[str, Any]
-    tool_value: Dict[str, Any]
+    quality_delta: dict[str, Any]
+    efficiency_delta: dict[str, Any]
+    tool_value: dict[str, Any]
     recommendation: str
 
 
@@ -289,9 +290,9 @@ class EvaluationReport:
 
     tool_config: ToolConfiguration
     timestamp: datetime
-    results: List[ComparisonResult]
-    summary: Dict[str, Any]
-    recommendations: List[str]
+    results: list[ComparisonResult]
+    summary: dict[str, Any]
+    recommendations: list[str]
 
     def save_json(self, path: Path) -> None:
         """Save report as JSON."""

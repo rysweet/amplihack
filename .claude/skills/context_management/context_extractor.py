@@ -8,7 +8,7 @@ full conversation dumps.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .models import ContextSnapshot
 
@@ -30,7 +30,7 @@ class ContextExtractor:
         snapshot_dir: Directory where snapshots are stored
     """
 
-    def __init__(self, snapshot_dir: Optional[Path] = None):
+    def __init__(self, snapshot_dir: Path | None = None):
         """Initialize context extractor.
 
         Args:
@@ -50,7 +50,7 @@ class ContextExtractor:
         # Ensure directory exists
         self.snapshot_dir.mkdir(parents=True, exist_ok=True)
 
-    def extract_from_conversation(self, conversation_data: List[Dict]) -> Dict[str, Any]:
+    def extract_from_conversation(self, conversation_data: list[dict]) -> dict[str, Any]:
         """Extract essential context from conversation history.
 
         Args:
@@ -97,7 +97,7 @@ class ContextExtractor:
             "tools_used": tools_used,
         }
 
-    def _extract_original_requirements(self, conversation_data: List[Dict]) -> str:
+    def _extract_original_requirements(self, conversation_data: list[dict]) -> str:
         """Extract first user message as original requirements."""
         for message in conversation_data:
             if message.get("role") == "user":
@@ -106,7 +106,7 @@ class ContextExtractor:
                 return content[:500] + ("..." if len(content) > 500 else "")
         return "No user requirements found"
 
-    def _extract_key_decisions(self, conversation_data: List[Dict]) -> List[Dict[str, str]]:
+    def _extract_key_decisions(self, conversation_data: list[dict]) -> list[dict[str, str]]:
         """Extract key decisions from assistant messages."""
         decisions = []
         decision_keywords = ["decided", "chosen", "selected", "opted", "approach"]
@@ -134,7 +134,7 @@ class ContextExtractor:
         # Limit to top 5 decisions
         return decisions[:5]
 
-    def _extract_implementation_state(self, conversation_data: List[Dict]) -> str:
+    def _extract_implementation_state(self, conversation_data: list[dict]) -> str:
         """Summarize current implementation state from tool usage."""
         tool_usage_count = sum(
             1 for msg in conversation_data if msg.get("role") == "tool_use" or "tool_name" in msg
@@ -155,7 +155,7 @@ class ContextExtractor:
 
         return state
 
-    def _extract_open_items(self, conversation_data: List[Dict]) -> List[str]:
+    def _extract_open_items(self, conversation_data: list[dict]) -> list[str]:
         """Extract open questions and blockers."""
         open_items = []
         question_indicators = ["?", "todo", "need to", "should we", "blocker", "pending"]
@@ -185,7 +185,7 @@ class ContextExtractor:
         # Limit to top 10 unique items
         return list(set(open_items))[:10]
 
-    def _extract_tools_used(self, conversation_data: List[Dict]) -> List[str]:
+    def _extract_tools_used(self, conversation_data: list[dict]) -> list[str]:
         """Extract list of unique tools used."""
         tools = set()
         for message in conversation_data:
@@ -199,7 +199,7 @@ class ContextExtractor:
 
         return sorted(list(tools))
 
-    def create_snapshot(self, context: Dict[str, Any], name: Optional[str] = None) -> Path:
+    def create_snapshot(self, context: dict[str, Any], name: str | None = None) -> Path:
         """Create a named context snapshot.
 
         Args:
@@ -241,7 +241,7 @@ class ContextExtractor:
 
         return file_path
 
-    def _estimate_tokens(self, context: Dict[str, Any]) -> int:
+    def _estimate_tokens(self, context: dict[str, Any]) -> int:
         """Rough token estimation (1 token ≈ 4 characters)."""
         total_chars = 0
         total_chars += len(context.get("original_requirements", ""))

@@ -26,7 +26,6 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
 def _is_uvx_mode() -> bool:
@@ -75,7 +74,7 @@ def _configure_user_local_npm() -> dict[str, str]:
     return env
 
 
-def _find_claude_in_common_locations() -> Optional[str]:
+def _find_claude_in_common_locations() -> str | None:
     """Search for claude in PATH.
 
     Returns:
@@ -294,7 +293,7 @@ def _install_claude_cli() -> bool:
         return False
 
 
-def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
+def get_claude_cli_path(auto_install: bool = True) -> str | None:
     """Get path to Claude CLI binary, optionally installing if missing.
 
     Args:

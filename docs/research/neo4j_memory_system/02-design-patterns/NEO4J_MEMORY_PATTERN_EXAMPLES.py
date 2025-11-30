@@ -16,7 +16,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from neo4j import GraphDatabase
 
@@ -42,7 +42,7 @@ class Episode:
     type: str  # conversation, commit, error, etc.
     content: str
     actor: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
@@ -55,8 +55,8 @@ class Entity:
     summary: str
     created_at: datetime
     updated_at: datetime
-    t_valid: Optional[datetime] = None
-    t_invalid: Optional[datetime] = None
+    t_valid: datetime | None = None
+    t_invalid: datetime | None = None
 
 
 class ThreeTierMemoryGraph:
@@ -121,7 +121,7 @@ class ThreeTierMemoryGraph:
             )
             return result.single()["id"]
 
-    def extract_and_link_entities(self, episode_id: str, entities: List[Entity]):
+    def extract_and_link_entities(self, episode_id: str, entities: list[Entity]):
         """
         Extract entities from episode and link (episodic → semantic)
 
@@ -298,7 +298,7 @@ class TemporalMemoryManager:
             )
             return result.single()["invalidated_id"]
 
-    def get_current_facts(self) -> List[Dict]:
+    def get_current_facts(self) -> list[dict]:
         """Get facts that are currently valid"""
         query = """
         MATCH (f:Fact)
@@ -313,7 +313,7 @@ class TemporalMemoryManager:
             result = session.run(query)
             return [dict(record) for record in result]
 
-    def get_facts_at_time(self, at_time: datetime) -> List[Dict]:
+    def get_facts_at_time(self, at_time: datetime) -> list[dict]:
         """Time-travel query: What did we know at a specific time?"""
         query = """
         MATCH (f:Fact)
@@ -376,7 +376,7 @@ class HybridSearchEngine:
     def __init__(self, uri: str, auth: tuple):
         self.driver = GraphDatabase.driver(uri, auth=auth)
 
-    def semantic_search(self, query_text: str, top_k: int = 50) -> List[str]:
+    def semantic_search(self, query_text: str, top_k: int = 50) -> list[str]:
         """
         Stage 1: Semantic search using text similarity
 
@@ -395,7 +395,7 @@ class HybridSearchEngine:
             result = session.run(query, query=query_text, top_k=top_k)
             return [record["id"] for record in result]
 
-    def graph_expansion(self, seed_entity_ids: List[str], depth: int = 2) -> List[str]:
+    def graph_expansion(self, seed_entity_ids: list[str], depth: int = 2) -> list[str]:
         """
         Stage 2: Graph traversal to find related entities
         """
@@ -412,7 +412,7 @@ class HybridSearchEngine:
             result = session.run(query, seed_ids=seed_entity_ids, depth=depth)
             return [record["id"] for record in result]
 
-    def temporal_filter(self, entity_ids: List[str], days: int = 30) -> List[str]:
+    def temporal_filter(self, entity_ids: list[str], days: int = 30) -> list[str]:
         """
         Stage 3: Boost recently mentioned entities
         """
@@ -429,7 +429,7 @@ class HybridSearchEngine:
             result = session.run(query, entity_ids=entity_ids, days=days)
             return [record["id"] for record in result]
 
-    def reciprocal_rank_fusion(self, rank_lists: List[List[str]], k: int = 60) -> List[str]:
+    def reciprocal_rank_fusion(self, rank_lists: list[list[str]], k: int = 60) -> list[str]:
         """
         Stage 4: Combine results using Reciprocal Rank Fusion (RRF)
 
@@ -447,7 +447,7 @@ class HybridSearchEngine:
         sorted_items = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return [item_id for item_id, score in sorted_items]
 
-    def hybrid_search(self, query_text: str, top_k: int = 10) -> List[str]:
+    def hybrid_search(self, query_text: str, top_k: int = 10) -> list[str]:
         """
         Full hybrid search pipeline
 
@@ -502,7 +502,7 @@ class IncrementalGraphUpdater:
         self.driver = GraphDatabase.driver(uri, auth=auth)
 
     def update_file_entities(
-        self, file_path: str, new_entities: List[Dict], old_entities: List[Dict] = None
+        self, file_path: str, new_entities: list[dict], old_entities: list[dict] = None
     ):
         """
         Incrementally update entities for a file
@@ -628,7 +628,7 @@ class ErrorPatternLearner:
         self.driver = GraphDatabase.driver(uri, auth=auth)
 
     def record_error(
-        self, error_type: str, error_message: str, file_path: str, line: int, context: Dict
+        self, error_type: str, error_message: str, file_path: str, line: int, context: dict
     ) -> str:
         """Record error episode"""
         query = """
@@ -656,7 +656,7 @@ class ErrorPatternLearner:
             )
             return result.single()["episode_id"]
 
-    def find_procedure(self, error_type: str) -> Optional[Dict]:
+    def find_procedure(self, error_type: str) -> dict | None:
         """Find known procedure for error type"""
         query = """
         MATCH (p:Procedure)-[:FIXES]->(e:ErrorType {type: $error_type})
@@ -672,7 +672,7 @@ class ErrorPatternLearner:
             record = result.single()
             return dict(record["procedure"]) if record else None
 
-    def record_resolution(self, episode_id: str, steps: List[str], success: bool):
+    def record_resolution(self, episode_id: str, steps: list[str], success: bool):
         """Record resolution and learn procedure"""
         query = """
         // Update episode
@@ -770,7 +770,7 @@ class BatchOperations:
     def __init__(self, uri: str, auth: tuple):
         self.driver = GraphDatabase.driver(uri, auth=auth)
 
-    def batch_create_nodes_slow(self, nodes: List[Dict]):
+    def batch_create_nodes_slow(self, nodes: list[dict]):
         """SLOW: Individual creates (DON'T USE)"""
         with self.driver.session() as session:
             for node in nodes:
@@ -778,7 +778,7 @@ class BatchOperations:
                     "CREATE (n:Entity {id: $id, name: $name})", id=node["id"], name=node["name"]
                 )
 
-    def batch_create_nodes_fast(self, nodes: List[Dict]):
+    def batch_create_nodes_fast(self, nodes: list[dict]):
         """FAST: Single query with UNWIND"""
         query = """
         UNWIND $batch as node
@@ -789,7 +789,7 @@ class BatchOperations:
         with self.driver.session() as session:
             session.run(query, batch=nodes)
 
-    def batch_create_relationships_fast(self, relationships: List[Dict]):
+    def batch_create_relationships_fast(self, relationships: list[dict]):
         """Batch create relationships"""
         query = """
         UNWIND $batch as rel
@@ -866,7 +866,7 @@ class CodingAssistantMemory:
             )
 
     def record_conversation(
-        self, user_message: str, assistant_response: str, files_mentioned: List[str] = None
+        self, user_message: str, assistant_response: str, files_mentioned: list[str] = None
     ) -> str:
         """Record conversation episode"""
         episode_id = (
@@ -894,7 +894,7 @@ class CodingAssistantMemory:
             )
             return result.single()["id"]
 
-    def on_file_change(self, file_path: str, functions: List[Dict]):
+    def on_file_change(self, file_path: str, functions: list[dict]):
         """Handle file change with incremental update"""
         query = """
         // Update file node
@@ -930,7 +930,7 @@ class CodingAssistantMemory:
             result = session.run(query, file_path=file_path, functions=functions)
             return result.single()["functions_updated"]
 
-    def on_error(self, error_type: str, error_message: str, file_path: str, line: int) -> Dict:
+    def on_error(self, error_type: str, error_message: str, file_path: str, line: int) -> dict:
         """Handle error with pattern learning"""
         # Record error episode
         episode_id = (
@@ -985,7 +985,7 @@ class CodingAssistantMemory:
             "confidence": procedure["success_rate"] if procedure else 0.3,
         }
 
-    def _find_procedure(self, error_type: str) -> Optional[Dict]:
+    def _find_procedure(self, error_type: str) -> dict | None:
         """Find procedure for error type"""
         query = """
         MATCH (p:Procedure)-[:FIXES]->(et:ErrorType {type: $error_type})
@@ -999,7 +999,7 @@ class CodingAssistantMemory:
             record = result.single()
             return dict(record["procedure"]) if record else None
 
-    def _find_similar_errors(self, error_type: str, limit: int = 5) -> List[Dict]:
+    def _find_similar_errors(self, error_type: str, limit: int = 5) -> list[dict]:
         """Find similar past errors"""
         query = """
         MATCH (ep:Episode:Error {error_type: $error_type})
@@ -1013,7 +1013,7 @@ class CodingAssistantMemory:
             result = session.run(query, error_type=error_type, limit=limit)
             return [dict(record["error"]) for record in result]
 
-    def retrieve_context(self, query: str, top_k: int = 10) -> List[Dict]:
+    def retrieve_context(self, query: str, top_k: int = 10) -> list[dict]:
         """Retrieve relevant context using hybrid search"""
         # Simplified hybrid search
         cypher_query = """

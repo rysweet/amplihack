@@ -14,7 +14,7 @@ Comprehensive Review Detection:
 """
 
 import re
-from typing import Any, Dict
+from typing import Any
 
 # Comprehensive review pattern detection
 COMPREHENSIVE_REVIEW_PATTERNS = [
@@ -39,7 +39,7 @@ COMPREHENSIVE_REVIEW_BOOST = 10  # Equivalent to 2 formal approvals
 # Ensures comprehensive comment reviews have equal weight to formal reviews
 
 
-def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
+def validate_workflow_compliance(pr_data: dict[str, Any]) -> dict[str, Any]:
     """Check if PR completed Steps 11-12 of workflow using heuristics.
 
     Args:
@@ -184,7 +184,7 @@ def validate_workflow_compliance(pr_data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def detect_priority_complexity(pr_data: Dict[str, Any]) -> Dict[str, str]:
+def detect_priority_complexity(pr_data: dict[str, Any]) -> dict[str, str]:
     """Detect appropriate priority and complexity labels using heuristics.
 
     Args:
@@ -262,7 +262,7 @@ def detect_priority_complexity(pr_data: Dict[str, Any]) -> Dict[str, str]:
     }
 
 
-def detect_unrelated_changes(pr_data: Dict[str, Any]) -> Dict[str, Any]:
+def detect_unrelated_changes(pr_data: dict[str, Any]) -> dict[str, Any]:
     """Detect if PR contains unrelated changes using heuristics.
 
     Args:

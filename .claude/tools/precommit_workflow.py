@@ -14,7 +14,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class PreCommitWorkflow:
@@ -45,7 +45,7 @@ class PreCommitWorkflow:
             current = current.parent
         return Path.cwd()
 
-    def _run_command(self, command: str, check: bool = False) -> Tuple[int, str, str]:
+    def _run_command(self, command: str, check: bool = False) -> tuple[int, str, str]:
         """Run a shell command and return exit code, stdout, and stderr."""
         try:
             result = subprocess.run(
@@ -60,7 +60,7 @@ class PreCommitWorkflow:
         except subprocess.CalledProcessError as e:
             return e.returncode, e.stdout or "", e.stderr or ""
 
-    def analyze_failures(self) -> Dict[str, Any]:
+    def analyze_failures(self) -> dict[str, Any]:
         """Analyze pre-commit failures from the most recent run.
 
         Returns:
@@ -129,7 +129,7 @@ class PreCommitWorkflow:
 
         return result
 
-    def auto_fix(self, tools: Optional[List[str]] = None) -> bool:
+    def auto_fix(self, tools: list[str] | None = None) -> bool:
         """Run auto-fix for specified tools or all known tools.
 
         Args:
@@ -171,7 +171,7 @@ class PreCommitWorkflow:
 
         return all_success
 
-    def verify_environment(self) -> Dict[str, bool]:
+    def verify_environment(self) -> dict[str, bool]:
         """Verify pre-commit environment is properly set up.
 
         Returns:

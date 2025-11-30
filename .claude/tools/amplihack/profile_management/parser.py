@@ -6,6 +6,7 @@ them against the ProfileConfig schema.
 
 import yaml
 from pydantic import ValidationError
+
 from .models import ProfileConfig
 
 
@@ -49,8 +50,7 @@ class ProfileParser:
             data = yaml.safe_load(raw_yaml)
         except yaml.YAMLError as e:
             raise yaml.YAMLError(
-                f"Invalid YAML syntax: {e}\n"
-                f"Ensure the profile is valid YAML format."
+                f"Invalid YAML syntax: {e}\nEnsure the profile is valid YAML format."
             )
 
         # Validate it's a dictionary
@@ -83,14 +83,11 @@ class ProfileParser:
             # Format validation errors for better readability
             error_messages = []
             for error in e.errors():
-                field = ".".join(str(loc) for loc in error['loc'])
-                msg = error['msg']
+                field = ".".join(str(loc) for loc in error["loc"])
+                msg = error["msg"]
                 error_messages.append(f"  - {field}: {msg}")
 
-            raise ValidationError.from_exception_data(
-                title="ProfileConfig",
-                line_errors=e.errors()
-            )
+            raise ValidationError.from_exception_data(title="ProfileConfig", line_errors=e.errors())
 
         # Version validation happens automatically via @field_validator in ProfileConfig
         return profile

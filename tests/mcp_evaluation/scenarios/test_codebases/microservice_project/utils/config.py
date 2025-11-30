@@ -1,7 +1,7 @@
 """Configuration management."""
 
 import os
-from typing import Any, Dict
+from typing import Any
 
 
 class Config:
@@ -18,7 +18,7 @@ class Config:
         self.database_url = os.getenv("DATABASE_URL", "sqlite:///app.db")
         self.secret_key = os.getenv("SECRET_KEY", "dev-secret-key")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary.
 
         Returns:

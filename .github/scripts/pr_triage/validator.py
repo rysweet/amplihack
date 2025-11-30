@@ -3,7 +3,7 @@
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from . import github_client, security
 from .report_generator import generate_triage_report
@@ -59,7 +59,7 @@ class PRTriageValidator:
         with open(log_file, "a") as f:
             f.write(log_msg + "\n")
 
-    def audit(self, operation: str, result: str, details: Dict[str, Any] = None) -> None:
+    def audit(self, operation: str, result: str, details: dict[str, Any] = None) -> None:
         """Write audit log entry.
 
         Args:
@@ -71,7 +71,7 @@ class PRTriageValidator:
         with open(self.audit_log, "a") as f:
             f.write(entry + "\n")
 
-    def get_pr_data(self) -> Dict[str, Any]:
+    def get_pr_data(self) -> dict[str, Any]:
         """Fetch PR data using gh CLI.
 
         Returns:
@@ -100,29 +100,29 @@ class PRTriageValidator:
             self.audit("get_pr_data", "failed", {"error": str(e)})
             raise
 
-    def validate_workflow_compliance(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_workflow_compliance(self, pr_data: dict[str, Any]) -> dict[str, Any]:
         """Check if PR completed Steps 11-12 of workflow."""
         return analyzers.validate_workflow_compliance(pr_data)
 
-    def detect_priority_complexity(self, pr_data: Dict[str, Any]) -> Dict[str, str]:
+    def detect_priority_complexity(self, pr_data: dict[str, Any]) -> dict[str, str]:
         """Detect appropriate priority and complexity labels."""
         return analyzers.detect_priority_complexity(pr_data)
 
-    def detect_unrelated_changes(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
+    def detect_unrelated_changes(self, pr_data: dict[str, Any]) -> dict[str, Any]:
         """Detect if PR contains unrelated changes."""
         return analyzers.detect_unrelated_changes(pr_data)
 
     def generate_triage_report(
         self,
-        pr_data: Dict[str, Any],
-        compliance: Dict[str, Any],
-        labels: Dict[str, str],
-        unrelated: Dict[str, Any],
+        pr_data: dict[str, Any],
+        compliance: dict[str, Any],
+        labels: dict[str, str],
+        unrelated: dict[str, Any],
     ) -> str:
         """Generate comprehensive triage report."""
         return generate_triage_report(self.pr_number, pr_data, compliance, labels, unrelated)
 
-    def apply_labels(self, labels: Dict[str, str]) -> None:
+    def apply_labels(self, labels: dict[str, str]) -> None:
         """Apply priority and complexity labels to PR.
 
         Args:

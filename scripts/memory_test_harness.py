@@ -30,7 +30,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from scipy import stats
@@ -96,7 +96,7 @@ class TestRun:
     memory: MemoryMetrics
     output: OutputMetrics
     error_occurred: bool = False
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 @dataclass
@@ -109,8 +109,8 @@ class Scenario:
     expected_benefit: str  # high, medium, low
     description: str
     task: str
-    success_criteria: List[str]
-    metrics: List[str]
+    success_criteria: list[str]
+    metrics: list[str]
 
 
 # ============================================================================
@@ -216,8 +216,8 @@ class StatisticalAnalyzer:
 
     @staticmethod
     def compare_configurations(
-        baseline_values: List[float], treatment_values: List[float]
-    ) -> Dict[str, Any]:
+        baseline_values: list[float], treatment_values: list[float]
+    ) -> dict[str, Any]:
         """Compare two configurations using paired t-test.
 
         Args:
@@ -258,8 +258,8 @@ class StatisticalAnalyzer:
 
     @staticmethod
     def analyze_multiple_metrics(
-        baseline_data: List[TestRun], treatment_data: List[TestRun], metrics: List[str]
-    ) -> Dict[str, Any]:
+        baseline_data: list[TestRun], treatment_data: list[TestRun], metrics: list[str]
+    ) -> dict[str, Any]:
         """Analyze multiple metrics with Bonferroni correction.
 
         Args:
@@ -344,7 +344,7 @@ class Configuration:
     def __init__(self, name: str):
         self.name = name
 
-    def run_scenario(self, scenario: Scenario) -> Dict[str, Any]:
+    def run_scenario(self, scenario: Scenario) -> dict[str, Any]:
         """Run a scenario with this configuration."""
         raise NotImplementedError
 
@@ -355,7 +355,7 @@ class ControlConfiguration(Configuration):
     def __init__(self):
         super().__init__("control")
 
-    def run_scenario(self, scenario: Scenario) -> Dict[str, Any]:
+    def run_scenario(self, scenario: Scenario) -> dict[str, Any]:
         """Run scenario without memory."""
         # TODO: Implement actual scenario execution
         # For now, return mock data
@@ -368,7 +368,7 @@ class SQLiteConfiguration(Configuration):
     def __init__(self):
         super().__init__("sqlite")
 
-    def run_scenario(self, scenario: Scenario) -> Dict[str, Any]:
+    def run_scenario(self, scenario: Scenario) -> dict[str, Any]:
         """Run scenario with SQLite memory."""
         # TODO: Implement actual scenario execution with SQLite memory
         return {"success": True, "output": "Mock output"}
@@ -380,7 +380,7 @@ class Neo4jConfiguration(Configuration):
     def __init__(self):
         super().__init__("neo4j")
 
-    def run_scenario(self, scenario: Scenario) -> Dict[str, Any]:
+    def run_scenario(self, scenario: Scenario) -> dict[str, Any]:
         """Run scenario with Neo4j memory."""
         # TODO: Implement actual scenario execution with Neo4j memory
         return {"success": True, "output": "Mock output"}
@@ -405,7 +405,7 @@ class MemoryTestHarness:
             "neo4j": Neo4jConfiguration(),
         }
 
-    def _load_scenarios(self) -> List[Scenario]:
+    def _load_scenarios(self) -> list[Scenario]:
         """Load test scenarios from definitions."""
         # TODO: Load from YAML files
         # For now, create mock scenarios
@@ -458,7 +458,7 @@ class MemoryTestHarness:
         print("\n[Phase 4] Generating final report...")
         self._generate_final_report()
 
-    def run_configuration(self, config_name: str, iterations: int = 5) -> List[TestRun]:
+    def run_configuration(self, config_name: str, iterations: int = 5) -> list[TestRun]:
         """Run all scenarios for a configuration.
 
         Args:
@@ -527,8 +527,8 @@ class MemoryTestHarness:
         return collector.finalize()
 
     def _compare_configurations(
-        self, baseline: List[TestRun], treatment: List[TestRun]
-    ) -> Dict[str, Any]:
+        self, baseline: list[TestRun], treatment: list[TestRun]
+    ) -> dict[str, Any]:
         """Compare two configurations statistically."""
         analyzer = StatisticalAnalyzer()
 
@@ -547,7 +547,7 @@ class MemoryTestHarness:
 
         return comparison
 
-    def _should_proceed(self, comparison: Dict[str, Any]) -> bool:
+    def _should_proceed(self, comparison: dict[str, Any]) -> bool:
         """Determine if results justify proceeding."""
         # Check execution time improvement
         exec_time = comparison.get("time.execution_time", {})
@@ -565,7 +565,7 @@ class MemoryTestHarness:
 
         return significant and meaningful and substantial
 
-    def _save_results(self, results: List[TestRun], name: str):
+    def _save_results(self, results: list[TestRun], name: str):
         """Save test results to file."""
         output_file = self.output_dir / f"{name}_results.json"
 
@@ -577,7 +577,7 @@ class MemoryTestHarness:
 
         print(f"  Saved results to: {output_file}")
 
-    def _save_comparison(self, comparison: Dict[str, Any], name: str):
+    def _save_comparison(self, comparison: dict[str, Any], name: str):
         """Save comparison results to file."""
         output_file = self.output_dir / f"{name}_comparison.json"
 

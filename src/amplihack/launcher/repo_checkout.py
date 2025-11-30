@@ -4,7 +4,6 @@ import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 
 def parse_github_uri(uri: str) -> str:
@@ -46,7 +45,7 @@ def parse_github_uri(uri: str) -> str:
     raise ValueError(f"Invalid GitHub URI: {uri}")
 
 
-def checkout_repository(repo_uri: str, base_dir: Optional[Path] = None) -> Optional[Path]:
+def checkout_repository(repo_uri: str, base_dir: Path | None = None) -> Path | None:
     """Checkout a GitHub repository.
 
     Args:

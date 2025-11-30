@@ -23,12 +23,12 @@ This directory contains the canonical reference implementation for evaluating AI
 
 ### Task Complexity Levels
 
-| Level | Task | Description | Key Features |
-|-------|------|-------------|--------------|
-| 1 | Simple Greeting | Basic function + 1 test | Edge case handling |
-| 2 | Config Manager | YAML + env vars + validation | Thread safety, 40+ tests |
-| 3 | Plugin System | Abstract base + registry + decorator | SOLID design, security |
-| 4 | REST API Client | Retry/backoff + rate limiting + mocks | Complex integration |
+| Level | Task            | Description                           | Key Features             |
+| ----- | --------------- | ------------------------------------- | ------------------------ |
+| 1     | Simple Greeting | Basic function + 1 test               | Edge case handling       |
+| 2     | Config Manager  | YAML + env vars + validation          | Thread safety, 40+ tests |
+| 3     | Plugin System   | Abstract base + registry + decorator  | SOLID design, security   |
+| 4     | REST API Client | Retry/backoff + rate limiting + mocks | Complex integration      |
 
 ## Running This Benchmark
 
@@ -61,12 +61,14 @@ python run_benchmarks.py --tasks 1,2,3,4
 ### What Gets Measured
 
 #### Efficiency Metrics
+
 - **Duration**: Wall-clock time from start to completion
 - **Turns**: Number of conversation turns (user + assistant messages)
 - **Cost**: Total API cost in USD (broken down by model usage)
 - **Tool Calls**: Total number of tool invocations
 
 #### Quality Metrics
+
 - **Code Quality Score**: 1-5 scale assessed by reviewer agent
   - Correctness: Does it work?
   - Error Handling: Edge cases covered?
@@ -76,6 +78,7 @@ python run_benchmarks.py --tasks 1,2,3,4
   - SOLID Principles: Good architecture?
 
 #### Workflow Metrics
+
 - **Subagent Invocations**: Count of specialized agent calls (architect, builder, reviewer, etc.)
 - **Skills Used**: Which Claude Code skills were activated
 - **Workflow Steps**: Which steps from DEFAULT_WORKFLOW.md were executed
@@ -139,11 +142,14 @@ See `BENCHMARK_REPORT_V3.md` for the canonical report structure:
 # Benchmark Report: [Title]
 
 ## Results Summary
+
 - Core Metrics Comparison (aggregate table)
 - Quality Score Summary (per-task breakdown)
 
 ## Task-by-Task Analysis
+
 For each task:
+
 - Requirements summary
 - Metrics table (duration, turns, cost, quality score)
 - Notable features/differences
@@ -151,22 +157,27 @@ For each task:
 - Verdict (recommendation and insights)
 
 ## Tool Usage Analysis
+
 - Tool call frequency breakdown
 - Pattern analysis
 
 ## Subagent Orchestration
+
 - Agent invocation patterns
 - Parallel vs sequential execution
 
 ## Skills Usage
+
 - Which skills were activated
 - Context and frequency
 
 ## Workflow Adherence
+
 - Step-by-step workflow compliance
 - Deviations and reasons
 
 ## Key Findings
+
 - Speed vs Quality tradeoffs
 - Complexity-dependent patterns
 - Cost-benefit analysis

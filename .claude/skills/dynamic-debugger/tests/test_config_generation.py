@@ -5,24 +5,21 @@ Testing pyramid distribution:
 - Tests focus on template loading, variable substitution, and validation
 """
 
-import sys
 import json
-import pytest
+import sys
 from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock
+
+import pytest
 
 # Add scripts directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from generate_dap_config import (
-    generate_config,
-    validate_config
-)
-
+from generate_dap_config import generate_config, validate_config
 
 # ============================================================================
 # TEMPLATE LOADING TESTS (6 tests)
 # ============================================================================
+
 
 class TestTemplateLoading:
     """Test configuration template loading for all languages."""
@@ -87,6 +84,7 @@ class TestTemplateLoading:
 # VARIABLE SUBSTITUTION TESTS (6 tests)
 # ============================================================================
 
+
 class TestVariableSubstitution:
     """Test template variable substitution."""
 
@@ -127,6 +125,7 @@ class TestVariableSubstitution:
 # VALIDATION TESTS (6 tests)
 # ============================================================================
 
+
 class TestConfigValidation:
     """Test configuration validation logic."""
 
@@ -136,26 +135,17 @@ class TestConfigValidation:
 
     def test_validate_missing_name_field(self):
         """Test validation fails when name field is missing."""
-        config = {
-            "type": "python",
-            "request": "launch"
-        }
+        config = {"type": "python", "request": "launch"}
         assert validate_config(config) is False
 
     def test_validate_missing_type_field(self):
         """Test validation fails when type field is missing."""
-        config = {
-            "name": "Debug",
-            "request": "launch"
-        }
+        config = {"name": "Debug", "request": "launch"}
         assert validate_config(config) is False
 
     def test_validate_missing_request_field(self):
         """Test validation fails when request field is missing."""
-        config = {
-            "name": "Debug",
-            "type": "python"
-        }
+        config = {"name": "Debug", "type": "python"}
         assert validate_config(config) is False
 
     def test_validate_empty_config(self):
@@ -170,7 +160,7 @@ class TestConfigValidation:
             "request": "launch",
             "program": "/path/to/file.py",
             "cwd": "/path/to/project",
-            "extra_field": "extra_value"
+            "extra_field": "extra_value",
         }
         assert validate_config(config) is True
 
@@ -178,6 +168,7 @@ class TestConfigValidation:
 # ============================================================================
 # ERROR HANDLING TESTS (Bonus - comprehensive coverage)
 # ============================================================================
+
 
 class TestErrorHandling:
     """Test error handling in configuration generation."""
@@ -204,9 +195,11 @@ class TestErrorHandling:
             # Some path resolution errors are acceptable
             pass
 
+
 # ============================================================================
 # CLI INTERFACE TESTS (Bonus)
 # ============================================================================
+
 
 class TestCLIInterface:
     """Test command-line interface for config generation."""
@@ -239,7 +232,7 @@ class TestCLIInterface:
             str(python_project),
             port=8888,
             entry_point="custom_main",
-            custom_param="custom_value"
+            custom_param="custom_value",
         )
 
         assert isinstance(config, dict)
@@ -250,16 +243,20 @@ class TestCLIInterface:
 # INTEGRATION WITH REAL CONFIG FILES (Bonus)
 # ============================================================================
 
+
 class TestRealConfigFiles:
     """Test with actual config files in the configs directory."""
 
-    @pytest.mark.parametrize("language,config_file", [
-        ("python", "debugpy.json"),
-        ("javascript", "node.json"),
-        ("go", "delve.json"),
-        ("rust", "rust-gdb.json"),
-        ("cpp", "gdb.json"),
-    ])
+    @pytest.mark.parametrize(
+        "language,config_file",
+        [
+            ("python", "debugpy.json"),
+            ("javascript", "node.json"),
+            ("go", "delve.json"),
+            ("rust", "rust-gdb.json"),
+            ("cpp", "gdb.json"),
+        ],
+    )
     def test_real_config_files_loadable(self, language, config_file, temp_project_dir, configs_dir):
         """Test that real config files can be loaded and used."""
         config_path = configs_dir / config_file

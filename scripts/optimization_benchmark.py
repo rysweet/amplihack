@@ -7,7 +7,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Dict
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -101,7 +100,7 @@ class OptimizationBenchmark:
                         f"Large content for {large_dir}" * 30
                     )
 
-    def benchmark_staging_performance(self, mode: str = "complete") -> Dict[str, Dict]:
+    def benchmark_staging_performance(self, mode: str = "complete") -> dict[str, dict]:
         """Benchmark staging performance for both implementations."""
         print(f"🏃 Benchmarking {mode} mode staging performance...")
 
@@ -183,7 +182,7 @@ class OptimizationBenchmark:
 
         return results
 
-    def benchmark_startup_time(self) -> Dict[str, Dict]:
+    def benchmark_startup_time(self) -> dict[str, dict]:
         """Benchmark startup time for both implementations."""
         print("⚡ Benchmarking startup time...")
 
@@ -220,7 +219,7 @@ class OptimizationBenchmark:
 
         return results
 
-    def calculate_improvements(self, staging_results: Dict, startup_results: Dict) -> Dict:
+    def calculate_improvements(self, staging_results: dict, startup_results: dict) -> dict:
         """Calculate performance improvements from optimizations."""
         improvements = {}
 
@@ -275,7 +274,7 @@ class OptimizationBenchmark:
         return improvements
 
     def generate_summary_report(
-        self, staging_results: Dict, startup_results: Dict, improvements: Dict
+        self, staging_results: dict, startup_results: dict, improvements: dict
     ) -> str:
         """Generate a concise performance summary report."""
 

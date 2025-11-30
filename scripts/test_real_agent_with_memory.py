@@ -14,7 +14,7 @@ Usage:
 
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -94,7 +94,7 @@ def seed_test_pattern() -> str:
         raise
 
 
-def simulate_agent_invocation(prompt: str) -> Dict[str, Any]:
+def simulate_agent_invocation(prompt: str) -> dict[str, Any]:
     """Simulate agent invocation through the hook system.
 
     Args:
@@ -148,7 +148,7 @@ def simulate_agent_invocation(prompt: str) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-def verify_memory_in_prompt(result: Dict[str, Any]) -> bool:
+def verify_memory_in_prompt(result: dict[str, Any]) -> bool:
     """Verify that memory context was injected into the prompt.
 
     Args:

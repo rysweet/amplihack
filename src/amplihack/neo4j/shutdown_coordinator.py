@@ -8,7 +8,6 @@ import re
 import sys
 import threading
 from pathlib import Path
-from typing import Optional
 
 from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
 
@@ -266,7 +265,7 @@ class Neo4jShutdownCoordinator:
             return True
 
         # Use threading to implement timeout
-        user_input: list[Optional[str]] = [None]  # Mutable container for thread communication
+        user_input: list[str | None] = [None]  # Mutable container for thread communication
 
         def get_input():
             try:

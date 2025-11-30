@@ -123,7 +123,9 @@ def ensure_dirs() -> None:
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 
-def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manifest=None) -> list[str]:
+def copytree_manifest(
+    repo_root: str, dst: str, rel_top: str = ".claude", manifest=None
+) -> list[str]:
     """Copy all essential directories from repo to destination.
 
     Args:
@@ -177,6 +179,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manife
         try:
             # If file_filter is provided, use it to filter which files to copy
             if file_filter:
+
                 def ignore_function(directory, contents):
                     """Filter function for shutil.copytree to skip files based on profile.
 
@@ -622,19 +625,18 @@ def _local_install(repo_root, profile_uri=None):
     except Exception as e:
         # If profile management isn't available, use full installation
         print(f"ℹ️  Profile management unavailable ({e}), using full installation\n")
+        from collections.abc import Callable
         from dataclasses import dataclass
-        from typing import Callable, List, Optional
+        from typing import List, Optional
 
         @dataclass
         class StagingManifest:
-            dirs_to_stage: List[str]
-            file_filter: Optional[Callable]
+            dirs_to_stage: list[str]
+            file_filter: Callable | None
             profile_name: str
 
         manifest = StagingManifest(
-            dirs_to_stage=ESSENTIAL_DIRS,
-            file_filter=None,
-            profile_name="all"
+            dirs_to_stage=ESSENTIAL_DIRS, file_filter=None, profile_name="all"
         )
 
     # Step 1: Ensure base directory exists

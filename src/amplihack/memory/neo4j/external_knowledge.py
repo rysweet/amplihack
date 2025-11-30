@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     import requests
@@ -58,7 +58,7 @@ class ExternalDoc:
     source: KnowledgeSource
     version: str = "latest"
     trust_score: float = 0.8
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     fetched_at: datetime = field(default_factory=datetime.now)
     ttl_hours: int = 24 * 7  # 7 days default
 
@@ -81,7 +81,7 @@ class APIReference:
     signature: str
     doc_url: str
     description: str = ""
-    examples: List[str] = field(default_factory=list)
+    examples: list[str] = field(default_factory=list)
     source: KnowledgeSource = KnowledgeSource.LIBRARY_DOCS
     version: str = "latest"
 
@@ -101,7 +101,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
     def __init__(
         self,
         connector: Neo4jConnector,
-        cache_dir: Optional[Path] = None,
+        cache_dir: Path | None = None,
         enable_http_cache: bool = True,
     ):
         """Initialize external knowledge manager.
@@ -126,7 +126,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
         """Get human-readable schema name for logging."""
         return "external knowledge"
 
-    def _get_constraints(self) -> List[str]:
+    def _get_constraints(self) -> list[str]:
         """Get constraint definitions for external knowledge graph."""
         return [
             # ExternalDoc URL uniqueness
@@ -141,7 +141,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
             """,
         ]
 
-    def _get_indexes(self) -> List[str]:
+    def _get_indexes(self) -> list[str]:
         """Get index definitions for external knowledge graph."""
         return [
             # Source type index
@@ -186,7 +186,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
         version: str = "latest",
         trust_score: float = 0.8,
         force_refresh: bool = False,
-    ) -> Optional[ExternalDoc]:
+    ) -> ExternalDoc | None:
         """Fetch external documentation from URL.
 
         Args:
@@ -242,7 +242,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
             logger.error("Failed to fetch %s: %s", url, e)
             return None
 
-    def _extract_title(self, html_content: str) -> Optional[str]:
+    def _extract_title(self, html_content: str) -> str | None:
         """Extract title from HTML content.
 
         Args:
@@ -299,7 +299,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
         except OSError as e:
             logger.warning("Failed to cache doc: %s", e)
 
-    def _get_cached_doc(self, url: str) -> Optional[ExternalDoc]:
+    def _get_cached_doc(self, url: str) -> ExternalDoc | None:
         """Get cached document if not expired.
 
         Args:
@@ -396,7 +396,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
         doc_url: str,
         code_path: str,
         relationship_type: str = "EXPLAINS",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Link external documentation to code file.
 
@@ -570,11 +570,11 @@ class ExternalKnowledgeManager(BaseGraphManager):
     def query_external_knowledge(
         self,
         query_text: str,
-        source: Optional[KnowledgeSource] = None,
-        version: Optional[str] = None,
+        source: KnowledgeSource | None = None,
+        version: str | None = None,
         min_trust_score: float = 0.5,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Query external knowledge by text search.
 
         Args:
@@ -591,7 +591,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
 
         # Build query with optional filters
         filters = ["ed.trust_score >= $min_trust_score"]
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "query_text": query_text.lower(),
             "min_trust_score": min_trust_score,
             "limit": limit,
@@ -627,7 +627,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
             logger.error("Failed to query external knowledge: %s", e)
             return []
 
-    def get_doc_by_url(self, url: str) -> Optional[Dict[str, Any]]:
+    def get_doc_by_url(self, url: str) -> dict[str, Any] | None:
         """Get external document by URL.
 
         Args:
@@ -653,7 +653,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
             logger.error("Failed to get doc by URL: %s", e)
             return None
 
-    def get_code_documentation(self, code_path: str) -> List[Dict[str, Any]]:
+    def get_code_documentation(self, code_path: str) -> list[dict[str, Any]]:
         """Get all external documentation linked to code file.
 
         Args:
@@ -680,7 +680,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
             logger.error("Failed to get code documentation: %s", e)
             return []
 
-    def get_function_documentation(self, function_id: str) -> List[Dict[str, Any]]:
+    def get_function_documentation(self, function_id: str) -> list[dict[str, Any]]:
         """Get all external documentation linked to function.
 
         Args:
@@ -732,7 +732,7 @@ class ExternalKnowledgeManager(BaseGraphManager):
             logger.error("Failed to cleanup expired docs: %s", e)
             return 0
 
-    def get_knowledge_stats(self) -> Dict[str, Any]:
+    def get_knowledge_stats(self) -> dict[str, Any]:
         """Get statistics about external knowledge.
 
         Returns:
