@@ -42,7 +42,7 @@ class Executor:
         """
         self.vm = vm
         self.timeout_seconds = timeout_minutes * 60
-        self.remote_workspace = "/home/amplihack/workspace"
+        self.remote_workspace = "~/workspace"
 
     def transfer_context(self, archive_path: Path) -> bool:
         """Transfer context archive to remote VM.
@@ -109,6 +109,9 @@ class Executor:
                     context={"vm_name": self.vm.name, "error": e.stderr},
                 )
 
+        # Should never reach here, but satisfy linter
+        raise TransferError("Transfer failed after all retries", context={"vm_name": self.vm.name})
+
     def execute_remote(
         self, command: str, prompt: str, max_turns: int = 10, api_key: Optional[str] = None
     ) -> ExecutionResult:
@@ -149,21 +152,56 @@ set -e
 cd ~
 tar xzf context.tar.gz
 
-# Setup workspace
+# Setup workspace (clean first for idempotency)
+rm -rf {self.remote_workspace}
 mkdir -p {self.remote_workspace}
 cd {self.remote_workspace}
 
 # Restore git repository
 git clone ~/repo.bundle .
-cp -r ~/.claude .
+# Copy .claude from archive (remove existing first to avoid conflicts)
+rm -rf .claude && cp -r ~/.claude .
 
-# Install amplihack if needed
-if ! command -v amplihack &> /dev/null; then
-    pip install amplihack --quiet
+# Install Python 3.11 (required for blarify dependency)
+# Use deadsnakes PPA for Ubuntu
+if ! command -v python3.11 &> /dev/null; then
+    echo "Installing Python 3.11..."
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq software-properties-common
+    sudo add-apt-repository -y ppa:deadsnakes/ppa
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq python3.11 python3.11-venv python3.11-dev
 fi
 
-# Export API key
-export ANTHROPIC_API_KEY='{api_key}'
+# Create venv with Python 3.11 (remove old one first for fresh install)
+echo "Creating Python 3.11 virtual environment..."
+rm -rf ~/.amplihack-venv
+python3.11 -m venv ~/.amplihack-venv
+source ~/.amplihack-venv/bin/activate
+
+# Upgrade pip and install amplihack from local bundle
+pip install --upgrade pip --quiet
+pip install . --quiet
+export PATH="$HOME/.amplihack-venv/bin:$PATH"
+
+# Get API key from .claude.json if available (NFS shared home)
+if [ -f ~/.claude.json ]; then
+    API_KEY=$(python3 -c "import json; print(json.load(open('$HOME/.claude.json')).get('anthropicApiKey',''))" 2>/dev/null)
+    if [ -n "$API_KEY" ]; then
+        export ANTHROPIC_API_KEY="$API_KEY"
+        echo "Using API key from ~/.claude.json"
+    fi
+fi
+
+# Fallback to provided key if set
+if [ -z "$ANTHROPIC_API_KEY" ] && [ -n '{api_key}' ] && [ '{api_key}' != 'None' ]; then
+    export ANTHROPIC_API_KEY='{api_key}'
+fi
+
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    echo "ERROR: No API key found. Set ANTHROPIC_API_KEY or ensure ~/.claude.json exists"
+    exit 1
+fi
 
 # Run amplihack command
 amplihack claude --{command} --max-turns {max_turns} -- -p '{escaped_prompt}'
@@ -237,20 +275,27 @@ amplihack claude --{command} --max-turns {max_turns} -- -p '{escaped_prompt}'
         print("Retrieving execution logs...")
 
         # Create archive of logs on remote (put in ~/ for azlin cp)
+        # Try workspace first, then venv location (for pip install -e .)
         create_archive = f"""
-cd {self.remote_workspace}
-if [ -d .claude/runtime/logs ]; then
+# Try workspace location first
+if [ -d {self.remote_workspace}/.claude/runtime/logs ]; then
+    cd {self.remote_workspace}
     tar czf ~/logs.tar.gz .claude/runtime/logs/
-    echo "Logs archived"
+    echo "Logs archived from workspace"
+# Fall back to venv location
+elif [ -d ~/.amplihack-venv/lib/python*/site-packages/amplihack/.claude/runtime/logs ]; then
+    cd ~/.amplihack-venv/lib/python*/site-packages/amplihack
+    tar czf ~/logs.tar.gz .claude/runtime/logs/
+    echo "Logs archived from venv"
 else
-    echo "No logs directory found"
+    echo "No logs directory found in workspace or venv"
     exit 1
 fi
 """
 
         try:
             # Create archive
-            result = subprocess.run(
+            subprocess.run(
                 ["azlin", "connect", self.vm.name, create_archive],
                 capture_output=True,
                 text=True,
@@ -313,7 +358,7 @@ echo "Bundle created"
 
         try:
             # Create bundle
-            result = subprocess.run(
+            subprocess.run(
                 ["azlin", "connect", self.vm.name, create_bundle],
                 capture_output=True,
                 text=True,

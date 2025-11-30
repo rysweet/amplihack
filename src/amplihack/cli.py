@@ -4,12 +4,15 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
+
+if TYPE_CHECKING:
+    pass
 
 
 def ensure_ultrathink_command(prompt: str) -> str:
@@ -587,11 +590,17 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     remote_parser = subparsers.add_parser("remote", help="Execute on remote Azure VMs via azlin")
     remote_parser.add_argument("remote_command", choices=["auto", "ultrathink"], help="Command")
     remote_parser.add_argument("prompt", help="Task prompt")
-    remote_parser.add_argument("--max-turns", type=int, default=10, help="Max turns")
-    remote_parser.add_argument("--vm-size", default="m", help="VM size: s/m/l/xl")
+    remote_parser.add_argument("--max-turns", type=int, default=10, help="Max turns (default: 10)")
+    remote_parser.add_argument("--vm-size", default="m", help="VM size: s/m/l/xl (default: m)")
+    remote_parser.add_argument("--vm-name", help="Use specific existing VM (skips provisioning)")
     remote_parser.add_argument("--region", help="Azure region")
-    remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM")
-    remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout")
+    remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM after execution")
+    remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout in minutes")
+    remote_parser.add_argument(
+        "--skip-secret-scan",
+        action="store_true",
+        help="Skip secret scanning (use with caution - for development with ephemeral VMs)",
+    )
 
     # Goal Agent Generator command
     new_parser = subparsers.add_parser(
@@ -987,15 +996,24 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("Error: .claude directory not found", file=sys.stderr)
             return 1
 
-        sys.path.insert(0, str(claude_dir / "tools" / "amplihack"))
+        # Add remote module to path for import
+        # Using sys.path approach - simpler and works with relative imports
+        remote_tools_path = claude_dir / "tools" / "amplihack"
+        if remote_tools_path not in [Path(p) for p in sys.path]:
+            sys.path.insert(0, str(remote_tools_path))
 
         try:
-            from remote.cli import execute_remote_workflow
-            from remote.orchestrator import VMOptions
+            # Import using standard import (works because we added to sys.path)
+            # pyright: ignore[reportMissingImports] - dynamic path, module exists at runtime
+            from remote.cli import execute_remote_workflow  # type: ignore[import-not-found]
+            from remote.orchestrator import VMOptions  # type: ignore[import-not-found]
 
+            # Note: azlin handles size mapping (s/m/l/xl -> Azure VM sizes)
+            # We pass the size directly to azlin without mapping
             vm_options = VMOptions(
                 size=args.vm_size,
                 region=args.region,
+                vm_name=args.vm_name,
                 keep_vm=args.keep_vm,
             )
 
@@ -1006,10 +1024,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                 max_turns=args.max_turns,
                 vm_options=vm_options,
                 timeout=args.timeout,
+                skip_secret_scan=args.skip_secret_scan,
             )
             return 0
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
             return 1
 
     else:

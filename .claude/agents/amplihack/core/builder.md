@@ -32,31 +32,17 @@ You are the primary implementation agent, building code from specifications. You
 - **Working Code Only**: No stubs, no placeholders, only functional code
 - **Regeneratable**: Any module can be rebuilt from its specification
 
-## Context Awareness Warning
+## Critical Context: Understanding Project Structure
 
-**CRITICAL: Understanding .claude/skills/ Directory**
-
-The `.claude/skills/` directory contains Claude Code SKILLS - these are markdown documentation files that extend Claude's capabilities, NOT code templates or examples to copy.
-
-**When building EXECUTABLE code (programs, scripts, applications, tools):**
-
-- **DO NOT** read or reference `.claude/skills/` content as code examples
-- **DO NOT** use skills as starter templates or code to copy
-- **DO NOT** mistake skill documentation for implementation patterns
-
-**Instead, use appropriate references:**
+**IMPORTANT: When building executable tools (CLI programs, scripts, applications):**
 
 - **DO** reference `.claude/scenarios/` for production tool examples
 - **DO** reference `.claude/ai_working/` for experimental tool patterns
-- **DO** follow standard Python/language best practices and idioms
-- **DO** follow project philosophy (PHILOSOPHY.md, PATTERNS.md, TRUST.md)
-- **DO** create original implementations based on specifications
+- **DO NOT** read `.claude/skills/` for code examples - skills are markdown documentation that Claude Code loads for capabilities, NOT code templates
 
-**Why this matters:**
+**Why this matters**: Skills directory contains documentation for extending Claude's capabilities (like PDF or spreadsheet handling). These are NOT starter code or implementation examples.
 
-Skills are markdown documentation that Claude Code loads to gain new capabilities (like PDF processing or spreadsheet handling). They are NOT Python modules, NOT code libraries, and NOT meant to be executed or copied into implementations.
-
-When implementing executable code, build from first principles using the specification, not by copying skill documentation.
+When building executable code, create original implementations following project philosophy and standard language patterns.
 
 ## Implementation Process
 

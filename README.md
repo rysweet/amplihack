@@ -132,161 +132,124 @@ for i in range(200):
     response = client.get(f"/items/{i}")
 ```
 
-### Retry Configuration
+---
 
-```python
-from rest_api_client.config import RetryConfig
+# Amplihack Agentic Coding Framework
 
-# Custom retry configuration
-retry_config = RetryConfig(
-    max_attempts=5,
-    initial_delay=0.5,
-    max_delay=30,
-    exponential_base=2,
-    retry_on_statuses=[429, 500, 502, 503, 504]
-)
+## Remote Execution (Beta)
 
-client = APIClient(
-    base_url="https://api.example.com",
-    retry_config=retry_config
-)
+Distribute agentic work across Azure VMs:
+
+```sh
+amplihack remote auto "implement feature" --region westus3 --vm-size s
 ```
 
-## Async Support
+Documentation:
+[.claude/tools/amplihack/remote/README.md](.claude/tools/amplihack/remote/README.md)
 
-```python
-import asyncio
-from rest_api_client import AsyncAPIClient
+### Profile Management
 
-async def main():
-    async with AsyncAPIClient(base_url="https://api.example.com") as client:
-        # Parallel requests
-        tasks = [
-            client.get(f"/users/{i}")
-            for i in range(1, 11)
-        ]
-        responses = await asyncio.gather(*tasks)
+**Reduce token usage by 72% with profile-based component filtering:**
 
-        for response in responses:
-            print(response.data)
+# Install with filtering
 
-asyncio.run(main())
-```
+amplihack install
 
-## Advanced Features
+# Result: Only 9/32 agents staged (72% reduction)
 
-### Request/Response Models
+# Launch with filtering
 
-```python
-from rest_api_client.models import Request, Response
+amplihack launch
 
-# Inspect request before sending
-request = client.prepare_request(
-    method="POST",
-    endpoint="/users",
-    json={"name": "Dave"}
-)
-print(f"Will send: {request.method} {request.url}")
+# Result: Focused environment for coding tasks
 
-# Access response details
-response = client.send(request)
-print(f"Status: {response.status_code}")
-print(f"Headers: {response.headers}")
-print(f"Data: {response.data}")
-```
+| Agent            | Purpose                                  |
+| ---------------- | ---------------------------------------- |
+| **api-designer** | API design and endpoint structure        |
+| **architect**    | System design and architecture decisions |
+| **builder**      | Code generation and implementation       |
+| **optimizer**    | Performance optimization and efficiency  |
+| **reviewer**     | Code quality and best practices review   |
+| **tester**       | Test generation and validation           |
 
-### Custom Exception Handling
+### Commands
 
-```python
-from rest_api_client import APIClient
-from rest_api_client.exceptions import APIError
+| Command                        | Description                                             |
+| ------------------------------ | ------------------------------------------------------- |
+| `amplihack new`                | **NEW!** Generate goal-seeking agents from prompts      |
+| `/amplihack:ultrathink`        | Deep multi-agent analysis (now DEFAULT for all prompts) |
+| `/amplihack:analyze`           | Code analysis and philosophy compliance review          |
+| `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute)      |
+| `/amplihack:cascade`           | Fallback cascade for resilient operations               |
+| `/amplihack:debate`            | Multi-agent debate for complex decisions                |
+| `/amplihack:expert-panel`      | Multi-expert review with voting                         |
+| `/amplihack:n-version`         | N-version programming for critical code                 |
+| `/amplihack:socratic`          | Generate Socratic questions to challenge claims         |
+| `/amplihack:reflect`           | Session reflection and improvement analysis             |
+| `/amplihack:improve`           | Capture learnings and implement improvements            |
+| `/amplihack:fix`               | Fix common errors and code issues                       |
+| `/amplihack:modular-build`     | Build self-contained modules with clear contracts       |
+| `/amplihack:knowledge-builder` | Build comprehensive knowledge base                      |
+| `/amplihack:transcripts`       | Conversation transcript management                      |
+| `/amplihack:xpia`              | Security analysis and threat detection                  |
+| `/amplihack:customize`         | Manage user-specific preferences                        |
+| `/amplihack:ddd:0-help`        | Document-Driven Development help and guidance           |
+| `/amplihack:ddd:1-plan`        | Phase 0: Planning & Alignment                           |
+| `/amplihack:ddd:2-docs`        | Phase 1: Documentation Retcon                           |
+| `/amplihack:ddd:3-code-plan`   | Phase 3: Implementation Planning                        |
+| `/amplihack:ddd:4-code`        | Phase 4: Code Implementation                            |
+| `/amplihack:ddd:5-finish`      | Phase 5: Testing & Phase 6: Cleanup                     |
+| `/amplihack:ddd:prime`         | Prime context with DDD overview                         |
+| `/amplihack:ddd:status`        | Check current DDD phase and progress                    |
+| `/amplihack:lock`              | Enable continuous work mode                             |
+| `/amplihack:unlock`            | Disable continuous work mode                            |
+| `/amplihack:install`           | Install amplihack tools                                 |
+| `/amplihack:uninstall`         | Uninstall amplihack tools                               |
 
-class MyAPIClient(APIClient):
-    def handle_error(self, response):
-        """Custom error handling logic."""
-        if response.status_code == 402:
-            raise PaymentRequiredError("Payment required for this resource")
-        super().handle_error(response)
+### Specialized Agents (23)
 
-class PaymentRequiredError(APIError):
-    """Custom exception for payment required responses."""
-    pass
-```
+| Agent                       | Purpose                                         |
+| --------------------------- | ----------------------------------------------- |
+| **ambiguity**               | Clarify ambiguous requirements                  |
+| **amplifier-cli-architect** | CLI tool design and architecture                |
+| **analyzer**                | Deep code analysis                              |
+| **azure-kubernetes-expert** | Azure Kubernetes Service expertise              |
+| **ci-diagnostic-workflow**  | CI/CD pipeline diagnostics                      |
+| **cleanup**                 | Remove artifacts and enforce philosophy         |
+| **database**                | Database design and optimization                |
+| **fallback-cascade**        | Resilient fallback strategies                   |
+| **fix-agent**               | Automated error fixing                          |
+| **integration**             | System integration patterns                     |
+| **knowledge-archaeologist** | Extract and preserve knowledge                  |
+| **memory-manager**          | Context and state management                    |
+| **multi-agent-debate**      | Facilitate multi-perspective debates            |
+| **n-version-validator**     | Validate N-version implementations              |
+| **patterns**                | Design pattern recommendations                  |
+| **pre-commit-diagnostic**   | Pre-commit hook diagnostics                     |
+| **preference-reviewer**     | User preference validation                      |
+| **prompt-writer**           | Effective prompt engineering                    |
+| **rust-programming-expert** | Rust language expertise                         |
+| **security**                | Security analysis and vulnerability detection   |
+| **visualization-architect** | Data visualization design                       |
+| **xpia-defense**            | Advanced threat detection                       |
+| **philosophy-guardian**     | Philosophy compliance and simplicity validation |
 
-### Logging
+## Core Concepts
 
-```python
-import logging
+### Workflow
 
-# Enable debug logging
-logging.basicConfig(level=logging.DEBUG)
+Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
 
-client = APIClient(base_url="https://api.example.com")
-client.get("/users")  # Will log request/response details
-```
-
-## Configuration Reference
-
-### APIConfig Options
-
-| Parameter           | Type | Default  | Description                      |
-| ------------------- | ---- | -------- | -------------------------------- |
-| `base_url`          | str  | Required | Base URL for all requests        |
-| `timeout`           | int  | 30       | Request timeout in seconds       |
-| `max_retries`       | int  | 3        | Maximum retry attempts           |
-| `rate_limit_calls`  | int  | None     | Max calls per period             |
-| `rate_limit_period` | int  | 60       | Rate limit period in seconds     |
-| `headers`           | dict | {}       | Default headers for all requests |
-| `verify_ssl`        | bool | True     | Verify SSL certificates          |
-
-### RetryConfig Options
-
-| Parameter           | Type  | Default                   | Description                    |
-| ------------------- | ----- | ------------------------- | ------------------------------ |
-| `max_attempts`      | int   | 3                         | Maximum retry attempts         |
-| `initial_delay`     | float | 1.0                       | Initial retry delay in seconds |
-| `max_delay`         | float | 60.0                      | Maximum retry delay            |
-| `exponential_base`  | float | 2.0                       | Exponential backoff base       |
-| `retry_on_statuses` | list  | [429, 500, 502, 503, 504] | HTTP statuses to retry         |
-
-## Testing
-
-```python
-import unittest
-from unittest.mock import Mock, patch
-from rest_api_client import APIClient
-
-class TestAPIClient(unittest.TestCase):
-    @patch('rest_api_client.client.requests')
-    def test_get_request(self, mock_requests):
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"test": "data"}
-        mock_requests.get.return_value = mock_response
-
-        client = APIClient(base_url="https://test.com")
-        response = client.get("/test")
-
-        self.assertEqual(response.data, {"test": "data"})
-        mock_requests.get.assert_called_once()
-```
-
-## Best Practices
-
-1. **Reuse client instances** - Create once, use many times
-2. **Set appropriate timeouts** - Prevent hanging requests
-3. **Handle errors gracefully** - Always catch specific exceptions
-4. **Use rate limiting** - Be a good API citizen
-5. **Enable logging in development** - Easier debugging
-6. **Configure retries wisely** - Balance reliability and performance
-
-## Documentation
-
-- [Full Documentation](./docs/index.md)
-- [API Reference](./docs/reference/api.md)
-- [Examples](./examples/)
-- [Contributing](./CONTRIBUTING.md)
-
-## License
-
-MIT License - see LICENSE file for details.
+1. Clarify requirements
+2. Create issue
+3. Setup branch
+4. Design tests
+5. Implement
+6. Simplify
+7. Test
+8. Commit
+9. Create PR
+10. Review
+11. Integrate feedback
+12. Check philosophy
+13. Prepare merge

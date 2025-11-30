@@ -1,22 +1,3 @@
----
-name: remote
-version: 1.0.0
-description: Execute amplihack commands on remote Azure VMs using azlin for provisioning
-triggers:
-  - "run remotely"
-  - "execute on azure"
-  - "remote execution"
-invokes:
-  - type: tool
-    path: .claude/tools/amplihack/remote/cli.py
-philosophy:
-  - principle: Modular Design
-    application: Isolates remote execution concerns from core workflow
-examples:
-  - "/amplihack:remote auto 'implement feature'"
-  - "/amplihack:remote ultrathink 'analyze codebase'"
----
-
 # Remote Execution Command
 
 Execute amplihack commands on remote Azure VMs using azlin for provisioning.

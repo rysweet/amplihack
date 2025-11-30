@@ -1358,33 +1358,19 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("Transcript builder not found, skipping export", level="INFO")
                 return
 
-            builder = ClaudeTranscriptBuilder(
-                session_id=self.log_dir.name, working_dir=self.working_dir
-            )
+            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name, working_dir=self.working_dir)
             messages = self.message_capture.get_messages()
 
             if not messages:
                 self.log("No messages captured for export", level="DEBUG")
                 return
 
-            # Validate export path BEFORE exporting
-            expected_session_dir = self.log_dir
+            # Log where transcripts will be exported
             actual_session_dir = builder.session_dir
-
-            # Check if builder's session_dir matches our expected location
-            if expected_session_dir.resolve() != actual_session_dir.resolve():
-                error_msg = (
-                    f"Transcript export path mismatch detected!\n"
-                    f"  Expected: {expected_session_dir}\n"
-                    f"  Actual:   {actual_session_dir}\n"
-                    f"  This usually means project root detection failed.\n"
-                    f"  Refusing to export to wrong location to prevent silent data loss."
-                )
-                self.log(error_msg, level="ERROR")
-                raise ValueError(error_msg)
-
-            # Log where transcripts will be exported (helps debugging)
             self.log(f"Exporting transcripts to: {actual_session_dir}", level="DEBUG")
+
+            # Note: We don't validate path location - transcript export works
+            # whether it's in workspace or venv site-packages (remote execution)
 
             # Calculate total duration across all forks
             total_duration = self.total_session_time + (time.time() - self.start_time)

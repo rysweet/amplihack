@@ -34,9 +34,11 @@ This module enables executing amplihack commands on remote Azure VMs using azlin
 ## Components
 
 ### 1. errors.py
+
 Error class hierarchy for remote execution operations.
 
 **Classes**:
+
 - `RemoteExecutionError` - Base exception
 - `PackagingError` - Context packaging errors
 - `ProvisioningError` - VM provisioning errors
@@ -46,21 +48,25 @@ Error class hierarchy for remote execution operations.
 - `CleanupError` - VM cleanup errors
 
 ### 2. context_packager.py
+
 Secure context packaging with multi-layer secret detection.
 
 **Key Features**:
+
 - Comprehensive secret scanning (API keys, tokens, passwords)
 - Git bundle creation (all branches and history)
 - Archive size validation (max 500MB)
 - Automatic exclusion of sensitive files
 
 **Secret Patterns Detected**:
+
 - Anthropic/OpenAI API keys
 - GitHub Personal Access Tokens
 - Azure/AWS credentials
 - Generic API keys and passwords
 
 **Usage**:
+
 ```python
 with ContextPackager(repo_path) as packager:
     secrets = packager.scan_secrets()
@@ -70,15 +76,18 @@ with ContextPackager(repo_path) as packager:
 ```
 
 ### 3. orchestrator.py
+
 VM lifecycle management via azlin CLI.
 
 **Key Features**:
+
 - VM provisioning with retry logic
 - Intelligent VM reuse (< 24 hours old, matching size)
 - Cleanup with force option
 - VM tagging for identification
 
 **Usage**:
+
 ```python
 orchestrator = Orchestrator()
 options = VMOptions(size='Standard_D2s_v3')
@@ -88,15 +97,18 @@ orchestrator.cleanup(vm)
 ```
 
 ### 4. executor.py
+
 Remote command execution and file transfer.
 
 **Key Features**:
+
 - Context archive transfer with retry
 - Remote setup and execution
 - Timeout enforcement
 - Log and git state retrieval
 
 **Usage**:
+
 ```python
 executor = Executor(vm, timeout_minutes=120)
 executor.transfer_context(archive_path)
@@ -108,15 +120,18 @@ result = executor.execute_remote(
 ```
 
 ### 5. integrator.py
+
 Result integration into local repository.
 
 **Key Features**:
+
 - Git branch import into `remote-exec/` namespace
 - Log copying to `.claude/runtime/logs/remote/`
 - Conflict detection
 - Integration summary generation
 
 **Usage**:
+
 ```python
 integrator = Integrator(repo_path)
 summary = integrator.integrate(results_dir)
@@ -124,15 +139,18 @@ report = integrator.create_summary_report(summary)
 ```
 
 ### 6. cli.py
+
 Click-based CLI entry point.
 
 **Key Features**:
+
 - Progress reporting (7 steps)
 - Error handling with actionable messages
 - VM preservation on failure
 - Result summary display
 
 **Usage**:
+
 ```bash
 amplihack remote auto "implement feature X"
 amplihack remote --max-turns 20 ultrathink "analyze code"
@@ -168,7 +186,10 @@ amplihack remote --max-turns 20 ultrathink "analyze code"
 # Basic usage
 amplihack remote auto "implement user authentication"
 
-# With options
+# With size shortcuts (recommended)
+amplihack remote auto "implement feature" --vm-size l
+
+# With full Azure VM size names
 amplihack remote --max-turns 20 --vm-size Standard_D4s_v3 auto "refactor API"
 
 # Keep VM for debugging
@@ -177,6 +198,19 @@ amplihack remote --keep-vm ultrathink "analyze performance"
 # Use specific VM
 amplihack remote --vm-name amplihack-ryan-123 auto "continue work"
 ```
+
+### VM Size Options
+
+Use size shortcuts (s/m/l/xl) or full Azure VM names:
+
+| Shortcut | Azure VM Size     | vCPUs | RAM   | Use Case                            |
+| -------- | ----------------- | ----- | ----- | ----------------------------------- |
+| **s**    | Standard_D2s_v3   | 2     | 8GB   | Simple tasks, quick tests           |
+| **m**    | Standard_D4s_v3   | 4     | 16GB  | Standard development work (default) |
+| **l**    | Standard_E16as_v5 | 16    | 128GB | Complex tasks, large repos          |
+| **xl**   | Standard_E32as_v5 | 32    | 256GB | Heavy workloads, ML tasks           |
+
+**Recommendation**: Use `--vm-size l` for most development tasks to avoid timeout issues during initial amplihack installation on the remote VM.
 
 ### Programmatic Usage
 
@@ -208,14 +242,16 @@ execute_remote_workflow(
 **Hard Requirement**: Zero secrets transferred. Command fails immediately if secrets detected.
 
 **Detection Patterns**:
-- `ANTHROPIC_API_KEY = "sk-ant-..."`
-- `OPENAI_API_KEY = "sk-..."`
-- `password = "..."`
+
+- `ANTHROPIC_API_KEY = "sk-ant-..."` <!-- pragma: allowlist secret -->
+- `OPENAI_API_KEY = "sk-..."` <!-- pragma: allowlist secret -->
+- `password = "..."` <!-- pragma: allowlist secret -->
 - Generic API keys and tokens
 
 **Auto-Excluded Files** (18 patterns):
+
 - `.env*` - Environment variables
-- `*credentials*`, `*secret*` - Credential/secret files
+- `*credentials*`, `*secret*` - Credential/secret files <!-- pragma: allowlist secret -->
 - `*.pem`, `*.key`, `*.p12`, `*.pfx` - Private keys and certificates
 - `.ssh/`, `.aws/`, `.azure/` - Cloud credentials
 - `node_modules/`, `__pycache__/`, `.venv/` - Dependencies and cache
@@ -243,7 +279,7 @@ python -m pytest tests/
 
 ```bash
 # Test secret detection
-echo 'API_KEY = "sk-test-123"' > test.py
+echo 'API_KEY = "sk-test-123"' > test.py  # pragma: allowlist secret
 git add test.py
 amplihack remote auto "test"  # Should fail
 
@@ -262,26 +298,32 @@ azlin kill <vm-name>
 ## Error Handling
 
 ### PackagingError
+
 **Cause**: Secrets detected, archive too large, .claude missing
 **Action**: Remove secrets, reduce repo size, verify .claude exists
 
 ### ProvisioningError
+
 **Cause**: Azlin not installed, VM creation failed, quota exceeded
 **Action**: Install azlin, check Azure subscription, verify quota
 
 ### TransferError
+
 **Cause**: Network failure, file transfer timeout
 **Action**: Retry, check network, verify VM disk space
 
 ### ExecutionError
+
 **Cause**: Remote command failed, timeout exceeded
 **Action**: Inspect VM logs, increase timeout, fix command
 
 ### IntegrationError
+
 **Cause**: Merge conflicts, branch import failed
 **Action**: Manual merge, check git state
 
 ### CleanupError
+
 **Cause**: VM deletion failed
 **Action**: Manual cleanup via `azlin kill <vm-name>`
 
@@ -323,6 +365,7 @@ azlin kill <vm-name>
 **Critical**: Azlin cp command requires specific path formats:
 
 **Local Paths**: Must be relative (run from correct directory using `cwd`)
+
 ```bash
 # ✓ Correct
 cd /tmp && azlin cp file.tar.gz vm:~/file.tar.gz
@@ -332,6 +375,7 @@ azlin cp /tmp/file.tar.gz vm:~/file.tar.gz
 ```
 
 **Remote Paths**: Must use `~/` notation (not `/tmp/`)
+
 ```bash
 # ✓ Correct
 azlin cp file.tar.gz vm:~/file.tar.gz
@@ -343,6 +387,7 @@ azlin cp file.tar.gz vm:/tmp/file.tar.gz
 ### Non-Interactive Mode
 
 Use `--yes` flag for automation:
+
 ```bash
 azlin new --size s --name my-vm --yes
 ```
@@ -352,6 +397,7 @@ azlin new --size s --name my-vm --yes
 ## Requirements
 
 ### Local Machine
+
 - Python 3.11+
 - Git 2.30+
 - azlin (via `pip install azlin`)
@@ -359,6 +405,7 @@ azlin new --size s --name my-vm --yes
 - ANTHROPIC_API_KEY in environment
 
 ### Azure
+
 - Active subscription with credits
 - VM quota (Standard_D series)
 - Network access to Azure regions
@@ -366,21 +413,25 @@ azlin new --size s --name my-vm --yes
 ## Troubleshooting
 
 ### VM provisioning takes too long
+
 - Check Azure subscription status
 - Verify region availability
 - Try different VM size
 
 ### Transfer fails
+
 - Check network connection
 - Verify archive < 500MB
 - Check VM disk space
 
 ### Execution fails
+
 - VM preserved automatically
 - Connect: `azlin connect <vm-name>`
 - Check logs: `cat .claude/runtime/logs/*.log`
 
 ### Results not retrieved
+
 - VM preserved on failure
 - Manual retrieval: See remote.md troubleshooting section
 
@@ -406,6 +457,7 @@ When modifying this module:
 **Phase 1 MVP**: ✅ Complete
 
 All core components implemented and tested:
+
 - ✅ Context packaging with secret scanning
 - ✅ VM provisioning and reuse
 - ✅ File transfer (bidirectional)

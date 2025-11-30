@@ -26,7 +26,7 @@ from .integrator import Integrator
 from .orchestrator import Orchestrator, VMOptions
 
 
-@click.command(name="remote", context_settings=dict(ignore_unknown_options=True))
+@click.command(name="remote", context_settings={"ignore_unknown_options": True})
 @click.argument("command", type=click.Choice(["auto", "ultrathink", "analyze", "fix"]))
 @click.argument("prompt")
 @click.option("--max-turns", default=10, type=int, help="Maximum turns for auto mode")
@@ -109,7 +109,13 @@ def remote_execute(
 
 
 def execute_remote_workflow(
-    repo_path: Path, command: str, prompt: str, max_turns: int, vm_options: VMOptions, timeout: int
+    repo_path: Path,
+    command: str,
+    prompt: str,
+    max_turns: int,
+    vm_options: VMOptions,
+    timeout: int,
+    skip_secret_scan: bool = False,
 ):
     """Execute the complete remote workflow.
 
@@ -120,6 +126,7 @@ def execute_remote_workflow(
         max_turns: Maximum turns
         vm_options: VM configuration
         timeout: Timeout in minutes
+        skip_secret_scan: Skip secret scanning (for development with ephemeral VMs)
     """
     vm = None
     results_dir = None
@@ -134,18 +141,21 @@ def execute_remote_workflow(
         click.echo("\n[2/7] Packaging context...")
 
         with ContextPackager(repo_path) as packager:
-            # Scan for secrets
-            click.echo("  \u2192 Scanning for secrets...")
-            secrets = packager.scan_secrets()
-            if secrets:
-                raise PackagingError(
-                    f"Found {len(secrets)} potential secret(s). Please remove them and retry."
-                )
-            click.echo("  \u2713 No secrets detected")
+            # Scan for secrets (unless skipped)
+            if not skip_secret_scan:
+                click.echo("  \u2192 Scanning for secrets...")
+                secrets = packager.scan_secrets()
+                if secrets:
+                    raise PackagingError(
+                        f"Found {len(secrets)} potential secret(s). Please remove them and retry."
+                    )
+                click.echo("  \u2713 No secrets detected")
+            else:
+                click.echo("  \u26a0  Secret scanning skipped (--skip-secret-scan)")
 
             # Create package
             click.echo("  \u2192 Creating context archive...")
-            archive_path = packager.package()
+            archive_path = packager.package(skip_secret_scan=skip_secret_scan)
             archive_size_mb = archive_path.stat().st_size / 1024 / 1024
             click.echo(f"  \u2713 Context package created: {archive_size_mb:.1f} MB")
 

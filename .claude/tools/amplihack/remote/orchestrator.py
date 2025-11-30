@@ -252,18 +252,52 @@ class Orchestrator:
             ProvisioningError: If VM not found
         """
         try:
-            # Try to connect to verify VM exists
+            # First try azlin list
             result = subprocess.run(["azlin", "list"], capture_output=True, text=True, timeout=30)
 
-            if vm_name not in result.stdout:
-                raise ProvisioningError(f"VM not found: {vm_name}", context={"vm_name": vm_name})
+            if vm_name in result.stdout:
+                # VM found in azlin list
+                return VM(
+                    name=vm_name,
+                    size="unknown",
+                    region="unknown",
+                )
 
-            return VM(
-                name=vm_name,
-                size="unknown",  # Would need to parse from list
-                region="unknown",
+            # VM not in azlin list - try Azure CLI directly
+            print(f"VM '{vm_name}' not in azlin list, checking Azure directly...")
+            result = subprocess.run(
+                [
+                    "az",
+                    "vm",
+                    "show",
+                    "--resource-group",
+                    "rysweet-linux-vm-pool",
+                    "--name",
+                    vm_name,
+                    "--query",
+                    "{name:name, size:hardwareProfile.vmSize, location:location}",
+                    "-o",
+                    "json",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=True,
             )
 
+            import json
+
+            vm_info = json.loads(result.stdout)
+            print(f"Found VM in Azure: {vm_info['name']} ({vm_info['size']})")
+
+            return VM(
+                name=vm_info["name"],
+                size=vm_info.get("size", "unknown"),
+                region=vm_info.get("location", "unknown"),
+            )
+
+        except subprocess.CalledProcessError:
+            raise ProvisioningError(f"VM not found: {vm_name}", context={"vm_name": vm_name})
         except subprocess.TimeoutExpired:
             raise ProvisioningError(
                 "Timeout while verifying VM existence", context={"vm_name": vm_name}
