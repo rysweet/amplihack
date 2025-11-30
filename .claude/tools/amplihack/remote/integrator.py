@@ -8,7 +8,6 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 from .errors import IntegrationError
 
@@ -26,12 +25,12 @@ class BranchInfo:
 class IntegrationSummary:
     """Summary of result integration."""
 
-    branches: List[BranchInfo]
+    branches: list[BranchInfo]
     commits_count: int
     files_changed: int
     logs_copied: bool
     has_conflicts: bool
-    conflict_details: Optional[str] = None
+    conflict_details: str | None = None
 
 
 class Integrator:
@@ -101,7 +100,7 @@ class Integrator:
             conflict_details="\n".join(conflicts) if conflicts else None,
         )
 
-    def _import_branches(self, results_dir: Path) -> List[BranchInfo]:
+    def _import_branches(self, results_dir: Path) -> list[BranchInfo]:
         """Import git branches from remote bundle.
 
         Args:
@@ -208,7 +207,7 @@ class Integrator:
             print(f"Warning: Failed to copy logs: {e}")
             return False
 
-    def _detect_conflicts(self, branches: List[BranchInfo]) -> List[str]:
+    def _detect_conflicts(self, branches: list[BranchInfo]) -> list[str]:
         """Detect potential merge conflicts.
 
         Args:
@@ -256,7 +255,7 @@ class Integrator:
 
         return conflicts
 
-    def _count_new_commits(self, branches: List[BranchInfo]) -> int:
+    def _count_new_commits(self, branches: list[BranchInfo]) -> int:
         """Count new commits from imported branches.
 
         Args:
@@ -288,7 +287,7 @@ class Integrator:
 
         return total_commits
 
-    def _count_files_changed(self, branches: List[BranchInfo]) -> int:
+    def _count_files_changed(self, branches: list[BranchInfo]) -> int:
         """Count files changed across all branches.
 
         Args:
@@ -327,7 +326,7 @@ class Integrator:
 
         return 0
 
-    def _list_local_branches(self) -> List[str]:
+    def _list_local_branches(self) -> list[str]:
         """List all local branch names."""
         try:
             result = subprocess.run(
@@ -342,7 +341,7 @@ class Integrator:
         except Exception:
             return []
 
-    def _list_remote_exec_branches(self) -> List[str]:
+    def _list_remote_exec_branches(self) -> list[str]:
         """List all remote-exec namespace branches."""
         try:
             result = subprocess.run(

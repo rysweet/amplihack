@@ -186,10 +186,7 @@ amplihack remote --max-turns 20 ultrathink "analyze code"
 # Basic usage
 amplihack remote auto "implement user authentication"
 
-# With size shortcuts (recommended)
-amplihack remote auto "implement feature" --vm-size l
-
-# With full Azure VM size names
+# With options
 amplihack remote --max-turns 20 --vm-size Standard_D4s_v3 auto "refactor API"
 
 # Keep VM for debugging
@@ -198,19 +195,6 @@ amplihack remote --keep-vm ultrathink "analyze performance"
 # Use specific VM
 amplihack remote --vm-name amplihack-ryan-123 auto "continue work"
 ```
-
-### VM Size Options
-
-Use size shortcuts (s/m/l/xl) or full Azure VM names:
-
-| Shortcut | Azure VM Size     | vCPUs | RAM   | Use Case                            |
-| -------- | ----------------- | ----- | ----- | ----------------------------------- |
-| **s**    | Standard_D2s_v3   | 2     | 8GB   | Simple tasks, quick tests           |
-| **m**    | Standard_D4s_v3   | 4     | 16GB  | Standard development work (default) |
-| **l**    | Standard_E16as_v5 | 16    | 128GB | Complex tasks, large repos          |
-| **xl**   | Standard_E32as_v5 | 32    | 256GB | Heavy workloads, ML tasks           |
-
-**Recommendation**: Use `--vm-size l` for most development tasks to avoid timeout issues during initial amplihack installation on the remote VM.
 
 ### Programmatic Usage
 
@@ -243,15 +227,15 @@ execute_remote_workflow(
 
 **Detection Patterns**:
 
-- `ANTHROPIC_API_KEY = "sk-ant-..."` <!-- pragma: allowlist secret -->
-- `OPENAI_API_KEY = "sk-..."` <!-- pragma: allowlist secret -->
-- `password = "..."` <!-- pragma: allowlist secret -->
+- `ANTHROPIC_API_KEY = "sk-ant-..."`
+- `OPENAI_API_KEY = "sk-..."`
+- `password = "..."`
 - Generic API keys and tokens
 
 **Auto-Excluded Files** (18 patterns):
 
 - `.env*` - Environment variables
-- `*credentials*`, `*secret*` - Credential/secret files <!-- pragma: allowlist secret -->
+- `*credentials*`, `*secret*` - Credential/secret files
 - `*.pem`, `*.key`, `*.p12`, `*.pfx` - Private keys and certificates
 - `.ssh/`, `.aws/`, `.azure/` - Cloud credentials
 - `node_modules/`, `__pycache__/`, `.venv/` - Dependencies and cache
@@ -279,7 +263,7 @@ python -m pytest tests/
 
 ```bash
 # Test secret detection
-echo 'API_KEY = "sk-test-123"' > test.py  # pragma: allowlist secret
+echo 'API_KEY = "sk-test-123"' > test.py
 git add test.py
 amplihack remote auto "test"  # Should fail
 

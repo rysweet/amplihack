@@ -24,7 +24,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 @dataclass
@@ -44,8 +44,8 @@ class HookMigrationResult:
     global_hooks_found: bool
     global_hooks_removed: bool
     project_hook_ensured: bool
-    backup_created: Optional[Path]
-    error: Optional[str]
+    backup_created: Path | None
+    error: str | None
 
 
 class SettingsMigrator:
@@ -69,7 +69,7 @@ class SettingsMigrator:
         ".claude/tools/amplihack/hooks/pre_compact.py",
     ]
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         """Initialize settings migrator.
 
         Args:
@@ -225,7 +225,7 @@ class SettingsMigrator:
                 error=str(e),
             )
 
-    def _create_backup(self) -> Optional[Path]:
+    def _create_backup(self) -> Path | None:
         """Create backup of global settings before modification.
 
         Returns:
@@ -303,7 +303,7 @@ class SettingsMigrator:
             self.log(f"Error removing hooks: {e}")
             return False
 
-    def safe_json_update(self, file_path: Path, data: Dict[str, Any]) -> bool:
+    def safe_json_update(self, file_path: Path, data: dict[str, Any]) -> bool:
         """Atomic JSON file update with backup.
 
         Uses temp file + rename for atomic write operation.
@@ -342,7 +342,7 @@ class SettingsMigrator:
             return False
 
 
-def migrate_global_hooks(project_root: Optional[Path] = None) -> HookMigrationResult:
+def migrate_global_hooks(project_root: Path | None = None) -> HookMigrationResult:
     """Convenience function to migrate global amplihack hooks.
 
     Args:

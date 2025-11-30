@@ -7,7 +7,6 @@ and ingestion metadata in the Neo4j graph database.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional
 
 
 class IngestionStatus(Enum):
@@ -38,7 +37,7 @@ class CodebaseIdentity:
     branch: str
     commit_sha: str
     unique_key: str
-    metadata: Dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate required fields."""
@@ -51,7 +50,7 @@ class CodebaseIdentity:
         if not self.unique_key:
             raise ValueError("unique_key is required")
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Convert to dictionary for Neo4j storage.
 
         Returns:
@@ -66,7 +65,7 @@ class CodebaseIdentity:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, str]) -> "CodebaseIdentity":
+    def from_dict(cls, data: dict[str, str]) -> "CodebaseIdentity":
         """Create from dictionary.
 
         Args:
@@ -108,7 +107,7 @@ class IngestionMetadata:
     timestamp: datetime
     commit_sha: str
     ingestion_counter: int
-    metadata: Dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate required fields."""
@@ -119,7 +118,7 @@ class IngestionMetadata:
         if self.ingestion_counter < 1:
             raise ValueError("ingestion_counter must be >= 1")
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         """Convert to dictionary for Neo4j storage.
 
         Returns:
@@ -134,7 +133,7 @@ class IngestionMetadata:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, str]) -> "IngestionMetadata":
+    def from_dict(cls, data: dict[str, str]) -> "IngestionMetadata":
         """Create from dictionary.
 
         Args:
@@ -175,8 +174,8 @@ class IngestionResult:
     status: IngestionStatus
     codebase_identity: CodebaseIdentity
     ingestion_metadata: IngestionMetadata
-    previous_ingestion_id: Optional[str] = None
-    error_message: Optional[str] = None
+    previous_ingestion_id: str | None = None
+    error_message: str | None = None
 
     def is_new(self) -> bool:
         """Check if this is a new codebase ingestion.
@@ -202,7 +201,7 @@ class IngestionResult:
         """
         return self.status == IngestionStatus.ERROR
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for logging/serialization.
 
         Returns:

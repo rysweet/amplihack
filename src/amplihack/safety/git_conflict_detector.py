@@ -3,7 +3,6 @@
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Union
 
 
 @dataclass
@@ -11,17 +10,17 @@ class ConflictDetectionResult:
     """Result of git conflict detection."""
 
     has_conflicts: bool
-    conflicting_files: List[str]
+    conflicting_files: list[str]
     is_git_repo: bool
 
 
 class GitConflictDetector:
     """Detect git conflicts for safe file copying."""
 
-    def __init__(self, target_dir: Union[str, Path]):
+    def __init__(self, target_dir: str | Path):
         self.target_dir = Path(target_dir).resolve()
 
-    def detect_conflicts(self, essential_dirs: List[str]) -> ConflictDetectionResult:
+    def detect_conflicts(self, essential_dirs: list[str]) -> ConflictDetectionResult:
         """Detect conflicts between essential_dirs and uncommitted changes."""
         if not self._is_git_repo():
             return ConflictDetectionResult(False, [], False)
@@ -49,7 +48,7 @@ class GitConflictDetector:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
-    def _get_uncommitted_files(self) -> List[str]:
+    def _get_uncommitted_files(self) -> list[str]:
         """Get list of uncommitted files using git status --porcelain."""
         try:
             result = subprocess.run(
@@ -80,8 +79,8 @@ class GitConflictDetector:
             return []
 
     def _filter_conflicts(
-        self, uncommitted_files: List[str], essential_dirs: List[str]
-    ) -> List[str]:
+        self, uncommitted_files: list[str], essential_dirs: list[str]
+    ) -> list[str]:
         """Filter uncommitted files for conflicts with essential_dirs."""
         conflicts = []
         for file_path in uncommitted_files:

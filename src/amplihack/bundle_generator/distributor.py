@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .exceptions import DistributionError, RateLimitError, TimeoutError
 from .models import DistributionResult, PackagedBundle
@@ -28,8 +28,8 @@ class GitHubDistributor:
 
     def __init__(
         self,
-        github_token: Optional[str] = None,
-        organization: Optional[str] = None,
+        github_token: str | None = None,
+        organization: str | None = None,
         default_branch: str = "main",
     ):
         """
@@ -49,9 +49,9 @@ class GitHubDistributor:
     def distribute(
         self,
         package: PackagedBundle,
-        repository: Optional[str] = None,
+        repository: str | None = None,
         create_release: bool = True,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> DistributionResult:
         """
         Distribute a package to GitHub.
@@ -128,7 +128,7 @@ class GitHubDistributor:
         self.rate_limit_remaining -= 1
 
     def _prepare_repository(
-        self, repository: str, package: PackagedBundle, options: Dict[str, Any]
+        self, repository: str, package: PackagedBundle, options: dict[str, Any]
     ) -> str:
         """Prepare GitHub repository for distribution."""
         # Check if using gh CLI (simplified implementation)
@@ -147,7 +147,7 @@ class GitHubDistributor:
             return False
 
     def _prepare_with_gh(
-        self, repository: str, package: PackagedBundle, options: Dict[str, Any]
+        self, repository: str, package: PackagedBundle, options: dict[str, Any]
     ) -> str:
         """Prepare repository using GitHub CLI."""
         try:
@@ -211,7 +211,7 @@ class GitHubDistributor:
             )
 
     def _prepare_with_git(
-        self, repository: str, package: PackagedBundle, options: Dict[str, Any]
+        self, repository: str, package: PackagedBundle, options: dict[str, Any]
     ) -> str:
         """Prepare repository using git directly."""
         # Simplified implementation - would use git commands
@@ -224,7 +224,7 @@ class GitHubDistributor:
         return repo_url
 
     def _upload_package(
-        self, repo_url: str, package: PackagedBundle, options: Dict[str, Any]
+        self, repo_url: str, package: PackagedBundle, options: dict[str, Any]
     ) -> str:
         """Upload package contents to repository."""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -318,7 +318,7 @@ class GitHubDistributor:
                 )
 
     def _create_release(
-        self, repository: str, package: PackagedBundle, commit_sha: str, options: Dict[str, Any]
+        self, repository: str, package: PackagedBundle, commit_sha: str, options: dict[str, Any]
     ) -> str:
         """Create a GitHub release."""
         release_tag = f"v{package.bundle.version}"
@@ -456,7 +456,7 @@ SHA256: {package.checksum}
 Generated on {package.created_at.isoformat()}
 """
 
-    def list_distributions(self, repository: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_distributions(self, repository: str | None = None) -> list[dict[str, Any]]:
         """
         List existing distributions.
 
@@ -503,7 +503,7 @@ Generated on {package.created_at.isoformat()}
         return distributions
 
     def download_distribution(
-        self, repository: str, target_path: Path, version: Optional[str] = None
+        self, repository: str, target_path: Path, version: str | None = None
     ) -> PackagedBundle:
         """
         Download a distributed bundle.

@@ -17,8 +17,9 @@ Public API:
     HookResult: Result from tool hook execution
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List
+from typing import Any
 
 __all__ = [
     "ToolRegistry",
@@ -43,12 +44,12 @@ class HookResult:
         skip_remaining: If True, stop executing remaining hooks
     """
 
-    actions_taken: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    actions_taken: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     skip_remaining: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format."""
         return {
             "actions_taken": self.actions_taken,
@@ -82,9 +83,9 @@ class ToolRegistry:
 
     def __init__(self):
         """Initialize empty registry."""
-        self._hooks: List[Callable[[Dict[str, Any]], HookResult]] = []
+        self._hooks: list[Callable[[dict[str, Any]], HookResult]] = []
 
-    def register(self, hook: Callable[[Dict[str, Any]], HookResult]) -> Callable:
+    def register(self, hook: Callable[[dict[str, Any]], HookResult]) -> Callable:
         """Register a tool hook function.
 
         Args:
@@ -102,7 +103,7 @@ class ToolRegistry:
         self._hooks.append(hook)
         return hook
 
-    def execute_hooks(self, input_data: Dict[str, Any]) -> List[HookResult]:
+    def execute_hooks(self, input_data: dict[str, Any]) -> list[HookResult]:
         """Execute all registered hooks.
 
         Args:
@@ -193,7 +194,7 @@ class ToolRegistry:
 _global_registry = ToolRegistry()
 
 
-def register_tool_hook(func: Callable[[Dict[str, Any]], HookResult]) -> Callable:
+def register_tool_hook(func: Callable[[dict[str, Any]], HookResult]) -> Callable:
     """Decorator for registering tool hooks with the global registry.
 
     This is the primary way to register hooks. It uses the global registry
@@ -255,7 +256,7 @@ def get_global_registry() -> ToolRegistry:
 # ============================================================================
 
 
-def aggregate_hook_results(results: List[HookResult]) -> Dict[str, Any]:
+def aggregate_hook_results(results: list[HookResult]) -> dict[str, Any]:
     """Aggregate multiple hook results into a single output dict.
 
     Args:
@@ -302,14 +303,14 @@ if __name__ == "__main__":
 
     # Create test hooks
     @register_tool_hook
-    def test_hook_1(input_data: Dict[str, Any]) -> HookResult:
+    def test_hook_1(input_data: dict[str, Any]) -> HookResult:
         """Test hook that logs actions."""
         return HookResult(
             actions_taken=["test_hook_1_executed"], warnings=["Test warning from hook 1"]
         )
 
     @register_tool_hook
-    def test_hook_2(input_data: Dict[str, Any]) -> HookResult:
+    def test_hook_2(input_data: dict[str, Any]) -> HookResult:
         """Test hook that adds metadata."""
         return HookResult(
             actions_taken=["test_hook_2_executed"], metadata={"test_key": "test_value"}

@@ -5,7 +5,6 @@ Combines goal definition, execution plan, and skills into a runnable agent.
 """
 
 import uuid
-from typing import Optional
 
 from .models import ExecutionPlan, GoalAgentBundle, GoalDefinition, SkillDefinition
 from .utils import sanitize_bundle_name
@@ -19,7 +18,7 @@ class AgentAssembler:
         goal_definition: GoalDefinition,
         execution_plan: ExecutionPlan,
         skills: list[SkillDefinition],
-        bundle_name: Optional[str] = None,
+        bundle_name: str | None = None,
     ) -> GoalAgentBundle:
         """
         Assemble a complete goal agent bundle.

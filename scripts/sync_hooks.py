@@ -12,7 +12,7 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 def transform_hook_path(path: str) -> str:
@@ -32,7 +32,7 @@ def transform_hook_path(path: str) -> str:
     return re.sub(r"^\$CLAUDE_PROJECT_DIR/", "", path)
 
 
-def transform_hooks_dict(hooks: Dict[str, Any]) -> Dict[str, Any]:
+def transform_hooks_dict(hooks: dict[str, Any]) -> dict[str, Any]:
     """Transform hooks dictionary for template format.
 
     Args:

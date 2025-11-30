@@ -16,7 +16,6 @@ Design Philosophy:
 import logging
 import sys
 from dataclasses import dataclass
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +36,14 @@ class ContainerOption:
 
     name: str
     status: str
-    ports: List[str]
-    username: Optional[str]
-    password: Optional[str]
+    ports: list[str]
+    username: str | None
+    password: str | None
     env_sync_status: str
     is_running: bool
 
 
-def detect_container_options(default_name: str) -> List[ContainerOption]:
+def detect_container_options(default_name: str) -> list[ContainerOption]:
     """Detect all existing containers and build options list.
 
     Args:
@@ -102,8 +101,8 @@ def detect_container_options(default_name: str) -> List[ContainerOption]:
 
 def _check_env_sync_status(
     credential_sync,
-    container_username: Optional[str],
-    container_password: Optional[str],
+    container_username: str | None,
+    container_password: str | None,
 ) -> str:
     """Check sync status between container credentials and .env.
 
@@ -147,7 +146,7 @@ def _format_env_sync_status(status: str) -> str:
     return status_map.get(status, "Unknown")
 
 
-def _format_ports(ports: List[str]) -> str:
+def _format_ports(ports: list[str]) -> str:
     """Format port list for display."""
     if not ports:
         return "no ports"
@@ -155,8 +154,8 @@ def _format_ports(ports: List[str]) -> str:
 
 
 def display_unified_dialog(
-    options: List[ContainerOption], default_name: str
-) -> Optional[ContainerOption]:
+    options: list[ContainerOption], default_name: str
+) -> ContainerOption | None:
     """Display unified container selection and credential dialog.
 
     Args:
@@ -309,9 +308,9 @@ def handle_credential_sync(selected: ContainerOption) -> bool:
 
 
 def unified_container_and_credential_dialog(
-    default_name: Optional[str] = None,
+    default_name: str | None = None,
     auto_mode: bool = False,
-) -> Optional[str]:
+) -> str | None:
     """Main entry point for unified container selection and credential dialog.
 
     This replaces the separate container selection and credential sync dialogs

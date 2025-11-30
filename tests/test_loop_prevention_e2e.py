@@ -195,8 +195,9 @@ class TestLoopPreventionE2E:
             hook.analysis_dir = runtime_dir / "analysis"
             hook._recursion_guard = threading.local()
 
-            with patch.object(hook, "get_session_messages", return_value=[]), patch.object(
-                hook, "save_session_analysis"
+            with (
+                patch.object(hook, "get_session_messages", return_value=[]),
+                patch.object(hook, "save_session_analysis"),
             ):
                 input_data = {"session_id": "new-session", "messages": []}
                 hook.process(input_data)
@@ -220,8 +221,9 @@ class TestLoopPreventionE2E:
             hook._recursion_guard = threading.local()
 
             # Mock to make processing fast
-            with patch.object(hook, "get_session_messages", return_value=[]), patch.object(
-                hook, "save_session_analysis"
+            with (
+                patch.object(hook, "get_session_messages", return_value=[]),
+                patch.object(hook, "save_session_analysis"),
             ):
                 input_data = {"session_id": "test", "messages": []}
 
@@ -251,8 +253,9 @@ class TestRealisticScenarios:
             hook.analysis_dir = runtime_dir / "analysis"
             hook._recursion_guard = threading.local()
 
-            with patch.object(hook, "get_session_messages", return_value=[]), patch.object(
-                hook, "save_session_analysis"
+            with (
+                patch.object(hook, "get_session_messages", return_value=[]),
+                patch.object(hook, "save_session_analysis"),
             ):
                 # Simulate 5 rapid stop events
                 for i in range(5):

@@ -4,7 +4,6 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Union
 
 
 @dataclass
@@ -14,7 +13,7 @@ class CopyStrategy:
     target_dir: Path
     should_proceed: bool
     use_temp: bool = False
-    temp_dir: Optional[Path] = None
+    temp_dir: Path | None = None
 
 
 class SafeCopyStrategy:
@@ -25,7 +24,7 @@ class SafeCopyStrategy:
     """
 
     def determine_target(
-        self, original_target: Union[str, Path], has_conflicts: bool, conflicting_files: List[str]
+        self, original_target: str | Path, has_conflicts: bool, conflicting_files: list[str]
     ) -> CopyStrategy:
         """Determine where to copy files based on conflict status.
 
@@ -52,7 +51,7 @@ class SafeCopyStrategy:
 
         if choice == "cancel":
             return CopyStrategy(original_path, False, use_temp=False)
-        elif choice == "temp":
+        if choice == "temp":
             # Create temp directory
             temp_dir = Path(tempfile.mkdtemp(prefix="amplihack-")) / ".claude"
             temp_dir.mkdir(parents=True, exist_ok=True)
@@ -61,10 +60,10 @@ class SafeCopyStrategy:
             print("   Note: Hooks will use $CLAUDE_PROJECT_DIR environment variable")
             print("   Temp mode is safe for concurrent sessions\n")
             return CopyStrategy(temp_dir, True, use_temp=True, temp_dir=temp_dir)
-        else:  # "overwrite"
-            return CopyStrategy(original_path, True, use_temp=False)
+        # "overwrite"
+        return CopyStrategy(original_path, True, use_temp=False)
 
-    def _prompt_user_for_choice(self, conflicting_files: List[str], target_path: Path) -> str:
+    def _prompt_user_for_choice(self, conflicting_files: list[str], target_path: Path) -> str:
         """Prompt user to choose how to handle .claude directory conflicts.
 
         Args:
@@ -116,15 +115,14 @@ class SafeCopyStrategy:
             # Empty response or 'y'/'yes' means overwrite (Y is default)
             if response in ("", "y", "yes"):
                 return "overwrite"
-            elif response in ("t", "temp"):
+            if response in ("t", "temp"):
                 return "temp"
-            elif response in ("n", "no"):
+            if response in ("n", "no"):
                 print("\n❌ User cancelled - keeping existing .claude/ directory")
                 return "cancel"
-            else:
-                # Invalid input - ask again
-                print(f"\n⚠️  Invalid choice '{response}'. Please enter Y, t, or n")
-                return self._prompt_user_for_choice(conflicting_files, target_path)
+            # Invalid input - ask again
+            print(f"\n⚠️  Invalid choice '{response}'. Please enter Y, t, or n")
+            return self._prompt_user_for_choice(conflicting_files, target_path)
 
         except (EOFError, KeyboardInterrupt):
             print("\n\n❌ User cancelled - keeping existing .claude/ directory")

@@ -5,7 +5,6 @@ import logging
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +14,9 @@ class RepositoryResult:
     """Result of repository creation operation."""
 
     success: bool
-    url: Optional[str] = None
-    repository: Optional[str] = None
-    error: Optional[str] = None
+    url: str | None = None
+    repository: str | None = None
+    error: str | None = None
 
 
 class RepositoryCreator:
@@ -79,10 +78,10 @@ class RepositoryCreator:
     def create_repository(
         self,
         bundle_path: Path,
-        repo_name: Optional[str] = None,
+        repo_name: str | None = None,
         private: bool = True,
         push: bool = False,
-        organization: Optional[str] = None,
+        organization: str | None = None,
     ) -> RepositoryResult:
         """
         Create GitHub repository for agent bundle.

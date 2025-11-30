@@ -7,7 +7,6 @@ primarily used for graceful shutdown coordination.
 import importlib.util
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,7 @@ def execute_stop_hook() -> None:
         logger.warning(f"Failed to execute stop hook: {e}")
 
 
-def _find_stop_hook() -> Optional[Path]:
+def _find_stop_hook() -> Path | None:
     """Find the stop.py hook file.
 
     Searches in multiple locations:

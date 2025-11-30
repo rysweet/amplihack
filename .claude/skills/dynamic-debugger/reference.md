@@ -9,12 +9,14 @@ Complete API reference fer all debugging commands, language configurations, and 
 #### Set Breakpoint
 
 **Syntax:**
+
 ```
 Set breakpoint at <location>
 <location> = "line <number>" | "function <name>" | "file:line"
 ```
 
 **Examples:**
+
 ```
 Set breakpoint at line 42
 Set breakpoint at function calculate_total
@@ -22,21 +24,23 @@ Set breakpoint at src/main.py:156
 ```
 
 **API Call (MCP):**
+
 ```json
 {
   "tool": "dap_set_breakpoints",
   "arguments": {
-    "source": {"path": "/path/to/file.py"},
-    "breakpoints": [{"line": 42}]
+    "source": { "path": "/path/to/file.py" },
+    "breakpoints": [{ "line": 42 }]
   }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "breakpoints": [
-    {"id": 1, "verified": true, "line": 42, "source": {"path": "/path/to/file.py"}}
+    { "id": 1, "verified": true, "line": 42, "source": { "path": "/path/to/file.py" } }
   ]
 }
 ```
@@ -44,23 +48,26 @@ Set breakpoint at src/main.py:156
 #### Remove Breakpoint
 
 **Syntax:**
+
 ```
 Remove breakpoint at <location>
 Clear all breakpoints
 ```
 
 **Examples:**
+
 ```
 Remove breakpoint at line 42
 Clear all breakpoints
 ```
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_set_breakpoints",
   "arguments": {
-    "source": {"path": "/path/to/file.py"},
+    "source": { "path": "/path/to/file.py" },
     "breakpoints": []
   }
 }
@@ -71,6 +78,7 @@ Clear all breakpoints
 **Syntax:** `List breakpoints` or `Show all breakpoints`
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_list_breakpoints"
@@ -78,11 +86,12 @@ Clear all breakpoints
 ```
 
 **Response:**
+
 ```json
 {
   "breakpoints": [
-    {"id": 1, "line": 42, "file": "main.py", "verified": true},
-    {"id": 2, "line": 156, "file": "utils.py", "verified": true}
+    { "id": 1, "line": 42, "file": "main.py", "verified": true },
+    { "id": 2, "line": 156, "file": "utils.py", "verified": true }
   ]
 }
 ```
@@ -94,10 +103,11 @@ Clear all breakpoints
 **Syntax:** `Continue` or `Resume execution`
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_continue",
-  "arguments": {"threadId": 1}
+  "arguments": { "threadId": 1 }
 }
 ```
 
@@ -108,10 +118,11 @@ Clear all breakpoints
 **Syntax:** `Step over` or `Next`
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_next",
-  "arguments": {"threadId": 1}
+  "arguments": { "threadId": 1 }
 }
 ```
 
@@ -122,10 +133,11 @@ Clear all breakpoints
 **Syntax:** `Step into` or `Step in`
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_step_in",
-  "arguments": {"threadId": 1}
+  "arguments": { "threadId": 1 }
 }
 ```
 
@@ -136,10 +148,11 @@ Clear all breakpoints
 **Syntax:** `Step out` or `Finish`
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_step_out",
-  "arguments": {"threadId": 1}
+  "arguments": { "threadId": 1 }
 }
 ```
 
@@ -150,6 +163,7 @@ Clear all breakpoints
 #### Inspect Variable
 
 **Syntax:**
+
 ```
 What's the value of <variable>?
 Show <variable>
@@ -157,6 +171,7 @@ Inspect <variable>
 ```
 
 **Examples:**
+
 ```
 What's the value of userId?
 Show request.headers
@@ -164,6 +179,7 @@ Inspect self.config
 ```
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_evaluate",
@@ -176,6 +192,7 @@ Inspect self.config
 ```
 
 **Response:**
+
 ```json
 {
   "result": "12345",
@@ -189,14 +206,16 @@ Inspect self.config
 **Syntax:** `Show all variables` or `List local variables`
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_scopes",
-  "arguments": {"frameId": 0}
+  "arguments": { "frameId": 0 }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "scopes": [
@@ -212,12 +231,14 @@ Inspect self.config
 #### Evaluate Expression
 
 **Syntax:**
+
 ```
 Evaluate: <expression>
 What's <expression>?
 ```
 
 **Examples:**
+
 ```
 Evaluate: x + y
 What's len(users)?
@@ -225,6 +246,7 @@ Evaluate: request.method == "POST"
 ```
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_evaluate",
@@ -243,20 +265,22 @@ Evaluate: request.method == "POST"
 **Syntax:** `Show call stack` or `Where am I?` or `Stack trace`
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_stack_trace",
-  "arguments": {"threadId": 1}
+  "arguments": { "threadId": 1 }
 }
 ```
 
 **Response:**
+
 ```json
 {
   "stackFrames": [
-    {"id": 0, "name": "calculate_total", "line": 42, "source": {"path": "main.py"}},
-    {"id": 1, "name": "process_order", "line": 156, "source": {"path": "orders.py"}},
-    {"id": 2, "name": "main", "line": 10, "source": {"path": "app.py"}}
+    { "id": 0, "name": "calculate_total", "line": 42, "source": { "path": "main.py" } },
+    { "id": 1, "name": "process_order", "line": 156, "source": { "path": "orders.py" } },
+    { "id": 2, "name": "main", "line": 10, "source": { "path": "app.py" } }
   ]
 }
 ```
@@ -270,6 +294,7 @@ Evaluate: request.method == "POST"
 **Automatic:** Session starts when debugging intent detected
 
 **API Sequence:**
+
 1. `dap_initialize` - Initialize DAP connection
 2. `dap_launch` or `dap_attach` - Start/attach to process
 3. `dap_configuration_done` - Mark configuration complete
@@ -279,10 +304,11 @@ Evaluate: request.method == "POST"
 **Syntax:** `Stop debugging` or `End session`
 
 **API Call:**
+
 ```json
 {
   "tool": "dap_disconnect",
-  "arguments": {"terminateDebuggee": true}
+  "arguments": { "terminateDebuggee": true }
 }
 ```
 
@@ -293,6 +319,7 @@ Evaluate: request.method == "POST"
 ### Python (debugpy)
 
 **Configuration:**
+
 ```json
 {
   "language": "python",
@@ -312,18 +339,21 @@ Evaluate: request.method == "POST"
 ```
 
 **Special Features:**
+
 - Async/await debugging
 - Multiple interpreter support
 - Virtual environment detection
 - Django/Flask support
 
 **Common Issues:**
+
 - **Issue:** "debugpy not found"
 - **Fix:** `pip install debugpy`
 
 ### JavaScript/TypeScript (Node)
 
 **Configuration:**
+
 ```json
 {
   "language": "javascript",
@@ -343,18 +373,21 @@ Evaluate: request.method == "POST"
 ```
 
 **Special Features:**
+
 - Promise/async debugging
 - Source map support (TypeScript)
 - Worker thread debugging
 - Browser debugging (Chrome DevTools Protocol)
 
 **Common Issues:**
+
 - **Issue:** "Cannot find module"
 - **Fix:** Ensure `NODE_PATH` includes node_modules
 
 ### C/C++ (GDB)
 
 **Configuration:**
+
 ```json
 {
   "language": "cpp",
@@ -380,18 +413,21 @@ Evaluate: request.method == "POST"
 ```
 
 **Special Features:**
+
 - Core dump analysis
 - Memory inspection
 - Multi-threaded debugging
 - Pretty printing (STL containers)
 
 **Common Issues:**
+
 - **Issue:** "No debugging symbols found"
 - **Fix:** Compile with `-g` flag: `gcc -g program.c`
 
 ### Go (Delve)
 
 **Configuration:**
+
 ```json
 {
   "language": "go",
@@ -410,18 +446,21 @@ Evaluate: request.method == "POST"
 ```
 
 **Special Features:**
+
 - Goroutine debugging
 - Channel state inspection
 - Interface type inspection
 - Concurrent execution visualization
 
 **Common Issues:**
+
 - **Issue:** "delve not found"
 - **Fix:** `go install github.com/go-delve/delve/cmd/dlv@latest`
 
 ### Rust (rust-gdb/lldb)
 
 **Configuration:**
+
 ```json
 {
   "language": "rust",
@@ -440,12 +479,14 @@ Evaluate: request.method == "POST"
 ```
 
 **Special Features:**
+
 - Ownership/borrow checking debugging
 - Panic backtrace capture
 - Enum variant inspection
 - Trait object debugging
 
 **Common Issues:**
+
 - **Issue:** "Debug symbols not found"
 - **Fix:** Ensure `[profile.dev]` has `debug = true` in Cargo.toml
 
@@ -456,11 +497,13 @@ Evaluate: request.method == "POST"
 **Purpose:** Start new debugging session
 
 **Preconditions:**
+
 - No active session exists
 - Language detected or specified
 - Debugger available for language
 
 **API Flow:**
+
 ```
 1. Check prerequisites (debugger installed)
 2. Detect/confirm language
@@ -471,6 +514,7 @@ Evaluate: request.method == "POST"
 ```
 
 **Error Handling:**
+
 - Prerequisite missing → Show installation instructions
 - Language ambiguous → Ask user to specify
 - Connection timeout → Show manual start commands
@@ -479,20 +523,22 @@ Evaluate: request.method == "POST"
 ### Manage Active Session
 
 **Session State:**
+
 ```json
 {
   "session_id": "debug-12345",
   "language": "python",
   "pid": 54321,
   "status": "paused",
-  "breakpoints": [{"id": 1, "line": 42, "file": "main.py"}],
-  "current_frame": {"line": 42, "file": "main.py"},
+  "breakpoints": [{ "id": 1, "line": 42, "file": "main.py" }],
+  "current_frame": { "line": 42, "file": "main.py" },
   "started_at": "2025-11-24T10:30:00Z",
   "last_activity": "2025-11-24T10:45:00Z"
 }
 ```
 
 **Operations:**
+
 - Check if session active
 - Update last activity timestamp
 - Get current session state
@@ -501,6 +547,7 @@ Evaluate: request.method == "POST"
 ### Cleanup Session
 
 **Triggers:**
+
 - Explicit stop command
 - Session timeout (30 minutes idle)
 - Connection timeout (5 minutes idle)
@@ -508,6 +555,7 @@ Evaluate: request.method == "POST"
 - Error conditions
 
 **Cleanup Steps:**
+
 ```
 1. Send disconnect request to DAP
 2. Terminate debugged process (if owned)
@@ -528,6 +576,7 @@ Evaluate: request.method == "POST"
 **Symptom:** "dap-mcp server not available"
 **Cause:** dap-mcp not installed or not in PATH
 **Recovery:**
+
 ```bash
 npm install -g dap-mcp
 export PATH=$PATH:$(npm bin -g)
@@ -612,16 +661,19 @@ All errors return structured information:
 If dap-mcp unavailable, provide manual debugger commands:
 
 **Python:**
+
 ```bash
 python -m debugpy --listen 5678 --wait-for-client script.py
 ```
 
 **JavaScript:**
+
 ```bash
 node --inspect-brk script.js
 ```
 
 **C/C++:**
+
 ```bash
 gdb ./program
 break main
@@ -629,11 +681,13 @@ run
 ```
 
 **Go:**
+
 ```bash
 dlv debug main.go
 ```
 
 **Rust:**
+
 ```bash
 rust-gdb ./target/debug/program
 ```
@@ -668,6 +722,7 @@ rust-gdb ./target/debug/program
 ### Port Management
 
 **Default Ports:**
+
 - Python: 5678
 - JavaScript: 9229
 - Go: 2345
@@ -682,16 +737,17 @@ rust-gdb ./target/debug/program
 
 ## Performance Expectations
 
-| Operation | Target | 95th Percentile |
-|-----------|--------|-----------------|
-| Server startup | <10s | 12s |
-| Set breakpoint | <2s | 3s |
-| Step over/into/out | <3s | 4s |
-| Variable inspection | <2s | 3s |
-| Call stack retrieval | <2s | 3s |
-| Session cleanup | <5s | 7s |
+| Operation            | Target | 95th Percentile |
+| -------------------- | ------ | --------------- |
+| Server startup       | <10s   | 12s             |
+| Set breakpoint       | <2s    | 3s              |
+| Step over/into/out   | <3s    | 4s              |
+| Variable inspection  | <2s    | 3s              |
+| Call stack retrieval | <2s    | 3s              |
+| Session cleanup      | <5s    | 7s              |
 
 **Token Budget:**
+
 - Orchestration: <100 tokens per command
 - Intent detection: <20 tokens
 - Language detection: <30 tokens (cached)
@@ -700,17 +756,20 @@ rust-gdb ./target/debug/program
 ## Security Model
 
 **Threat Model:**
+
 - Local-only execution (no remote debugging)
 - User owns all code being debugged
 - No untrusted code execution
 
 **Security Boundaries:**
+
 - Process isolation between Claude Code and debugger
 - No authentication required (local-only)
 - Full filesystem access (required for debugging)
 - Network access allowed (debugger protocols)
 
 **Not Protected Against:**
+
 - Local privilege escalation (user can already do this)
 - Code injection in debugged process (user owns the code)
 - Resource exhaustion (memory/CPU limits enforced)
@@ -724,6 +783,7 @@ rust-gdb ./target/debug/program
 **Breaking Changes:** None expected (protocols are stable)
 
 **Version Detection:**
+
 ```json
 {
   "tool": "dap_get_capabilities"

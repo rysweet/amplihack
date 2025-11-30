@@ -15,7 +15,7 @@ import threading
 import time
 from collections import deque
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Deque, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 try:
     from rich import box
@@ -72,7 +72,7 @@ class AutoModeUI:
         # UI state
         self._should_exit = False
         self._showing_help = False
-        self._pending_input: Deque[str] = deque()
+        self._pending_input: deque[str] = deque()
 
         # Generate title
         self.title = self._generate_title_from_prompt(auto_mode.prompt)
@@ -370,7 +370,7 @@ class AutoModeUI:
         """
         return len(self._pending_input) > 0
 
-    def get_pending_input(self) -> Optional[str]:
+    def get_pending_input(self) -> str | None:
         """Get and clear next pending input.
 
         Returns:
@@ -401,7 +401,7 @@ class AutoModeUI:
         snapshot = self.state.snapshot()
         return "\n".join(snapshot["logs"])
 
-    def update_todos(self, todos: List[Dict[str, str]]) -> None:
+    def update_todos(self, todos: list[dict[str, str]]) -> None:
         """Update todo list in state."""
         self.state.update_todos(todos)
 
@@ -417,7 +417,7 @@ class AutoModeUI:
         """Set input text (for tests)."""
         self._pending_input.append(text)
 
-    def get_cost_info(self) -> Optional[Dict]:
+    def get_cost_info(self) -> dict | None:
         """Get cost info from state."""
         costs = self.state.get_costs()
         return costs if costs else None

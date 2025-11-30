@@ -11,7 +11,6 @@ import logging
 import socket
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ def is_port_in_use(port: int, host: str = "127.0.0.1") -> bool:
         return False
 
 
-def find_available_port(start_port: int, max_attempts: int = 100) -> Optional[int]:
+def find_available_port(start_port: int, max_attempts: int = 100) -> int | None:
     """Find an available port starting from start_port.
 
     Args:
@@ -78,7 +77,7 @@ def is_our_neo4j_container(container_name: str = "amplihack-neo4j") -> bool:
         return False
 
 
-def _parse_port_from_docker_line(line: str, container_port: str, port_type: str) -> Optional[int]:
+def _parse_port_from_docker_line(line: str, container_port: str, port_type: str) -> int | None:
     """Parse host port number from docker port output line.
 
     Args:
@@ -113,7 +112,7 @@ def _parse_port_from_docker_line(line: str, container_port: str, port_type: str)
         return None
 
 
-def get_container_ports(container_name: str = "amplihack-neo4j") -> Optional[Tuple[int, int]]:
+def get_container_ports(container_name: str = "amplihack-neo4j") -> tuple[int, int] | None:
     """Get the actual mapped ports from a running Docker container.
 
     Uses `docker port <container>` to retrieve the host-side port mappings
@@ -183,7 +182,7 @@ def get_container_ports(container_name: str = "amplihack-neo4j") -> Optional[Tup
         return None
 
 
-def detect_neo4j_on_port(port: int, password: str) -> Tuple[bool, bool]:
+def detect_neo4j_on_port(port: int, password: str) -> tuple[bool, bool]:
     """Detect if there's a Neo4j instance on port and if we can connect.
 
     Args:
@@ -230,9 +229,9 @@ def resolve_port_conflicts(
     bolt_port: int,
     http_port: int,
     password: str,
-    project_root: Optional[Path] = None,
+    project_root: Path | None = None,
     container_name: str = "amplihack-neo4j",
-) -> Tuple[int, int, list[str]]:
+) -> tuple[int, int, list[str]]:
     """Resolve port conflicts and select safe ports.
 
     Strategy:

@@ -8,7 +8,7 @@ import logging
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from neo4j import GraphDatabase
@@ -82,7 +82,7 @@ class CircuitBreaker:
         self.state = CircuitState.CLOSED
         self.failure_count = 0
         self.success_count = 0
-        self.last_failure_time: Optional[datetime] = None
+        self.last_failure_time: datetime | None = None
 
     def call(self, func, *args, **kwargs):
         """Execute function with circuit breaker protection.
@@ -161,7 +161,7 @@ class CircuitBreaker:
         self.last_failure_time = None
         logger.info("Circuit breaker: manually reset to CLOSED")
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Get current circuit state.
 
         Returns:
@@ -197,9 +197,9 @@ class Neo4jConnector:
 
     def __init__(
         self,
-        uri: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
+        uri: str | None = None,
+        user: str | None = None,
+        password: str | None = None,
         enable_circuit_breaker: bool = True,
         max_retries: int = 3,
     ):
@@ -224,7 +224,7 @@ class Neo4jConnector:
         self.password = password or config.password
         self.max_retries = max_retries
 
-        self._driver: Optional[Any] = None  # neo4j.Driver type
+        self._driver: Any | None = None  # neo4j.Driver type
         self._circuit_breaker = CircuitBreaker() if enable_circuit_breaker else None
 
     def connect(self) -> "Neo4jConnector":
@@ -265,8 +265,8 @@ class Neo4jConnector:
             logger.debug("Closed Neo4j connection")
 
     def execute_query(
-        self, query: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Execute read query and return results with retry logic.
 
         Args:
@@ -291,8 +291,8 @@ class Neo4jConnector:
         return _execute()
 
     def _execute_query_internal(
-        self, query: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Internal query execution with retries.
 
         Args:
@@ -337,8 +337,8 @@ class Neo4jConnector:
         raise ServiceUnavailable(f"Query failed after {self.max_retries} attempts: {last_error}")
 
     def execute_write(
-        self, query: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Execute write query in transaction with retry logic.
 
         Args:
@@ -363,8 +363,8 @@ class Neo4jConnector:
         return _execute()
 
     def _execute_write_internal(
-        self, query: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        self, query: str, parameters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Internal write execution with retries.
 
         Args:
@@ -429,7 +429,7 @@ class Neo4jConnector:
             logger.debug("Connectivity check failed: %s", e)
             return False
 
-    def get_circuit_breaker_state(self) -> Optional[Dict[str, Any]]:
+    def get_circuit_breaker_state(self) -> dict[str, Any] | None:
         """Get circuit breaker state.
 
         Returns:

@@ -13,7 +13,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -37,7 +37,7 @@ class PrecommitInstallerHook(HookProcessor):
     def __init__(self):
         super().__init__("precommit_installer")
 
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process session start event and install pre-commit if needed.
 
         Args:
@@ -150,7 +150,7 @@ class PrecommitInstallerHook(HookProcessor):
         git_dir = self.project_root / ".git"
         return git_dir.exists() and git_dir.is_dir()
 
-    def _is_precommit_available(self) -> Dict[str, Any]:
+    def _is_precommit_available(self) -> dict[str, Any]:
         """Check if pre-commit command is available and get version info.
 
         Returns:
@@ -201,7 +201,7 @@ class PrecommitInstallerHook(HookProcessor):
                 "error": f"Unexpected error checking pre-commit: {e}",
             }
 
-    def _are_hooks_installed(self) -> Dict[str, Any]:
+    def _are_hooks_installed(self) -> dict[str, Any]:
         """Check if pre-commit hooks are already installed in .git/hooks.
 
         Returns:
@@ -271,7 +271,7 @@ class PrecommitInstallerHook(HookProcessor):
                 "error": f"Error reading hook file: {e}",
             }
 
-    def _install_hooks(self) -> Dict[str, Any]:
+    def _install_hooks(self) -> dict[str, Any]:
         """Install pre-commit hooks with comprehensive error handling.
 
         Returns:

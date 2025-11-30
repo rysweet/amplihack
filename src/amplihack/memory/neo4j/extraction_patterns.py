@@ -13,7 +13,7 @@ Pattern Types:
 
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def extract_learnings(
     output: str,
     agent_type: str,
     task_category: str,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Extract all learnings from agent output using pattern matching.
 
     Args:
@@ -63,7 +63,7 @@ def extract_learnings(
     return learnings
 
 
-def _extract_decisions(output: str, category: str) -> List[Dict[str, Any]]:
+def _extract_decisions(output: str, category: str) -> list[dict[str, Any]]:
     """Extract explicit decisions with reasoning.
 
     Patterns:
@@ -111,7 +111,7 @@ def _extract_decisions(output: str, category: str) -> List[Dict[str, Any]]:
     return learnings
 
 
-def _extract_recommendations(output: str, category: str) -> List[Dict[str, Any]]:
+def _extract_recommendations(output: str, category: str) -> list[dict[str, Any]]:
     """Extract recommendations and best practices.
 
     Patterns:
@@ -155,7 +155,7 @@ def _extract_recommendations(output: str, category: str) -> List[Dict[str, Any]]
     return learnings
 
 
-def _extract_anti_patterns(output: str, category: str) -> List[Dict[str, Any]]:
+def _extract_anti_patterns(output: str, category: str) -> list[dict[str, Any]]:
     """Extract anti-patterns and things to avoid.
 
     Patterns:
@@ -199,7 +199,7 @@ def _extract_anti_patterns(output: str, category: str) -> List[Dict[str, Any]]:
     return learnings
 
 
-def _extract_error_solutions(output: str, category: str) -> List[Dict[str, Any]]:
+def _extract_error_solutions(output: str, category: str) -> list[dict[str, Any]]:
     """Extract error-solution pairs.
 
     Patterns:
@@ -229,7 +229,7 @@ def _extract_error_solutions(output: str, category: str) -> List[Dict[str, Any]]
     return learnings
 
 
-def _extract_implementation_patterns(output: str, category: str) -> List[Dict[str, Any]]:
+def _extract_implementation_patterns(output: str, category: str) -> list[dict[str, Any]]:
     """Extract implementation patterns (for builder/architect agents).
 
     Patterns:
@@ -256,7 +256,7 @@ def _extract_implementation_patterns(output: str, category: str) -> List[Dict[st
     return learnings
 
 
-def _extract_diagnostic_patterns(output: str, category: str) -> List[Dict[str, Any]]:
+def _extract_diagnostic_patterns(output: str, category: str) -> list[dict[str, Any]]:
     """Extract diagnostic patterns (for fix-agent/reviewer/tester).
 
     Patterns:
@@ -331,7 +331,7 @@ def _is_substantial(content: str) -> bool:
     return True
 
 
-def assess_learning_quality(learning: Dict[str, Any]) -> float:
+def assess_learning_quality(learning: dict[str, Any]) -> float:
     """Assess the quality of an extracted learning.
 
     Args:

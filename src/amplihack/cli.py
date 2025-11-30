@@ -4,15 +4,11 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
 
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
-
-if TYPE_CHECKING:
-    pass
 
 
 def ensure_ultrathink_command(prompt: str) -> str:
@@ -51,8 +47,8 @@ def ensure_ultrathink_command(prompt: str) -> str:
 
 
 def wrap_prompt_with_ultrathink(
-    claude_args: Optional[List[str]], no_ultrathink: bool = False
-) -> Optional[List[str]]:
+    claude_args: list[str] | None, no_ultrathink: bool = False
+) -> list[str] | None:
     """Wrap prompt in claude_args with /amplihack:ultrathink command.
 
     Modifies the prompt passed via -p flag to use workflow orchestration.
@@ -88,7 +84,7 @@ def wrap_prompt_with_ultrathink(
     return claude_args
 
 
-def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
+def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
     """Handle the launch command.
 
     Args:
@@ -210,9 +206,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     return launcher.launch_interactive()
 
 
-def handle_auto_mode(
-    sdk: str, args: argparse.Namespace, cmd_args: Optional[List[str]]
-) -> Optional[int]:
+def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> int | None:
     """Handle auto mode for claude, copilot, or codex commands.
 
     Args:
@@ -305,8 +299,8 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
 
 
 def parse_args_with_passthrough(
-    argv: Optional[List[str]] = None,
-) -> "tuple[argparse.Namespace, List[str]]":
+    argv: list[str] | None = None,
+) -> "tuple[argparse.Namespace, list[str]]":
     """Parse arguments with support for -- separator for Claude argument forwarding.
 
     Args:
@@ -386,7 +380,7 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def resolve_timeout(args: argparse.Namespace, model: Optional[str] = None) -> Optional[float]:
+def resolve_timeout(args: argparse.Namespace, model: str | None = None) -> float | None:
     """Resolve timeout value based on CLI args and model detection.
 
     Priority order:
@@ -590,17 +584,11 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     remote_parser = subparsers.add_parser("remote", help="Execute on remote Azure VMs via azlin")
     remote_parser.add_argument("remote_command", choices=["auto", "ultrathink"], help="Command")
     remote_parser.add_argument("prompt", help="Task prompt")
-    remote_parser.add_argument("--max-turns", type=int, default=10, help="Max turns (default: 10)")
-    remote_parser.add_argument("--vm-size", default="m", help="VM size: s/m/l/xl (default: m)")
-    remote_parser.add_argument("--vm-name", help="Use specific existing VM (skips provisioning)")
+    remote_parser.add_argument("--max-turns", type=int, default=10, help="Max turns")
+    remote_parser.add_argument("--vm-size", default="m", help="VM size: s/m/l/xl")
     remote_parser.add_argument("--region", help="Azure region")
-    remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM after execution")
-    remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout in minutes")
-    remote_parser.add_argument(
-        "--skip-secret-scan",
-        action="store_true",
-        help="Skip secret scanning (use with caution - for development with ephemeral VMs)",
-    )
+    remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM")
+    remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout")
 
     # Goal Agent Generator command
     new_parser = subparsers.add_parser(
@@ -640,7 +628,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     return parser
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 
     Args:
@@ -996,24 +984,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("Error: .claude directory not found", file=sys.stderr)
             return 1
 
-        # Add remote module to path for import
-        # Using sys.path approach - simpler and works with relative imports
-        remote_tools_path = claude_dir / "tools" / "amplihack"
-        if remote_tools_path not in [Path(p) for p in sys.path]:
-            sys.path.insert(0, str(remote_tools_path))
+        sys.path.insert(0, str(claude_dir / "tools" / "amplihack"))
 
         try:
-            # Import using standard import (works because we added to sys.path)
-            # pyright: ignore[reportMissingImports] - dynamic path, module exists at runtime
-            from remote.cli import execute_remote_workflow  # type: ignore[import-not-found]
-            from remote.orchestrator import VMOptions  # type: ignore[import-not-found]
+            from remote.cli import execute_remote_workflow
+            from remote.orchestrator import VMOptions
 
-            # Note: azlin handles size mapping (s/m/l/xl -> Azure VM sizes)
-            # We pass the size directly to azlin without mapping
             vm_options = VMOptions(
                 size=args.vm_size,
                 region=args.region,
-                vm_name=args.vm_name,
                 keep_vm=args.keep_vm,
             )
 
@@ -1024,14 +1003,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                 max_turns=args.max_turns,
                 vm_options=vm_options,
                 timeout=args.timeout,
-                skip_secret_scan=args.skip_secret_scan,
             )
             return 0
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
-            import traceback
-
-            traceback.print_exc()
             return 1
 
     else:

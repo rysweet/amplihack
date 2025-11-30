@@ -21,7 +21,6 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 try:
     from .file_classifier import FileCategory, classify_file
@@ -54,15 +53,15 @@ class UpdateResult:
     """
 
     success: bool
-    updated_files: List[str] = field(default_factory=list)
-    preserved_files: List[str] = field(default_factory=list)
-    skipped_files: List[str] = field(default_factory=list)
-    backup_path: Optional[Path] = None
-    new_version: Optional[str] = None
-    error: Optional[str] = None
+    updated_files: list[str] = field(default_factory=list)
+    preserved_files: list[str] = field(default_factory=list)
+    skipped_files: list[str] = field(default_factory=list)
+    backup_path: Path | None = None
+    new_version: str | None = None
+    error: str | None = None
 
 
-def create_backup(project_path: Path) -> Optional[Path]:
+def create_backup(project_path: Path) -> Path | None:
     """Create timestamped backup of .claude directory.
 
     Creates a backup directory named .claude.backup.{timestamp} containing
@@ -111,7 +110,7 @@ def create_backup(project_path: Path) -> Optional[Path]:
         return None
 
 
-def get_changed_files(package_path: Path, old_commit: str, new_commit: str) -> List[str]:
+def get_changed_files(package_path: Path, old_commit: str, new_commit: str) -> list[str]:
     """Get list of files changed between two commits.
 
     Uses git diff to find files that changed between commits.
@@ -256,7 +255,7 @@ def _write_version_file(project_path: Path, version: str) -> bool:
 def perform_update(
     package_path: Path,
     project_path: Path,
-    old_version: Optional[str] = None,
+    old_version: str | None = None,
 ) -> UpdateResult:
     """Orchestrate the complete update process.
 

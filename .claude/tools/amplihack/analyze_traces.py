@@ -3,17 +3,16 @@
 
 import subprocess
 from pathlib import Path
-from typing import List
 
 
-def find_unprocessed_logs(trace_dir: str) -> List[str]:
+def find_unprocessed_logs(trace_dir: str) -> list[str]:
     trace_path = Path(trace_dir)
     if not trace_path.exists():
         return []
     return [str(f) for f in trace_path.glob("*.jsonl") if f.parent.name != "already_processed"]
 
 
-def build_analysis_prompt(log_files: List[str]) -> str:
+def build_analysis_prompt(log_files: list[str]) -> str:
     logs_list = "\n".join(log_files)
     return f"""/ultrathink: Please very carefully analyze all of these logs:
 {logs_list}

@@ -23,7 +23,6 @@ import json
 import statistics
 import time
 from dataclasses import dataclass
-from typing import List
 
 import aiohttp  # type: ignore[import-untyped]
 
@@ -49,7 +48,7 @@ class PerformanceBenchmark:
     def __init__(self, proxy_url: str = "http://localhost:8000", iterations: int = 1000):
         self.proxy_url = proxy_url
         self.iterations = iterations
-        self.results: List[BenchmarkResult] = []
+        self.results: list[BenchmarkResult] = []
 
     async def benchmark_router_initialization(self) -> BenchmarkResult:
         """Benchmark router initialization performance."""
@@ -189,7 +188,7 @@ class PerformanceBenchmark:
         return self._create_benchmark_result("End-to-End Latency", times, len(times))
 
     def _create_benchmark_result(
-        self, name: str, times: List[float], iterations: int
+        self, name: str, times: list[float], iterations: int
     ) -> BenchmarkResult:
         """Create a benchmark result from timing data."""
         if not times:

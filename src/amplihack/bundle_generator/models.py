@@ -8,7 +8,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 
 @dataclass
@@ -16,12 +16,12 @@ class ParsedPrompt:
     """Result of parsing a natural language prompt."""
 
     raw_prompt: str
-    tokens: List[str]
-    sentences: List[str]
-    key_phrases: List[str]
-    entities: Dict[str, List[str]]  # entity_type -> values
+    tokens: list[str]
+    sentences: list[str]
+    key_phrases: list[str]
+    entities: dict[str, list[str]]  # entity_type -> values
     confidence: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate parsed prompt data."""
@@ -38,10 +38,10 @@ class ExtractedIntent:
     action: Literal["create", "modify", "combine", "specialize"]
     domain: str  # e.g., "security", "data-processing", "monitoring"
     agent_count: int
-    agent_requirements: List["AgentRequirement"]
+    agent_requirements: list["AgentRequirement"]
     complexity: Literal["simple", "standard", "advanced"]
-    constraints: List[str]
-    dependencies: List[str]
+    constraints: list[str]
+    dependencies: list[str]
     confidence: float
 
     def __post_init__(self):
@@ -61,10 +61,10 @@ class AgentRequirement:
     name: str
     role: str
     purpose: str
-    capabilities: List[str]
-    constraints: List[str] = field(default_factory=list)
+    capabilities: list[str]
+    constraints: list[str] = field(default_factory=list)
     suggested_type: Literal["core", "specialized", "workflow"] = "specialized"
-    dependencies: List[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
     priority: int = 0  # 0 = highest priority
 
     def __post_init__(self):
@@ -88,9 +88,9 @@ class GeneratedAgent:
     description: str = ""
     content: str = ""  # Markdown content
     model: str = "inherit"
-    capabilities: List[str] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
-    tests: List[str] = field(default_factory=list)  # Test file contents
+    capabilities: list[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
+    tests: list[str] = field(default_factory=list)  # Test file contents
     documentation: str = ""  # Additional docs
     created_at: datetime = field(default_factory=datetime.utcnow)
     generation_time_seconds: float = 0.0
@@ -116,9 +116,9 @@ class AgentBundle:
     name: str = ""
     version: str = "1.0.0"
     description: str = ""
-    agents: List[GeneratedAgent] = field(default_factory=list)
-    manifest: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    agents: list[GeneratedAgent] = field(default_factory=list)
+    manifest: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     status: Literal["pending", "processing", "ready", "failed"] = "pending"
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
@@ -152,7 +152,7 @@ class PackagedBundle:
     format: Literal["tar.gz", "zip", "directory", "uvx"]
     checksum: str = ""
     size_bytes: int = 0
-    uvx_metadata: Dict[str, Any] = field(default_factory=dict)
+    uvx_metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self):
@@ -173,13 +173,13 @@ class DistributionResult:
 
     success: bool
     platform: Literal["github", "pypi", "local"]
-    url: Optional[str] = None
-    repository: Optional[str] = None
-    branch: Optional[str] = None
-    commit_sha: Optional[str] = None
-    release_tag: Optional[str] = None
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    url: str | None = None
+    repository: str | None = None
+    branch: str | None = None
+    commit_sha: str | None = None
+    release_tag: str | None = None
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     distribution_time_seconds: float = 0.0
 
     @property
@@ -205,8 +205,8 @@ class TestResult:
     failed_count: int = 0
     skipped_count: int = 0
     duration_seconds: float = 0.0
-    failures: List[Dict[str, Any]] = field(default_factory=list)
-    coverage_percent: Optional[float] = None
+    failures: list[dict[str, Any]] = field(default_factory=list)
+    coverage_percent: float | None = None
 
     @property
     def success_rate(self) -> float:

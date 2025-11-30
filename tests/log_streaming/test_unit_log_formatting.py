@@ -54,7 +54,7 @@ class TestLogEventFormatting:
             levels = [logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL]
             level_names = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
-            for level, expected_name in zip(levels, level_names):
+            for level, expected_name in zip(levels, level_names, strict=False):
                 record = logging.LogRecord(
                     name="test",
                     level=level,

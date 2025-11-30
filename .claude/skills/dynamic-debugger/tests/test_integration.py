@@ -5,12 +5,12 @@ Testing pyramid distribution:
 - Tests focus on multi-component workflows and error recovery
 """
 
-import sys
 import json
-import pytest
 import subprocess
+import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+
+import pytest
 
 # Add scripts directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
@@ -18,10 +18,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 from detect_language import detect_language, get_debugger_for_language
 from generate_dap_config import generate_config, validate_config
 
-
 # ============================================================================
 # FULL WORKFLOW TESTS (4 tests)
 # ============================================================================
+
 
 class TestFullWorkflows:
     """Test complete workflows from detection to configuration."""
@@ -99,6 +99,7 @@ class TestFullWorkflows:
 # SERVER LIFECYCLE TESTS (3 tests)
 # ============================================================================
 
+
 class TestServerLifecycle:
     """Test server start/stop/status lifecycle."""
 
@@ -154,6 +155,7 @@ class TestServerLifecycle:
 # ERROR RECOVERY TESTS (2 tests)
 # ============================================================================
 
+
 class TestErrorRecovery:
     """Test error handling and recovery scenarios."""
 
@@ -161,11 +163,7 @@ class TestErrorRecovery:
         """Test handling of missing dap-mcp installation."""
         # Test that we can detect if npx is available
         # Don't mock - just check real system state
-        result = subprocess.run(
-            ["which", "npx"],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["which", "npx"], capture_output=True, text=True)
 
         # Either npx exists (returncode 0) or doesn't (returncode 1) - both are valid states
         # The start_dap_mcp.sh script handles both cases gracefully
@@ -191,7 +189,7 @@ class TestErrorRecovery:
         # Check if process exists (should not)
         try:
             import os
-            import signal
+
             os.kill(pid, 0)
             process_exists = True
         except OSError:
@@ -207,16 +205,20 @@ class TestErrorRecovery:
 # CROSS-LANGUAGE INTEGRATION TESTS (Bonus)
 # ============================================================================
 
+
 class TestCrossLanguageIntegration:
     """Test integration across multiple languages."""
 
-    @pytest.mark.parametrize("language,project_fixture", [
-        ("python", "python_project"),
-        ("javascript", "javascript_project"),
-        ("go", "go_project"),
-        ("rust", "rust_project"),
-        ("cpp", "cpp_project"),
-    ])
+    @pytest.mark.parametrize(
+        "language,project_fixture",
+        [
+            ("python", "python_project"),
+            ("javascript", "javascript_project"),
+            ("go", "go_project"),
+            ("rust", "rust_project"),
+            ("cpp", "cpp_project"),
+        ],
+    )
     def test_all_languages_full_workflow(self, language, project_fixture, request):
         """Test full workflow for all supported languages."""
         # Get project fixture
@@ -243,6 +245,7 @@ class TestCrossLanguageIntegration:
 # CONFIGURATION PERSISTENCE TESTS (Bonus)
 # ============================================================================
 
+
 class TestConfigurationPersistence:
     """Test configuration generation and file persistence."""
 
@@ -264,10 +267,7 @@ class TestConfigurationPersistence:
         """Test custom parameters are persisted correctly."""
         # Generate with custom params
         custom_config = generate_config(
-            "python",
-            str(python_project),
-            port=9999,
-            entry_point="custom_main"
+            "python", str(python_project), port=9999, entry_point="custom_main"
         )
 
         # Save to file
@@ -286,6 +286,7 @@ class TestConfigurationPersistence:
 # SCRIPT EXECUTION INTEGRATION TESTS (Bonus)
 # ============================================================================
 
+
 class TestScriptExecution:
     """Test that scripts can be executed as standalone programs."""
 
@@ -300,7 +301,7 @@ class TestScriptExecution:
         result = subprocess.run(
             [sys.executable, str(script), "--path", str(python_project), "--json"],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         assert result.returncode == 0
@@ -321,14 +322,17 @@ class TestScriptExecution:
         # Run script
         result = subprocess.run(
             [
-                sys.executable, str(script),
+                sys.executable,
+                str(script),
                 "python",
-                "--project-dir", str(python_project),
-                "--output", str(output_file),
-                "--validate"
+                "--project-dir",
+                str(python_project),
+                "--output",
+                str(output_file),
+                "--validate",
             ],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Should succeed

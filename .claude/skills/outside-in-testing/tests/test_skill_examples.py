@@ -10,7 +10,7 @@ Validates that all example YAML files are:
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 import yaml
@@ -20,12 +20,12 @@ SKILL_DIR = Path(__file__).parent.parent
 EXAMPLES_DIR = SKILL_DIR / "examples"
 
 
-def get_all_example_files() -> List[Path]:
+def get_all_example_files() -> list[Path]:
     """Get all YAML example files."""
     return list(EXAMPLES_DIR.rglob("*.yaml"))
 
 
-def load_yaml_file(file_path: Path) -> Dict[str, Any]:
+def load_yaml_file(file_path: Path) -> dict[str, Any]:
     """Load and parse a YAML file."""
     with open(file_path) as f:
         return yaml.safe_load(f)
@@ -35,7 +35,7 @@ class TestExampleFiles:
     """Test suite for example YAML files."""
 
     @pytest.fixture
-    def example_files(self) -> List[Path]:
+    def example_files(self) -> list[Path]:
         """Fixture providing all example files."""
         return get_all_example_files()
 

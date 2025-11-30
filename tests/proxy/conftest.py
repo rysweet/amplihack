@@ -7,7 +7,6 @@ including port management, error simulation, and test infrastructure.
 import socket
 import time
 from contextlib import contextmanager
-from typing import List, Tuple
 from unittest.mock import Mock
 
 import pytest
@@ -22,7 +21,7 @@ def available_port() -> int:
 
 
 @pytest.fixture
-def available_port_range() -> Tuple[int, int]:
+def available_port_range() -> tuple[int, int]:
     """Fixture that provides a range of available ports for testing."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("localhost", 0))
@@ -60,7 +59,7 @@ def occupy_port(port: int):
 
 
 @contextmanager
-def occupy_ports(ports: List[int]):
+def occupy_ports(ports: list[int]):
     """Context manager to temporarily occupy multiple ports."""
     sockets = []
     try:

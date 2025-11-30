@@ -11,7 +11,6 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Try to import Claude SDK
 try:
@@ -29,7 +28,7 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 REFLECTION_PROMPT_TEMPLATE = TEMPLATE_DIR / "reflection_prompt.txt"
 
 
-def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
+def load_session_conversation(session_dir: Path) -> list[dict] | None:
     """Load conversation messages from session directory.
 
     Args:
@@ -61,7 +60,7 @@ def load_session_conversation(session_dir: Path) -> Optional[List[Dict]]:
     return None
 
 
-def load_power_steering_redirects(session_dir: Path) -> Optional[List[Dict]]:
+def load_power_steering_redirects(session_dir: Path) -> list[dict] | None:
     """Load power-steering redirect history from session directory.
 
     Args:
@@ -93,7 +92,7 @@ def load_power_steering_redirects(session_dir: Path) -> Optional[List[Dict]]:
     return redirects if redirects else None
 
 
-def format_redirects_context(redirects: Optional[List[Dict]]) -> str:
+def format_redirects_context(redirects: list[dict] | None) -> str:
     """Format redirect history for inclusion in reflection prompt.
 
     Args:
@@ -184,7 +183,7 @@ def load_prompt_template() -> str:
     return REFLECTION_PROMPT_TEMPLATE.read_text()
 
 
-def format_reflection_prompt(template: str, variables: Dict[str, str]) -> str:
+def format_reflection_prompt(template: str, variables: dict[str, str]) -> str:
     """Format reflection prompt with variable substitution.
 
     Args:
@@ -272,11 +271,11 @@ def get_repository_context(project_root: Path) -> str:
 
 
 async def analyze_session_with_claude(
-    conversation: List[Dict],
+    conversation: list[dict],
     template: str,
     project_root: Path,
-    session_dir: Optional[Path] = None,
-) -> Optional[str]:
+    session_dir: Path | None = None,
+) -> str | None:
     """Use Claude SDK to analyze session and fill out template.
 
     Args:
@@ -369,7 +368,7 @@ The following preferences are REQUIRED and CANNOT be ignored:
         return None
 
 
-def _format_conversation_summary(conversation: List[Dict], max_length: int = 5000) -> str:
+def _format_conversation_summary(conversation: list[dict], max_length: int = 5000) -> str:
     """Format conversation summary for analysis.
 
     Args:
@@ -404,8 +403,8 @@ def _format_conversation_summary(conversation: List[Dict], max_length: int = 500
 
 
 def run_claude_reflection(
-    session_dir: Path, project_root: Path, conversation: Optional[List[Dict]] = None
-) -> Optional[str]:
+    session_dir: Path, project_root: Path, conversation: list[dict] | None = None
+) -> str | None:
     """Run Claude SDK-based reflection on a session.
 
     Args:

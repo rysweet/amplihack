@@ -5,7 +5,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 
 def check_codex() -> bool:
@@ -102,7 +101,7 @@ def configure_codex() -> bool:
         return False
 
 
-def launch_codex(args: Optional[List[str]] = None, interactive: bool = True) -> int:
+def launch_codex(args: list[str] | None = None, interactive: bool = True) -> int:
     """Launch Codex CLI.
 
     Args:

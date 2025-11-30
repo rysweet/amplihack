@@ -28,6 +28,7 @@ async def process_pipeline(data):
 ```
 
 **Debugging Strategy:**
+
 1. Set breakpoints at all checkpoints
 2. Run until first checkpoint
 3. Verify state matches expectations
@@ -45,24 +46,25 @@ async def process_pipeline(data):
 ```javascript
 // JavaScript example
 function processOrder(order) {
-    // Stop only for high-value orders
-    // Conditional breakpoint: order.total > 10000
-    if (order.total > 10000) {
-        validateHighValueOrder(order);
-    }
+  // Stop only for high-value orders
+  // Conditional breakpoint: order.total > 10000
+  if (order.total > 10000) {
+    validateHighValueOrder(order);
+  }
 
-    // Stop only for specific customer
-    // Conditional breakpoint: order.customerId === 12345
-    chargeCustomer(order.customerId, order.total);
+  // Stop only for specific customer
+  // Conditional breakpoint: order.customerId === 12345
+  chargeCustomer(order.customerId, order.total);
 }
 ```
 
 **API Syntax:**
+
 ```json
 {
   "tool": "dap_set_breakpoints",
   "arguments": {
-    "source": {"path": "orders.js"},
+    "source": { "path": "orders.js" },
     "breakpoints": [
       {
         "line": 4,
@@ -105,6 +107,7 @@ public:
 ```
 
 **API Syntax:**
+
 ```json
 {
   "tool": "dap_set_data_breakpoints",
@@ -143,6 +146,7 @@ fn process_payment(amount: f64) -> Result<Payment, PaymentError> {
 ```
 
 **API Syntax:**
+
 ```json
 {
   "tool": "dap_set_exception_breakpoints",
@@ -150,7 +154,7 @@ fn process_payment(amount: f64) -> Result<Payment, PaymentError> {
     "filters": ["raised", "uncaught"],
     "exceptionOptions": [
       {
-        "path": [{"names": ["PaymentError"]}],
+        "path": [{ "names": ["PaymentError"] }],
         "breakMode": "always"
       }
     ]
@@ -189,6 +193,7 @@ func processOrders(orders []Order) {
 ```
 
 **Debugging Strategy:**
+
 1. Add timing checkpoints throughout code
 2. Run with breakpoints at each checkpoint
 3. Inspect timing values at each stop
@@ -225,6 +230,7 @@ public:
 ```
 
 **Debugging Strategy:**
+
 1. Set breakpoints before and after operations
 2. Inspect collection sizes at each breakpoint
 3. Verify resources released
@@ -256,6 +262,7 @@ def create_user(username: str, email: str):
 ```
 
 **Debugging Strategy:**
+
 1. Inject malicious input (in test environment!)
 2. Trace input through validation layers
 3. Verify sanitization at each stage
@@ -272,22 +279,22 @@ def create_user(username: str, email: str):
 ```javascript
 // JavaScript example
 async function authenticateUser(credentials) {
-    // Checkpoint 1: Received credentials
-    console.log('Credentials:', credentials);  // Breakpoint here
+  // Checkpoint 1: Received credentials
+  console.log("Credentials:", credentials); // Breakpoint here
 
-    // Checkpoint 2: Database lookup
-    const user = await User.findOne({email: credentials.email});  // Breakpoint here
+  // Checkpoint 2: Database lookup
+  const user = await User.findOne({ email: credentials.email }); // Breakpoint here
 
-    // Checkpoint 3: Password verification
-    const isValid = await bcrypt.compare(credentials.password, user.passwordHash);  // Breakpoint here
+  // Checkpoint 3: Password verification
+  const isValid = await bcrypt.compare(credentials.password, user.passwordHash); // Breakpoint here
 
-    // Checkpoint 4: Session creation
-    const session = await createSession(user.id);  // Breakpoint here
+  // Checkpoint 4: Session creation
+  const session = await createSession(user.id); // Breakpoint here
 
-    // Checkpoint 5: Token generation
-    const token = jwt.sign({userId: user.id, sessionId: session.id});  // Breakpoint here
+  // Checkpoint 5: Token generation
+  const token = jwt.sign({ userId: user.id, sessionId: session.id }); // Breakpoint here
 
-    return {token, user};
+  return { token, user };
 }
 ```
 
@@ -324,6 +331,7 @@ async def main():
 ```
 
 **Key Inspections:**
+
 - `task.done()` - Is coroutine finished?
 - `task.cancelled()` - Was it cancelled?
 - `task.exception()` - Did it raise exception?
@@ -335,28 +343,29 @@ async def main():
 
 ```javascript
 function debugPromiseChain() {
-    const promise = fetchUser(123)
-        .then(user => {
-            // Breakpoint: Check user object
-            return fetchOrders(user.id);
-        })
-        .then(orders => {
-            // Breakpoint: Check orders array
-            return processOrders(orders);
-        })
-        .catch(err => {
-            // Breakpoint: Inspect error
-            console.error('Error:', err);
-        });
+  const promise = fetchUser(123)
+    .then((user) => {
+      // Breakpoint: Check user object
+      return fetchOrders(user.id);
+    })
+    .then((orders) => {
+      // Breakpoint: Check orders array
+      return processOrders(orders);
+    })
+    .catch((err) => {
+      // Breakpoint: Inspect error
+      console.error("Error:", err);
+    });
 
-    // Inspect promise state immediately
-    console.log('Promise state:', promise);  // Breakpoint here
+  // Inspect promise state immediately
+  console.log("Promise state:", promise); // Breakpoint here
 
-    return promise;
+  return promise;
 }
 ```
 
 **Key Inspections:**
+
 - Promise state: pending/fulfilled/rejected
 - Promise value or rejection reason
 - Stack trace at rejection point
@@ -382,6 +391,7 @@ void processUser(User* user) {
 ```
 
 **Tools Integration:**
+
 - Use with Valgrind: `valgrind --tool=memcheck ./program`
 - Use with AddressSanitizer: Compile with `-fsanitize=address`
 - Check for use-after-free, double-free, memory leaks
@@ -423,6 +433,7 @@ func processInBackground(ctx context.Context, data []int) {
 ```
 
 **Key Inspections:**
+
 - `runtime.NumGoroutine()` - Count active goroutines
 - Goroutine state: running/blocked/waiting
 - Channel state: buffered count, waiters
@@ -458,6 +469,7 @@ fn handle_move() {
 ```
 
 **Key Insights:**
+
 - Owned values: Can be moved or borrowed
 - Borrowed values: Cannot be moved while borrowed
 - Mutable borrows: Exclusive access
@@ -470,6 +482,7 @@ fn handle_move() {
 **Problem:** Using print statements instead of proper debugging
 
 **Why It Fails:**
+
 - Clutters codebase with debug prints
 - Hard to remove all prints after debugging
 - Doesn't show full state, only what you printed
@@ -482,12 +495,14 @@ fn handle_move() {
 **Problem:** Setting breakpoints in live production system
 
 **Why It's Dangerous:**
+
 - Pauses execution for all users
 - May timeout requests
 - Exposes sensitive data in debugger
 - Performance impact
 
 **Solution:**
+
 - Debug in staging/development only
 - Use logging for production issues
 - Use profiling for production performance
@@ -498,6 +513,7 @@ fn handle_move() {
 **Problem:** Not checking full stack trace when debugging
 
 **Why It Fails:**
+
 - Root cause often several frames up
 - Missing context from calling code
 - Symptoms appear far from actual bug
@@ -509,6 +525,7 @@ fn handle_move() {
 **Problem:** Stepping through every line of code
 
 **Why It's Inefficient:**
+
 - Wastes huge amounts of time
 - Easy to lose context
 - May timeout debugging session
@@ -520,11 +537,13 @@ fn handle_move() {
 **Problem:** Stopping debugger after finding suspected bug
 
 **Why It's Risky:**
+
 - Suspected cause may not be root cause
 - Fix may introduce new bugs
 - Multiple bugs may have same symptom
 
 **Solution:**
+
 1. Identify suspected bug
 2. Verify with test case
 3. Apply fix
@@ -561,6 +580,7 @@ fn handle_move() {
 **Concept:** Step backward through execution to find bug origin
 
 **Tools:**
+
 - GDB: `record` and `reverse-step` commands
 - rr (Record and Replay): Record execution, replay with debugger
 
@@ -571,6 +591,7 @@ fn handle_move() {
 **Concept:** Record entire execution, replay at any point
 
 **Tools:**
+
 - rr for C/C++
 - Chronon for Java
 - WinDBG Time Travel Debugging for Windows
@@ -582,6 +603,7 @@ fn handle_move() {
 **Concept:** Debug code running on different machine
 
 **Setup:**
+
 - Python: `debugpy --listen 0.0.0.0:5678 script.py`
 - Node: `node --inspect=0.0.0.0:9229 script.js`
 - Go: `dlv attach --headless --listen=:2345 <pid>`
@@ -600,6 +622,7 @@ fn handle_move() {
 **Total per command: <100 tokens**
 
 **Optimization strategies:**
+
 1. Cache language detection results
 2. Use pattern matching for intent (not LLM)
 3. Template common error messages

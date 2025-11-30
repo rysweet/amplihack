@@ -297,7 +297,7 @@ class TestSSEEventStreaming:
             # Adding another event should handle overflow
             try:
                 await asyncio.wait_for(queue.put("event3"), timeout=0.1)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Queue should be full, this is expected
                 pass
             else:
