@@ -29,6 +29,7 @@ ESSENTIAL_DIRS = [
 # Essential files that must be copied (relative to .claude/)
 ESSENTIAL_FILES = [
     "tools/statusline.sh",  # StatusLine script for Claude Code status bar
+    "../CLAUDE.md",  # Root-level CLAUDE.md (Issue #1746)
 ]
 
 # Runtime directories that need to be created
@@ -123,7 +124,9 @@ def ensure_dirs() -> None:
     os.makedirs(CLAUDE_DIR, exist_ok=True)
 
 
-def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manifest=None) -> list[str]:
+def copytree_manifest(
+    repo_root: str, dst: str, rel_top: str = ".claude", manifest=None
+) -> list[str]:
     """Copy all essential directories from repo to destination.
 
     Args:
@@ -177,6 +180,7 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manife
         try:
             # If file_filter is provided, use it to filter which files to copy
             if file_filter:
+
                 def ignore_function(directory, contents):
                     """Filter function for shutil.copytree to skip files based on profile.
 
@@ -256,6 +260,10 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manife
 
     # Copy essential files (like statusline.sh)
     for file_path in ESSENTIAL_FILES:
+        # Skip CLAUDE.md - handled separately with preservation logic (Issue #1746)
+        if file_path == "../CLAUDE.md":
+            continue
+
         source_file = os.path.join(base, file_path)
         target_file = os.path.join(dst, file_path)
 
@@ -279,6 +287,29 @@ def copytree_manifest(repo_root: str, dst: str, rel_top: str = ".claude", manife
             copied.append(file_path)
         except Exception as e:
             print(f"  ⚠️  Could not copy {file_path}: {e}")
+
+    # Handle CLAUDE.md separately with preservation logic (Issue #1746)
+    from pathlib import Path
+
+    try:
+        from .utils.claude_md_preserver import HandleMode, handle_claude_md
+
+        source_claude = os.path.join(base, "..", "CLAUDE.md")
+        if os.path.exists(source_claude):
+            result = handle_claude_md(
+                source_claude=Path(source_claude),
+                target_dir=Path(dst).parent,  # dst is .claude/, we want parent (project root)
+                mode=HandleMode.AUTO,
+            )
+            if result.success:
+                print(f"  ✅ {result.message}")
+                if result.backup_path:
+                    print(f"     💾 Backup: {result.backup_path}")
+                copied.append("CLAUDE.md")
+            else:
+                print(f"  ⚠️  {result.message}")
+    except Exception as e:
+        print(f"  ⚠️  Could not handle CLAUDE.md: {e}")
 
     return copied
 
@@ -622,19 +653,17 @@ def _local_install(repo_root, profile_uri=None):
     except Exception as e:
         # If profile management isn't available, use full installation
         print(f"ℹ️  Profile management unavailable ({e}), using full installation\n")
+        from collections.abc import Callable
         from dataclasses import dataclass
-        from typing import Callable, List, Optional
 
         @dataclass
         class StagingManifest:
-            dirs_to_stage: List[str]
-            file_filter: Optional[Callable]
+            dirs_to_stage: list[str]
+            file_filter: Callable | None
             profile_name: str
 
         manifest = StagingManifest(
-            dirs_to_stage=ESSENTIAL_DIRS,
-            file_filter=None,
-            profile_name="all"
+            dirs_to_stage=ESSENTIAL_DIRS, file_filter=None, profile_name="all"
         )
 
     # Step 1: Ensure base directory exists
