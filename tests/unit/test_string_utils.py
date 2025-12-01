@@ -410,3 +410,127 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+    # max_length parameter tests
+    def test_max_length_default(self):
+        """Test default max_length of 100 characters.
+
+        Expected behavior:
+        - Default max_length is 100
+        - Long strings truncated to 100 chars
+        """
+        long_text = "a" * 150
+        result = slugify(long_text)
+        assert len(result) == 100, "Should default to 100 char max length"
+
+    def test_max_length_exact_boundary(self):
+        """Test exact boundary at max_length.
+
+        Expected behavior:
+        - String exactly at max_length unchanged
+        """
+        text = "a" * 10
+        result = slugify(text, max_length=10)
+        assert result == text, "String exactly at max_length should be unchanged"
+
+    def test_max_length_truncation(self):
+        """Test simple truncation at max_length.
+
+        Expected behavior:
+        - "hello-world" with max_length=8 becomes "hello-wo"
+        - Truncates at exact position
+        """
+        result = slugify("hello-world", max_length=8)
+        assert result == "hello-wo", "Should truncate at max_length"
+
+    def test_max_length_truncation_removes_trailing_hyphen(self):
+        """Test truncation removes trailing hyphen after cut.
+
+        Expected behavior:
+        - If truncation creates trailing hyphen, remove it
+        - "hello-world" with max_length=6 becomes "hello" not "hello-"
+        """
+        result = slugify("hello-world", max_length=6)
+        assert result == "hello", "Should remove trailing hyphen after truncation"
+
+    def test_max_length_zero(self):
+        """Test max_length of zero.
+
+        Expected behavior:
+        - max_length=0 should return empty string
+        """
+        result = slugify("test", max_length=0)
+        assert result == "", "max_length=0 should return empty string"
+
+    def test_max_length_negative(self):
+        """Test negative max_length for unlimited length.
+
+        Expected behavior:
+        - Negative max_length means no truncation
+        - Full slug returned
+        """
+        long_text = "a" * 200
+        result = slugify(long_text, max_length=-1)
+        assert len(result) == 200, "Negative max_length should not truncate"
+
+    def test_max_length_with_unicode(self):
+        """Test max_length with unicode characters.
+
+        Expected behavior:
+        - Unicode normalized first, then truncated
+        - Length measured after normalization
+        """
+        result = slugify("Café Münchën Test", max_length=10)
+        assert len(result) <= 10, "Should truncate after unicode normalization"
+
+    def test_max_length_single_char(self):
+        """Test max_length=1 for single character.
+
+        Expected behavior:
+        - max_length=1 returns single character
+        """
+        result = slugify("hello world", max_length=1)
+        assert result == "h", "max_length=1 should return single char"
+
+    def test_max_length_with_consecutive_hyphens(self):
+        """Test max_length truncation with consecutive hyphens.
+
+        Expected behavior:
+        - Hyphens collapsed before truncation
+        - Trailing hyphens removed after truncation
+        """
+        result = slugify("hello----world", max_length=6)
+        assert result == "hello", "Should handle consecutive hyphens and truncation"
+
+    def test_max_length_with_special_chars(self):
+        """Test max_length with special character replacement.
+
+        Expected behavior:
+        - Special chars replaced with hyphens first
+        - Then truncated to max_length
+        """
+        result = slugify("hello@@@world", max_length=8)
+        # After special char replacement: "hello-world"
+        # After truncation: "hello-wo"
+        assert result == "hello-wo", "Should replace special chars with hyphens then truncate"
+
+    def test_max_length_idempotency(self):
+        """Test idempotency with max_length parameter.
+
+        Expected behavior:
+        - slugify(slugify(x, max_length), max_length) == slugify(x, max_length)
+        """
+        text = "Hello World Test"
+        first = slugify(text, max_length=10)
+        second = slugify(first, max_length=10)
+        assert first == second, "Should be idempotent with max_length"
+
+    def test_max_length_very_large(self):
+        """Test very large max_length value.
+
+        Expected behavior:
+        - Very large max_length effectively unlimited
+        - Normal slugification occurs
+        """
+        result = slugify("hello world", max_length=10000)
+        assert result == "hello-world", "Very large max_length should not affect result"
