@@ -1,0 +1,1 @@
+"""Amplihack package initialization."""
