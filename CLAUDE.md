@@ -1,5 +1,3 @@
-<!-- amplihack-version: 0.9.0 -->
-
 # CLAUDE.md
 
 This file provides guidance to Claude Code when working with your codebase. It
@@ -902,3 +900,22 @@ liberally, execute in parallel, and continuously learn.
 
 1. Executable tool in `.claude/scenarios/` (the program itself)
 2. Skill in `.claude/skills/` that calls the tool (convenient interface)
+
+---
+
+## 🔍 CHECKPOINT VALIDATION (After Step 5)
+
+After completing the first 5 workflow steps, STOP and verify:
+
+```
+CHECKPOINT VALIDATION:
+
+□ Steps 0-5 are ALL marked "completed" in TodoWrite
+□ NO steps were skipped
+□ ALL mandatory agent calls were made (prompt-writer, architect, etc.)
+□ Workflow file guidance was followed
+
+⚠️  IF VALIDATION FAILS: STOP and correct before continuing  ⚠️
+```
+
+If validation passes, state: **"CHECKPOINT VALIDATED - CONTINUING"**
