@@ -201,7 +201,7 @@ class TestResourceExhaustionScenarios:
                     await asyncio.sleep(0.2)
                     assert log_server.get_client_count() <= max_connections
 
-                except (ConnectionRefusedError, socket.timeout):
+                except (TimeoutError, ConnectionRefusedError):
                     # Expected - connection rejected
                     pass
                 finally:

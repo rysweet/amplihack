@@ -374,11 +374,15 @@ python main.py
 | `/amplihack:uninstall`         | Uninstall amplihack tools                               |
 
 # Install with filtering
+
 amplihack install
+
 # Result: Only 9/32 agents staged (72% reduction)
 
 # Launch with filtering
+
 amplihack launch
+
 # Result: Focused environment for coding tasks
 
 | Agent            | Purpose                                  |

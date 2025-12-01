@@ -13,14 +13,14 @@ Usage:
 
 import argparse
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 
 
-def load_yaml(path: Path) -> Dict[str, Any]:
+def load_yaml(path: Path) -> dict[str, Any]:
     """Load YAML file safely."""
     if not path.exists():
         return {}
@@ -28,7 +28,7 @@ def load_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def save_yaml(path: Path, data: Dict[str, Any]) -> None:
+def save_yaml(path: Path, data: dict[str, Any]) -> None:
     """Save YAML file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
@@ -37,7 +37,7 @@ def save_yaml(path: Path, data: Dict[str, Any]) -> None:
 
 def get_timestamp() -> str:
     """Get current UTC timestamp in ISO8601 format."""
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def cmd_init(args) -> int:
@@ -112,7 +112,7 @@ def cmd_init(args) -> int:
     return 0
 
 
-def generate_backlog_id(items: List[dict]) -> str:
+def generate_backlog_id(items: list[dict]) -> str:
     """Generate next backlog ID."""
     if not items:
         return "BL-001"

@@ -5,7 +5,6 @@ Creates structured 3-5 phase plans with dependencies and parallel opportunities.
 """
 
 import uuid
-from typing import List, Tuple
 
 from .models import ExecutionPlan, GoalDefinition, PlanPhase
 
@@ -109,8 +108,8 @@ class ObjectivePlanner:
         )
 
     def _create_phases(
-        self, phase_templates: List[Tuple[str, str, List[str]]], goal_definition: GoalDefinition
-    ) -> List[PlanPhase]:
+        self, phase_templates: list[tuple[str, str, list[str]]], goal_definition: GoalDefinition
+    ) -> list[PlanPhase]:
         """Create plan phases from templates."""
         phases = []
         dependencies = []
@@ -151,7 +150,7 @@ class ObjectivePlanner:
         }
         return duration_map.get(complexity, "15 minutes")
 
-    def _estimate_total_duration(self, phases: List[PlanPhase], complexity: str) -> str:
+    def _estimate_total_duration(self, phases: list[PlanPhase], complexity: str) -> str:
         """Estimate total execution duration."""
         # Simple calculation: sum of phase durations
         duration_values = {
@@ -180,7 +179,7 @@ class ObjectivePlanner:
             return f"{hours} hour{'s' if hours > 1 else ''} {minutes} minutes"
         return f"{hours} hour{'s' if hours > 1 else ''}"
 
-    def _identify_parallel_opportunities(self, phases: List[PlanPhase]) -> List[List[str]]:
+    def _identify_parallel_opportunities(self, phases: list[PlanPhase]) -> list[list[str]]:
         """Identify phases that can execute in parallel."""
         parallel_groups = []
         current_group = []
@@ -198,7 +197,7 @@ class ObjectivePlanner:
 
         return parallel_groups
 
-    def _calculate_required_skills(self, phases: List[PlanPhase]) -> List[str]:
+    def _calculate_required_skills(self, phases: list[PlanPhase]) -> list[str]:
         """Calculate unique skills needed across all phases."""
         all_capabilities = []
         for phase in phases:
@@ -225,7 +224,7 @@ class ObjectivePlanner:
 
         return sorted(list(skills))
 
-    def _identify_risk_factors(self, goal_definition: GoalDefinition) -> List[str]:
+    def _identify_risk_factors(self, goal_definition: GoalDefinition) -> list[str]:
         """Identify potential risk factors based on goal."""
         risks = []
 

@@ -5,7 +5,6 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 from .documentation_generator import generate_instructions
 from .exceptions import PackagingError
@@ -83,7 +82,7 @@ class FilesystemPackager:
         self,
         bundle: AgentBundle,
         build_uvx: bool = True,
-        options: Optional[dict] = None,
+        options: dict | None = None,
     ) -> Path:
         """
         Create complete filesystem package.

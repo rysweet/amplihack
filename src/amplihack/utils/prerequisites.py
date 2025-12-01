@@ -29,10 +29,9 @@ import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 # Lazy import to avoid circular dependencies
 # claude_cli imports prerequisites, so we import it only when needed
@@ -40,7 +39,7 @@ try:
     from .claude_cli import get_claude_cli_path
 except ImportError:
     # Fallback if import fails
-    def get_claude_cli_path(auto_install: bool = True) -> Optional[str]:
+    def get_claude_cli_path(auto_install: bool = True) -> str | None:
         return None
 
 
@@ -71,7 +70,7 @@ class InstallationResult:
 
     tool: str
     success: bool
-    command_executed: List[str]
+    command_executed: list[str]
     stdout: str
     stderr: str
     exit_code: int
@@ -90,11 +89,11 @@ class InstallationAuditEntry:
     timestamp: str
     tool: str
     platform: str
-    command: List[str]
+    command: list[str]
     user_approved: bool
     success: bool
     exit_code: int
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 @dataclass
@@ -103,9 +102,9 @@ class ToolCheckResult:
 
     tool: str
     available: bool
-    path: Optional[str] = None
-    version: Optional[str] = None
-    error: Optional[str] = None
+    path: str | None = None
+    version: str | None = None
+    error: str | None = None
 
 
 @dataclass
@@ -113,8 +112,8 @@ class PrerequisiteResult:
     """Result of checking all prerequisites."""
 
     all_available: bool
-    missing_tools: List[ToolCheckResult] = field(default_factory=list)
-    available_tools: List[ToolCheckResult] = field(default_factory=list)
+    missing_tools: list[ToolCheckResult] = field(default_factory=list)
+    available_tools: list[ToolCheckResult] = field(default_factory=list)
 
 
 @dataclass
@@ -124,15 +123,15 @@ class InstallationResult:
     tool: str
     success: bool
     message: str
-    command_used: Optional[str] = None
-    verification_result: Optional[ToolCheckResult] = None
+    command_used: str | None = None
+    verification_result: ToolCheckResult | None = None
 
 
 def safe_subprocess_call(
-    cmd: List[str],
+    cmd: list[str],
     context: str,
-    timeout: Optional[int] = 30,
-) -> Tuple[int, str, str]:
+    timeout: int | None = 30,
+) -> tuple[int, str, str]:
     """Safely execute subprocess with comprehensive error handling.
 
     This wrapper ensures all subprocess calls have consistent error handling
@@ -254,7 +253,7 @@ class InteractiveInstaller:
 
         return True
 
-    def prompt_for_approval(self, tool: str, command: List[str]) -> bool:
+    def prompt_for_approval(self, tool: str, command: list[str]) -> bool:
         """Prompt user for approval to install a tool.
 
         Args:
@@ -285,7 +284,7 @@ class InteractiveInstaller:
                 return False
             print("Please enter 'y' or 'n'")
 
-    def _execute_install_command(self, command: List[str]) -> subprocess.CompletedProcess:
+    def _execute_install_command(self, command: list[str]) -> subprocess.CompletedProcess:
         """Execute installation command with interactive stdin.
 
         Args:
@@ -346,7 +345,7 @@ class InteractiveInstaller:
             5. Log attempt to audit log
             6. Return result
         """
-        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        timestamp = datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
         # Check for interactive environment
         if not self.is_interactive_environment():
@@ -623,7 +622,7 @@ class PrerequisiteChecker:
             pass
         return False
 
-    def check_tool(self, tool: str, version_arg: Optional[str] = None) -> ToolCheckResult:
+    def check_tool(self, tool: str, version_arg: str | None = None) -> ToolCheckResult:
         """Check if a single tool is available.
 
         Args:
@@ -733,7 +732,7 @@ class PrerequisiteChecker:
         )
         return platform_commands.get(tool, f"Please install {tool} manually")
 
-    def format_missing_prerequisites(self, missing_tools: List[ToolCheckResult]) -> str:
+    def format_missing_prerequisites(self, missing_tools: list[ToolCheckResult]) -> str:
         """Format a user-friendly message for missing prerequisites.
 
         Args:
@@ -845,7 +844,7 @@ class PrerequisiteChecker:
             return result
 
         # Attempt to install each missing tool
-        installation_results: Dict[str, InstallationResult] = {}
+        installation_results: dict[str, InstallationResult] = {}
         for tool_result in result.missing_tools:
             tool = tool_result.tool
             install_result = installer.install_tool(tool)

@@ -22,6 +22,6 @@ Installation:
     pip install kuzu
 """
 
-from .connector import KuzuConnector, KUZU_AVAILABLE
+from .connector import KUZU_AVAILABLE, KuzuConnector
 
 __all__ = ["KuzuConnector", "KUZU_AVAILABLE"]

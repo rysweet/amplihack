@@ -1,8 +1,8 @@
 """Pytest fixtures for Neo4j tests."""
 
 import os
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from neo4j import Driver, GraphDatabase

@@ -7,12 +7,11 @@ Handles both password-based and auth-disabled configurations.
 import json
 import logging
 import subprocess
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
-def detect_container_password(container_name: str) -> Optional[str]:
+def detect_container_password(container_name: str) -> str | None:
     """Detect password from existing container's environment variables.
 
     Args:
@@ -87,7 +86,7 @@ def detect_container_password(container_name: str) -> Optional[str]:
         return None
 
 
-def format_credential_status(password: Optional[str]) -> str:
+def format_credential_status(password: str | None) -> str:
     """Format credential detection status for display.
 
     Args:

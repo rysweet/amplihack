@@ -192,11 +192,10 @@ class TestResolvePortConflictsWithContainer:
     def test_WHEN_container_ports_mismatch_env_THEN_env_updated(self):
         """Test mismatched ports - .env should be updated to match container."""
         # Container is running on 8888/9999 but .env says 7787/7774
-        with patch(
-            "amplihack.memory.neo4j.port_manager.get_container_ports"
-        ) as mock_get_ports, patch(
-            "amplihack.memory.neo4j.port_manager._update_env_ports"
-        ) as mock_update_env:
+        with (
+            patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports,
+            patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env,
+        ):
             mock_get_ports.return_value = (8888, 9999)  # Container actual ports
 
             project_root = Path("/fake/project")
@@ -221,11 +220,10 @@ class TestResolvePortConflictsWithContainer:
 
     def test_WHEN_container_ports_mismatch_and_env_update_fails_THEN_warning_shown(self):
         """Test graceful handling when .env update fails."""
-        with patch(
-            "amplihack.memory.neo4j.port_manager.get_container_ports"
-        ) as mock_get_ports, patch(
-            "amplihack.memory.neo4j.port_manager._update_env_ports"
-        ) as mock_update_env:
+        with (
+            patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports,
+            patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env,
+        ):
             mock_get_ports.return_value = (8888, 9999)
             mock_update_env.side_effect = OSError("Permission denied")
 
@@ -246,11 +244,10 @@ class TestResolvePortConflictsWithContainer:
 
     def test_WHEN_no_container_running_THEN_falls_through_to_existing_logic(self):
         """Test that when no container is found, existing port conflict logic runs."""
-        with patch(
-            "amplihack.memory.neo4j.port_manager.get_container_ports"
-        ) as mock_get_ports, patch(
-            "amplihack.memory.neo4j.port_manager.is_port_in_use"
-        ) as mock_port_in_use:
+        with (
+            patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports,
+            patch("amplihack.memory.neo4j.port_manager.is_port_in_use") as mock_port_in_use,
+        ):
             mock_get_ports.return_value = None  # No container
             mock_port_in_use.return_value = False  # Ports available
 
@@ -268,15 +265,12 @@ class TestResolvePortConflictsWithContainer:
 
     def test_WHEN_no_container_and_ports_in_use_THEN_finds_alternatives(self):
         """Test fallback to finding alternative ports when no container and ports busy."""
-        with patch(
-            "amplihack.memory.neo4j.port_manager.get_container_ports"
-        ) as mock_get_ports, patch(
-            "amplihack.memory.neo4j.port_manager.is_port_in_use"
-        ) as mock_port_in_use, patch(
-            "amplihack.memory.neo4j.port_manager.find_available_port"
-        ) as mock_find_port, patch(
-            "amplihack.memory.neo4j.port_manager.detect_neo4j_on_port"
-        ) as mock_detect:
+        with (
+            patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports,
+            patch("amplihack.memory.neo4j.port_manager.is_port_in_use") as mock_port_in_use,
+            patch("amplihack.memory.neo4j.port_manager.find_available_port") as mock_find_port,
+            patch("amplihack.memory.neo4j.port_manager.detect_neo4j_on_port") as mock_detect,
+        ):
             mock_get_ports.return_value = None  # No container
             mock_port_in_use.return_value = True  # Ports busy
             mock_detect.return_value = (False, False)  # Not Neo4j
@@ -375,11 +369,10 @@ class TestEdgeCases:
 
     def test_WHEN_project_root_is_none_THEN_no_env_update_attempted(self):
         """Test that .env update is skipped when project_root is None."""
-        with patch(
-            "amplihack.memory.neo4j.port_manager.get_container_ports"
-        ) as mock_get_ports, patch(
-            "amplihack.memory.neo4j.port_manager._update_env_ports"
-        ) as mock_update_env:
+        with (
+            patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports,
+            patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env,
+        ):
             mock_get_ports.return_value = (8888, 9999)
 
             bolt, http, messages = resolve_port_conflicts(
@@ -430,11 +423,10 @@ class TestIntegrationScenarios:
         Scenario: Container was restarted by Docker on different ports.
         .env still has old ports. Should detect and update.
         """
-        with patch(
-            "amplihack.memory.neo4j.port_manager.get_container_ports"
-        ) as mock_get_ports, patch(
-            "amplihack.memory.neo4j.port_manager._update_env_ports"
-        ) as mock_update_env:
+        with (
+            patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports,
+            patch("amplihack.memory.neo4j.port_manager._update_env_ports") as mock_update_env,
+        ):
             # Container now on 7888/7874 instead of 7787/7774
             mock_get_ports.return_value = (7888, 7874)
 
@@ -456,11 +448,10 @@ class TestIntegrationScenarios:
         Scenario: First time starting - no container exists yet.
         Should fall through to normal port selection.
         """
-        with patch(
-            "amplihack.memory.neo4j.port_manager.get_container_ports"
-        ) as mock_get_ports, patch(
-            "amplihack.memory.neo4j.port_manager.is_port_in_use"
-        ) as mock_port_in_use:
+        with (
+            patch("amplihack.memory.neo4j.port_manager.get_container_ports") as mock_get_ports,
+            patch("amplihack.memory.neo4j.port_manager.is_port_in_use") as mock_port_in_use,
+        ):
             mock_get_ports.return_value = None  # No container
             mock_port_in_use.return_value = False  # Ports free
 

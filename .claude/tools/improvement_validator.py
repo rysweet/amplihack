@@ -10,7 +10,7 @@ import argparse
 import sys
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class ValidationLevel(Enum):
@@ -29,7 +29,7 @@ class ValidationResult:
     passed: bool
     level: ValidationLevel
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
 
 
 class ComplexityDetector:

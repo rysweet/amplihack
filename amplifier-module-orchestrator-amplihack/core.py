@@ -1,5 +1,4 @@
 import time
-from typing import List
 
 try:
     from .models import AgentResult, AgentType, OrchestratorConfig, WorkflowRequest, WorkflowResult
@@ -15,7 +14,7 @@ class Agent:
         self.agent_type = agent_type
         self.config = config
 
-    def process(self, documents: List[str], task: str) -> AgentResult:
+    def process(self, documents: list[str], task: str) -> AgentResult:
         """Process documents according to agent type."""
         start_time = time.time()
 
@@ -49,7 +48,7 @@ class Orchestrator:
 
     def __init__(self, config: OrchestratorConfig):
         self.config = config
-        self.agents: List[Agent] = []
+        self.agents: list[Agent] = []
         self._initialize_agents()
 
     def _initialize_agents(self):

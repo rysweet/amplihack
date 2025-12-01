@@ -340,18 +340,22 @@ class TestExportOnCompactIntegration(unittest.TestCase):
         }
 
         # Mock builder methods
-        with patch.object(
-            self.integration.transcript_builder,
-            "build_session_transcript",
-            return_value="transcript_path",
-        ), patch.object(
-            self.integration.transcript_builder,
-            "build_session_summary",
-            return_value={"message_count": 1},
-        ), patch.object(
-            self.integration.transcript_builder,
-            "export_for_codex",
-            return_value="codex_path",
+        with (
+            patch.object(
+                self.integration.transcript_builder,
+                "build_session_transcript",
+                return_value="transcript_path",
+            ),
+            patch.object(
+                self.integration.transcript_builder,
+                "build_session_summary",
+                return_value={"message_count": 1},
+            ),
+            patch.object(
+                self.integration.transcript_builder,
+                "export_for_codex",
+                return_value="codex_path",
+            ),
         ):
             result = self.integration.process(test_input)
 

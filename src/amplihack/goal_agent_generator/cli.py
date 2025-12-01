@@ -9,7 +9,6 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 try:
     import click
@@ -61,9 +60,9 @@ logger = logging.getLogger(__name__)
 )
 def new_goal_agent(
     file: Path,
-    output: Optional[Path],
-    name: Optional[str],
-    skills_dir: Optional[Path],
+    output: Path | None,
+    name: str | None,
+    skills_dir: Path | None,
     verbose: bool,
 ) -> int:
     """

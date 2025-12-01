@@ -125,7 +125,7 @@ def test_real_authentication():
 
     try:
         credential, sub_id, rg = get_azure_auth(debug=True)
-        print(f"✓ Real authentication successful!")
+        print("✓ Real authentication successful!")
         print(f"  Subscription: {sub_id}")
         print(f"  Resource Group: {rg or '(not set)'}")
 
@@ -164,6 +164,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"✗ {name} failed: {e}")
             import traceback
+
             traceback.print_exc()
             failed += 1
 

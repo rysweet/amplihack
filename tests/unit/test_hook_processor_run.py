@@ -22,9 +22,10 @@ def test_unit_run_001_valid_json_input_to_stdout_output(stop_hook):
     json_input = json.dumps(input_data)
 
     # Mock stdin and stdout
-    with patch("sys.stdin", StringIO(json_input)), patch(
-        "sys.stdout", new_callable=StringIO
-    ) as mock_stdout:
+    with (
+        patch("sys.stdin", StringIO(json_input)),
+        patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+    ):
         # Run the hook
         stop_hook.run()
 
@@ -46,9 +47,10 @@ def test_unit_run_002_empty_json_input(stop_hook):
     json_input = "{}"
 
     # Mock stdin and stdout
-    with patch("sys.stdin", StringIO(json_input)), patch(
-        "sys.stdout", new_callable=StringIO
-    ) as mock_stdout:
+    with (
+        patch("sys.stdin", StringIO(json_input)),
+        patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+    ):
         # Run the hook
         stop_hook.run()
 
@@ -66,9 +68,10 @@ def test_unit_run_003_invalid_json_input(stop_hook):
     json_input = "{invalid json}"
 
     # Mock stdin and stdout
-    with patch("sys.stdin", StringIO(json_input)), patch(
-        "sys.stdout", new_callable=StringIO
-    ) as mock_stdout:
+    with (
+        patch("sys.stdin", StringIO(json_input)),
+        patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+    ):
         # Run the hook
         stop_hook.run()
 
@@ -92,9 +95,10 @@ def test_unit_run_004_empty_stdin_input(stop_hook):
     json_input = ""
 
     # Mock stdin and stdout
-    with patch("sys.stdin", StringIO(json_input)), patch(
-        "sys.stdout", new_callable=StringIO
-    ) as mock_stdout:
+    with (
+        patch("sys.stdin", StringIO(json_input)),
+        patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+    ):
         # Run the hook
         stop_hook.run()
 
@@ -114,9 +118,10 @@ def test_unit_run_005_process_method_returns_none(stop_hook):
         json_input = '{"session_id": "test"}'
 
         # Mock stdin and stdout
-        with patch("sys.stdin", StringIO(json_input)), patch(
-            "sys.stdout", new_callable=StringIO
-        ) as mock_stdout:
+        with (
+            patch("sys.stdin", StringIO(json_input)),
+            patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+        ):
             # Run the hook
             stop_hook.run()
 
@@ -136,9 +141,10 @@ def test_unit_run_006_process_method_returns_non_dict(stop_hook):
         json_input = '{"session_id": "test"}'
 
         # Mock stdin and stdout
-        with patch("sys.stdin", StringIO(json_input)), patch(
-            "sys.stdout", new_callable=StringIO
-        ) as mock_stdout:
+        with (
+            patch("sys.stdin", StringIO(json_input)),
+            patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+        ):
             # Run the hook
             stop_hook.run()
 
@@ -159,9 +165,11 @@ def test_unit_run_007_process_method_raises_exception(stop_hook):
         json_input = '{"session_id": "test"}'
 
         # Mock stdin and stdout (and stderr to avoid noise)
-        with patch("sys.stdin", StringIO(json_input)), patch(
-            "sys.stdout", new_callable=StringIO
-        ) as mock_stdout, patch("sys.stderr", new_callable=StringIO):
+        with (
+            patch("sys.stdin", StringIO(json_input)),
+            patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+            patch("sys.stderr", new_callable=StringIO),
+        ):
             # Run the hook
             stop_hook.run()
 
@@ -217,9 +225,10 @@ def test_unit_run_009_shutdown_flag_skips_stdin_read(stop_hook):
         json_input = '{"session_id": "test"}'
 
         # Mock stdin and stdout
-        with patch("sys.stdin", StringIO(json_input)), patch(
-            "sys.stdout", new_callable=StringIO
-        ) as mock_stdout:
+        with (
+            patch("sys.stdin", StringIO(json_input)),
+            patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+        ):
             # Run the hook
             stop_hook.run()
 
@@ -250,9 +259,10 @@ def test_unit_run_010_no_shutdown_flag_reads_stdin_normally(stop_hook):
     json_input = json.dumps(input_data)
 
     # Mock stdin and stdout
-    with patch("sys.stdin", StringIO(json_input)), patch(
-        "sys.stdout", new_callable=StringIO
-    ) as mock_stdout:
+    with (
+        patch("sys.stdin", StringIO(json_input)),
+        patch("sys.stdout", new_callable=StringIO) as mock_stdout,
+    ):
         # Run the hook
         stop_hook.run()
 

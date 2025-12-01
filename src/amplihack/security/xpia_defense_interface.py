@@ -9,10 +9,11 @@ with the amplihack framework. Following the bricks & studs philosophy:
 - Regeneratable: Can be rebuilt from this specification
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 
 class SecurityLevel(Enum):
@@ -60,10 +61,10 @@ class ValidationContext:
     """Context information for validation requests"""
 
     source: str  # "user", "agent", "system"
-    session_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    working_directory: Optional[str] = None
-    environment: Optional[Dict[str, str]] = None
+    session_id: str | None = None
+    agent_id: str | None = None
+    working_directory: str | None = None
+    environment: dict[str, str] | None = None
 
 
 @dataclass
@@ -73,8 +74,8 @@ class ThreatDetection:
     threat_type: ThreatType
     severity: RiskLevel
     description: str
-    location: Optional[Dict[str, int]] = None  # line, column, offset
-    mitigation: Optional[str] = None
+    location: dict[str, int] | None = None  # line, column, offset
+    mitigation: str | None = None
 
 
 @dataclass
@@ -83,9 +84,9 @@ class ValidationResult:
 
     is_valid: bool
     risk_level: RiskLevel
-    threats: List[ThreatDetection]
-    recommendations: List[str]
-    metadata: Dict[str, Any]
+    threats: list[ThreatDetection]
+    recommendations: list[str]
+    metadata: dict[str, Any]
     timestamp: datetime
 
     @property
@@ -123,7 +124,7 @@ class SecurityConfiguration:
 
 
 # Hook System Types
-HookCallback = Callable[[Dict[str, Any]], Dict[str, Any]]
+HookCallback = Callable[[dict[str, Any]], dict[str, Any]]
 
 
 class HookType(Enum):
@@ -141,8 +142,8 @@ class HookRegistration:
 
     name: str
     hook_type: HookType
-    callback: Union[str, HookCallback]  # URL or function
-    conditions: Optional[Dict[str, Any]] = None
+    callback: str | HookCallback  # URL or function
+    conditions: dict[str, Any] | None = None
     priority: int = 50
 
 
@@ -161,8 +162,8 @@ class XPIADefenseInterface:
         self,
         content: str,
         content_type: ContentType,
-        context: Optional[ValidationContext] = None,
-        security_level: Optional[SecurityLevel] = None,
+        context: ValidationContext | None = None,
+        security_level: SecurityLevel | None = None,
     ) -> ValidationResult:
         """
         Validate arbitrary content for security threats
@@ -181,8 +182,8 @@ class XPIADefenseInterface:
     async def validate_bash_command(
         self,
         command: str,
-        arguments: Optional[List[str]] = None,
-        context: Optional[ValidationContext] = None,
+        arguments: list[str] | None = None,
+        context: ValidationContext | None = None,
     ) -> ValidationResult:
         """
         Validate bash commands for security threats
@@ -201,7 +202,7 @@ class XPIADefenseInterface:
         self,
         source_agent: str,
         target_agent: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
         message_type: str = "task",
     ) -> ValidationResult:
         """
@@ -234,7 +235,7 @@ class XPIADefenseInterface:
         """Unregister a security hook"""
         raise NotImplementedError
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform health check and return status"""
         raise NotImplementedError
 
@@ -253,10 +254,10 @@ class BashToolIntegration:
     async def secure_execute(
         self,
         command: str,
-        arguments: Optional[List[str]] = None,
-        context: Optional[ValidationContext] = None,
+        arguments: list[str] | None = None,
+        context: ValidationContext | None = None,
         bypass_validation: bool = False,
-    ) -> "tuple[Optional[ValidationResult], Optional[Any]]":
+    ) -> "tuple[ValidationResult | None, Any | None]":
         """
         Execute bash command with security validation
 
@@ -282,7 +283,7 @@ class BashToolIntegration:
         return validation, result
 
     async def _execute_command(
-        self, command: str, arguments: Optional[List[str]], context: Optional[ValidationContext]
+        self, command: str, arguments: list[str] | None, context: ValidationContext | None
     ) -> Any:
         """Implementation-specific command execution"""
         raise NotImplementedError
@@ -302,7 +303,7 @@ class AgentCommunicationSecurity:
         self,
         source_agent: str,
         target_agent: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
         message_type: str = "task",
     ) -> "tuple[ValidationResult, bool]":
         """
@@ -323,7 +324,7 @@ class AgentCommunicationSecurity:
         return validation, True
 
     async def _send_message(
-        self, source_agent: str, target_agent: str, message: Dict[str, Any], message_type: str
+        self, source_agent: str, target_agent: str, message: dict[str, Any], message_type: str
     ) -> None:
         """Implementation-specific message sending"""
         raise NotImplementedError
@@ -334,8 +335,8 @@ class AgentCommunicationSecurity:
 
 def create_validation_context(
     source: str = "system",
-    session_id: Optional[str] = None,
-    agent_id: Optional[str] = None,
+    session_id: str | None = None,
+    agent_id: str | None = None,
     **kwargs,
 ) -> ValidationContext:
     """Create a validation context with sensible defaults"""
@@ -391,7 +392,7 @@ def create_default_configuration() -> SecurityConfiguration:
 
 
 async def create_xpia_defense_client(
-    api_base_url: str, api_key: Optional[str] = None, timeout: int = 30
+    api_base_url: str, api_key: str | None = None, timeout: int = 30
 ) -> XPIADefenseInterface:
     """
     Factory function to create XPIA Defense client
@@ -427,7 +428,7 @@ class SecurityDecorator:
         self,
         xpia_defense: XPIADefenseInterface,
         content_type: ContentType,
-        security_level: Optional[SecurityLevel] = None,
+        security_level: SecurityLevel | None = None,
     ):
         self.xpia_defense = xpia_defense
         self.content_type = content_type
@@ -465,7 +466,7 @@ class SecurityMiddleware:
     def __init__(self, xpia_defense: XPIADefenseInterface):
         self.xpia_defense = xpia_defense
 
-    async def process_request(self, request: Dict[str, Any]) -> Optional[ValidationResult]:
+    async def process_request(self, request: dict[str, Any]) -> ValidationResult | None:
         """
         Process incoming request for security validation
 
@@ -479,7 +480,7 @@ class SecurityMiddleware:
 
         return validation if validation.should_block else None
 
-    def _extract_request_content(self, request: Dict[str, Any]) -> Optional[str]:
+    def _extract_request_content(self, request: dict[str, Any]) -> str | None:
         """Extract content from request"""
         # Implementation-specific content extraction
         return request.get("content")

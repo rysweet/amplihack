@@ -7,7 +7,7 @@ comparing results, and generating reports.
 
 import importlib
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from .adapter import ToolAdapter
 from .metrics import MetricsCollector
@@ -66,7 +66,7 @@ class MCPEvaluationFramework:
             )
 
     def run_evaluation(
-        self, scenarios: List[TestScenario], mode: str = "with_vs_without"
+        self, scenarios: list[TestScenario], mode: str = "with_vs_without"
     ) -> EvaluationReport:
         """Run full evaluation suite.
 
@@ -150,7 +150,7 @@ class MCPEvaluationFramework:
 
     def _execute_task(
         self, scenario: TestScenario, metrics_collector: MetricsCollector
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute the actual task.
 
         This is a placeholder for the real execution logic.
@@ -270,9 +270,9 @@ class MCPEvaluationFramework:
 
     def _make_recommendation(
         self,
-        quality_delta: Dict[str, Any],
-        efficiency_delta: Dict[str, Any],
-        tool_value: Dict[str, Any],
+        quality_delta: dict[str, Any],
+        efficiency_delta: dict[str, Any],
+        tool_value: dict[str, Any],
     ) -> str:
         """Make integrate/don't-integrate recommendation.
 
@@ -295,7 +295,7 @@ class MCPEvaluationFramework:
             return "CONSIDER - Some value demonstrated"
         return "DON'T INTEGRATE - No clear advantage"
 
-    def _generate_report(self, results: List[ComparisonResult]) -> EvaluationReport:
+    def _generate_report(self, results: list[ComparisonResult]) -> EvaluationReport:
         """Generate comprehensive evaluation report.
 
         Args:

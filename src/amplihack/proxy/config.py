@@ -3,7 +3,6 @@
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 from .azure_detector import AzureEndpointDetector
@@ -21,15 +20,15 @@ class ProxyConfig:
     _API_KEY_REGEX = re.compile(r"[a-zA-Z0-9\-_]{20,}")
     _DEPLOYMENT_NAME_REGEX = re.compile(r"^[a-zA-Z0-9\-_]{1,64}$")
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """Initialize proxy configuration.
 
         Args:
             config_path: Path to .env configuration file.
         """
         self.config_path = config_path
-        self.config: Dict[str, str] = {}
-        self.validation_errors: List[str] = []
+        self.config: dict[str, str] = {}
+        self.validation_errors: list[str] = []
 
         if config_path and config_path.exists():
             self._load_config()
@@ -173,7 +172,7 @@ class ProxyConfig:
         """
         return self.config.get(key, default)
 
-    def to_env_dict(self) -> Dict[str, str]:
+    def to_env_dict(self) -> dict[str, str]:
         """Convert configuration to environment variables dictionary.
 
         Returns:
@@ -182,7 +181,7 @@ class ProxyConfig:
         # Create a copy and sanitize sensitive values if needed for debugging
         return self.config.copy()
 
-    def to_sanitized_dict(self) -> Dict[str, str]:
+    def to_sanitized_dict(self) -> dict[str, str]:
         """Convert configuration to sanitized dictionary safe for logging.
 
         Returns:
@@ -298,7 +297,7 @@ class ProxyConfig:
 
         return len(self.validation_errors) == 0
 
-    def get_azure_deployment(self, model_name: str) -> Optional[str]:
+    def get_azure_deployment(self, model_name: str) -> str | None:
         """Get Azure deployment name for OpenAI model.
 
         Args:
@@ -309,7 +308,7 @@ class ProxyConfig:
         """
         return self._azure_mapper.get_azure_deployment(model_name)
 
-    def get_azure_endpoint(self) -> Optional[str]:
+    def get_azure_endpoint(self) -> str | None:
         """Get Azure endpoint URL.
 
         Returns:
@@ -321,7 +320,7 @@ class ProxyConfig:
             or self.config.get("AZURE_OPENAI_BASE_URL")
         )
 
-    def get_azure_api_version(self) -> Optional[str]:
+    def get_azure_api_version(self) -> str | None:
         """Get Azure API version.
 
         Returns:
@@ -378,7 +377,7 @@ class ProxyConfig:
 
         return True
 
-    def get_validation_errors(self) -> List[str]:
+    def get_validation_errors(self) -> list[str]:
         """Get list of validation errors from last validation.
 
         Returns:
@@ -428,7 +427,7 @@ class ProxyConfig:
 
         return len(self.validation_errors) == 0
 
-    def get_github_model(self, openai_model: str) -> Optional[str]:
+    def get_github_model(self, openai_model: str) -> str | None:
         """Get GitHub Copilot model for OpenAI model name.
 
         Args:
@@ -439,7 +438,7 @@ class ProxyConfig:
         """
         return self._github_mapper.get_github_model(openai_model)
 
-    def get_github_token(self) -> Optional[str]:
+    def get_github_token(self) -> str | None:
         """Get GitHub token.
 
         Returns:
@@ -464,7 +463,7 @@ class ProxyConfig:
         """
         return self._github_detector.is_litellm_provider_enabled(self.config)
 
-    def get_github_copilot_endpoint(self) -> Optional[str]:
+    def get_github_copilot_endpoint(self) -> str | None:
         """Get GitHub Copilot API endpoint.
 
         Returns:
@@ -472,7 +471,7 @@ class ProxyConfig:
         """
         return self.config.get("GITHUB_COPILOT_ENDPOINT", "https://api.github.com")
 
-    def get_litellm_github_config(self) -> Dict[str, str]:
+    def get_litellm_github_config(self) -> dict[str, str]:
         """Get configuration for LiteLLM GitHub Copilot provider.
 
         Returns:

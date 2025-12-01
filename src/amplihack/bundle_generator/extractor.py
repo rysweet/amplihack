@@ -6,7 +6,6 @@ Extracts structured intent and requirements from parsed prompts.
 
 import logging
 import re
-from typing import List, Optional
 
 from .exceptions import ExtractionError
 from .models import AgentRequirement, ExtractedIntent, ParsedPrompt
@@ -41,7 +40,7 @@ class IntentExtractor:
         "workflow": ["workflow", "pipeline", "orchestrate", "coordinate", "sequence"],
     }
 
-    def __init__(self, parser: Optional[PromptParser] = None):
+    def __init__(self, parser: PromptParser | None = None):
         """
         Initialize the intent extractor.
 
@@ -153,7 +152,7 @@ class IntentExtractor:
         # Default to general data processing
         return "data-processing"
 
-    def _extract_agent_requirements(self, parsed: ParsedPrompt) -> List[AgentRequirement]:
+    def _extract_agent_requirements(self, parsed: ParsedPrompt) -> list[AgentRequirement]:
         """Extract individual agent requirements."""
         requirements = []
 
@@ -177,7 +176,7 @@ class IntentExtractor:
 
         return requirements
 
-    def _extract_from_lists(self, parsed: ParsedPrompt) -> List[AgentRequirement]:
+    def _extract_from_lists(self, parsed: ParsedPrompt) -> list[AgentRequirement]:
         """Extract agent requirements from numbered/bulleted lists."""
         requirements = []
 
@@ -203,7 +202,7 @@ class IntentExtractor:
 
         return requirements
 
-    def _extract_from_entities(self, parsed: ParsedPrompt) -> List[AgentRequirement]:
+    def _extract_from_entities(self, parsed: ParsedPrompt) -> list[AgentRequirement]:
         """Extract agent requirements from identified entities."""
         requirements = []
 
@@ -238,7 +237,7 @@ class IntentExtractor:
             suggested_type="specialized",
         )
 
-    def _extract_agent_name(self, text: str) -> Optional[str]:
+    def _extract_agent_name(self, text: str) -> str | None:
         """Extract agent name from text."""
         # Look for "X Agent" or "X agent"
         pattern = r"(\w+(?:\s+\w+)?)\s+[Aa]gent"
@@ -286,7 +285,7 @@ class IntentExtractor:
 
         return "Agent"
 
-    def _extract_capabilities(self, text: str) -> List[str]:
+    def _extract_capabilities(self, text: str) -> list[str]:
         """Extract capabilities from text."""
         capabilities = []
 
@@ -333,7 +332,7 @@ class IntentExtractor:
         return "specialized"
 
     def _determine_complexity(
-        self, parsed: ParsedPrompt, requirements: List[AgentRequirement]
+        self, parsed: ParsedPrompt, requirements: list[AgentRequirement]
     ) -> str:
         """Determine overall complexity level."""
         # Use parser's complexity detection
@@ -349,7 +348,7 @@ class IntentExtractor:
             return "standard"
         return base_complexity
 
-    def _extract_constraints(self, parsed: ParsedPrompt) -> List[str]:
+    def _extract_constraints(self, parsed: ParsedPrompt) -> list[str]:
         """Extract constraints from parsed prompt."""
         constraints = []
 
@@ -372,7 +371,7 @@ class IntentExtractor:
 
         return list(set(constraints))
 
-    def _extract_dependencies(self, parsed: ParsedPrompt) -> List[str]:
+    def _extract_dependencies(self, parsed: ParsedPrompt) -> list[str]:
         """Extract dependencies from parsed prompt."""
         dependencies = []
 
@@ -394,7 +393,7 @@ class IntentExtractor:
         return list(set(dependencies))
 
     def _calculate_confidence(
-        self, parsed: ParsedPrompt, action: str, domain: str, requirements: List[AgentRequirement]
+        self, parsed: ParsedPrompt, action: str, domain: str, requirements: list[AgentRequirement]
     ) -> float:
         """Calculate extraction confidence score."""
         confidence = parsed.confidence  # Start with parsing confidence

@@ -10,7 +10,7 @@ Implements defense controls per security requirements:
 
 import os
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 
 def validate_pr_number(pr_number: int) -> None:
@@ -74,7 +74,7 @@ def sanitize_markdown(text: str) -> str:
 
     # Remove all HTML tags except safe ones
     text = re.sub(
-        r"<(?!/?({})\b)[^>]*>".format(safe_pattern),
+        rf"<(?!/?({safe_pattern})\b)[^>]*>",
         "",
         text,
         flags=re.IGNORECASE,
@@ -117,7 +117,7 @@ def validate_label_name(label: str) -> None:
         raise ValueError(f"Label contains invalid characters: {label}")
 
 
-def validate_allowed_labels(labels: List[str]) -> None:
+def validate_allowed_labels(labels: list[str]) -> None:
     """Validate labels are from allowed set.
 
     Args:
@@ -138,12 +138,10 @@ def validate_allowed_labels(labels: List[str]) -> None:
 
         # Check if label starts with allowed prefix
         if not any(label.startswith(prefix) for prefix in allowed_prefixes):
-            raise ValueError(
-                f"Label '{label}' not allowed. Must start with: {allowed_prefixes}"
-            )
+            raise ValueError(f"Label '{label}' not allowed. Must start with: {allowed_prefixes}")
 
 
-def validate_pr_data(pr_data: Dict[str, Any]) -> None:
+def validate_pr_data(pr_data: dict[str, Any]) -> None:
     """Validate PR data structure is safe to process.
 
     Args:
@@ -200,7 +198,7 @@ def is_safe_operation(operation: str) -> bool:
     return operation in safe_operations
 
 
-def validate_file_paths(files: List[Dict[str, Any]]) -> None:
+def validate_file_paths(files: list[dict[str, Any]]) -> None:
     """Validate file paths don't contain path traversal attacks.
 
     Args:
@@ -229,7 +227,7 @@ def validate_file_paths(files: List[Dict[str, Any]]) -> None:
 
 
 def create_audit_log(
-    pr_number: int, operation: str, result: str, details: Dict[str, Any] = None
+    pr_number: int, operation: str, result: str, details: dict[str, Any] = None
 ) -> str:
     """Create audit log entry for security tracking.
 

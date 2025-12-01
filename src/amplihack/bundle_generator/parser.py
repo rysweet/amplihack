@@ -7,7 +7,7 @@ natural language descriptions. Can be enhanced with spaCy or other NLP libraries
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .exceptions import ParsingError
 from .models import ParsedPrompt
@@ -101,7 +101,7 @@ class PromptParser:
                 logger.warning("spaCy not available, falling back to rule-based parsing")
                 self.enable_advanced_nlp = False
 
-    def parse(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> ParsedPrompt:
+    def parse(self, prompt: str, context: dict[str, Any] | None = None) -> ParsedPrompt:
         """
         Parse a natural language prompt.
 
@@ -153,8 +153,8 @@ class PromptParser:
         )
 
     def extract_requirements(
-        self, text: str, hints: Optional[List[str]] = None
-    ) -> Dict[str, List[str]]:
+        self, text: str, hints: list[str] | None = None
+    ) -> dict[str, list[str]]:
         """
         Extract functional, technical, and constraint requirements.
 
@@ -215,13 +215,13 @@ class PromptParser:
 
         return cleaned.strip()
 
-    def _extract_sentences(self, text: str) -> List[str]:
+    def _extract_sentences(self, text: str) -> list[str]:
         """Extract sentences from text."""
         # Simple sentence splitting (can be improved with NLTK or spaCy)
         sentences = re.split(r"[.!?]+", text)
         return [s.strip() for s in sentences if s.strip()]
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         """Tokenize text into words."""
         # Convert to lowercase and split
         tokens = text.lower().split()
@@ -232,7 +232,7 @@ class PromptParser:
         # Remove empty tokens
         return [token for token in tokens if token]
 
-    def _extract_key_phrases(self, text: str, tokens: List[str]) -> List[str]:
+    def _extract_key_phrases(self, text: str, tokens: list[str]) -> list[str]:
         """Extract key phrases from text."""
         key_phrases = []
 
@@ -262,7 +262,7 @@ class PromptParser:
 
         return list(set(key_phrases))  # Remove duplicates
 
-    def _extract_entities(self, text: str, tokens: List[str]) -> Dict[str, List[str]]:
+    def _extract_entities(self, text: str, tokens: list[str]) -> dict[str, list[str]]:
         """Extract named entities from text."""
         entities = {"agents": [], "capabilities": [], "technologies": [], "requirements": []}
 
@@ -300,7 +300,7 @@ class PromptParser:
         return entities
 
     def _calculate_confidence(
-        self, tokens: List[str], key_phrases: List[str], entities: Dict[str, List[str]]
+        self, tokens: list[str], key_phrases: list[str], entities: dict[str, list[str]]
     ) -> float:
         """Calculate parsing confidence score."""
         confidence = 0.0

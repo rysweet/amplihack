@@ -15,7 +15,7 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # Setup path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "src"))
@@ -45,7 +45,7 @@ SLASH_COMMAND_AGENTS = {
 }
 
 
-def detect_agent_references(prompt: str) -> List[str]:
+def detect_agent_references(prompt: str) -> list[str]:
     """Detect agent references in a prompt.
 
     Args:
@@ -68,7 +68,7 @@ def detect_agent_references(prompt: str) -> List[str]:
     return list(agents)
 
 
-def detect_slash_command_agent(prompt: str) -> Optional[str]:
+def detect_slash_command_agent(prompt: str) -> str | None:
     """Detect if prompt starts with a slash command that invokes an agent.
 
     Args:
@@ -92,8 +92,8 @@ def detect_slash_command_agent(prompt: str) -> Optional[str]:
 
 
 def inject_memory_for_agents(
-    prompt: str, agent_types: List[str], session_id: Optional[str] = None
-) -> Tuple[str, Dict[str, Any]]:
+    prompt: str, agent_types: list[str], session_id: str | None = None
+) -> tuple[str, dict[str, Any]]:
     """Inject memory context for detected agents into prompt.
 
     Args:
@@ -166,8 +166,8 @@ def inject_memory_for_agents(
 
 
 def extract_learnings_from_conversation(
-    conversation_text: str, agent_types: List[str], session_id: Optional[str] = None
-) -> Dict[str, Any]:
+    conversation_text: str, agent_types: list[str], session_id: str | None = None
+) -> dict[str, Any]:
     """Extract and store learnings from conversation after agent execution.
 
     Args:
@@ -239,7 +239,7 @@ def extract_learnings_from_conversation(
         return {"neo4j_available": False, "error": str(e)}
 
 
-def format_memory_injection_notice(metadata: Dict[str, Any]) -> str:
+def format_memory_injection_notice(metadata: dict[str, Any]) -> str:
     """Format a notice about memory injection for logging/display.
 
     Args:
@@ -261,7 +261,7 @@ def format_memory_injection_notice(metadata: Dict[str, Any]) -> str:
     return ""
 
 
-def format_learning_extraction_notice(metadata: Dict[str, Any]) -> str:
+def format_learning_extraction_notice(metadata: dict[str, Any]) -> str:
     """Format a notice about learning extraction for logging/display.
 
     Args:

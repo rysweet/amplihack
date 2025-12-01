@@ -19,12 +19,12 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 
 
-def load_yaml(path: Path) -> Dict[str, Any]:
+def load_yaml(path: Path) -> dict[str, Any]:
     """Load YAML file safely."""
     if not path.exists():
         return {}
@@ -35,7 +35,7 @@ def load_yaml(path: Path) -> Dict[str, Any]:
         return {}
 
 
-def extract_decisions_from_markdown(md_path: Path) -> List[Dict]:
+def extract_decisions_from_markdown(md_path: Path) -> list[dict]:
     """Extract decisions from DECISIONS.md file.
 
     Format expected:
@@ -65,7 +65,7 @@ def extract_decisions_from_markdown(md_path: Path) -> List[Dict]:
     return decisions
 
 
-def extract_session_context(session_dir: Path) -> Dict:
+def extract_session_context(session_dir: Path) -> dict:
     """Extract relevant context from session directory.
 
     Looks for:
@@ -101,7 +101,7 @@ def extract_session_context(session_dir: Path) -> Dict:
 
 def search_sessions(
     logs_dir: Path, query: str = None, session_id: str = None, limit: int = None
-) -> List[Dict]:
+) -> list[dict]:
     """Search PM decisions across all sessions.
 
     Args:
@@ -166,7 +166,7 @@ def search_sessions(
     return results
 
 
-def restore_pm_context(session_id: str, logs_dir: Path) -> Dict:
+def restore_pm_context(session_id: str, logs_dir: Path) -> dict:
     """Restore PM Architect context from specific session.
 
     Pattern: Amplifier transcript restoration adapted to runtime logs.
@@ -206,7 +206,7 @@ def restore_pm_context(session_id: str, logs_dir: Path) -> Dict:
     return restoration
 
 
-def get_decision_patterns(logs_dir: Path, min_frequency: int = 2) -> Dict:
+def get_decision_patterns(logs_dir: Path, min_frequency: int = 2) -> dict:
     """Identify recurring decision patterns across sessions.
 
     Args:

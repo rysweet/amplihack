@@ -8,7 +8,7 @@ Patterns are categorized by threat type and severity level.
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Pattern
+from re import Pattern
 
 
 class PatternCategory(Enum):
@@ -35,7 +35,7 @@ class AttackPattern:
     severity: str  # "low", "medium", "high", "critical"
     description: str
     mitigation: str
-    examples: List[str]
+    examples: list[str]
 
     def matches(self, text: str) -> bool:
         """Check if text matches this attack pattern"""
@@ -50,7 +50,7 @@ class XPIAPatterns:
     """Central repository of XPIA attack patterns"""
 
     def __init__(self):
-        self.patterns: Dict[str, AttackPattern] = {}
+        self.patterns: dict[str, AttackPattern] = {}
         self._initialize_patterns()
 
     def _initialize_patterns(self):
@@ -383,19 +383,19 @@ class XPIAPatterns:
         """Add a pattern to the repository"""
         self.patterns[pattern.id] = pattern
 
-    def get_pattern(self, pattern_id: str) -> Optional[AttackPattern]:
+    def get_pattern(self, pattern_id: str) -> AttackPattern | None:
         """Get a specific pattern by ID"""
         return self.patterns.get(pattern_id)
 
-    def get_patterns_by_category(self, category: PatternCategory) -> List[AttackPattern]:
+    def get_patterns_by_category(self, category: PatternCategory) -> list[AttackPattern]:
         """Get all patterns in a specific category"""
         return [p for p in self.patterns.values() if p.category == category]
 
-    def get_patterns_by_severity(self, severity: str) -> List[AttackPattern]:
+    def get_patterns_by_severity(self, severity: str) -> list[AttackPattern]:
         """Get all patterns with specific severity"""
         return [p for p in self.patterns.values() if p.severity == severity]
 
-    def detect_patterns(self, text: str) -> List[AttackPattern]:
+    def detect_patterns(self, text: str) -> list[AttackPattern]:
         """Detect all matching patterns in text"""
         matches = []
         for pattern in self.patterns.values():
@@ -403,7 +403,7 @@ class XPIAPatterns:
                 matches.append(pattern)
         return matches
 
-    def get_high_risk_patterns(self) -> List[AttackPattern]:
+    def get_high_risk_patterns(self) -> list[AttackPattern]:
         """Get patterns with high or critical severity"""
         return [p for p in self.patterns.values() if p.severity in ["high", "critical"]]
 

@@ -1,14 +1,14 @@
 """Triage report generation."""
 
-from typing import Any, Dict
+from typing import Any
 
 
 def generate_triage_report(
     pr_number: int,
-    pr_data: Dict[str, Any],
-    compliance: Dict[str, Any],
-    labels: Dict[str, str],
-    unrelated: Dict[str, Any],
+    pr_data: dict[str, Any],
+    compliance: dict[str, Any],
+    labels: dict[str, str],
+    unrelated: dict[str, Any],
 ) -> str:
     """Generate comprehensive triage report.
 

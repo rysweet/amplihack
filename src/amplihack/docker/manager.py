@@ -5,7 +5,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from .detector import DockerDetector
 
@@ -66,7 +65,7 @@ class DockerManager:
             print(f"Error building Docker image: {e}", file=sys.stderr)
             return False
 
-    def run_command(self, args: List[str], cwd: Optional[str] = None) -> int:
+    def run_command(self, args: list[str], cwd: str | None = None) -> int:
         """Run amplihack command in Docker container."""
         if not self.detector.is_running():
             print("Docker is not running.", file=sys.stderr)

@@ -12,7 +12,7 @@ import os
 
 # Import from specifications
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .xpia_defender import WebFetchXPIADefender
 from .xpia_defense_interface import (
@@ -34,7 +34,7 @@ class XPIAHookAdapter:
     and the XPIA defense implementation.
     """
 
-    def __init__(self, defender: Optional[WebFetchXPIADefender] = None):
+    def __init__(self, defender: WebFetchXPIADefender | None = None):
         """Initialize hook adapter with defender instance"""
         self.defender = defender or WebFetchXPIADefender()
         self.enabled = os.getenv("XPIA_ENABLED", "true").lower() != "false"
@@ -43,7 +43,7 @@ class XPIAHookAdapter:
 
         logger.info(f"XPIA Hook Adapter initialized (enabled={self.enabled})")
 
-    async def pre_tool_use(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def pre_tool_use(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         PreToolUse hook for Claude Code
 
@@ -79,7 +79,7 @@ class XPIAHookAdapter:
         # Handle other tools with general validation
         return await self._handle_general_validation(tool_name, parameters, context)
 
-    async def post_tool_use(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def post_tool_use(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         PostToolUse hook for Claude Code
 
@@ -129,8 +129,8 @@ class XPIAHookAdapter:
         return {"processed": True}
 
     async def _handle_webfetch_validation(
-        self, parameters: Dict[str, Any], context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, parameters: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Handle WebFetch tool validation"""
         url = parameters.get("url", "")
         prompt = parameters.get("prompt", "")
@@ -200,8 +200,8 @@ class XPIAHookAdapter:
         }
 
     async def _handle_bash_validation(
-        self, parameters: Dict[str, Any], context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, parameters: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Handle Bash tool validation"""
         command = parameters.get("command", "")
 
@@ -250,8 +250,8 @@ class XPIAHookAdapter:
         }
 
     async def _handle_general_validation(
-        self, tool_name: str, parameters: Dict[str, Any], context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, tool_name: str, parameters: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Handle validation for other tools"""
         # Convert parameters to string for validation
         content = json.dumps(parameters)
@@ -336,7 +336,7 @@ class ClaudeCodeXPIAHook:
             "start_time": datetime.now(),
         }
 
-    def pre_tool_use(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def pre_tool_use(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         PreToolUse hook implementation
 
@@ -365,7 +365,7 @@ class ClaudeCodeXPIAHook:
         finally:
             loop.close()
 
-    def post_tool_use(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def post_tool_use(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         PostToolUse hook implementation
 
@@ -384,7 +384,7 @@ class ClaudeCodeXPIAHook:
         finally:
             loop.close()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get hook statistics"""
         uptime = (datetime.now() - self.stats["start_time"]).total_seconds()
         return {

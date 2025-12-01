@@ -15,7 +15,6 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
 
 from azure.identity import ClientSecretCredential
 
@@ -36,13 +35,14 @@ class AzureCredentials:
     client_id: str
     client_secret: str
     subscription_id: str
-    resource_group: Optional[str] = None
+    resource_group: str | None = None
 
     def __post_init__(self):
         """Validate that all required credentials are provided."""
         if not all([self.tenant_id, self.client_id, self.client_secret, self.subscription_id]):
             missing = [
-                name for name, value in [
+                name
+                for name, value in [
                     ("tenant_id", self.tenant_id),
                     ("client_id", self.client_id),
                     ("client_secret", self.client_secret),
@@ -67,7 +67,7 @@ class AzureAuthenticator:
         subscription_id = auth.get_subscription_id()
     """
 
-    def __init__(self, env_file: Optional[Path] = None, debug: bool = False):
+    def __init__(self, env_file: Path | None = None, debug: bool = False):
         """Initialize authenticator.
 
         Args:
@@ -76,14 +76,14 @@ class AzureAuthenticator:
         """
         self.env_file = env_file
         self.debug = debug
-        self._credentials: Optional[AzureCredentials] = None
+        self._credentials: AzureCredentials | None = None
 
     def _log_debug(self, message: str):
         """Log debug message to stderr if debug mode is enabled."""
         if self.debug:
             print(f"[DEBUG] {message}", file=sys.stderr)
 
-    def _find_env_file(self) -> Optional[Path]:
+    def _find_env_file(self) -> Path | None:
         """Find .env file by searching current directory and project root.
 
         Returns:
@@ -199,7 +199,7 @@ class AzureAuthenticator:
         """
         return self.get_credentials().subscription_id
 
-    def get_resource_group(self) -> Optional[str]:
+    def get_resource_group(self) -> str | None:
         """Get configured resource group name.
 
         Returns:
@@ -209,9 +209,8 @@ class AzureAuthenticator:
 
 
 def get_azure_auth(
-    env_file: Optional[Path] = None,
-    debug: bool = False
-) -> Tuple[ClientSecretCredential, str, Optional[str]]:
+    env_file: Path | None = None, debug: bool = False
+) -> tuple[ClientSecretCredential, str, str | None]:
     """Convenience function to get Azure authentication in one call.
 
     Args:

@@ -18,7 +18,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,10 +31,10 @@ class HookConfig:
 
     hook_type: str  # "SessionStart", "PostToolUse", etc.
     command: str
-    matcher: Optional[str] = None
-    timeout: Optional[int] = None
+    matcher: str | None = None
+    timeout: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format for JSON"""
         hook_dict = {"type": "command", "command": self.command}
 
@@ -49,8 +49,8 @@ class MergeResult:
     """Result of hook merge operation"""
 
     success: bool
-    backup_path: Optional[str] = None
-    error_message: Optional[str] = None
+    backup_path: str | None = None
+    error_message: str | None = None
     hooks_added: int = 0
     hooks_updated: int = 0
     rollback_performed: bool = False
@@ -71,11 +71,11 @@ class HookMergeUtility:
     - Edge case handling
     """
 
-    def __init__(self, settings_path: Union[str, Path]):
+    def __init__(self, settings_path: str | Path):
         self.settings_path = Path(settings_path)
         self.backup_dir = self.settings_path.parent / "backups"
 
-    async def merge_hooks(self, xpia_hooks: List[HookConfig]) -> MergeResult:
+    async def merge_hooks(self, xpia_hooks: list[HookConfig]) -> MergeResult:
         """
         Main entry point for merging XPIA hooks into settings.json
 
@@ -150,7 +150,7 @@ class HookMergeUtility:
         shutil.copy2(self.settings_path, backup_path)
         return str(backup_path)
 
-    async def _load_settings(self) -> Dict[str, Any]:
+    async def _load_settings(self) -> dict[str, Any]:
         """Load and parse current settings.json"""
         if not self.settings_path.exists():
             logger.info("No settings.json found, creating new configuration")
@@ -170,7 +170,7 @@ class HookMergeUtility:
             logger.warning(f"Failed to load settings.json: {e}, creating new configuration")
             return self._create_default_settings()
 
-    def _create_default_settings(self) -> Dict[str, Any]:
+    def _create_default_settings(self) -> dict[str, Any]:
         """Create default settings.json with basic structure"""
         return {
             "permissions": {
@@ -185,8 +185,8 @@ class HookMergeUtility:
         }
 
     async def _merge_xpia_hooks(
-        self, settings: Dict[str, Any], xpia_hooks: List[HookConfig]
-    ) -> Tuple[Dict[str, Any], int, int]:
+        self, settings: dict[str, Any], xpia_hooks: list[HookConfig]
+    ) -> tuple[dict[str, Any], int, int]:
         """
         Merge XPIA hooks into settings while preserving existing hooks
 
@@ -229,7 +229,7 @@ class HookMergeUtility:
 
         return settings, hooks_added, hooks_updated
 
-    def _find_existing_xpia_hook(self, hook_list: List[Dict], command: str) -> Optional[int]:
+    def _find_existing_xpia_hook(self, hook_list: list[dict], command: str) -> int | None:
         """Find index of existing XPIA hook in hook list"""
         for i, hook_entry in enumerate(hook_list):
             if "hooks" in hook_entry:
@@ -241,8 +241,8 @@ class HookMergeUtility:
         return None
 
     def _create_hook_entry(
-        self, hook_data: Dict[str, Any], matcher: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, hook_data: dict[str, Any], matcher: str | None = None
+    ) -> dict[str, Any]:
         """Create hook entry in Claude Code format"""
         entry = {"hooks": [hook_data]}
 
@@ -251,7 +251,7 @@ class HookMergeUtility:
 
         return entry
 
-    def _validate_settings_format(self, settings: Dict[str, Any]) -> bool:
+    def _validate_settings_format(self, settings: dict[str, Any]) -> bool:
         """Validate that settings follow expected format"""
         try:
             # Basic structure validation
@@ -288,7 +288,7 @@ class HookMergeUtility:
             logger.error(f"Settings validation failed: {e}")
             return False
 
-    async def _save_settings(self, settings: Dict[str, Any]) -> None:
+    async def _save_settings(self, settings: dict[str, Any]) -> None:
         """Save merged settings to file"""
         # Ensure parent directory exists
         self.settings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -329,7 +329,7 @@ class HookMergeUtility:
         return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def get_required_xpia_hooks() -> List[HookConfig]:
+def get_required_xpia_hooks() -> list[HookConfig]:
     """
     Get list of required XPIA security hooks
 

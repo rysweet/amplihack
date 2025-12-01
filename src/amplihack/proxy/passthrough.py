@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Dict, Union
+from typing import Any
 
 import httpx  # type: ignore
 
@@ -98,9 +98,7 @@ class PassthroughHandler:
             self.anthropic_failure_count = 0
             self.switched_to_fallback = False
 
-    async def handle_request(
-        self, request_data: Dict[str, Any]
-    ) -> Union[Dict[str, Any], httpx.Response]:
+    async def handle_request(self, request_data: dict[str, Any]) -> dict[str, Any] | httpx.Response:
         """
         Handle a request in passthrough mode.
 
@@ -147,7 +145,7 @@ class PassthroughHandler:
                 return await self._call_azure_api(request_data)
             raise
 
-    async def _call_anthropic_api(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _call_anthropic_api(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Call the Anthropic API directly."""
         if not self.anthropic_api_key:
             raise ValueError("ANTHROPIC_API_KEY not configured")
@@ -169,7 +167,7 @@ class PassthroughHandler:
         response.raise_for_status()
         return response.json()
 
-    async def _call_azure_api(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _call_azure_api(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Call Azure OpenAI API as fallback."""
         if not self.azure_openai_key or not self.azure_openai_endpoint:
             raise ValueError("Azure OpenAI configuration not complete")
@@ -206,7 +204,7 @@ class PassthroughHandler:
         # Convert Azure response back to Anthropic format
         return self._convert_azure_to_anthropic(azure_response, request_data.get("model", ""))
 
-    def _convert_anthropic_to_azure(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_anthropic_to_azure(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Convert Anthropic request format to Azure OpenAI format."""
         azure_request = {
             "messages": [],
@@ -279,8 +277,8 @@ class PassthroughHandler:
         return azure_request
 
     def _convert_azure_to_anthropic(
-        self, azure_response: Dict[str, Any], original_model: str
-    ) -> Dict[str, Any]:
+        self, azure_response: dict[str, Any], original_model: str
+    ) -> dict[str, Any]:
         """Convert Azure OpenAI response to Anthropic format."""
         choice = azure_response.get("choices", [{}])[0]
         message = choice.get("message", {})
@@ -315,7 +313,7 @@ class PassthroughHandler:
         }
         return mapping.get(finish_reason, "end_turn")
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current status of passthrough handler."""
         return {
             "passthrough_enabled": self.passthrough_enabled,

@@ -4,7 +4,6 @@ import os
 import signal
 import subprocess
 import sys
-from typing import Dict, List, Optional
 
 
 class ProcessManager:
@@ -29,7 +28,7 @@ class ProcessManager:
         return not ProcessManager.is_windows()
 
     @staticmethod
-    def create_process_group(popen_args: Dict) -> Dict:
+    def create_process_group(popen_args: dict) -> dict:
         """Add process group creation flags to Popen arguments.
 
         Args:
@@ -117,9 +116,9 @@ class ProcessManager:
 
     @staticmethod
     def run_command(
-        command: List[str],
-        cwd: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None,
+        command: list[str],
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
         capture_output: bool = True,
     ) -> subprocess.CompletedProcess:
         """Run a command with cross-platform compatibility.

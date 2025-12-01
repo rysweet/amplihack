@@ -1,22 +1,22 @@
 """GitHub Copilot model mapping and capabilities."""
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 
 class GitHubModelMapper:
     """Maps OpenAI model names to GitHub Copilot models."""
 
-    def __init__(self, config: Dict[str, str]):
+    def __init__(self, config: dict[str, str]):
         """Initialize GitHub model mapper.
 
         Args:
             config: Configuration dictionary
         """
         self.config = config
-        self._model_cache: Dict[str, str] = {}
-        self._capability_cache: Dict[str, Dict] = {}
+        self._model_cache: dict[str, str] = {}
+        self._capability_cache: dict[str, dict] = {}
 
-    def get_github_model(self, openai_model: str) -> Optional[str]:
+    def get_github_model(self, openai_model: str) -> str | None:
         """Get GitHub Copilot model for OpenAI model name.
 
         Args:
@@ -49,7 +49,7 @@ class GitHubModelMapper:
 
         return None
 
-    def get_available_models(self) -> List[str]:
+    def get_available_models(self) -> list[str]:
         """Get list of available GitHub Copilot models.
 
         Returns:
@@ -62,7 +62,7 @@ class GitHubModelMapper:
             "github-copilot-gpt-3.5-turbo",
         ]
 
-    def get_model_capabilities(self, model: str) -> Dict[str, Any]:
+    def get_model_capabilities(self, model: str) -> dict[str, Any]:
         """Get capabilities for a GitHub Copilot model.
 
         Args:
@@ -127,7 +127,7 @@ class GitHubModelMapper:
         capabilities = self.get_model_capabilities(model)
         return capabilities.get("max_output_tokens", 4096)
 
-    def _get_direct_model_mapping(self, openai_model: str) -> Optional[str]:
+    def _get_direct_model_mapping(self, openai_model: str) -> str | None:
         """Get direct model mapping from configuration.
 
         Args:
@@ -144,7 +144,7 @@ class GitHubModelMapper:
 
         return None
 
-    def _get_default_model_mapping(self, openai_model: str) -> Optional[str]:
+    def _get_default_model_mapping(self, openai_model: str) -> str | None:
         """Get default model mapping for OpenAI model.
 
         Args:
@@ -165,7 +165,7 @@ class GitHubModelMapper:
 
         return default_mappings.get(openai_model)
 
-    def _build_model_capabilities(self, model: str) -> Dict[str, Any]:
+    def _build_model_capabilities(self, model: str) -> dict[str, Any]:
         """Build capabilities dictionary for model.
 
         Args:
@@ -214,7 +214,7 @@ class GitHubModelMapper:
 
         return capabilities
 
-    def get_supported_languages(self, model: str) -> Set[str]:
+    def get_supported_languages(self, model: str) -> set[str]:
         """Get programming languages supported by model.
 
         Args:

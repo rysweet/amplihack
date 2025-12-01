@@ -10,6 +10,7 @@ uv pip install pytest pytest-cov pytest-mock pytest-timeout coverage psutil
 ```
 
 Or using requirements file:
+
 ```bash
 pip install -r requirements-test.txt
 ```
@@ -17,17 +18,20 @@ pip install -r requirements-test.txt
 ## 2. Run Tests (10 seconds)
 
 ### Run Everything
+
 ```bash
 pytest
 ```
 
 Expected output:
+
 ```
 ======================== 76 passed, 1 skipped in 0.53s =========================
 Coverage: 58%
 ```
 
 ### Run Specific Test Files
+
 ```bash
 # Language detection (28 tests, ~0.3s)
 pytest test_language_detection.py
@@ -40,6 +44,7 @@ pytest test_integration.py
 ```
 
 ### Run E2E Tests (Shell)
+
 ```bash
 # Requires: bash, jq
 ./test_e2e.sh
@@ -58,15 +63,15 @@ xdg-open htmlcov/index.html  # Linux
 
 ## Test File Overview
 
-| File | Tests | Coverage | Speed |
-|------|-------|----------|-------|
-| `test_language_detection.py` | 28 | Language detection | 0.3s |
-| `test_config_generation.py` | 26 | Config generation | 0.2s |
-| `test_session_monitoring.py` | 18* | Session monitoring | skipped |
-| `test_integration.py` | 18 | Full workflows | 0.1s |
-| `test_e2e.sh` | 3 | Complete scenarios | varies |
+| File                         | Tests | Coverage           | Speed   |
+| ---------------------------- | ----- | ------------------ | ------- |
+| `test_language_detection.py` | 28    | Language detection | 0.3s    |
+| `test_config_generation.py`  | 26    | Config generation  | 0.2s    |
+| `test_session_monitoring.py` | 18\*  | Session monitoring | skipped |
+| `test_integration.py`        | 18    | Full workflows     | 0.1s    |
+| `test_e2e.sh`                | 3     | Complete scenarios | varies  |
 
-*Skipped due to syntax error in original script
+\*Skipped due to syntax error in original script
 
 ## Common Commands
 
@@ -93,11 +98,13 @@ pytest --no-cov
 ## Quick Troubleshooting
 
 ### "No module named pytest"
+
 ```bash
 uv pip install pytest pytest-cov pytest-mock
 ```
 
 ### "jq: command not found" (for E2E tests)
+
 ```bash
 # macOS
 brew install jq
@@ -107,10 +114,12 @@ sudo apt-get install jq
 ```
 
 ### "SyntaxError in monitor_session.py"
+
 This is expected - the original script has a syntax error on line 159.
 The test suite handles this gracefully (18 tests skipped).
 
 ### "Permission denied: test_e2e.sh"
+
 ```bash
 chmod +x test_e2e.sh
 ```
@@ -132,6 +141,7 @@ tests/
 ## What Gets Tested
 
 **Unit Tests (60%)**
+
 - ✅ Manifest file detection (Python, JS, Go, Rust, C++)
 - ✅ File extension analysis
 - ✅ Configuration template loading
@@ -140,6 +150,7 @@ tests/
 - ✅ Edge cases and error handling
 
 **Integration Tests (30%)**
+
 - ✅ Full workflows (detect → config → validate)
 - ✅ Multi-language projects
 - ✅ Server lifecycle
@@ -147,6 +158,7 @@ tests/
 - ✅ Configuration persistence
 
 **E2E Tests (10%)**
+
 - ✅ Complete Python debugging session
 - ✅ Multi-language detection
 - ✅ Error recovery and retry
@@ -168,6 +180,7 @@ tests/
 ---
 
 **Test Suite Stats**
+
 - 76 tests total
 - 2,900+ lines of test code
 - 58% coverage

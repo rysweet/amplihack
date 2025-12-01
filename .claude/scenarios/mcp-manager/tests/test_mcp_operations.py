@@ -3,7 +3,6 @@
 import copy
 
 import pytest
-
 from mcp_operations import (
     MCPServer,
     add_server,
@@ -90,7 +89,10 @@ def test_mcpserver_validate_invalid_args():
 def test_mcpserver_validate_invalid_env():
     """Test validation with invalid env type."""
     server = MCPServer(
-        name="test", command="node", args=[], env={"key": 123}  # type: ignore
+        name="test",
+        command="node",
+        args=[],
+        env={"key": 123},  # type: ignore
     )
 
     errors = server.validate()
@@ -230,9 +232,7 @@ def test_enable_server_not_found():
 def test_enable_server_immutability():
     """Test that enable_server doesn't modify input."""
     original_config = {
-        "enabledMcpjsonServers": [
-            {"name": "test", "command": "cmd", "args": [], "enabled": False}
-        ],
+        "enabledMcpjsonServers": [{"name": "test", "command": "cmd", "args": [], "enabled": False}],
         "other_key": "other_value",
     }
     config_copy = copy.deepcopy(original_config)
@@ -274,9 +274,7 @@ def test_disable_server_not_found():
 def test_disable_server_immutability():
     """Test that disable_server doesn't modify input."""
     original_config = {
-        "enabledMcpjsonServers": [
-            {"name": "test", "command": "cmd", "args": [], "enabled": True}
-        ]
+        "enabledMcpjsonServers": [{"name": "test", "command": "cmd", "args": [], "enabled": True}]
     }
     config_copy = copy.deepcopy(original_config)
 
@@ -292,9 +290,7 @@ def test_disable_server_immutability():
 def test_validate_config_valid():
     """Test validation of valid config."""
     config = {
-        "enabledMcpjsonServers": [
-            {"name": "test-server", "command": "node", "args": ["server.js"]}
-        ]
+        "enabledMcpjsonServers": [{"name": "test-server", "command": "node", "args": ["server.js"]}]
     }
 
     errors = validate_config(config)
@@ -397,9 +393,7 @@ def test_add_server_to_existing():
 def test_add_server_duplicate_name():
     """Test adding a server with duplicate name."""
     config = {
-        "enabledMcpjsonServers": [
-            {"name": "test", "command": "cmd", "args": [], "enabled": True}
-        ]
+        "enabledMcpjsonServers": [{"name": "test", "command": "cmd", "args": [], "enabled": True}]
     }
     server = MCPServer(name="test", command="node", args=[])
 
@@ -419,9 +413,7 @@ def test_add_server_invalid():
 def test_add_server_with_env():
     """Test adding server with environment variables."""
     config = {"enabledMcpjsonServers": []}
-    server = MCPServer(
-        name="test", command="node", args=[], env={"KEY": "value"}
-    )
+    server = MCPServer(name="test", command="node", args=[], env={"KEY": "value"})
 
     new_config = add_server(config, server)
 
@@ -469,9 +461,7 @@ def test_remove_server_not_found():
 def test_remove_server_immutability():
     """Test that remove_server doesn't modify input."""
     original_config = {
-        "enabledMcpjsonServers": [
-            {"name": "test", "command": "cmd", "args": [], "enabled": True}
-        ]
+        "enabledMcpjsonServers": [{"name": "test", "command": "cmd", "args": [], "enabled": True}]
     }
     config_copy = copy.deepcopy(original_config)
 
@@ -540,6 +530,7 @@ def test_export_servers():
 
     # Verify it's valid JSON
     import json
+
     data = json.loads(export_data)
 
     assert "metadata" in data
@@ -557,6 +548,7 @@ def test_export_servers_empty():
     export_data = export_servers(servers)
 
     import json
+
     data = json.loads(export_data)
 
     assert data["metadata"]["server_count"] == 0
@@ -565,15 +557,12 @@ def test_export_servers_empty():
 
 def test_export_servers_with_env():
     """Test exporting server with environment variables."""
-    servers = [
-        MCPServer(
-            name="test", command="node", args=[], env={"KEY": "value"}
-        )
-    ]
+    servers = [MCPServer(name="test", command="node", args=[], env={"KEY": "value"})]
 
     export_data = export_servers(servers)
 
     import json
+
     data = json.loads(export_data)
 
     assert data["servers"][0]["env"] == {"KEY": "value"}
@@ -716,10 +705,9 @@ def test_import_export_roundtrip():
     # Verify all data preserved
     assert len(imported_servers) == len(original_servers)
 
-    for orig, imported in zip(original_servers, imported_servers):
+    for orig, imported in zip(original_servers, imported_servers, strict=False):
         assert imported.name == orig.name
         assert imported.command == orig.command
         assert imported.args == orig.args
         assert imported.enabled == orig.enabled
         assert imported.env == orig.env
-

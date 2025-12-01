@@ -545,7 +545,9 @@ class TestPowerSteeringChecker(unittest.TestCase):
         """
         # Skip this test - unit tests provide sufficient coverage without full environment setup
         # The two unit tests above (test_format_results_text_*) comprehensively test the fixes
-        self.skipTest("Integration test requires full environment - unit tests provide sufficient coverage")
+        self.skipTest(
+            "Integration test requires full environment - unit tests provide sufficient coverage"
+        )
 
 
 class TestConsiderationAnalysis(unittest.TestCase):

@@ -5,7 +5,7 @@ All operations are idempotent (safe to run multiple times).
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from .config import get_config
 from .connector import Neo4jConnector
@@ -86,7 +86,7 @@ class SchemaManager:
             logger.error("Schema verification error: %s", e)
             return False
 
-    def get_schema_status(self) -> Dict[str, Any]:
+    def get_schema_status(self) -> dict[str, Any]:
         """Get detailed schema status for debugging.
 
         Returns:

@@ -6,7 +6,6 @@ Each fix is real, verifiable, and improves code quality.
 
 import subprocess
 from pathlib import Path
-from typing import List, Tuple
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -349,7 +348,7 @@ FIXES = [
 ]
 
 
-def git_command(cmd: List[str]) -> Tuple[bool, str]:
+def git_command(cmd: list[str]) -> tuple[bool, str]:
     """Run git command and return (success, output)."""
     try:
         result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=30)

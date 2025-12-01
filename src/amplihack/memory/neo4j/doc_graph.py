@@ -17,7 +17,7 @@ import logging
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base_graph import BaseGraphManager
 from .connector import Neo4jConnector
@@ -49,7 +49,7 @@ class DocGraphIntegration(BaseGraphManager):
         """Get human-readable schema name for logging."""
         return "documentation graph"
 
-    def _get_constraints(self) -> List[str]:
+    def _get_constraints(self) -> list[str]:
         """Get constraint definitions for documentation graph."""
         return [
             # DocFile path uniqueness
@@ -69,7 +69,7 @@ class DocGraphIntegration(BaseGraphManager):
             """,
         ]
 
-    def _get_indexes(self) -> List[str]:
+    def _get_indexes(self) -> list[str]:
         """Get index definitions for documentation graph."""
         return [
             # DocFile title index
@@ -102,7 +102,7 @@ class DocGraphIntegration(BaseGraphManager):
         """
         return self.initialize_schema()
 
-    def parse_markdown_doc(self, file_path: Path) -> Dict[str, Any]:
+    def parse_markdown_doc(self, file_path: Path) -> dict[str, Any]:
         """Parse markdown documentation file into structured data.
 
         Args:
@@ -172,7 +172,7 @@ class DocGraphIntegration(BaseGraphManager):
             return match.group(1).strip()
         return "Untitled"
 
-    def _parse_sections(self, content: str) -> List[Dict[str, Any]]:
+    def _parse_sections(self, content: str) -> list[dict[str, Any]]:
         """Parse markdown into sections based on headings.
 
         Returns:
@@ -217,8 +217,8 @@ class DocGraphIntegration(BaseGraphManager):
         return sections
 
     def _extract_concepts(
-        self, content: str, sections: List[Dict[str, Any]]
-    ) -> List[Dict[str, str]]:
+        self, content: str, sections: list[dict[str, Any]]
+    ) -> list[dict[str, str]]:
         """Extract key concepts from documentation.
 
         Concepts are identified from:
@@ -276,7 +276,7 @@ class DocGraphIntegration(BaseGraphManager):
 
         return concepts
 
-    def _extract_code_references(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_code_references(self, content: str) -> list[dict[str, Any]]:
         """Extract code references from documentation.
 
         Looks for:
@@ -326,7 +326,7 @@ class DocGraphIntegration(BaseGraphManager):
 
         return references
 
-    def _extract_links(self, content: str) -> List[Dict[str, str]]:
+    def _extract_links(self, content: str) -> list[dict[str, str]]:
         """Extract markdown links from content.
 
         Returns:
@@ -348,7 +348,7 @@ class DocGraphIntegration(BaseGraphManager):
 
         return links
 
-    def _extract_metadata(self, file_path: Path, content: str) -> Dict[str, Any]:
+    def _extract_metadata(self, file_path: Path, content: str) -> dict[str, Any]:
         """Extract metadata from file and content.
 
         Returns:
@@ -367,8 +367,8 @@ class DocGraphIntegration(BaseGraphManager):
     def import_documentation(
         self,
         file_path: Path,
-        project_id: Optional[str] = None,
-    ) -> Dict[str, int]:
+        project_id: str | None = None,
+    ) -> dict[str, int]:
         """Import markdown documentation file into Neo4j.
 
         Args:
@@ -409,7 +409,7 @@ class DocGraphIntegration(BaseGraphManager):
         logger.info("Documentation import complete: %s", counts)
         return counts
 
-    def _import_doc_file(self, doc_data: Dict[str, Any], project_id: Optional[str] = None) -> int:
+    def _import_doc_file(self, doc_data: dict[str, Any], project_id: str | None = None) -> int:
         """Import DocFile node."""
         query = """
         MERGE (df:DocFile {path: $path})
@@ -454,7 +454,7 @@ class DocGraphIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _import_sections(self, doc_data: Dict[str, Any]) -> int:
+    def _import_sections(self, doc_data: dict[str, Any]) -> int:
         """Import section nodes and link to DocFile."""
         if not doc_data["sections"]:
             return 0
@@ -504,7 +504,7 @@ class DocGraphIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _import_concepts(self, doc_data: Dict[str, Any]) -> int:
+    def _import_concepts(self, doc_data: dict[str, Any]) -> int:
         """Import concept nodes and link to DocFile."""
         if not doc_data["concepts"]:
             return 0
@@ -548,7 +548,7 @@ class DocGraphIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _import_code_references(self, doc_data: Dict[str, Any]) -> int:
+    def _import_code_references(self, doc_data: dict[str, Any]) -> int:
         """Import code references and link DocFile to CodeFile."""
         if not doc_data["code_references"]:
             return 0
@@ -580,7 +580,7 @@ class DocGraphIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def link_docs_to_code(self, project_id: Optional[str] = None) -> int:
+    def link_docs_to_code(self, project_id: str | None = None) -> int:
         """Create relationships between documentation and code.
 
         Links DocFiles to CodeFiles, Functions, and Classes based on:
@@ -645,7 +645,7 @@ class DocGraphIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def link_docs_to_memories(self, project_id: Optional[str] = None) -> int:
+    def link_docs_to_memories(self, project_id: str | None = None) -> int:
         """Create relationships between documentation and memories.
 
         Links memories to relevant documentation based on:
@@ -697,7 +697,7 @@ class DocGraphIntegration(BaseGraphManager):
         self,
         query_text: str,
         limit: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Find relevant documentation for a query or task.
 
         Args:
@@ -745,7 +745,7 @@ class DocGraphIntegration(BaseGraphManager):
 
         return []
 
-    def get_doc_stats(self, project_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_doc_stats(self, project_id: str | None = None) -> dict[str, Any]:
         """Get documentation graph statistics.
 
         Args:

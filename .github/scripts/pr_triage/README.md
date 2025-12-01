@@ -100,10 +100,12 @@ if not compliance["overall_compliant"]:
 ### Workflow Compliance
 
 **Step 11 (Review)** - Requires review score >= 5 from:
+
 - Approved reviews (+5 each)
 - Review keywords: "code review", "security review", "lgtm", etc. (+1 each)
 
 **Step 12 (Feedback)** - Requires response score >= 3 from:
+
 - Response keywords: "addressed", "fixed", "updated", "implemented", etc.
 - Or 5+ total comments
 
@@ -124,6 +126,7 @@ if not compliance["overall_compliant"]:
 ### Unrelated Changes
 
 Detected when PR has 3+ file categories:
+
 - Documentation
 - Tests
 - Configuration
@@ -149,6 +152,7 @@ python3 -m pytest pr_triage/tests/test_analyzers_mvp.py -v
 ### Triage Report
 
 Posted as PR comment with:
+
 - ✅/❌ Workflow compliance status
 - 🏷️ Priority and complexity labels
 - 🔍 Unrelated changes detection

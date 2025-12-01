@@ -5,7 +5,7 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional, Set
+from typing import TYPE_CHECKING
 from weakref import WeakSet
 
 if TYPE_CHECKING:
@@ -27,13 +27,13 @@ class LogStreamer(logging.Handler):
     def __init__(self):
         """Initialize the log streamer."""
         super().__init__()
-        self._clients: Set[asyncio.Queue] = set()
+        self._clients: set[asyncio.Queue] = set()
         self._weak_clients = WeakSet()
         self._credential_pattern = re.compile(
             r'(?i)(?:api[_-]?key|token|password|authorization)["\s:=]*["\s]*([a-zA-Z0-9\-_+/=!@#$%^&*()]{8,})|sk-[a-zA-Z0-9]{48}|Bearer\s+[a-zA-Z0-9\-_+/=]{20,}'
         )
 
-    def add_client(self) -> Optional[asyncio.Queue]:
+    def add_client(self) -> asyncio.Queue | None:
         """Add SSE client. Returns queue or None if limit reached."""
         if len(self._clients) >= 10:  # Hard limit
             return None
@@ -103,7 +103,7 @@ class LogStreamingService:
         """Initialize service on localhost for security."""
         self.port = port
         self.streamer = LogStreamer()
-        self.server_task: Optional[asyncio.Task] = None
+        self.server_task: asyncio.Task | None = None
         self.running = False
 
     def _create_app(self) -> FastAPI:
@@ -126,7 +126,7 @@ class LogStreamingService:
                         try:
                             data = await asyncio.wait_for(queue.get(), timeout=30.0)
                             yield data
-                        except asyncio.TimeoutError:
+                        except TimeoutError:
                             yield f"data: {json.dumps({'type': 'keepalive'})}\n\n"
                 finally:
                     self.streamer.remove_client(queue)

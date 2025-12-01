@@ -7,7 +7,7 @@ Integrates seamlessly with the existing integrated_proxy.py architecture.
 import json
 import logging
 import time
-from typing import Any, Dict
+from typing import Any
 
 from .azure_unified_integration import AzureUnifiedProvider
 
@@ -34,7 +34,7 @@ class AzureUnifiedHandler:
         self.provider = AzureUnifiedProvider(api_key, base_url, api_version)
         logger.info(f"✅ Azure unified handler initialized: {base_url}")
 
-    async def handle_anthropic_request(self, anthropic_request: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_anthropic_request(self, anthropic_request: dict[str, Any]) -> dict[str, Any]:
         """
         Handle an Anthropic/Claude format request and route to appropriate Azure API.
 
@@ -55,7 +55,7 @@ class AzureUnifiedHandler:
         # Convert back to Anthropic format
         return self._convert_openai_to_anthropic(azure_response)
 
-    async def handle_openai_request(self, openai_request: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_openai_request(self, openai_request: dict[str, Any]) -> dict[str, Any]:
         """
         Handle an OpenAI format request and route to appropriate Azure API.
 
@@ -83,7 +83,7 @@ class AzureUnifiedHandler:
         """
         return self.provider.should_use_responses_api(model)
 
-    def _convert_anthropic_to_openai(self, anthropic_request: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_anthropic_to_openai(self, anthropic_request: dict[str, Any]) -> dict[str, Any]:
         """Convert Anthropic request format to OpenAI format."""
         openai_request = {
             "model": anthropic_request.get("model", "gpt-5"),
@@ -108,7 +108,7 @@ class AzureUnifiedHandler:
 
         return openai_request
 
-    def _convert_openai_to_anthropic(self, openai_response: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_openai_to_anthropic(self, openai_response: dict[str, Any]) -> dict[str, Any]:
         """Convert OpenAI response format to Anthropic format."""
         if "error" in openai_response:
             # Return error in Anthropic format
@@ -175,7 +175,7 @@ class AzureUnifiedHandler:
         }
         return mapping.get(openai_finish_reason, "end_turn")
 
-    def _convert_usage(self, openai_usage: Dict[str, Any]) -> Dict[str, Any]:
+    def _convert_usage(self, openai_usage: dict[str, Any]) -> dict[str, Any]:
         """Convert OpenAI usage format to Anthropic format."""
         return {
             "input_tokens": openai_usage.get("prompt_tokens", 0),

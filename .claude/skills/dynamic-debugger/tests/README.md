@@ -19,11 +19,11 @@ tests/
 
 ## Testing Pyramid Distribution
 
-| Test Type    | Count | Percentage | Coverage                          |
-|--------------|-------|------------|-----------------------------------|
-| Unit         | ~54   | 60%        | Individual functions and modules  |
-| Integration  | ~9    | 30%        | Multi-component workflows         |
-| E2E          | ~3    | 10%        | Complete debugging scenarios      |
+| Test Type   | Count | Percentage | Coverage                         |
+| ----------- | ----- | ---------- | -------------------------------- |
+| Unit        | ~54   | 60%        | Individual functions and modules |
+| Integration | ~9    | 30%        | Multi-component workflows        |
+| E2E         | ~3    | 10%        | Complete debugging scenarios     |
 
 ## Prerequisites
 
@@ -129,6 +129,7 @@ pytest -k "python"
 ### test_language_detection.py (18 unit tests)
 
 **Manifest Detection (6 tests)**
+
 - Python (requirements.txt, pyproject.toml)
 - JavaScript (package.json)
 - Go (go.mod)
@@ -136,14 +137,16 @@ pytest -k "python"
 - C++ (CMakeLists.txt)
 
 **Extension Analysis (6 tests)**
+
 - Python files
 - Mixed languages (Python dominant)
 - Equal split detection
-- Directory exclusion (.venv, node_modules, __pycache__)
+- Directory exclusion (.venv, node_modules, **pycache**)
 - TypeScript files
 - C++ files (multiple extensions)
 
 **Edge Cases (6 tests)**
+
 - Non-existent directory
 - Empty directory
 - Permission errors
@@ -154,6 +157,7 @@ pytest -k "python"
 ### test_config_generation.py (18 unit tests)
 
 **Template Loading (6 tests)**
+
 - Python (debugpy)
 - JavaScript/TypeScript (node)
 - Go (delve)
@@ -161,6 +165,7 @@ pytest -k "python"
 - Missing template error handling
 
 **Variable Substitution (6 tests)**
+
 - Project directory substitution
 - Default port substitution
 - Custom port substitution
@@ -169,6 +174,7 @@ pytest -k "python"
 - List substitution
 
 **Validation (6 tests)**
+
 - Complete config validation
 - Missing name field
 - Missing type field
@@ -179,6 +185,7 @@ pytest -k "python"
 ### test_session_monitoring.py (18 unit tests)
 
 **Process Info (6 tests)**
+
 - Valid PID with psutil
 - Invalid PID handling
 - Without psutil fallback
@@ -187,6 +194,7 @@ pytest -k "python"
 - Exception handling
 
 **Monitoring Session (6 tests)**
+
 - Missing PID file
 - Invalid PID file content
 - Without psutil (limited monitoring)
@@ -195,6 +203,7 @@ pytest -k "python"
 - Timeout exceeded
 
 **JSON Output (6 tests)**
+
 - Error message structure
 - Warning message structure
 - Status update structure
@@ -205,23 +214,27 @@ pytest -k "python"
 ### test_integration.py (9 integration tests)
 
 **Full Workflows (4 tests)**
+
 - Python: detect → config → validate
 - JavaScript: detect → config → validate
 - Multi-language project
 - C++: detect → GDB config → validate
 
 **Server Lifecycle (3 tests)**
+
 - Complete lifecycle (start → status → stop)
 - Cleanup workflow
 - Status checking
 
 **Error Recovery (2 tests)**
+
 - Missing dap-mcp handling
 - Stale PID file recovery
 
 ### test_e2e.sh (3 E2E tests)
 
 **Complete Scenarios**
+
 1. Python debugging session (detect → config → cleanup)
 2. Multi-language project detection (Python dominant)
 3. Error recovery (stale PID → cleanup → retry)
@@ -231,6 +244,7 @@ pytest -k "python"
 All test fixtures are defined in `conftest.py`:
 
 **Project Fixtures**
+
 - `python_project` - Complete Python project with requirements.txt
 - `javascript_project` - Node.js project with package.json
 - `go_project` - Go project with go.mod
@@ -240,6 +254,7 @@ All test fixtures are defined in `conftest.py`:
 - `empty_project` - Empty directory
 
 **Utility Fixtures**
+
 - `temp_project_dir` - Temporary directory for tests
 - `sample_dap_config` - Sample DAP configuration
 - `mock_pid_file` - Mock PID file for testing
@@ -324,7 +339,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - name: Install dependencies
         run: |
           pip install -r tests/requirements-test.txt
