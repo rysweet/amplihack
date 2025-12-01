@@ -1,5 +1,13 @@
 """Utility functions for amplihack."""
 
+from .api_client import (
+    APIClient,
+    APIError,
+    APIRequest,
+    APIResponse,
+    RateLimitError,
+    ValidationError,
+)
 from .defensive import (
     DefensiveError,
     FileOperationError,
@@ -28,6 +36,13 @@ def is_uvx_deployment() -> bool:
 
 
 __all__ = [
+    # API client utilities
+    "APIClient",
+    "APIError",
+    "APIRequest",
+    "APIResponse",
+    "RateLimitError",
+    "ValidationError",
     # Path utilities
     "FrameworkPathResolver",
     # Process utilities
