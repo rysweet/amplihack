@@ -25,33 +25,37 @@ amplihack launch
 
 ## Built-in Profiles
 
-| Profile | Agents | Use Case |
-|---------|--------|----------|
+| Profile           | Agents    | Use Case                       |
+| ----------------- | --------- | ------------------------------ |
 | **all** (default) | 32 agents | General use, full capabilities |
-| **coding** | 9 agents | Feature development, bug fixes |
-| **research** | 7 agents | Code analysis, investigation |
+| **coding**        | 9 agents  | Feature development, bug fixes |
+| **research**      | 7 agents  | Code analysis, investigation   |
 
 ### Coding Profile
 
 **Included agents** (9):
+
 - architect, builder, reviewer, tester
 - api-designer, optimizer
 - database, security, cleanup
 
 **Excluded agents** (23):
+
 - knowledge-archaeologist
-- All *-analyst agents (economist, biologist, etc.)
+- All \*-analyst agents (economist, biologist, etc.)
 - PM architect
 - Specialized workflow agents
 
 ### Research Profile
 
 **Included agents** (7):
+
 - architect, analyzer
 - knowledge-archaeologist, patterns
-- All *-analyst agents
+- All \*-analyst agents
 
 **Excluded agents**:
+
 - builder, tester (coding-focused)
 
 ## Usage
@@ -79,7 +83,7 @@ amplihack install
 
 ### Supported URI Schemes
 
-- `amplihack://profiles/name` - Built-in profiles (.claude/profiles/*.yaml)
+- `amplihack://profiles/name` - Built-in profiles (.claude/profiles/\*.yaml)
 - `file:///path/to/profile.yaml` - Local filesystem
 - `git+https://github.com/user/repo/blob/ref/path/to/profile.yaml` - GitHub repository
 
@@ -129,21 +133,23 @@ components:
       - "builder"
       - "reviewer"
     exclude:
-      - "*"  # Exclude all except explicitly included
+      - "*" # Exclude all except explicitly included
 
   skills:
-    include: []  # No skills
+    include: [] # No skills
 ```
 
 ### Use Custom Profile
 
 **Local file:**
+
 ```bash
 export AMPLIHACK_PROFILE=file://$HOME/.amplihack/profiles/minimal.yaml
 amplihack install
 ```
 
 **From GitHub:**
+
 ```bash
 # Use profile from your team's repo
 export AMPLIHACK_PROFILE=git+https://github.com/myteam/amplihack-profiles/blob/main/minimal.yaml
@@ -155,36 +161,36 @@ amplihack install
 ## Profile YAML Schema
 
 ```yaml
-version: "1.0"           # Required
-name: "profile-name"     # Required
-description: "..."       # Required
+version: "1.0" # Required
+name: "profile-name" # Required
+description: "..." # Required
 
-components:              # Required
+components: # Required
   commands:
-    include: [...]       # List of command names
-    exclude: [...]       # Optional exclude patterns
-    include_all: false   # Or true to include everything
+    include: [...] # List of command names
+    exclude: [...] # Optional exclude patterns
+    include_all: false # Or true to include everything
 
   agents:
-    include: [...]       # List of agent names (without .md)
-    exclude: [...]       # Patterns like "*-analyst"
+    include: [...] # List of agent names (without .md)
+    exclude: [...] # Patterns like "*-analyst"
     include_all: false
 
   context:
-    include: [...]       # Context file names
+    include: [...] # Context file names
     include_all: false
 
   skills:
-    include_categories: [...]  # Skill categories
-    include: [...]            # Individual skills
+    include_categories: [...] # Skill categories
+    include: [...] # Individual skills
     include_all: false
 
-metadata:                # Optional
+metadata: # Optional
   author: "..."
   version: "1.0.0"
   tags: [...]
 
-performance:             # Optional
+performance: # Optional
   lazy_load_skills: true
   cache_ttl: 3600
 ```
@@ -228,6 +234,7 @@ Claude Code launches, sees filtered environment
 ### Error Handling
 
 Profile loading uses fail-open design:
+
 - Invalid profile → Falls back to "all" profile (full installation)
 - Missing profile file → Uses "all" profile
 - Parse errors → Uses "all" profile
@@ -257,6 +264,7 @@ ls ~/.claude/agents/amplihack/specialized/knowledge-archaeologist.md  # Should N
 ### Profile not being used
 
 Check environment variable:
+
 ```bash
 echo $AMPLIHACK_PROFILE
 # Should show: amplihack://profiles/coding

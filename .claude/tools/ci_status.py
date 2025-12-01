@@ -10,10 +10,9 @@ import json
 import re
 import subprocess
 import sys
-from typing import Dict, List, Optional, Tuple
 
 
-def run_gh_command(args: List[str], timeout: int = 30) -> Tuple[int, str, str]:
+def run_gh_command(args: list[str], timeout: int = 30) -> tuple[int, str, str]:
     """
     Run a gh CLI command with timeout.
 
@@ -37,7 +36,7 @@ def run_gh_command(args: List[str], timeout: int = 30) -> Tuple[int, str, str]:
         return 1, "", f"Error running command: {e}"
 
 
-def get_current_branch() -> Optional[str]:
+def get_current_branch() -> str | None:
     """Get the current git branch name."""
     try:
         result = subprocess.run(
@@ -54,7 +53,7 @@ def get_current_branch() -> Optional[str]:
     return None
 
 
-def get_pr_for_branch(branch: str) -> Optional[int]:
+def get_pr_for_branch(branch: str) -> int | None:
     """Get PR number for the given branch if it exists."""
     code, stdout, stderr = run_gh_command(
         ["pr", "list", "--head", branch, "--json", "number", "--limit", "1"]
@@ -70,7 +69,7 @@ def get_pr_for_branch(branch: str) -> Optional[int]:
     return None
 
 
-def check_pr_checks(pr_number: int) -> Dict:
+def check_pr_checks(pr_number: int) -> dict:
     """Check CI status for a specific PR."""
     code, stdout, stderr = run_gh_command(
         [
@@ -128,7 +127,7 @@ def check_pr_checks(pr_number: int) -> Dict:
     }
 
 
-def check_workflow_runs(branch: Optional[str] = None, limit: int = 10) -> Dict:
+def check_workflow_runs(branch: str | None = None, limit: int = 10) -> dict:
     """Check recent workflow runs for a branch or repo."""
     args = [
         "run",
@@ -185,7 +184,7 @@ def check_workflow_runs(branch: Optional[str] = None, limit: int = 10) -> Dict:
     }
 
 
-def check_ci_status(reference: Optional[str] = None) -> Dict:
+def check_ci_status(reference: str | None = None) -> dict:
     """
     Check CI status for a given reference (PR number, branch, or current).
 
@@ -242,7 +241,7 @@ def check_ci_status(reference: Optional[str] = None) -> Dict:
     return result
 
 
-def format_summary(result: Dict) -> str:
+def format_summary(result: dict) -> str:
     """Format a human-readable summary of CI status."""
     if not result.get("success"):
         return f"Error: {result.get('error', 'Unknown error')}"

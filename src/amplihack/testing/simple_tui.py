@@ -6,7 +6,6 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -25,7 +24,7 @@ class TUITestCase:
 
     test_id: str
     name: str
-    commands: List[str]
+    commands: list[str]
     timeout: int = 10  # Reduce default timeout for CI friendliness
 
 
@@ -35,8 +34,8 @@ class SimpleTUITester:
     def __init__(self, output_dir: Path = Path("./tui_output")):
         self.output_dir = output_dir
         self.output_dir.mkdir(exist_ok=True)
-        self.test_cases: Dict[str, TUITestCase] = {}
-        self.results: Dict[str, TestResult] = {}
+        self.test_cases: dict[str, TUITestCase] = {}
+        self.results: dict[str, TestResult] = {}
 
     def add_test(self, test_case: TUITestCase) -> None:
         """Add a test case"""
@@ -227,7 +226,7 @@ class SimpleTUITester:
             duration = time.time() - start_time
             return TestResult(test_id, "failed", duration, f"Test execution failed: {e!s}")
 
-    async def run_all(self) -> Dict[str, TestResult]:
+    async def run_all(self) -> dict[str, TestResult]:
         """Run all tests"""
         results = {}
         for test_id in self.test_cases:
@@ -236,7 +235,7 @@ class SimpleTUITester:
 
 
 # Simple factory function
-def create_tui_tester(output_dir: Optional[Path] = None) -> SimpleTUITester:
+def create_tui_tester(output_dir: Path | None = None) -> SimpleTUITester:
     """Create a simple TUI tester"""
     return SimpleTUITester(output_dir or Path("./tui_output"))
 
@@ -247,7 +246,7 @@ def create_amplihack_test(test_id: str, args: str) -> TUITestCase:
     return TUITestCase(test_id=test_id, name=f"AmplIHack {args}", commands=[f"amplihack {args}"])
 
 
-async def run_amplihack_basics() -> Dict[str, TestResult]:
+async def run_amplihack_basics() -> dict[str, TestResult]:
     """Test basic AmplIHack commands"""
     tester = create_tui_tester()
 

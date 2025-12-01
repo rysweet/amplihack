@@ -7,7 +7,6 @@ This module provides ProfileLoader for loading profiles from:
 
 import urllib.parse
 from pathlib import Path
-from typing import Optional
 
 
 class ProfileLoader:
@@ -23,7 +22,7 @@ class ProfileLoader:
         >>> yaml_content = loader.load("file:///home/user/my-profile.yaml")
     """
 
-    def __init__(self, builtin_profiles_dir: Optional[Path] = None):
+    def __init__(self, builtin_profiles_dir: Path | None = None):
         """Initialize loader with built-in profiles directory.
 
         Args:

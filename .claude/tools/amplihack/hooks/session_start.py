@@ -7,7 +7,7 @@ Uses unified HookProcessor for common functionality.
 # Import the base processor
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -35,7 +35,7 @@ class SessionStartHook(HookProcessor):
     def __init__(self):
         super().__init__("session_start")
 
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process session start event.
 
         Checks performed:

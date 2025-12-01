@@ -22,7 +22,7 @@ echo "Creating 5 Azure AD accounts..."
 for username in "${ACCOUNTS[@]}"; do
   upn="${username}@${DOMAIN}"
   echo "Creating: $upn"
-  
+
   # Create the user with temporary password
   az ad user create \
     --user-principal-name "$upn" \
@@ -31,7 +31,7 @@ for username in "${ACCOUNTS[@]}"; do
     --password "$TEMP_PASSWORD" \
     --force-change-password-next-sign-in true \
     --query "userPrincipalName" -o tsv
-  
+
   if [ $? -eq 0 ]; then
     echo "✓ Created: $upn"
   else

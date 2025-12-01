@@ -9,7 +9,6 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Set
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class CleanupRegistry:
 
     session_id: str
     working_dir: Path
-    _paths: Set[Path] = field(default_factory=set)
+    _paths: set[Path] = field(default_factory=set)
 
     def register(self, path: Path) -> bool:
         """Register a path for cleanup.
@@ -47,7 +46,7 @@ class CleanupRegistry:
         self._paths.add(resolved)
         return True
 
-    def get_tracked_paths(self) -> List[Path]:
+    def get_tracked_paths(self) -> list[Path]:
         """Get all tracked paths in deletion-safe order.
 
         Returns:

@@ -1,6 +1,6 @@
 """Database service for data persistence."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class DatabaseService:
@@ -12,9 +12,9 @@ class DatabaseService:
 
     def __init__(self):
         """Initialize database service."""
-        self.data: Dict[str, List[Dict[str, Any]]] = {}
+        self.data: dict[str, list[dict[str, Any]]] = {}
 
-    def query(self, table: str, criteria: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def query(self, table: str, criteria: dict[str, Any]) -> dict[str, Any] | None:
         """Query for a single record.
 
         Args:
@@ -33,7 +33,7 @@ class DatabaseService:
 
         return None
 
-    def query_all(self, table: str, limit: int = 100) -> List[Dict[str, Any]]:
+    def query_all(self, table: str, limit: int = 100) -> list[dict[str, Any]]:
         """Query all records from a table.
 
         Args:
@@ -48,7 +48,7 @@ class DatabaseService:
 
         return self.data[table][:limit]
 
-    def insert(self, table: str, record: Dict[str, Any]) -> bool:
+    def insert(self, table: str, record: dict[str, Any]) -> bool:
         """Insert a record.
 
         Args:
@@ -64,7 +64,7 @@ class DatabaseService:
         self.data[table].append(record)
         return True
 
-    def update(self, table: str, criteria: Dict[str, Any], updates: Dict[str, Any]) -> bool:
+    def update(self, table: str, criteria: dict[str, Any], updates: dict[str, Any]) -> bool:
         """Update records matching criteria.
 
         Args:
@@ -86,7 +86,7 @@ class DatabaseService:
 
         return updated
 
-    def delete(self, table: str, criteria: Dict[str, Any]) -> bool:
+    def delete(self, table: str, criteria: dict[str, Any]) -> bool:
         """Delete records matching criteria.
 
         Args:

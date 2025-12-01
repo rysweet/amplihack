@@ -18,7 +18,7 @@ import re
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -62,8 +62,8 @@ class MockXPIADefense(XPIADefenseInterface):
         self,
         content: str,
         content_type: ContentType,
-        context: Optional[ValidationContext] = None,
-        security_level: Optional[SecurityLevel] = None,
+        context: ValidationContext | None = None,
+        security_level: SecurityLevel | None = None,
     ) -> ValidationResult:
         """Mock content validation with configurable threat detection."""
         start_time = time.time()
@@ -111,8 +111,8 @@ class MockXPIADefense(XPIADefenseInterface):
     async def validate_bash_command(
         self,
         command: str,
-        arguments: Optional[List[str]] = None,
-        context: Optional[ValidationContext] = None,
+        arguments: list[str] | None = None,
+        context: ValidationContext | None = None,
     ) -> ValidationResult:
         """Mock bash command validation."""
         # Treat as command content type
@@ -126,7 +126,7 @@ class MockXPIADefense(XPIADefenseInterface):
         self,
         source_agent: str,
         target_agent: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
         message_type: str = "task",
     ) -> ValidationResult:
         """Mock agent communication validation."""
@@ -156,7 +156,7 @@ class MockXPIADefense(XPIADefenseInterface):
         """Unregister a hook."""
         return self.hooks.pop(hook_id, None) is not None
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Health check."""
         return {
             "status": "healthy",
@@ -165,7 +165,7 @@ class MockXPIADefense(XPIADefenseInterface):
             "total_validations": len(self.validation_calls),
         }
 
-    def _detect_threats(self, content: str, content_type: ContentType) -> List[ThreatDetection]:
+    def _detect_threats(self, content: str, content_type: ContentType) -> list[ThreatDetection]:
         """Detect threats based on patterns from the specification."""
         threats = []
         patterns = self._get_threat_patterns()
@@ -192,7 +192,7 @@ class MockXPIADefense(XPIADefenseInterface):
 
         return threats
 
-    def _get_threat_patterns(self) -> Dict[str, tuple]:
+    def _get_threat_patterns(self) -> dict[str, tuple]:
         """Get threat detection patterns from specification."""
         return {
             # System Prompt Override (CRITICAL)
@@ -279,7 +279,7 @@ class MockXPIADefense(XPIADefenseInterface):
 
         return False
 
-    def _generate_recommendations(self, threats: List[ThreatDetection]) -> List[str]:
+    def _generate_recommendations(self, threats: list[ThreatDetection]) -> list[str]:
         """Generate recommendations based on detected threats."""
         if not threats:
             return ["Content appears safe"]

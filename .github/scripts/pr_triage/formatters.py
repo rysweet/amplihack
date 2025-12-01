@@ -1,9 +1,9 @@
 """Data formatting utilities for PR analysis."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 
-def format_comments(comments: List[Dict[str, Any]]) -> str:
+def format_comments(comments: list[dict[str, Any]]) -> str:
     """Format PR comments for analysis.
 
     Args:
@@ -27,7 +27,7 @@ def format_comments(comments: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def format_reviews(reviews: List[Dict[str, Any]]) -> str:
+def format_reviews(reviews: list[dict[str, Any]]) -> str:
     """Format PR reviews for analysis.
 
     Args:
@@ -49,7 +49,7 @@ def format_reviews(reviews: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def format_files(files: List[Dict[str, Any]]) -> str:
+def format_files(files: list[dict[str, Any]]) -> str:
     """Format file list for analysis.
 
     Args:

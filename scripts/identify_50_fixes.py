@@ -7,7 +7,7 @@ Outputs a JSON file with concrete fix descriptions and file locations.
 import ast
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -17,7 +17,7 @@ class FixIdentifier(ast.NodeVisitor):
 
     def __init__(self, file_path: str):
         self.file_path = file_path
-        self.issues: List[Dict[str, Any]] = []
+        self.issues: list[dict[str, Any]] = []
         self.current_class = None
         self.current_function = None
 
@@ -119,7 +119,7 @@ class FixIdentifier(ast.NodeVisitor):
         self.current_class = old_class
 
 
-def analyze_file(file_path: Path) -> List[Dict[str, Any]]:
+def analyze_file(file_path: Path) -> list[dict[str, Any]]:
     """Analyze a single Python file for issues."""
     try:
         with open(file_path, encoding="utf-8") as f:
@@ -133,7 +133,7 @@ def analyze_file(file_path: Path) -> List[Dict[str, Any]]:
         return []
 
 
-def find_missing_logging(file_path: Path) -> List[Dict[str, Any]]:
+def find_missing_logging(file_path: Path) -> list[dict[str, Any]]:
     """Find functions that should have logging but don't."""
     issues = []
     try:
@@ -170,7 +170,7 @@ def find_missing_logging(file_path: Path) -> List[Dict[str, Any]]:
     return issues
 
 
-def find_missing_validation(file_path: Path) -> List[Dict[str, Any]]:
+def find_missing_validation(file_path: Path) -> list[dict[str, Any]]:
     """Find functions that accept parameters without validation."""
     issues = []
     try:

@@ -16,7 +16,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
@@ -26,7 +26,7 @@ def get_week_number() -> str:
     return datetime.now().strftime("%Y-W%V")
 
 
-def fetch_issues_created_this_week() -> List[Dict[str, Any]]:
+def fetch_issues_created_this_week() -> list[dict[str, Any]]:
     """Fetch issues created in the past week."""
     week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
@@ -48,7 +48,7 @@ def fetch_issues_created_this_week() -> List[Dict[str, Any]]:
     return json.loads(result.stdout)
 
 
-def fetch_prs_merged_this_week() -> List[Dict[str, Any]]:
+def fetch_prs_merged_this_week() -> list[dict[str, Any]]:
     """Fetch PRs merged in the past week."""
     week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
@@ -72,7 +72,7 @@ def fetch_prs_merged_this_week() -> List[Dict[str, Any]]:
     return json.loads(result.stdout)
 
 
-def fetch_open_prs() -> List[Dict[str, Any]]:
+def fetch_open_prs() -> list[dict[str, Any]]:
     """Fetch currently open PRs."""
     result = subprocess.run(
         [
@@ -90,7 +90,7 @@ def fetch_open_prs() -> List[Dict[str, Any]]:
     return json.loads(result.stdout)
 
 
-def fetch_blocked_issues() -> List[Dict[str, Any]]:
+def fetch_blocked_issues() -> list[dict[str, Any]]:
     """Fetch issues labeled as blocked."""
     result = subprocess.run(
         [
@@ -110,7 +110,7 @@ def fetch_blocked_issues() -> List[Dict[str, Any]]:
     return json.loads(result.stdout)
 
 
-def analyze_priority_distribution(issues: List[Dict[str, Any]]) -> Dict[str, int]:
+def analyze_priority_distribution(issues: list[dict[str, Any]]) -> dict[str, int]:
     """Analyze priority distribution across issues."""
     priorities = {"critical": 0, "high": 0, "medium": 0, "low": 0, "none": 0}
 
@@ -133,10 +133,10 @@ def analyze_priority_distribution(issues: List[Dict[str, Any]]) -> Dict[str, int
 
 def generate_roadmap_report(
     week_num: str,
-    new_issues: List[Dict[str, Any]],
-    merged_prs: List[Dict[str, Any]],
-    open_prs: List[Dict[str, Any]],
-    blocked_issues: List[Dict[str, Any]],
+    new_issues: list[dict[str, Any]],
+    merged_prs: list[dict[str, Any]],
+    open_prs: list[dict[str, Any]],
+    blocked_issues: list[dict[str, Any]],
 ) -> str:
     """Generate comprehensive roadmap review report."""
 

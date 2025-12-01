@@ -4,7 +4,7 @@ This module provides functionality for initializing and managing the Neo4j
 database schema for code ingestion metadata tracking.
 """
 
-from typing import Any, List
+from typing import Any
 
 from neo4j import Driver
 
@@ -162,13 +162,13 @@ class Neo4jSchema:
             for constraint_name in constraints_to_drop:
                 session.run(f"DROP CONSTRAINT {constraint_name} IF EXISTS")
 
-    def get_schema_info(self) -> dict[str, List[dict[str, Any]]]:
+    def get_schema_info(self) -> dict[str, list[dict[str, Any]]]:
         """Get current schema information.
 
         Returns:
             Dictionary with constraints and indexes
         """
-        info: dict[str, List[dict[str, Any]]] = {"constraints": [], "indexes": []}
+        info: dict[str, list[dict[str, Any]]] = {"constraints": [], "indexes": []}
 
         with self.driver.session() as session:
             # Get constraints

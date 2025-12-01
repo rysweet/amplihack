@@ -17,7 +17,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 # Type hints that must be imported
 REQUIRED_TYPE_IMPORTS = {
@@ -52,7 +51,7 @@ def extract_used_types(file_path: Path) -> set:
         return set()
 
 
-def extract_actual_imports(file_path: Path) -> Dict[str, set]:
+def extract_actual_imports(file_path: Path) -> dict[str, set]:
     """Extract actual imports from file using AST.
 
     Returns:
@@ -84,7 +83,7 @@ def extract_actual_imports(file_path: Path) -> Dict[str, set]:
         return {}
 
 
-def check_type_imports(file_path: Path) -> List[str]:
+def check_type_imports(file_path: Path) -> list[str]:
     """Check if used type hints are imported."""
     errors = []
 
@@ -117,7 +116,7 @@ def check_type_imports(file_path: Path) -> List[str]:
     return errors
 
 
-def test_import(file_path: Path) -> Tuple[Path, bool, str]:
+def test_import(file_path: Path) -> tuple[Path, bool, str]:
     """Test if file can be imported successfully."""
     # Security: Validate file path is within repository
     try:

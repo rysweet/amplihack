@@ -1,7 +1,6 @@
 """Type definitions for Knowledge Builder."""
 
 from dataclasses import dataclass, field
-from typing import List
 
 
 @dataclass
@@ -19,7 +18,7 @@ class Answer:
     """An answer with source attribution."""
 
     text: str
-    sources: List[str] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -37,7 +36,7 @@ class KnowledgeGraph:
     """Complete knowledge graph for a topic."""
 
     topic: str
-    questions: List[Question] = field(default_factory=list)
-    triplets: List[KnowledgeTriplet] = field(default_factory=list)
-    sources: List[str] = field(default_factory=list)
+    questions: list[Question] = field(default_factory=list)
+    triplets: list[KnowledgeTriplet] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
     timestamp: str = ""

@@ -7,7 +7,7 @@ with appropriate path normalization.
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
 def normalize_hook_path(path: str) -> str:
@@ -28,7 +28,7 @@ def normalize_hook_path(path: str) -> str:
     return normalized
 
 
-def normalize_hooks_dict(hooks: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_hooks_dict(hooks: dict[str, Any]) -> dict[str, Any]:
     """Normalize hooks dictionary for comparison.
 
     Args:
@@ -61,7 +61,7 @@ def normalize_hooks_dict(hooks: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
-def compare_hooks(source_hooks: Dict[str, Any], template_hooks: Dict[str, Any]) -> List[str]:
+def compare_hooks(source_hooks: dict[str, Any], template_hooks: dict[str, Any]) -> list[str]:
     """Compare two hooks dictionaries and return differences.
 
     Args:
@@ -95,7 +95,7 @@ def compare_hooks(source_hooks: Dict[str, Any], template_hooks: Dict[str, Any]) 
     return errors
 
 
-def validate_hooks_sync(source_path: Path, template_path: Path) -> Tuple[bool, List[str]]:
+def validate_hooks_sync(source_path: Path, template_path: Path) -> tuple[bool, list[str]]:
     """Validate hooks synchronization between settings files.
 
     Args:

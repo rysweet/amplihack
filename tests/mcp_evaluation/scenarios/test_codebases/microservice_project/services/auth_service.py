@@ -1,7 +1,6 @@
 """Authentication service."""
 
 import hashlib
-from typing import Optional
 
 from .database_service import DatabaseService
 
@@ -20,7 +19,7 @@ class AuthService:
         """
         self.db = db_service
 
-    def authenticate(self, username: str, password: str) -> Optional[str]:
+    def authenticate(self, username: str, password: str) -> str | None:
         """Authenticate user credentials.
 
         Args:

@@ -9,13 +9,13 @@ Testing pyramid:
 """
 
 import json
+
+# Import from parent directory
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
-
-# Import from parent directory
-import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -31,7 +31,6 @@ from workflow_state import (
     WorkflowState,
     WorkflowStateMachine,
 )
-
 
 # =============================================================================
 # UNIT TESTS (60%)

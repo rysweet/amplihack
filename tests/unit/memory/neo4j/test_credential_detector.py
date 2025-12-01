@@ -283,9 +283,10 @@ class TestCredentialDetectorLogging:
 
     def test_WHEN_detection_succeeds_THEN_logs_info(self):
         """Test that successful detection logs appropriate messages."""
-        with patch("subprocess.run") as mock_run, patch(
-            "amplihack.memory.neo4j.credential_detector.logger"
-        ) as mock_logger:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("amplihack.memory.neo4j.credential_detector.logger") as mock_logger,
+        ):
             env_vars = ["NEO4J_AUTH=neo4j/password"]
             mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
@@ -297,9 +298,10 @@ class TestCredentialDetectorLogging:
 
     def test_WHEN_auth_disabled_THEN_logs_info(self):
         """Test that auth-disabled case logs info message."""
-        with patch("subprocess.run") as mock_run, patch(
-            "amplihack.memory.neo4j.credential_detector.logger"
-        ) as mock_logger:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("amplihack.memory.neo4j.credential_detector.logger") as mock_logger,
+        ):
             env_vars = ["NEO4J_AUTH=none"]
             mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
@@ -312,9 +314,10 @@ class TestCredentialDetectorLogging:
 
     def test_WHEN_malformed_auth_THEN_logs_warning(self):
         """Test that malformed auth format logs warning."""
-        with patch("subprocess.run") as mock_run, patch(
-            "amplihack.memory.neo4j.credential_detector.logger"
-        ) as mock_logger:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("amplihack.memory.neo4j.credential_detector.logger") as mock_logger,
+        ):
             env_vars = ["NEO4J_AUTH=malformed"]
             mock_run.return_value = Mock(returncode=0, stdout=json.dumps(env_vars), stderr="")
 
@@ -325,9 +328,10 @@ class TestCredentialDetectorLogging:
 
     def test_WHEN_timeout_occurs_THEN_logs_warning(self):
         """Test that timeout logs warning message."""
-        with patch("subprocess.run") as mock_run, patch(
-            "amplihack.memory.neo4j.credential_detector.logger"
-        ) as mock_logger:
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("amplihack.memory.neo4j.credential_detector.logger") as mock_logger,
+        ):
             mock_run.side_effect = subprocess.TimeoutExpired(
                 cmd=["docker", "inspect", "amplihack-neo4j"], timeout=5
             )

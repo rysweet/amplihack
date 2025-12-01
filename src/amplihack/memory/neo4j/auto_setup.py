@@ -14,7 +14,6 @@ import secrets
 import string
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ def generate_secure_password(length: int = 32) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def auto_create_env_file(project_root: Optional[Path] = None) -> Tuple[bool, str]:
+def auto_create_env_file(project_root: Path | None = None) -> tuple[bool, str]:
     """Auto-create .env file with secure password if missing.
 
     Args:
@@ -116,7 +115,7 @@ def check_docker_running() -> bool:
         return False
 
 
-def auto_start_docker() -> Tuple[bool, str]:
+def auto_start_docker() -> tuple[bool, str]:
     """Auto-start Docker daemon if not running.
 
     Returns:
@@ -179,7 +178,7 @@ def check_docker_installed() -> bool:
         return False
 
 
-def auto_setup_prerequisites() -> Tuple[bool, list[str]]:
+def auto_setup_prerequisites() -> tuple[bool, list[str]]:
     """Auto-setup all prerequisites for Neo4j memory system.
 
     Fixes what it can automatically:

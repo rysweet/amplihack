@@ -23,13 +23,13 @@ def setup_logging():
 # Import only the parsing methods we need - inline the class to avoid deps
 import re
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 
 class DocParser:
     """Standalone documentation parser (no Neo4j dependencies)."""
 
-    def parse_markdown_doc(self, file_path: Path) -> Dict[str, Any]:
+    def parse_markdown_doc(self, file_path: Path) -> dict[str, Any]:
         """Parse markdown documentation file into structured data."""
         if not file_path.exists():
             raise FileNotFoundError(f"Documentation file not found: {file_path}")
@@ -76,7 +76,7 @@ class DocParser:
             return match.group(1).strip()
         return "Untitled"
 
-    def _parse_sections(self, content: str) -> List[Dict[str, Any]]:
+    def _parse_sections(self, content: str) -> list[dict[str, Any]]:
         """Parse markdown into sections based on headings."""
         sections = []
         lines = content.split("\n")
@@ -117,8 +117,8 @@ class DocParser:
         return sections
 
     def _extract_concepts(
-        self, content: str, sections: List[Dict[str, Any]]
-    ) -> List[Dict[str, str]]:
+        self, content: str, sections: list[dict[str, Any]]
+    ) -> list[dict[str, str]]:
         """Extract key concepts from documentation."""
         concepts = []
         seen = set()
@@ -166,7 +166,7 @@ class DocParser:
 
         return concepts
 
-    def _extract_code_references(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_code_references(self, content: str) -> list[dict[str, Any]]:
         """Extract code references from documentation."""
         references = []
 
@@ -206,7 +206,7 @@ class DocParser:
 
         return references
 
-    def _extract_links(self, content: str) -> List[Dict[str, str]]:
+    def _extract_links(self, content: str) -> list[dict[str, str]]:
         """Extract markdown links from content."""
         links = []
 
@@ -224,7 +224,7 @@ class DocParser:
 
         return links
 
-    def _extract_metadata(self, file_path: Path, content: str) -> Dict[str, Any]:
+    def _extract_metadata(self, file_path: Path, content: str) -> dict[str, Any]:
         """Extract metadata from file and content."""
         stat = file_path.stat()
 

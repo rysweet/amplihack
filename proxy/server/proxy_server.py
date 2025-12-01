@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import uuid
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal
 
 import aiohttp  # type: ignore[import-untyped]
 import litellm  # type: ignore[import-untyped]
@@ -78,7 +78,7 @@ for handler in logger.handlers:
 
 
 # Type guards and safe accessors for polymorphic response handling
-def safe_get_content(delta: Union[Any, Dict[str, Any]]) -> Optional[str]:
+def safe_get_content(delta: Any | dict[str, Any]) -> str | None:
     """Safely extract content from delta, handling both object and dict formats."""
     if hasattr(delta, "content"):
         return getattr(delta, "content", None)
@@ -87,7 +87,7 @@ def safe_get_content(delta: Union[Any, Dict[str, Any]]) -> Optional[str]:
     return None
 
 
-def safe_get_tool_calls(delta: Union[Any, Dict[str, Any]]) -> Optional[List[Any]]:
+def safe_get_tool_calls(delta: Any | dict[str, Any]) -> list[Any] | None:
     """Safely extract tool_calls from delta, handling both object and dict formats."""
     if hasattr(delta, "tool_calls"):
         return getattr(delta, "tool_calls", None)
@@ -96,7 +96,7 @@ def safe_get_tool_calls(delta: Union[Any, Dict[str, Any]]) -> Optional[List[Any]
     return None
 
 
-def safe_get_index(tool_call: Union[Any, Dict[str, Any]]) -> int:
+def safe_get_index(tool_call: Any | dict[str, Any]) -> int:
     """Safely extract index from tool_call, handling both object and dict formats."""
     if isinstance(tool_call, dict) and "index" in tool_call:
         return tool_call["index"]
@@ -105,7 +105,7 @@ def safe_get_index(tool_call: Union[Any, Dict[str, Any]]) -> int:
     return 0
 
 
-def safe_get_block_content(block: Union[Any, Dict[str, Any]]) -> Optional[Any]:
+def safe_get_block_content(block: Any | dict[str, Any]) -> Any | None:
     """Safely extract content from block, handling both object and dict formats."""
     if hasattr(block, "content"):
         return getattr(block, "content", None)
@@ -188,20 +188,20 @@ class ContentBlockText(BaseModel):
 
 class ContentBlockImage(BaseModel):
     type: Literal["image"]
-    source: Dict[str, Any]
+    source: dict[str, Any]
 
 
 class ContentBlockToolUse(BaseModel):
     type: Literal["tool_use"]
     id: str
     name: str
-    input: Dict[str, Any]
+    input: dict[str, Any]
 
 
 class ContentBlockToolResult(BaseModel):
     type: Literal["tool_result"]
     tool_use_id: str
-    content: Union[str, List[Dict[str, Any]], Dict[str, Any], List[Any], Any]
+    content: str | list[dict[str, Any]] | dict[str, Any] | list[Any] | Any
 
 
 class SystemContent(BaseModel):
@@ -211,18 +211,16 @@ class SystemContent(BaseModel):
 
 class Message(BaseModel):
     role: Literal["user", "assistant"]
-    content: Union[
-        str,
-        List[
-            Union[ContentBlockText, ContentBlockImage, ContentBlockToolUse, ContentBlockToolResult]
-        ],
-    ]
+    content: (
+        str
+        | list[ContentBlockText | ContentBlockImage | ContentBlockToolUse | ContentBlockToolResult]
+    )
 
 
 class Tool(BaseModel):
     name: str
-    description: Optional[str] = None
-    input_schema: Dict[str, Any]
+    description: str | None = None
+    input_schema: dict[str, Any]
 
 
 class ThinkingConfig(BaseModel):
@@ -232,18 +230,18 @@ class ThinkingConfig(BaseModel):
 class MessagesRequest(BaseModel):
     model: str
     max_tokens: int
-    messages: List[Message]
-    system: Optional[Union[str, List[SystemContent]]] = None
-    stop_sequences: Optional[List[str]] = None
-    stream: Optional[bool] = False
-    temperature: Optional[float] = 1.0
-    top_p: Optional[float] = None
-    top_k: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
-    tools: Optional[List[Tool]] = None
-    tool_choice: Optional[Dict[str, Any]] = None
-    thinking: Optional[ThinkingConfig] = None
-    original_model: Optional[str] = None  # Will store the original model name
+    messages: list[Message]
+    system: str | list[SystemContent] | None = None
+    stop_sequences: list[str] | None = None
+    stream: bool | None = False
+    temperature: float | None = 1.0
+    top_p: float | None = None
+    top_k: int | None = None
+    metadata: dict[str, Any] | None = None
+    tools: list[Tool] | None = None
+    tool_choice: dict[str, Any] | None = None
+    thinking: ThinkingConfig | None = None
+    original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
     def validate_model_field(cls, v, info):  # Renamed to avoid conflict
@@ -311,12 +309,12 @@ class MessagesRequest(BaseModel):
 
 class TokenCountRequest(BaseModel):
     model: str
-    messages: List[Message]
-    system: Optional[Union[str, List[SystemContent]]] = None
-    tools: Optional[List[Tool]] = None
-    thinking: Optional[ThinkingConfig] = None
-    tool_choice: Optional[Dict[str, Any]] = None
-    original_model: Optional[str] = None  # Will store the original model name
+    messages: list[Message]
+    system: str | list[SystemContent] | None = None
+    tools: list[Tool] | None = None
+    thinking: ThinkingConfig | None = None
+    tool_choice: dict[str, Any] | None = None
+    original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
     def validate_model_token_count(cls, v, info):  # Renamed to avoid conflict
@@ -399,10 +397,10 @@ class MessagesResponse(BaseModel):
     id: str
     model: str
     role: Literal["assistant"] = "assistant"
-    content: List[Union[ContentBlockText, ContentBlockToolUse]]
+    content: list[ContentBlockText | ContentBlockToolUse]
     type: Literal["message"] = "message"
-    stop_reason: Optional[Literal["end_turn", "max_tokens", "stop_sequence", "tool_use"]] = None
-    stop_sequence: Optional[str] = None
+    stop_reason: Literal["end_turn", "max_tokens", "stop_sequence", "tool_use"] | None = None
+    stop_sequence: str | None = None
     usage: Usage
 
 
@@ -474,7 +472,7 @@ def is_azure_responses_api() -> bool:
     return bool(OPENAI_BASE_URL and "/responses" in OPENAI_BASE_URL)
 
 
-def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> Dict[str, Any]:
+def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> dict[str, Any]:
     """Convert Anthropic API request format to Azure Responses API format."""
     # Extract model name without provider prefix
     model = anthropic_request.model
@@ -542,7 +540,7 @@ def convert_anthropic_to_azure_responses(anthropic_request: MessagesRequest) -> 
     }
 
 
-async def make_azure_responses_api_call(request_data: Dict[str, Any]) -> Dict[str, Any]:
+async def make_azure_responses_api_call(request_data: dict[str, Any]) -> dict[str, Any]:
     """Make a direct call to Azure Responses API."""
     headers = {
         "Content-Type": "application/json",
@@ -565,7 +563,7 @@ async def make_azure_responses_api_call(request_data: Dict[str, Any]) -> Dict[st
 
 
 def convert_azure_responses_to_anthropic(
-    azure_response: Dict[str, Any], original_request: MessagesRequest
+    azure_response: dict[str, Any], original_request: MessagesRequest
 ) -> MessagesResponse:
     """Convert Azure Responses API response to Anthropic format."""
     try:
@@ -617,7 +615,7 @@ def convert_azure_responses_to_anthropic(
         )
 
 
-def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str, Any]:
+def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str, Any]:
     """Convert Anthropic API request format to LiteLLM format (which follows OpenAI)."""
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
     # So we just need to convert our Pydantic model to a dict in the expected format
@@ -861,7 +859,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
 
 def convert_litellm_to_anthropic(
-    litellm_response: Union[Dict[str, Any], Any], original_request: MessagesRequest
+    litellm_response: dict[str, Any] | Any, original_request: MessagesRequest
 ) -> MessagesResponse:
     """Convert LiteLLM (OpenAI format) response to Anthropic API response format."""
 

@@ -1,7 +1,6 @@
 """Knowledge acquirer using web search."""
 
 import subprocess
-from typing import List
 
 from amplihack.knowledge_builder.kb_types import Question
 
@@ -17,7 +16,7 @@ class KnowledgeAcquirer:
         """
         self.claude_cmd = claude_cmd
 
-    def answer_question(self, question: Question, topic: str) -> tuple[str, List[str]]:
+    def answer_question(self, question: Question, topic: str) -> tuple[str, list[str]]:
         """Answer a question using web search.
 
         Args:
@@ -82,7 +81,7 @@ Requirements:
 
         return answer or "Unable to provide answer", sources
 
-    def answer_all_questions(self, questions: List[Question], topic: str) -> List[Question]:
+    def answer_all_questions(self, questions: list[Question], topic: str) -> list[Question]:
         """Answer all questions via web search.
 
         Args:

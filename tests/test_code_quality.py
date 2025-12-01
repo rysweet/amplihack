@@ -25,7 +25,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ==============================================================================
 # Test Configuration
 # ==============================================================================
@@ -216,13 +215,16 @@ def test_no_stub_implementations():
                                         if not is_abstract:
                                             stubs_found.append((file_path, node.name, node.lineno))
 
-        except Exception as e:
+        except Exception:
             # If we can't parse, the syntax test will catch it
             continue
 
     if stubs_found:
         stub_details = "\n".join(
-            [f"  {file_path}:{lineno} - Function '{func_name}'" for file_path, func_name, lineno in stubs_found]
+            [
+                f"  {file_path}:{lineno} - Function '{func_name}'"
+                for file_path, func_name, lineno in stubs_found
+            ]
         )
 
         pytest.fail(
@@ -269,7 +271,9 @@ def test_no_unreachable_code():
                             if i < len(node.body) - 1:
                                 # Ignore pass statements (sometimes used intentionally)
                                 remaining = node.body[i + 1 :]
-                                non_pass_remaining = [s for s in remaining if not isinstance(s, ast.Pass)]
+                                non_pass_remaining = [
+                                    s for s in remaining if not isinstance(s, ast.Pass)
+                                ]
 
                                 if non_pass_remaining:
                                     unreachable_found.append((file_path, node.name, stmt.lineno))
@@ -279,7 +283,10 @@ def test_no_unreachable_code():
 
     if unreachable_found:
         unreachable_details = "\n".join(
-            [f"  {file_path}:{lineno} - Function '{func_name}'" for file_path, func_name, lineno in unreachable_found]
+            [
+                f"  {file_path}:{lineno} - Function '{func_name}'"
+                for file_path, func_name, lineno in unreachable_found
+            ]
         )
 
         pytest.fail(
@@ -326,18 +333,25 @@ def test_no_swallowed_exceptions():
                 if isinstance(node, ast.ExceptHandler):
                     # Check if handler body is empty or only contains pass
                     if len(node.body) == 0:
-                        swallowed_exceptions.append((file_path, node.lineno, "Empty except handler"))
+                        swallowed_exceptions.append(
+                            (file_path, node.lineno, "Empty except handler")
+                        )
                     elif len(node.body) == 1 and isinstance(node.body[0], ast.Pass):
                         # Allow 'pass' if there's a comment explaining why
                         # (This is a simplification - full implementation would check for comments)
-                        swallowed_exceptions.append((file_path, node.lineno, "Exception silently swallowed (pass)"))
+                        swallowed_exceptions.append(
+                            (file_path, node.lineno, "Exception silently swallowed (pass)")
+                        )
 
         except Exception:
             continue
 
     if swallowed_exceptions:
         exception_details = "\n".join(
-            [f"  {file_path}:{lineno} - {reason}" for file_path, lineno, reason in swallowed_exceptions]
+            [
+                f"  {file_path}:{lineno} - {reason}"
+                for file_path, lineno, reason in swallowed_exceptions
+            ]
         )
 
         pytest.fail(
@@ -383,7 +397,7 @@ def test_workflow_files_exist():
 
     if missing_files:
         pytest.fail(
-            f"Required workflow files missing:\n"
+            "Required workflow files missing:\n"
             + "\n".join([f"  - {f}" for f in missing_files])
             + "\n\nWorkflow infrastructure is incomplete."
         )
@@ -421,7 +435,7 @@ def test_workflow_has_required_sections():
 
     if missing_sections:
         pytest.fail(
-            f"DEFAULT_WORKFLOW.md missing required sections:\n"
+            "DEFAULT_WORKFLOW.md missing required sections:\n"
             + "\n".join([f"  - {s}" for s in missing_sections])
             + "\n\nWorkflow file incomplete (Option C requirements)."
         )
@@ -468,7 +482,9 @@ def test_monitoring_infrastructure_exists():
 
     if errors:
         pytest.fail(
-            "Monitoring infrastructure incomplete:\n" + "\n\n".join(errors) + "\n\nOption C requirements not met."
+            "Monitoring infrastructure incomplete:\n"
+            + "\n\n".join(errors)
+            + "\n\nOption C requirements not met."
         )
 
 
@@ -495,10 +511,9 @@ def test_workflow_tracker_performance(tmp_path):
     sys.path.insert(0, str(hooks_dir))
 
     try:
-        from workflow_tracker import log_step
-
         # Override log directory for testing
         import workflow_tracker
+        from workflow_tracker import log_step
 
         workflow_tracker.WORKFLOW_LOG_DIR = tmp_path
         workflow_tracker.WORKFLOW_LOG_FILE = tmp_path / "test.jsonl"
@@ -519,9 +534,9 @@ def test_workflow_tracker_performance(tmp_path):
         avg_time = total_time / iterations
 
         # Assert performance target met
-        assert (
-            avg_time < 5
-        ), f"workflow_tracker overhead ({avg_time:.3f}ms) exceeds 5ms target (Option C requirement)"
+        assert avg_time < 5, (
+            f"workflow_tracker overhead ({avg_time:.3f}ms) exceeds 5ms target (Option C requirement)"
+        )
 
     except ImportError as e:
         pytest.skip(f"Could not import workflow_tracker: {e}")

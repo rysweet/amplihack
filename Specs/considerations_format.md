@@ -135,11 +135,7 @@ Move to `.claude/tools/amplihack/considerations/default.json`:
       "description": "Check if multiple doc updates have index/TOC.",
       "severity": "warning",
       "checker": "_check_docs_organized",
-      "hints": [
-        "Count doc files modified",
-        "Check for index or TOC",
-        "Verify cross-references"
-      ]
+      "hints": ["Count doc files modified", "Check for index or TOC", "Verify cross-references"]
     },
     {
       "id": "investigation_workflow",
@@ -330,11 +326,13 @@ Move to `.claude/tools/amplihack/considerations/default.json`:
 ## Field Definitions
 
 ### id
+
 - **Type**: string
 - **Required**: Yes
 - **Description**: Unique identifier for consideration. Used as key in results.
 
 ### category
+
 - **Type**: string
 - **Required**: Yes
 - **Description**: One of 5 categories:
@@ -346,21 +344,25 @@ Move to `.claude/tools/amplihack/considerations/default.json`:
   - "CI/CD & Mergeability"
 
 ### order
+
 - **Type**: integer
 - **Required**: Yes
 - **Description**: Display order within category (1-21).
 
 ### question
+
 - **Type**: string
 - **Required**: Yes
 - **Description**: The question to ask about session state.
 
 ### description
+
 - **Type**: string
 - **Required**: Yes
 - **Description**: Detailed explanation of what this consideration checks.
 
 ### severity
+
 - **Type**: string
 - **Required**: Yes
 - **Enum**: "blocker" | "warning"
@@ -369,11 +371,13 @@ Move to `.claude/tools/amplihack/considerations/default.json`:
   - "warning": Inform user but don't block
 
 ### checker
+
 - **Type**: string
 - **Required**: Yes
 - **Description**: Method name in PowerSteeringChecker that implements check.
 
 ### hints
+
 - **Type**: array of strings
 - **Required**: No
 - **Description**: Implementation guidance for checker method.
@@ -407,6 +411,7 @@ def _load_considerations(self) -> List[Dict]:
 ## Validation
 
 When loading external file, validate:
+
 - All required fields present
 - Severity is valid enum value
 - Checker method exists in PowerSteeringChecker
@@ -418,6 +423,7 @@ If validation fails, log error and use hardcoded defaults.
 ## Extensibility
 
 Users can create custom consideration files:
+
 - Copy `default.json` to `custom.json`
 - Modify considerations (add, remove, change severity)
 - Update config: `"considerations_file": "custom.json"`

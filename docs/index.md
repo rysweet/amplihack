@@ -48,31 +48,36 @@ Built on the "Bricks & Studs" principle:
 ## Quick Links
 
 ### Get Started
+
 - [Installation Guide](PREREQUISITES.md) - Set up amplihack
 - [Interactive Setup](INTERACTIVE_INSTALLATION.md) - Step-by-step installation
 - [Quick Start](README.md) - Basic usage and examples
 
 ### Core Concepts
+
 - [Philosophy](/.claude/context/PHILOSOPHY.md) - Design principles and values
 - [Project Overview](/.claude/context/PROJECT.md) - Architecture and structure
 - [Patterns](/.claude/context/PATTERNS.md) - Common implementation patterns
 - [Trust & Anti-Sycophancy](/.claude/context/TRUST.md) - Critical operating guidelines
 
 ### Workflows
+
 - [Default Workflow](/.claude/workflow/DEFAULT_WORKFLOW.md) - Standard 13-step process
 - [Document-Driven Development](/document_driven_development/README.md) - Documentation-first approach
 - [Investigation Workflow](/.claude/workflow/INVESTIGATION_WORKFLOW.md) - Deep codebase analysis
 
 ### Agents
+
 - [Agents Overview](/.claude/agents/amplihack/README.md) - All available agents
 - [Architect](/.claude/agents/amplihack/core/architect.md) - System design and specifications
 - [Builder](/.claude/agents/amplihack/core/builder.md) - Code implementation
 - [Reviewer](/.claude/agents/amplihack/core/reviewer.md) - Quality assurance
 
 ### Commands
+
 - [Command Guide](/commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [/ultrathink](/.claude/commands/amplihack/ultrathink.md) - Main orchestration command
-- [/ddd:* commands](/.claude/commands/ddd/0-help.md) - Document-driven development
+- [/ddd:\* commands](/.claude/commands/ddd/0-help.md) - Document-driven development
 
 ## Philosophy
 

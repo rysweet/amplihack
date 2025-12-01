@@ -17,19 +17,19 @@ import json
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
 
 WORKFLOW_LOG_FILE = Path(".claude/runtime/logs/workflow_adherence/workflow_execution.jsonl")
 DEFAULT_OUTPUT = Path(".claude/runtime/logs/workflow_adherence/WORKFLOW_ADHERENCE_REPORT.md")
 
 
-def read_log_entries(limit: int = None) -> List[Dict[str, Any]]:
+def read_log_entries(limit: int = None) -> list[dict[str, Any]]:
     """Read and parse JSONL log file."""
     if not WORKFLOW_LOG_FILE.exists():
         return []
 
     entries = []
-    with open(WORKFLOW_LOG_FILE, "r") as f:
+    with open(WORKFLOW_LOG_FILE) as f:
         lines = f.readlines()
         if limit:
             lines = lines[-limit:]
@@ -43,7 +43,7 @@ def read_log_entries(limit: int = None) -> List[Dict[str, Any]]:
     return entries
 
 
-def analyze_workflows(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+def analyze_workflows(entries: list[dict[str, Any]]) -> dict[str, Any]:
     """Analyze workflow execution patterns."""
     workflows = []
     current_workflow = None
@@ -100,7 +100,7 @@ def analyze_workflows(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def calculate_metrics(analysis: Dict[str, Any]) -> Dict[str, Any]:
+def calculate_metrics(analysis: dict[str, Any]) -> dict[str, Any]:
     """Calculate key metrics from analysis."""
     workflows = analysis["workflows"]
 
@@ -121,7 +121,9 @@ def calculate_metrics(analysis: Dict[str, Any]) -> Dict[str, Any]:
     successful = sum(1 for w in completed_workflows if w["end"].get("success", False))
 
     completion_rates = [w["end"]["completion_rate"] for w in completed_workflows]
-    steps_executed = [w["end"]["total_steps"] - w["end"]["skipped_steps"] for w in completed_workflows]
+    steps_executed = [
+        w["end"]["total_steps"] - w["end"]["skipped_steps"] for w in completed_workflows
+    ]
     steps_skipped = [w["end"]["skipped_steps"] for w in completed_workflows]
     agents_used = [len(set(w["agents"])) for w in workflows]
 
@@ -129,16 +131,24 @@ def calculate_metrics(analysis: Dict[str, Any]) -> Dict[str, Any]:
         "total_workflows": len(workflows),
         "successful": successful,
         "failed": len(completed_workflows) - successful,
-        "success_rate": round(successful / len(completed_workflows) * 100, 1) if completed_workflows else 0,
-        "avg_completion_rate": round(sum(completion_rates) / len(completion_rates), 1) if completion_rates else 0,
-        "avg_steps_executed": round(sum(steps_executed) / len(steps_executed), 1) if steps_executed else 0,
-        "avg_steps_skipped": round(sum(steps_skipped) / len(steps_skipped), 1) if steps_skipped else 0,
+        "success_rate": round(successful / len(completed_workflows) * 100, 1)
+        if completed_workflows
+        else 0,
+        "avg_completion_rate": round(sum(completion_rates) / len(completion_rates), 1)
+        if completion_rates
+        else 0,
+        "avg_steps_executed": round(sum(steps_executed) / len(steps_executed), 1)
+        if steps_executed
+        else 0,
+        "avg_steps_skipped": round(sum(steps_skipped) / len(steps_skipped), 1)
+        if steps_skipped
+        else 0,
         "avg_agents_used": round(sum(agents_used) / len(agents_used), 1) if agents_used else 0,
         "total_violations": len(analysis["violations"]),
     }
 
 
-def generate_markdown_report(analysis: Dict[str, Any], metrics: Dict[str, Any]) -> str:
+def generate_markdown_report(analysis: dict[str, Any], metrics: dict[str, Any]) -> str:
     """Generate markdown report from analysis and metrics."""
     report_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
@@ -151,7 +161,9 @@ def generate_markdown_report(analysis: Dict[str, Any], metrics: Dict[str, Any]) 
     )[:10]
 
     # Most used agents
-    most_used_agents = sorted(analysis["agent_usage"].items(), key=lambda x: x[1], reverse=True)[:10]
+    most_used_agents = sorted(analysis["agent_usage"].items(), key=lambda x: x[1], reverse=True)[
+        :10
+    ]
 
     # Skip reasons
     skip_reasons = sorted(analysis["skip_reasons"].items(), key=lambda x: x[1], reverse=True)[:10]
@@ -162,7 +174,7 @@ def generate_markdown_report(analysis: Dict[str, Any], metrics: Dict[str, Any]) 
     markdown = f"""# Workflow Adherence Report
 
 **Generated**: {report_time}
-**Analysis Window**: Last {len(analysis['workflows'])} workflow executions
+**Analysis Window**: Last {len(analysis["workflows"])} workflow executions
 
 ## Executive Summary
 
@@ -170,15 +182,15 @@ def generate_markdown_report(analysis: Dict[str, Any], metrics: Dict[str, Any]) 
 
 | Metric | Value |
 |--------|-------|
-| Total Workflows Executed | {metrics['total_workflows']} |
-| Successful Completions | {metrics['successful']} |
-| Failed Workflows | {metrics['failed']} |
-| Success Rate | {metrics['success_rate']}% |
-| Average Completion Rate | {metrics['avg_completion_rate']}% |
-| Average Steps Executed | {metrics['avg_steps_executed']} |
-| Average Steps Skipped | {metrics['avg_steps_skipped']} |
-| Average Agents Used | {metrics['avg_agents_used']} |
-| Total Violations | {metrics['total_violations']} |
+| Total Workflows Executed | {metrics["total_workflows"]} |
+| Successful Completions | {metrics["successful"]} |
+| Failed Workflows | {metrics["failed"]} |
+| Success Rate | {metrics["success_rate"]}% |
+| Average Completion Rate | {metrics["avg_completion_rate"]}% |
+| Average Steps Executed | {metrics["avg_steps_executed"]} |
+| Average Steps Skipped | {metrics["avg_steps_skipped"]} |
+| Average Agents Used | {metrics["avg_agents_used"]} |
+| Total Violations | {metrics["total_violations"]} |
 
 ### Interpretation
 
@@ -300,13 +312,17 @@ def generate_markdown_report(analysis: Dict[str, Any], metrics: Dict[str, Any]) 
         )
 
     if not recommendations:
-        recommendations.append("- **Keep It Up**: Workflow adherence is excellent. No changes needed.")
+        recommendations.append(
+            "- **Keep It Up**: Workflow adherence is excellent. No changes needed."
+        )
 
     for rec in recommendations:
         markdown += f"{rec}\n"
 
     markdown += "\n## How to Improve Adherence\n\n"
-    markdown += "1. **Read Workflow First**: Always read DEFAULT_WORKFLOW.md before starting tasks\n"
+    markdown += (
+        "1. **Read Workflow First**: Always read DEFAULT_WORKFLOW.md before starting tasks\n"
+    )
     markdown += "2. **Use TodoWrite**: Create todos with 'Step N: [Step Name]' format\n"
     markdown += "3. **Delegate to Agents**: Use specialized agents at every applicable step\n"
     markdown += "4. **Track Execution**: Use workflow_tracker.py to log steps\n"
@@ -350,7 +366,7 @@ def main():
         f.write(report)
 
     print(f"\n✓ Report generated: {output_path}")
-    print(f"\n--- Executive Summary ---")
+    print("\n--- Executive Summary ---")
     print(f"Total Workflows: {metrics['total_workflows']}")
     print(f"Success Rate: {metrics['success_rate']}%")
     print(f"Avg Completion Rate: {metrics['avg_completion_rate']}%")

@@ -4,13 +4,12 @@ Applies profile filtering rules to component inventory to determine which
 components should be loaded for a session.
 """
 
-from pathlib import Path
-from typing import List, Dict
 import fnmatch
 from dataclasses import dataclass
+from pathlib import Path
 
-from .models import ProfileConfig
 from .discovery import ComponentInventory
+from .models import ProfileConfig
 
 
 @dataclass
@@ -26,10 +25,11 @@ class ComponentSet:
         agents: List of agent file paths to load
         skills: List of skill file paths to load
     """
-    commands: List[Path]
-    context: List[Path]
-    agents: List[Path]
-    skills: List[Path]
+
+    commands: list[Path]
+    context: list[Path]
+    agents: list[Path]
+    skills: list[Path]
 
 
 def estimate_token_count(component_set: ComponentSet) -> int:
@@ -44,8 +44,12 @@ def estimate_token_count(component_set: ComponentSet) -> int:
         Estimated token count
     """
     total_size = 0
-    for paths in [component_set.commands, component_set.context,
-                  component_set.agents, component_set.skills]:
+    for paths in [
+        component_set.commands,
+        component_set.context,
+        component_set.agents,
+        component_set.skills,
+    ]:
         for path in paths:
             if path.exists():
                 total_size += path.stat().st_size
@@ -74,10 +78,10 @@ class ComponentFilter:
             commands=self._filter_commands(profile, inventory),
             context=self._filter_context(profile, inventory),
             agents=self._filter_agents(profile, inventory),
-            skills=self._filter_skills(profile, inventory)
+            skills=self._filter_skills(profile, inventory),
         )
 
-    def _filter_commands(self, profile: ProfileConfig, inventory: ComponentInventory) -> List[Path]:
+    def _filter_commands(self, profile: ProfileConfig, inventory: ComponentInventory) -> list[Path]:
         """Filter commands based on profile specification.
 
         Args:
@@ -88,14 +92,9 @@ class ComponentFilter:
             List of command file paths
         """
         spec = profile.components.commands
-        return self._apply_filters(
-            spec.include,
-            spec.exclude,
-            spec.include_all,
-            inventory.commands
-        )
+        return self._apply_filters(spec.include, spec.exclude, spec.include_all, inventory.commands)
 
-    def _filter_context(self, profile: ProfileConfig, inventory: ComponentInventory) -> List[Path]:
+    def _filter_context(self, profile: ProfileConfig, inventory: ComponentInventory) -> list[Path]:
         """Filter context files based on profile specification.
 
         Args:
@@ -106,14 +105,9 @@ class ComponentFilter:
             List of context file paths
         """
         spec = profile.components.context
-        return self._apply_filters(
-            spec.include,
-            spec.exclude,
-            spec.include_all,
-            inventory.context
-        )
+        return self._apply_filters(spec.include, spec.exclude, spec.include_all, inventory.context)
 
-    def _filter_agents(self, profile: ProfileConfig, inventory: ComponentInventory) -> List[Path]:
+    def _filter_agents(self, profile: ProfileConfig, inventory: ComponentInventory) -> list[Path]:
         """Filter agents based on profile specification.
 
         Args:
@@ -124,14 +118,9 @@ class ComponentFilter:
             List of agent file paths
         """
         spec = profile.components.agents
-        return self._apply_filters(
-            spec.include,
-            spec.exclude,
-            spec.include_all,
-            inventory.agents
-        )
+        return self._apply_filters(spec.include, spec.exclude, spec.include_all, inventory.agents)
 
-    def _filter_skills(self, profile: ProfileConfig, inventory: ComponentInventory) -> List[Path]:
+    def _filter_skills(self, profile: ProfileConfig, inventory: ComponentInventory) -> list[Path]:
         """Filter skills based on profile specification with category support.
 
         Supports category-based filtering in addition to individual skill patterns.
@@ -183,12 +172,8 @@ class ComponentFilter:
         return [inventory.skills[name] for name in selected if name in inventory.skills]
 
     def _apply_filters(
-        self,
-        include: List[str],
-        exclude: List[str],
-        include_all: bool,
-        components: Dict[str, Path]
-    ) -> List[Path]:
+        self, include: list[str], exclude: list[str], include_all: bool, components: dict[str, Path]
+    ) -> list[Path]:
         """Apply include/exclude filters to components.
 
         Args:

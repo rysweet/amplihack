@@ -10,7 +10,7 @@ import os
 # Import from specifications
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .xpia_defense_interface import RiskLevel, SecurityConfiguration, SecurityLevel
 
@@ -55,13 +55,13 @@ class XPIAConfig:
     log_security_events: bool = field(
         default_factory=lambda: os.getenv("XPIA_LOG_EVENTS", "true").lower() == "true"
     )
-    log_file: Optional[str] = field(default_factory=lambda: os.getenv("XPIA_LOG_FILE"))
+    log_file: str | None = field(default_factory=lambda: os.getenv("XPIA_LOG_FILE"))
 
     # Domain lists
-    whitelist_domains: List[str] = field(default_factory=list)
-    blacklist_domains: List[str] = field(default_factory=list)
-    whitelist_file: Optional[str] = field(default_factory=lambda: os.getenv("XPIA_WHITELIST_FILE"))
-    blacklist_file: Optional[str] = field(default_factory=lambda: os.getenv("XPIA_BLACKLIST_FILE"))
+    whitelist_domains: list[str] = field(default_factory=list)
+    blacklist_domains: list[str] = field(default_factory=list)
+    whitelist_file: str | None = field(default_factory=lambda: os.getenv("XPIA_WHITELIST_FILE"))
+    blacklist_file: str | None = field(default_factory=lambda: os.getenv("XPIA_BLACKLIST_FILE"))
 
     # Limits
     max_prompt_length: int = field(
@@ -191,7 +191,7 @@ class XPIAConfig:
             return True
         return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert configuration to dictionary"""
         return {
             "enabled": self.enabled,
@@ -212,7 +212,7 @@ class XPIAConfig:
 
 
 # Global configuration instance
-_global_config: Optional[XPIAConfig] = None
+_global_config: XPIAConfig | None = None
 
 
 def get_config() -> XPIAConfig:

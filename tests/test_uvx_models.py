@@ -24,9 +24,13 @@ class TestUVXEnvironmentInfo:
 
     def test_from_current_environment(self):
         """Test creating UVXEnvironmentInfo from current environment."""
-        with patch.dict(
-            os.environ, {"UV_PYTHON": "/path/to/uv/python", "AMPLIHACK_ROOT": "/path/to/framework"}
-        ), patch("sys.path", ["/path1", "/path2"]):
+        with (
+            patch.dict(
+                os.environ,
+                {"UV_PYTHON": "/path/to/uv/python", "AMPLIHACK_ROOT": "/path/to/framework"},
+            ),
+            patch("sys.path", ["/path1", "/path2"]),
+        ):
             with patch("pathlib.Path.cwd", return_value=Path("/working")):
                 env_info = UVXEnvironmentInfo.from_current_environment()
 

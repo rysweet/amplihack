@@ -4,20 +4,20 @@
 This script demonstrates programmatic usage of the MCP Manager library.
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mcp_manager import (
-    read_config,
-    write_config,
     backup_config,
-    list_servers,
-    enable_server,
     disable_server,
+    enable_server,
+    list_servers,
+    read_config,
     validate_config,
+    write_config,
 )
 
 
@@ -73,7 +73,7 @@ def example_enable_server():
         # Validate before writing
         errors = validate_config(new_config)
         if errors:
-            print(f"\n✗ Validation failed:")
+            print("\n✗ Validation failed:")
             for error in errors:
                 print(f"  - {error}")
             return
@@ -144,6 +144,7 @@ def example_safe_modification():
         except Exception as e:
             # Rollback on any error
             from mcp_manager import restore_config
+
             restore_config(backup_path, config_path)
             print(f"✗ Error occurred, rolled back to backup: {e}")
 
@@ -168,4 +169,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

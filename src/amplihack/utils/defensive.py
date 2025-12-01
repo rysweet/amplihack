@@ -12,8 +12,9 @@ Philosophy: Zero-BS, ruthlessly simple defensive patterns.
 import json
 import re
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -34,7 +35,7 @@ class FileOperationError(DefensiveError):
     """File operation failed after retries."""
 
 
-def parse_llm_json(response: str, strict: bool = False) -> Dict[str, Any]:
+def parse_llm_json(response: str, strict: bool = False) -> dict[str, Any]:
     """Extract and parse JSON from LLM response text.
 
     LLMs often return JSON wrapped in markdown code blocks, explanatory text,
@@ -126,7 +127,7 @@ def retry_with_feedback(
     max_attempts: int = 3,
     initial_delay: float = 1.0,
     backoff_factor: float = 2.0,
-    error_handler: Optional[Callable[[Exception, int], Optional[str]]] = None,
+    error_handler: Callable[[Exception, int], str | None] | None = None,
 ) -> T:
     """Execute function with intelligent retry and error feedback.
 
@@ -175,9 +176,9 @@ def retry_with_feedback(
         ...     error_handler=json_error_handler
         ... )
     """
-    last_exception: Optional[Exception] = None
+    last_exception: Exception | None = None
     delay = initial_delay
-    feedback: Optional[str] = None
+    feedback: str | None = None
 
     for attempt in range(1, max_attempts + 1):
         try:
@@ -215,9 +216,9 @@ def retry_with_feedback(
 
 def isolate_prompt(
     user_prompt: str,
-    system_context: Optional[str] = None,
+    system_context: str | None = None,
     prevent_injection: bool = True,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Isolate user prompt to prevent context contamination.
 
     Protects against:
@@ -252,7 +253,7 @@ def isolate_prompt(
         sanitized = user_prompt
 
     # Build isolated prompt structure
-    result: Dict[str, str] = {}
+    result: dict[str, str] = {}
 
     if system_context:
         result["system"] = system_context.strip()
@@ -295,7 +296,7 @@ def _sanitize_prompt_injection(prompt: str) -> str:
 
 
 def read_file_with_retry(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     max_attempts: int = 3,
     initial_delay: float = 0.5,
     backoff_factor: float = 2.0,
@@ -325,7 +326,7 @@ def read_file_with_retry(
         >>> data = json.loads(content)
     """
     path = Path(file_path)
-    last_exception: Optional[Exception] = None
+    last_exception: Exception | None = None
     delay = initial_delay
 
     for attempt in range(1, max_attempts + 1):
@@ -351,7 +352,7 @@ def read_file_with_retry(
 
 
 def write_file_with_retry(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     content: str,
     max_attempts: int = 3,
     initial_delay: float = 0.5,
@@ -381,7 +382,7 @@ def write_file_with_retry(
         >>> write_file_with_retry("output.json", json.dumps(data, indent=2))
     """
     path = Path(file_path)
-    last_exception: Optional[Exception] = None
+    last_exception: Exception | None = None
     delay = initial_delay
 
     # Create parent directories if requested
@@ -417,10 +418,10 @@ def write_file_with_retry(
 
 
 def validate_json_schema(
-    data: Dict[str, Any],
-    required_keys: List[str],
-    optional_keys: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    data: dict[str, Any],
+    required_keys: list[str],
+    optional_keys: list[str] | None = None,
+) -> dict[str, Any]:
     """Validate JSON data against expected schema.
 
     Simple schema validation for defensive JSON parsing. Ensures required

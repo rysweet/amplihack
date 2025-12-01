@@ -11,7 +11,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base_graph import BaseGraphManager
 from .connector import Neo4jConnector
@@ -54,7 +54,7 @@ class BlarifyIntegration(BaseGraphManager):
         """Get human-readable schema name for logging."""
         return "code graph"
 
-    def _get_constraints(self) -> List[str]:
+    def _get_constraints(self) -> list[str]:
         """Get constraint definitions for code graph."""
         return [
             # CodeFile path uniqueness
@@ -74,7 +74,7 @@ class BlarifyIntegration(BaseGraphManager):
             """,
         ]
 
-    def _get_indexes(self) -> List[str]:
+    def _get_indexes(self) -> list[str]:
         """Get index definitions for code graph."""
         return [
             # File language index
@@ -105,8 +105,8 @@ class BlarifyIntegration(BaseGraphManager):
     def run_blarify(
         self,
         codebase_path: str,
-        languages: Optional[List[str]] = None,
-    ) -> Dict[str, int]:
+        languages: list[str] | None = None,
+    ) -> dict[str, int]:
         """Run blarify and import results in one operation.
 
         Convenience method that:
@@ -155,8 +155,8 @@ class BlarifyIntegration(BaseGraphManager):
     def import_blarify_output(
         self,
         blarify_json_path: Path,
-        project_id: Optional[str] = None,
-    ) -> Dict[str, int]:
+        project_id: str | None = None,
+    ) -> dict[str, int]:
         """Import blarify JSON output into Neo4j.
 
         Args:
@@ -196,7 +196,7 @@ class BlarifyIntegration(BaseGraphManager):
         logger.info("Blarify import complete: %s", counts)
         return counts
 
-    def _import_files(self, files: List[Dict[str, Any]], project_id: Optional[str] = None) -> int:
+    def _import_files(self, files: list[dict[str, Any]], project_id: str | None = None) -> int:
         """Import code file nodes.
 
         Args:
@@ -243,7 +243,7 @@ class BlarifyIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _import_classes(self, classes: List[Dict[str, Any]]) -> int:
+    def _import_classes(self, classes: list[dict[str, Any]]) -> int:
         """Import class nodes.
 
         Args:
@@ -284,7 +284,7 @@ class BlarifyIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _import_functions(self, functions: List[Dict[str, Any]]) -> int:
+    def _import_functions(self, functions: list[dict[str, Any]]) -> int:
         """Import function nodes.
 
         Args:
@@ -337,7 +337,7 @@ class BlarifyIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _import_imports(self, imports: List[Dict[str, Any]]) -> int:
+    def _import_imports(self, imports: list[dict[str, Any]]) -> int:
         """Import import relationships.
 
         Args:
@@ -370,7 +370,7 @@ class BlarifyIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def _import_relationships(self, relationships: List[Dict[str, Any]]) -> int:
+    def _import_relationships(self, relationships: list[dict[str, Any]]) -> int:
         """Import code relationships (calls, inherits, references).
 
         Args:
@@ -455,7 +455,7 @@ class BlarifyIntegration(BaseGraphManager):
         result = self.conn.execute_write(query, params)
         return result[0]["count"] if result else 0
 
-    def link_code_to_memories(self, project_id: Optional[str] = None) -> int:
+    def link_code_to_memories(self, project_id: str | None = None) -> int:
         """Create relationships between code and memories.
 
         Links memories to relevant code files and functions based on:
@@ -482,7 +482,7 @@ class BlarifyIntegration(BaseGraphManager):
         logger.info("Created %d code-memory relationships", count)
         return count
 
-    def _link_memories_to_files(self, project_id: Optional[str] = None) -> int:
+    def _link_memories_to_files(self, project_id: str | None = None) -> int:
         """Link memories to code files based on metadata."""
         query = """
         MATCH (m:Memory)
@@ -522,7 +522,7 @@ class BlarifyIntegration(BaseGraphManager):
             result = self.conn.execute_write(fallback_query, params)
             return result[0]["count"] if result else 0
 
-    def _link_memories_to_functions(self, project_id: Optional[str] = None) -> int:
+    def _link_memories_to_functions(self, project_id: str | None = None) -> int:
         """Link memories to functions based on content matching."""
         query = """
         MATCH (m:Memory), (f:Function)
@@ -543,7 +543,7 @@ class BlarifyIntegration(BaseGraphManager):
         self,
         memory_id: str,
         max_depth: int = 2,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get code context for a memory.
 
         Args:
@@ -610,7 +610,7 @@ class BlarifyIntegration(BaseGraphManager):
             "classes": [],
         }
 
-    def get_code_stats(self, project_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_code_stats(self, project_id: str | None = None) -> dict[str, Any]:
         """Get code graph statistics.
 
         Args:
@@ -646,8 +646,8 @@ class BlarifyIntegration(BaseGraphManager):
     def incremental_update(
         self,
         blarify_json_path: Path,
-        project_id: Optional[str] = None,
-    ) -> Dict[str, int]:
+        project_id: str | None = None,
+    ) -> dict[str, int]:
         """Incrementally update code graph with changes.
 
         Uses MERGE to avoid duplicates and only update changed nodes.
@@ -666,7 +666,7 @@ class BlarifyIntegration(BaseGraphManager):
 def run_blarify(
     codebase_path: Path,
     output_path: Path,
-    languages: Optional[List[str]] = None,
+    languages: list[str] | None = None,
 ) -> bool:
     """Run blarify on a codebase to generate code graph.
 
@@ -746,7 +746,7 @@ def run_blarify(
 
 
 def _run_with_progress_indicator(
-    cmd: List[str], codebase_path: Path
+    cmd: list[str], codebase_path: Path
 ) -> subprocess.CompletedProcess:
     """Run subprocess with a rich progress indicator.
 

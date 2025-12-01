@@ -80,18 +80,21 @@ When creating new benchmark suites, use `benchmark_suite_v3` as your template:
 ## Key Metrics to Track
 
 ### Efficiency Metrics
+
 - Duration (wall-clock time)
 - Turns (interaction count)
 - Cost (API cost in USD)
 - Tool calls (total tool invocations)
 
 ### Quality Metrics
+
 - Test coverage (number of tests written)
 - Code quality score (1-5 scale via reviewer agent)
 - Philosophy compliance (simplicity, modularity)
 - Bug detection (critical issues found)
 
 ### Workflow Metrics
+
 - Subagent invocations (orchestration depth)
 - Skills used (capability activation)
 - Workflow adherence (step completion)

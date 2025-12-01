@@ -7,7 +7,7 @@ system for tracking token usage and storing context snapshots.
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -28,7 +28,7 @@ class UsageStats:
     threshold_status: str
     recommendation: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format."""
         return {
             "current_tokens": self.current_tokens,
@@ -57,17 +57,17 @@ class ContextSnapshot:
     """
 
     snapshot_id: str
-    name: Optional[str]
+    name: str | None
     timestamp: datetime
     original_requirements: str
-    key_decisions: List[Dict[str, str]] = field(default_factory=list)
+    key_decisions: list[dict[str, str]] = field(default_factory=list)
     implementation_state: str = ""
-    open_items: List[str] = field(default_factory=list)
-    tools_used: List[str] = field(default_factory=list)
+    open_items: list[str] = field(default_factory=list)
+    tools_used: list[str] = field(default_factory=list)
     token_count: int = 0
-    file_path: Optional[Path] = None
+    file_path: Path | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format for JSON serialization."""
         return {
             "snapshot_id": self.snapshot_id,
@@ -83,7 +83,7 @@ class ContextSnapshot:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ContextSnapshot":
+    def from_dict(cls, data: dict[str, Any]) -> "ContextSnapshot":
         """Create ContextSnapshot from dictionary.
 
         Args:

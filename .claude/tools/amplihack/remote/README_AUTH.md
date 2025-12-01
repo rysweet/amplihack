@@ -93,6 +93,7 @@ ValueError: Missing required credentials: tenant_id, client_id
 ```
 
 **Fix**: Create `.env` file from template:
+
 ```bash
 cp .env.example .env
 # Edit .env with your credentials
@@ -113,6 +114,7 @@ ModuleNotFoundError: No module named 'azure'
 ```
 
 **Fix**: Install Azure SDK:
+
 ```bash
 uv pip install azure-identity azure-mgmt-compute azure-mgmt-network azure-mgmt-resource
 ```
@@ -163,6 +165,7 @@ orchestrator.cleanup()
 Convenience function to get Azure authentication in one call.
 
 **Parameters**:
+
 - `env_file` (Path, optional): Path to specific .env file
 - `debug` (bool): Enable debug logging to stderr
 
@@ -173,6 +176,7 @@ Convenience function to get Azure authentication in one call.
 Main authentication class.
 
 **Methods**:
+
 - `get_credentials()` → AzureCredentials
 - `get_credential()` → ClientSecretCredential
 - `get_subscription_id()` → str
@@ -183,6 +187,7 @@ Main authentication class.
 Dataclass for credential storage.
 
 **Attributes**:
+
 - `tenant_id: str`
 - `client_id: str`
 - `client_secret: str`
@@ -200,6 +205,7 @@ Dataclass for credential storage.
 ## Status
 
 ✅ **Production Ready**
+
 - 250+ lines of functional code
 - 5/5 tests passing
 - Real Azure API verified
@@ -209,6 +215,7 @@ Dataclass for credential storage.
 ## Support
 
 For complete documentation, see:
+
 - **AUTH_SETUP.md** - Detailed setup and troubleshooting
 - **test_auth.py** - Example test cases
 - **IMPLEMENTATION_SUMMARY.md** - Implementation details

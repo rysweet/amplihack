@@ -7,7 +7,7 @@ agent type linking and relationship management.
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from .config import get_config
@@ -41,9 +41,9 @@ class MemoryStore:
         agent_type: str,
         category: str = "general",
         memory_type: str = "procedural",
-        project_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        tags: Optional[List[str]] = None,
+        project_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
         quality_score: float = 0.5,
         confidence: float = 0.7,
     ) -> str:
@@ -145,7 +145,7 @@ class MemoryStore:
             logger.error("Failed to create memory: %s", e)
             raise
 
-    def get_memory(self, memory_id: str) -> Optional[Dict[str, Any]]:
+    def get_memory(self, memory_id: str) -> dict[str, Any] | None:
         """Retrieve a memory by ID.
 
         Args:
@@ -176,10 +176,10 @@ class MemoryStore:
     def update_memory(
         self,
         memory_id: str,
-        content: Optional[str] = None,
-        quality_score: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-        tags: Optional[List[str]] = None,
+        content: str | None = None,
+        quality_score: float | None = None,
+        metadata: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
     ) -> bool:
         """Update memory properties.
 
@@ -257,11 +257,11 @@ class MemoryStore:
     def get_memories_by_agent_type(
         self,
         agent_type: str,
-        project_id: Optional[str] = None,
-        category: Optional[str] = None,
+        project_id: str | None = None,
+        category: str | None = None,
         min_quality: float = 0.0,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Retrieve memories for a specific agent type.
 
         Args:
@@ -317,7 +317,7 @@ class MemoryStore:
         memory_id: str,
         agent_instance_id: str,
         outcome: str = "successful",
-        feedback_score: Optional[float] = None,
+        feedback_score: float | None = None,
     ) -> bool:
         """Record that an agent used a memory.
 
@@ -384,7 +384,7 @@ class MemoryStore:
         agent_instance_id: str,
         feedback_score: float,
         outcome: str = "successful",
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> bool:
         """Record validation of a memory by an agent.
 
@@ -444,10 +444,10 @@ class MemoryStore:
     def search_memories(
         self,
         query: str,
-        agent_type: Optional[str] = None,
-        project_id: Optional[str] = None,
+        agent_type: str | None = None,
+        project_id: str | None = None,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search memories by content and tags.
 
         Args:
@@ -500,7 +500,7 @@ class MemoryStore:
         min_quality: float = 0.8,
         min_validations: int = 3,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get high-quality, well-validated memories.
 
         Args:
@@ -535,7 +535,7 @@ class MemoryStore:
         result = self.conn.execute_query(query, params)
         return [r.get("memory") for r in result if r.get("memory")]
 
-    def get_memory_stats(self, agent_type: Optional[str] = None) -> Dict[str, Any]:
+    def get_memory_stats(self, agent_type: str | None = None) -> dict[str, Any]:
         """Get memory statistics.
 
         Args:

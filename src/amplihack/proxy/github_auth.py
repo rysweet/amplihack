@@ -3,7 +3,6 @@
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional, Tuple
 
 
 class GitHubAuthManager:
@@ -16,7 +15,7 @@ class GitHubAuthManager:
         self.access_token_url = "https://github.com/login/oauth/access_token"
         self.scopes = ["copilot"]
 
-    def get_existing_token(self) -> Optional[str]:
+    def get_existing_token(self) -> str | None:
         """Get existing GitHub token from gh CLI if available.
 
         Returns:
@@ -48,7 +47,7 @@ class GitHubAuthManager:
 
         return None
 
-    def initiate_device_flow(self) -> Tuple[str, str, str]:
+    def initiate_device_flow(self) -> tuple[str, str, str]:
         """Initiate GitHub OAuth device flow.
 
         Returns:
@@ -150,7 +149,7 @@ class GitHubAuthManager:
 
         raise RuntimeError("Authorization timed out")
 
-    def save_token(self, token: str, config_path: Optional[Path] = None) -> None:
+    def save_token(self, token: str, config_path: Path | None = None) -> None:
         """Save GitHub token to configuration.
 
         Args:
@@ -213,7 +212,7 @@ class GitHubAuthManager:
 
         return False
 
-    def get_or_create_token(self, config_path: Optional[Path] = None) -> str:
+    def get_or_create_token(self, config_path: Path | None = None) -> str:
         """Get existing token or create new one via device flow.
 
         Args:

@@ -19,7 +19,7 @@ import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class HookProcessor(ABC):
@@ -50,7 +50,7 @@ class HookProcessor(ABC):
         except ImportError:
             # Fallback: try to find project root by looking for .claude marker
             current = Path(__file__).resolve().parent
-            found_root: Optional[Path] = None
+            found_root: Path | None = None
 
             for _ in range(10):  # Max 10 levels up
                 # Check old location (repo root)
@@ -133,7 +133,7 @@ class HookProcessor(ABC):
             # If we can't log, at least try stderr
             print(f"Logging error: {e}", file=sys.stderr)
 
-    def read_input(self) -> Dict[str, Any]:
+    def read_input(self) -> dict[str, Any]:
         """Read and parse JSON input from stdin.
 
         Returns:
@@ -152,7 +152,7 @@ class HookProcessor(ABC):
             return {}
         return json.loads(raw_input)
 
-    def write_output(self, output: Dict[str, Any]):
+    def write_output(self, output: dict[str, Any]):
         """Write JSON output to stdout.
 
         Args:
@@ -162,7 +162,7 @@ class HookProcessor(ABC):
         sys.stdout.write("\n")
         sys.stdout.flush()
 
-    def save_metric(self, metric_name: str, value: Any, metadata: Optional[Dict] = None):
+    def save_metric(self, metric_name: str, value: Any, metadata: dict | None = None):
         """Save a metric to the metrics directory.
 
         Args:
@@ -189,7 +189,7 @@ class HookProcessor(ABC):
             self.log(f"Failed to save metric: {e}", "WARNING")
 
     @abstractmethod
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process the hook input and return output.
 
         This method must be implemented by subclasses.

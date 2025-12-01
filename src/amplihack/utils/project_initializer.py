@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ def detect_project_md_state(project_root: Path) -> tuple[ProjectState, str]:
     return ProjectState.VALID_USER_CONTENT, "User content detected"
 
 
-def analyze_project_structure(project_root: Path) -> Dict[str, Any]:
+def analyze_project_structure(project_root: Path) -> dict[str, Any]:
     """Analyze project structure to gather context.
 
     Args:
@@ -240,7 +240,7 @@ def analyze_project_structure(project_root: Path) -> Dict[str, Any]:
     return info
 
 
-def generate_from_template(project_info: Dict[str, Any]) -> str:
+def generate_from_template(project_info: dict[str, Any]) -> str:
     """Generate PROJECT.md from template.
 
     Args:

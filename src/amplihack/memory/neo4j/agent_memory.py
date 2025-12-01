@@ -6,7 +6,7 @@ with automatic agent type detection and cross-agent learning support.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from .connector import Neo4jConnector
@@ -47,8 +47,8 @@ class AgentMemoryManager:
     def __init__(
         self,
         agent_type: str,
-        project_id: Optional[str] = None,
-        connector: Optional[Neo4jConnector] = None,
+        project_id: str | None = None,
+        connector: Neo4jConnector | None = None,
     ):
         """Initialize agent memory manager.
 
@@ -88,9 +88,9 @@ class AgentMemoryManager:
         content: str,
         category: str = "general",
         memory_type: str = "procedural",
-        tags: Optional[List[str]] = None,
+        tags: list[str] | None = None,
         confidence: float = 0.7,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         global_scope: bool = False,
     ) -> str:
         """Store a memory for this agent type.
@@ -143,12 +143,12 @@ class AgentMemoryManager:
 
     def recall(
         self,
-        category: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        category: str | None = None,
+        tags: list[str] | None = None,
         min_quality: float = 0.6,
         include_global: bool = True,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Retrieve memories for this agent type.
 
         Returns memories from:
@@ -198,12 +198,12 @@ class AgentMemoryManager:
 
     def learn_from_others(
         self,
-        topic: Optional[str] = None,
-        category: Optional[str] = None,
+        topic: str | None = None,
+        category: str | None = None,
         min_quality: float = 0.75,
         min_validations: int = 2,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Learn from other agents of the same type.
 
         Queries high-quality, well-validated memories from other
@@ -277,7 +277,7 @@ class AgentMemoryManager:
         self,
         memory_id: str,
         outcome: str = "successful",
-        feedback_score: Optional[float] = None,
+        feedback_score: float | None = None,
     ) -> bool:
         """Record that this agent applied a memory.
 
@@ -321,7 +321,7 @@ class AgentMemoryManager:
         memory_id: str,
         feedback_score: float,
         outcome: str = "successful",
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> bool:
         """Validate a memory after using it.
 
@@ -368,7 +368,7 @@ class AgentMemoryManager:
         query: str,
         include_global: bool = True,
         limit: int = 20,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search memories by content and tags.
 
         Args:
@@ -403,7 +403,7 @@ class AgentMemoryManager:
 
         return memories
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get memory statistics for this agent type.
 
         Returns:
@@ -428,9 +428,9 @@ class AgentMemoryManager:
 
     def get_best_practices(
         self,
-        category: Optional[str] = None,
+        category: str | None = None,
         limit: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get best practices (highest quality memories).
 
         Args:

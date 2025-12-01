@@ -4,7 +4,6 @@ import logging
 import re
 import subprocess
 from pathlib import Path
-from typing import Optional, Union
 
 
 class FileLoggingHandler(logging.Handler):
@@ -164,8 +163,8 @@ class FileLoggingService:
         """
         self.port = port  # Keep for interface compatibility
         self.log_file_path = Path("./.claude/runtime/proxy/amplihack_proxy.log")
-        self.handler: Optional[Union[FileLoggingHandler, FileLoggingHandlerWithRotation]] = None
-        self.terminal_process: Optional[subprocess.Popen] = None
+        self.handler: FileLoggingHandler | FileLoggingHandlerWithRotation | None = None
+        self.terminal_process: subprocess.Popen | None = None
         self.running = False
 
     async def start(self) -> bool:

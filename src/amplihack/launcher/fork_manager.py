@@ -6,7 +6,7 @@ Monitors session duration and triggers SDK fork before hitting the
 
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 # Try to import SDK, gracefully handle if unavailable
 try:
@@ -58,7 +58,7 @@ class ForkManager:
         elapsed = time.time() - self.start_time
         return elapsed >= self.fork_threshold
 
-    def trigger_fork(self, options: Optional[Any] = None) -> Any:
+    def trigger_fork(self, options: Any | None = None) -> Any:
         """Trigger SDK fork by setting fork_session flag.
 
         Args:

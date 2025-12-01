@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class AgentType(Enum):
@@ -52,8 +52,8 @@ class WorkflowRequest:
     """
 
     task: str
-    documents: List[str]
-    config: Dict[str, Any] = field(default_factory=dict)
+    documents: list[str]
+    config: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if not self.task or not self.task.strip():
@@ -75,7 +75,7 @@ class AgentResult:
 
     agent_type: AgentType
     status: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     processing_time: float
 
 
@@ -100,7 +100,7 @@ class WorkflowResult:
     """
 
     status: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     processing_time: float
-    agent_results: List[AgentResult] = field(default_factory=list)
-    error: Optional[str] = None
+    agent_results: list[AgentResult] = field(default_factory=list)
+    error: str | None = None

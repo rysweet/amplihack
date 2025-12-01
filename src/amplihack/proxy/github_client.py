@@ -2,7 +2,8 @@
 
 import asyncio
 import json
-from typing import Any, AsyncGenerator, Dict, List, Optional, Union
+from collections.abc import AsyncGenerator
+from typing import Any
 from urllib.parse import urljoin
 
 
@@ -18,7 +19,7 @@ class GitHubCopilotClient:
         """
         self.token = token
         self.base_url = base_url.rstrip("/")
-        self.session: Optional[Any] = None  # aiohttp.ClientSession when initialized
+        self.session: Any | None = None  # aiohttp.ClientSession when initialized
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -51,13 +52,13 @@ class GitHubCopilotClient:
 
     async def chat_completion(
         self,
-        messages: List[Dict[str, Any]],
+        messages: list[dict[str, Any]],
         model: str = "copilot-gpt-4",
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         stream: bool = False,
         **kwargs,
-    ) -> Union[Dict[str, Any], AsyncGenerator[Dict[str, Any], None]]:
+    ) -> dict[str, Any] | AsyncGenerator[dict[str, Any], None]:
         """Create chat completion using GitHub Copilot.
 
         Args:
@@ -94,7 +95,7 @@ class GitHubCopilotClient:
             return self._stream_completion(url, data)
         return await self._create_completion(url, data)
 
-    async def _create_completion(self, url: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _create_completion(self, url: str, data: dict[str, Any]) -> dict[str, Any]:
         """Create non-streaming completion.
 
         Args:
@@ -119,7 +120,7 @@ class GitHubCopilotClient:
                 raise RuntimeError(f"Network error: {e}")
             raise
 
-    async def _stream_completion(self, url: str, data: Dict[str, Any]):
+    async def _stream_completion(self, url: str, data: dict[str, Any]):
         """Create streaming completion.
 
         Args:
@@ -156,7 +157,7 @@ class GitHubCopilotClient:
                 raise RuntimeError(f"Network error: {e}")
             raise
 
-    async def list_models(self) -> Dict[str, Any]:
+    async def list_models(self) -> dict[str, Any]:
         """List available models.
 
         Returns:
@@ -181,7 +182,7 @@ class GitHubCopilotClient:
             ],
         }
 
-    async def get_usage(self) -> Dict[str, Any]:
+    async def get_usage(self) -> dict[str, Any]:
         """Get Copilot usage information.
 
         Returns:
@@ -205,13 +206,13 @@ class GitHubCopilotClient:
 
     def sync_chat_completion(
         self,
-        messages: List[Dict[str, Any]],
+        messages: list[dict[str, Any]],
         model: str = "copilot-gpt-4",
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
         stream: bool = False,
         **kwargs,
-    ) -> Union[Dict[str, Any], Any]:
+    ) -> dict[str, Any] | Any:
         """Synchronous wrapper for chat completion.
 
         Args:
@@ -271,7 +272,7 @@ class GitHubCopilotClient:
 
         return loop.run_until_complete(_completion_wrapper())
 
-    def transform_openai_request(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_openai_request(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Transform OpenAI request format to GitHub Copilot format.
 
         Args:
@@ -298,8 +299,8 @@ class GitHubCopilotClient:
         return github_request
 
     def transform_github_response(
-        self, response: Dict[str, Any], original_model: str
-    ) -> Dict[str, Any]:
+        self, response: dict[str, Any], original_model: str
+    ) -> dict[str, Any]:
         """Transform GitHub Copilot response to OpenAI format.
 
         Args:

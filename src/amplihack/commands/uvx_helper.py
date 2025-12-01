@@ -3,10 +3,9 @@
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 
-def find_uvx_installation_path() -> Optional[Path]:
+def find_uvx_installation_path() -> Path | None:
     """Find the UVX installation path containing framework files.
 
     Returns:

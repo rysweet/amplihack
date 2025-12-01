@@ -10,7 +10,6 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Dict, Optional
 
 # Try to import Claude SDK
 try:
@@ -21,7 +20,7 @@ except ImportError:
     CLAUDE_SDK_AVAILABLE = False
 
 
-def load_project_state(project_root: Path) -> Optional[Dict]:
+def load_project_state(project_root: Path) -> dict | None:
     """Load PM state files for analysis.
 
     Args:
@@ -157,7 +156,7 @@ def get_open_prs_and_issues(project_root: Path) -> str:
         return "\n## Open PRs and Issues\n\nUnable to retrieve (gh CLI not available)\n"
 
 
-async def generate_status_report(project_root: Path, state: Optional[Dict] = None) -> Optional[str]:
+async def generate_status_report(project_root: Path, state: dict | None = None) -> str | None:
     """Generate daily status report using Claude Agent SDK.
 
     Args:

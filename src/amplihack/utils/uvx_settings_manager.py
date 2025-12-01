@@ -8,7 +8,7 @@ properly configured out-of-the-box.
 import json
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class UVXSettingsManager:
@@ -82,7 +82,7 @@ class UVXSettingsManager:
             return False
 
     def merge_with_existing_settings(
-        self, target_path: Path, existing_settings: Dict[str, Any]
+        self, target_path: Path, existing_settings: dict[str, Any]
     ) -> bool:
         """Merge UVX template with existing settings, preserving user customizations.
 
@@ -140,7 +140,7 @@ class UVXSettingsManager:
             print(f"[UVX Settings] Warning: Failed to merge settings: {e}", file=sys.stderr)
             return False
 
-    def get_template_settings(self) -> Optional[Dict[str, Any]]:
+    def get_template_settings(self) -> dict[str, Any] | None:
         """Get the UVX template settings as a dictionary.
 
         Returns:

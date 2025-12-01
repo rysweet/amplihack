@@ -9,7 +9,6 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from .errors import ExecutionError, TransferError
 from .orchestrator import VM
@@ -113,7 +112,7 @@ class Executor:
         raise TransferError("Transfer failed after all retries", context={"vm_name": self.vm.name})
 
     def execute_remote(
-        self, command: str, prompt: str, max_turns: int = 10, api_key: Optional[str] = None
+        self, command: str, prompt: str, max_turns: int = 10, api_key: str | None = None
     ) -> ExecutionResult:
         """Execute amplihack command on remote VM.
 
