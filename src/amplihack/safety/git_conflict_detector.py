@@ -18,6 +18,13 @@ class ConflictDetectionResult:
 class GitConflictDetector:
     """Detect git conflicts for safe file copying."""
 
+    # System-generated files that should be excluded from conflict detection
+    # These files are auto-managed by the framework and safe to overwrite
+    SYSTEM_METADATA = {
+        ".version",      # Framework version tracking (auto-updated)
+        "settings.json",  # Runtime settings (auto-generated)
+    }
+
     def __init__(self, target_dir: Union[str, Path]):
         self.target_dir = Path(target_dir).resolve()
 
@@ -82,11 +89,20 @@ class GitConflictDetector:
     def _filter_conflicts(
         self, uncommitted_files: List[str], essential_dirs: List[str]
     ) -> List[str]:
-        """Filter uncommitted files for conflicts with essential_dirs."""
+        """Filter uncommitted files for conflicts with essential_dirs.
+
+        Excludes SYSTEM_METADATA files (auto-generated) from conflict detection
+        since they are framework-managed and safe to overwrite.
+        """
         conflicts = []
         for file_path in uncommitted_files:
             if file_path.startswith(".claude/"):
                 relative_path = file_path[8:]
+
+                # Skip system-generated metadata - safe to overwrite
+                if relative_path in self.SYSTEM_METADATA:
+                    continue
+
                 for essential_dir in essential_dirs:
                     if (
                         relative_path.startswith(essential_dir + "/")
