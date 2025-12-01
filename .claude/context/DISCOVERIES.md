@@ -6,7 +6,11 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 
 ## Table of Contents
 
-### Recent (November 2025)
+### Recent (December 2025)
+
+- [System Metadata vs User Content in Git Conflict Detection](#system-metadata-vs-user-content-git-conflict-2025-12-01)
+
+### November 2025
 
 - [Power-Steering Session Type Detection Fix](#power-steering-session-type-detection-fix-2025-11-25)
 - [Transcripts System Architecture Validation](#transcripts-system-investigation-2025-11-22)
@@ -47,6 +51,112 @@ How was it resolved? Include code if relevant.
 
 What insights should be remembered?
 ```
+
+---
+
+## System Metadata vs User Content in Git Conflict Detection (2025-12-01)
+
+### Problem
+
+User reported: "amplihack's copytree_manifest fails when .claude/ has uncommitted changes" specifically with `.claude/.version` file modified. Despite having a comprehensive safety system (GitConflictDetector + SafeCopyStrategy), deployment proceeded without warning and created a version mismatch state.
+
+### Root Cause
+
+The `.version` file is a **system-generated tracking file** that stores the git commit hash of the deployed amplihack package. The issue occurred due to a semantic classification gap:
+
+1. **Git Status Detection**: `GitConflictDetector._get_uncommitted_files()` correctly detects ALL uncommitted files including `.version` (status: M)
+
+2. **Filtering Logic Gap**: `_filter_conflicts()` at lines 82-97 in `git_conflict_detector.py` only checks files against ESSENTIAL_DIRS patterns:
+   ```python
+   for essential_dir in essential_dirs:
+       if relative_path.startswith(essential_dir + "/"):
+           conflicts.append(file_path)
+   ```
+
+3. **ESSENTIAL_DIRS Are All Subdirectories**: `["agents/amplihack", "commands/amplihack", "context/", ...]` - all contain "/"
+
+4. **Root-Level Files Filtered Out**: `.version` at `.claude/.version` doesn't match any pattern → filtered OUT → `has_conflicts = False`
+
+5. **No Warning Issued**: SafeCopyStrategy sees no conflicts, proceeds to working directory without prompting user
+
+6. **Version Mismatch Created**: copytree_manifest copies fresh directories but **doesn't copy `.version`** (not in ESSENTIAL_FILES), leaving stale version marker with fresh code
+
+### Solution
+
+Exclude system-generated metadata files from conflict detection by adding explicit categorization:
+
+```python
+# In src/amplihack/safety/git_conflict_detector.py
+
+SYSTEM_METADATA = {
+    ".version",        # Framework version tracking (auto-generated)
+    "settings.json",   # Runtime settings (auto-generated)
+}
+
+def _filter_conflicts(
+    self, uncommitted_files: List[str], essential_dirs: List[str]
+) -> List[str]:
+    """Filter uncommitted files for conflicts with essential_dirs."""
+    conflicts = []
+    for file_path in uncommitted_files:
+        if file_path.startswith(".claude/"):
+            relative_path = file_path[8:]
+
+            # Skip system-generated metadata - safe to overwrite
+            if relative_path in SYSTEM_METADATA:
+                continue
+
+            # Existing filtering logic for essential directories
+            for essential_dir in essential_dirs:
+                if (
+                    relative_path.startswith(essential_dir + "/")
+                    or relative_path == essential_dir
+                ):
+                    conflicts.append(file_path)
+                    break
+    return conflicts
+```
+
+**Rationale**:
+- **Semantic Classification**: Filter by PURPOSE (system vs user), not just directory structure
+- **Ruthlessly Simple**: 3-line change, surgical fix
+- **Philosophy-Aligned**: Treats system files appropriately (not user content)
+- **Zero-BS**: Fixes exact issue without over-engineering
+
+### Key Learnings
+
+1. **Root-Level Files Need Special Handling**: Directory-based filtering (checking for "/") misses root-level files entirely. System metadata often lives at root.
+
+2. **Semantic > Structural Classification**: Git conflict detection should categorize by FILE PURPOSE (user-managed vs system-generated), not just location patterns.
+
+3. **Auto-Generated Files vs User Content**: Framework metadata files like `.version`, `*.lock`, `.state` should never trigger conflict warnings - they're infrastructure, not content.
+
+4. **ESSENTIAL_DIRS Pattern Limitation**: Works great for subdirectories (`context/`, `tools/`), but silently excludes root-level files. Need explicit system file list.
+
+5. **False Negatives Are Worse Than False Positives**: Safety system failing to warn about user content is bad, but warning about system files breaks user trust and workflow.
+
+6. **Version Files Are Special**: Any framework with version tracking faces this - `.version`, `.state`, `.lock` files should be treated as disposable metadata, not user content to protect.
+
+### Related Patterns
+
+- See PATTERNS.md: "System Metadata vs User Content Classification" - NEW pattern added from this discovery
+- Relates to "Graceful Environment Adaptation" (different file handling per environment)
+- Reinforces "Fail-Fast Prerequisite Checking" (but needs correct semantic classification)
+
+### Impact
+
+- **Affects**: All deployments where `.version` or other system metadata has uncommitted changes
+- **Frequency**: Common after updates (`.version` auto-updated but not committed)
+- **User Experience**: Confusing "version mismatch" errors despite fresh deployment
+- **Fix Priority**: High - breaks user trust in safety system
+
+### Verification
+
+Test cases added:
+- Uncommitted `.version` doesn't trigger conflict warning ✅
+- Uncommitted user content (`.claude/context/custom.md`) DOES trigger warning ✅
+- Deployment proceeds smoothly with modified `.version` ✅
+- Version mismatch detection still works correctly ✅
 
 ---
 

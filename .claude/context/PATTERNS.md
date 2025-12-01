@@ -523,6 +523,85 @@ def write_with_retry(filepath: Path, data: str, max_retries: int = 3):
 - Inform user about delays
 - Create parent directories
 
+### Pattern: System Metadata vs User Content Classification in Git Operations
+
+**Challenge**: Git-aware operations treat framework-generated metadata files (like `.version`, `.state`) as user content, causing false conflict warnings when files are auto-updated by the system.
+
+**Solution**: Explicitly categorize and filter system-generated files based on semantic purpose, not just directory structure.
+
+```python
+from pathlib import Path
+from typing import Set, List
+
+class GitAwareFileFilter:
+    """Distinguish system metadata from user content in git operations"""
+
+    # System-generated files that should never trigger conflicts
+    SYSTEM_METADATA = {
+        ".version",           # Framework version tracking
+        ".state",            # Runtime state
+        "settings.json",     # Auto-generated settings
+        "*.pyc",             # Compiled bytecode
+        "__pycache__",       # Python cache
+        ".pytest_cache",     # Test cache
+    }
+
+    def _filter_conflicts(
+        self, uncommitted_files: List[str], essential_dirs: List[str]
+    ) -> List[str]:
+        """Filter git status to exclude system metadata"""
+        conflicts = []
+        for file_path in uncommitted_files:
+            if file_path.startswith(".claude/"):
+                relative_path = file_path[8:]  # Strip ".claude/"
+
+                # Skip system-generated metadata - safe to overwrite
+                if relative_path in self.SYSTEM_METADATA:
+                    continue
+
+                # Check if file is in essential directories (user content)
+                for essential_dir in essential_dirs:
+                    if (
+                        relative_path.startswith(essential_dir + "/")
+                        or relative_path == essential_dir
+                    ):
+                        conflicts.append(file_path)
+                        break
+
+        return conflicts
+```
+
+**Usage in conflict detection**:
+
+```python
+class ConflictChecker:
+    def check_conflicts(self, source_dir: Path, essential_dirs: List[str]) -> List[Path]:
+        """Check for REAL conflicts - ignore system metadata"""
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True, cwd=source_dir
+        )
+
+        uncommitted = self._parse_git_status(result.stdout)
+        user_changes = self._filter_conflicts(uncommitted, essential_dirs)
+
+        if user_changes:
+            raise ConflictError(
+                f"Uncommitted user content: {user_changes}\n"
+                f"(System metadata changes are normal and ignored)"
+            )
+```
+
+**Key Points**:
+
+- **Semantic categorization**: Filter by PURPOSE (system vs user), not location
+- **Root-level awareness**: Don't assume all root files are user content
+- **Clear error messages**: Tell users when conflicts are real vs system noise
+- **Philosophy alignment**: Ruthlessly simple - add explicit exclusion list
+- **Common pitfall**: Only checking subdirectories and missing root-level system files
+
+> **Origin**: Discovered investigating `.version` file causing false conflicts during UVX deployment. See DISCOVERIES.md (2025-12-01).
+
 ### Pattern: Async Context Management
 
 **Challenge**: Nested asyncio event loops cause hangs.
