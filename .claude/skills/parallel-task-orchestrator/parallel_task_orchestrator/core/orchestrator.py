@@ -394,9 +394,33 @@ class ParallelOrchestrator:
 
         summary = report.generate_summary()
 
-        # TODO: Implement gh issue comment posting
-        # For now, just log the summary
-        logger.info(f"Summary:\n{summary}")
+        # Post summary as issue comment via gh CLI
+        try:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "issue",
+                    "comment",
+                    str(self.current_config.parent_issue),
+                    "--body",
+                    summary,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            if result.returncode == 0:
+                logger.info(f"Successfully posted summary to issue #{self.current_config.parent_issue}")
+            else:
+                logger.warning(f"Failed to post issue comment: {result.stderr}")
+                logger.info(f"Summary:\n{summary}")  # Fallback to logging
+        except subprocess.TimeoutExpired:
+            logger.warning("Timeout posting issue comment - falling back to logging")
+            logger.info(f"Summary:\n{summary}")
+        except Exception as e:
+            logger.warning(f"Error posting issue comment: {e} - falling back to logging")
+            logger.info(f"Summary:\n{summary}")
 
 
 __all__ = ["ParallelOrchestrator"]
