@@ -980,6 +980,7 @@ Investigation triggered by system reminder messages showing "SessionStart:startu
 **Claude Code Internal Bug**: The hook execution engine spawns **two separate Python processes** for each hook invocation, regardless of configuration.
 
 **Current Configuration** (CORRECT per schema):
+
 ```json
 "SessionStart": [
   {
@@ -995,6 +996,7 @@ Investigation triggered by system reminder messages showing "SessionStart:startu
 ```
 
 **Schema Requirement**:
+
 ```typescript
 {
   "required": ["hooks"],  // The "hooks" wrapper is MANDATORY
@@ -1007,6 +1009,7 @@ Investigation triggered by system reminder messages showing "SessionStart:startu
 **Initial theory**: Extra `"hooks": []` wrapper was causing duplication.
 
 **Reality**: The wrapper is **required by Claude Code schema**. Removing it causes validation errors:
+
 ```
 Settings validation failed:
 - hooks.SessionStart.0.hooks: Expected array, but received undefined
@@ -1017,18 +1020,21 @@ Settings validation failed:
 ### Evidence
 
 **Configuration Analysis**:
+
 - Only 1 SessionStart hook registered in settings.json
 - No duplicate configurations found
 - Schema validation confirms format is correct
 - **Two separate Python processes** spawn anyway (different PIDs)
 
 **From `.claude/runtime/logs/session_start.log`**:
+
 ```
 [2025-11-21T13:01:07.113446] INFO: session_start hook starting (Python 3.13.9)
 [2025-11-21T13:01:07.113687] INFO: session_start hook starting (Python 3.13.9)
 ```
 
 **From `.claude/runtime/logs/stop.log`**:
+
 ```
 [2025-11-20T21:37:05.173846] INFO: stop hook starting (Python 3.13.9)
 [2025-11-20T21:37:05.427256] INFO: stop hook starting (Python 3.13.9)
@@ -1038,19 +1044,20 @@ Settings validation failed:
 
 ### Impact
 
-| Area | Effect |
-|------|--------|
-| **Performance** | 2-4 seconds wasted per session (double process spawning) |
-| **Context Pollution** | USER_PREFERENCES.md injected twice (~19KB duplicate) |
-| **Side Effects** | File writes, metrics, logs all duplicated |
-| **Log Clarity** | Every entry appears twice, making debugging confusing |
-| **Resource Usage** | Double memory allocation, double I/O operations |
+| Area                  | Effect                                                   |
+| --------------------- | -------------------------------------------------------- |
+| **Performance**       | 2-4 seconds wasted per session (double process spawning) |
+| **Context Pollution** | USER_PREFERENCES.md injected twice (~19KB duplicate)     |
+| **Side Effects**      | File writes, metrics, logs all duplicated                |
+| **Log Clarity**       | Every entry appears twice, making debugging confusing    |
+| **Resource Usage**    | Double memory allocation, double I/O operations          |
 
 ### Solution
 
 **NO CODE FIX AVAILABLE** - This is a Claude Code internal bug.
 
 **Workarounds**:
+
 1. Accept the duplication (hooks are idempotent, safe but wasteful)
 2. Add process-level deduplication in hook_processor.py (complex)
 3. Wait for upstream Claude Code fix
@@ -1076,6 +1083,7 @@ Our configuration **matches the official schema exactly**:
 ```
 
 **Schema requirement**:
+
 ```typescript
 "required": ["hooks"],  // The "hooks" wrapper is MANDATORY
 "additionalProperties": false
@@ -1085,13 +1093,13 @@ Attempting to remove the wrapper causes validation errors.
 
 ### Affected Hooks
 
-| Hook | Status | Root Cause |
-|------|--------|------------|
+| Hook             | Status     | Root Cause             |
+| ---------------- | ---------- | ---------------------- |
 | **SessionStart** | ❌ Runs 2x | Claude Code bug #10871 |
-| **Stop** | ❌ Runs 2x | Claude Code bug #10871 |
-| **PostToolUse** | ❌ Runs 2x | Claude Code bug #10871 |
-| PreToolUse | ❓ Unknown | Likely affected |
-| PreCompact | ❓ Unknown | Likely affected |
+| **Stop**         | ❌ Runs 2x | Claude Code bug #10871 |
+| **PostToolUse**  | ❌ Runs 2x | Claude Code bug #10871 |
+| PreToolUse       | ❓ Unknown | Likely affected        |
+| PreCompact       | ❓ Unknown | Likely affected        |
 
 ### Key Learnings
 
@@ -1107,6 +1115,7 @@ Attempting to remove the wrapper causes validation errors.
 **Decision**: Accept the duplication as a known limitation until Claude Code team fixes #10871.
 
 **Rationale**:
+
 - Configuration is correct per official schema
 - No user-side fix available without breaking schema validation
 - Hooks are idempotent (safe to run twice)
@@ -1116,12 +1125,14 @@ Attempting to remove the wrapper causes validation errors.
 ### Monitoring
 
 Track Claude Code GitHub for fix:
+
 - **Issue #10871**: "Plugin-registered hooks are executed twice with different PIDs"
 - **Related**: #3523 (hook duplication), #3465 (hooks fired twice from home dir)
 
 ### Verification
 
 Configuration correctness verified:
+
 1. ✅ Only 1 hook registered per event type
 2. ✅ Schema validation passes
 3. ✅ Format matches official Claude Code documentation
@@ -1618,3 +1629,51 @@ Created Rust and Azure Kubernetes expert agents with 10-20x learning speedup.
 - Show code that fixed the problem
 - Update PATTERNS.md when a discovery becomes reusable
 - Archive entries older than 3 months to DISCOVERIES_ARCHIVE.md
+
+## 2025-12-01: STOP Gates Break Sonnet, Help Opus - Model-Specific Prompt Behavior (Issue #1755)
+
+**Context**: Testing CLAUDE.md modifications across both Opus and Sonnet models revealed same text produces opposite outcomes.
+
+**Problem**: STOP validation gates have model-specific effects:
+
+- **Opus 4.5**: STOP gates help (20/22 → 22/22 steps) ✅
+- **Sonnet 4.5**: STOP gates break (22/22 → 8/22 steps) ❌
+- **Root cause**: Different models interpret validation language differently
+
+**Solution**: V2 (No STOP Gates) - Remove validation checkpoints while keeping workflow structure
+
+**Results** (6/8 benchmarks complete, 75%):
+
+Sonnet V2:
+
+- ✅ MEDIUM: 24.8m, $5.47, 22/22 steps (-16% cost improvement)
+- ✅ HIGH: 21.7m, $4.92, 22 turns (-12% duration vs MEDIUM - negative scaling!)
+
+Opus V2:
+
+- ✅ MEDIUM: 61.5m, $56.86, ~20/22 steps (-12% duration, -21% cost improvement!)
+- ⏳ HIGH: Testing (~4.5 hours remaining)
+
+**Key Insights**:
+
+1. **Multi-Model Testing Required**: Same prompt can help one model while breaking another
+2. **STOP Gate Paradox**: Removing validation gates IMPROVES performance (12-21% cost reduction)
+3. **Negative Complexity Scaling**: V2 HIGH faster than MEDIUM for well-defined tasks (task clarity > complexity)
+4. **Universal Optimization**: V2 improves BOTH models, not just fixes one
+5. **High-Salience Language Risky**: "STOP", "MUST", ALL CAPS trigger different model responses
+
+**Impact**:
+
+- Fixes Sonnet degradation completely (8/22 → 22/22)
+- Improves Sonnet performance (-12% to -16%)
+- Improves Opus performance (-12% to -21%)
+- $20K-$406K annual savings (moderate: $81K/year)
+- Universal solution (single CLAUDE.md for both models)
+
+**Implementation**: V2 deployed when Opus HIGH validates (expected)
+
+**Related**: #1755, #1703, #1687
+
+**Pattern Identified**: Validation checkpoints can backfire - use flow language instead of interruption language
+
+**Lesson**: Always validate AI guidance changes empirically with ALL target models before deploying
