@@ -7,6 +7,7 @@
     "src/amplihack/proxy/responses_api_proxy.py",
     "proxy/",
     "tests/",
+    "api_client/tests/",
     ".claude/",
     "Specs/",
     "scripts/"
