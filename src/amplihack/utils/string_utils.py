@@ -22,9 +22,10 @@ def slugify(text: str) -> str:
     Transforms any string into a URL-safe slug by:
     1. Normalizing Unicode (NFD) and converting to ASCII
     2. Converting to lowercase
-    3. Replacing whitespace and special chars with hyphens
-    4. Consolidating consecutive hyphens
-    5. Stripping leading/trailing hyphens
+    3. Removing quotes while preserving contractions (it's → its)
+    4. Replacing whitespace and special chars with hyphens
+    5. Consolidating consecutive hyphens
+    6. Stripping leading/trailing hyphens
 
     Args:
         text: Input string with any Unicode characters, special chars, or spaces.
