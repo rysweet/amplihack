@@ -512,3 +512,39 @@ This file should be referenced by:
 - **CLAUDE.md**: "Before solving complex problems, check @docs/DISCOVERIES.md"
 - **AGENTS.md**: "Review @docs/DISCOVERIES.md to avoid known pitfalls"
 - **New developers**: "Read DISCOVERIES.md to understand institutional knowledge"
+
+## Checklist CLAUDE.md Breaks Sonnet 4.5 Autonomy (2025-11-30)
+
+### Issue
+
+Follow-up testing to #1703 Opus experiments revealed checklist approach DEGRADES Sonnet 4.5 by causing premature workflow termination.
+
+### Testing
+
+Ran Sonnet 4.5 on REST API Client (HIGH complexity) with:
+
+1. Original CLAUDE.md (baseline)
+2. Checklist CLAUDE.md (Approach 2 from #1703)
+
+### Results
+
+**Original Sonnet**: 104m, $24, 109 turns, **22/22 steps** ✅
+**Checklist Sonnet**: 36m, $8, 35 turns, **8/22 steps** ❌
+
+### Root Cause
+
+Checklist validation gates (STOP checkpoints, pre-flight validation) trigger Sonnet to pause and ask permission: "Would ye like me to continue?" This violates autonomy guidelines and causes premature stopping.
+
+### Key Learning
+
+**Model-specific behavior**: Interventions designed to force Opus completion have OPPOSITE effect on Sonnet - they cause stopping instead of continuation.
+
+### Solution
+
+**DO NOT implement checklist approach in production** - it breaks the model that works naturally. Use Sonnet 4.5 with original CLAUDE.md for all use cases.
+
+###Prevention
+
+- **Test interventions across ALL target models** - what helps one can break another
+- **Validation gates harmful for autonomous models** - Sonnet needs zero checkpoints
+- **No universal CLAUDE.md solution** - different models need different approaches
