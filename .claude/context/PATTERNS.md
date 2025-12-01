@@ -628,6 +628,99 @@ If ratio < 3.0, seek simpler alternatives.
 
 > **Origin**: Discovered evaluating PBZFT vs N-Version Programming. PBZFT would be 6-9x more complex with zero benefit. See DISCOVERIES.md (2025-10-20).
 
+## Multi-Model AI Patterns
+
+### Pattern: Multi-Model Validation Anti-Pattern (STOP Gates)
+
+**Challenge**: Validation checkpoints in AI guidance can trigger model-specific responses, helping one model while breaking another.
+
+**Problem**: STOP gates added to improve Opus caused Sonnet degradation:
+
+- Opus 4.5: STOP gates help (20/22 → 22/22 steps) ✅
+- Sonnet 4.5: STOP gates break (22/22 → 8/22 steps) ❌
+- Same text, opposite outcomes
+
+**Solution**: Remove validation checkpoints, use flow language instead.
+
+**Example - Bad (STOP Gates)**:
+
+```markdown
+## Step 1: Create GitHub Issue
+
+Create an issue for your feature.
+
+## STOP - Verify Issue Created
+
+Before proceeding to Step 2, confirm:
+
+- [ ] GitHub issue created
+- [ ] Issue number recorded
+
+Only proceed after verification complete.
+
+## Step 2: Create Branch
+
+...
+```
+
+**Example - Good (Flow Language)**:
+
+```markdown
+## Step 1: Create GitHub Issue
+
+Create an issue for your feature.
+
+## Step 2: Create Branch
+
+After creating the issue, create a feature branch...
+```
+
+**Why This Works**:
+
+- Provides clear structure without interruption points
+- Uses flow language ("After X, do Y") not interruption language ("STOP before Y")
+- Allows continuous autonomous execution
+- Works for both models
+
+**Empirical Evidence** (Issue #1755, 6/8 benchmarks complete):
+
+| Model  | With STOP Gates  | Without STOP Gates (V2)           |
+| ------ | ---------------- | --------------------------------- |
+| Sonnet | 8/22 steps (36%) | 22/22 steps (100%)                |
+| Opus   | 22/22 steps      | ~20/22 steps (maintains baseline) |
+
+**Performance Results**:
+
+- Sonnet V2: -16% cost improvement
+- Opus V2: -21% cost improvement
+- Removing gates IMPROVES performance (STOP Gate Paradox)
+
+**Key Points**:
+
+- Different models interpret "STOP" differently
+- Opus: Treats as checkpoint, proceeds
+- Sonnet: Treats as permission gate, asks user
+- High-salience language ("STOP", "MUST", ALL CAPS) risky
+- Always test multi-model before deploying guidance changes
+
+**When to Use Flow Language**:
+
+- "After X, proceed to Y" ✅
+- "When X completes, Y begins" ✅
+- "Following X, continue with Y" ✅
+
+**When to AVOID Interruption Language**:
+
+- "STOP before Y" ❌
+- "Only proceed after X" ❌
+- "Wait for confirmation before Y" ❌
+
+**Related**: Issue #1755, DISCOVERIES.md (2025-12-01)
+**Validation**: 75% complete (6/8 benchmarks), both models tested
+**Impact**: $20K-$406K annual savings from removing STOP gates
+
+---
+
 ## Remember
 
 These patterns represent proven solutions from real development challenges:
