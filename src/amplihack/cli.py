@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
@@ -51,8 +51,8 @@ def ensure_ultrathink_command(prompt: str) -> str:
 
 
 def wrap_prompt_with_ultrathink(
-    claude_args: Optional[List[str]], no_ultrathink: bool = False
-) -> Optional[List[str]]:
+    claude_args: list[str] | None, no_ultrathink: bool = False
+) -> list[str] | None:
     """Wrap prompt in claude_args with /amplihack:ultrathink command.
 
     Modifies the prompt passed via -p flag to use workflow orchestration.
@@ -88,7 +88,7 @@ def wrap_prompt_with_ultrathink(
     return claude_args
 
 
-def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
+def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
     """Handle the launch command.
 
     Args:
@@ -210,9 +210,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     return launcher.launch_interactive()
 
 
-def handle_auto_mode(
-    sdk: str, args: argparse.Namespace, cmd_args: Optional[List[str]]
-) -> Optional[int]:
+def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> int | None:
     """Handle auto mode for claude, copilot, or codex commands.
 
     Args:
@@ -305,8 +303,8 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
 
 
 def parse_args_with_passthrough(
-    argv: Optional[List[str]] = None,
-) -> "tuple[argparse.Namespace, List[str]]":
+    argv: list[str] | None = None,
+) -> "tuple[argparse.Namespace, list[str]]":
     """Parse arguments with support for -- separator for Claude argument forwarding.
 
     Args:
@@ -386,7 +384,7 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def resolve_timeout(args: argparse.Namespace, model: Optional[str] = None) -> Optional[float]:
+def resolve_timeout(args: argparse.Namespace, model: str | None = None) -> float | None:
     """Resolve timeout value based on CLI args and model detection.
 
     Priority order:
@@ -640,7 +638,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     return parser
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 
     Args:
@@ -726,12 +724,32 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude", manifest=manifest)
 
-        # Smart PROJECT.md initialization for UVX mode
+        # Handle CLAUDE.md preservation FIRST during UVX deployment (Issue #1746)
+        # Must run before PROJECT.md initialization to preserve custom content
+        if copied:
+            try:
+                from .utils.claude_md_preserver import HandleMode, handle_claude_md
+
+                source_claude = Path(amplihack_src) / "CLAUDE.md"
+                result = handle_claude_md(
+                    source_claude=source_claude, target_dir=Path(original_cwd), mode=HandleMode.AUTO
+                )
+                if result.success:
+                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                        print(f"✅ {result.message}")
+                    if result.backup_path:
+                        print(f"💾 Your custom CLAUDE.md preserved at: {result.backup_path}")
+            except Exception as e:
+                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                    print(f"Warning: CLAUDE.md handling failed: {e}")
+
+        # Smart PROJECT.md initialization for UVX mode (after CLAUDE.md preservation)
+        # Use AUTO mode instead of FORCE to preserve existing PROJECT.md content
         if copied:
             try:
                 from .utils.project_initializer import InitMode, initialize_project_md
 
-                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
+                result = initialize_project_md(Path(original_cwd), mode=InitMode.AUTO)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                         print(
