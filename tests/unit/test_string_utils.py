@@ -23,6 +23,8 @@ Test Coverage:
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
@@ -44,6 +46,7 @@ except ImportError:
         raise NotImplementedError("slugify not yet implemented")
 
 
+@pytest.mark.unit
 class TestSlugify:
     """Test slugify function for converting strings to URL-safe slugs.
 
